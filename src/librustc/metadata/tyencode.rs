@@ -10,6 +10,8 @@
 
 // Type encoding
 
+#[allow(unused_must_use)]; // as with encoding, everything is a no-fail MemWriter
+
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
@@ -92,9 +94,9 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
                   None => {}
               }
           }
-          let pos = w.tell();
+          let pos = w.tell().unwrap();
           enc_sty(w, cx, &ty::get(t).sty);
-          let end = w.tell();
+          let end = w.tell().unwrap();
           let len = end - pos;
           fn estimate_sz(u: u64) -> u64 {
               let mut n = u;
