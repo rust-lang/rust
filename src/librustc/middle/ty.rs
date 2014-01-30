@@ -855,7 +855,8 @@ impl ToStr for IntVarValue {
 pub struct TypeParameterDef {
     ident: ast::Ident,
     def_id: ast::DefId,
-    bounds: @ParamBounds
+    bounds: @ParamBounds,
+    default: Option<ty::t>
 }
 
 #[deriving(Encodable, Decodable, Clone)]

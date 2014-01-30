@@ -485,12 +485,13 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        parameterized(cx, base, &substs.regions, substs.tps)
+        parameterized(cx, base, &substs.regions, substs.tps, did, false)
       }
       ty_trait(did, ref substs, s, mutbl, ref bounds) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        let ty = parameterized(cx, base, &substs.regions, substs.tps);
+        let ty = parameterized(cx, base, &substs.regions,
+                               substs.tps, did, true);
         let bound_sep = if bounds.is_empty() { "" } else { ":" };
         let bound_str = bounds.repr(cx);
         format!("{}{}{}{}{}", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
@@ -506,7 +507,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 pub fn parameterized(cx: ctxt,
                      base: &str,
                      regions: &ty::RegionSubsts,
-                     tps: &[ty::t]) -> ~str {
+                     tps: &[ty::t],
+                     did: ast::DefId,
+                     is_trait: bool) -> ~str {
 
     let mut strs = ~[];
     match *regions {
@@ -518,7 +521,20 @@ pub fn parameterized(cx: ctxt,
         }
     }
 
-    for t in tps.iter() {
+    let generics = if is_trait {
+        ty::lookup_trait_def(cx, did).generics
+    } else {
+        ty::lookup_item_type(cx, did).generics
+    };
+    let ty_params = generics.type_param_defs.iter();
+    let num_defaults = ty_params.zip(tps.iter()).rev().take_while(|&(def, &actual)| {
+        match def.default {
+            Some(default) => default == actual,
+            None => false
+        }
+    }).len();
+
+    for t in tps.slice_to(tps.len() - num_defaults).iter() {
         strs.push(ty_to_str(cx, *t))
     }
 
@@ -969,9 +985,11 @@ impl UserString for ty::TraitRef {
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = self.substs.tps.clone();
             for &t in self.substs.self_ty.iter() { all_tps.push(t); }
-            parameterized(tcx, base, &self.substs.regions, all_tps)
+            parameterized(tcx, base, &self.substs.regions,
+                          all_tps, self.def_id, true)
         } else {
-            parameterized(tcx, base, &self.substs.regions, self.substs.tps)
+            parameterized(tcx, base, &self.substs.regions,
+                          self.substs.tps, self.def_id, true)
         }
     }
 }

@@ -164,7 +164,8 @@ impl Subst for ty::TypeParameterDef {
         ty::TypeParameterDef {
             ident: self.ident,
             def_id: self.def_id,
-            bounds: self.bounds.subst(tcx, substs)
+            bounds: self.bounds.subst(tcx, substs),
+            default: self.default.map(|x| x.subst(tcx, substs))
         }
     }
 }

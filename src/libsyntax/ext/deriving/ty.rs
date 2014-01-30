@@ -196,7 +196,7 @@ fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         }));
-    cx.typaram(cx.ident_of(name), bounds)
+    cx.typaram(cx.ident_of(name), bounds, None)
 }
 
 fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Generics {
