@@ -20,7 +20,6 @@ use parse::token::get_ident_interner;
 use parse::token;
 use print::pprust;
 
-use std::io;
 use std::io::File;
 use std::rc::Rc;
 use std::str;
@@ -109,9 +108,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         None => return MacResult::dummy_expr()
     };
     let file = res_rel_file(cx, sp, &Path::new(file));
-    let bytes = match io::result(|| File::open(&file).read_to_end()) {
+    let bytes = match File::open(&file).read_to_end() {
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e.desc));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             return MacResult::dummy_expr();
         }
         Ok(bytes) => bytes,
@@ -141,9 +140,9 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         None => return MacResult::dummy_expr()
     };
     let file = res_rel_file(cx, sp, &Path::new(file));
-    match io::result(|| File::open(&file).read_to_end()) {
+    match File::open(&file).read_to_end() {
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e.desc));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             return MacResult::dummy_expr();
         }
         Ok(bytes) => {

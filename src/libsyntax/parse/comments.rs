@@ -350,7 +350,8 @@ pub fn gather_comments_and_literals(span_diagnostic:
                                     path: ~str,
                                     srdr: &mut io::Reader)
                                  -> (~[Comment], ~[Literal]) {
-    let src = str::from_utf8_owned(srdr.read_to_end()).unwrap();
+    let src = srdr.read_to_end().unwrap();
+    let src = str::from_utf8_owned(src).unwrap();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
