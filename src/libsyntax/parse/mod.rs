@@ -19,7 +19,6 @@ use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
 use std::cell::RefCell;
-use std::io;
 use std::io::File;
 use std::str;
 
@@ -232,10 +231,10 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
-    let bytes = match io::result(|| File::open(path).read_to_end()) {
+    let bytes = match File::open(path).read_to_end() {
         Ok(bytes) => bytes,
         Err(e) => {
-            err(format!("couldn't read {}: {}", path.display(), e.desc));
+            err(format!("couldn't read {}: {}", path.display(), e));
             unreachable!()
         }
     };
