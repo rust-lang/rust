@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -2580,7 +2580,7 @@ pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
     }
 }
 
-// Whether a type is enum like, that is a enum type with only nullary
+// Whether a type is enum like, that is an enum type with only nullary
 // constructors
 pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     match get(ty).sty {

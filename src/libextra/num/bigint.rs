@@ -1292,7 +1292,7 @@ impl ToStrRadix for BigInt {
 }
 
 impl FromStrRadix for BigInt {
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a BigInt.
     #[inline]
     fn from_str_radix(s: &str, radix: uint) -> Option<BigInt> {
         BigInt::parse_bytes(s.as_bytes(), radix)
@@ -1385,7 +1385,7 @@ impl<R: Rng> RandBigInt for R {
 }
 
 impl BigInt {
-    /// Creates and initializes an BigInt.
+    /// Creates and initializes a BigInt.
     #[inline]
     pub fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,13 +27,13 @@ use option::{Option, Some, None};
 pub struct Ascii { priv chr: u8 }
 
 impl Ascii {
-    /// Converts a ascii character into a `u8`.
+    /// Converts an ascii character into a `u8`.
     #[inline]
     pub fn to_byte(self) -> u8 {
         self.chr
     }
 
-    /// Converts a ascii character into a `char`.
+    /// Converts an ascii character into a `char`.
     #[inline]
     pub fn to_char(self) -> char {
         self.chr as char
@@ -314,9 +314,9 @@ impl IterBytes for Ascii {
     }
 }
 
-/// Trait to convert to a owned byte array by consuming self
+/// Trait to convert to an owned byte array by consuming self
 pub trait IntoBytes {
-    /// Converts to a owned byte array by consuming self
+    /// Converts to an owned byte array by consuming self
     fn into_bytes(self) -> ~[u8];
 }
 

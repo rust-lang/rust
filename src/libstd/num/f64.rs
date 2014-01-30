@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -814,7 +814,7 @@ impl num::ToStrRadix for f64 {
 }
 
 /// Convert a string in base 16 to a float.
-/// Accepts a optional binary exponent.
+/// Accepts an optional binary exponent.
 ///
 /// This function accepts strings such as
 ///
@@ -846,7 +846,7 @@ pub fn from_str_hex(num: &str) -> Option<f64> {
 
 impl FromStr for f64 {
     /// Convert a string in base 10 to a float.
-    /// Accepts a optional decimal exponent.
+    /// Accepts an optional decimal exponent.
     ///
     /// This function accepts strings such as
     ///
@@ -878,7 +878,7 @@ impl FromStr for f64 {
 }
 
 impl num::FromStrRadix for f64 {
-    /// Convert a string in an given base to a float.
+    /// Convert a string in a given base to a float.
     ///
     /// Due to possible conflicts, this function does **not** accept
     /// the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
