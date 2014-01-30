@@ -66,7 +66,10 @@ pub trait AstBuilder {
     fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
-    fn typaram(&self, id: ast::Ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam;
+    fn typaram(&self,
+               id: ast::Ident,
+               bounds: OptVec<ast::TyParamBound>,
+               default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
@@ -354,8 +357,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         })
     }
 
-    fn typaram(&self, id: ast::Ident, bounds: OptVec<ast::TyParamBound>) -> ast::TyParam {
-        ast::TyParam { ident: id, id: ast::DUMMY_NODE_ID, bounds: bounds }
+    fn typaram(&self,
+               id: ast::Ident,
+               bounds: OptVec<ast::TyParamBound>,
+               default: Option<P<ast::Ty>>) -> ast::TyParam {
+        ast::TyParam {
+            ident: id,
+            id: ast::DUMMY_NODE_ID,
+            bounds: bounds,
+            default: default
+        }
     }
 
     // these are strange, and probably shouldn't be used outside of

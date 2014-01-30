@@ -421,4 +421,5 @@ fn enc_bounds(w: &mut MemWriter, cx: @ctxt, bs: &ty::ParamBounds) {
 pub fn enc_type_param_def(w: &mut MemWriter, cx: @ctxt, v: &ty::TypeParameterDef) {
     mywrite!(w, "{}:{}|", cx.tcx.sess.str_of(v.ident), (cx.ds)(v.def_id));
     enc_bounds(w, cx, v.bounds);
+    enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }
