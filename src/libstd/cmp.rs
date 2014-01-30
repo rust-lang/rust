@@ -22,6 +22,8 @@ and `Eq` to overload the `==` and `!=` operators.
 
 #[allow(missing_doc)];
 
+use kinds::marker;
+
 /**
 * Trait for values that can be compared for equality and inequality.
 *
@@ -187,6 +189,56 @@ pub fn min<T:Ord>(v1: T, v2: T) -> T {
 #[inline]
 pub fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
+}
+
+impl<T> Eq for marker::CovariantType<T> {
+    #[inline]
+    fn eq(&self, _other: &marker::CovariantType<T>) -> bool { true }
+}
+
+impl<T> Eq for marker::ContravariantType<T> {
+    #[inline]
+    fn eq(&self, _other: &marker::ContravariantType<T>) -> bool { true }
+}
+
+impl<T> Eq for marker::InvariantType<T> {
+    #[inline]
+    fn eq(&self, _other: &marker::InvariantType<T>) -> bool { true }
+}
+
+impl<'a> Eq for marker::CovariantLifetime<'a> {
+    #[inline]
+    fn eq(&self, _other: &marker::CovariantLifetime<'a>) -> bool { true }
+}
+
+impl<'a> Eq for marker::ContravariantLifetime<'a> {
+    #[inline]
+    fn eq(&self, _other: &marker::ContravariantLifetime<'a>) -> bool { true }
+}
+
+impl<'a> Eq for marker::InvariantLifetime<'a> {
+    #[inline]
+    fn eq(&self, _other: &marker::InvariantLifetime<'a>) -> bool { true }
+}
+
+impl Eq for marker::NoFreeze {
+    #[inline]
+    fn eq(&self, _other: &marker::NoFreeze) -> bool { true }
+}
+
+impl Eq for marker::NoSend {
+    #[inline]
+    fn eq(&self, _other: &marker::NoSend) -> bool { true }
+}
+
+impl Eq for marker::NoPod {
+    #[inline]
+    fn eq(&self, _other: &marker::NoPod) -> bool { true }
+}
+
+impl Eq for marker::Managed {
+    #[inline]
+    fn eq(&self, _other: &marker::Managed) -> bool { true }
 }
 
 #[cfg(test)]
