@@ -178,7 +178,7 @@ impl Arena {
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
         self.pod_head =
-            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
+            chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
 
         return self.alloc_pod_inner(n_bytes, align);
     }
@@ -220,7 +220,7 @@ impl Arena {
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
         self.head =
-            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
+            chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
 
         return self.alloc_nonpod_inner(n_bytes, align);
     }
