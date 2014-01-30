@@ -101,30 +101,30 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
     let mut idx_a = 0;
     let mut idx_b = 0;
     loop {
-        if (idx_a == a.len() && idx_b == b.len()) {
+        if idx_a == a.len() && idx_b == b.len() {
             return true;
         }
-        else if (idx_a == a.len()) {return false;}
-        else if (idx_b == b.len()) {
+        else if idx_a == a.len() {return false;}
+        else if idx_b == b.len() {
             // maybe the stuff left in a is all ws?
-            if (is_whitespace(a.char_at(idx_a))) {
-                return (scan_for_non_ws_or_end(a,idx_a) == a.len());
+            if is_whitespace(a.char_at(idx_a)) {
+                return scan_for_non_ws_or_end(a,idx_a) == a.len();
             } else {
                 return false;
             }
         }
         // ws in both given and pattern:
-        else if (is_whitespace(a.char_at(idx_a))
-           && is_whitespace(b.char_at(idx_b))) {
+        else if is_whitespace(a.char_at(idx_a))
+           && is_whitespace(b.char_at(idx_b)) {
             idx_a = scan_for_non_ws_or_end(a,idx_a);
             idx_b = scan_for_non_ws_or_end(b,idx_b);
         }
         // ws in given only:
-        else if (is_whitespace(a.char_at(idx_a))) {
+        else if is_whitespace(a.char_at(idx_a)) {
             idx_a = scan_for_non_ws_or_end(a,idx_a);
         }
         // *don't* silently eat ws in expected only.
-        else if (a.char_at(idx_a) == b.char_at(idx_b)) {
+        else if a.char_at(idx_a) == b.char_at(idx_b) {
             idx_a += 1;
             idx_b += 1;
         }
