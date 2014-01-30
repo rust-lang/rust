@@ -21,8 +21,8 @@ pub fn main() {
 
     {
         match File::create(&path) {
-            None => unreachable!(),
-            Some(f) => {
+            Err(..) => unreachable!(),
+            Ok(f) => {
                 let mut f = f;
                 for _ in range(0u, 1000) {
                     f.write([0]);
@@ -32,5 +32,5 @@ pub fn main() {
     }
 
     assert!(path.exists());
-    assert_eq!(path.stat().size, 1000);
+    assert_eq!(path.stat().unwrap().size, 1000);
 }
