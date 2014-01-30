@@ -481,7 +481,7 @@ pub fn get_vtable(bcx: &Block,
 
     // Generate a type descriptor for the vtable.
     let tydesc = get_tydesc(ccx, self_ty);
-    glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
+    glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, tydesc);
 
     let vtable = make_vtable(ccx, tydesc, methods);
 
@@ -498,7 +498,7 @@ pub fn make_vtable(ccx: &CrateContext,
     unsafe {
         let _icx = push_ctxt("meth::make_vtable");
 
-        let mut components = ~[ tydesc.tydesc ];
+        let mut components = ~[tydesc.drop_glue.get().unwrap()];
         for &ptr in ptrs.iter() {
             components.push(ptr)
         }
