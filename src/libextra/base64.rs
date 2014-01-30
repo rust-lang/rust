@@ -336,11 +336,11 @@ mod test {
         use std::rand::{task_rng, random, Rng};
         use std::vec;
 
-        1000.times(|| {
+        for _ in range(0, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
-        })
+        }
     }
 
     #[bench]

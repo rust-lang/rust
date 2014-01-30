@@ -312,7 +312,7 @@ mod tests {
     fn yield_test() {
         let (p, c) = Chan::new();
         spawn(proc() {
-            10.times(task::deschedule);
+            for _ in range(0, 10) { task::deschedule(); }
             c.send(());
         });
         p.recv();

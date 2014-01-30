@@ -726,9 +726,9 @@ pub mod groups {
             // here we just need to indent the start of the description
             let rowlen = row.char_len();
             if rowlen < 24 {
-                (24 - rowlen).times(|| {
-                    row.push_char(' ')
-                })
+                for _ in range(0, 24 - rowlen) {
+                    row.push_char(' ');
+                }
             } else {
                 row.push_str(desc_sep)
             }
