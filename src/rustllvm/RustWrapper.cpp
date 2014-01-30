@@ -545,15 +545,15 @@ extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
     MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-    std::string Err;
-    Module *Src = llvm::getLazyBitcodeModule(buf, Dst->getContext(), &Err);
-    if (Src == NULL) {
-        LLVMRustError = Err.c_str();
+    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
+    if (!Src) {
+        LLVMRustError = Src.getError().message().c_str();
         delete buf;
         return false;
     }
 
-    if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
+    std::string Err;
+    if (Linker::LinkModules(Dst, *Src, Linker::DestroySource, &Err)) {
         LLVMRustError = Err.c_str();
         return false;
     }
@@ -578,8 +578,8 @@ LLVMRustOpenArchive(char *path) {
 
 extern "C" const char*
 LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {
-    for (Archive::child_iterator child = ar->begin_children(),
-                                   end = ar->end_children();
+    for (Archive::child_iterator child = ar->child_begin(),
+                                   end = ar->child_end();
          child != end; ++child) {
         StringRef sect_name;
         error_code err = child->getName(sect_name);
@@ -596,4 +596,10 @@ LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {
 extern "C" void
 LLVMRustDestroyArchive(Archive *ar) {
     delete ar;
+}
+
+extern "C" void
+LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
+    GlobalValue *V = unwrap<GlobalValue>(Value);
+    V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
 }
