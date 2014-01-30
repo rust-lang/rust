@@ -234,6 +234,10 @@ use serialize::Encodable;
 use serialize;
 use treemap::TreeMap;
 
+macro_rules! if_ok( ($e:expr) => (
+    match $e { Ok(e) => e, Err(e) => { self.error = Err(e); return } }
+) )
+
 /// Represents a json value
 #[deriving(Clone, Eq)]
 pub enum Json {
@@ -258,6 +262,14 @@ pub struct Error {
     priv col: uint,
     /// A message describing the type of the error
     priv msg: ~str,
+}
+
+fn io_error_to_error(io: io::IoError) -> Error {
+    Error {
+        line: 0,
+        col: 0,
+        msg: format!("io error: {}", io)
+    }
 }
 
 fn escape_str(s: &str) -> ~str {
@@ -289,13 +301,14 @@ fn spaces(n: uint) -> ~str {
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
     priv wr: &'a mut io::Writer,
+    priv error: io::IoResult<()>,
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new<'a>(wr: &'a mut io::Writer) -> Encoder<'a> {
-        Encoder { wr: wr }
+        Encoder { wr: wr, error: Ok(()) }
     }
 
     /// Encode the specified struct into a json [u8]
@@ -317,7 +330,7 @@ impl<'a> Encoder<'a> {
 }
 
 impl<'a> serialize::Encoder for Encoder<'a> {
-    fn emit_nil(&mut self) { write!(self.wr, "null") }
+    fn emit_nil(&mut self) { if_ok!(write!(self.wr, "null")) }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -333,20 +346,20 @@ impl<'a> serialize::Encoder for Encoder<'a> {
 
     fn emit_bool(&mut self, v: bool) {
         if v {
-            write!(self.wr, "true");
+            if_ok!(write!(self.wr, "true"));
         } else {
-            write!(self.wr, "false");
+            if_ok!(write!(self.wr, "false"));
         }
     }
 
     fn emit_f64(&mut self, v: f64) {
-        write!(self.wr, "{}", f64::to_str_digits(v, 6u))
+        if_ok!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)))
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) {
-        write!(self.wr, "{}", escape_str(v))
+        if_ok!(write!(self.wr, "{}", escape_str(v)))
     }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>|) { f(self) }
@@ -360,19 +373,19 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
         if cnt == 0 {
-            write!(self.wr, "{}", escape_str(name));
+            if_ok!(write!(self.wr, "{}", escape_str(name)));
         } else {
-            write!(self.wr, "\\{\"variant\":");
-            write!(self.wr, "{}", escape_str(name));
-            write!(self.wr, ",\"fields\":[");
+            if_ok!(write!(self.wr, "\\{\"variant\":"));
+            if_ok!(write!(self.wr, "{}", escape_str(name)));
+            if_ok!(write!(self.wr, ",\"fields\":["));
             f(self);
-            write!(self.wr, "]\\}");
+            if_ok!(write!(self.wr, "]\\}"));
         }
     }
 
     fn emit_enum_variant_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
-            write!(self.wr, ",");
+            if_ok!(write!(self.wr, ","));
         }
         f(self);
     }
@@ -393,17 +406,17 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_struct(&mut self, _: &str, _: uint, f: |&mut Encoder<'a>|) {
-        write!(self.wr, r"\{");
+        if_ok!(write!(self.wr, r"\{"));
         f(self);
-        write!(self.wr, r"\}");
+        if_ok!(write!(self.wr, r"\}"));
     }
 
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
                          f: |&mut Encoder<'a>|) {
-        if idx != 0 { write!(self.wr, ",") }
-        write!(self.wr, "{}:", escape_str(name));
+        if idx != 0 { if_ok!(write!(self.wr, ",")) }
+        if_ok!(write!(self.wr, "{}:", escape_str(name)));
         f(self);
     }
 
@@ -429,31 +442,31 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     fn emit_option_some(&mut self, f: |&mut Encoder<'a>|) { f(self); }
 
     fn emit_seq(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
-        write!(self.wr, "[");
+        if_ok!(write!(self.wr, "["));
         f(self);
-        write!(self.wr, "]");
+        if_ok!(write!(self.wr, "]"));
     }
 
     fn emit_seq_elt(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
-            write!(self.wr, ",");
+            if_ok!(write!(self.wr, ","));
         }
         f(self)
     }
 
     fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
-        write!(self.wr, r"\{");
+        if_ok!(write!(self.wr, r"\{"));
         f(self);
-        write!(self.wr, r"\}");
+        if_ok!(write!(self.wr, r"\}"));
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
-        if idx != 0 { write!(self.wr, ",") }
+        if idx != 0 { if_ok!(write!(self.wr, ",")) }
         f(self)
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
-        write!(self.wr, ":");
+        if_ok!(write!(self.wr, ":"));
         f(self)
     }
 }
@@ -463,6 +476,7 @@ impl<'a> serialize::Encoder for Encoder<'a> {
 pub struct PrettyEncoder<'a> {
     priv wr: &'a mut io::Writer,
     priv indent: uint,
+    priv error: io::IoResult<()>,
 }
 
 impl<'a> PrettyEncoder<'a> {
@@ -471,12 +485,13 @@ impl<'a> PrettyEncoder<'a> {
         PrettyEncoder {
             wr: wr,
             indent: 0,
+            error: Ok(())
         }
     }
 }
 
 impl<'a> serialize::Encoder for PrettyEncoder<'a> {
-    fn emit_nil(&mut self) { write!(self.wr, "null") }
+    fn emit_nil(&mut self) { if_ok!(write!(self.wr, "null")); }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -492,19 +507,21 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
 
     fn emit_bool(&mut self, v: bool) {
         if v {
-            write!(self.wr, "true");
+            if_ok!(write!(self.wr, "true"));
         } else {
-            write!(self.wr, "false");
+            if_ok!(write!(self.wr, "false"));
         }
     }
 
     fn emit_f64(&mut self, v: f64) {
-        write!(self.wr, "{}", f64::to_str_digits(v, 6u))
+        if_ok!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)));
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
-    fn emit_str(&mut self, v: &str) { write!(self.wr, "{}", escape_str(v)); }
+    fn emit_str(&mut self, v: &str) {
+        if_ok!(write!(self.wr, "{}", escape_str(v)));
+    }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut PrettyEncoder<'a>|) {
         f(self)
@@ -516,13 +533,14 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                          cnt: uint,
                          f: |&mut PrettyEncoder<'a>|) {
         if cnt == 0 {
-            write!(self.wr, "{}", escape_str(name));
+            if_ok!(write!(self.wr, "{}", escape_str(name)));
         } else {
             self.indent += 2;
-            write!(self.wr, "[\n{}{},\n", spaces(self.indent), escape_str(name));
+            if_ok!(write!(self.wr, "[\n{}{},\n", spaces(self.indent),
+                          escape_str(name)));
             f(self);
             self.indent -= 2;
-            write!(self.wr, "\n{}]", spaces(self.indent));
+            if_ok!(write!(self.wr, "\n{}]", spaces(self.indent)));
         }
     }
 
@@ -530,9 +548,9 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                              idx: uint,
                              f: |&mut PrettyEncoder<'a>|) {
         if idx != 0 {
-            write!(self.wr, ",\n");
+            if_ok!(write!(self.wr, ",\n"));
         }
-        write!(self.wr, "{}", spaces(self.indent));
+        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
         f(self)
     }
 
@@ -557,13 +575,13 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                    len: uint,
                    f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            write!(self.wr, "\\{\\}");
+            if_ok!(write!(self.wr, "\\{\\}"));
         } else {
-            write!(self.wr, "\\{");
+            if_ok!(write!(self.wr, "\\{"));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            write!(self.wr, "\n{}\\}", spaces(self.indent));
+            if_ok!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
         }
     }
 
@@ -572,11 +590,11 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                          idx: uint,
                          f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            write!(self.wr, "\n");
+            if_ok!(write!(self.wr, "\n"));
         } else {
-            write!(self.wr, ",\n");
+            if_ok!(write!(self.wr, ",\n"));
         }
-        write!(self.wr, "{}{}: ", spaces(self.indent), escape_str(name));
+        if_ok!(write!(self.wr, "{}{}: ", spaces(self.indent), escape_str(name)));
         f(self);
     }
 
@@ -605,50 +623,50 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
 
     fn emit_seq(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            write!(self.wr, "[]");
+            if_ok!(write!(self.wr, "[]"));
         } else {
-            write!(self.wr, "[");
+            if_ok!(write!(self.wr, "["));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            write!(self.wr, "\n{}]", spaces(self.indent));
+            if_ok!(write!(self.wr, "\n{}]", spaces(self.indent)));
         }
     }
 
     fn emit_seq_elt(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            write!(self.wr, "\n");
+            if_ok!(write!(self.wr, "\n"));
         } else {
-            write!(self.wr, ",\n");
+            if_ok!(write!(self.wr, ",\n"));
         }
-        write!(self.wr, "{}", spaces(self.indent));
+        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
         f(self)
     }
 
     fn emit_map(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            write!(self.wr, "\\{\\}");
+            if_ok!(write!(self.wr, "\\{\\}"));
         } else {
-            write!(self.wr, "\\{");
+            if_ok!(write!(self.wr, "\\{"));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            write!(self.wr, "\n{}\\}", spaces(self.indent));
+            if_ok!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
         }
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            write!(self.wr, "\n");
+            if_ok!(write!(self.wr, "\n"));
         } else {
-            write!(self.wr, ",\n");
+            if_ok!(write!(self.wr, ",\n"));
         }
-        write!(self.wr, "{}", spaces(self.indent));
+        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
         f(self);
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut PrettyEncoder<'a>|) {
-        write!(self.wr, ": ");
+        if_ok!(write!(self.wr, ": "));
         f(self);
     }
 }
@@ -668,22 +686,24 @@ impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
 
 impl Json{
     /// Encodes a json value into a io::writer.  Uses a single line.
-    pub fn to_writer(&self, wr: &mut io::Writer) {
+    pub fn to_writer(&self, wr: &mut io::Writer) -> io::IoResult<()> {
         let mut encoder = Encoder::new(wr);
-        self.encode(&mut encoder)
+        self.encode(&mut encoder);
+        encoder.error
     }
 
     /// Encodes a json value into a io::writer.
     /// Pretty-prints in a more readable format.
-    pub fn to_pretty_writer(&self, wr: &mut io::Writer) {
+    pub fn to_pretty_writer(&self, wr: &mut io::Writer) -> io::IoResult<()> {
         let mut encoder = PrettyEncoder::new(wr);
-        self.encode(&mut encoder)
+        self.encode(&mut encoder);
+        encoder.error
     }
 
     /// Encodes a json value into a string
     pub fn to_pretty_str(&self) -> ~str {
         let mut s = MemWriter::new();
-        self.to_pretty_writer(&mut s as &mut io::Writer);
+        self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
         str::from_utf8_owned(s.unwrap()).unwrap()
     }
 }
@@ -1067,7 +1087,14 @@ impl<T : Iterator<char>> Parser<T> {
 
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
-    let s = str::from_utf8_owned(rdr.read_to_end()).unwrap();
+    let contents = match rdr.read_to_end() {
+        Ok(c) => c,
+        Err(e) => return Err(io_error_to_error(e))
+    };
+    let s = match str::from_utf8_owned(contents) {
+        Some(s) => s,
+        None => return Err(Error { line: 0, col: 0, msg: ~"contents not utf-8" })
+    };
     let mut parser = Parser::new(s.chars());
     parser.parse()
 }
@@ -1540,7 +1567,7 @@ impl to_str::ToStr for Json {
     /// Encodes a json value into a string
     fn to_str(&self) -> ~str {
         let mut s = MemWriter::new();
-        self.to_writer(&mut s as &mut io::Writer);
+        self.to_writer(&mut s as &mut io::Writer).unwrap();
         str::from_utf8_owned(s.unwrap()).unwrap()
     }
 }
