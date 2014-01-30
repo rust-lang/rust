@@ -80,16 +80,11 @@ mod test {
 
     // FIXME #11530 this fails on android because tests are run as root
     iotest!(fn bind_error() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert_eq!(e.kind, PermissionDenied);
-            called = true;
-        }).inside(|| {
-            let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
-            let socket = UdpSocket::bind(addr);
-            assert!(socket.is_none());
-        });
-        assert!(called);
+        let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+        match UdpSocket::bind(addr) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, PermissionDenied),
+        }
     } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
     iotest!(fn socket_smoke_test_ip4() {
@@ -100,29 +95,29 @@ mod test {
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
-                Some(ref mut client) => {
+                Ok(ref mut client) => {
                     port.recv();
-                    client.sendto([99], server_ip)
+                    client.sendto([99], server_ip).unwrap()
                 }
-                None => fail!()
+                Err(..) => fail!()
             }
             chan2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
-            Some(ref mut server) => {
+            Ok(ref mut server) => {
                 chan.send(());
                 let mut buf = [0];
                 match server.recvfrom(buf) {
-                    Some((nread, src)) => {
+                    Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                         assert_eq!(src, client_ip);
                     }
-                    None => fail!()
+                    Err(..) => fail!()
                 }
             }
-            None => fail!()
+            Err(..) => fail!()
         }
         port2.recv();
     })
@@ -134,28 +129,28 @@ mod test {
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
-                Some(ref mut client) => {
+                Ok(ref mut client) => {
                     port.recv();
-                    client.sendto([99], server_ip)
+                    client.sendto([99], server_ip).unwrap()
                 }
-                None => fail!()
+                Err(..) => fail!()
             }
         });
 
         match UdpSocket::bind(server_ip) {
-            Some(ref mut server) => {
+            Ok(ref mut server) => {
                 chan.send(());
                 let mut buf = [0];
                 match server.recvfrom(buf) {
-                    Some((nread, src)) => {
+                    Ok((nread, src)) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                         assert_eq!(src, client_ip);
                     }
-                    None => fail!()
+                    Err(..) => fail!()
                 }
             }
-            None => fail!()
+            Err(..) => fail!()
         }
     })
 
@@ -167,32 +162,32 @@ mod test {
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
-                Some(client) => {
+                Ok(client) => {
                     let client = ~client;
                     let mut stream = client.connect(server_ip);
                     port.recv();
-                    stream.write([99]);
+                    stream.write([99]).unwrap();
                 }
-                None => fail!()
+                Err(..) => fail!()
             }
             chan2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
-            Some(server) => {
+            Ok(server) => {
                 let server = ~server;
                 let mut stream = server.connect(client_ip);
                 chan.send(());
                 let mut buf = [0];
                 match stream.read(buf) {
-                    Some(nread) => {
+                    Ok(nread) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                     }
-                    None => fail!()
+                    Err(..) => fail!()
                 }
             }
-            None => fail!()
+            Err(..) => fail!()
         }
         port2.recv();
     })
@@ -205,32 +200,32 @@ mod test {
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
-                Some(client) => {
+                Ok(client) => {
                     let client = ~client;
                     let mut stream = client.connect(server_ip);
                     port.recv();
-                    stream.write([99]);
+                    stream.write([99]).unwrap();
                 }
-                None => fail!()
+                Err(..) => fail!()
             }
             chan2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
-            Some(server) => {
+            Ok(server) => {
                 let server = ~server;
                 let mut stream = server.connect(client_ip);
                 chan.send(());
                 let mut buf = [0];
                 match stream.read(buf) {
-                    Some(nread) => {
+                    Ok(nread) => {
                         assert_eq!(nread, 1);
                         assert_eq!(buf[0], 99);
                     }
-                    None => fail!()
+                    Err(..) => fail!()
                 }
             }
-            None => fail!()
+            Err(..) => fail!()
         }
         port2.recv();
     })
@@ -238,13 +233,13 @@ mod test {
     pub fn socket_name(addr: SocketAddr) {
         let server = UdpSocket::bind(addr);
 
-        assert!(server.is_some());
+        assert!(server.is_ok());
         let mut server = server.unwrap();
 
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = server.socket_name();
-        assert!(so_name.is_some());
+        assert!(so_name.is_ok());
         assert_eq!(addr, so_name.unwrap());
     }
 

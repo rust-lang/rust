@@ -1492,7 +1492,6 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use io;
         use io::fs;
 
         #[cfg(unix)]
@@ -1537,8 +1536,7 @@ mod tests {
             close(fd);
         }
 
-        let _guard = io::ignore_io_error();
-        fs::unlink(&path);
+        fs::unlink(&path).unwrap();
     }
 
     // More recursive_mkdir tests are in extra::tempfile

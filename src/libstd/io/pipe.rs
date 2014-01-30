@@ -73,12 +73,12 @@ mod test {
         let (p, c) = Chan::new();
         spawn(proc() {
             let mut out = out;
-            out.write([10]);
+            out.write([10]).unwrap();
             p.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
-        input.read(buf);
+        input.read(buf).unwrap();
         c.send(());
     })
 }

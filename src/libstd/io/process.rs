@@ -171,7 +171,6 @@ impl Drop for Process {
 mod tests {
     use io::process::{ProcessConfig, Process};
     use prelude::*;
-    use str;
 
     // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
@@ -185,7 +184,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().success());
     })
@@ -201,7 +200,7 @@ mod tests {
             cwd: None,
             io: io,
         };
-        match io::result(|| Process::new(args)) {
+        match Process::new(args) {
             Ok(..) => fail!(),
             Err(..) => {}
         }
@@ -219,7 +218,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().matches_exit_status(1));
     })
@@ -235,7 +234,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait() {
             process::ExitSignal(1) => {},
@@ -244,20 +243,12 @@ mod tests {
     })
 
     pub fn read_all(input: &mut Reader) -> ~str {
-        let mut ret = ~"";
-        let mut buf = [0, ..1024];
-        loop {
-            match input.read(buf) {
-                None => { break }
-                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n)).unwrap()); }
-            }
-        }
-        return ret;
+        input.read_to_str().unwrap()
     }
 
     pub fn run_output(args: ProcessConfig) -> ~str {
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.io[0].is_none());
         assert!(p.io[1].is_some());
@@ -307,8 +298,8 @@ mod tests {
             cwd: None,
             io: io,
         };
-        let mut p = Process::new(args).expect("didn't create a proces?!");
-        p.io[0].get_mut_ref().write("foobar".as_bytes());
+        let mut p = Process::new(args).unwrap();
+        p.io[0].get_mut_ref().write("foobar".as_bytes()).unwrap();
         p.io[0] = None; // close stdin;
         let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
         assert!(p.wait().success());

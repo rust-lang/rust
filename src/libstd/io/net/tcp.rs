@@ -86,29 +86,19 @@ mod test {
 
     // FIXME #11530 this fails on android because tests are run as root
     iotest!(fn bind_error() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert!(e.kind == PermissionDenied);
-            called = true;
-        }).inside(|| {
-            let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
-            let listener = TcpListener::bind(addr);
-            assert!(listener.is_none());
-        });
-        assert!(called);
+        let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+        match TcpListener::bind(addr) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, PermissionDenied),
+        }
     } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
     iotest!(fn connect_error() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert_eq!(e.kind, ConnectionRefused);
-            called = true;
-        }).inside(|| {
-            let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
-            let stream = TcpStream::connect(addr);
-            assert!(stream.is_none());
-        });
-        assert!(called);
+        let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+        match TcpStream::connect(addr) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, ConnectionRefused),
+        }
     })
 
     iotest!(fn smoke_test_ip4() {
@@ -118,14 +108,14 @@ mod test {
         spawn(proc() {
             port.recv();
             let mut stream = TcpStream::connect(addr);
-            stream.write([99]);
+            stream.write([99]).unwrap();
         });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf);
+        stream.read(buf).unwrap();
         assert!(buf[0] == 99);
     })
 
@@ -136,14 +126,14 @@ mod test {
         spawn(proc() {
             port.recv();
             let mut stream = TcpStream::connect(addr);
-            stream.write([99]);
+            stream.write([99]).unwrap();
         });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
         let mut stream = acceptor.accept();
         let mut buf = [0];
-        stream.read(buf);
+        stream.read(buf).unwrap();
         assert!(buf[0] == 99);
     })
 
@@ -162,7 +152,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_none());
+        assert!(nread.is_err());
     })
 
     iotest!(fn read_eof_ip6() {
@@ -180,7 +170,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_none());
+        assert!(nread.is_err());
     })
 
     iotest!(fn read_eof_twice_ip4() {
@@ -198,17 +188,14 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_none());
-        io_error::cond.trap(|e| {
-            if cfg!(windows) {
-                assert_eq!(e.kind, NotConnected);
-            } else {
-                fail!();
-            }
-        }).inside(|| {
-            let nread = stream.read(buf);
-            assert!(nread.is_none());
-        })
+        assert!(nread.is_err());
+
+        match stream.read(buf) {
+            Ok(..) => fail!(),
+            Err(ref e) if cfg!(windows) => assert_eq!(e.kind, NotConnected),
+            Err(ref e) if cfg!(unix) => assert_eq!(e.kind, EndOfFile),
+            Err(..) => fail!(),
+        }
     })
 
     iotest!(fn read_eof_twice_ip6() {
@@ -226,17 +213,14 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_none());
-        io_error::cond.trap(|e| {
-            if cfg!(windows) {
-                assert_eq!(e.kind, NotConnected);
-            } else {
-                fail!();
-            }
-        }).inside(|| {
-            let nread = stream.read(buf);
-            assert!(nread.is_none());
-        })
+        assert!(nread.is_err());
+
+        match stream.read(buf) {
+            Ok(..) => fail!(),
+            Err(ref e) if cfg!(windows) => assert_eq!(e.kind, NotConnected),
+            Err(ref e) if cfg!(unix) => assert_eq!(e.kind, EndOfFile),
+            Err(..) => fail!(),
+        }
     })
 
     iotest!(fn write_close_ip4() {
@@ -254,19 +238,16 @@ mod test {
         let mut stream = acceptor.accept();
         let buf = [0];
         loop {
-            let mut stop = false;
-            io_error::cond.trap(|e| {
-                // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
-                //     on windows
-                assert!(e.kind == ConnectionReset ||
-                        e.kind == BrokenPipe ||
-                        e.kind == ConnectionAborted,
-                        "unknown error: {:?}", e);
-                stop = true;
-            }).inside(|| {
-                stream.write(buf);
-            });
-            if stop { break }
+            match stream.write(buf) {
+                Ok(..) => {}
+                Err(e) => {
+                    assert!(e.kind == ConnectionReset ||
+                            e.kind == BrokenPipe ||
+                            e.kind == ConnectionAborted,
+                            "unknown error: {:?}", e);
+                    break;
+                }
+            }
         }
     })
 
@@ -285,19 +266,16 @@ mod test {
         let mut stream = acceptor.accept();
         let buf = [0];
         loop {
-            let mut stop = false;
-            io_error::cond.trap(|e| {
-                // NB: ECONNRESET on linux, EPIPE on mac, ECONNABORTED
-                //     on windows
-                assert!(e.kind == ConnectionReset ||
-                        e.kind == BrokenPipe ||
-                        e.kind == ConnectionAborted,
-                        "unknown error: {:?}", e);
-                stop = true;
-            }).inside(|| {
-                stream.write(buf);
-            });
-            if stop { break }
+            match stream.write(buf) {
+                Ok(..) => {}
+                Err(e) => {
+                    assert!(e.kind == ConnectionReset ||
+                            e.kind == BrokenPipe ||
+                            e.kind == ConnectionAborted,
+                            "unknown error: {:?}", e);
+                    break;
+                }
+            }
         }
     })
 
@@ -310,7 +288,7 @@ mod test {
             port.recv();
             for _ in range(0, max) {
                 let mut stream = TcpStream::connect(addr);
-                stream.write([99]);
+                stream.write([99]).unwrap();
             }
         });
 
@@ -318,7 +296,7 @@ mod test {
         chan.send(());
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
-            stream.read(buf);
+            stream.read(buf).unwrap();
             assert_eq!(buf[0], 99);
         }
     })
@@ -332,7 +310,7 @@ mod test {
             port.recv();
             for _ in range(0, max) {
                 let mut stream = TcpStream::connect(addr);
-                stream.write([99]);
+                stream.write([99]).unwrap();
             }
         });
 
@@ -340,7 +318,7 @@ mod test {
         chan.send(());
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
-            stream.read(buf);
+            stream.read(buf).unwrap();
             assert_eq!(buf[0], 99);
         }
     })
@@ -358,7 +336,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf);
+                    stream.read(buf).unwrap();
                     assert!(buf[0] == i as u8);
                     debug!("read");
                 });
@@ -377,7 +355,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([i as u8]);
+                stream.write([i as u8]).unwrap();
             });
         }
     })
@@ -395,7 +373,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf);
+                    stream.read(buf).unwrap();
                     assert!(buf[0] == i as u8);
                     debug!("read");
                 });
@@ -414,7 +392,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([i as u8]);
+                stream.write([i as u8]).unwrap();
             });
         }
     })
@@ -432,7 +410,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf);
+                    stream.read(buf).unwrap();
                     assert!(buf[0] == 99);
                     debug!("read");
                 });
@@ -451,7 +429,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([99]);
+                stream.write([99]).unwrap();
             });
         }
     })
@@ -469,7 +447,7 @@ mod test {
                 spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
-                    stream.read(buf);
+                    stream.read(buf).unwrap();
                     assert!(buf[0] == 99);
                     debug!("read");
                 });
@@ -488,7 +466,7 @@ mod test {
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
-                stream.write([99]);
+                stream.write([99]).unwrap();
             });
         }
     })
@@ -499,7 +477,7 @@ mod test {
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = listener.socket_name();
-        assert!(so_name.is_some());
+        assert!(so_name.is_ok());
         assert_eq!(addr, so_name.unwrap());
     }
 
@@ -509,20 +487,20 @@ mod test {
         spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
-            acceptor.accept();
+            acceptor.accept().unwrap();
         });
 
         port.recv();
         let stream = TcpStream::connect(addr);
 
-        assert!(stream.is_some());
+        assert!(stream.is_ok());
         let mut stream = stream.unwrap();
 
         // Make sure peer_name gives us the
         // address/port of the peer we've
         // connected to.
         let peer_name = stream.peer_name();
-        assert!(peer_name.is_some());
+        assert!(peer_name.is_ok());
         assert_eq!(addr, peer_name.unwrap());
     }
 
@@ -541,37 +519,33 @@ mod test {
         let addr = next_test_ip4();
         let (p, c) = Chan::new();
         spawn(proc() {
-            let mut srv = TcpListener::bind(addr).listen();
+            let mut srv = TcpListener::bind(addr).listen().unwrap();
             c.send(());
             let mut cl = srv.accept().unwrap();
-            cl.write([10]);
+            cl.write([10]).unwrap();
             let mut b = [0];
-            cl.read(b);
+            cl.read(b).unwrap();
             c.send(());
         });
 
         p.recv();
         let mut c = TcpStream::connect(addr).unwrap();
         let mut b = [0, ..10];
-        assert_eq!(c.read(b), Some(1));
-        c.write([1]);
+        assert_eq!(c.read(b), Ok(1));
+        c.write([1]).unwrap();
         p.recv();
     })
 
     iotest!(fn double_bind() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert!(e.kind == ConnectionRefused || e.kind == OtherIoError);
-            called = true;
-        }).inside(|| {
-            let addr = next_test_ip4();
-            let listener = TcpListener::bind(addr).unwrap().listen();
-            assert!(listener.is_some());
-            let listener2 = TcpListener::bind(addr).and_then(|l|
-                                                    l.listen());
-            assert!(listener2.is_none());
-        });
-        assert!(called);
+        let addr = next_test_ip4();
+        let listener = TcpListener::bind(addr).unwrap().listen();
+        assert!(listener.is_ok());
+        match TcpListener::bind(addr).listen() {
+            Ok(..) => fail!(),
+            Err(e) => {
+                assert!(e.kind == ConnectionRefused || e.kind == OtherIoError);
+            }
+        }
     })
 
     iotest!(fn fast_rebind() {
@@ -580,7 +554,7 @@ mod test {
 
         spawn(proc() {
             port.recv();
-            let _stream = TcpStream::connect(addr);
+            let _stream = TcpStream::connect(addr).unwrap();
             // Close
             port.recv();
         });
@@ -589,7 +563,7 @@ mod test {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             {
-                let _stream = acceptor.accept();
+                let _stream = acceptor.accept().unwrap();
                 // Close client
                 chan.send(());
             }

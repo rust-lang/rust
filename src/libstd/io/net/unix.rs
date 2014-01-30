@@ -151,39 +151,29 @@ mod tests {
 
     #[test]
     fn bind_error() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert!(e.kind == PermissionDenied);
-            called = true;
-        }).inside(|| {
-            let listener = UnixListener::bind(&("path/to/nowhere"));
-            assert!(listener.is_none());
-        });
-        assert!(called);
+        match UnixListener::bind(&("path/to/nowhere")) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, PermissionDenied),
+        }
     }
 
     #[test]
     fn connect_error() {
-        let mut called = false;
-        io_error::cond.trap(|e| {
-            assert_eq!(e.kind,
-                       if cfg!(windows) {OtherIoError} else {FileNotFound});
-            called = true;
-        }).inside(|| {
-            let stream = UnixStream::connect(&("path/to/nowhere"));
-            assert!(stream.is_none());
-        });
-        assert!(called);
+        match UnixStream::connect(&("path/to/nowhere")) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind,
+                        if cfg!(windows) {OtherIoError} else {FileNotFound})
+        }
     }
 
     #[test]
     fn smoke() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            server.read(buf);
+            server.read(buf).unwrap();
             assert!(buf[0] == 99);
         }, proc(mut client) {
-            client.write([99]);
+            client.write([99]).unwrap();
         })
     }
 
@@ -191,8 +181,8 @@ mod tests {
     fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            assert!(server.read(buf).is_none());
-            assert!(server.read(buf).is_none());
+            assert!(server.read(buf).is_err());
+            assert!(server.read(buf).is_err());
         }, proc(_client) {
             // drop the client
         })
@@ -202,15 +192,15 @@ mod tests {
     fn write_begone() {
         smalltest(proc(mut server) {
             let buf = [0];
-            let mut stop = false;
-            while !stop{
-                io_error::cond.trap(|e| {
-                    assert!(e.kind == BrokenPipe || e.kind == NotConnected,
-                            "unknown error {:?}", e);
-                    stop = true;
-                }).inside(|| {
-                    server.write(buf);
-                })
+            loop {
+                match server.write(buf) {
+                    Ok(..) => {}
+                    Err(e) => {
+                        assert!(e.kind == BrokenPipe || e.kind == NotConnected,
+                                "unknown error {:?}", e);
+                        break;
+                    }
+                }
             }
         }, proc(_client) {
             // drop the client
@@ -228,7 +218,7 @@ mod tests {
             port.recv();
             for _ in range(0, times) {
                 let mut stream = UnixStream::connect(&path2);
-                stream.write([100]);
+                stream.write([100]).unwrap();
             }
         });
 
@@ -237,7 +227,7 @@ mod tests {
         for _ in range(0, times) {
             let mut client = acceptor.accept();
             let mut buf = [0];
-            client.read(buf);
+            client.read(buf).unwrap();
             assert_eq!(buf[0], 100);
         }
     }
