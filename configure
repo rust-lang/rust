@@ -916,6 +916,10 @@ do
         LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
         # Try to have LLVM pull in as few dependencies as possible (#9397)
         LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
+        # LLVM says it needs a "new" clang/gcc, but we seem to get by ok with
+        # older versions on the bots. Get by for a little longer by asking it to
+        # not do version detection
+        LLVM_OPTS="$LLVM_OPTS --disable-compiler-version-checks"
 
         # Use win32 native thread/lock apis instead of pthread wrapper.
         # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
