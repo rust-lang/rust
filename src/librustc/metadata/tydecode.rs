@@ -573,9 +573,12 @@ pub fn parse_type_param_def_data(data: &[u8], start: uint,
 }
 
 fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef {
-    ty::TypeParameterDef {ident: parse_ident(st, ':'),
-                          def_id: parse_def(st, NominalType, |x,y| conv(x,y)),
-                          bounds: @parse_bounds(st, |x,y| conv(x,y))}
+    ty::TypeParameterDef {
+        ident: parse_ident(st, ':'),
+        def_id: parse_def(st, NominalType, |x,y| conv(x,y)),
+        bounds: @parse_bounds(st, |x,y| conv(x,y)),
+        default: parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)))
+    }
 }
 
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {

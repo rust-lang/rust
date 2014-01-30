@@ -375,7 +375,7 @@ impl<'a> TraitDef<'a> {
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds));
+            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds, None));
         }
 
         // Create the reference to the trait.

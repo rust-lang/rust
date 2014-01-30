@@ -2000,7 +2000,8 @@ fn trait_metadata(cx: &CrateContext,
                ppaux::mutability_to_str(mutability) +
                token::ident_to_str(&ident);
     // Add type and region parameters
-    let name = ppaux::parameterized(cx.tcx, name, &substs.regions, substs.tps);
+    let name = ppaux::parameterized(cx.tcx, name, &substs.regions,
+                                    substs.tps, def_id, true);
 
     let (containing_scope, definition_span) =
         get_namespace_and_span_for_item(cx, def_id, usage_site_span);

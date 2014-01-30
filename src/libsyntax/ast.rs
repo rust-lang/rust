@@ -206,7 +206,8 @@ pub enum TyParamBound {
 pub struct TyParam {
     ident: Ident,
     id: NodeId,
-    bounds: OptVec<TyParamBound>
+    bounds: OptVec<TyParamBound>,
+    default: Option<P<Ty>>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
