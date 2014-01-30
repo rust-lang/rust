@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,7 +18,6 @@
  */
 
 
-use std::borrow;
 use std::comm;
 use std::unstable::sync::Exclusive;
 use std::sync::arc::UnsafeArc;
@@ -634,7 +633,7 @@ impl RWLock {
     /// To be called inside of the write_downgrade block.
     pub fn downgrade<'a>(&self, token: RWLockWriteMode<'a>)
                          -> RWLockReadMode<'a> {
-        if !borrow::ref_eq(self, token.lock) {
+        if !((self as *RWLock) == (token.lock as *RWLock)) {
             fail!("Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {

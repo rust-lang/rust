@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -47,7 +47,6 @@ use sync::{Mutex, RWLock};
 use std::cast;
 use std::sync::arc::UnsafeArc;
 use std::task;
-use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
@@ -465,7 +464,7 @@ impl<T:Freeze + Send> RWArc<T> {
             // of this cast is removing the mutability.)
             let new_data = data;
             // Downgrade ensured the token belonged to us. Just a sanity check.
-            assert!(borrow::ref_eq(&(*state).data, new_data));
+            assert!((&(*state).data as *T as uint) == (new_data as *mut T as uint));
             // Produce new token
             RWReadMode {
                 data: new_data,

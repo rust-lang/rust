@@ -14,7 +14,6 @@
 //! to implement this.
 
 use any::AnyOwnExt;
-use borrow;
 use cast;
 use cleanup;
 use clone::Clone;
@@ -287,7 +286,7 @@ impl Task {
 
 impl Drop for Task {
     fn drop(&mut self) {
-        rtdebug!("called drop for a task: {}", borrow::to_uint(self));
+        rtdebug!("called drop for a task: {}", self as *mut Task as uint);
         rtassert!(self.destroyed);
     }
 }

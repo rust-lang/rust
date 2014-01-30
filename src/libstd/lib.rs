@@ -123,7 +123,7 @@ pub mod send_str;
 pub mod ptr;
 pub mod owned;
 pub mod managed;
-pub mod borrow;
+mod reference;
 pub mod rc;
 pub mod gc;
 
@@ -222,7 +222,6 @@ mod std {
     pub use io;
     pub use kinds;
     pub use local_data;
-    pub use logging;
     pub use logging;
     pub use option;
     pub use os;
