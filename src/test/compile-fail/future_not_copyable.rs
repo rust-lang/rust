@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern mod sync;
 
-use extra::future::Future;
+use sync::Future;
 
 fn main() {
     let f = Future::from_value(());

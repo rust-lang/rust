@@ -18,7 +18,7 @@
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ```rust
- * use extra::arc::Arc;
+ * use sync::Arc;
  * use std::{rand, vec};
  *
  * let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
@@ -38,7 +38,7 @@
  * ```
  */
 
-#[allow(missing_doc)];
+#[allow(missing_doc, dead_code)];
 
 
 use sync;
@@ -424,7 +424,7 @@ impl<T:Freeze + Send> RWArc<T> {
      * # Example
      *
      * ```rust
-     * use extra::arc::RWArc;
+     * use sync::RWArc;
      *
      * let arc = RWArc::new(1);
      * arc.write_downgrade(|mut write_token| {
@@ -605,7 +605,7 @@ impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
 #[cfg(test)]
 mod tests {
 
-    use arc::*;
+    use super::{Arc, RWArc, MutexArc, CowArc};
 
     use std::task;
 

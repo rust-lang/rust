@@ -588,7 +588,7 @@ impl RWLock {
      * # Example
      *
      * ```rust
-     * use extra::sync::RWLock;
+     * use sync::RWLock;
      *
      * let lock = RWLock::new();
      * lock.write_downgrade(|mut write_token| {
@@ -695,7 +695,7 @@ impl<'a> RWLockReadMode<'a> {
 /// of some computation.
 ///
 /// ```rust
-/// use extra::sync::Barrier;
+/// use sync::Barrier;
 ///
 /// let barrier = Barrier::new(10);
 /// for _ in range(0, 10) {
@@ -759,7 +759,7 @@ impl Barrier {
 
 #[cfg(test)]
 mod tests {
-    use sync::*;
+    use sync::{Semaphore, Mutex, RWLock, Barrier, Condvar};
 
     use std::cast;
     use std::result;

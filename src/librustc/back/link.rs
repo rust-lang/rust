@@ -331,7 +331,7 @@ pub mod write {
     }
 
     unsafe fn configure_llvm(sess: Session) {
-        use extra::sync::one::{Once, ONCE_INIT};
+        use sync::one::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
 
         // Copy what clang does by turning on loop vectorization at O2 and
