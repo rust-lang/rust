@@ -1174,8 +1174,10 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         match wth {
             Some(expr) => {
                 ibox(s, indent_unit);
-                word(&mut s.s, ",");
-                space(&mut s.s);
+                if !fields.is_empty() {
+                    word(&mut s.s, ",");
+                    space(&mut s.s);
+                }
                 word(&mut s.s, "..");
                 print_expr(s, expr);
                 end(s);
