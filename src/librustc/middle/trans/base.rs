@@ -30,7 +30,7 @@ use driver::session;
 use driver::session::Session;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
-use lib::llvm::{llvm, True};
+use lib::llvm::{llvm, True, Vector};
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, encoder};
@@ -827,8 +827,10 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     // Shifts may have any size int on the rhs
     unsafe {
         if ast_util::is_shift_binop(op) {
-            let rhs_llty = val_ty(rhs);
-            let lhs_llty = val_ty(lhs);
+            let mut rhs_llty = val_ty(rhs);
+            let mut lhs_llty = val_ty(lhs);
+            if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
+            if lhs_llty.kind() == Vector { lhs_llty = lhs_llty.element_type() }
             let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty.to_ref());
             let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty.to_ref());
             if lhs_sz < rhs_sz {
