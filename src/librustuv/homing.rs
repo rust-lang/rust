@@ -176,7 +176,7 @@ mod test {
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
-            port.recv();
+            drop(port.recv());
         });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 
@@ -197,7 +197,7 @@ mod test {
             let listener = UdpWatcher::bind(local_loop(), addr2);
             chan.send((listener.unwrap(), addr1));
             let mut listener = UdpWatcher::bind(local_loop(), addr1).unwrap();
-            listener.sendto([1, 2, 3, 4], addr2);
+            listener.sendto([1, 2, 3, 4], addr2).unwrap();
         });
 
         let task = pool.task(TaskOpts::new(), proc() {

@@ -86,7 +86,7 @@ mod test {
                                          chan);
 
         spawn(proc() {
-            port.try_recv();
+            let _ = port.recv_opt();
         });
 
         // when we drop the SignalWatcher we're going to destroy the channel,
