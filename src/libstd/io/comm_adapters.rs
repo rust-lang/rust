@@ -15,7 +15,7 @@ use cmp;
 use io;
 use option::{None, Option, Some};
 use super::{Reader, Writer};
-use vec::{bytes, CopyableVector, MutableVector, ImmutableVector};
+use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
 
 /// Allows reading from a port.
 ///

@@ -73,7 +73,7 @@ use str;
 use str::{OwnedStr, Str, StrSlice};
 use to_str::ToStr;
 use vec;
-use vec::{CopyableVector, OwnedCopyableVector, OwnedVector, Vector};
+use vec::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector};
 
 /// Typedef for POSIX file paths.
