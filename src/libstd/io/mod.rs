@@ -287,6 +287,7 @@ Out of scope
 */
 
 #[allow(missing_doc)];
+#[deny(unused_must_use)];
 
 use cast;
 use char::Char;
@@ -1122,9 +1123,6 @@ pub trait Buffer: Reader {
                     }
                 }
             }
-            if used == 0 {
-                break
-            }
             self.consume(used);
         }
         self.consume(used);
@@ -1141,15 +1139,14 @@ pub trait Buffer: Reader {
     /// This function will raise on the `io_error` condition if a read error is
     /// encountered.
     fn read_char(&mut self) -> IoResult<char> {
-        let width = {
-            let available = if_ok!(self.fill());
-            str::utf8_char_width(available[0])
-        };
-        if width == 0 { return Err(standard_error(InvalidInput)) } // not uf8
-        let mut buf = [0, ..4];
+        let first_byte = if_ok!(self.read_byte());
+        let width = str::utf8_char_width(first_byte);
+        if width == 1 { return Ok(first_byte as char) }
+        if width == 0 { return Err(standard_error(InvalidInput)) } // not utf8
+        let mut buf = [first_byte, 0, 0, 0];
         {
-            let mut start = 0;
-            loop {
+            let mut start = 1;
+            while start < width {
                 match if_ok!(self.read(buf.mut_slice(start, width))) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }

@@ -133,36 +133,28 @@ mod test {
         let mut buf = ~[0u8, ..3];
 
 
-        assert_eq!(Some(0), reader.read([]));
+        assert_eq!(Ok(0), reader.read([]));
 
-        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(buf));
         assert_eq!(~[1,2,3], buf);
 
-        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(buf));
         assert_eq!(~[4,5,6], buf);
 
-        assert_eq!(Some(2), reader.read(buf));
+        assert_eq!(Ok(2), reader.read(buf));
         assert_eq!(~[7,8,6], buf);
 
-        let mut err = None;
-        let result = io::io_error::cond.trap(|io::standard_error(k, _, _)| {
-            err = Some(k)
-        }).inside(|| {
-            reader.read(buf)
-        });
-        assert_eq!(Some(io::EndOfFile), err);
-        assert_eq!(None, result);
+        match reader.read(buf) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
         assert_eq!(~[7,8,6], buf);
 
         // Ensure it continues to fail in the same way.
-        err = None;
-        let result = io::io_error::cond.trap(|io::standard_error(k, _, _)| {
-            err = Some(k)
-        }).inside(|| {
-            reader.read(buf)
-        });
-        assert_eq!(Some(io::EndOfFile), err);
-        assert_eq!(None, result);
+        match reader.read(buf) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
         assert_eq!(~[7,8,6], buf);
     }
 
@@ -170,18 +162,15 @@ mod test {
     fn test_chan_writer() {
         let (port, chan) = Chan::new();
         let mut writer = ChanWriter::new(chan);
-        writer.write_be_u32(42);
+        writer.write_be_u32(42).unwrap();
 
         let wanted = ~[0u8, 0u8, 0u8, 42u8];
         let got = task::try(proc() { port.recv() }).unwrap();
         assert_eq!(wanted, got);
 
-        let mut err = None;
-        io::io_error::cond.trap(|io::IoError { kind, .. } | {
-            err = Some(kind)
-        }).inside(|| {
-            writer.write_u8(1)
-        });
-        assert_eq!(Some(io::BrokenPipe), err);
+        match writer.write_u8(1) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::BrokenPipe),
+        }
     }
 }

@@ -80,59 +80,49 @@ impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
 mod test {
     use prelude::*;
     use super::super::mem::*;
-    use super::super::{PreviousIoError, io_error};
+    use io;
 
     #[test]
     fn test_option_writer() {
-        let mut writer: Option<MemWriter> = Some(MemWriter::new());
-        writer.write([0, 1, 2]);
-        writer.flush();
+        let mut writer: io::IoResult<MemWriter> = Ok(MemWriter::new());
+        writer.write([0, 1, 2]).unwrap();
+        writer.flush().unwrap();
         assert_eq!(writer.unwrap().unwrap(), ~[0, 1, 2]);
     }
 
     #[test]
     fn test_option_writer_error() {
-        let mut writer: Option<MemWriter> = None;
+        let mut writer: io::IoResult<MemWriter> =
+            Err(io::standard_error(io::EndOfFile));
 
-        let mut called = false;
-        io_error::cond.trap(|err| {
-            assert_eq!(err.kind, PreviousIoError);
-            called = true;
-        }).inside(|| {
-            writer.write([0, 0, 0]);
-        });
-        assert!(called);
-
-        let mut called = false;
-        io_error::cond.trap(|err| {
-            assert_eq!(err.kind, PreviousIoError);
-            called = true;
-        }).inside(|| {
-            writer.flush();
-        });
-        assert!(called);
+        match writer.write([0, 0, 0]) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
+        match writer.flush() {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
     }
 
     #[test]
     fn test_option_reader() {
-        let mut reader: Option<MemReader> = Some(MemReader::new(~[0, 1, 2, 3]));
+        let mut reader: io::IoResult<MemReader> =
+            Ok(MemReader::new(~[0, 1, 2, 3]));
         let mut buf = [0, 0];
-        reader.read(buf);
+        reader.read(buf).unwrap();
         assert_eq!(buf, [0, 1]);
     }
 
     #[test]
     fn test_option_reader_error() {
-        let mut reader: Option<MemReader> = None;
+        let mut reader: io::IoResult<MemReader> =
+            Err(io::standard_error(io::EndOfFile));
         let mut buf = [];
 
-        let mut called = false;
-        io_error::cond.trap(|err| {
-            assert_eq!(err.kind, PreviousIoError);
-            called = true;
-        }).inside(|| {
-            reader.read(buf);
-        });
-        assert!(called);
+        match reader.read(buf) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
     }
 }

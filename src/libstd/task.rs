@@ -541,7 +541,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 #[test]
 fn test_avoid_copying_the_body_try() {
     avoid_copying_the_body(|f| {
-        try(proc() {
+        let _ = try(proc() {
             f()
         });
     })

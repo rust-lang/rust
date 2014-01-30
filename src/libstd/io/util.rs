@@ -183,6 +183,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
 
 #[cfg(test)]
 mod test {
+    use io;
     use io::{MemReader, MemWriter};
     use super::*;
     use prelude::*;
@@ -192,7 +193,7 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(&mut r, 4);
-            assert_eq!(~[0, 1, 2], r.read_to_end());
+            assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
         }
     }
 
@@ -201,24 +202,24 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(&mut r, 2);
-            assert_eq!(~[0, 1], r.read_to_end());
+            assert_eq!(~[0, 1], r.read_to_end().unwrap());
         }
-        assert_eq!(~[2], r.read_to_end());
+        assert_eq!(~[2], r.read_to_end().unwrap());
     }
 
     #[test]
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = ~[0, 0, 0];
-        s.write(buf);
-        s.flush();
+        s.write(buf).unwrap();
+        s.flush().unwrap();
     }
 
     #[test]
     fn test_zero_reader() {
         let mut s = ZeroReader;
         let mut buf = ~[1, 2, 3];
-        assert_eq!(s.read(buf), Some(3));
+        assert_eq!(s.read(buf), Ok(3));
         assert_eq!(~[0, 0, 0], buf);
     }
 
@@ -226,7 +227,7 @@ mod test {
     fn test_null_reader() {
         let mut r = NullReader;
         let mut buf = ~[0];
-        assert_eq!(r.read(buf), None);
+        assert!(r.read(buf).is_err());
     }
 
     #[test]
@@ -236,21 +237,23 @@ mod test {
 
         struct TestWriter;
         impl Writer for TestWriter {
-            fn write(&mut self, _buf: &[u8]) {
+            fn write(&mut self, _buf: &[u8]) -> io::IoResult<()> {
                 unsafe { writes += 1 }
+                Ok(())
             }
 
-            fn flush(&mut self) {
+            fn flush(&mut self) -> io::IoResult<()> {
                 unsafe { flushes += 1 }
+                Ok(())
             }
         }
 
         let mut multi = MultiWriter::new(~[~TestWriter as ~Writer,
                                            ~TestWriter as ~Writer]);
-        multi.write([1, 2, 3]);
+        multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
-        multi.flush();
+        multi.flush().unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(2, unsafe { flushes });
     }
@@ -260,14 +263,14 @@ mod test {
         let rs = ~[MemReader::new(~[0, 1]), MemReader::new(~[]),
                    MemReader::new(~[2, 3])];
         let mut r = ChainedReader::new(rs.move_iter());
-        assert_eq!(~[0, 1, 2, 3], r.read_to_end());
+        assert_eq!(~[0, 1, 2, 3], r.read_to_end().unwrap());
     }
 
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(~[0, 1, 2]),
                                    MemWriter::new());
-        assert_eq!(~[0, 1, 2], r.read_to_end());
+        assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
         let (_, w) = r.unwrap();
         assert_eq!(~[0, 1, 2], w.unwrap());
     }
@@ -276,7 +279,7 @@ mod test {
     fn test_copy() {
         let mut r = MemReader::new(~[0, 1, 2, 3, 4]);
         let mut w = MemWriter::new();
-        copy(&mut r, &mut w);
+        copy(&mut r, &mut w).unwrap();
         assert_eq!(~[0, 1, 2, 3, 4], w.unwrap());
     }
 }
