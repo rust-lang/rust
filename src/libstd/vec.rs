@@ -798,8 +798,8 @@ impl<T> Container for ~[T] {
     }
 }
 
-/// Extension methods for vector slices with copyable elements
-pub trait CopyableVector<T> {
+/// Extension methods for vector slices with cloneable elements
+pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
     fn to_owned(&self) -> ~[T];
 
@@ -808,7 +808,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vector slices
-impl<'a, T: Clone> CopyableVector<T> for &'a [T] {
+impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
@@ -824,7 +824,7 @@ impl<'a, T: Clone> CopyableVector<T> for &'a [T] {
 }
 
 /// Extension methods for owned vectors
-impl<T: Clone> CopyableVector<T> for ~[T] {
+impl<T: Clone> CloneableVector<T> for ~[T] {
     #[inline]
     fn to_owned(&self) -> ~[T] { self.clone() }
 
@@ -833,7 +833,7 @@ impl<T: Clone> CopyableVector<T> for ~[T] {
 }
 
 /// Extension methods for managed vectors
-impl<T: Clone> CopyableVector<T> for @[T] {
+impl<T: Clone> CloneableVector<T> for @[T] {
     #[inline]
     fn to_owned(&self) -> ~[T] { self.as_slice().to_owned() }
 
@@ -1261,7 +1261,7 @@ impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
 }
 
 /// Extension methods for vectors containing `Clone` elements.
-pub trait ImmutableCopyableVector<T> {
+pub trait ImmutableCloneableVector<T> {
     /**
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
@@ -1273,7 +1273,7 @@ pub trait ImmutableCopyableVector<T> {
     fn permutations(self) -> Permutations<T>;
 }
 
-impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
+impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
@@ -1698,7 +1698,7 @@ impl<T> Mutable for ~[T] {
 }
 
 /// Extension methods for owned vectors containing `Clone` elements.
-pub trait OwnedCopyableVector<T:Clone> {
+pub trait OwnedCloneableVector<T:Clone> {
     /// Iterates over the slice `rhs`, copies each element, and then appends it to
     /// the vector provided `v`. The `rhs` vector is traversed in-order.
     ///
@@ -1732,7 +1732,7 @@ pub trait OwnedCopyableVector<T:Clone> {
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
-impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
+impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();
