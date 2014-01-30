@@ -473,13 +473,13 @@ fn test() {
     fn make_path(filename: ~str) -> Path {
         let pth = os::self_exe_path().expect("workcache::test failed").with_filename(filename);
         if pth.exists() {
-            fs::unlink(&pth);
+            fs::unlink(&pth).unwrap();
         }
         return pth;
     }
 
     let pth = make_path(~"foo.c");
-    File::create(&pth).write(bytes!("int main() { return 0; }"));
+    File::create(&pth).write(bytes!("int main() { return 0; }")).unwrap();
 
     let db_path = make_path(~"db.json");
 
@@ -491,7 +491,8 @@ fn test() {
         let subcx = cx.clone();
         let pth = pth.clone();
 
-        let file_content = from_utf8_owned(File::open(&pth).read_to_end()).unwrap();
+        let contents = File::open(&pth).read_to_end().unwrap();
+        let file_content = from_utf8_owned(contents).unwrap();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
@@ -500,7 +501,7 @@ fn test() {
             // FIXME (#9639): This needs to handle non-utf8 paths
             run::process_status("gcc", [pth.as_str().unwrap().to_owned(),
                                         ~"-o",
-                                        out.as_str().unwrap().to_owned()]);
+                                        out.as_str().unwrap().to_owned()]).unwrap();
 
             let _proof_of_concept = subcx.prep("subfn");
             // Could run sub-rules inside here.

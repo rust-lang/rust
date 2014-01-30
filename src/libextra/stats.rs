@@ -456,11 +456,11 @@ mod tests {
 
         let mut w = io::stdout();
         let w = &mut w as &mut io::Writer;
-        write!(w, "\n");
-        write_5_number_summary(w, &summ2);
-        write!(w, "\n");
-        write_boxplot(w, &summ2, 50);
-        write!(w, "\n");
+        (write!(w, "\n")).unwrap();
+        write_5_number_summary(w, &summ2).unwrap();
+        (write!(w, "\n")).unwrap();
+        write_boxplot(w, &summ2, 50).unwrap();
+        (write!(w, "\n")).unwrap();
 
         assert_eq!(summ.sum, summ2.sum);
         assert_eq!(summ.min, summ2.min);
@@ -1003,7 +1003,7 @@ mod tests {
         fn t(s: &Summary, expected: ~str) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
-            write_boxplot(&mut m as &mut io::Writer, s, 30);
+            write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
             let out = str::from_utf8_owned(m.unwrap()).unwrap();
             assert_eq!(out, expected);
         }

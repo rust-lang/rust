@@ -359,7 +359,7 @@ mod test {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let b = s.as_bytes().to_base64(STANDARD);
         bh.iter(|| {
-            b.from_base64();
+            b.from_base64().unwrap();
         });
         bh.bytes = b.len() as u64;
     }
