@@ -164,7 +164,7 @@ pub struct VecTypes {
     unit_ty: ty::t,
     llunit_ty: Type,
     llunit_size: ValueRef,
-    llunit_alloc_size: uint
+    llunit_alloc_size: u64
 }
 
 impl VecTypes {

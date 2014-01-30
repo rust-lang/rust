@@ -1646,7 +1646,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
         .map(|(i, member_description)| {
             let (member_size, member_align) = size_and_align_of(cx, member_description.llvm_type);
             let member_offset = match member_description.offset {
-                FixedMemberOffset { bytes } => bytes,
+                FixedMemberOffset { bytes } => bytes as u64,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
@@ -1815,7 +1815,7 @@ fn fixed_vec_metadata(cx: &CrateContext,
     return unsafe {
         llvm::LLVMDIBuilderCreateArrayType(
             DIB(cx),
-            bytes_to_bits(element_type_size * len),
+            bytes_to_bits(element_type_size * (len as u64)),
             bytes_to_bits(element_type_align),
             element_type_metadata,
             subscripts)
@@ -2211,11 +2211,11 @@ fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
     cx.sess.codemap.lookup_char_pos(span.lo)
 }
 
-fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (uint, uint) {
+fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u64) {
     (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
 }
 
-fn bytes_to_bits(bytes: uint) -> c_ulonglong {
+fn bytes_to_bits(bytes: u64) -> c_ulonglong {
     (bytes * 8) as c_ulonglong
 }
 

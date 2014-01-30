@@ -21,17 +21,17 @@ use middle::trans::type_::Type;
 // compute sizeof / alignof
 
 // Returns the number of bytes clobbered by a Store to this type.
-pub fn llsize_of_store(cx: &CrateContext, ty: Type) -> uint {
+pub fn llsize_of_store(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMStoreSizeOfType(cx.td.lltd, ty.to_ref()) as uint;
+        return llvm::LLVMStoreSizeOfType(cx.td.lltd, ty.to_ref()) as u64;
     }
 }
 
 // Returns the number of bytes between successive elements of type T in an
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
-pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> uint {
+pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMABISizeOfType(cx.td.lltd, ty.to_ref()) as uint;
+        return llvm::LLVMABISizeOfType(cx.td.lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -43,12 +43,12 @@ pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> uint {
 // that LLVM *does* distinguish between e.g. a 1-bit value and an 8-bit value
 // at the codegen level! In general you should prefer `llbitsize_of_real`
 // below.
-pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> uint {
+pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as uint;
-        if nbits & 7u != 0u {
+        let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as u64;
+        if nbits & 7 != 0 {
             // Not an even number of bytes, spills into "next" byte.
-            1u + (nbits >> 3)
+            1 + (nbits >> 3)
         } else {
             nbits >> 3
         }
@@ -56,9 +56,9 @@ pub fn llsize_of_real(cx: &CrateContext, ty: Type) -> uint {
 }
 
 /// Returns the "real" size of the type in bits.
-pub fn llbitsize_of_real(cx: &CrateContext, ty: Type) -> uint {
+pub fn llbitsize_of_real(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as uint
+        llvm::LLVMSizeOfTypeInBits(cx.td.lltd, ty.to_ref()) as u64
     }
 }
 
@@ -71,7 +71,7 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     // there's no need for that contrivance.  The instruction
     // selection DAG generator would flatten that GEP(1) node into a
     // constant of the type's alloc size, so let's save it some work.
-    return C_uint(cx, llsize_of_alloc(cx, ty));
+    return C_uint(cx, llsize_of_alloc(cx, ty) as uint);
 }
 
 // Returns the "default" size of t (see above), or 1 if the size would
@@ -89,18 +89,18 @@ pub fn nonzero_llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
 // The preferred alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
-pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> uint {
+pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, ty.to_ref()) as uint;
+        return llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, ty.to_ref()) as u64;
     }
 }
 
 // Returns the minimum alignment of a type required by the platform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
-pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> uint {
+pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> u64 {
     unsafe {
-        return llvm::LLVMABIAlignmentOfType(cx.td.lltd, ty.to_ref()) as uint;
+        return llvm::LLVMABIAlignmentOfType(cx.td.lltd, ty.to_ref()) as u64;
     }
 }
 
@@ -114,8 +114,8 @@ pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
     }
 }
 
-pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: uint) -> uint {
+pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: uint) -> u64 {
     unsafe {
-        return llvm::LLVMOffsetOfElement(cx.td.lltd, struct_ty.to_ref(), element as u32) as uint;
+        return llvm::LLVMOffsetOfElement(cx.td.lltd, struct_ty.to_ref(), element as u32) as u64;
     }
 }
