@@ -341,7 +341,7 @@ pub fn trans_native_call<'a>(
             let llalign = cmp::min(llforeign_align, llrust_align);
             debug!("llrust_size={:?}", llrust_size);
             base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
-                              C_uint(ccx, llrust_size), llalign as u32);
+                              C_uint(ccx, llrust_size as uint), llalign as u32);
         }
     }
 
