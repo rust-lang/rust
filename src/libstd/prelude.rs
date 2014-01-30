@@ -68,17 +68,17 @@ pub use send_str::{SendStr, SendStrOwned, SendStrStatic, IntoSendStr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, IntoStr};
-pub use tuple::{CopyableTuple, ImmutableTuple};
+pub use tuple::{CloneableTuple, ImmutableTuple};
 pub use tuple::{ImmutableTuple1, ImmutableTuple2, ImmutableTuple3, ImmutableTuple4};
 pub use tuple::{ImmutableTuple5, ImmutableTuple6, ImmutableTuple7, ImmutableTuple8};
 pub use tuple::{ImmutableTuple9, ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector};
+pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCloneableVector};
+pub use vec::{OwnedVector, OwnedCloneableVector,OwnedEqVector};
 pub use vec::{MutableVector, MutableTotalOrdVector};
-pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
+pub use vec::{Vector, VectorVector, CloneableVector, ImmutableVector};
 
 // Reexported runtime types
 pub use comm::{Port, Chan, SharedChan};
