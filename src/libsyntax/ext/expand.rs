@@ -957,14 +957,13 @@ mod test {
     use ast_util;
     use codemap;
     use codemap::Spanned;
-    use fold;
     use fold::*;
     use ext::base::{CrateLoader, MacroCrate};
     use parse;
     use parse::token::{fresh_mark, gensym, intern};
     use parse::token;
     use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
-    use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
+    use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
 
@@ -1253,14 +1252,14 @@ mod test {
                     let varref_name = mtwt_resolve(varref.segments[0].identifier);
                     let varref_marks = mtwt_marksof(varref.segments[0].identifier.ctxt,
                                                     invalid_name);
-                    if (!(varref_name==binding_name)){
+                    if !(varref_name==binding_name) {
                         println!("uh oh, should match but doesn't:");
                         println!("varref: {:?}",varref);
                         println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
                     assert_eq!(varref_name,binding_name);
-                    if (bound_ident_check) {
+                    if bound_ident_check {
                         // we're checking bound-identifier=?, and the marks
                         // should be the same, too:
                         assert_eq!(varref_marks,binding_marks.clone());
@@ -1269,7 +1268,7 @@ mod test {
                     let fail = (varref.segments.len() == 1)
                         && (mtwt_resolve(varref.segments[0].identifier) == binding_name);
                     // temp debugging:
-                    if (fail) {
+                    if fail {
                         println!("failure on test {}",test_idx);
                         println!("text of test case: \"{}\"", teststr);
                         println!("");
