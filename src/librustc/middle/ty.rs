@@ -2403,8 +2403,9 @@ pub fn is_type_representable(cx: ctxt, ty: t) -> Representability {
             ty_tup(ref ts) => {
                 find_nonrepresentable(cx, seen, ts.iter().map(|t| *t))
             }
-            // Non-zero fixed-length vectors.
-            ty_vec(mt, vstore_fixed(len)) if len != 0 => {
+            // Fixed-length vectors.
+            // FIXME(#11924) Behavior undecided for zero-length vectors.
+            ty_vec(mt, vstore_fixed(_)) => {
                 type_structurally_recursive(cx, seen, mt.ty)
             }
 
