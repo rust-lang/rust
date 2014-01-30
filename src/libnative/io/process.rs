@@ -102,9 +102,9 @@ impl Process {
                                    cwd.as_ref(), in_fd, out_fd, err_fd);
 
         unsafe {
-            for pipe in in_pipe.iter() { libc::close(pipe.input); }
-            for pipe in out_pipe.iter() { libc::close(pipe.out); }
-            for pipe in err_pipe.iter() { libc::close(pipe.out); }
+            for pipe in in_pipe.iter() { let _ = libc::close(pipe.input); }
+            for pipe in out_pipe.iter() { let _ = libc::close(pipe.out); }
+            for pipe in err_pipe.iter() { let _ = libc::close(pipe.out); }
         }
 
         match res {
@@ -163,8 +163,8 @@ impl rtio::RtioProcess for Process {
 
         #[cfg(not(windows))]
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            libc::funcs::posix88::signal::kill(pid, signal as c_int);
-            Ok(())
+            let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
+            super::mkerr_libc(r)
         }
     }
 }
@@ -445,24 +445,24 @@ fn spawn_process_os(prog: &str, args: &[~str],
         rustrt::rust_unset_sigprocmask();
 
         if in_fd == -1 {
-            libc::close(libc::STDIN_FILENO);
+            let _ = libc::close(libc::STDIN_FILENO);
         } else if retry(|| dup2(in_fd, 0)) == -1 {
             fail!("failure in dup2(in_fd, 0): {}", os::last_os_error());
         }
         if out_fd == -1 {
-            libc::close(libc::STDOUT_FILENO);
+            let _ = libc::close(libc::STDOUT_FILENO);
         } else if retry(|| dup2(out_fd, 1)) == -1 {
             fail!("failure in dup2(out_fd, 1): {}", os::last_os_error());
         }
         if err_fd == -1 {
-            libc::close(libc::STDERR_FILENO);
+            let _ = libc::close(libc::STDERR_FILENO);
         } else if retry(|| dup2(err_fd, 2)) == -1 {
             fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
         for fd in range(3, getdtablesize()).rev() {
             if fd != output.fd() {
-                close(fd as c_int);
+                let _ = close(fd as c_int);
             }
         }
 
@@ -478,7 +478,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             }
         });
         with_argv(prog, args, |argv| {
-            execvp(*argv, argv);
+            let _ = execvp(*argv, argv);
             let errno = os::errno();
             let bytes = [
                 (errno << 24) as u8,

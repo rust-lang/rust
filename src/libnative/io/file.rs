@@ -422,7 +422,7 @@ impl rtio::RtioFileStream for CFile {
 
 impl Drop for CFile {
     fn drop(&mut self) {
-        unsafe { libc::fclose(self.file); }
+        unsafe { let _ = libc::fclose(self.file); }
     }
 }
 
@@ -512,7 +512,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                     paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);
                 }
-                closedir(dir_ptr);
+                assert_eq!(closedir(dir_ptr), 0);
                 Ok(paths)
             } else {
                 Err(super::last_error())
@@ -932,7 +932,7 @@ mod tests {
             let mut reader = FileDesc::new(input, true);
             let mut writer = FileDesc::new(out, true);
 
-            writer.inner_write(bytes!("test"));
+            writer.inner_write(bytes!("test")).unwrap();
             let mut buf = [0u8, ..4];
             match reader.inner_read(buf) {
                 Ok(4) => {
@@ -957,9 +957,9 @@ mod tests {
             assert!(!f.is_null());
             let mut file = CFile::new(f);
 
-            file.write(bytes!("test"));
+            file.write(bytes!("test")).unwrap();
             let mut buf = [0u8, ..4];
-            file.seek(0, io::SeekSet);
+            let _ = file.seek(0, io::SeekSet).unwrap();
             match file.read(buf) {
                 Ok(4) => {
                     assert_eq!(buf[0], 't' as u8);
