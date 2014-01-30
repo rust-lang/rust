@@ -186,7 +186,7 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR,
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_Binary);
   formatted_raw_ostream FOS(OS);
-  PM->add(createPrintModulePass(&FOS));
+  PM->add(createPrintModulePass(FOS));
   PM->run(*unwrap(M));
 }
 

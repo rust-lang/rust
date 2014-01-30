@@ -2523,12 +2523,12 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
         }
     });
+    lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+
     // On windows we'd like to export the toplevel cratemap
     // such that we can find it from libstd.
     if targ_cfg.os == OsWin32 && is_top {
-        lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
-    } else {
-        lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+        unsafe { llvm::LLVMRustSetDLLExportStorageClass(map) }
     }
 
     return (sym_name, map);
