@@ -637,7 +637,7 @@ mod tests {
     fn test_mutex_arc_poison() {
         let arc = ~MutexArc::new(1);
         let arc2 = ~arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.access(|one| {
                 assert_eq!(*one, 2);
             })
@@ -668,7 +668,7 @@ mod tests {
     fn test_mutex_arc_access_in_unwind() {
         let arc = MutexArc::new(1i);
         let arc2 = arc.clone();
-        task::try::<()>(proc() {
+        let _ = task::try::<()>(proc() {
             struct Unwinder {
                 i: MutexArc<int>
             }
@@ -687,7 +687,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write(|one| {
                 assert_eq!(*one, 2);
             })
@@ -701,7 +701,7 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write(|one| {
                 assert_eq!(*one, 2);
             })
@@ -714,7 +714,7 @@ mod tests {
     fn test_rw_arc_poison_dw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write_downgrade(|mut write_mode| {
                 write_mode.write(|one| {
                     assert_eq!(*one, 2);
@@ -729,7 +729,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.read(|one| {
                 assert_eq!(*one, 2);
             })
@@ -742,7 +742,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.read(|one| {
                 assert_eq!(*one, 2);
             })
@@ -755,7 +755,7 @@ mod tests {
     fn test_rw_arc_no_poison_dr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write_downgrade(|write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
                 read_mode.read(|one| {
@@ -800,7 +800,7 @@ mod tests {
 
         // Wait for children to pass their asserts
         for r in children.mut_iter() {
-            r.recv();
+            let _ = r.recv();
         }
 
         // Wait for writer to finish
@@ -814,7 +814,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = RWArc::new(1i);
         let arc2 = arc.clone();
-        task::try::<()>(proc() {
+        let _ = task::try::<()>(proc() {
             struct Unwinder {
                 i: RWArc<int>
             }

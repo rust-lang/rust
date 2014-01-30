@@ -720,7 +720,7 @@ fn should_sort_failures_before_printing_them() {
         failures: ~[test_b, test_a]
     };
 
-    st.write_failures();
+    st.write_failures().unwrap();
     let s = match st.out {
         Raw(ref m) => str::from_utf8(m.get_ref()).unwrap(),
         Pretty(_) => unreachable!()
@@ -1485,7 +1485,7 @@ mod tests {
         m2.insert_metric("runtime", 1100.0, 2.0);
         m2.insert_metric("throughput", 50.0, 2.0);
 
-        m1.save(&pth);
+        m1.save(&pth).unwrap();
 
         // Ask for a ratchet that should fail to advance.
         let (diff1, ok1) = m2.ratchet(&pth, None);
