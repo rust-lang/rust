@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,6 @@
 
 #[feature(managed_boxes)];
 
-use std::borrow;
 use std::ptr;
 
 fn borrow(x: &int, f: |x: &int|) {
@@ -20,7 +19,7 @@ fn borrow(x: &int, f: |x: &int|) {
 fn test1(x: @~int) {
     borrow(&*(*x).clone(), |p| {
         let x_a = ptr::to_unsafe_ptr(&**x);
-        assert!((x_a as uint) != borrow::to_uint(p));
+        assert!((x_a as uint) != (p as *int as uint));
         assert_eq!(unsafe{*x_a}, *p);
     })
 }
