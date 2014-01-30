@@ -296,6 +296,12 @@ impl<'a> LookupContext<'a> {
          */
 
         let mut self_ty = self_ty;
+        macro_rules! add( ($t:expr) => ({
+            match ty::maybe_prim_did(self.fcx.tcx(), $t) {
+                Some(did) => self.push_inherent_impl_candidates_for_type(did),
+                None => {}
+            }
+        }) )
         loop {
             match get(self_ty).sty {
                 ty_trait(did, ref substs, _, _, _) => {
@@ -306,6 +312,26 @@ impl<'a> LookupContext<'a> {
                     if self.check_traits == CheckTraitsAndInherentMethods {
                         self.push_inherent_impl_candidates_for_type(did);
                     }
+                }
+                ty_nil | ty_bool | ty_char | ty_int(..) | ty_uint(..) |
+                ty_float(..) => {
+                    add!(self_ty);
+                }
+                ty_infer(FloatVar(..)) => {
+                    add!(ty::mk_f32());
+                    add!(ty::mk_f64());
+                }
+                ty_infer(IntVar(..)) => {
+                    add!(ty::mk_uint());
+                    add!(ty::mk_u8());
+                    add!(ty::mk_u16());
+                    add!(ty::mk_u32());
+                    add!(ty::mk_u64());
+                    add!(ty::mk_int());
+                    add!(ty::mk_i8());
+                    add!(ty::mk_i16());
+                    add!(ty::mk_i32());
+                    add!(ty::mk_i64());
                 }
                 _ => { /* No inherent methods in these types */ }
             }

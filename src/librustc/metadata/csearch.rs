@@ -311,3 +311,10 @@ pub fn get_exported_macros(cstore: @cstore::CStore,
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_exported_macros(cdata)
 }
+
+pub fn prim_dids(cstore: @cstore::CStore,
+                 crate_num: ast::CrateNum,
+                 tcx: ty::ctxt) -> ~[(ty::t, ast::DefId)] {
+    let cdata = cstore.get_crate_data(crate_num);
+    decoder::prim_dids(cdata, tcx)
+}

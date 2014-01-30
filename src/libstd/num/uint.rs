@@ -20,12 +20,39 @@ use num::{Bitwise, Bounded};
 use num::{CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
-use num;
+#[cfg(stage0)] use num;
 use option::{Option, Some, None};
 use str;
 use unstable::intrinsics;
 
 uint_module!(uint, int, ::int::BITS)
+
+#[cfg(not(stage0), not(test))]
+#[lang = "uint_impl"]
+/// The `uint` primitive type is an architecture-sized unsigned integer.
+///
+/// The size of a `uint` is equivalent to the size of a pointer on the
+/// particular architecture in question.
+impl uint {
+    ///
+    /// A convenience form for basic repetition. Given a uint `x`,
+    /// `x.times(|| { ... })` executes the given block x times.
+    ///
+    /// Equivalent to `for _ in range(0, x) { ... }`.
+    ///
+    /// Not defined on all integer types to permit unambiguous
+    /// use with integer literals of inferred integer-type as
+    /// the self-value (eg. `100.times(|| { ... })`).
+    ///
+    #[inline]
+    pub fn times(&self, it: ||) {
+        let mut i = *self;
+        while i > 0 {
+            it();
+            i -= 1;
+        }
+    }
+}
 
 ///
 /// Divide two numbers, return the result, rounded up.
@@ -80,8 +107,8 @@ pub fn div_round(x: uint, y: uint) -> uint {
 ///
 pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
+#[cfg(stage0)]
 impl num::Times for uint {
-    #[inline]
     ///
     /// A convenience form for basic repetition. Given a uint `x`,
     /// `x.times(|| { ... })` executes the given block x times.
@@ -92,6 +119,7 @@ impl num::Times for uint {
     /// use with integer literals of inferred integer-type as
     /// the self-value (eg. `100.times(|| { ... })`).
     ///
+    #[inline]
     fn times(&self, it: ||) {
         let mut i = *self;
         while i > 0 {

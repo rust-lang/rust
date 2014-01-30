@@ -12,6 +12,7 @@
 
 use rand::{Rng, SeedableRng, OSRng};
 use iter::{Iterator, range, range_step, Repeat};
+#[cfg(stage0)]
 use num::Times;
 use option::{None, Some};
 use vec::{raw, MutableVector, ImmutableVector};

@@ -24,6 +24,12 @@ use unstable::intrinsics;
 
 int_module!(i8, 8)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "i8_impl"]
+/// The `i8` primitive is a signed 8-bit integer type.
+impl i8 {
+}
+
 impl Bitwise for i8 {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]

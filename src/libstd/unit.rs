@@ -13,6 +13,11 @@
 #[cfg(not(test))]
 use prelude::*;
 
+#[cfg(not(stage0), not(test))]
+#[lang = "nil_impl"]
+impl () {
+}
+
 #[cfg(not(test))]
 impl Eq for () {
     #[inline]

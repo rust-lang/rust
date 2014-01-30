@@ -24,6 +24,12 @@ use unstable::intrinsics;
 
 int_module!(i16, 16)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "i16_impl"]
+/// The `i16` primitive is a signed 16-bit integer type.
+impl i16 {
+}
+
 impl Bitwise for i16 {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]

@@ -299,7 +299,7 @@ pub struct ctxt_ {
     ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
     adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
     normalized_cache: RefCell<HashMap<t, t>>,
-    lang_items: middle::lang_items::LanguageItems,
+    lang_items: @middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
     supertraits: RefCell<HashMap<ast::DefId, @~[@TraitRef]>>,
@@ -350,6 +350,9 @@ pub struct ctxt_ {
     // The set of external traits whose implementations have been read. This
     // is used for lazy resolution of traits.
     populated_external_traits: RefCell<HashSet<ast::DefId>>,
+
+    // TODO: dox
+    prim_dids: RefCell<HashMap<t, ast::DefId>>,
 
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
@@ -946,7 +949,7 @@ pub fn mk_ctxt(s: session::Session,
                amap: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,
-               lang_items: middle::lang_items::LanguageItems)
+               lang_items: @middle::lang_items::LanguageItems)
             -> ctxt {
     @ctxt_ {
         named_region_map: named_region_map,
@@ -992,6 +995,7 @@ pub fn mk_ctxt(s: session::Session,
         impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: RefCell::new(HashSet::new()),
         populated_external_traits: RefCell::new(HashSet::new()),
+        prim_dids: RefCell::new(HashMap::new()),
 
         extern_const_statics: RefCell::new(HashMap::new()),
         extern_const_variants: RefCell::new(HashMap::new()),
@@ -4993,4 +4997,40 @@ impl substs {
             regions: NonerasedRegions(opt_vec::Empty)
         }
     }
+}
+
+/// Register a primitive type as having its lang-item implementation in this
+/// crate. This method will create a DefId if one doesn't already exist for it.
+pub fn add_local_prim_did(tcx: ctxt, t: t) -> ast::DefId {
+    let mut map = tcx.prim_dids.borrow_mut();
+    match map.get().find(&t) {
+        Some(&did) => return did,
+        None => {}
+    }
+    let id = tcx.next_id.get();
+    tcx.next_id.set(id + 1);
+    map.get().insert(t, ast_util::local_def(id as ast::NodeId));
+    return ast_util::local_def(id as ast::NodeId);
+}
+
+/// Fetch the DefId of the lang-item implementation of a primitive type. This
+/// may not succeed (as the local crate or linked crates may not provide an
+/// implementation).
+pub fn maybe_prim_did(tcx: ctxt, t: t) -> Option<ast::DefId> {
+    let map = tcx.prim_dids.borrow();
+    map.get().find(&t).map(|&x| x)
+}
+
+/// Adds the DefId of a lang-item implementation of a primitive from an external
+/// crate.
+pub fn add_extern_prim_did(tcx: ctxt, t: t, did: ast::DefId) {
+    let mut map = tcx.prim_dids.borrow_mut();
+    assert!(map.get().insert(t, did));
+}
+
+/// Fetch all primitive type implementations known to this crate. This includes
+/// local as well as external primitive types.
+pub fn prim_dids(tcx: ctxt) -> ~[(t, ast::DefId)] {
+    let map = tcx.prim_dids.borrow();
+    map.get().iter().map(|(&a, &b)| (a, b)).collect()
 }

@@ -34,7 +34,7 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
 use util::ppaux::Repr;
-use syntax::ast::{Crate, DefId, DefStruct, DefTy};
+use syntax::ast::{Crate, DefId, DefStruct, DefTy, DefPrimTy};
 use syntax::ast::{Item, ItemEnum, ItemImpl, ItemMod, ItemStruct};
 use syntax::ast::{LOCAL_CRATE, TraitRef, TyPath};
 use syntax::ast;
@@ -80,7 +80,12 @@ pub fn get_base_type(inference_context: @InferCtxt,
             Some(resolved_type)
         }
 
-        ty_nil | ty_bot | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
+        ty_nil | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) => {
+            debug!("(getting base type) found primitive base type");
+            Some(resolved_type)
+        }
+
+        ty_bot |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
         ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
         ty_unboxed_vec(..) | ty_err | ty_box(_) |
@@ -120,6 +125,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 
 // Returns the def ID of the base type, if there is one.
 pub fn get_base_type_def_id(inference_context: @InferCtxt,
+                            id: ast::NodeId,
                             span: Span,
                             original_type: t)
                          -> Option<DefId> {
@@ -128,17 +134,61 @@ pub fn get_base_type_def_id(inference_context: @InferCtxt,
             return None;
         }
         Some(base_type) => {
+            let did = local_def(id);
+            let li = inference_context.tcx.lang_items;
             match get(base_type).sty {
                 ty_enum(def_id, _) |
                 ty_struct(def_id, _) |
                 ty_trait(def_id, _, _, _, _) => {
                     return Some(def_id);
                 }
+
+                ty_char => { if li.char_impl() != Some(did) { return None } }
+                ty_nil => { if li.nil_impl() != Some(did) { return None } }
+                ty_bool => { if li.bool_impl() != Some(did) { return None } }
+                ty_float(ast::TyF32) => {
+                    if li.f32_impl() != Some(did) { return None }
+                }
+                ty_float(ast::TyF64) => {
+                    if li.f64_impl() != Some(did) { return None }
+                }
+                ty_uint(ast::TyU) => {
+                    if li.uint_impl() != Some(did) { return None }
+                }
+                ty_int(ast::TyI) => {
+                    if li.int_impl() != Some(did) { return None }
+                }
+                ty_int(ast::TyI8) => {
+                    if li.i8_impl() != Some(did) { return None }
+                }
+                ty_int(ast::TyI16) => {
+                    if li.i16_impl() != Some(did) { return None }
+                }
+                ty_int(ast::TyI32) => {
+                    if li.i32_impl() != Some(did) { return None }
+                }
+                ty_int(ast::TyI64) => {
+                    if li.i64_impl() != Some(did) { return None }
+                }
+                ty_uint(ast::TyU8) => {
+                    if li.u8_impl() != Some(did) { return None }
+                }
+                ty_uint(ast::TyU16) => {
+                    if li.u16_impl() != Some(did) { return None }
+                }
+                ty_uint(ast::TyU32) => {
+                    if li.u32_impl() != Some(did) { return None }
+                }
+                ty_uint(ast::TyU64) => {
+                    if li.u64_impl() != Some(did) { return None }
+                }
+
                 _ => {
                     fail!("get_base_type() returned a type that wasn't an \
-                           enum, struct, or trait");
+                           enum, struct, trait, or known primitive");
                 }
             }
+            return Some(ty::add_local_prim_did(inference_context.tcx, base_type));
         }
     }
 }
@@ -272,7 +322,7 @@ impl CoherenceChecker {
                    self.crate_context.tcx.sess.str_of(item.ident));
 
             match get_base_type_def_id(self.inference_context,
-                                       item.span,
+                                       item.id, item.span,
                                        self_type.ty) {
                 None => {
                     let session = self.crate_context.tcx.sess;
@@ -302,7 +352,7 @@ impl CoherenceChecker {
         // type def ID, if there is a base type for this implementation and
         // the implementation does not have any associated traits.
         match get_base_type_def_id(self.inference_context,
-                                   item.span,
+                                   item.id, item.span,
                                    self_type.ty) {
             None => {
                 // Nothing to do.
@@ -584,9 +634,12 @@ impl CoherenceChecker {
                             Some(_) => false,
                         }
                     }
+                    DefPrimTy(ast::TyStr) => false,
+                    DefPrimTy(..) => true,
                     _ => false
                 }
             }
+            ast::TyNil => true,
             _ => false
         }
     }
@@ -687,7 +740,12 @@ impl CoherenceChecker {
             each_impl(crate_store, crate_number, |def_id| {
                 assert_eq!(crate_number, def_id.crate);
                 self.add_external_impl(&mut impls_seen, def_id)
-            })
+            });
+            let prims = csearch::prim_dids(crate_store, crate_number,
+                                           self.crate_context.tcx);
+            for (t, did) in prims.move_iter() {
+                ty::add_extern_prim_did(self.crate_context.tcx, t, did);
+            }
         })
     }
 

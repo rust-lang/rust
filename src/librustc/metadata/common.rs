@@ -207,6 +207,11 @@ pub static tag_macro_registrar_fn: uint = 0x110;
 pub static tag_exported_macros: uint = 0x111;
 pub static tag_macro_def: uint = 0x112;
 
+pub static tag_prim_dids: uint = 0x113;
+pub static tag_prim_did: uint = 0x114;
+pub static tag_prim_did_ty: uint = 0x115;
+pub static tag_prim_did_did: uint = 0x116;
+
 #[deriving(Clone)]
 pub struct LinkMeta {
     crateid: CrateId,

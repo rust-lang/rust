@@ -97,7 +97,7 @@ use at_vec;
 use cast;
 use cast::transmute;
 use char;
-use char::Char;
+#[cfg(stage0)] use char::Char;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::{Iterator, FromIterator, Extendable, range};

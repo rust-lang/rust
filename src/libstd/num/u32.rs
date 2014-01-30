@@ -25,6 +25,12 @@ use unstable::intrinsics;
 
 uint_module!(u32, i32, 32)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "u32_impl"]
+/// The `u32` primitive is an unsigned 32-bit integer type.
+impl u32 {
+}
+
 impl CheckedAdd for u32 {
     #[inline]
     fn checked_add(&self, v: &u32) -> Option<u32> {

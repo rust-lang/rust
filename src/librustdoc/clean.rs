@@ -24,6 +24,7 @@ use syntax::codemap::Pos;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
+use rustc::middle::ty;
 
 use std;
 use std::hashmap::HashMap;
@@ -182,6 +183,7 @@ pub enum ItemEnum {
     VariantItem(Variant),
     ForeignFunctionItem(Function),
     ForeignStaticItem(Static),
+    PrimitiveType(ast::PrimTy),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -196,6 +198,8 @@ impl Clean<Item> for doctree::Module {
         } else {
             ~""
         };
+        let impls = self.impls.clean();
+        let impls = impls.move_iter().flat_map(|i| i.move_iter()).collect();
         Item {
             name: Some(name),
             attrs: self.attrs.clean(),
@@ -207,7 +211,7 @@ impl Clean<Item> for doctree::Module {
                        self.fns.clean(), self.foreigns.clean().concat_vec(),
                        self.mods.clean(), self.typedefs.clean(),
                        self.statics.clean(), self.traits.clean(),
-                       self.impls.clean(), self.view_items.clean()].concat_vec()
+                       impls, self.view_items.clean()].concat_vec()
             })
         }
     }
@@ -635,6 +639,7 @@ pub enum TypeKind {
     TypeEnum,
     TypeTrait,
     TypeFunction,
+    TypePrimitive,
 }
 
 impl Clean<Type> for ast::Ty {
@@ -981,23 +986,100 @@ pub struct Impl {
     trait_: Option<Type>,
     for_: Type,
     methods: ~[Item],
+    is_primitive_impl: bool,
 }
 
-impl Clean<Item> for doctree::Impl {
-    fn clean(&self) -> Item {
-        Item {
+impl Clean<~[Item]> for doctree::Impl {
+    fn clean(&self) -> ~[Item] {
+        let tcx = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx;
+        let is_primitive_impl = match tcx {
+            Some(tcx) => {
+                let did = Some(ast::DefId {
+                    node: self.id,
+                    crate: ast::LOCAL_CRATE,
+                });
+                did == tcx.lang_items.char_impl() ||
+                did == tcx.lang_items.bool_impl() ||
+                did == tcx.lang_items.u8_impl() ||
+                did == tcx.lang_items.u16_impl() ||
+                did == tcx.lang_items.u32_impl() ||
+                did == tcx.lang_items.u64_impl() ||
+                did == tcx.lang_items.uint_impl() ||
+                did == tcx.lang_items.i8_impl() ||
+                did == tcx.lang_items.i16_impl() ||
+                did == tcx.lang_items.i32_impl() ||
+                did == tcx.lang_items.i64_impl() ||
+                did == tcx.lang_items.int_impl() ||
+                did == tcx.lang_items.f32_impl() ||
+                did == tcx.lang_items.f64_impl()
+            }
+            None => false
+        };
+        let mut items = ~[];
+        if is_primitive_impl {
+            items.push(primitive_item(self));
+        }
+        items.push(Item {
             name: None,
-            attrs: self.attrs.clean(),
+            attrs: if is_primitive_impl {~[]} else {self.attrs.clean()},
             source: self.where.clean(),
             id: self.id,
             visibility: self.vis.clean(),
             inner: ImplItem(Impl {
+                is_primitive_impl: is_primitive_impl,
                 generics: self.generics.clean(),
                 trait_: self.trait_.clean(),
                 for_: self.for_.clean(),
                 methods: self.methods.clean(),
             }),
+        });
+        return items;
+    }
+}
+
+fn primitive_item(imp: &doctree::Impl) -> Item {
+    let tcx = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.unwrap();
+    let def_map = tcx.def_map.borrow();
+    let id = match imp.for_.node {
+        ast::TyPath(_, _, id) => id,
+        _ => fail!("not a primitive path"),
+    };
+    let d = def_map.get().get(&id);
+
+    macro_rules! primitive( ($li:ident, $prim:expr) => ({
+        match tycx.lang_items.$li() {
+            Some(did) => (did, TypePrimitive),
+            None => return if $prim == ast::TyBool {Bool} else {Primitive($prim)}
         }
+    }) )
+
+    let (ty, name, prim_ty) = match *d {
+        ast::DefPrimTy(p) => match p {
+            ast::TyBool => (ty::mk_bool(), "bool", p),
+            ast::TyChar => (ty::mk_char(), "char", p),
+            ast::TyFloat(ast::TyF32) => (ty::mk_f32(), "f32", p),
+            ast::TyFloat(ast::TyF64) => (ty::mk_f64(), "f64", p),
+            ast::TyUint(ast::TyU) => (ty::mk_uint(), "uint", p),
+            ast::TyUint(ast::TyU8) => (ty::mk_u8(), "u8", p),
+            ast::TyUint(ast::TyU16) => (ty::mk_u16(), "u16", p),
+            ast::TyUint(ast::TyU32) => (ty::mk_u32(), "u32", p),
+            ast::TyUint(ast::TyU64) => (ty::mk_u64(), "u64", p),
+            ast::TyInt(ast::TyI) => (ty::mk_int(), "int", p),
+            ast::TyInt(ast::TyI8) => (ty::mk_i8(), "i8", p),
+            ast::TyInt(ast::TyI16) => (ty::mk_i16(), "i16", p),
+            ast::TyInt(ast::TyI32) => (ty::mk_i32(), "i32", p),
+            ast::TyInt(ast::TyI64) => (ty::mk_i64(), "i64", p),
+            ast::TyStr => fail!("can't handle string primitive yet"),
+        },
+        x => fail!("resolved type maps to not a primitive {:?}", x),
+    };
+    Item {
+        name: Some(name.to_owned()),
+        attrs: imp.attrs.clean(),
+        source: imp.where.clean(),
+        id: ty::maybe_prim_did(tcx, ty).unwrap().node,
+        visibility: ast::Public.clean(),
+        inner: PrimitiveType(prim_ty),
     }
 }
 
@@ -1196,6 +1278,15 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         }
     };
 
+    macro_rules! primitive( ($ty:expr, $prim:expr) => ({
+        match ty::maybe_prim_did(tycx, $ty) {
+            Some(did) => (did, TypePrimitive),
+            None => {
+                return if $prim == ast::TyBool {Bool} else {Primitive($prim)}
+            }
+        }
+    }) )
+
     let (def_id, kind) = match *d {
         ast::DefFn(i, _) => (i, TypeFunction),
         ast::DefSelfTy(i) => return Self(i),
@@ -1206,8 +1297,20 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         },
         ast::DefPrimTy(p) => match p {
             ast::TyStr => return String,
-            ast::TyBool => return Bool,
-            _ => return Primitive(p)
+            ast::TyBool => primitive!(ty::mk_bool(), p),
+            ast::TyChar => primitive!(ty::mk_char(), p),
+            ast::TyFloat(ast::TyF32) => primitive!(ty::mk_f32(), p),
+            ast::TyFloat(ast::TyF64) => primitive!(ty::mk_f64(), p),
+            ast::TyUint(ast::TyU) => primitive!(ty::mk_uint(), p),
+            ast::TyUint(ast::TyU8) => primitive!(ty::mk_u8(), p),
+            ast::TyUint(ast::TyU16) => primitive!(ty::mk_u16(), p),
+            ast::TyUint(ast::TyU32) => primitive!(ty::mk_u32(), p),
+            ast::TyUint(ast::TyU64) => primitive!(ty::mk_u64(), p),
+            ast::TyInt(ast::TyI) => primitive!(ty::mk_int(), p),
+            ast::TyInt(ast::TyI8) => primitive!(ty::mk_i8(), p),
+            ast::TyInt(ast::TyI16) => primitive!(ty::mk_i16(), p),
+            ast::TyInt(ast::TyI32) => primitive!(ty::mk_i32(), p),
+            ast::TyInt(ast::TyI64) => primitive!(ty::mk_i64(), p),
         },
         ast::DefTyParam(i, _) => return Generic(i.node),
         ast::DefStruct(i) => (i, TypeStruct),
@@ -1220,7 +1323,30 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
     if ast_util::is_local(def_id) {
         ResolvedPath{ path: path, typarams: tpbs, id: def_id.node }
     } else {
-        let fqn = csearch::get_item_path(tycx, def_id);
+        let fqn = match *d {
+            ast::DefPrimTy(p) => {
+                let did = match p {
+                    ast::TyBool => tycx.lang_items.bool_impl(),
+                    ast::TyChar => tycx.lang_items.char_impl(),
+                    ast::TyFloat(ast::TyF32) => tycx.lang_items.f32_impl(),
+                    ast::TyFloat(ast::TyF64) => tycx.lang_items.f64_impl(),
+                    ast::TyInt(ast::TyI) => tycx.lang_items.int_impl(),
+                    ast::TyInt(ast::TyI8) => tycx.lang_items.i8_impl(),
+                    ast::TyInt(ast::TyI16) => tycx.lang_items.i16_impl(),
+                    ast::TyInt(ast::TyI32) => tycx.lang_items.i32_impl(),
+                    ast::TyInt(ast::TyI64) => tycx.lang_items.i64_impl(),
+                    ast::TyUint(ast::TyU) => tycx.lang_items.uint_impl(),
+                    ast::TyUint(ast::TyU8) => tycx.lang_items.u8_impl(),
+                    ast::TyUint(ast::TyU16) => tycx.lang_items.u16_impl(),
+                    ast::TyUint(ast::TyU32) => tycx.lang_items.u32_impl(),
+                    ast::TyUint(ast::TyU64) => tycx.lang_items.u64_impl(),
+
+                    _ => None,
+                };
+                csearch::get_item_path(tycx, did.unwrap())
+            }
+            _ => csearch::get_item_path(tycx, def_id)
+        };
         let fqn = fqn.move_iter().map(|i| {
             match i {
                 ast_map::PathMod(id) | ast_map::PathName(id) |

@@ -84,6 +84,7 @@ struct Stats {
     macro_registrar_fn_bytes: Cell<u64>,
     macro_defs_bytes: Cell<u64>,
     impl_bytes: Cell<u64>,
+    prim_did_bytes: Cell<u64>,
     misc_bytes: Cell<u64>,
     item_bytes: Cell<u64>,
     index_bytes: Cell<u64>,
@@ -1439,6 +1440,21 @@ fn encode_info_for_items(ecx: &EncodeContext,
         visit::walk_crate(&mut visitor, crate, ());
     }
 
+    for (_, did) in ty::prim_dids(ecx.tcx).move_iter() {
+        if !ast_util::is_local(did) { continue }
+        {
+            let mut index = index.borrow_mut();
+            index.get().push(entry {
+                val: did.node as i64,
+                pos: ebml_w.writer.tell(),
+            });
+        }
+        ebml_w.start_tag(tag_items_data_item);
+        encode_def_id(ebml_w, did);
+        encode_inherent_implementations(ecx, ebml_w, did);
+        ebml_w.end_tag();
+    }
+
     ebml_w.end_tag();
     return /*bad*/(*index).get();
 }
@@ -1804,6 +1820,23 @@ fn encode_misc_info(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
+fn encode_prim_dids(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_prim_dids);
+    for (ty, did) in ty::prim_dids(ecx.tcx).move_iter() {
+        if !ast_util::is_local(did) { continue }
+        ebml_w.start_tag(tag_prim_did);
+
+        ebml_w.start_tag(tag_prim_did_ty);
+        encode_type(ecx, ebml_w, ty);
+        ebml_w.end_tag();
+
+        ebml_w.wr_tagged_u32(tag_prim_did_did, did.node);
+
+        ebml_w.end_tag();
+    }
+    ebml_w.end_tag();
+}
+
 fn encode_crate_dep(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     dep: decoder::CrateDep) {
@@ -1851,6 +1884,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         macro_registrar_fn_bytes: Cell::new(0),
         macro_defs_bytes: Cell::new(0),
         impl_bytes: Cell::new(0),
+        prim_did_bytes: Cell::new(0),
         misc_bytes: Cell::new(0),
         item_bytes: Cell::new(0),
         index_bytes: Cell::new(0),
@@ -1925,6 +1959,11 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     encode_impls(&ecx, crate, &mut ebml_w);
     ecx.stats.impl_bytes.set(ebml_w.writer.tell() - i);
 
+    // Encode the def IDs of primitives (if we have any)
+    i = ebml_w.writer.tell();
+    encode_prim_dids(&ecx, &mut ebml_w);
+    ecx.stats.prim_did_bytes.set(ebml_w.writer.tell() - i);
+
     // Encode miscellaneous info.
     i = ebml_w.writer.tell();
     encode_misc_info(&ecx, crate, &mut ebml_w);
@@ -1957,6 +1996,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         println!("            dep bytes: {}", ecx.stats.dep_bytes.get());
         println!("      lang item bytes: {}", ecx.stats.lang_item_bytes.get());
         println!("         native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("       prim did bytes: {}", ecx.stats.prim_did_bytes.get());
         println!("macro registrar bytes: {}", ecx.stats.macro_registrar_fn_bytes.get());
         println!("      macro def bytes: {}", ecx.stats.macro_defs_bytes.get());
         println!("           impl bytes: {}", ecx.stats.impl_bytes.get());

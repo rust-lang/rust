@@ -169,6 +169,13 @@ pub mod consts {
     pub static LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
+#[cfg(not(stage0), not(test))]
+#[lang = "f32_impl"]
+/// The `f32` primitive is an 32-bit floating point type. This is generally
+/// equivalent to the C `float` type.
+impl f32 {
+}
+
 impl Num for f32 {}
 
 #[cfg(not(test))]

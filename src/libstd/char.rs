@@ -350,7 +350,61 @@ impl ToStr for char {
     }
 }
 
+#[cfg(not(stage0), not(test))]
+#[lang = "char_impl"]
 #[allow(missing_doc)]
+/// The character primitive type in Rust.
+///
+/// A `char` represents a unicode codepoint, and is represented as a 32-bit
+/// value on all architectures. This type is not equivalent with the C `char`
+/// type because it is used to represent more than just ASCII.
+impl char {
+    pub fn is_alphabetic(&self) -> bool { is_alphabetic(*self) }
+    pub fn is_XID_start(&self) -> bool { is_XID_start(*self) }
+    pub fn is_XID_continue(&self) -> bool { is_XID_continue(*self) }
+    pub fn is_lowercase(&self) -> bool { is_lowercase(*self) }
+    pub fn is_uppercase(&self) -> bool { is_uppercase(*self) }
+    pub fn is_whitespace(&self) -> bool { is_whitespace(*self) }
+    pub fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
+    pub fn is_control(&self) -> bool { is_control(*self) }
+    pub fn is_digit(&self) -> bool { is_digit(*self) }
+    pub fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+    pub fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
+    pub fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
+    pub fn escape_unicode(&self, f: |char|) { escape_unicode(*self, f) }
+    pub fn escape_default(&self, f: |char|) { escape_default(*self, f) }
+    pub fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+
+    /// Encodes this character as utf-8 into the provided byte-buffer. The
+    /// buffer must be at least 4 bytes long or a runtime failure will occur.
+    ///
+    /// This will then return the number of characters written to the slice.
+    pub fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
+        let code = *self as uint;
+        if code < MAX_ONE_B {
+            dst[0] = code as u8;
+            return 1;
+        } else if code < MAX_TWO_B {
+            dst[0] = (code >> 6u & 31u | TAG_TWO_B) as u8;
+            dst[1] = (code & 63u | TAG_CONT) as u8;
+            return 2;
+        } else if code < MAX_THREE_B {
+            dst[0] = (code >> 12u & 15u | TAG_THREE_B) as u8;
+            dst[1] = (code >> 6u & 63u | TAG_CONT) as u8;
+            dst[2] = (code & 63u | TAG_CONT) as u8;
+            return 3;
+        } else {
+            dst[0] = (code >> 18u & 7u | TAG_FOUR_B) as u8;
+            dst[1] = (code >> 12u & 63u | TAG_CONT) as u8;
+            dst[2] = (code >> 6u & 63u | TAG_CONT) as u8;
+            dst[3] = (code & 63u | TAG_CONT) as u8;
+            return 4;
+        }
+    }
+}
+
+#[allow(missing_doc)]
+#[cfg(stage0)]
 pub trait Char {
     fn is_alphabetic(&self) -> bool;
     fn is_XID_start(&self) -> bool;
@@ -367,14 +421,10 @@ pub trait Char {
     fn escape_unicode(&self, f: |char|);
     fn escape_default(&self, f: |char|);
     fn len_utf8_bytes(&self) -> uint;
-
-    /// Encodes this character as utf-8 into the provided byte-buffer. The
-    /// buffer must be at least 4 bytes long or a runtime failure will occur.
-    ///
-    /// This will then return the number of characters written to the slice.
     fn encode_utf8(&self, dst: &mut [u8]) -> uint;
 }
 
+#[cfg(stage0)]
 impl Char for char {
     fn is_alphabetic(&self) -> bool { is_alphabetic(*self) }
 

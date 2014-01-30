@@ -66,8 +66,13 @@ pub fn all_values(blk: |v: bool|) {
 // Methods on `bool`
 /////////////////////////////////////////////////////////////////////////////
 
-/// Extension methods on a `bool`
-pub trait Bool {
+#[cfg(not(stage0), not(test))]
+#[lang = "bool_impl"]
+/// The boolean primitive for Rust.
+///
+/// This primitive can have two values, `true` and `false`, and is type type
+/// that is used to conditions in `if` statements and `while` loops.
+impl bool {
     /// Conjunction of two boolean values.
     ///
     /// # Examples
@@ -78,7 +83,7 @@ pub trait Bool {
     /// assert_eq!(false.and(true), false);
     /// assert_eq!(false.and(false), false);
     /// ```
-    fn and(self, b: bool) -> bool;
+    pub fn and(self, b: bool) -> bool { self && b }
 
     /// Disjunction of two boolean values.
     ///
@@ -90,7 +95,8 @@ pub trait Bool {
     /// assert_eq!(false.or(true), true);
     /// assert_eq!(false.or(false), false);
     /// ```
-    fn or(self, b: bool) -> bool;
+    #[inline]
+    pub fn or(self, b: bool) -> bool { self || b }
 
     /// An 'exclusive or' of two boolean values.
     ///
@@ -104,7 +110,8 @@ pub trait Bool {
     /// assert_eq!(false.xor(true), true);
     /// assert_eq!(false.xor(false), false);
     /// ```
-    fn xor(self, b: bool) -> bool;
+    #[inline]
+    pub fn xor(self, b: bool) -> bool { self ^ b }
 
     /// Implication between two boolean values.
     ///
@@ -120,7 +127,8 @@ pub trait Bool {
     /// assert_eq!(false.implies(true), true);
     /// assert_eq!(false.implies(false), true);
     /// ```
-    fn implies(self, b: bool) -> bool;
+    #[inline]
+    pub fn implies(self, b: bool) -> bool { !self || b }
 
     /// Convert a `bool` to a `u8`.
     ///
@@ -130,9 +138,24 @@ pub trait Bool {
     /// assert_eq!(true.to_bit::<u8>(), 1u8);
     /// assert_eq!(false.to_bit::<u8>(), 0u8);
     /// ```
+    #[inline]
+    pub fn to_bit<N: FromPrimitive>(self) -> N {
+        if self { FromPrimitive::from_u8(1).unwrap() }
+        else    { FromPrimitive::from_u8(0).unwrap() }
+    }
+}
+
+#[cfg(stage0)]
+#[allow(missing_doc)]
+pub trait Bool {
+    fn and(self, b: bool) -> bool;
+    fn or(self, b: bool) -> bool;
+    fn xor(self, b: bool) -> bool;
+    fn implies(self, b: bool) -> bool;
     fn to_bit<N: FromPrimitive>(self) -> N;
 }
 
+#[cfg(stage0)]
 impl Bool for bool {
     #[inline]
     fn and(self, b: bool) -> bool { self && b }
