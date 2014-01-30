@@ -85,6 +85,7 @@ src/.DS_Store
 /doc/rustdoc
 /doc/rustuv
 /doc/rustpkg
+/doc/sync
 /nd/
 /llvm/
 version.md
