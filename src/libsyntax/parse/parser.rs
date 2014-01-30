@@ -1915,25 +1915,19 @@ impl Parser {
                     let mut fields = ~[];
                     let mut base = None;
 
-                    fields.push(self.parse_field());
                     while self.token != token::RBRACE {
-                        self.commit_expr(fields.last().unwrap().expr,
-                                         &[token::COMMA], &[token::RBRACE]);
-
                         if self.eat(&token::DOTDOT) {
                             base = Some(self.parse_expr());
                             break;
                         }
 
-                        if self.token == token::RBRACE {
-                            // Accept an optional trailing comma.
-                            break;
-                        }
                         fields.push(self.parse_field());
+                        self.commit_expr(fields.last().unwrap().expr,
+                                         &[token::COMMA], &[token::RBRACE]);
                     }
 
                     hi = pth.span.hi;
-                    self.commit_expr_expecting(fields.last().unwrap().expr, token::RBRACE);
+                    self.expect(&token::RBRACE);
                     ex = ExprStruct(pth, fields, base);
                     return self.mk_expr(lo, hi, ex);
                 }
@@ -2583,8 +2577,9 @@ impl Parser {
     // For distingishing between struct literals and blocks
     fn looking_at_struct_literal(&mut self) -> bool {
         self.token == token::LBRACE &&
-        (self.look_ahead(1, |t| token::is_plain_ident(t)) &&
-         self.look_ahead(2, |t| *t == token::COLON))
+        ((self.look_ahead(1, |t| token::is_plain_ident(t)) &&
+          self.look_ahead(2, |t| *t == token::COLON))
+         || self.look_ahead(1, |t| *t == token::DOTDOT))
     }
 
     fn parse_match_expr(&mut self) -> @Expr {
