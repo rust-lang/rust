@@ -160,7 +160,7 @@ pub struct LocWithOpt {
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
 
-#[deriving(IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub enum MacroFormat {
     // e.g. #[deriving(...)] <item>
     MacroAttribute,
@@ -168,9 +168,9 @@ pub enum MacroFormat {
     MacroBang
 }
 
-#[deriving(IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub struct NameAndSpan {
-    name: @str,
+    name: ~str,
     // the format with which the macro was invoked.
     format: MacroFormat,
     span: Option<Span>
