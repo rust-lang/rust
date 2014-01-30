@@ -16,9 +16,10 @@
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
 extern mod extra;
+extern mod sync;
 
-use extra::arc;
-use extra::future::Future;
+use sync::arc;
+use sync::future::Future;
 use extra::time;
 use std::os;
 use std::uint;
