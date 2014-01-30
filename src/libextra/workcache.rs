@@ -13,7 +13,7 @@
 use json;
 use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
-use sync::{Arc,RWArc};
+use sync::arc::{Arc,RWArc};
 use treemap::TreeMap;
 use std::str;
 use std::io;
