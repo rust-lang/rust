@@ -131,7 +131,7 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     t
 }
 
-fn lazily_emit_tydesc_glue(ccx: @CrateContext, field: uint, ti: @tydesc_info) {
+pub fn lazily_emit_tydesc_glue(ccx: @CrateContext, field: uint, ti: @tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
 
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
@@ -367,17 +367,9 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
             // Only drop the value when it is non-null
             with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
-                let llvtable = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
-
-                // Cast the vtable to a pointer to a pointer to a tydesc.
-                let llvtable = PointerCast(bcx, llvtable,
-                                           ccx.tydesc_type.ptr_to().ptr_to());
-                let lltydesc = Load(bcx, llvtable);
-                call_tydesc_glue_full(bcx,
-                                      lluniquevalue,
-                                      lltydesc,
-                                      abi::tydesc_field_drop_glue,
-                                      None);
+                let lldtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+                let lldtor = Load(bcx, lldtor_ptr);
+                Call(bcx, lldtor, [PointerCast(bcx, lluniquevalue, Type::i8p())], []);
                 bcx
             })
         }
