@@ -540,10 +540,10 @@ impl<'a> Context<'a> {
 
         // rollback
         self.is_doc_hidden = old_is_doc_hidden;
-        pushed.times(|| {
+        for _ in range(0, pushed) {
             let (lint, lvl, src) = self.lint_stack.pop().unwrap();
             self.set_level(lint, lvl, src);
-        })
+        }
     }
 
     fn visit_ids(&self, f: |&mut ast_util::IdVisitor<Context>|) {

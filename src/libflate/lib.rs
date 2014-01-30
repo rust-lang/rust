@@ -103,15 +103,15 @@ mod tests {
     fn test_flate_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
-        20.times(|| {
+        for _ in range(0, 20) {
             let range = r.gen_range(1u, 10);
             words.push(r.gen_vec::<u8>(range));
-        });
-        20.times(|| {
+        }
+        for _ in range(0, 20) {
             let mut input = ~[];
-            2000.times(|| {
+            for _ in range(0, 2000) {
                 input.push_all(r.choose(words));
-            });
+            }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
             let cmp = deflate_bytes(input);
@@ -120,7 +120,7 @@ mod tests {
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
             assert_eq!(input, out);
-        });
+        }
     }
 
     #[test]

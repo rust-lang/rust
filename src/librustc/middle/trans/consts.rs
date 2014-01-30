@@ -229,12 +229,12 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                 ty::AutoDerefRef(ref adj) => {
                     let mut ty = ety;
                     let mut maybe_ptr = None;
-                    adj.autoderefs.times(|| {
+                    for _ in range(0, adj.autoderefs) {
                         let (dv, dt) = const_deref(cx, llconst, ty, false);
                         maybe_ptr = Some(llconst);
                         llconst = dv;
                         ty = dt;
-                    });
+                    }
 
                     match adj.autoref {
                         None => { }
