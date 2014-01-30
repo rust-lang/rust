@@ -531,7 +531,10 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
 pub fn check_struct(ccx: @CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
-    // Check that the class is instantiable
+    // Check that the struct is representable
+    check_representable(tcx, span, id, "struct");
+
+    // Check that the struct is instantiable
     check_instantiable(tcx, span, id);
 
     if ty::lookup_simd(tcx, local_def(id)) {
@@ -3410,6 +3413,33 @@ pub fn check_const_with_ty(fcx: @FnCtxt,
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
 
+/// Checks whether a type can be represented in memory. In particular, it
+/// identifies types that contain themselves without indirection through a
+/// pointer, which would mean their size is unbounded. This is different from
+/// the question of whether a type can be instantiated. See the definition of
+/// `check_instantiable`.
+pub fn check_representable(tcx: ty::ctxt,
+                           sp: Span,
+                           item_id: ast::NodeId,
+                           designation: &str) {
+    let rty = ty::node_id_to_type(tcx, item_id);
+
+    // Check that it is possible to represent this type. This call identifies
+    // (1) types that contain themselves and (2) types that contain a different
+    // recursive type. It is only necessary to throw an error on those that
+    // contain themselves. For case 2, there must be an inner type that will be
+    // caught by case 1.
+    match ty::is_type_representable(tcx, rty) {
+      ty::SelfRecursive => {
+        tcx.sess.span_err(
+          sp, format!("illegal recursive {} type; \
+                       wrap the inner value in a box to make it representable",
+                      designation));
+      }
+      ty::Representable | ty::ContainsRecursive => (),
+    }
+}
+
 /// Checks whether a type can be created without an instance of itself.
 /// This is similar but different from the question of whether a type
 /// can be represented.  For example, the following type:
@@ -3565,7 +3595,6 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
         return variants;
     }
 
-    let rty = ty::node_id_to_type(ccx.tcx, id);
     let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { crate: ast::LOCAL_CRATE, node: id });
     if hint != attr::ReprAny && vs.len() <= 1 {
         ccx.tcx.sess.span_err(sp, format!("unsupported representation for {}variant enum",
@@ -3580,22 +3609,8 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
         enum_var_cache.get().insert(local_def(id), @variants);
     }
 
-    // Check that it is possible to represent this enum:
-    let mut outer = true;
-    let did = local_def(id);
-    if ty::type_structurally_contains(ccx.tcx, rty, |sty| {
-        match *sty {
-          ty::ty_enum(id, _) if id == did => {
-            if outer { outer = false; false }
-            else { true }
-          }
-          _ => false
-        }
-    }) {
-        ccx.tcx.sess.span_err(sp,
-                              "illegal recursive enum type; \
-                               wrap the inner value in a box to make it representable");
-    }
+    // Check that it is possible to represent this enum.
+    check_representable(ccx.tcx, sp, id, "enum");
 
     // Check that it is possible to instantiate this enum:
     //
