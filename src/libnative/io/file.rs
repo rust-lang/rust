@@ -111,17 +111,14 @@ impl FileDesc {
 }
 
 impl io::Reader for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.inner_read(buf) { Ok(n) => Some(n), Err(..) => None }
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        self.inner_read(buf)
     }
 }
 
 impl io::Writer for FileDesc {
-    fn write(&mut self, buf: &[u8]) {
-        match self.inner_write(buf) {
-            Ok(()) => {}
-            Err(e) => { io::io_error::cond.raise(e); }
-        }
+    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
+        self.inner_write(buf)
     }
 }
 
