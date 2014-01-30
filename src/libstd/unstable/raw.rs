@@ -71,9 +71,6 @@ impl<T> Repr<*Box<T>> for @T {}
 impl<T> Repr<*Vec<T>> for ~[T] {}
 impl Repr<*String> for ~str {}
 
-// sure would be nice to have this
-// impl<T> Repr<*Vec<T>> for ~[T] {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
