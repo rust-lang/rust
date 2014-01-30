@@ -18,6 +18,7 @@
 extern mod syntax;
 extern mod rustc;
 extern mod extra;
+extern mod sync;
 
 use std::local_data;
 use std::io;

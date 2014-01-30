@@ -752,7 +752,7 @@ impl Barrier {
 
 #[cfg(test)]
 mod tests {
-    use sync::*;
+    use sync::{RWLock, Mutex, Barrier, Semaphore, Condvar};
 
     use std::cast;
     use std::result;

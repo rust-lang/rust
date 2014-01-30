@@ -19,6 +19,7 @@
 extern mod extra;
 extern mod rustc;
 extern mod syntax;
+extern mod sync;
 
 use std::{os, run, str, task};
 use std::io::process;
