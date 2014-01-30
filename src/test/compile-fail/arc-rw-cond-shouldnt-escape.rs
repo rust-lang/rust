@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: lifetime of return value does not outlive the function call
-extern mod extra;
-use extra::arc;
+extern mod sync;
+use sync::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;
