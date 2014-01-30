@@ -11,10 +11,11 @@
 //! Buffering wrappers for I/O traits
 
 use container::Container;
-use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE};
+use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
 use num;
-use option::{Option, Some, None};
+use option::{Some, None};
+use result::{Ok, Err};
 use vec::{OwnedVector, ImmutableVector, MutableVector};
 use vec;
 
@@ -86,17 +87,12 @@ impl<R: Reader> BufferedReader<R> {
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
-    fn fill<'a>(&'a mut self) -> &'a [u8] {
-        if self.pos == self.cap {
-            match self.inner.read(self.buf) {
-                Some(cap) => {
-                    self.pos = 0;
-                    self.cap = cap;
-                }
-                None => { self.eof = true; }
-            }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+        while self.pos == self.cap {
+            self.cap = if_ok!(self.inner.read(self.buf));
+            self.pos = 0;
         }
-        return self.buf.slice(self.pos, self.cap);
+        Ok(self.buf.slice(self.pos, self.cap))
     }
 
     fn consume(&mut self, amt: uint) {
@@ -106,18 +102,15 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 }
 
 impl<R: Reader> Reader for BufferedReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let nread = {
-            let available = self.fill();
+            let available = if_ok!(self.fill());
             let nread = num::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };
         self.pos += nread;
-        if nread == 0 && buf.len() != 0 && self.eof {
-            return None;
-        }
-        Some(nread)
+        Ok(nread)
     }
 }
 
@@ -161,10 +154,13 @@ impl<W: Writer> BufferedWriter<W> {
         BufferedWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    fn flush_buf(&mut self) {
+    fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            self.inner.write(self.buf.slice_to(self.pos));
+            let ret = self.inner.write(self.buf.slice_to(self.pos));
             self.pos = 0;
+            ret
+        } else {
+            Ok(())
         }
     }
 
@@ -178,29 +174,30 @@ impl<W: Writer> BufferedWriter<W> {
     ///
     /// The buffer is flushed before returning the writer.
     pub fn unwrap(mut self) -> W {
-        self.flush_buf();
+        // FIXME: is failing the right thing to do if flushing fails?
+        self.flush_buf().unwrap();
         self.inner
     }
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos + buf.len() > self.buf.len() {
-            self.flush_buf();
+            if_ok!(self.flush_buf());
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.write(buf);
+            self.inner.write(buf)
         } else {
             let dst = self.buf.mut_slice_from(self.pos);
             vec::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
+            Ok(())
         }
     }
 
-    fn flush(&mut self) {
-        self.flush_buf();
-        self.inner.flush();
+    fn flush(&mut self) -> IoResult<()> {
+        self.flush_buf().and_then(|()| self.inner.flush())
     }
 }
 
@@ -234,18 +231,19 @@ impl<W: Writer> LineBufferedWriter<W> {
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == '\n' as u8) {
             Some(i) => {
-                self.inner.write(buf.slice_to(i + 1));
-                self.inner.flush();
-                self.inner.write(buf.slice_from(i + 1));
+                if_ok!(self.inner.write(buf.slice_to(i + 1)));
+                if_ok!(self.inner.flush());
+                if_ok!(self.inner.write(buf.slice_from(i + 1)));
+                Ok(())
             }
             None => self.inner.write(buf),
         }
     }
 
-    fn flush(&mut self) { self.inner.flush() }
+    fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
 }
 
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
@@ -258,7 +256,9 @@ impl<W> InternalBufferedWriter<W> {
 }
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.get_mut_ref().inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.get_mut_ref().inner.read(buf)
+    }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
@@ -326,17 +326,23 @@ impl<S: Stream> BufferedStream<S> {
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {
-    fn fill<'a>(&'a mut self) -> &'a [u8] { self.inner.fill() }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 
 impl<S: Stream> Reader for BufferedStream<S> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.read(buf)
+    }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
-    fn write(&mut self, buf: &[u8]) { self.inner.inner.get_mut_ref().write(buf) }
-    fn flush(&mut self) { self.inner.inner.get_mut_ref().flush() }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.inner.inner.get_mut_ref().write(buf)
+    }
+    fn flush(&mut self) -> IoResult<()> {
+        self.inner.inner.get_mut_ref().flush()
+    }
 }
 
 #[cfg(test)]

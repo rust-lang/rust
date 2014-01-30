@@ -62,7 +62,7 @@ impl OSRng {
     pub fn new() -> OSRng {
         use path::Path;
         let reader = File::open(&Path::new("/dev/urandom"));
-        let reader = reader.expect("Error opening /dev/urandom");
+        let reader = reader.ok().expect("Error opening /dev/urandom");
         let reader_rng = ReaderRng::new(reader);
 
         OSRng { inner: reader_rng }

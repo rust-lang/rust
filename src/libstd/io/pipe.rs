@@ -14,7 +14,7 @@
 //! enough so that pipes can be created to child processes.
 
 use prelude::*;
-use io::{io_error, EndOfFile};
+use io::IoResult;
 use libc;
 use rt::rtio::{RtioPipe, LocalIo};
 
@@ -42,7 +42,7 @@ impl PipeStream {
     ///
     /// If the pipe cannot be created, an error will be raised on the
     /// `io_error` condition.
-    pub fn open(fd: libc::c_int) -> Option<PipeStream> {
+    pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
         LocalIo::maybe_raise(|io| {
             io.pipe_open(fd).map(|obj| PipeStream { obj: obj })
         })
@@ -54,29 +54,11 @@ impl PipeStream {
 }
 
 impl Reader for PipeStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.obj.read(buf) {
-            Ok(read) => Some(read),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                return None;
-            }
-        }
-    }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) {
-        match self.obj.write(buf) {
-            Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
-        }
-    }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
 #[cfg(test)]

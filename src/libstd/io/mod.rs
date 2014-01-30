@@ -290,15 +290,15 @@ Out of scope
 
 use cast;
 use char::Char;
-use condition::Guard;
 use container::Container;
+use fmt;
 use int;
 use iter::Iterator;
 use option::{Option, Some, None};
 use path::Path;
 use result::{Ok, Err, Result};
-use str;
 use str::{StrSlice, OwnedStr};
+use str;
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
@@ -347,8 +347,8 @@ mod mem;
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
-/// Implementations for Option
-mod option;
+/// Implementations for Result
+mod result;
 
 /// Extension traits
 pub mod extensions;
@@ -373,15 +373,28 @@ mod comm_adapters;
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
+pub type IoResult<T> = Result<T, IoError>;
+
 /// The type passed to I/O condition handlers to indicate error
 ///
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
+#[deriving(Eq, Clone)]
 pub struct IoError {
     kind: IoErrorKind,
     desc: &'static str,
     detail: Option<~str>
+}
+
+impl fmt::Default for IoError {
+    fn fmt(err: &IoError, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(fmt.buf.write_str(err.desc));
+        match err.detail {
+            Some(ref s) => write!(fmt.buf, " ({})", *s),
+            None => Ok(())
+        }
+    }
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -398,9 +411,8 @@ impl ToStr for IoError {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 pub enum IoErrorKind {
-    PreviousIoError,
     OtherIoError,
     EndOfFile,
     FileNotFound,
@@ -424,7 +436,6 @@ pub enum IoErrorKind {
 impl ToStr for IoErrorKind {
     fn to_str(&self) -> ~str {
         match *self {
-            PreviousIoError => ~"PreviousIoError",
             OtherIoError => ~"OtherIoError",
             EndOfFile => ~"EndOfFile",
             FileNotFound => ~"FileNotFound",
@@ -443,38 +454,6 @@ impl ToStr for IoErrorKind {
             ConnectionAborted => ~"ConnectionAborted",
             InvalidInput => ~"InvalidInput",
         }
-    }
-}
-
-// FIXME: Can't put doc comments on macros
-// Raised by `I/O` operations on error.
-condition! {
-    pub io_error: IoError -> ();
-}
-
-/// Helper for wrapper calls where you want to
-/// ignore any io_errors that might be raised
-pub fn ignore_io_error() -> Guard<'static,IoError,()> {
-    io_error::cond.trap(|_| {
-        // just swallow the error.. downstream users
-        // who can make a decision based on a None result
-        // won't care
-    }).guard()
-}
-
-/// Helper for catching an I/O error and wrapping it in a Result object. The
-/// return result will be the last I/O error that happened or the result of the
-/// closure if no error occurred.
-pub fn result<T>(cb: || -> T) -> Result<T, IoError> {
-    let mut err = None;
-    let ret = io_error::cond.trap(|e| {
-        if err.is_none() {
-            err = Some(e);
-        }
-    }).inside(cb);
-    match err {
-        Some(e) => Err(e),
-        None => Ok(ret),
     }
 }
 
@@ -504,7 +483,7 @@ pub trait Reader {
     /// Will people often need to slice their vectors to call this
     /// and will that be annoying?
     /// Is it actually possible for 0 bytes to be read successfully?
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint>;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
 
     // Convenient helper methods based on the above methods
 
@@ -514,16 +493,17 @@ pub trait Reader {
     ///
     /// Raises the same conditions as the `read` method. Returns
     /// `None` if the condition is handled.
-    fn read_byte(&mut self) -> Option<u8> {
+    fn read_byte(&mut self) -> IoResult<u8> {
         let mut buf = [0];
-        match self.read(buf) {
-            Some(0) => {
-                debug!("read 0 bytes. trying again");
-                self.read_byte()
+        loop {
+            match self.read(buf) {
+                Ok(0) => {
+                    debug!("read 0 bytes. trying again");
+                }
+                Ok(1) => return Ok(buf[0]),
+                Ok(_) => unreachable!(),
+                Err(e) => return Err(e)
             }
-            Some(1) => Some(buf[0]),
-            Some(_) => unreachable!(),
-            None => None
         }
     }
 
@@ -537,30 +517,26 @@ pub trait Reader {
     /// Raises the same conditions as `read`. Additionally raises `io_error`
     /// on EOF. If `io_error` is handled then `push_bytes` may push less
     /// than the requested number of bytes.
-    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) {
-        unsafe {
-            let start_len = buf.len();
-            let mut total_read = 0;
+    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
+        let start_len = buf.len();
+        let mut total_read = 0;
 
-            buf.reserve_additional(len);
-            buf.set_len(start_len + len);
+        buf.reserve_additional(len);
+        unsafe { buf.set_len(start_len + len); }
 
-            (|| {
-                while total_read < len {
-                    let len = buf.len();
-                    let slice = buf.mut_slice(start_len + total_read, len);
-                    match self.read(slice) {
-                        Some(nread) => {
-                            total_read += nread;
-                        }
-                        None => {
-                            io_error::cond.raise(standard_error(EndOfFile));
-                            break;
-                        }
+        (|| {
+            while total_read < len {
+                let len = buf.len();
+                let slice = buf.mut_slice(start_len + total_read, len);
+                match self.read(slice) {
+                    Ok(nread) => {
+                        total_read += nread;
                     }
+                    Err(e) => return Err(e)
                 }
-            }).finally(|| buf.set_len(start_len + total_read))
-        }
+            }
+            Ok(())
+        }).finally(|| unsafe { buf.set_len(start_len + total_read) })
     }
 
     /// Reads `len` bytes and gives you back a new vector of length `len`
@@ -570,10 +546,10 @@ pub trait Reader {
     /// Raises the same conditions as `read`. Additionally raises `io_error`
     /// on EOF. If `io_error` is handled then the returned vector may
     /// contain less than the requested number of bytes.
-    fn read_bytes(&mut self, len: uint) -> ~[u8] {
+    fn read_bytes(&mut self, len: uint) -> IoResult<~[u8]> {
         let mut buf = vec::with_capacity(len);
-        self.push_bytes(&mut buf, len);
-        return buf;
+        if_ok!(self.push_bytes(&mut buf, len));
+        return Ok(buf);
     }
 
     /// Reads all remaining bytes from the stream.
@@ -582,21 +558,16 @@ pub trait Reader {
     ///
     /// Raises the same conditions as the `read` method except for
     /// `EndOfFile` which is swallowed.
-    fn read_to_end(&mut self) -> ~[u8] {
+    fn read_to_end(&mut self) -> IoResult<~[u8]> {
         let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
-        let mut keep_reading = true;
-        io_error::cond.trap(|e| {
-            if e.kind == EndOfFile {
-                keep_reading = false;
-            } else {
-                io_error::cond.raise(e)
+        loop {
+            match self.push_bytes(&mut buf, DEFAULT_BUF_SIZE) {
+                Ok(()) => {}
+                Err(ref e) if e.kind == EndOfFile => break,
+                Err(e) => return Err(e)
             }
-        }).inside(|| {
-            while keep_reading {
-                self.push_bytes(&mut buf, DEFAULT_BUF_SIZE)
-            }
-        });
-        return buf;
+        }
+        return Ok(buf);
     }
 
     /// Reads all of the remaining bytes of this stream, interpreting them as a
@@ -606,14 +577,13 @@ pub trait Reader {
     ///
     /// This function will raise all the same conditions as the `read` method,
     /// along with raising a condition if the input is not valid UTF-8.
-    fn read_to_str(&mut self) -> ~str {
-        match str::from_utf8_owned(self.read_to_end()) {
-            Some(s) => s,
-            None => {
-                io_error::cond.raise(standard_error(InvalidInput));
-                ~""
+    fn read_to_str(&mut self) -> IoResult<~str> {
+        self.read_to_end().and_then(|s| {
+            match str::from_utf8_owned(s) {
+                Some(s) => Ok(s),
+                None => Err(standard_error(InvalidInput)),
             }
-        }
+        })
     }
 
     /// Create an iterator that reads a single byte on
@@ -633,225 +603,219 @@ pub trait Reader {
     /// Reads `n` little-endian unsigned integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_le_uint_n(&mut self, nbytes: uint) -> u64 {
+    fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64;
         let mut pos = 0;
         let mut i = nbytes;
         while i > 0 {
-            val += (self.read_u8() as u64) << pos;
+            val += (if_ok!(self.read_u8()) as u64) << pos;
             pos += 8;
             i -= 1;
         }
-        val
+        Ok(val)
     }
 
     /// Reads `n` little-endian signed integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_le_int_n(&mut self, nbytes: uint) -> i64 {
-        extend_sign(self.read_le_uint_n(nbytes), nbytes)
+    fn read_le_int_n(&mut self, nbytes: uint) -> IoResult<i64> {
+        self.read_le_uint_n(nbytes).map(|i| extend_sign(i, nbytes))
     }
 
     /// Reads `n` big-endian unsigned integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_be_uint_n(&mut self, nbytes: uint) -> u64 {
+    fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64;
         let mut i = nbytes;
         while i > 0 {
             i -= 1;
-            val += (self.read_u8() as u64) << i * 8;
+            val += (if_ok!(self.read_u8()) as u64) << i * 8;
         }
-        val
+        Ok(val)
     }
 
     /// Reads `n` big-endian signed integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_be_int_n(&mut self, nbytes: uint) -> i64 {
-        extend_sign(self.read_be_uint_n(nbytes), nbytes)
+    fn read_be_int_n(&mut self, nbytes: uint) -> IoResult<i64> {
+        self.read_be_uint_n(nbytes).map(|i| extend_sign(i, nbytes))
     }
 
     /// Reads a little-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependant.
-    fn read_le_uint(&mut self) -> uint {
-        self.read_le_uint_n(uint::BYTES) as uint
+    fn read_le_uint(&mut self) -> IoResult<uint> {
+        self.read_le_uint_n(uint::BYTES).map(|i| i as uint)
     }
 
     /// Reads a little-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
-    fn read_le_int(&mut self) -> int {
-        self.read_le_int_n(int::BYTES) as int
+    fn read_le_int(&mut self) -> IoResult<int> {
+        self.read_le_int_n(int::BYTES).map(|i| i as int)
     }
 
     /// Reads a big-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependant.
-    fn read_be_uint(&mut self) -> uint {
-        self.read_be_uint_n(uint::BYTES) as uint
+    fn read_be_uint(&mut self) -> IoResult<uint> {
+        self.read_be_uint_n(uint::BYTES).map(|i| i as uint)
     }
 
     /// Reads a big-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
-    fn read_be_int(&mut self) -> int {
-        self.read_be_int_n(int::BYTES) as int
+    fn read_be_int(&mut self) -> IoResult<int> {
+        self.read_be_int_n(int::BYTES).map(|i| i as int)
     }
 
     /// Reads a big-endian `u64`.
     ///
     /// `u64`s are 8 bytes long.
-    fn read_be_u64(&mut self) -> u64 {
+    fn read_be_u64(&mut self) -> IoResult<u64> {
         self.read_be_uint_n(8)
     }
 
     /// Reads a big-endian `u32`.
     ///
     /// `u32`s are 4 bytes long.
-    fn read_be_u32(&mut self) -> u32 {
-        self.read_be_uint_n(4) as u32
+    fn read_be_u32(&mut self) -> IoResult<u32> {
+        self.read_be_uint_n(4).map(|i| i as u32)
     }
 
     /// Reads a big-endian `u16`.
     ///
     /// `u16`s are 2 bytes long.
-    fn read_be_u16(&mut self) -> u16 {
-        self.read_be_uint_n(2) as u16
+    fn read_be_u16(&mut self) -> IoResult<u16> {
+        self.read_be_uint_n(2).map(|i| i as u16)
     }
 
     /// Reads a big-endian `i64`.
     ///
     /// `i64`s are 8 bytes long.
-    fn read_be_i64(&mut self) -> i64 {
+    fn read_be_i64(&mut self) -> IoResult<i64> {
         self.read_be_int_n(8)
     }
 
     /// Reads a big-endian `i32`.
     ///
     /// `i32`s are 4 bytes long.
-    fn read_be_i32(&mut self) -> i32 {
-        self.read_be_int_n(4) as i32
+    fn read_be_i32(&mut self) -> IoResult<i32> {
+        self.read_be_int_n(4).map(|i| i as i32)
     }
 
     /// Reads a big-endian `i16`.
     ///
     /// `i16`s are 2 bytes long.
-    fn read_be_i16(&mut self) -> i16 {
-        self.read_be_int_n(2) as i16
+    fn read_be_i16(&mut self) -> IoResult<i16> {
+        self.read_be_int_n(2).map(|i| i as i16)
     }
 
     /// Reads a big-endian `f64`.
     ///
     /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
-    fn read_be_f64(&mut self) -> f64 {
-        unsafe {
-            cast::transmute::<u64, f64>(self.read_be_u64())
-        }
+    fn read_be_f64(&mut self) -> IoResult<f64> {
+        self.read_be_u64().map(|i| unsafe {
+            cast::transmute::<u64, f64>(i)
+        })
     }
 
     /// Reads a big-endian `f32`.
     ///
     /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
-    fn read_be_f32(&mut self) -> f32 {
-        unsafe {
-            cast::transmute::<u32, f32>(self.read_be_u32())
-        }
+    fn read_be_f32(&mut self) -> IoResult<f32> {
+        self.read_be_u32().map(|i| unsafe {
+            cast::transmute::<u32, f32>(i)
+        })
     }
 
     /// Reads a little-endian `u64`.
     ///
     /// `u64`s are 8 bytes long.
-    fn read_le_u64(&mut self) -> u64 {
+    fn read_le_u64(&mut self) -> IoResult<u64> {
         self.read_le_uint_n(8)
     }
 
     /// Reads a little-endian `u32`.
     ///
     /// `u32`s are 4 bytes long.
-    fn read_le_u32(&mut self) -> u32 {
-        self.read_le_uint_n(4) as u32
+    fn read_le_u32(&mut self) -> IoResult<u32> {
+        self.read_le_uint_n(4).map(|i| i as u32)
     }
 
     /// Reads a little-endian `u16`.
     ///
     /// `u16`s are 2 bytes long.
-    fn read_le_u16(&mut self) -> u16 {
-        self.read_le_uint_n(2) as u16
+    fn read_le_u16(&mut self) -> IoResult<u16> {
+        self.read_le_uint_n(2).map(|i| i as u16)
     }
 
     /// Reads a little-endian `i64`.
     ///
     /// `i64`s are 8 bytes long.
-    fn read_le_i64(&mut self) -> i64 {
+    fn read_le_i64(&mut self) -> IoResult<i64> {
         self.read_le_int_n(8)
     }
 
     /// Reads a little-endian `i32`.
     ///
     /// `i32`s are 4 bytes long.
-    fn read_le_i32(&mut self) -> i32 {
-        self.read_le_int_n(4) as i32
+    fn read_le_i32(&mut self) -> IoResult<i32> {
+        self.read_le_int_n(4).map(|i| i as i32)
     }
 
     /// Reads a little-endian `i16`.
     ///
     /// `i16`s are 2 bytes long.
-    fn read_le_i16(&mut self) -> i16 {
-        self.read_le_int_n(2) as i16
+    fn read_le_i16(&mut self) -> IoResult<i16> {
+        self.read_le_int_n(2).map(|i| i as i16)
     }
 
     /// Reads a little-endian `f64`.
     ///
     /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
-    fn read_le_f64(&mut self) -> f64 {
-        unsafe {
-            cast::transmute::<u64, f64>(self.read_le_u64())
-        }
+    fn read_le_f64(&mut self) -> IoResult<f64> {
+        self.read_le_u64().map(|i| unsafe {
+            cast::transmute::<u64, f64>(i)
+        })
     }
 
     /// Reads a little-endian `f32`.
     ///
     /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
-    fn read_le_f32(&mut self) -> f32 {
-        unsafe {
-            cast::transmute::<u32, f32>(self.read_le_u32())
-        }
+    fn read_le_f32(&mut self) -> IoResult<f32> {
+        self.read_le_u32().map(|i| unsafe {
+            cast::transmute::<u32, f32>(i)
+        })
     }
 
     /// Read a u8.
     ///
     /// `u8`s are 1 byte.
-    fn read_u8(&mut self) -> u8 {
-        match self.read_byte() {
-            Some(b) => b,
-            None => 0
-        }
+    fn read_u8(&mut self) -> IoResult<u8> {
+        self.read_byte()
     }
 
     /// Read an i8.
     ///
     /// `i8`s are 1 byte.
-    fn read_i8(&mut self) -> i8 {
-        match self.read_byte() {
-            Some(b) => b as i8,
-            None => 0
-        }
+    fn read_i8(&mut self) -> IoResult<i8> {
+        self.read_byte().map(|i| i as i8)
     }
 
 }
 
 impl Reader for ~Reader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
 impl<'a> Reader for &'a mut Reader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
@@ -865,14 +829,14 @@ pub trait Writer {
     /// # Failure
     ///
     /// Raises the `io_error` condition on error
-    fn write(&mut self, buf: &[u8]);
+    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
 
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
     ///
     /// This is by default a no-op and implementers of the `Writer` trait should
     /// decide whether their stream needs to be buffered or not.
-    fn flush(&mut self) {}
+    fn flush(&mut self) -> IoResult<()> { Ok(()) }
 
     /// Write a rust string into this sink.
     ///
@@ -880,8 +844,8 @@ pub trait Writer {
     /// If other encodings are desired, it is recommended to compose this stream
     /// with another performing the conversion, or to use `write` with a
     /// converted byte-array instead.
-    fn write_str(&mut self, s: &str) {
-        self.write(s.as_bytes());
+    fn write_str(&mut self, s: &str) -> IoResult<()> {
+        self.write(s.as_bytes())
     }
 
     /// Writes a string into this sink, and then writes a literal newline (`\n`)
@@ -891,125 +855,124 @@ pub trait Writer {
     ///
     /// If other encodings or line ending flavors are desired, it is recommended
     /// that the `write` method is used specifically instead.
-    fn write_line(&mut self, s: &str) {
-        self.write_str(s);
-        self.write(['\n' as u8]);
+    fn write_line(&mut self, s: &str) -> IoResult<()> {
+        self.write_str(s).and_then(|()| self.write(['\n' as u8]))
     }
 
     /// Write a single char, encoded as UTF-8.
-    fn write_char(&mut self, c: char) {
+    fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8, ..4];
         let n = c.encode_utf8(buf.as_mut_slice());
-        self.write(buf.slice_to(n));
+        self.write(buf.slice_to(n))
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.
-    fn write_int(&mut self, n: int) {
+    fn write_int(&mut self, n: int) -> IoResult<()> {
         int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
 
     /// Write the result of passing n through `uint::to_str_bytes`.
-    fn write_uint(&mut self, n: uint) {
+    fn write_uint(&mut self, n: uint) -> IoResult<()> {
         uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
 
     /// Write a little-endian uint (number of bytes depends on system).
-    fn write_le_uint(&mut self, n: uint) {
+    fn write_le_uint(&mut self, n: uint) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a little-endian int (number of bytes depends on system).
-    fn write_le_int(&mut self, n: int) {
+    fn write_le_int(&mut self, n: int) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian uint (number of bytes depends on system).
-    fn write_be_uint(&mut self, n: uint) {
+    fn write_be_uint(&mut self, n: uint) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian int (number of bytes depends on system).
-    fn write_be_int(&mut self, n: int) {
+    fn write_be_int(&mut self, n: int) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian u64 (8 bytes).
-    fn write_be_u64(&mut self, n: u64) {
+    fn write_be_u64(&mut self, n: u64) -> IoResult<()> {
         extensions::u64_to_be_bytes(n, 8u, |v| self.write(v))
     }
 
     /// Write a big-endian u32 (4 bytes).
-    fn write_be_u32(&mut self, n: u32) {
+    fn write_be_u32(&mut self, n: u32) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a big-endian u16 (2 bytes).
-    fn write_be_u16(&mut self, n: u16) {
+    fn write_be_u16(&mut self, n: u16) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a big-endian i64 (8 bytes).
-    fn write_be_i64(&mut self, n: i64) {
+    fn write_be_i64(&mut self, n: i64) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
     }
 
     /// Write a big-endian i32 (4 bytes).
-    fn write_be_i32(&mut self, n: i32) {
+    fn write_be_i32(&mut self, n: i32) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a big-endian i16 (2 bytes).
-    fn write_be_i16(&mut self, n: i16) {
+    fn write_be_i16(&mut self, n: i16) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
-    fn write_be_f64(&mut self, f: f64) {
+    fn write_be_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
             self.write_be_u64(cast::transmute(f))
         }
     }
 
     /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
-    fn write_be_f32(&mut self, f: f32) {
+    fn write_be_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
             self.write_be_u32(cast::transmute(f))
         }
     }
 
     /// Write a little-endian u64 (8 bytes).
-    fn write_le_u64(&mut self, n: u64) {
+    fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
         extensions::u64_to_le_bytes(n, 8u, |v| self.write(v))
     }
 
     /// Write a little-endian u32 (4 bytes).
-    fn write_le_u32(&mut self, n: u32) {
+    fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a little-endian u16 (2 bytes).
-    fn write_le_u16(&mut self, n: u16) {
+    fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a little-endian i64 (8 bytes).
-    fn write_le_i64(&mut self, n: i64) {
+    fn write_le_i64(&mut self, n: i64) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
     }
 
     /// Write a little-endian i32 (4 bytes).
-    fn write_le_i32(&mut self, n: i32) {
+    fn write_le_i32(&mut self, n: i32) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
     }
 
     /// Write a little-endian i16 (2 bytes).
-    fn write_le_i16(&mut self, n: i16) {
+    fn write_le_i16(&mut self, n: i16) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
 
     /// Write a little-endian IEEE754 double-precision floating-point
     /// (8 bytes).
-    fn write_le_f64(&mut self, f: f64) {
+    fn write_le_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
             self.write_le_u64(cast::transmute(f))
         }
@@ -1017,31 +980,31 @@ pub trait Writer {
 
     /// Write a little-endian IEEE754 single-precision floating-point
     /// (4 bytes).
-    fn write_le_f32(&mut self, f: f32) {
+    fn write_le_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
             self.write_le_u32(cast::transmute(f))
         }
     }
 
     /// Write a u8 (1 byte).
-    fn write_u8(&mut self, n: u8) {
+    fn write_u8(&mut self, n: u8) -> IoResult<()> {
         self.write([n])
     }
 
     /// Write a i8 (1 byte).
-    fn write_i8(&mut self, n: i8) {
+    fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
 }
 
 impl Writer for ~Writer {
-    fn write(&mut self, buf: &[u8]) { self.write(buf) }
-    fn flush(&mut self) { self.flush() }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+    fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
 impl<'a> Writer for &'a mut Writer {
-    fn write(&mut self, buf: &[u8]) { self.write(buf) }
-    fn flush(&mut self) { self.flush() }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
+    fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
 pub trait Stream: Reader + Writer { }
@@ -1068,7 +1031,7 @@ pub struct Lines<'r, T> {
 
 impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
     fn next(&mut self) -> Option<~str> {
-        self.buffer.read_line()
+        self.buffer.read_line().ok()
     }
 }
 
@@ -1089,7 +1052,7 @@ pub trait Buffer: Reader {
     ///
     /// This function will raise on the `io_error` condition if a read error is
     /// encountered.
-    fn fill<'a>(&'a mut self) -> &'a [u8];
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]>;
 
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
     /// so they should no longer be returned in calls to `fill` or `read`.
@@ -1116,7 +1079,7 @@ pub trait Buffer: Reader {
     /// `EndOfFile` which is swallowed) if a read error is encountered.
     /// The task will also fail if sequence of bytes leading up to
     /// the newline character are not valid UTF-8.
-    fn read_line(&mut self) -> Option<~str> {
+    fn read_line(&mut self) -> IoResult<~str> {
         self.read_until('\n' as u8).map(|line| str::from_utf8_owned(line).unwrap())
     }
 
@@ -1140,39 +1103,32 @@ pub trait Buffer: Reader {
     ///
     /// This function will raise on the `io_error` condition if a read error is
     /// encountered, except that `EndOfFile` is swallowed.
-    fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
+    fn read_until(&mut self, byte: u8) -> IoResult<~[u8]> {
         let mut res = ~[];
 
-        io_error::cond.trap(|e| {
-            if e.kind != EndOfFile {
-                io_error::cond.raise(e);
-            }
-        }).inside(|| {
-            let mut used;
-            loop {
-                {
-                    let available = self.fill();
-                    match available.iter().position(|&b| b == byte) {
-                        Some(i) => {
-                            res.push_all(available.slice_to(i + 1));
-                            used = i + 1;
-                            break
-                        }
-                        None => {
-                            res.push_all(available);
-                            used = available.len();
-                        }
+        let mut used;
+        loop {
+            {
+                let available = if_ok!(self.fill());
+                match available.iter().position(|&b| b == byte) {
+                    Some(i) => {
+                        res.push_all(available.slice_to(i + 1));
+                        used = i + 1;
+                        break
+                    }
+                    None => {
+                        res.push_all(available);
+                        used = available.len();
                     }
                 }
-                if used == 0 {
-                    break
-                }
-                self.consume(used);
+            }
+            if used == 0 {
+                break
             }
             self.consume(used);
-        });
-        return if res.len() == 0 {None} else {Some(res)};
-
+        }
+        self.consume(used);
+        Ok(res)
     }
 
     /// Reads the next utf8-encoded character from the underlying stream.
@@ -1184,27 +1140,26 @@ pub trait Buffer: Reader {
     ///
     /// This function will raise on the `io_error` condition if a read error is
     /// encountered.
-    fn read_char(&mut self) -> Option<char> {
+    fn read_char(&mut self) -> IoResult<char> {
         let width = {
-            let available = self.fill();
-            if available.len() == 0 { return None } // read error
+            let available = if_ok!(self.fill());
             str::utf8_char_width(available[0])
         };
-        if width == 0 { return None } // not uf8
+        if width == 0 { return Err(standard_error(InvalidInput)) } // not uf8
         let mut buf = [0, ..4];
         {
             let mut start = 0;
             loop {
-                match self.read(buf.mut_slice(start, width)) {
-                    Some(n) if n == width - start => break,
-                    Some(n) if n < width - start => { start += n; }
-                    Some(..) | None => return None // read error
+                match if_ok!(self.read(buf.mut_slice(start, width))) {
+                    n if n == width - start => break,
+                    n if n < width - start => { start += n; }
+                    _ => return Err(standard_error(InvalidInput)),
                 }
             }
         }
         match str::from_utf8(buf.slice_to(width)) {
-            Some(s) => Some(s.char_at(0)),
-            None => None
+            Some(s) => Ok(s.char_at(0)),
+            None => Err(standard_error(InvalidInput))
         }
     }
 }
@@ -1222,7 +1177,7 @@ pub enum SeekStyle {
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     /// Return position of file cursor in the stream
-    fn tell(&self) -> u64;
+    fn tell(&self) -> IoResult<u64>;
 
     /// Seek to an offset in a stream
     ///
@@ -1231,7 +1186,7 @@ pub trait Seek {
     /// # FIXME
     ///
     /// * What is the behavior when seeking past the end of a stream?
-    fn seek(&mut self, pos: i64, style: SeekStyle);
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()>;
 }
 
 /// A listener is a value that can consume itself to start listening for connections.
@@ -1243,7 +1198,7 @@ pub trait Listener<T, A: Acceptor<T>> {
     ///
     /// Raises `io_error` condition. If the condition is handled,
     /// then `listen` returns `None`.
-    fn listen(self) -> Option<A>;
+    fn listen(self) -> IoResult<A>;
 }
 
 /// An acceptor is a value that presents incoming connections
@@ -1253,7 +1208,7 @@ pub trait Acceptor<T> {
     /// # Failure
     /// Raise `io_error` condition. If the condition is handled,
     /// then `accept` returns `None`.
-    fn accept(&mut self) -> Option<T>;
+    fn accept(&mut self) -> IoResult<T>;
 
     /// Create an iterator over incoming connection attempts
     fn incoming<'r>(&'r mut self) -> IncomingConnections<'r, Self> {
@@ -1272,15 +1227,14 @@ pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
 }
 
-impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingConnections<'a, A> {
-    fn next(&mut self) -> Option<Option<T>> {
+impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
+    fn next(&mut self) -> Option<IoResult<T>> {
         Some(self.inc.accept())
     }
 }
 
 pub fn standard_error(kind: IoErrorKind) -> IoError {
     let desc = match kind {
-        PreviousIoError => "failing due to previous I/O error",
         EndOfFile => "end of file",
         IoUnavailable => "I/O is unavailable",
         InvalidInput => "invalid input",

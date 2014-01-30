@@ -14,7 +14,7 @@ use prelude::*;
 
 use libc;
 use io;
-use io::io_error;
+use io::IoResult;
 use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 use fmt;
@@ -93,7 +93,7 @@ pub enum ProcessExit {
 
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
-    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) {
+    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) -> fmt::Result {
         match *obj {
             ExitStatus(code) =>  write!(f.buf, "exit code: {}", code),
             ExitSignal(code) =>  write!(f.buf, "signal: {}", code),
@@ -118,7 +118,7 @@ impl ProcessExit {
 impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
-    pub fn new(config: ProcessConfig) -> Option<Process> {
+    pub fn new(config: ProcessConfig) -> IoResult<Process> {
         let mut config = Some(config);
         LocalIo::maybe_raise(|io| {
             io.spawn(config.take_unwrap()).map(|(p, io)| {
@@ -142,13 +142,8 @@ impl Process {
     /// function.
     ///
     /// If the signal delivery fails, then the `io_error` condition is raised on
-    pub fn signal(&mut self, signal: int) {
-        match self.handle.kill(signal) {
-            Ok(()) => {}
-            Err(err) => {
-                io_error::cond.raise(err)
-            }
-        }
+    pub fn signal(&mut self, signal: int) -> IoResult<()> {
+        self.handle.kill(signal)
     }
 
     /// Wait for the child to exit completely, returning the status that it

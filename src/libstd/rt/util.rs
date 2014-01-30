@@ -11,10 +11,12 @@
 use container::Container;
 use fmt;
 use from_str::FromStr;
+use io::IoResult;
 use iter::Iterator;
 use libc;
 use option::{Some, None, Option};
 use os;
+use result::Ok;
 use str::StrSlice;
 use unstable::running_on_valgrind;
 use vec::ImmutableVector;
@@ -73,16 +75,17 @@ pub fn dumb_println(args: &fmt::Arguments) {
 
     struct Stderr;
     impl io::Writer for Stderr {
-        fn write(&mut self, data: &[u8]) {
+        fn write(&mut self, data: &[u8]) -> IoResult<()> {
             unsafe {
                 libc::write(libc::STDERR_FILENO,
                             data.as_ptr() as *libc::c_void,
                             data.len() as libc::size_t);
             }
+            Ok(()) // yes, we're lying
         }
     }
     let mut w = Stderr;
-    fmt::writeln(&mut w as &mut io::Writer, args);
+    let _ = fmt::writeln(&mut w as &mut io::Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {
