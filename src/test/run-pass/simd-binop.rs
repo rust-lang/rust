@@ -10,7 +10,7 @@
 
 #[allow(experimental)];
 
-use std::unstable::simd::{i32x4, f32x4};
+use std::unstable::simd::{i32x4, f32x4, u32x4};
 
 fn test_int(e: i32) -> i32 {
     let v = i32x4(e, 0i32, 0i32, 0i32);
@@ -24,7 +24,15 @@ fn test_float(e: f32) -> f32 {
     e2
 }
 
+pub fn test_shift(e: u32) -> u32 {
+    let v = u32x4(e, 0u32, 0u32, 0u32);
+    let one = u32x4(1u32, 0u32, 0u32, 0u32);
+    let u32x4(e2, _, _, _) = v << one >> one;
+    e2
+}
+
 pub fn main() {
     assert_eq!(test_int(3i32), 9i32);
     assert_eq!(test_float(3f32), 9f32);
+    assert_eq!(test_shift(3u32), 3u32);
 }
