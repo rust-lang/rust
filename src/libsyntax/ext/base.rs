@@ -335,7 +335,8 @@ impl<'a> ExtCtxt<'a> {
                     Some(@ExpnInfo {
                         call_site: Span {lo: cs.lo, hi: cs.hi,
                                          expn_info: self.backtrace},
-                        callee: *callee});
+                        callee: (*callee).clone()
+                    });
             }
         }
     }
