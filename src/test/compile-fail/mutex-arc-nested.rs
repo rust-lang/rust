@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern mod sync;
 
 use std::task;
-use extra::arc::{MutexArc};
+use sync::MutexArc;
 
 fn test_mutex_arc_nested() {
     let arc = ~MutexArc::new(1);

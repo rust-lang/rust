@@ -10,14 +10,14 @@
 
 // error-pattern: use of moved value
 
-extern mod extra;
-use extra::arc;
+extern mod sync;
+use sync::Arc;
 
 use std::task;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let arc_v = arc::Arc::new(v);
+    let arc_v = Arc::new(v);
 
     task::spawn(proc() {
         let v = arc_v.get();

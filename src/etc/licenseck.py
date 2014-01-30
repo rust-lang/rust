@@ -41,7 +41,7 @@ exceptions = [
     "libstd/sync/mpsc_queue.rs", # BSD
     "libstd/sync/spsc_queue.rs", # BSD
     "libstd/sync/mpmc_bounded_queue.rs", # BSD
-    "libextra/sync/mpsc_intrusive.rs", # BSD
+    "libsync/sync/mpsc_intrusive.rs", # BSD
 ]
 
 def check_license(name, contents):

@@ -83,7 +83,7 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// # Example
 ///
 /// ```rust
-/// use extra::sync::mutex::Mutex;
+/// use sync::mutex::Mutex;
 ///
 /// let mut m = Mutex::new();
 /// let guard = m.lock();
@@ -113,7 +113,7 @@ enum Flavor {
 /// # Example
 ///
 /// ```rust
-/// use extra::sync::mutex::{StaticMutex, MUTEX_INIT};
+/// use sync::mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// static mut LOCK: StaticMutex = MUTEX_INIT;
 ///

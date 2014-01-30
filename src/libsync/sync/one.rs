@@ -30,7 +30,7 @@ use sync::mutex::{StaticMutex, MUTEX_INIT};
 /// # Example
 ///
 /// ```rust
-/// use extra::sync::one::{Once, ONCE_INIT};
+/// use sync::one::{Once, ONCE_INIT};
 ///
 /// static mut START: Once = ONCE_INIT;
 /// unsafe {
