@@ -14,11 +14,11 @@ This module provides a set of functions and traits for working
 with regular files & directories on a filesystem.
 
 At the top-level of the module are a set of freestanding functions, associated
-with various filesystem operations. They all operate on a `Path` object.
+with various filesystem operations. They all operate on `Path` objects.
 
 All operations in this module, including those as part of `File` et al
-block the task during execution. Most will raise `std::io::io_error`
-conditions in the event of failure.
+block the task during execution. In the event of failure, all functions/methods
+will return an `IoResult` type with an `Err` value.
 
 Also included in this module is an implementation block on the `Path` object
 defined in `std::path::Path`. The impl adds useful methods about inspecting the
@@ -42,7 +42,7 @@ file.write(bytes!("foobar"));
 let mut file = File::open(&path);
 file.read_to_end();
 
-println!("{}", path.stat().size);
+println!("{}", path.stat().unwrap().size);
 # drop(file);
 fs::unlink(&path);
 ```
@@ -68,11 +68,12 @@ use vec::{OwnedVector, ImmutableVector};
 /// Can be constructed via `File::open()`, `File::create()`, and
 /// `File::open_mode()`.
 ///
-/// # Errors
+/// # Error
 ///
-/// This type will raise an io_error condition if operations are attempted against
-/// it for which its underlying file descriptor was not configured at creation
-/// time, via the `FileAccess` parameter to `File::open_mode()`.
+/// This type will return errors as an `IoResult<T>` if operations are
+/// attempted against it for which its underlying file descriptor was not
+/// configured at creation time, via the `FileAccess` parameter to
+/// `File::open_mode()`.
 pub struct File {
     priv fd: ~RtioFileStream,
     priv path: Path,
@@ -85,7 +86,7 @@ impl File {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,should_fail
     /// use std::io::{File, Open, ReadWrite};
     ///
     /// let p = Path::new("/some/file/path.txt");
@@ -107,12 +108,12 @@ impl File {
     ///
     /// Note that, with this function, a `File` is returned regardless of the
     /// access-limitations indicated by `FileAccess` (e.g. calling `write` on a
-    /// `File` opened as `Read` will raise an `io_error` condition at runtime).
+    /// `File` opened as `Read` will return an error at runtime).
     ///
-    /// # Errors
+    /// # Error
     ///
-    /// This function will raise an `io_error` condition under a number of
-    /// different circumstances, to include but not limited to:
+    /// This function will return an error under a number of different
+    /// circumstances, to include but not limited to:
     ///
     /// * Opening a file that does not exist with `Read` access.
     /// * Attempting to open a file with a `FileAccess` that the user lacks
@@ -164,7 +165,7 @@ impl File {
     /// let mut f = File::create(&Path::new("foo.txt"));
     /// f.write(bytes!("This is a sample file"));
     /// # drop(f);
-    /// # ::std::io::fs::unlnk(&Path::new("foo.txt"));
+    /// # ::std::io::fs::unlink(&Path::new("foo.txt"));
     /// ```
     pub fn create(path: &Path) -> IoResult<File> {
         File::open_mode(path, Truncate, Write)
@@ -178,10 +179,6 @@ impl File {
     /// Synchronizes all modifications to this file to its permanent storage
     /// device. This will flush any internal buffers necessary to perform this
     /// operation.
-    ///
-    /// # Errors
-    ///
-    /// This function will raise on the `io_error` condition on failure.
     pub fn fsync(&mut self) -> IoResult<()> {
         self.fd.fsync()
     }
@@ -190,10 +187,6 @@ impl File {
     /// file metadata to the filesystem. This is intended for use case which
     /// must synchronize content, but don't need the metadata on disk. The goal
     /// of this method is to reduce disk operations.
-    ///
-    /// # Errors
-    ///
-    /// This function will raise on the `io_error` condition on failure.
     pub fn datasync(&mut self) -> IoResult<()> {
         self.fd.datasync()
     }
@@ -206,10 +199,6 @@ impl File {
     /// be shrunk. If it is greater than the current file's size, then the file
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
-    ///
-    /// # Errors
-    ///
-    /// On error, this function will raise on the `io_error` condition.
     pub fn truncate(&mut self, size: i64) -> IoResult<()> {
         self.fd.truncate(size)
     }
@@ -239,11 +228,11 @@ impl File {
 /// guaranteed that a file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal)
 ///
-/// # Errors
+/// # Error
 ///
-/// This function will raise an `io_error` condition if the path points to a
-/// directory, the user lacks permissions to remove the file, or if some
-/// other filesystem-level error occurs.
+/// This function will return an error if the path points to a directory, the
+/// user lacks permissions to remove the file, or if some other filesystem-level
+/// error occurs.
 pub fn unlink(path: &Path) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_unlink(&path.to_c_str()))
 }
@@ -259,7 +248,6 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// use std::io;
 /// use std::io::fs;
 ///
 /// let p = Path::new("/some/file/path.txt");
@@ -269,11 +257,11 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// }
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// This call will raise an `io_error` condition if the user lacks the
-/// requisite permissions to perform a `stat` call on the given path or if
-/// there is no entry in the filesystem at the provided path.
+/// This call will return an error if the user lacks the requisite permissions
+/// to perform a `stat` call on the given path or if there is no entry in the
+/// filesystem at the provided path.
 pub fn stat(path: &Path) -> IoResult<FileStat> {
     LocalIo::maybe_raise(|io| {
         io.fs_stat(&path.to_c_str())
@@ -285,7 +273,7 @@ pub fn stat(path: &Path) -> IoResult<FileStat> {
 /// information about the symlink file instead of the file that it points
 /// to.
 ///
-/// # Errors
+/// # Error
 ///
 /// See `stat`
 pub fn lstat(path: &Path) -> IoResult<FileStat> {
@@ -305,11 +293,11 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 /// fs::rename(&Path::new("foo"), &Path::new("bar"));
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// Will raise an `io_error` condition if the provided `path` doesn't exist,
-/// the process lacks permissions to view the contents, or if some other
-/// intermittent I/O error occurs.
+/// Will return an error if the provided `path` doesn't exist, the process lacks
+/// permissions to view the contents, or if some other intermittent I/O error
+/// occurs.
 pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_rename(&from.to_c_str(), &to.to_c_str()))
 }
@@ -329,10 +317,10 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// Will raise an `io_error` condition is the following situations, but is
-/// not limited to just these cases:
+/// Will return an error in the following situations, but is not limited to
+/// just these cases:
 ///
 /// * The `from` path is not a file
 /// * The `from` file does not exist
@@ -373,7 +361,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)]
+/// # #[allow(unused_must_use)];
 /// use std::io;
 /// use std::io::fs;
 ///
@@ -383,20 +371,16 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// fs::chmod(&Path::new("file.exe"), io::UserExec);
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// If this function encounters an I/O error, it will raise on the `io_error`
-/// condition. Some possible error situations are not having the permission to
+/// If this function encounters an I/O error, it will return an `Err` value.
+/// Some possible error situations are not having the permission to
 /// change the attributes of a file or the file not existing.
 pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_chmod(&path.to_c_str(), mode))
 }
 
 /// Change the user and group owners of a file at the specified path.
-///
-/// # Errors
-///
-/// This function will raise on the `io_error` condition on failure.
 pub fn chown(path: &Path, uid: int, gid: int) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_chown(&path.to_c_str(), uid, gid))
 }
@@ -404,31 +388,22 @@ pub fn chown(path: &Path, uid: int, gid: int) -> IoResult<()> {
 /// Creates a new hard link on the filesystem. The `dst` path will be a
 /// link pointing to the `src` path. Note that systems often require these
 /// two paths to both be located on the same filesystem.
-///
-/// # Errors
-///
-/// This function will raise on the `io_error` condition on failure.
 pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_link(&src.to_c_str(), &dst.to_c_str()))
 }
 
 /// Creates a new symbolic link on the filesystem. The `dst` path will be a
 /// symlink pointing to the `src` path.
-///
-/// # Errors
-///
-/// This function will raise on the `io_error` condition on failure.
 pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_symlink(&src.to_c_str(), &dst.to_c_str()))
 }
 
 /// Reads a symlink, returning the file that the symlink points to.
 ///
-/// # Errors
+/// # Error
 ///
-/// This function will raise on the `io_error` condition on failure. Failure
-/// conditions include reading a file that does not exist or reading a file
-/// which is not a symlink.
+/// This function will return an error on failure. Failure conditions include
+/// reading a file that does not exist or reading a file which is not a symlink.
 pub fn readlink(path: &Path) -> IoResult<Path> {
     LocalIo::maybe_raise(|io| io.fs_readlink(&path.to_c_str()))
 }
@@ -446,11 +421,10 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// fs::mkdir(&p, io::UserRWX);
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// This call will raise an `io_error` condition if the user lacks permissions
-/// to make a new directory at the provided path, or if the directory already
-/// exists.
+/// This call will return an error if the user lacks permissions to make a new
+/// directory at the provided path, or if the directory already exists.
 pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_mkdir(&path.to_c_str(), mode))
 }
@@ -467,11 +441,10 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// fs::rmdir(&p);
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// This call will raise an `io_error` condition if the user lacks permissions
-/// to remove the directory at the provided path, or if the directory isn't
-/// empty.
+/// This call will return an error if the user lacks permissions to remove the
+/// directory at the provided path, or if the directory isn't empty.
 pub fn rmdir(path: &Path) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_rmdir(&path.to_c_str()))
 }
@@ -481,26 +454,32 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
+/// use std::io;
 /// use std::io::fs;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
-/// fn visit_dirs(dir: &Path, cb: |&Path|) {
+/// fn visit_dirs(dir: &Path, cb: |&Path|) -> io::IoResult<()> {
 ///     if dir.is_dir() {
-///         let contents = fs::readdir(dir).unwrap();
+///         let contents = if_ok!(fs::readdir(dir));
 ///         for entry in contents.iter() {
-///             if entry.is_dir() { visit_dirs(entry, cb); }
-///             else { cb(entry); }
+///             if entry.is_dir() {
+///                 if_ok!(visit_dirs(entry, |p| cb(p)));
+///             } else {
+///                 cb(entry);
+///             }
 ///         }
+///         Ok(())
+///     } else {
+///         Err(io::standard_error(io::InvalidInput))
 ///     }
-///     else { fail!("nope"); }
 /// }
 /// ```
 ///
-/// # Errors
+/// # Error
 ///
-/// Will raise an `io_error` condition if the provided `from` doesn't exist,
-/// the process lacks permissions to view the contents or if the `path` points
-/// at a non-directory file
+/// Will return an error if the provided `from` doesn't exist, the process lacks
+/// permissions to view the contents or if the `path` points at a non-directory
+/// file
 pub fn readdir(path: &Path) -> IoResult<~[Path]> {
     LocalIo::maybe_raise(|io| {
         io.fs_readdir(&path.to_c_str(), 0)
@@ -539,11 +518,10 @@ impl Iterator<Path> for Directories {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
-/// # Errors
+/// # Error
 ///
-/// This function will raise on the `io_error` condition if an error
-/// happens, see `fs::mkdir` for more information about error conditions
-/// and performance.
+/// This function will return an `Err` value if an error happens, see
+/// `fs::mkdir` for more information about error conditions and performance.
 pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
     // tjc: if directory exists but with different permissions,
     // should we return false?
@@ -559,11 +537,10 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// Removes a directory at this path, after removing all its contents. Use
 /// carefully!
 ///
-/// # Errors
+/// # Error
 ///
-/// This function will raise on the `io_error` condition if an error
-/// happens. See `file::unlink` and `fs::readdir` for possible error
-/// conditions.
+/// This function will return an `Err` value if an error happens. See
+/// `file::unlink` and `fs::readdir` for possible error conditions.
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
     let children = if_ok!(readdir(path));
     for child in children.iter() {
@@ -581,11 +558,6 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 /// The file at the path specified will have its last access time set to
 /// `atime` and its modification time set to `mtime`. The times specified should
 /// be in milliseconds.
-///
-/// # Errors
-///
-/// This function will raise on the `io_error` condition if an error
-/// happens.
 // FIXME(#10301) these arguments should not be u64
 pub fn change_file_times(path: &Path, atime: u64, mtime: u64) -> IoResult<()> {
     LocalIo::maybe_raise(|io| io.fs_utime(&path.to_c_str(), atime, mtime))
@@ -639,7 +611,7 @@ impl path::Path {
     /// filesystem. This will return true if the path points to either a
     /// directory or a file.
     ///
-    /// # Errors
+    /// # Error
     ///
     /// Will not raise a condition
     pub fn exists(&self) -> bool {
@@ -651,7 +623,7 @@ impl path::Path {
     /// to non-existent locations or directories or other non-regular files
     /// (named pipes, etc).
     ///
-    /// # Errors
+    /// # Error
     ///
     /// Will not raise a condition
     pub fn is_file(&self) -> bool {
@@ -666,7 +638,7 @@ impl path::Path {
     /// Will return false for paths to non-existent locations or if the item is
     /// not a directory (eg files, named pipes, links, etc)
     ///
-    /// # Errors
+    /// # Error
     ///
     /// Will not raise a condition
     pub fn is_dir(&self) -> bool {

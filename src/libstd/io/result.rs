@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Implementations of I/O traits for the Option type
+//! Implementations of I/O traits for the IoResult type
 //!
 //! I/O constructors return option types to allow errors to be handled.
-//! These implementations allow e.g. `Option<File>` to be used
-//! as a `Reader` without unwrapping the option first.
+//! These implementations allow e.g. `IoResult<File>` to be used
+//! as a `Reader` without unwrapping the result first.
 
 use clone::Clone;
 use result::{Ok, Err};

@@ -32,16 +32,14 @@ impl PipeStream {
     ///
     /// # Example
     ///
-    ///     use std::libc;
-    ///     use std::io::pipe;
+    /// ```rust
+    /// # #[allow(unused_must_use)];
+    /// use std::libc;
+    /// use std::io::pipe::PipeStream;
     ///
-    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
-    ///     pipe.write(bytes!("Hello, stderr!"));
-    ///
-    /// # Failure
-    ///
-    /// If the pipe cannot be created, an error will be raised on the
-    /// `io_error` condition.
+    /// let mut pipe = PipeStream::open(libc::STDERR_FILENO);
+    /// pipe.write(bytes!("Hello, stderr!"));
+    /// ```
     pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
         LocalIo::maybe_raise(|io| {
             io.pipe_open(fd).map(|obj| PipeStream { obj: obj })

@@ -31,14 +31,13 @@ use vec;
 /// ```rust
 /// use std::io::{BufferedReader, File};
 ///
-/// # let _g = ::std::io::ignore_io_error();
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut reader = BufferedReader::new(file);
 ///
 /// let mut buf = [0, ..100];
 /// match reader.read(buf) {
-///     Some(nread) => println!("Read {} bytes", nread),
-///     None => println!("At the end of the file!")
+///     Ok(nread) => println!("Read {} bytes", nread),
+///     Err(e) => println!("error reading: {}", e)
 /// }
 /// ```
 pub struct BufferedReader<R> {
@@ -121,9 +120,9 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::{BufferedWriter, File};
 ///
-/// # let _g = ::std::io::ignore_io_error();
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut writer = BufferedWriter::new(file);
 ///
@@ -268,9 +267,9 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::{BufferedStream, File};
 ///
-/// # let _g = ::std::io::ignore_io_error();
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut stream = BufferedStream::new(file);
 ///
@@ -279,8 +278,8 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// let mut buf = [0, ..100];
 /// match stream.read(buf) {
-///     Some(nread) => println!("Read {} bytes", nread),
-///     None => println!("At the end of the stream!")
+///     Ok(nread) => println!("Read {} bytes", nread),
+///     Err(e) => println!("error reading: {}", e)
 /// }
 /// ```
 pub struct BufferedStream<S> {

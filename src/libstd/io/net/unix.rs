@@ -45,11 +45,6 @@ impl UnixStream {
     ///
     /// The returned stream will be closed when the object falls out of scope.
     ///
-    /// # Failure
-    ///
-    /// This function will raise on the `io_error` condition if the connection
-    /// could not be made.
-    ///
     /// # Example
     ///
     /// ```rust
@@ -85,11 +80,6 @@ impl UnixListener {
     /// specified socket. The server will be named by `path`.
     ///
     /// This listener will be closed when it falls out of scope.
-    ///
-    /// # Failure
-    ///
-    /// This function will raise on the `io_error` condition if the specified
-    /// path could not be bound.
     ///
     /// # Example
     ///

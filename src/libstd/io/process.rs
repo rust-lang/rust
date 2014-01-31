@@ -141,7 +141,7 @@ impl Process {
     /// Note that this is purely a wrapper around libuv's `uv_process_kill`
     /// function.
     ///
-    /// If the signal delivery fails, then the `io_error` condition is raised on
+    /// If the signal delivery fails, the corresponding error is returned.
     pub fn signal(&mut self, signal: int) -> IoResult<()> {
         self.handle.kill(signal)
     }
