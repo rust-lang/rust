@@ -18,7 +18,6 @@ use iter::{range, Iterator};
 use mem;
 use option::{Option, Some, None};
 use unstable::intrinsics;
-use util::swap;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
@@ -152,7 +151,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  */
 #[inline]
 pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
-    swap(cast::transmute(dest), &mut src); // cannot overlap
+    mem::swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
 

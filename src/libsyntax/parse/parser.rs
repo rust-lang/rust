@@ -82,7 +82,7 @@ use opt_vec::OptVec;
 use std::cell::Cell;
 use std::hashmap::HashSet;
 use std::kinds::marker;
-use std::util;
+use std::mem::replace;
 use std::vec;
 
 #[allow(non_camel_case_types)]
@@ -735,7 +735,7 @@ impl Parser {
         let next = if self.buffer_start == self.buffer_end {
             self.reader.next_token()
         } else {
-            // Avoid token copies with `util::replace`.
+            // Avoid token copies with `replace`.
             let buffer_start = self.buffer_start as uint;
             let next_index = (buffer_start + 1) & 3 as uint;
             self.buffer_start = next_index as int;
@@ -744,7 +744,7 @@ impl Parser {
                 tok: token::UNDERSCORE,
                 sp: self.span,
             };
-            util::replace(&mut self.buffer[buffer_start], placeholder)
+            replace(&mut self.buffer[buffer_start], placeholder)
         };
         self.span = next.sp;
         self.token = next.tok;
@@ -753,7 +753,7 @@ impl Parser {
 
     // Advance the parser by one token and return the bumped token.
     pub fn bump_and_get(&mut self) -> token::Token {
-        let old_token = util::replace(&mut self.token, token::UNDERSCORE);
+        let old_token = replace(&mut self.token, token::UNDERSCORE);
         self.bump();
         old_token
     }

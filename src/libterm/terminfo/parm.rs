@@ -10,7 +10,8 @@
 
 //! Parameterized string expansion
 
-use std::{char, vec, util};
+use std::{char, vec};
+use std::mem::replace;
 use std::num::strconv::{SignNone,SignNeg,SignAll,int_to_str_bytes_common};
 
 #[deriving(Eq)]
@@ -525,14 +526,14 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                         }
                         FormatHex => {
                             if flags.alternate {
-                                let s_ = util::replace(&mut s, ~['0' as u8, 'x' as u8]);
+                                let s_ = replace(&mut s, ~['0' as u8, 'x' as u8]);
                                 s.push_all_move(s_);
                             }
                         }
                         FormatHEX => {
                             s = s.into_ascii().to_upper().into_bytes();
                             if flags.alternate {
-                                let s_ = util::replace(&mut s, ~['0' as u8, 'X' as u8]);
+                                let s_ = replace(&mut s, ~['0' as u8, 'X' as u8]);
                                 s.push_all_move(s_);
                             }
                         }

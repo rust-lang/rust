@@ -14,10 +14,10 @@
 
 use cast;
 use iter::Iterator;
+use mem;
 use option::{Some, None};
 use ptr::RawPtr;
 use unstable::sync::Exclusive;
-use util;
 use vec::OwnedVector;
 
 type Queue = Exclusive<~[proc()]>;
@@ -60,7 +60,7 @@ pub fn run() {
         QUEUE = 0 as *mut Queue;
         let mut vec = None;
         state.with(|arr| {
-            vec = Some(util::replace(arr, ~[]));
+            vec = Some(mem::replace(arr, ~[]));
         });
         vec.take_unwrap()
     };

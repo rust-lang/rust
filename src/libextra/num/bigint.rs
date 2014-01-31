@@ -2592,7 +2592,8 @@ mod bigint_tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use std::{iter, util};
+    use std::iter;
+    use std::mem::replace;
     use std::num::{FromPrimitive, Zero, One};
     use extra::test::BenchHarness;
 
@@ -2609,7 +2610,7 @@ mod bench {
         let mut f1: BigUint = One::one();
         for _ in range(0, n) {
             let f2 = f0 + f1;
-            f0 = util::replace(&mut f1, f2);
+            f0 = replace(&mut f1, f2);
         }
         f0
     }

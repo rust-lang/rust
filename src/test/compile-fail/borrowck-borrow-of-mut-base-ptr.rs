@@ -13,8 +13,6 @@
 //
 // Example from src/middle/borrowck/doc.rs
 
-use std::util::swap;
-
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
     let p: &mut int = &mut *t0; // Claims `*t0`

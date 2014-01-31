@@ -174,6 +174,7 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 
+use std::mem::replace;
 use std::os;
 use std::rt::crate_map;
 use std::rt::rtio;
@@ -182,7 +183,6 @@ use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
 use std::task::TaskOpts;
-use std::util;
 use std::vec;
 use std::sync::arc::UnsafeArc;
 
@@ -457,10 +457,10 @@ impl SchedPool {
         }
 
         // Now that everyone's gone, tell everything to shut down.
-        for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
+        for mut handle in replace(&mut self.handles, ~[]).move_iter() {
             handle.send(Shutdown);
         }
-        for thread in util::replace(&mut self.threads, ~[]).move_iter() {
+        for thread in replace(&mut self.threads, ~[]).move_iter() {
             thread.join();
         }
     }

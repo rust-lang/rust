@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std;
 use clean::*;
 use std::iter::Extendable;
+use std::mem::{replace, swap};
 
 pub trait DocFolder {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
@@ -19,7 +19,6 @@ pub trait DocFolder {
 
     /// don't override!
     fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
-        use std::util::swap;
         let Item { attrs, name, source, visibility, id, inner } = item;
         let inner = inner;
         let c = |x| self.fold_item(x);
@@ -92,7 +91,7 @@ pub trait DocFolder {
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
-        c.module = match std::util::replace(&mut c.module, None) {
+        c.module = match replace(&mut c.module, None) {
             Some(module) => self.fold_item(module), None => None
         };
         return c;

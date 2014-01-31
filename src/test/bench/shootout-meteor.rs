@@ -24,7 +24,7 @@ struct Iterate<'a, T> {
 impl<'a, T> Iterator<T> for Iterate<'a, T> {
     fn next(&mut self) -> Option<T> {
         let mut res = (self.f)(&self.next);
-        std::util::swap(&mut res, &mut self.next);
+        std::mem::swap(&mut res, &mut self.next);
         Some(res)
     }
 }
