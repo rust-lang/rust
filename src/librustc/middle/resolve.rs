@@ -1893,8 +1893,9 @@ impl Resolver {
         csearch::each_child_of_item(self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
+            let child_ident_string = token::get_ident(child_ident.name);
             debug!("(populating external module) ... found ident: {}",
-                   token::ident_to_str(&child_ident));
+                   child_ident_string.get());
             self.build_reduced_graph_for_external_crate_def(module,
                                                             def_like,
                                                             child_ident,
@@ -3102,11 +3103,12 @@ impl Resolver {
         // top of the crate otherwise.
         let mut containing_module;
         let mut i;
-        if "self" == token::ident_to_str(&module_path[0]) {
+        let first_module_path_string = token::get_ident(module_path[0].name);
+        if "self" == first_module_path_string.get() {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 1;
-        } else if "super" == token::ident_to_str(&module_path[0]) {
+        } else if "super" == first_module_path_string.get() {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 0;  // We'll handle `super` below.
@@ -3115,8 +3117,11 @@ impl Resolver {
         }
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() &&
-                "super" == token::ident_to_str(&module_path[i]) {
+        while i < module_path.len() {
+            let string = token::get_ident(module_path[i].name);
+            if "super" != string.get() {
+                break
+            }
             debug!("(resolving module prefix) resolving `super` at {}",
                    self.module_to_str(containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
