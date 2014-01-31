@@ -79,6 +79,7 @@ extern mod prim;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
 pub use prim::kinds;
+pub use prim::mem;
 
 mod macros;
 
@@ -184,7 +185,6 @@ pub mod cleanup;
 pub mod condition;
 pub mod logging;
 pub mod util;
-pub mod mem;
 
 
 /* Unsupported interfaces */

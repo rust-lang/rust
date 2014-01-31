@@ -10,7 +10,7 @@
 
 //! Functions relating to memory layout
 
-use unstable::intrinsics;
+use intrinsics;
 
 /// Returns the size of a type
 #[inline]

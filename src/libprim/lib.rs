@@ -17,6 +17,10 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[no_std];
+#[feature(globs)];
+#[feature(phase)];
+
+#[cfg(test)] #[phase(syntax)] extern mod std;
 
 #[cfg(test)] extern mod realprim = "prim";
 #[cfg(test)] extern mod std;
@@ -28,3 +32,4 @@
 
 pub mod intrinsics;
 #[cfg(not(test))] pub mod kinds;
+pub mod mem;
