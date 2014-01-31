@@ -176,8 +176,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some(@"true"),
-                        val(const_bool(false)) => Some(@"false"),
+                        val(const_bool(true)) => Some(~"true"),
+                        val(const_bool(false)) => Some(~"false"),
                         _ => None
                     }
                 }
@@ -197,7 +197,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                 }
                 ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                     match *ctor {
-                        vec(n) => Some(format!("vectors of length {}", n).to_managed()),
+                        vec(n) => Some(format!("vectors of length {}", n)),
                         _ => None
                     }
                 }

@@ -352,9 +352,11 @@ impl Session_ {
         self.debugging_opt(NO_LANDING_PADS)
     }
 
-    // pointless function, now...
-    pub fn str_of(&self, id: ast::Ident) -> @str {
-        token::ident_to_str(&id)
+    // DEPRECATED. This function results in a lot of allocations when they
+    // are not necessary.
+    pub fn str_of(&self, id: ast::Ident) -> ~str {
+        let string = token::get_ident(id.name);
+        string.get().to_str()
     }
 
     // pointless function, now...
