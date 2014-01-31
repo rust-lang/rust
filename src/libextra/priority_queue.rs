@@ -51,10 +51,14 @@ impl<T:Ord> PriorityQueue<T> {
     /// Returns the number of elements the queue can hold without reallocating
     pub fn capacity(&self) -> uint { self.data.capacity() }
 
-    pub fn reserve(&mut self, n: uint) { self.data.reserve(n) }
+    /// Reserve capacity for exactly n elements in the PriorityQueue.
+    /// Do nothing if the capacity is already sufficient.
+    pub fn reserve_exact(&mut self, n: uint) { self.data.reserve_exact(n) }
 
-    pub fn reserve_at_least(&mut self, n: uint) {
-        self.data.reserve_at_least(n)
+    /// Reserve capacity for at least n elements in the PriorityQueue.
+    /// Do nothing if the capacity is already sufficient.
+    pub fn reserve(&mut self, n: uint) {
+        self.data.reserve(n)
     }
 
     /// Pop the greatest item from the queue - fails if empty
@@ -203,7 +207,7 @@ impl<T: Ord> Extendable<T> for PriorityQueue<T> {
         let (lower, _) = iter.size_hint();
 
         let len = self.capacity();
-        self.reserve_at_least(len + lower);
+        self.reserve(len + lower);
 
         for elem in *iter {
             self.push(elem);

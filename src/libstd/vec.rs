@@ -1335,7 +1335,7 @@ pub trait OwnedVector<T> {
      * This method always succeeds in reserving space for `n` elements, or it does
      * not return.
      */
-    fn reserve(&mut self, n: uint);
+    fn reserve_exact(&mut self, n: uint);
     /**
      * Reserves capacity for at least `n` elements in the given vector.
      *
@@ -1350,7 +1350,7 @@ pub trait OwnedVector<T> {
      *
      * * n - The number of elements to reserve space for
      */
-    fn reserve_at_least(&mut self, n: uint);
+    fn reserve(&mut self, n: uint);
     /**
      * Reserves capacity for at least `n` additional elements in the given vector.
      *
@@ -1468,7 +1468,7 @@ impl<T> OwnedVector<T> for ~[T] {
         self.move_iter().rev()
     }
 
-    fn reserve(&mut self, n: uint) {
+    fn reserve_exact(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
@@ -1486,8 +1486,8 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(checked_next_power_of_two(n).unwrap_or(n));
+    fn reserve(&mut self, n: uint) {
+        self.reserve_exact(checked_next_power_of_two(n).unwrap_or(n));
     }
 
     #[inline]
@@ -1495,7 +1495,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if self.capacity() - self.len() < n {
             match self.len().checked_add(&n) {
                 None => fail!("vec::reserve_additional: `uint` overflow"),
-                Some(new_cap) => self.reserve_at_least(new_cap)
+                Some(new_cap) => self.reserve(new_cap)
             }
         }
     }
@@ -1678,7 +1678,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
     fn grow_fn(&mut self, n: uint, op: |uint| -> T) {
         let new_len = self.len() + n;
-        self.reserve_at_least(new_len);
+        self.reserve(new_len);
         let mut i: uint = 0u;
         while i < n {
             self.push(op(i));
@@ -1737,7 +1737,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();
-        self.reserve(new_len);
+        self.reserve_exact(new_len);
 
         for elt in rhs.iter() {
             self.push((*elt).clone())
@@ -1745,7 +1745,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     }
     fn grow(&mut self, n: uint, initval: &T) {
         let new_len = self.len() + n;
-        self.reserve_at_least(new_len);
+        self.reserve(new_len);
         let mut i: uint = 0u;
 
         while i < n {
@@ -2900,7 +2900,7 @@ impl<A> Extendable<A> for ~[A] {
     fn extend<T: Iterator<A>>(&mut self, iterator: &mut T) {
         let (lower, _) = iterator.size_hint();
         let len = self.len();
-        self.reserve(len + lower);
+        self.reserve_exact(len + lower);
         for x in *iterator {
             self.push(x);
         }
@@ -3630,10 +3630,10 @@ mod tests {
     #[test]
     fn test_capacity() {
         let mut v = ~[0u64];
-        v.reserve(10u);
+        v.reserve_exact(10u);
         assert_eq!(v.capacity(), 10u);
         let mut v = ~[0u32];
-        v.reserve(10u);
+        v.reserve_exact(10u);
         assert_eq!(v.capacity(), 10u);
     }
 
@@ -4070,7 +4070,7 @@ mod tests {
     #[should_fail]
     fn test_overflow_does_not_cause_segfault() {
         let mut v = ~[];
-        v.reserve(-1);
+        v.reserve_exact(-1);
         v.push(1);
         v.push(2);
     }
@@ -4080,7 +4080,7 @@ mod tests {
     fn test_overflow_does_not_cause_segfault_managed() {
         use rc::Rc;
         let mut v = ~[Rc::new(1)];
-        v.reserve(-1);
+        v.reserve_exact(-1);
         v.push(Rc::new(2));
     }
 
