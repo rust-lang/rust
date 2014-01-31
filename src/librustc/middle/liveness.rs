@@ -120,6 +120,7 @@ use std::vec;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
@@ -332,13 +333,14 @@ impl IrMaps {
         }
     }
 
-    pub fn variable_name(&self, var: Variable) -> @str {
+    pub fn variable_name(&self, var: Variable) -> ~str {
         let var_kinds = self.var_kinds.borrow();
         match var_kinds.get()[var.get()] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
-                self.tcx.sess.str_of(nm)
+                let string = token::get_ident(nm.name);
+                string.get().to_str()
             },
-            ImplicitRet => @"<implicit-ret>"
+            ImplicitRet => ~"<implicit-ret>"
         }
     }
 
@@ -1669,7 +1671,7 @@ impl Liveness {
         }
     }
 
-    pub fn should_warn(&self, var: Variable) -> Option<@str> {
+    pub fn should_warn(&self, var: Variable) -> Option<~str> {
         let name = self.ir.variable_name(var);
         if name.len() == 0 || name[0] == ('_' as u8) { None } else { Some(name) }
     }
