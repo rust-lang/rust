@@ -972,9 +972,9 @@ mod test {
     }
 
     // open a string reader for the given string
-    fn setup(teststr: @str) -> Env {
+    fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"zebra.rs", teststr);
+        let fm = cm.new_filemap(~"zebra.rs", teststr);
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {
@@ -984,7 +984,7 @@ mod test {
 
     #[test] fn t1 () {
         let Env {string_reader} =
-            setup(@"/* my source file */ \
+            setup(~"/* my source file */ \
                     fn main() { println!(\"zebra\"); }\n");
         let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
@@ -1020,14 +1020,14 @@ mod test {
     }
 
     #[test] fn doublecolonparsing () {
-        let env = setup (@"a b");
+        let env = setup (~"a b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_2 () {
-        let env = setup (@"a::b");
+        let env = setup (~"a::b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -1035,7 +1035,7 @@ mod test {
     }
 
     #[test] fn dcparsing_3 () {
-        let env = setup (@"a ::b");
+        let env = setup (~"a ::b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              token::MOD_SEP,
@@ -1043,7 +1043,7 @@ mod test {
     }
 
     #[test] fn dcparsing_4 () {
-        let env = setup (@"a:: b");
+        let env = setup (~"a:: b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -1051,28 +1051,28 @@ mod test {
     }
 
     #[test] fn character_a() {
-        let env = setup(@"'a'");
+        let env = setup(~"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_CHAR('a' as u32));
     }
 
     #[test] fn character_space() {
-        let env = setup(@"' '");
+        let env = setup(~"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_CHAR(' ' as u32));
     }
 
     #[test] fn character_escaped() {
-        let env = setup(@"'\\n'");
+        let env = setup(~"'\\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_CHAR('\n' as u32));
     }
 
     #[test] fn lifetime_name() {
-        let env = setup(@"'abc");
+        let env = setup(~"'abc");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("abc");
@@ -1080,7 +1080,7 @@ mod test {
     }
 
     #[test] fn raw_string() {
-        let env = setup(@"r###\"\"#a\\b\x00c\"\"###");
+        let env = setup(~"r###\"\"#a\\b\x00c\"\"###");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("\"#a\\b\x00c\"");
@@ -1094,7 +1094,7 @@ mod test {
     }
 
     #[test] fn nested_block_comments() {
-        let env = setup(@"/* /* */ */'a'");
+        let env = setup(~"/* /* */ */'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_CHAR('a' as u32));

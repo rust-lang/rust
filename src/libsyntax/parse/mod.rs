@@ -314,7 +314,7 @@ mod test {
     }
 
     #[test] fn path_exprs_1() {
-        assert_eq!(string_to_expr(@"a"),
+        assert_eq!(string_to_expr(~"a"),
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -333,7 +333,7 @@ mod test {
     }
 
     #[test] fn path_exprs_2 () {
-        assert_eq!(string_to_expr(@"::a::b"),
+        assert_eq!(string_to_expr(~"::a::b"),
                    @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -358,12 +358,12 @@ mod test {
 
     #[should_fail]
     #[test] fn bad_path_expr_1() {
-        string_to_expr(@"::abc::def::return");
+        string_to_expr(~"::abc::def::return");
     }
 
     // check the token-tree-ization of macros
     #[test] fn string_to_tts_macro () {
-        let tts = string_to_tts(@"macro_rules! zip (($a)=>($a))");
+        let tts = string_to_tts(~"macro_rules! zip (($a)=>($a))");
         match tts {
             [ast::TTTok(_,_),
              ast::TTTok(_,token::NOT),
@@ -407,7 +407,7 @@ mod test {
     }
 
     #[test] fn string_to_tts_1 () {
-        let tts = string_to_tts(@"fn a (b : int) { b; }");
+        let tts = string_to_tts(~"fn a (b : int) { b; }");
         assert_eq!(to_json_str(&tts),
         ~"[\
     {\
@@ -536,7 +536,7 @@ mod test {
     }
 
     #[test] fn ret_expr() {
-        assert_eq!(string_to_expr(@"return d"),
+        assert_eq!(string_to_expr(~"return d"),
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(@ast::Expr{
@@ -559,7 +559,7 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert_eq!(string_to_stmt(@"b;"),
+        assert_eq!(string_to_stmt(~"b;"),
                    @Spanned{
                        node: ast::StmtExpr(@ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -585,7 +585,7 @@ mod test {
     }
 
     #[test] fn parse_ident_pat () {
-        let mut parser = string_to_parser(@"b");
+        let mut parser = string_to_parser(~"b");
         assert_eq!(parser.parse_pat(),
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
@@ -609,7 +609,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int"
-        assert_eq!(string_to_item(@"fn a (b : int) { b; }"),
+        assert_eq!(string_to_item(~"fn a (b : int) { b; }"),
                   Some(
                       @ast::Item{ident:str_to_ident("a"),
                             attrs:~[],
@@ -701,12 +701,12 @@ mod test {
 
     #[test] fn parse_exprs () {
         // just make sure that they parse....
-        string_to_expr(@"3 + 4");
-        string_to_expr(@"a::z.froob(b,@(987+3))");
+        string_to_expr(~"3 + 4");
+        string_to_expr(~"a::z.froob(b,@(987+3))");
     }
 
     #[test] fn attrs_fix_bug () {
-        string_to_item(@"pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
+        string_to_item(~"pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                    -> Result<@Writer, ~str> {
     #[cfg(windows)]
     fn wb() -> c_int {
