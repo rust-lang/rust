@@ -366,7 +366,7 @@ mod test {
     fn push_bytes_fail_reset_len() {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
-        let reader = ErroringLaterReader {
+        let _reader = ErroringLaterReader {
             count: 0,
         };
         // FIXME (#7049): Figure out some other way to do this.

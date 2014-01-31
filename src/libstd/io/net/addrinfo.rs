@@ -102,10 +102,6 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 // permission without help of apk
 #[cfg(test, not(target_os = "android"))]
 mod test {
-    use io::net::ip::Ipv4Addr;
-    use prelude::*;
-    use super::*;
-
     iotest!(fn dns_smoke_test() {
         let ipaddrs = get_host_addresses("localhost").unwrap();
         let mut found_local = false;
