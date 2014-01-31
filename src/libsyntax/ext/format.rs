@@ -702,7 +702,7 @@ impl<'a> Context<'a> {
             Named(ref s) => self.name_types.get(s)
         };
 
-        let fmt_trait = match *ty {
+        let fmt_fn = match *ty {
             Known(ref tyname) => {
                 match tyname.as_slice() {
                     ""  => "secret_show",
@@ -721,10 +721,9 @@ impl<'a> Context<'a> {
                     "x" => "secret_lower_hex",
                     "X" => "secret_upper_hex",
                     _ => {
-                        self.ecx.span_err(sp,
-                                          format!("unknown format trait `{}`",
-                                                  *tyname));
-                        "Dummy"
+                        self.ecx.span_err(sp, format!("unknown format trait `{}`",
+                                                      *tyname));
+                        "dummy"
                     }
                 }
             }
@@ -747,8 +746,7 @@ impl<'a> Context<'a> {
         let format_fn = self.ecx.path_global(sp, ~[
                 self.ecx.ident_of("std"),
                 self.ecx.ident_of("fmt"),
-                self.ecx.ident_of(fmt_trait),
-                self.ecx.ident_of("fmt"),
+                self.ecx.ident_of(fmt_fn),
             ]);
         self.ecx.expr_call_global(sp, ~[
                 self.ecx.ident_of("std"),
