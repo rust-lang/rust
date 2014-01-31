@@ -188,23 +188,29 @@ pub fn to_str(input: @IdentInterner, t: &Token) -> ~str {
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(ref s, t) => {
-        let mut body = ident_to_str(s).to_owned();
+        let body_string = get_ident(s.name);
+        let mut body = body_string.get().to_str();
         if body.ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(ref s) => {
-        let mut body = ident_to_str(s).to_owned();
+        let body_string = get_ident(s.name);
+        let mut body = body_string.get().to_owned();
         if body.ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
         body
       }
-      LIT_STR(ref s) => { format!("\"{}\"", ident_to_str(s).escape_default()) }
+      LIT_STR(ref s) => {
+          let literal_string = get_ident(s.name);
+          format!("\"{}\"", literal_string.get().escape_default())
+      }
       LIT_STR_RAW(ref s, n) => {
+          let literal_string = get_ident(s.name);
           format!("r{delim}\"{string}\"{delim}",
-                  delim="#".repeat(n), string=ident_to_str(s))
+                  delim="#".repeat(n), string=literal_string.get())
       }
 
       /* Name components */
@@ -213,7 +219,10 @@ pub fn to_str(input: @IdentInterner, t: &Token) -> ~str {
       UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(ref s) => ident_to_str(s).to_owned(),
+      DOC_COMMENT(ref s) => {
+          let comment_string = get_ident(s.name);
+          comment_string.get().to_str()
+      }
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
@@ -647,11 +656,6 @@ pub fn interner_get(name : Name) -> @str {
     get_ident_interner().get(name)
 }
 
-// maps an identifier to the string that it corresponds to
-pub fn ident_to_str(id : &ast::Ident) -> @str {
-    interner_get(id.name)
-}
-
 // maps a string to an identifier with an empty syntax context
 pub fn str_to_ident(str : &str) -> ast::Ident {
     ast::Ident::new(intern(str))
@@ -768,23 +772,4 @@ mod test {
         let a1 = mark_ident(a,92);
         assert!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
     }
-
-
-    #[test] fn str_ptr_eq_tests(){
-        let a = @"abc";
-        let b = @"abc";
-        let c = a;
-        assert!(str_ptr_eq(a,c));
-        assert!(!str_ptr_eq(a,b));
-    }
-
-    #[test] fn fresh_name_pointer_sharing() {
-        let ghi = str_to_ident("ghi");
-        assert_eq!(ident_to_str(&ghi),@"ghi");
-        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&ghi)))
-        let fresh = ast::Ident::new(fresh_name(&ghi));
-        assert_eq!(ident_to_str(&fresh),@"ghi");
-        assert!(str_ptr_eq(ident_to_str(&ghi),ident_to_str(&fresh)));
-    }
-
 }
