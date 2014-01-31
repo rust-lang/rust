@@ -122,7 +122,10 @@ mod libunwind {
 
     pub type _Unwind_Word = uintptr_t;
 
-    #[cfg(not(target_arch = "arm"))]
+    #[cfg(target_arch = "x86")]
+    pub static unwinder_private_data_size: int = 5;
+
+    #[cfg(target_arch = "x86_64")]
     pub static unwinder_private_data_size: int = 2;
 
     #[cfg(target_arch = "arm")]
