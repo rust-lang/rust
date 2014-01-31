@@ -16,7 +16,7 @@
 #[allow(missing_doc)];
 
 use std::iter::{Enumerate, FilterMap, Rev};
-use std::util::replace;
+use std::mem::replace;
 use std::vec;
 
 #[allow(missing_doc)]

@@ -257,7 +257,6 @@ macro_rules! test (
             use super::*;
             use super::super::*;
             use task;
-            use util;
 
             fn f() $b
 

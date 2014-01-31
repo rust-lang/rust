@@ -15,7 +15,6 @@ use container::{Container, Map, Mutable, MutableMap};
 use iter::{Extendable, FromIterator, Iterator};
 use mem;
 use uint;
-use util::replace;
 use mem::init;
 use vec;
 use ptr::RawPtr;
@@ -429,7 +428,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
         }
         External(stored_key, ref mut stored_value) if stored_key == key => {
             // swap in the new value and return the old.
-            return Some(replace(stored_value, value));
+            return Some(mem::replace(stored_value, value));
         }
         _ => {}
     }
@@ -437,7 +436,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
     // conflict, an external node with differing keys: we have to
     // split the node, so we need the old value by value; hence we
     // have to move out of `child`.
-    match replace(child, Nothing) {
+    match mem::replace(child, Nothing) {
         External(stored_key, stored_value) => {
             let mut new = ~TrieNode::new();
             insert(&mut new.count,
@@ -456,7 +455,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
              idx: uint) -> Option<T> {
     let (ret, this) = match *child {
       External(stored, _) if stored == key => {
-        match replace(child, Nothing) {
+        match mem::replace(child, Nothing) {
             External(_, value) => (Some(value), true),
             _ => fail!()
         }

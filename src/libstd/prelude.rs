@@ -40,6 +40,7 @@ pub use result::{Result, Ok, Err};
 // Reexported functions
 pub use from_str::from_str;
 pub use iter::range;
+pub use mem::drop;
 
 // Reexported types and traits
 
@@ -85,7 +86,3 @@ pub use task::spawn;
 // Reexported statics
 #[cfg(not(test))]
 pub use gc::GC;
-
-/// Disposes of a value.
-#[inline]
-pub fn drop<T>(_x: T) { }

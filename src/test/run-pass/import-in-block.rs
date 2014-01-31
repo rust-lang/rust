@@ -11,11 +11,11 @@
 #[feature(globs)];
 
 pub fn main() {
-    use std::util::replace;
+    use std::mem::replace;
     let mut x = 5;
     replace(&mut x, 6);
     {
-        use std::util::*;
+        use std::mem::*;
         let mut y = 6;
         swap(&mut x, &mut y);
     }

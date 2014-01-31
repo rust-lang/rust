@@ -72,7 +72,7 @@ mod imp {
     #[cfg(not(test))] use str;
     use unstable::finally::Finally;
     use unstable::mutex::{Mutex, MUTEX_INIT};
-    use util;
+    use mem;
     #[cfg(not(test))] use vec;
 
     static mut global_args_ptr: uint = 0;
@@ -93,7 +93,7 @@ mod imp {
     pub fn take() -> Option<~[~str]> {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
-            let val = util::replace(&mut *ptr, None);
+            let val = mem::replace(&mut *ptr, None);
             val.as_ref().map(|s: &~~[~str]| (**s).clone())
         })
     }

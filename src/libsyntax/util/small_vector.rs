@@ -7,8 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+use std::mem;
 use std::vec;
-use std::util;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub enum SmallVector<T> {
@@ -54,9 +54,9 @@ impl<T> SmallVector<T> {
         match *self {
             Zero => *self = One(v),
             One(..) => {
-                let one = util::replace(self, Zero);
+                let one = mem::replace(self, Zero);
                 match one {
-                    One(v1) => util::replace(self, Many(~[v1, v])),
+                    One(v1) => mem::replace(self, Many(~[v1, v])),
                     _ => unreachable!()
                 };
             }
@@ -101,7 +101,7 @@ impl<T> Iterator<T> for MoveItems<T> {
             ZeroIterator => None,
             OneIterator(..) => {
                 let mut replacement = ZeroIterator;
-                util::swap(self, &mut replacement);
+                mem::swap(self, &mut replacement);
                 match replacement {
                     OneIterator(v) => Some(v),
                     _ => unreachable!()

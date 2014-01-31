@@ -23,8 +23,8 @@
 // the reverse direction.
 
 use std::cast;
+use std::mem::{replace, swap};
 use std::ptr;
-use std::util;
 use std::iter::Rev;
 use std::iter;
 
@@ -102,7 +102,7 @@ impl<T> Rawlink<T> {
 
     /// Return the `Rawlink` and replace with `Rawlink::none()`
     fn take(&mut self) -> Rawlink<T> {
-        util::replace(self, Rawlink::none())
+        replace(self, Rawlink::none())
     }
 }
 
@@ -161,7 +161,7 @@ impl<T> DList<T> {
             Some(ref mut head) => {
                 new_head.prev = Rawlink::none();
                 head.prev = Rawlink::some(new_head);
-                util::swap(head, &mut new_head);
+                swap(head, &mut new_head);
                 head.next = Some(new_head);
             }
         }
@@ -319,7 +319,7 @@ impl<T> DList<T> {
     /// O(1)
     #[inline]
     pub fn prepend(&mut self, mut other: DList<T>) {
-        util::swap(self, &mut other);
+        swap(self, &mut other);
         self.append(other);
     }
 

@@ -15,6 +15,8 @@
 
 #[allow(missing_doc)]; // FIXME
 
+use cast;
+use ptr;
 use unstable::intrinsics;
 use unstable::intrinsics::{bswap16, bswap32, bswap64};
 
@@ -126,9 +128,45 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
 #[cfg(target_endian = "big")]    #[inline] pub fn from_be64(x: i64) -> i64 { x }
 
 
+/**
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+pub fn swap<T>(x: &mut T, y: &mut T) {
+    unsafe {
+        // Give ourselves some scratch space to work with
+        let mut t: T = uninit();
+
+        // Perform the swap, `&mut` pointers never alias
+        ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
+        ptr::copy_nonoverlapping_memory(x, &*y, 1);
+        ptr::copy_nonoverlapping_memory(y, &t, 1);
+
+        // y and t now point to the same thing, but we need to completely forget `tmp`
+        // because it's no longer relevant.
+        cast::forget(t);
+    }
+}
+
+/**
+ * Replace the value at a mutable location with a new one, returning the old
+ * value, without deinitialising or copying either one.
+ */
+#[inline]
+pub fn replace<T>(dest: &mut T, mut src: T) -> T {
+    swap(dest, &mut src);
+    src
+}
+
+/// Disposes of a value.
+#[inline]
+pub fn drop<T>(_x: T) { }
+
 #[cfg(test)]
 mod tests {
     use mem::*;
+    use option::{Some,None};
 
     #[test]
     fn size_of_basic() {
@@ -206,5 +244,87 @@ mod tests {
         assert_eq!(pref_align_of_val(&1u8), 1u);
         assert_eq!(pref_align_of_val(&1u16), 2u);
         assert_eq!(pref_align_of_val(&1u32), 4u);
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut x = 31337;
+        let mut y = 42;
+        swap(&mut x, &mut y);
+        assert_eq!(x, 42);
+        assert_eq!(y, 31337);
+    }
+
+    #[test]
+    fn test_replace() {
+        let mut x = Some(~"test");
+        let y = replace(&mut x, None);
+        assert!(x.is_none());
+        assert!(y.is_some());
+    }
+}
+
+/// Completely miscellaneous language-construct benchmarks.
+#[cfg(test)]
+mod bench {
+
+    use extra::test::BenchHarness;
+    use option::{Some,None};
+
+    // Static/dynamic method dispatch
+
+    struct Struct {
+        field: int
+    }
+
+    trait Trait {
+        fn method(&self) -> int;
+    }
+
+    impl Trait for Struct {
+        fn method(&self) -> int {
+            self.field
+        }
+    }
+
+    #[bench]
+    fn trait_vtable_method_call(bh: &mut BenchHarness) {
+        let s = Struct { field: 10 };
+        let t = &s as &Trait;
+        bh.iter(|| {
+            t.method();
+        });
+    }
+
+    #[bench]
+    fn trait_static_method_call(bh: &mut BenchHarness) {
+        let s = Struct { field: 10 };
+        bh.iter(|| {
+            s.method();
+        });
+    }
+
+    // Overhead of various match forms
+
+    #[bench]
+    fn match_option_some(bh: &mut BenchHarness) {
+        let x = Some(10);
+        bh.iter(|| {
+            let _q = match x {
+                Some(y) => y,
+                None => 11
+            };
+        });
+    }
+
+    #[bench]
+    fn match_vec_pattern(bh: &mut BenchHarness) {
+        let x = [1,2,3,4,5,6];
+        bh.iter(|| {
+            let _q = match x {
+                [1,2,3,..] => 10,
+                _ => 11
+            };
+        });
     }
 }

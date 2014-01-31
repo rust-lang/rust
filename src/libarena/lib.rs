@@ -40,7 +40,6 @@ use std::rc::Rc;
 use std::rt::global_heap;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
 use std::unstable::intrinsics;
-use std::util;
 use std::vec;
 
 // The way arena uses arrays is really deeply awful. The arrays are
@@ -404,7 +403,7 @@ impl TypedArenaChunk {
         }
 
         // Destroy the next chunk.
-        let next_opt = util::replace(&mut self.next, None);
+        let next_opt = mem::replace(&mut self.next, None);
         match next_opt {
             None => {}
             Some(mut next) => {
