@@ -1139,9 +1139,10 @@ impl MemberDescriptionFactory for StructMemberDescriptionFactory {
                                   -> ~[MemberDescription] {
         self.fields.map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
-                @""
+                ~""
             } else {
-                token::ident_to_str(&field.ident)
+                let string = token::get_ident(field.ident.name);
+                string.get().to_str()
             };
 
             MemberDescription {
@@ -1244,7 +1245,7 @@ impl MemberDescriptionFactory for TupleMemberDescriptionFactory {
                                   -> ~[MemberDescription] {
         self.component_types.map(|&component_type| {
             MemberDescription {
-                name: @"",
+                name: ~"",
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
@@ -1322,7 +1323,7 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
                                               self.file_metadata,
                                               codemap::DUMMY_SP);
                 MemberDescription {
-                    name: @"",
+                    name: ~"",
                     llvm_type: variant_llvm_type,
                     type_metadata: variant_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
@@ -1332,7 +1333,7 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
 }
 
 struct EnumVariantMemberDescriptionFactory {
-    args: ~[(@str, ty::t)],
+    args: ~[(~str, ty::t)],
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
@@ -1340,9 +1341,9 @@ struct EnumVariantMemberDescriptionFactory {
 impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> ~[MemberDescription] {
-        self.args.iter().enumerate().map(|(i, &(name, ty))| {
+        self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
-                name: name,
+                name: name.to_str(),
                 llvm_type: type_of::type_of(cx, ty),
                 type_metadata: match self.discriminant_type_metadata {
                     Some(metadata) if i == 0 => metadata,
@@ -1395,19 +1396,24 @@ fn describe_enum_variant(cx: &CrateContext,
 
     // Get the argument names from the enum variant info
     let mut arg_names = match variant_info.arg_names {
-        Some(ref names) => names.map(|ident| token::ident_to_str(ident)),
-        None => variant_info.args.map(|_| @"")
+        Some(ref names) => {
+            names.map(|ident| {
+                let string = token::get_ident(ident.name);
+                string.get().to_str()
+            })
+        }
+        None => variant_info.args.map(|_| ~"")
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field
     if discriminant_type_metadata.is_some() {
-        arg_names.insert(0, @"");
+        arg_names.insert(0, ~"");
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: ~[(@str, ty::t)] = arg_names.iter()
+    let args: ~[(~str, ty::t)] = arg_names.iter()
         .zip(struct_def.fields.iter())
-        .map(|(&s, &t)| (s, t))
+        .map(|(s, &t)| (s.to_str(), t))
         .collect();
 
     let member_description_factory =
@@ -1580,7 +1586,7 @@ enum MemberOffset {
 }
 
 struct MemberDescription {
-    name: @str,
+    name: ~str,
     llvm_type: Type,
     type_metadata: DIType,
     offset: MemberOffset,
@@ -1737,31 +1743,31 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: @"refcnt",
+            name: ~"refcnt",
             llvm_type: member_llvm_types[0],
             type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"tydesc",
+            name: ~"tydesc",
             llvm_type: member_llvm_types[1],
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"prev",
+            name: ~"prev",
             llvm_type: member_llvm_types[2],
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"next",
+            name: ~"next",
             llvm_type: member_llvm_types[3],
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"val",
+            name: ~"val",
             llvm_type: member_llvm_types[4],
             type_metadata: content_type_metadata,
             offset: ComputedMemberOffset,
@@ -1848,19 +1854,19 @@ fn vec_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: @"fill",
+            name: ~"fill",
             llvm_type: member_llvm_types[0],
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"alloc",
+            name: ~"alloc",
             llvm_type: member_llvm_types[1],
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"elements",
+            name: ~"elements",
             llvm_type: member_llvm_types[2],
             type_metadata: array_type_metadata,
             offset: ComputedMemberOffset,
@@ -1917,13 +1923,13 @@ fn vec_slice_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: @"data_ptr",
+            name: ~"data_ptr",
             llvm_type: member_llvm_types[0],
             type_metadata: type_metadata(cx, data_ptr_type, span),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: @"length",
+            name: ~"length",
             llvm_type: member_llvm_types[1],
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,
@@ -2714,7 +2720,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
                                                 outputs: ref outputs,
                                                 .. }) => {
-                // inputs, outputs: ~[(@str, @expr)]
+                // inputs, outputs: ~[(~str, @expr)]
                 for &(_, exp) in inputs.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
                 }
