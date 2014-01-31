@@ -11,8 +11,6 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
-use its = syntax::parse::token::ident_to_str;
-
 use syntax;
 use syntax::ast;
 use syntax::ast_map;
@@ -893,7 +891,8 @@ fn path_to_str(p: &ast::Path) -> ~str {
 
 impl Clean<~str> for ast::Ident {
     fn clean(&self) -> ~str {
-        its(self).to_owned()
+        let string = token::get_ident(self.name);
+        string.get().to_owned()
     }
 }
 
