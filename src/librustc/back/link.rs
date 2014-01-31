@@ -96,6 +96,7 @@ pub mod write {
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
+    use syntax::abi;
     use util::common::time;
 
     use std::c_str::ToCStr;
@@ -129,7 +130,10 @@ pub mod write {
             let use_softfp = sess.opts.debugging_opts & session::USE_SOFTFP != 0;
 
             // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
-            let no_fp_elim = sess.opts.debuginfo;
+            // FIXME: #11954: mac64 unwinding may not work with fp elim
+            let no_fp_elim = sess.opts.debuginfo ||
+                             (sess.targ_cfg.os == abi::OsMacos &&
+                              sess.targ_cfg.arch == abi::X86_64);
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
