@@ -490,7 +490,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     exp: &middle::resolve::Export2) {
     match ecx.tcx.items.find(exp.def_id.node) {
         Some(ast_map::NodeItem(item, path)) => {
-            let original_name = ecx.tcx.sess.str_of(item.ident);
+            let original_name = token::get_ident(item.ident.name);
 
             //
             // We don't need to reexport static methods on items
@@ -502,7 +502,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
             // encoded metadata for static methods relative to Bar,
             // but not yet for Foo.
             //
-            if mod_path != *path || exp.name != original_name {
+            if mod_path != *path || original_name.get() != exp.name {
                 if !encode_reexported_static_base_methods(ecx, ebml_w, exp) {
                     if encode_reexported_static_trait_methods(ecx, ebml_w, exp) {
                         debug!("(encode reexported static methods) {} \
