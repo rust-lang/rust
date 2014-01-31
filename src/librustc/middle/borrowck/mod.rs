@@ -774,7 +774,8 @@ impl BorrowckCtxt {
                         match pat.node {
                             ast::PatIdent(_, ref path, _) => {
                                 let ident = ast_util::path_to_ident(path);
-                                out.push_str(token::ident_to_str(&ident));
+                                let string = token::get_ident(ident.name);
+                                out.push_str(string.get());
                             }
                             _ => {
                                 self.tcx.sess.bug(

@@ -1142,8 +1142,13 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) {
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
-        write!(out, "{} {}-{}-{}\n",
-                 dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers);
+        let string = token::get_ident(dep.name.name);
+        write!(out,
+               "{} {}-{}-{}\n",
+               dep.cnum,
+               string.get(),
+               dep.hash,
+               dep.vers);
     }
 
     write!(out, "\n");
