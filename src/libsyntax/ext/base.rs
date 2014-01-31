@@ -31,7 +31,7 @@ use std::unstable::dynamic_lib::DynamicLibrary;
 // ast::MacInvocTT.
 
 pub struct MacroDef {
-    name: @str,
+    name: ~str,
     ext: SyntaxExtension
 }
 
