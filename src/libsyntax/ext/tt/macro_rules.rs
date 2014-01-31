@@ -21,7 +21,7 @@ use ext::tt::macro_parser::{parse, parse_or_else};
 use parse::lexer::{new_tt_reader, Reader};
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
-use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
+use parse::token::{get_ident_interner, special_idents, gensym_ident};
 use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
 use parse::token;
 use print;
@@ -231,7 +231,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
     };
 
     return MRDef(MacroDef {
-        name: ident_to_str(&name),
+        name: token::get_ident(name.name).get().to_str(),
         ext: NormalTT(exp, Some(sp))
     });
 }
