@@ -30,6 +30,7 @@
 
 #[cfg(test)] pub use kinds = realprim::kinds;
 
+pub mod cast;
 pub mod intrinsics;
 #[cfg(not(test))] pub mod kinds;
 pub mod mem;

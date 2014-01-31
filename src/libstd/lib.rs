@@ -78,6 +78,7 @@ extern mod prim;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
+pub use prim::cast;
 pub use prim::kinds;
 pub use prim::mem;
 
@@ -178,7 +179,6 @@ pub mod io;
 pub mod path;
 pub mod rand;
 pub mod run;
-pub mod cast;
 pub mod fmt;
 pub mod cleanup;
 #[deprecated]
