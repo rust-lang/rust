@@ -36,7 +36,6 @@ pub enum ObsoleteSyntax {
     ObsoleteUnsafeExternFn,
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
-    ObsoleteEmptyImpl,
     ObsoleteLoopAsContinue,
     ObsoleteEnumWildcard,
     ObsoleteStructWildcard,
@@ -109,10 +108,6 @@ impl ParserObsoleteMethods for Parser {
                 "const pointer",
                 "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
                  `@Foo`"
-            ),
-            ObsoleteEmptyImpl => (
-                "empty implementation",
-                "instead of `impl A;`, write `impl A {}`"
             ),
             ObsoleteLoopAsContinue => (
                 "`loop` instead of `continue`",
