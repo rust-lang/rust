@@ -72,7 +72,7 @@ from the Internet on our supported platforms.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-* Windows (7, Server 2008 R2), x86 only
+* Windows (7, 8, Server 2008 R2), x86 only
 * Linux (various distributions), x86 and x86-64
 * OSX 10.7 (Lion) or greater, x86 and x86-64
 
