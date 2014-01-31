@@ -608,19 +608,28 @@ impl RawSocket {
     pub fn new(domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
         -> IoResult<RawSocket>
     {
-        let socket = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
-        if socket == -1 {
+        let socket = RawSocket {
+                        fd: unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) }
+                     };
+        if socket.fd == -1 {
             return Err(super::last_error());
         }
-        if includeIpHeader {
+        if includeIpHeader && domain == libc::AF_INET {
             let one: libc::c_int = 1;
-            let proto = if domain == libc::AF_INET { libc::IPPROTO_IP } else { libc::IPPROTO_IPV6 };
-            let res = unsafe { libc::setsockopt(socket, proto, libc::IP_HDRINCL, (&one as *libc::c_int) as *libc::c_void, intrinsics::size_of::<libc::c_int>() as u32) };
+            // Only windows supports IPV6_HDRINCL
+            let (proto, hdrincl) = (libc::IPPROTO_IP, libc::IP_HDRINCL);
+            let res = unsafe {
+                libc::setsockopt(socket.fd,
+                                 proto,
+                                 hdrincl,
+                                 (&one as *libc::c_int) as *libc::c_void,
+                                 intrinsics::size_of::<libc::c_int>() as u32)
+            };
             if res == -1 {
                 return Err(super::last_error());
             }
         }
-        return Ok(RawSocket { fd: socket });
+        return Ok(socket);
     }
 }
 
@@ -628,14 +637,19 @@ impl rtio::RtioRawSocket for RawSocket {
     fn recvfrom(&mut self, buf: &mut [u8])
         -> IoResult<(uint, ip::SocketAddr)>
     {
-        let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
-        let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
-        let len = unsafe { libc::recvfrom(self.fd,
-                                          buf.as_ptr() as *mut libc::c_void,
-                                          buf.len() as u64,
-                                          0,
-                                          (&mut caddr as *mut libc::sockaddr_storage) as *mut libc::sockaddr,
-                                          &mut caddrlen) };
+        let mut caddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
+        let mut caddrlen = unsafe {
+                                intrinsics::size_of::<libc::sockaddr_storage>()
+                           } as libc::socklen_t;
+        let len = unsafe {
+                    let addr = &mut caddr as *mut libc::sockaddr_storage;
+                    retry( || libc::recvfrom(self.fd,
+                                   buf.as_ptr() as *mut libc::c_void,
+                                   buf.len() as u64,
+                                   0,
+                                   addr as *mut libc::sockaddr,
+                                   &mut caddrlen))
+                  };
         if len == -1 {
             return Err(super::last_error());
         }
@@ -648,18 +662,15 @@ impl rtio::RtioRawSocket for RawSocket {
     fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
         -> IoResult<libc::ssize_t>
     {
-        let (sockaddr, _) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
+        let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
-                        libc::sendto(self.fd,
-                                     buf.as_ptr() as *libc::c_void,
-                                     buf.len() as u64,
-                                     0,
-                                     addr,
-                                     match dst {
-                                         ip::Ipv4Addr(..) => intrinsics::size_of::<libc::sockaddr_in>(),
-                                         ip::Ipv6Addr(..) => intrinsics::size_of::<libc::sockaddr_in6>()
-                                     } as libc::socklen_t)
+                    retry( || libc::sendto(self.fd,
+                                 buf.as_ptr() as *libc::c_void,
+                                 buf.len() as u64,
+                                 0,
+                                 addr,
+                                 slen as libc::socklen_t))
                   };
 
         return if len < 0 {
