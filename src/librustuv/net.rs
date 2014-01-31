@@ -11,7 +11,7 @@
 use std::cast;
 use std::io::IoError;
 use std::io::net::ip;
-use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
+use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use std::libc;
 use std::mem;
 use std::num::Bounded;
@@ -19,10 +19,7 @@ use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
-use std::str;
 use std::unstable::intrinsics;
-use std::unstable::finally::Finally;
-use std::vec;
 
 use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
@@ -31,7 +28,6 @@ use super::{Loop, Request, UvError, Buf, status_to_io_result,
             wait_until_woken_after, wakeup};
 use uvio::UvIoFactory;
 use uvll;
-use uvll::sockaddr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic functions related to dealing with sockaddr things
@@ -716,14 +712,14 @@ impl HomingIO for RawSocketWatcher {
 
 impl rtio::RtioRawSocket for RawSocketWatcher {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> Result<(uint, SocketAddr), IoError>
+        -> Result<(uint, ip::SocketAddr), IoError>
     {
         let max: c_int = Bounded::max_value();
         assert!(buf.len() <= (max as uint));
         struct Ctx {
             task: Option<BlockedTask>,
             buf: Option<Buf>,
-            result: Option<(ssize_t, Option<SocketAddr>)>,
+            result: Option<(ssize_t, Option<ip::SocketAddr>)>,
             socket: Option<uvll::uv_os_socket>,
         }
         let _m = self.fire_homing_missile();
@@ -782,14 +778,14 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 cx.result = Some((errno() as ssize_t, None));
                 return;
             }
-            let addr = Some(sockaddr_to_socket_addr((&caddr as *libc::sockaddr_storage) as *uvll::sockaddr));
+            let addr = Some(sockaddr_to_addr(&caddr, caddrlen as uint));
             cx.result = Some((len as ssize_t, addr));
 
             wakeup(&mut cx.task);
         }
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: IpAddr)
+    fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
         -> Result<ssize_t, IoError>
     {
         struct Ctx {
@@ -797,7 +793,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             buf: Option<Buf>,
             result: Option<ssize_t>,
             socket: Option<uvll::uv_os_socket>,
-            addr: IpAddr,
+            addr: ip::IpAddr,
         }
         let _m = self.fire_homing_missile();
 
@@ -840,25 +836,25 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             }
 
             let len = match (cx.socket, cx.buf) {
-                        (Some(sock), Some(buf)) => socket_addr_as_sockaddr(SocketAddr{ ip: cx.addr, port: 0 }, |addr| {
+                        (Some(sock), Some(buf)) => { let (addr, len) = addr_to_sockaddr(ip::SocketAddr{ ip: cx.addr, port: 0 });
                                                         unsafe {
-                                                            if match cx.addr { Ipv4Addr(..) => true, Ipv6Addr(..) => false } {
+                                                            if match cx.addr { ip::Ipv4Addr(..) => true, ip::Ipv6Addr(..) => false } {
                                                                 libc::sendto(sock,
                                                                     buf.base as *c_void,
                                                                     buf.len,
                                                                     0,
-                                                                    addr as *libc::sockaddr,
-                                                                    intrinsics::size_of::<libc::sockaddr_in>() as libc::socklen_t)
+                                                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
+                                                                    len as libc::socklen_t)
                                                             } else {
                                                                 libc::sendto(sock,
                                                                     buf.base as *c_void,
                                                                     buf.len,
                                                                     0,
-                                                                    addr as *libc::sockaddr,
-                                                                    intrinsics::size_of::<libc::sockaddr_in6>() as libc::socklen_t)
+                                                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
+                                                                    len as libc::socklen_t)
                                                                 }
                                                         }
-                                                    }),
+                                                    },
                         _                       => -1
                       };
 

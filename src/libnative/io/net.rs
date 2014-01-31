@@ -628,9 +628,6 @@ impl rtio::RtioRawSocket for RawSocket {
     fn recvfrom(&mut self, buf: &mut [u8])
         -> IoResult<(uint, ip::SocketAddr)>
     {
-        let max: libc::c_int = Bounded::max_value();
-        assert!(buf.len() <= (max as uint));
-
         let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
         let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
         let len = unsafe { libc::recvfrom(self.fd,
