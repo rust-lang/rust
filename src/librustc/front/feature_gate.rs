@@ -210,10 +210,13 @@ impl Visitor<()> for Context {
             self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }
+
         else if id == self.sess.ident_of("trace_macros") {
             self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
                 stable enough for use and is subject to change");
-        } else {
+        }
+
+        else {
             for &quote in quotes.iter() {
                 if id == self.sess.ident_of(quote) {
                   self.gate_feature("quote", path.span, quote + msg);

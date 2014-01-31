@@ -95,7 +95,6 @@ pub mod ext {
     pub mod bytes;
     pub mod concat;
     pub mod concat_idents;
-    pub mod fourcc;
     pub mod log_syntax;
     pub mod source_util;
 
