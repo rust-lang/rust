@@ -333,7 +333,8 @@ pub fn msys_terminfo() -> ~TermInfo {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+
+    use super::{boolnames, boolfnames, numnames, numfnames, stringnames, stringfnames};
 
     #[test]
     fn test_veclens() {

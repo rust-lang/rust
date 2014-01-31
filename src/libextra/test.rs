@@ -15,6 +15,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+extern mod term;
 
 use getopts;
 use getopts::groups;
@@ -23,7 +24,6 @@ use json;
 use serialize::Decodable;
 use stats::Stats;
 use stats;
-use term;
 use time::precise_time_ns;
 use treemap::TreeMap;
 
