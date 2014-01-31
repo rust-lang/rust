@@ -105,21 +105,20 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 
 #[cfg(test)]
 mod tests {
-    use cast::transmute;
-    use unstable::raw;
+    use super::*;
 
     #[test]
     fn test_transmute_copy() {
-        assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
+        assert_eq!(1u, unsafe { transmute_copy(&1) });
     }
 
     #[test]
     fn test_transmute() {
         unsafe {
-            let x = @100u8;
-            let x: *raw::Box<u8> = transmute(x);
-            assert!((*x).data == 100);
-            let _x: @int = transmute(x);
+            let x = ~100u8;
+            let x: *u8 = transmute(x);
+            assert!(*x == 100);
+            let _x: ~u8 = transmute(x);
         }
     }
 
