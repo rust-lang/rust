@@ -23,6 +23,7 @@ and `Eq` to overload the `==` and `!=` operators.
 #[allow(missing_doc)];
 
 use kinds::marker;
+use prim::intrinsics::TypeId;
 
 /**
 * Trait for values that can be compared for equality and inequality.
@@ -41,6 +42,12 @@ pub trait Eq {
 
     #[inline]
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
+}
+
+impl Eq for TypeId {
+    fn eq(&self, other: &TypeId) -> bool {
+        self.t == other.t
+    }
 }
 
 /// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.

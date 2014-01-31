@@ -13,10 +13,11 @@
 use prelude::*;
 use libc::uintptr_t;
 
+pub use prim::intrinsics;
+
 pub mod dynamic_lib;
 
 pub mod finally;
-pub mod intrinsics;
 pub mod simd;
 #[cfg(not(test))]
 pub mod lang;

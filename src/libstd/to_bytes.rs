@@ -18,6 +18,7 @@ use cast;
 use container::Container;
 use iter::Iterator;
 use option::{None, Option, Some};
+use prim::intrinsics::TypeId;
 use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
@@ -52,6 +53,13 @@ pub trait IterBytes {
     /// underlying memory endianness.
     ///
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool;
+}
+
+impl IterBytes for TypeId {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.t.iter_bytes(lsb0, f)
+    }
 }
 
 impl IterBytes for bool {
