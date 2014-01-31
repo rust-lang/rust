@@ -291,7 +291,7 @@ pub struct ctxt_ {
     freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
     rcache: creader_cache,
-    short_names_cache: RefCell<HashMap<t, @str>>,
+    short_names_cache: RefCell<HashMap<t, ~str>>,
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
