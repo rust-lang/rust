@@ -646,7 +646,7 @@ match mypoint {
 ## Enums
 
 Enums are datatypes that have several alternate representations. For
-example, consider the type shown earlier:
+example, consider the following type:
 
 ~~~~
 # struct Point { x: f64, y: f64 }
