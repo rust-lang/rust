@@ -72,9 +72,8 @@ use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
 use parse::token::{INTERPOLATED, InternedString, can_begin_expr, get_ident};
-use parse::token::{get_ident_interner, ident_to_str, is_ident};
-use parse::token::{is_ident_or_path, is_plain_ident, keywords};
-use parse::token::{special_idents, token_to_binop};
+use parse::token::{get_ident_interner, is_ident, is_ident_or_path};
+use parse::token::{is_plain_ident, keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
@@ -4540,7 +4539,8 @@ impl Parser {
             token::LIT_STR(s)
             | token::LIT_STR_RAW(s, _) => {
                 self.bump();
-                let the_string = ident_to_str(&s);
+                let identifier_string = token::get_ident(s.name);
+                let the_string = identifier_string.get();
                 let mut abis = AbiSet::empty();
                 for word in the_string.words() {
                     match abi::lookup(word) {

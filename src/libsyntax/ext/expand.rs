@@ -22,8 +22,8 @@ use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use fold::*;
 use parse;
+use parse::token::{fresh_mark, fresh_name, intern};
 use parse::token;
-use parse::token::{fresh_mark, fresh_name, ident_to_str, intern};
 use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
@@ -310,11 +310,12 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
 
         Some(&NormalTT(ref expander, span)) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
+                let string = token::get_ident(it.ident.name);
                 fld.cx.span_err(pth.span,
                                 format!("macro {}! expects no ident argument, \
                                         given '{}'",
                                         extnamestr.get(),
-                                        ident_to_str(&it.ident)));
+                                        string.get()));
                 return SmallVector::zero();
             }
             fld.cx.bt_push(ExpnInfo {
@@ -411,7 +412,10 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
     let MacroCrate { lib, cnum } = fld.cx.loader.load_crate(crate);
 
     let crate_name = match crate.node {
-        ast::ViewItemExternMod(ref name, _, _) => token::ident_to_str(name),
+        ast::ViewItemExternMod(ref name, _, _) => {
+            let string = token::get_ident(name.name);
+            string.get().to_str()
+        },
         _ => unreachable!(),
     };
     let name = format!("<{} macros>", crate_name);
@@ -957,7 +961,7 @@ mod test {
     use fold::*;
     use ext::base::{CrateLoader, MacroCrate};
     use parse;
-    use parse::token::{fresh_mark, gensym, intern, ident_to_str};
+    use parse::token::{fresh_mark, gensym, intern};
     use parse::token;
     use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
@@ -1272,9 +1276,12 @@ mod test {
                         println!("uh oh, matches but shouldn't:");
                         println!("varref: {:?}",varref);
                         // good lord, you can't make a path with 0 segments, can you?
+                        let string = token::get_ident(varref.segments[0]
+                                                            .identifier
+                                                            .name);
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
                                  varref.segments[0].identifier.name,
-                                 ident_to_str(&varref.segments[0].identifier));
+                                 string.get());
                         println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
@@ -1296,7 +1303,10 @@ foo_module!()
         let bindings = name_finder.ident_accumulator;
 
         let cxbinds : ~[&ast::Ident] =
-            bindings.iter().filter(|b|{@"xx" == (ident_to_str(*b))}).collect();
+            bindings.iter().filter(|b| {
+                let string = token::get_ident(b);
+                "xx" == string.get()
+            }).collect();
         let cxbind = match cxbinds {
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")
@@ -1308,9 +1318,13 @@ foo_module!()
         let varrefs = path_finder.path_accumulator;
 
         // the xx binding should bind all of the xx varrefs:
-        for (idx,v) in varrefs.iter().filter(|p|{ p.segments.len() == 1
-                                          && (@"xx" == (ident_to_str(&p.segments[0].identifier)))
-                                     }).enumerate() {
+        for (idx,v) in varrefs.iter().filter(|p|{
+            p.segments.len() == 1
+            && {
+                let string = token::get_ident(p.segments[0].identifier.name);
+                "xx" == string.get()
+            }
+        }).enumerate() {
             if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
