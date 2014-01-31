@@ -899,7 +899,8 @@ mod test {
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
         let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(@"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
+        let ast = string_to_crate(
+            ~"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
                      pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,
@@ -910,8 +911,9 @@ mod test {
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
         let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(@"macro_rules! a {(b $c:expr $(d $e:token)f+
-=> (g $(d $d $e)+))} ");
+        let ast = string_to_crate(
+            ~"macro_rules! a {(b $c:expr $(d $e:token)f+ => \
+              (g $(d $d $e)+))} ");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
                      pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,

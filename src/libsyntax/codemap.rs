@@ -468,7 +468,7 @@ mod test {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
+        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         fm.next_line(BytePos(0));
         assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
@@ -480,7 +480,7 @@ mod test {
     #[should_fail]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
+        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));

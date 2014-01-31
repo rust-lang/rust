@@ -1021,11 +1021,11 @@ mod test {
     // make sure that macros can leave scope
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
-        let src = @"fn bogus() {macro_rules! z (() => (3+4))}\
+        let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            @"<test>",
+            ~"<test>",
             src,
             ~[],sess);
         // should fail:
@@ -1036,11 +1036,11 @@ mod test {
     // make sure that macros can leave scope for modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
-        let src = @"mod foo {macro_rules! z (() => (3+4))}\
+        let src = ~"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            @"<test>",
+            ~"<test>",
             src,
             ~[],sess);
         // should fail:
@@ -1050,11 +1050,11 @@ mod test {
 
     // macro_escape modules shouldn't cause macros to leave scope
     #[test] fn macros_can_escape_flattened_mods_test () {
-        let src = @"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
+        let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            @"<test>",
+            ~"<test>",
             src,
             ~[], sess);
         // should fail:
@@ -1063,9 +1063,9 @@ mod test {
     }
 
     #[test] fn test_contains_flatten (){
-        let attr1 = make_dummy_attr (@"foo");
-        let attr2 = make_dummy_attr (@"bar");
-        let escape_attr = make_dummy_attr (@"macro_escape");
+        let attr1 = make_dummy_attr ("foo");
+        let attr2 = make_dummy_attr ("bar");
+        let escape_attr = make_dummy_attr ("macro_escape");
         let attrs1 = ~[attr1, escape_attr, attr2];
         assert_eq!(contains_macro_escape (attrs1),true);
         let attrs2 = ~[attr1,attr2];
@@ -1073,13 +1073,13 @@ mod test {
     }
 
     // make a MetaWord outer attribute with the given name
-    fn make_dummy_attr(s: @str) -> ast::Attribute {
+    fn make_dummy_attr(s: &str) -> ast::Attribute {
         Spanned {
             span:codemap::DUMMY_SP,
             node: Attribute_ {
                 style: AttrOuter,
                 value: @Spanned {
-                    node: MetaWord(s),
+                    node: MetaWord(token::intern_and_get_ident(s)),
                     span: codemap::DUMMY_SP,
                 },
                 is_sugared_doc: false,
@@ -1089,7 +1089,7 @@ mod test {
 
     #[test]
     fn renaming () {
-        let item_ast = string_to_crate(@"fn f() -> int { a }");
+        let item_ast = string_to_crate(~"fn f() -> int { a }");
         let a_name = intern("a");
         let a2_name = gensym("a2");
         let mut renamer = new_rename_folder(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
@@ -1128,7 +1128,7 @@ mod test {
     //    pprust::print_crate_(&mut s, crate);
     //}
 
-    fn expand_crate_str(crate_str: @str) -> ast::Crate {
+    fn expand_crate_str(crate_str: ~str) -> ast::Crate {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
@@ -1146,7 +1146,7 @@ mod test {
     //}
 
     #[test] fn macro_tokens_should_match(){
-        expand_crate_str(@"macro_rules! m((a)=>(13)) fn main(){m!(a);}");
+        expand_crate_str(~"macro_rules! m((a)=>(13)) fn main(){m!(a);}");
     }
 
     // renaming tests expand a crate and then check that the bindings match
@@ -1222,7 +1222,7 @@ mod test {
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_managed(), conns.clone(), bic)
         };
-        let cr = expand_crate_str(teststr.to_managed());
+        let cr = expand_crate_str(teststr.to_owned());
         // find the bindings:
         let mut name_finder = new_name_finder(~[]);
         visit::walk_crate(&mut name_finder,&cr,());
@@ -1285,7 +1285,7 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = @"macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
+        let crate_str = ~"macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
 ";
@@ -1335,7 +1335,7 @@ foo_module!()
 
     #[test]
     fn pat_idents(){
-        let pat = string_to_pat(@"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
+        let pat = string_to_pat(~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
         let mut pat_idents = new_name_finder(~[]);
         pat_idents.visit_pat(pat, ());
         assert_eq!(pat_idents.ident_accumulator,

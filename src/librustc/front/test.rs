@@ -134,7 +134,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             if !cx.sess.building_library.get() {
                 @ast::Item {
                     attrs: item.attrs.iter().filter_map(|attr| {
-                        if attr.name().equiv(&("main")) {
+                        if !attr.name().equiv(&("main")) {
                             Some(*attr)
                         } else {
                             None
