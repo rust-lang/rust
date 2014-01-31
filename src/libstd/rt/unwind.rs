@@ -77,7 +77,7 @@ mod libunwind {
     //! Unwind library interface
 
     #[allow(non_camel_case_types)];
-    #[allow(dead_code)] // these are just bindings
+    #[allow(dead_code)]; // these are just bindings
 
     use libc::{uintptr_t};
 
