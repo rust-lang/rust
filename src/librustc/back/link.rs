@@ -473,10 +473,10 @@ pub fn build_link_meta(sess: Session,
                        symbol_hasher: &mut Sha256)
                        -> LinkMeta {
     // This calculates CMH as defined above
-    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> @str {
+    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> ~str {
         symbol_hasher.reset();
         symbol_hasher.input_str(crateid.to_str());
-        truncated_hash_result(symbol_hasher).to_managed()
+        truncated_hash_result(symbol_hasher)
     }
 
     let crateid = match attr::find_crateid(attrs) {
@@ -963,7 +963,7 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
-        let name = sess.cstore.get_crate_data(cnum).name;
+        let name = sess.cstore.get_crate_data(cnum).name.clone();
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(format!("could not find rlib for: `{}`", name));
@@ -1221,7 +1221,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                 // If we're not doing LTO, then our job is simply to just link
                 // against the archive.
                 if sess.lto() {
-                    let name = sess.cstore.get_crate_data(cnum).name;
+                    let name = sess.cstore.get_crate_data(cnum).name.clone();
                     time(sess.time_passes(), format!("altering {}.rlib", name),
                          (), |()| {
                         let dst = tmpdir.join(cratepath.filename().unwrap());
