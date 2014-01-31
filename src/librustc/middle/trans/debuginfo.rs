@@ -622,7 +622,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
-    let mut function_name = token::ident_to_str(&ident).to_owned();
+    let function_name_string = token::get_ident(ident.name);
+    let mut function_name = function_name_string.get().to_owned();
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -791,7 +792,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
                 let ident = special_idents::type_self;
 
-                let param_metadata = token::ident_to_str(&ident).with_c_str(|name| {
+                let param_metadata_string = token::get_ident(ident.name);
+                let param_metadata = param_metadata_string.get()
+                                                          .with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -829,7 +832,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
             // Again, only create type information if extra_debuginfo is enabled
             if cx.sess.opts.extra_debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let param_metadata = token::ident_to_str(&ident).with_c_str(|name| {
+                let param_metadata_string = token::get_ident(ident.name);
+                let param_metadata = param_metadata_string.get()
+                                                          .with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -934,7 +939,8 @@ fn declare_local(bcx: &Block,
     let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, filename);
 
-    let name: &str = token::ident_to_str(&variable_ident);
+    let variable_ident_string = token::get_ident(variable_ident.name);
+    let name: &str = variable_ident_string.get();
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
 
@@ -1363,7 +1369,8 @@ fn describe_enum_variant(cx: &CrateContext,
                          file_metadata: DIFile,
                          span: Span)
                       -> (DICompositeType, Type, @MemberDescriptionFactory) {
-    let variant_name = token::ident_to_str(&variant_info.name);
+    let variant_info_string = token::get_ident(variant_info.name.name);
+    let variant_name = variant_info_string.get();
     let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
                                           struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
@@ -1458,7 +1465,8 @@ fn prepare_enum_metadata(cx: &CrateContext,
     let enumerators_metadata: ~[DIDescriptor] = variants
         .iter()
         .map(|v| {
-            let name: &str = token::ident_to_str(&v.name);
+            let string = token::get_ident(v.name.name);
+            let name: &str = string.get();
             let discriminant_value = v.disr_val as c_ulonglong;
 
             name.with_c_str(|name| {
@@ -2002,9 +2010,10 @@ fn trait_metadata(cx: &CrateContext,
     // the trait's methods.
     let path = ty::item_path(cx.tcx, def_id);
     let ident = path.last().unwrap().ident();
+    let ident_string = token::get_ident(ident.name);
     let name = ppaux::trait_store_to_str(cx.tcx, trait_store) +
                ppaux::mutability_to_str(mutability) +
-               token::ident_to_str(&ident);
+               ident_string.get();
     // Add type and region parameters
     let name = ppaux::parameterized(cx.tcx, name, &substs.regions,
                                     substs.tps, def_id, true);
@@ -2761,8 +2770,10 @@ impl NamespaceTreeNode {
                 }
                 None => {}
             }
-            let name = token::ident_to_str(&node.ident);
-            output.push_str(format!("{}{}", name.len(), name));
+            let string = token::get_ident(node.ident.name);
+            output.push_str(format!("{}{}",
+                                    string.get().len(),
+                                    string.get()));
         }
     }
 }
@@ -2813,7 +2824,8 @@ fn namespace_for_item(cx: &CrateContext,
                     Some(node) => node.scope,
                     None => ptr::null()
                 };
-                let namespace_name = token::ident_to_str(&ident);
+                let namespace_name_string = token::get_ident(ident.name);
+                let namespace_name = namespace_name_string.get();
 
                 let namespace_metadata = unsafe {
                     namespace_name.with_c_str(|namespace_name| {
