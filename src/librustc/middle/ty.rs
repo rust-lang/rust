@@ -2669,14 +2669,21 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
-    //printfln!("{:?}/{:?}", id, cx.node_types.len());
-    let node_types = cx.node_types.borrow();
-    match node_types.get().find(&(id as uint)) {
-       Some(&t) => t,
+    match node_id_to_type_opt(cx, id) {
+       Some(t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
                 ast_map::node_id_to_str(cx.items, id,
                                         token::get_ident_interner())))
+    }
+}
+
+pub fn node_id_to_type_opt(cx: ctxt, id: ast::NodeId) -> Option<t> {
+    let node_types = cx.node_types.borrow();
+    debug!("id: {:?}, node_types: {:?}", id, node_types);
+    match node_types.get().find(&(id as uint)) {
+       Some(&t) => Some(t),
+       None => None
     }
 }
 
@@ -2848,6 +2855,10 @@ pub fn pat_ty(cx: ctxt, pat: &ast::Pat) -> t {
 // expr_ty_params_and_ty() below.
 pub fn expr_ty(cx: ctxt, expr: &ast::Expr) -> t {
     return node_id_to_type(cx, expr.id);
+}
+
+pub fn expr_ty_opt(cx: ctxt, expr: &ast::Expr) -> Option<t> {
+    return node_id_to_type_opt(cx, expr.id);
 }
 
 pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
