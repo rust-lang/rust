@@ -1797,9 +1797,9 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>)
             let external_srcs = ccx.external_srcs.borrow();
             srccrate = match external_srcs.get().find(&bcx.fcx.id) {
                 Some(&src) => {
-                    ccx.sess.cstore.get_crate_data(src.crate).name
+                    ccx.sess.cstore.get_crate_data(src.crate).name.clone()
                 }
-                None => ccx.link_meta.crateid.name.to_managed(),
+                None => ccx.link_meta.crateid.name.to_str(),
             };
         };
         let mut modpath = ~[PathMod(ccx.sess.ident_of(srccrate))];

@@ -76,7 +76,7 @@ impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
 struct cache_entry {
     cnum: ast::CrateNum,
     span: Span,
-    hash: @str,
+    hash: ~str,
     crateid: CrateId,
 }
 
@@ -146,8 +146,12 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 
     match extract_crate_info(i) {
         Some(info) => {
-            let cnum = resolve_crate(e, info.ident, info.name, info.version,
-                                     @"", i.span);
+            let cnum = resolve_crate(e,
+                                     info.ident.clone(),
+                                     info.name.clone(),
+                                     info.version.clone(),
+                                     ~"",
+                                     i.span);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
         None => ()
@@ -155,36 +159,36 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 }
 
 struct CrateInfo {
-    ident: @str,
-    name: @str,
-    version: @str,
+    ident: ~str,
+    name: ~str,
+    version: ~str,
     id: ast::NodeId,
 }
 
 fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
         ast::ViewItemExternMod(ref ident, ref path_opt, id) => {
-            let ident = token::ident_to_str(ident);
+            let ident = token::get_ident(ident.name);
             debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
-                   ident, path_opt);
+                   ident.get(), path_opt);
             let (name, version) = match *path_opt {
                 Some((ref path_str, _)) => {
                     let crateid: Option<CrateId> = from_str(path_str.get());
                     match crateid {
-                        None => (@"", @""),
+                        None => (~"", ~""),
                         Some(crateid) => {
                             let version = match crateid.version {
-                                None => @"",
-                                Some(ref ver) => ver.to_managed(),
+                                None => ~"",
+                                Some(ref ver) => ver.to_str(),
                             };
-                            (crateid.name.to_managed(), version)
+                            (crateid.name.to_str(), version)
                         }
                     }
                 }
-                None => (ident, @""),
+                None => (ident.get().to_str(), ~""),
             };
             Some(CrateInfo {
-                  ident: ident,
+                  ident: ident.get().to_str(),
                   name: name,
                   version: version,
                   id: id,
@@ -278,14 +282,14 @@ fn visit_item(e: &Env, i: &ast::Item) {
     }
 }
 
-fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast::CrateNum> {
+fn existing_match(e: &Env, name: ~str, version: ~str, hash: &str) -> Option<ast::CrateNum> {
     let crate_cache = e.crate_cache.borrow();
     for c in crate_cache.get().iter() {
         let crateid_version = match c.crateid.version {
-            None => @"0.0",
-            Some(ref ver) => ver.to_managed(),
+            None => ~"0.0",
+            Some(ref ver) => ver.to_str(),
         };
-        if (name.is_empty() || c.crateid.name.to_managed() == name) &&
+        if (name.is_empty() || c.crateid.name == name) &&
             (version.is_empty() || crateid_version == version) &&
             (hash.is_empty() || c.hash.as_slice() == hash) {
             return Some(c.cnum);
@@ -295,19 +299,19 @@ fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast:
 }
 
 fn resolve_crate(e: &mut Env,
-                 ident: @str,
-                 name: @str,
-                 version: @str,
-                 hash: @str,
+                 ident: ~str,
+                 name: ~str,
+                 version: ~str,
+                 hash: ~str,
                  span: Span)
               -> ast::CrateNum {
-    match existing_match(e, name, version, hash) {
+    match existing_match(e, name.clone(), version.clone(), hash.clone()) {
       None => {
         let load_ctxt = loader::Context {
             sess: e.sess,
             span: span,
             ident: ident,
-            name: name,
+            name: name.clone(),
             version: version,
             hash: hash,
             os: e.os,
@@ -368,10 +372,13 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
     let r = decoder::get_crate_deps(cdata);
     for dep in r.iter() {
         let extrn_cnum = dep.cnum;
-        let cname_str = token::ident_to_str(&dep.name);
+        let cname_str = token::get_ident(dep.name.name);
         debug!("resolving dep crate {} ver: {} hash: {}",
                cname_str, dep.vers, dep.hash);
-        match existing_match(e, cname_str, dep.vers, dep.hash) {
+        match existing_match(e,
+                             cname_str.get().to_str(),
+                             dep.vers.clone(),
+                             dep.hash.clone()) {
           Some(local_cnum) => {
             debug!("already have it");
             // We've already seen this crate
@@ -383,8 +390,12 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.
             let fake_span = DUMMY_SP;
-            let local_cnum = resolve_crate(e, cname_str, cname_str, dep.vers,
-                                           dep.hash, fake_span);
+            let local_cnum = resolve_crate(e,
+                                           cname_str.get().to_str(),
+                                           cname_str.get().to_str(),
+                                           dep.vers.clone(),
+                                           dep.hash.clone(),
+                                           fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
           }
         }
@@ -415,8 +426,12 @@ impl Loader {
 impl CrateLoader for Loader {
     fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(crate).unwrap();
-        let cnum = resolve_crate(&mut self.env, info.ident, info.name,
-                                 info.version, @"", crate.span);
+        let cnum = resolve_crate(&mut self.env,
+                                 info.ident.clone(),
+                                 info.name.clone(),
+                                 info.version.clone(),
+                                 ~"",
+                                 crate.span);
         let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
         MacroCrate {
             lib: library.dylib,
