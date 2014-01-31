@@ -606,6 +606,41 @@ pub trait LowerExp { fn fmt(&Self, &mut Formatter); }
 #[allow(missing_doc)]
 pub trait UpperExp { fn fmt(&Self, &mut Formatter); }
 
+// FIXME #11938 - UFCS would make us able call the above methods
+// directly Show::show(x, fmt).
+
+// FIXME(huonw's WIP): this is a intermediate state waiting for a
+// snapshot (at the time of writing we're at 2014-01-20 b6400f9), to
+// be able to make the `fmt` functions into normal methods and have
+// `format!()` still work.
+macro_rules! uniform_fn_call_workaround {
+    ($( $name: ident, $trait_: ident; )*) => {
+        $(
+            #[doc(hidden)]
+            pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) {
+                $trait_::fmt(x, fmt)
+            }
+            )*
+    }
+}
+uniform_fn_call_workaround! {
+    secret_show, Show;
+    secret_bool, Bool;
+    secret_char, Char;
+    secret_signed, Signed;
+    secret_unsigned, Unsigned;
+    secret_octal, Octal;
+    secret_binary, Binary;
+    secret_lower_hex, LowerHex;
+    secret_upper_hex, UpperHex;
+    secret_string, String;
+    secret_poly, Poly;
+    secret_pointer, Pointer;
+    secret_float, Float;
+    secret_lower_exp, LowerExp;
+    secret_upper_exp, UpperExp;
+}
+
 /// The `write` function takes an output stream, a precompiled format string,
 /// and a list of arguments. The arguments will be formatted according to the
 /// specified format string into the output stream provided.
