@@ -444,7 +444,6 @@ mod tests {
     use num;
     use num::CheckedDiv;
     use num::Bitwise;
-    use mem;
 
     #[test]
     fn test_num() {
