@@ -68,6 +68,7 @@ use iter::{Iterator, range};
 use libc;
 use kinds::marker;
 use ops::Drop;
+use cmp::Eq;
 use clone::Clone;
 use option::{Option, Some, None};
 use ptr::RawPtr;
@@ -109,9 +110,24 @@ impl Clone for CString {
         if self.buf.is_null() {
             CString { buf: self.buf, owns_buffer_: self.owns_buffer_ }
         } else {
-            let buf = unsafe { malloc_raw(self.len()) } as *mut libc::c_char;
-            unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, self.len()); }
+            let len = self.len() + 1;
+            let buf = unsafe { malloc_raw(len) } as *mut libc::c_char;
+            unsafe { ptr::copy_nonoverlapping_memory(buf, self.buf, len); }
             CString { buf: buf as *libc::c_char, owns_buffer_: true }
+        }
+    }
+}
+
+impl Eq for CString {
+    fn eq(&self, other: &CString) -> bool {
+        if self.buf as uint == other.buf as uint {
+            true
+        } else if self.buf.is_null() || other.buf.is_null() {
+            false
+        } else {
+            unsafe {
+                libc::strcmp(self.buf, other.buf) == 0
+            }
         }
     }
 }
@@ -615,8 +631,9 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let c_str = "hello".to_c_str();
-        assert!(c_str == c_str.clone());
+        let a = "hello".to_c_str();
+        let b = a.clone();
+        assert!(a == b);
     }
 
     #[test]
@@ -641,6 +658,13 @@ mod tests {
         let c_ = c_.unwrap();
         // force a copy, reading the memory
         c_.as_bytes().to_owned();
+    }
+
+    #[test]
+    fn test_clone_eq_null() {
+        let x = unsafe { CString::new(ptr::null(), false) };
+        let y = x.clone();
+        assert!(x == y);
     }
 }
 
