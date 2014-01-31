@@ -92,8 +92,8 @@ pub fn is_not_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_not_null() }
  * and destination may overlap.
  */
 #[inline]
-pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
-    intrinsics::copy_memory(dst, cast::transmute_immut_unsafe(src), count)
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
+    intrinsics::copy_memory(dst, src, count)
 }
 
 /**
@@ -103,10 +103,10 @@ pub unsafe fn copy_memory<T,P:RawPtr<T>>(dst: *mut T, src: P, count: uint) {
  * and destination may *not* overlap.
  */
 #[inline]
-pub unsafe fn copy_nonoverlapping_memory<T,P:RawPtr<T>>(dst: *mut T,
-                                                        src: P,
-                                                        count: uint) {
-    intrinsics::copy_nonoverlapping_memory(dst, cast::transmute_immut_unsafe(src), count)
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
+                                            src: *T,
+                                            count: uint) {
+    intrinsics::copy_nonoverlapping_memory(dst, src, count)
 }
 
 /**
@@ -137,9 +137,9 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
     let t: *mut T = &mut tmp;
 
     // Perform the swap
-    copy_nonoverlapping_memory(t, x, 1);
-    copy_memory(x, y, 1); // `x` and `y` may overlap
-    copy_nonoverlapping_memory(y, t, 1);
+    copy_nonoverlapping_memory(t, &*x, 1);
+    copy_memory(x, &*y, 1); // `x` and `y` may overlap
+    copy_nonoverlapping_memory(y, &*t, 1);
 
     // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
