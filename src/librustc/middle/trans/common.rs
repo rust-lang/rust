@@ -446,8 +446,9 @@ impl<'a> Block<'a> {
     }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    pub fn ident(&self, ident: Ident) -> @str {
-        token::ident_to_str(&ident)
+    pub fn ident(&self, ident: Ident) -> ~str {
+        let string = token::get_ident(ident.name);
+        string.get().to_str()
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
