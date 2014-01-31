@@ -14,7 +14,7 @@ use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, NtIdent};
-use parse::token::{ident_to_str};
+use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::cell::{Cell, RefCell};
@@ -122,9 +122,10 @@ fn lookup_cur_matched(r: &TtReader, name: Ident) -> @NamedMatch {
     match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
+            let name_string = token::get_ident(name.name);
             r.sp_diag.span_fatal(r.cur_span.get(),
                                  format!("unknown macro variable `{}`",
-                                         ident_to_str(&name)));
+                                         name_string.get()));
         }
     }
 }
@@ -145,11 +146,11 @@ fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
             LisContradiction(_) => rhs.clone(),
             LisConstraint(r_len, _) if l_len == r_len => lhs.clone(),
             LisConstraint(r_len, ref r_id) => {
-                let l_n = ident_to_str(l_id);
-                let r_n = ident_to_str(r_id);
+                let l_n = token::get_ident(l_id.name);
+                let r_n = token::get_ident(r_id.name);
                 LisContradiction(format!("Inconsistent lockstep iteration: \
                                           '{}' has {} items, but '{}' has {}",
-                                          l_n, l_len, r_n, r_len))
+                                          l_n.get(), l_len, r_n.get(), r_len))
             }
         }
     }
@@ -313,10 +314,11 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                 return ret_val;
               }
               MatchedSeq(..) => {
+                let string = token::get_ident(ident.name);
                 r.sp_diag.span_fatal(
                     r.cur_span.get(), /* blame the macro writer */
                     format!("variable '{}' is still repeating at this depth",
-                         ident_to_str(&ident)));
+                            string.get()));
               }
             }
           }

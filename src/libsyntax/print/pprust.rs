@@ -19,7 +19,7 @@ use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
 use parse::classify::expr_is_simple_block;
-use parse::token::{IdentInterner, ident_to_str, interner_get};
+use parse::token::{IdentInterner, interner_get};
 use parse::{comments, token};
 use parse;
 use print::pp::{break_offset, word, space, zerobreak, hardbreak};
@@ -1539,7 +1539,8 @@ pub fn print_decl(s: &mut State, decl: &ast::Decl) {
 }
 
 pub fn print_ident(s: &mut State, ident: ast::Ident) {
-    word(&mut s.s, ident_to_str(&ident));
+    let string = token::get_ident(ident.name);
+    word(&mut s.s, string.get());
 }
 
 pub fn print_name(s: &mut State, name: ast::Name) {
