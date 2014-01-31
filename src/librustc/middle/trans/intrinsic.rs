@@ -337,8 +337,10 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             Ret(bcx, td);
         }
         "type_id" => {
-            let hash = ty::hash_crate_independent(ccx.tcx, substs.tys[0],
-                                                  ccx.link_meta.crate_hash);
+            let hash = ty::hash_crate_independent(
+                ccx.tcx,
+                substs.tys[0],
+                ccx.link_meta.crate_hash.clone());
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     libstd/unstable/intrinsics.rs
             let val = C_named_struct(type_of::type_of(ccx, output_type), [C_u64(hash)]);

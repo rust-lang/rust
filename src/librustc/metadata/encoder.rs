@@ -1614,7 +1614,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
     ebml_w.start_tag(tag_crate_deps);
     let r = get_ordered_deps(ecx, cstore);
     for dep in r.iter() {
-        encode_crate_dep(ecx, ebml_w, *dep);
+        encode_crate_dep(ecx, ebml_w, (*dep).clone());
     }
     ebml_w.end_tag();
 }

@@ -46,10 +46,10 @@ pub enum Os {
 pub struct Context {
     sess: Session,
     span: Span,
-    ident: @str,
-    name: @str,
-    version: @str,
-    hash: @str,
+    ident: ~str,
+    name: ~str,
+    version: ~str,
+    hash: ~str,
     os: Os,
     intr: @IdentInterner
 }
@@ -80,7 +80,7 @@ impl Context {
 
     fn find_library_crate(&self) -> Option<Library> {
         let filesearch = self.sess.filesearch;
-        let crate_name = self.name;
+        let crate_name = self.name.clone();
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
@@ -109,8 +109,10 @@ impl Context {
                     } else if candidate {
                         match get_metadata_section(self.os, path) {
                             Some(cvec) =>
-                                if crate_matches(cvec.as_slice(), self.name,
-                                                 self.version, self.hash) {
+                                if crate_matches(cvec.as_slice(),
+                                                 self.name.clone(),
+                                                 self.version.clone(),
+                                                 self.hash.clone()) {
                                     debug!("found {} with matching crate_id",
                                            path.display());
                                     let (rlib, dylib) = if file.ends_with(".rlib") {
@@ -235,9 +237,9 @@ pub fn note_crateid_attr(diag: @SpanHandler, crateid: &CrateId) {
 }
 
 fn crate_matches(crate_data: &[u8],
-                 name: @str,
-                 version: @str,
-                 hash: @str) -> bool {
+                 name: ~str,
+                 version: ~str,
+                 hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     match attr::find_crateid(attrs) {
         None => false,
@@ -246,8 +248,9 @@ fn crate_matches(crate_data: &[u8],
                 let chash = decoder::get_crate_hash(crate_data);
                 if chash != hash { return false; }
             }
-            name == crateid.name.to_managed() &&
-                (version.is_empty() || version == crateid.version_or_default().to_managed())
+            name == crateid.name &&
+                (version.is_empty() ||
+                 crateid.version_or_default() == version)
         }
     }
 }
