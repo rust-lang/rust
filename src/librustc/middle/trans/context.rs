@@ -97,7 +97,7 @@ pub struct CrateContext {
      adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
      symbol_hasher: RefCell<Sha256>,
      type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
-     all_llvm_symbols: RefCell<HashSet<@str>>,
+     all_llvm_symbols: RefCell<HashSet<~str>>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @Stats,
