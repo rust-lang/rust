@@ -573,7 +573,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{expand,String,Variables,Number};
     use std::result::Ok;
 
     #[test]

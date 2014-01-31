@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,14 +10,25 @@
 
 //! Simple ANSI color library
 
+#[crate_id = "term#0.10-pre"];
+#[comment = "Simple ANSI color library"];
+#[license = "MIT/ASL2"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
+
+#[deny(non_camel_case_types)];
 #[allow(missing_doc)];
 
-
 use std::os;
-use terminfo::*;
+use terminfo::TermInfo;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
 use terminfo::parm::{expand, Number, Variables};
+
+pub mod terminfo;
 
 // FIXME (#2807): Windows support.
 
