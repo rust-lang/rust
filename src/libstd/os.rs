@@ -372,9 +372,9 @@ pub fn self_exe_name() -> Option<Path> {
     fn load_self() -> Option<~[u8]> {
         use std::io;
 
-        match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
-            Ok(Some(path)) => Some(path.as_vec().to_owned()),
-            Ok(None) | Err(..) => None
+        match io::fs::readlink(&Path::new("/proc/self/exe")) {
+            Ok(path) => Some(path.as_vec().to_owned()),
+            Err(..) => None
         }
     }
 

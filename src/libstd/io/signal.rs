@@ -113,11 +113,10 @@ impl Listener {
     /// a signal, and a later call to `recv` will return the signal that was
     /// received while no task was waiting on it.
     ///
-    /// # Failure
+    /// # Error
     ///
     /// If this function fails to register a signal handler, then an error will
-    /// be raised on the `io_error` condition and the function will return
-    /// false.
+    /// be returned.
     pub fn register(&mut self, signum: Signum) -> io::IoResult<()> {
         if self.handles.contains_key(&signum) {
             return Ok(()); // self is already listening to signum, so succeed
@@ -206,13 +205,11 @@ mod test {
         use super::User1;
         let mut s = Listener::new();
         let mut called = false;
-        io::io_error::cond.trap(|_| {
-            called = true;
-        }).inside(|| {
-            if s.register(User1) {
+        match s.register(User1) {
+            Ok(..) => {
                 fail!("Unexpected successful registry of signum {:?}", User1);
             }
-        });
-        assert!(called);
+            Err(..) => {}
+        }
     }
 }

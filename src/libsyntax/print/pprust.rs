@@ -2059,21 +2059,17 @@ pub fn print_generics(s: &mut State,
             } else {
                 let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
-<<<<<<< HEAD
-                print_ident(s, param.ident);
-                print_bounds(s, &param.bounds, false);
+                if_ok!(print_ident(s, param.ident));
+                if_ok!(print_bounds(s, &param.bounds, false));
                 match param.default {
                     Some(default) => {
-                        space(&mut s.s);
-                        word_space(s, "=");
-                        print_type(s, default);
+                        if_ok!(space(&mut s.s));
+                        if_ok!(word_space(s, "="));
+                        if_ok!(print_type(s, default));
                     }
                     _ => {}
                 }
-=======
-                if_ok!(print_ident(s, param.ident));
-                print_bounds(s, &param.bounds, false)
->>>>>>> syntax: Remove io_error usage
+                Ok(())
             }
         }
 

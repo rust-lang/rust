@@ -163,9 +163,10 @@ method of the signature:
 
 ```rust
 # use std;
+# mod fmt { pub type Result = (); }
 # struct T;
 # trait SomeName<T> {
-fn fmt(value: &T, f: &mut std::fmt::Formatter);
+fn fmt(value: &T, f: &mut std::fmt::Formatter) -> fmt::Result;
 # }
 ```
 
@@ -174,7 +175,14 @@ emit output into the `f.buf` stream. It is up to each format trait
 implementation to correctly adhere to the requested formatting parameters. The
 values of these parameters will be listed in the fields of the `Formatter`
 struct. In order to help with this, the `Formatter` struct also provides some
-helper methods. An example of implementing the formatting traits would look
+helper methods.
+
+Additionally, the return value of this function is `fmt::Result` which is a
+typedef to `Result<(), IoError>` (also known as `IoError<()>`). Formatting
+implementations should ensure that they return errors from `write!` correctly
+(propagating errors upward).
+
+An example of implementing the formatting traits would look
 like:
 
 ```rust
@@ -187,7 +195,7 @@ struct Vector2D {
 }
 
 impl fmt::Show for Vector2D {
-    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) {
+    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) -> fmt::Result {
         // The `f.buf` value is of the type `&mut io::Writer`, which is what th
         // write! macro is expecting. Note that this formatting ignores the
         // various flags provided to format strings.
@@ -198,7 +206,7 @@ impl fmt::Show for Vector2D {
 // Different traits allow different forms of output of a type. The meaning of
 // this format is to print the magnitude of a vector.
 impl fmt::Binary for Vector2D {
-    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) {
+    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) -> fmt::Result {
         let magnitude = (obj.x * obj.x + obj.y * obj.y) as f64;
         let magnitude = magnitude.sqrt();
 
@@ -207,7 +215,7 @@ impl fmt::Binary for Vector2D {
         // for details, and the function `pad` can be used to pad strings.
         let decimals = f.precision.unwrap_or(3);
         let string = f64::to_str_exact(magnitude, decimals);
-        f.pad_integral(string.as_bytes(), "", true);
+        f.pad_integral(string.as_bytes(), "", true)
     }
 }
 
@@ -242,6 +250,7 @@ strings and instead directly write the output. Under the hood, this function is
 actually invoking the `write` function defined in this module. Example usage is:
 
 ```rust
+# #[allow(unused_must_use)];
 use std::io;
 
 let mut w = io::MemWriter::new();
@@ -655,11 +664,12 @@ uniform_fn_call_workaround! {
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::fmt;
 /// use std::io;
 ///
 /// let w = &mut io::stdout() as &mut io::Writer;
-/// format_args!(|args| { fmt::write(w, args) }, "Hello, {}!", "world");
+/// format_args!(|args| { fmt::write(w, args); }, "Hello, {}!", "world");
 /// ```
 pub fn write(output: &mut io::Writer, args: &Arguments) -> Result {
     unsafe { write_unsafe(output, args.fmt, args.args) }

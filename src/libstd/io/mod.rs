@@ -29,7 +29,6 @@ Some examples of obvious things you might want to do
     use std::io::BufferedReader;
     use std::io::stdin;
 
-    # let _g = ::std::io::ignore_io_error();
     let mut stdin = BufferedReader::new(stdin());
     for line in stdin.lines() {
         print!("{}", line);
@@ -41,7 +40,6 @@ Some examples of obvious things you might want to do
     ```rust
     use std::io::File;
 
-    # let _g = ::std::io::ignore_io_error();
     let contents = File::open(&Path::new("message.txt")).read_to_end();
     ```
 
@@ -50,7 +48,6 @@ Some examples of obvious things you might want to do
     ```rust
     use std::io::File;
 
-    # let _g = ::std::io::ignore_io_error();
     let mut file = File::create(&Path::new("message.txt"));
     file.write(bytes!("hello, file!\n"));
     # drop(file);
@@ -63,7 +60,6 @@ Some examples of obvious things you might want to do
     use std::io::BufferedReader;
     use std::io::File;
 
-    # let _g = ::std::io::ignore_io_error();
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
@@ -77,7 +73,6 @@ Some examples of obvious things you might want to do
     use std::io::BufferedReader;
     use std::io::File;
 
-    # let _g = ::std::io::ignore_io_error();
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     let lines: ~[~str] = file.lines().collect();
@@ -91,7 +86,6 @@ Some examples of obvious things you might want to do
     use std::io::net::ip::SocketAddr;
     use std::io::net::tcp::TcpStream;
 
-    # let _g = ::std::io::ignore_io_error();
     let addr = from_str::<SocketAddr>("127.0.0.1:8080").unwrap();
     let mut socket = TcpStream::connect(addr).unwrap();
     socket.write(bytes!("GET / HTTP/1.0\n\n"));
@@ -168,72 +162,50 @@ asynchronous request completes.
 # Error Handling
 
 I/O is an area where nearly every operation can result in unexpected
-errors. It should allow errors to be handled efficiently.
-It needs to be convenient to use I/O when you don't care
-about dealing with specific errors.
+errors. Errors should be painfully visible when they happen, and handling them
+should be easy to work with. It should be convenient to handle specific I/O
+errors, and it should also be convenient to not deal with I/O errors.
 
 Rust's I/O employs a combination of techniques to reduce boilerplate
 while still providing feedback about errors. The basic strategy:
 
-* Errors are fatal by default, resulting in task failure
-* Errors raise the `io_error` condition which provides an opportunity to inspect
-  an IoError object containing details.
-* Return values must have a sensible null or zero value which is returned
-  if a condition is handled successfully. This may be an `Option`, an empty
-  vector, or other designated error value.
-* Common traits are implemented for `Option`, e.g. `impl<R: Reader> Reader for Option<R>`,
-  so that nullable values do not have to be 'unwrapped' before use.
+* All I/O operations return `IoResult<T>` which is equivalent to
+  `Result<T, IoError>`. The core `Result` type is defined in the `std::result`
+  module.
+* If the `Result` type goes unused, then the compiler will by default emit a
+  warning about the unused result.
+* Common traits are implemented for `IoResult`, e.g.
+  `impl<R: Reader> Reader for IoResult<R>`, so that error values do not have
+  to be 'unwrapped' before use.
 
 These features combine in the API to allow for expressions like
 `File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n"))`
 without having to worry about whether "diary.txt" exists or whether
 the write succeeds. As written, if either `new` or `write_line`
-encounters an error the task will fail.
+encounters an error then the result of the entire expression will
+be an error.
 
 If you wanted to handle the error though you might write:
 
 ```rust
 use std::io::File;
-use std::io::{IoError, io_error};
 
-let mut error = None;
-io_error::cond.trap(|e: IoError| {
-    error = Some(e);
-}).inside(|| {
-    File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n"));
-});
-
-if error.is_some() {
-    println!("failed to write my diary");
+match File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n")) {
+    Ok(()) => { /* succeeded */ }
+    Err(e) => println!("failed to write to my diary: {}", e),
 }
+
 # ::std::io::fs::unlink(&Path::new("diary.txt"));
 ```
 
-FIXME: Need better condition handling syntax
-
-In this case the condition handler will have the opportunity to
-inspect the IoError raised by either the call to `new` or the call to
-`write_line`, but then execution will continue.
-
-So what actually happens if `new` encounters an error? To understand
-that it's important to know that what `new` returns is not a `File`
-but an `Option<File>`.  If the file does not open, and the condition
-is handled, then `new` will simply return `None`. Because there is an
-implementation of `Writer` (the trait required ultimately required for
-types to implement `write_line`) there is no need to inspect or unwrap
-the `Option<File>` and we simply call `write_line` on it.  If `new`
-returned a `None` then the followup call to `write_line` will also
-raise an error.
-
-## Concerns about this strategy
-
-This structure will encourage a programming style that is prone
-to errors similar to null pointer dereferences.
-In particular code written to ignore errors and expect conditions to be unhandled
-will start passing around null or zero objects when wrapped in a condition handler.
-
-* FIXME: How should we use condition handlers that return values?
-* FIXME: Should EOF raise default conditions when EOF is not an error?
+So what actually happens if `create` encounters an error?
+It's important to know that what `new` returns is not a `File`
+but an `IoResult<File>`.  If the file does not open, then `new` will simply
+return `Err(..)`. Because there is an implementation of `Writer` (the trait
+required ultimately required for types to implement `write_line`) there is no
+need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
+on it. If `new` returned an `Err(..)` then the followup call to `write_line`
+will also return an error.
 
 # Issues with i/o scheduler affinity, work stealing, task pinning
 
@@ -460,40 +432,23 @@ impl ToStr for IoErrorKind {
 
 pub trait Reader {
 
-    // Only two methods which need to get implemented for this trait
+    // Only method which need to get implemented for this trait
 
     /// Read bytes, up to the length of `buf` and place them in `buf`.
     /// Returns the number of bytes read. The number of bytes read my
-    /// be less than the number requested, even 0. Returns `None` on EOF.
+    /// be less than the number requested, even 0. Returns `Err` on EOF.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Raises the `io_error` condition on error. If the condition
-    /// is handled then no guarantee is made about the number of bytes
-    /// read and the contents of `buf`. If the condition is handled
-    /// returns `None` (FIXME see below).
-    ///
-    /// # FIXME
-    ///
-    /// * Should raise_default error on eof?
-    /// * If the condition is handled it should still return the bytes read,
-    ///   in which case there's no need to return Option - but then you *have*
-    ///   to install a handler to detect eof.
-    ///
-    /// This doesn't take a `len` argument like the old `read`.
-    /// Will people often need to slice their vectors to call this
-    /// and will that be annoying?
-    /// Is it actually possible for 0 bytes to be read successfully?
+    /// If an error occurs during this I/O operation, then it is returned as
+    /// `Err(IoError)`. Note that end-of-file is considered an error, and can be
+    /// inspected for in the error's `kind` field. Also note that reading 0
+    /// bytes is not considered an error in all circumstances
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
 
     // Convenient helper methods based on the above methods
 
-    /// Reads a single byte. Returns `None` on EOF.
-    ///
-    /// # Failure
-    ///
-    /// Raises the same conditions as the `read` method. Returns
-    /// `None` if the condition is handled.
+    /// Reads a single byte. Returns `Err` on EOF.
     fn read_byte(&mut self) -> IoResult<u8> {
         let mut buf = [0];
         loop {
@@ -511,13 +466,9 @@ pub trait Reader {
     /// Reads `len` bytes and appends them to a vector.
     ///
     /// May push fewer than the requested number of bytes on error
-    /// or EOF. Returns true on success, false on EOF or error.
-    ///
-    /// # Failure
-    ///
-    /// Raises the same conditions as `read`. Additionally raises `io_error`
-    /// on EOF. If `io_error` is handled then `push_bytes` may push less
-    /// than the requested number of bytes.
+    /// or EOF. If `Ok(())` is returned, then all of the requested bytes were
+    /// pushed on to the vector, otherwise the amount `len` bytes couldn't be
+    /// read (an error was encountered), and the error is returned.
     fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
         let start_len = buf.len();
         let mut total_read = 0;
@@ -542,29 +493,36 @@ pub trait Reader {
 
     /// Reads `len` bytes and gives you back a new vector of length `len`
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Raises the same conditions as `read`. Additionally raises `io_error`
-    /// on EOF. If `io_error` is handled then the returned vector may
-    /// contain less than the requested number of bytes.
+    /// Fails with the same conditions as `read`. Additionally returns error on
+    /// on EOF. Note that if an error is returned, then some number of bytes may
+    /// have already been consumed from the underlying reader, and they are lost
+    /// (not returned as part of the error). If this is unacceptable, then it is
+    /// recommended to use the `push_bytes` or `read` methods.
     fn read_bytes(&mut self, len: uint) -> IoResult<~[u8]> {
         let mut buf = vec::with_capacity(len);
-        if_ok!(self.push_bytes(&mut buf, len));
-        return Ok(buf);
+        match self.push_bytes(&mut buf, len) {
+            Ok(()) => Ok(buf),
+            Err(e) => Err(e),
+        }
     }
 
     /// Reads all remaining bytes from the stream.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Raises the same conditions as the `read` method except for
-    /// `EndOfFile` which is swallowed.
+    /// Returns any non-EOF error immediately. Previously read bytes are
+    /// discarded when an error is returned.
+    ///
+    /// When EOF is encountered, all bytes read up to that point are returned,
+    /// but if 0 bytes have been read then the EOF error is returned.
     fn read_to_end(&mut self) -> IoResult<~[u8]> {
         let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
         loop {
             match self.push_bytes(&mut buf, DEFAULT_BUF_SIZE) {
                 Ok(()) => {}
-                Err(ref e) if e.kind == EndOfFile => break,
+                Err(ref e) if buf.len() > 0 && e.kind == EndOfFile => break,
                 Err(e) => return Err(e)
             }
         }
@@ -574,10 +532,11 @@ pub trait Reader {
     /// Reads all of the remaining bytes of this stream, interpreting them as a
     /// UTF-8 encoded stream. The corresponding string is returned.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise all the same conditions as the `read` method,
-    /// along with raising a condition if the input is not valid UTF-8.
+    /// This function returns all of the same errors as `read_to_end` with an
+    /// additional error if the reader's contents are not a valid sequence of
+    /// UTF-8 bytes.
     fn read_to_str(&mut self) -> IoResult<~str> {
         self.read_to_end().and_then(|s| {
             match str::from_utf8_owned(s) {
@@ -590,11 +549,12 @@ pub trait Reader {
     /// Create an iterator that reads a single byte on
     /// each iteration, until EOF.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Raises the same conditions as the `read` method, for
-    /// each call to its `.next()` method.
-    /// Ends the iteration if the condition is handled.
+    /// The iterator protocol causes all specifics about errors encountered to
+    /// be swallowed. All errors will be signified by returning `None` from the
+    /// iterator. If this is undesirable, it is recommended to use the
+    /// `read_byte` method.
     fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
         extensions::Bytes::new(self)
     }
@@ -825,11 +785,14 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
 }
 
 pub trait Writer {
-    /// Write the given buffer
+    /// Write the entirety of a given buffer
     ///
-    /// # Failure
+    /// # Errors
     ///
-    /// Raises the `io_error` condition on error
+    /// If an error happens during the I/O operation, the error is returned as
+    /// `Err`. Note that it is considered an error if the entire buffer could
+    /// not be written, and if an error is returned then it is unknown how much
+    /// data (if any) was actually written.
     fn write(&mut self, buf: &[u8]) -> IoResult<()>;
 
     /// Flush this output stream, ensuring that all intermediately buffered
@@ -1021,11 +984,11 @@ impl<T: Reader + Writer> Stream for T {}
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
-/// # Failure
+/// # Error
 ///
-/// Raises the same conditions as the `read` method except for `EndOfFile`
-/// which is swallowed.
-/// Iteration yields `None` if the condition is handled.
+/// This iterator will swallow all I/O errors, transforming `Err` values to
+/// `None`. If errors need to be handled, it is recommended to use the
+/// `read_line` method directly.
 pub struct Lines<'r, T> {
     priv buffer: &'r mut T,
 }
@@ -1049,10 +1012,11 @@ pub trait Buffer: Reader {
     /// consumed from this buffer returned to ensure that the bytes are never
     /// returned twice.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise on the `io_error` condition if a read error is
-    /// encountered.
+    /// This function will return an I/O error if the underlying reader was
+    /// read, but returned an error. Note that it is not an error to return a
+    /// 0-length buffer.
     fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]>;
 
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
@@ -1067,50 +1031,73 @@ pub trait Buffer: Reader {
     ///
     /// ```rust
     /// use std::io::{BufferedReader, stdin};
-    /// # let _g = ::std::io::ignore_io_error();
     ///
     /// let mut reader = BufferedReader::new(stdin());
     ///
-    /// let input = reader.read_line().unwrap_or(~"nothing");
+    /// let input = reader.read_line().ok().unwrap_or(~"nothing");
     /// ```
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise on the `io_error` condition (except for
-    /// `EndOfFile` which is swallowed) if a read error is encountered.
-    /// The task will also fail if sequence of bytes leading up to
-    /// the newline character are not valid UTF-8.
+    /// This function has the same error semantics as `read_until`:
+    ///
+    /// * All non-EOF errors will be returned immediately
+    /// * If an error is returned previously consumed bytes are lost
+    /// * EOF is only returned if no bytes have been read
+    /// * Reach EOF may mean that the delimiter is not present in the return
+    ///   value
+    ///
+    /// Additionally, this function can fail if the line of input read is not a
+    /// valid UTF-8 sequence of bytes.
     fn read_line(&mut self) -> IoResult<~str> {
-        self.read_until('\n' as u8).map(|line| str::from_utf8_owned(line).unwrap())
+        self.read_until('\n' as u8).and_then(|line|
+            match str::from_utf8_owned(line) {
+                Some(s) => Ok(s),
+                None => Err(standard_error(InvalidInput)),
+            }
+        )
     }
 
     /// Create an iterator that reads a line on each iteration until EOF.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Iterator raises the same conditions as the `read` method
-    /// except for `EndOfFile`.
+    /// This iterator will transform all error values to `None`, discarding the
+    /// cause of the error. If this is undesirable, it is recommended to call
+    /// `read_line` directly.
     fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
-        Lines {
-            buffer: self,
-        }
+        Lines { buffer: self }
     }
 
     /// Reads a sequence of bytes leading up to a specified delimiter. Once the
     /// specified byte is encountered, reading ceases and the bytes up to and
     /// including the delimiter are returned.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise on the `io_error` condition if a read error is
-    /// encountered, except that `EndOfFile` is swallowed.
+    /// If any I/O error is encountered other than EOF, the error is immediately
+    /// returned. Note that this may discard bytes which have already been read,
+    /// and those bytes will *not* be returned. It is recommended to use other
+    /// methods if this case is worrying.
+    ///
+    /// If EOF is encountered, then this function will return EOF if 0 bytes
+    /// have been read, otherwise the pending byte buffer is returned. This
+    /// is the reason that the byte buffer returned may not always contain the
+    /// delimiter.
     fn read_until(&mut self, byte: u8) -> IoResult<~[u8]> {
         let mut res = ~[];
 
         let mut used;
         loop {
             {
-                let available = if_ok!(self.fill());
+                let available = match self.fill() {
+                    Ok(n) => n,
+                    Err(ref e) if res.len() > 0 && e.kind == EndOfFile => {
+                        used = 0;
+                        break
+                    }
+                    Err(e) => return Err(e)
+                };
                 match available.iter().position(|&b| b == byte) {
                     Some(i) => {
                         res.push_all(available.slice_to(i + 1));
@@ -1131,13 +1118,11 @@ pub trait Buffer: Reader {
 
     /// Reads the next utf8-encoded character from the underlying stream.
     ///
-    /// This will return `None` if the following sequence of bytes in the
-    /// stream are not a valid utf8-sequence, or if an I/O error is encountered.
+    /// # Error
     ///
-    /// # Failure
-    ///
-    /// This function will raise on the `io_error` condition if a read error is
-    /// encountered.
+    /// If an I/O error occurs, or EOF, then this function will return `Err`.
+    /// This function will also return error if the stream does not contain a
+    /// valid utf-8 encoded codepoint as the next few bytes in the stream.
     fn read_char(&mut self) -> IoResult<char> {
         let first_byte = if_ok!(self.read_byte());
         let width = str::utf8_char_width(first_byte);
@@ -1186,15 +1171,17 @@ pub trait Seek {
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()>;
 }
 
-/// A listener is a value that can consume itself to start listening for connections.
+/// A listener is a value that can consume itself to start listening for
+/// connections.
+///
 /// Doing so produces some sort of Acceptor.
 pub trait Listener<T, A: Acceptor<T>> {
     /// Spin up the listener and start queuing incoming connections
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// Raises `io_error` condition. If the condition is handled,
-    /// then `listen` returns `None`.
+    /// Returns `Err` if this listener could not be bound to listen for
+    /// connections. In all cases, this listener is consumed.
     fn listen(self) -> IoResult<A>;
 }
 
@@ -1202,12 +1189,14 @@ pub trait Listener<T, A: Acceptor<T>> {
 pub trait Acceptor<T> {
     /// Wait for and accept an incoming connection
     ///
-    /// # Failure
-    /// Raise `io_error` condition. If the condition is handled,
-    /// then `accept` returns `None`.
+    /// # Error
+    ///
+    /// Returns `Err` if an I/O error is encountered.
     fn accept(&mut self) -> IoResult<T>;
 
-    /// Create an iterator over incoming connection attempts
+    /// Create an iterator over incoming connection attempts.
+    ///
+    /// Note that I/O errors will be yielded by the iterator itself.
     fn incoming<'r>(&'r mut self) -> IncomingConnections<'r, Self> {
         IncomingConnections { inc: self }
     }
@@ -1216,10 +1205,10 @@ pub trait Acceptor<T> {
 /// An infinite iterator over incoming connection attempts.
 /// Calling `next` will block the task until a connection is attempted.
 ///
-/// Since connection attempts can continue forever, this iterator always returns Some.
-/// The Some contains another Option representing whether the connection attempt was succesful.
-/// A successful connection will be wrapped in Some.
-/// A failed connection is represented as a None and raises a condition.
+/// Since connection attempts can continue forever, this iterator always returns
+/// `Some`. The `Some` contains the `IoResult` representing whether the
+/// connection attempt was succesful.  A successful connection will be wrapped
+/// in `Ok`. A failed connection is represented as an `Err`.
 pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
 }
@@ -1265,7 +1254,7 @@ pub enum FileMode {
 }
 
 /// Access permissions with which the file should be opened. `File`s
-/// opened with `Read` will raise an `io_error` condition if written to.
+/// opened with `Read` will return an error if written to.
 pub enum FileAccess {
     Read,
     Write,

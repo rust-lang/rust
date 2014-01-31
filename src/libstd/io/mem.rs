@@ -25,6 +25,7 @@ use vec::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::MemWriter;
 ///
 /// let mut w = MemWriter::new();
@@ -113,11 +114,12 @@ impl Seek for MemWriter {
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::MemReader;
 ///
 /// let mut r = MemReader::new(~[0, 1, 2]);
 ///
-/// assert_eq!(r.read_to_end(), ~[0, 1, 2]);
+/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
 /// ```
 pub struct MemReader {
     priv buf: ~[u8],
@@ -182,12 +184,13 @@ impl Buffer for MemReader {
 
 /// Writes to a fixed-size byte slice
 ///
-/// If a write will not fit in the buffer, it raises the `io_error`
-/// condition and does not write any data.
+/// If a write will not fit in the buffer, it returns an error and does not
+/// write any data.
 ///
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::BufWriter;
 ///
 /// let mut buf = [0, ..4];
@@ -252,12 +255,13 @@ impl<'a> Seek for BufWriter<'a> {
 /// # Example
 ///
 /// ```rust
+/// # #[allow(unused_must_use)];
 /// use std::io::BufReader;
 ///
 /// let mut buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(buf);
 ///
-/// assert_eq!(r.read_to_end(), ~[0, 1, 2, 3]);
+/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
 /// ```
 pub struct BufReader<'a> {
     priv buf: &'a [u8],

@@ -18,6 +18,7 @@ about the stream or terminal that it is attached to.
 # Example
 
 ```rust
+# #[allow(unused_must_use)];
 use std::io;
 
 let mut out = io::stdout();
@@ -283,12 +284,12 @@ impl StdWriter {
     /// when the writer is attached to something like a terminal, this is used
     /// to fetch the dimensions of the terminal.
     ///
-    /// If successful, returns Some((width, height)).
+    /// If successful, returns `Ok((width, height))`.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise on the `io_error` condition if an error
-    /// happens.
+    /// This function will return an error if the output stream is not actually
+    /// connected to a TTY instance, or if querying the TTY instance fails.
     pub fn winsize(&mut self) -> IoResult<(int, int)> {
         match self.inner {
             TTY(ref mut tty) => tty.get_winsize(),
@@ -305,10 +306,10 @@ impl StdWriter {
     /// Controls whether this output stream is a "raw stream" or simply a normal
     /// stream.
     ///
-    /// # Failure
+    /// # Error
     ///
-    /// This function will raise on the `io_error` condition if an error
-    /// happens.
+    /// This function will return an error if the output stream is not actually
+    /// connected to a TTY instance, or if querying the TTY instance fails.
     pub fn set_raw(&mut self, raw: bool) -> IoResult<()> {
         match self.inner {
             TTY(ref mut tty) => tty.set_raw(raw),
