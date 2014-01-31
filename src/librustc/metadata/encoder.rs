@@ -1350,11 +1350,10 @@ fn my_visit_foreign_item(ni: &ForeignItem,
                          index: @RefCell<~[entry<i64>]>) {
     match items.get(ni.id) {
         ast_map::NodeForeignItem(_, abi, _, pt) => {
+            let string = token::get_ident(ni.ident.name);
             debug!("writing foreign item {}::{}",
-                   ast_map::path_to_str(
-                       *pt,
-                       token::get_ident_interner()),
-                   token::ident_to_str(&ni.ident));
+                   ast_map::path_to_str(*pt, token::get_ident_interner()),
+                   string.get());
 
             let mut ebml_w = unsafe {
                 ebml_w.unsafe_clone()

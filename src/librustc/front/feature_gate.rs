@@ -98,7 +98,8 @@ impl Context {
 
 impl Visitor<()> for Context {
     fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
-        let s = token::ident_to_str(&id);
+        let string = token::get_ident(id.name);
+        let s = string.get();
 
         if !s.is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
