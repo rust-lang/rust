@@ -1112,17 +1112,17 @@ pub fn build_output_filenames(input: &Input,
 
           let mut stem = match *input {
               // FIXME (#9639): This needs to handle non-utf8 paths
-              FileInput(ref ifile) => (*ifile).filestem_str().unwrap().to_managed(),
-              StrInput(_) => @"rust_out"
+              FileInput(ref ifile) => {
+                  (*ifile).filestem_str().unwrap().to_str()
+              }
+              StrInput(_) => ~"rust_out"
           };
 
           // If a crateid is present, we use it as the link name
           let crateid = attr::find_crateid(attrs);
           match crateid {
               None => {}
-              Some(crateid) => {
-                  stem = crateid.name.to_managed()
-              }
+              Some(crateid) => stem = crateid.name.to_str(),
           }
 
           if sess.building_library.get() {
