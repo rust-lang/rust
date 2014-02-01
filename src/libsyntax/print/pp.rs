@@ -84,7 +84,7 @@ pub struct BeginToken {
 
 #[deriving(Clone)]
 pub enum Token {
-    String(@str, int),
+    String(~str, int),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -131,7 +131,7 @@ pub fn buf_str(toks: ~[Token], szs: ~[int], left: uint, right: uint,
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(format!("{}={}", szs[i], tok_str(toks[i])));
+        s.push_str(format!("{}={}", szs[i], tok_str(toks[i].clone())));
         i += 1u;
         i %= n;
     }
@@ -285,7 +285,9 @@ pub struct Printer {
 }
 
 impl Printer {
-    pub fn last_token(&mut self) -> Token { self.token[self.right] }
+    pub fn last_token(&mut self) -> Token {
+        self.token[self.right].clone()
+    }
     // be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
         self.token[self.right] = t;
@@ -296,8 +298,8 @@ impl Printer {
           Eof => {
             if !self.scan_stack_empty {
                 self.check_stack(0);
-                self.advance_left(self.token[self.left],
-                                  self.size[self.left]);
+                let left = self.token[self.left].clone();
+                self.advance_left(left, self.size[self.left]);
             }
             self.indent(0);
           }
@@ -341,16 +343,16 @@ impl Printer {
             self.size[self.right] = -self.right_total;
             self.right_total += b.blank_space;
           }
-          String(s, len) => {
+          String(ref s, len) => {
             if self.scan_stack_empty {
                 debug!("pp String('{}')/print ~[{},{}]",
-                       s, self.left, self.right);
-                self.print(t, len);
+                       *s, self.left, self.right);
+                self.print(t.clone(), len);
             } else {
                 debug!("pp String('{}')/buffer ~[{},{}]",
-                       s, self.left, self.right);
+                       *s, self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = t;
+                self.token[self.right] = t.clone();
                 self.size[self.right] = len;
                 self.right_total += len;
                 self.check_stream();
@@ -370,7 +372,8 @@ impl Printer {
                     self.size[self.scan_pop_bottom()] = SIZE_INFINITY;
                 }
             }
-            self.advance_left(self.token[self.left], self.size[self.left]);
+            let left = self.token[self.left].clone();
+            self.advance_left(left, self.size[self.left]);
             if self.left != self.right { self.check_stream(); }
         }
     }
@@ -414,7 +417,7 @@ impl Printer {
         debug!("advnce_left ~[{},{}], sizeof({})={}", self.left, self.right,
                self.left, L);
         if L >= 0 {
-            self.print(x, L);
+            self.print(x.clone(), L);
             match x {
               Break(b) => self.left_total += b.blank_space,
               String(_, len) => {
@@ -425,8 +428,8 @@ impl Printer {
             if self.left != self.right {
                 self.left += 1u;
                 self.left %= self.buf_len;
-                self.advance_left(self.token[self.left],
-                                  self.size[self.left]);
+                let left = self.token[self.left].clone();
+                self.advance_left(left, self.size[self.left]);
             }
         }
     }
@@ -483,7 +486,7 @@ impl Printer {
         write!(self.out, "{}", s);
     }
     pub fn print(&mut self, x: Token, L: int) {
-        debug!("print {} {} (remaining line space={})", tok_str(x), L,
+        debug!("print {} {} (remaining line space={})", tok_str(x.clone()), L,
                self.space);
         debug!("{}", buf_str(self.token.clone(),
                              self.size.clone(),
@@ -583,15 +586,15 @@ pub fn end(p: &mut Printer) { p.pretty_print(End); }
 pub fn eof(p: &mut Printer) { p.pretty_print(Eof); }
 
 pub fn word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_managed(), wrd.len() as int));
+    p.pretty_print(String(/* bad */ wrd.to_str(), wrd.len() as int));
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_managed(), SIZE_INFINITY));
+    p.pretty_print(String(/* bad */ wrd.to_str(), SIZE_INFINITY));
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_managed(), 0));
+    p.pretty_print(String(/* bad */ wrd.to_str(), 0));
 }
 
 pub fn spaces(p: &mut Printer, n: uint) { break_offset(p, n, 0); }
