@@ -509,7 +509,7 @@ fn angle(vector: (f64, f64)) -> f64 {
     let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
-      (0.0, y) => 0.5 * pi,
+      (0.0, _) => 0.5 * pi,
       (x, y) => atan(y / x)
     }
 }
@@ -520,6 +520,8 @@ to the value of the matched value inside of the arm's action. Thus, `(0.0,
 y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any two-element tuple, and binds both
 elements to variables.
+You can write a lone `_` to ignore an individual field, read more in section
+[5.1 Structs](#structs).
 A subpattern can also be bound to a variable, using `variable @ pattern`. For
 example:
 
@@ -630,8 +632,8 @@ match mypoint {
 
 In general, the field names of a struct do not have to appear in the same
 order they appear in the type. When you are not interested in all
-the fields of a struct, a struct pattern may end with `, ..` (as in
-`Name { field1, .. }`) to indicate that you're ignoring all other fields.
+the fields of a struct, a struct pattern may end with `, _` (as in
+`Name { field1, _ }`) to indicate that you're ignoring all other fields.
 Additionally, struct fields have a shorthand matching form that simply
 reuses the field name as the binding name.
 
@@ -639,7 +641,7 @@ reuses the field name as the binding name.
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x, .. } => println!("{}", x),
+    Point { x, _ } => println!("{}", x),
 }
 ~~~
 
@@ -749,7 +751,7 @@ enum Shape {
 }
 fn area(sh: Shape) -> f64 {
     match sh {
-        Circle { radius: radius, .. } => f64::consts::PI * square(radius),
+        Circle { radius: radius, _ } => f64::consts::PI * square(radius),
         Rectangle { top_left: top_left, bottom_right: bottom_right } => {
             (bottom_right.x - top_left.x) * (top_left.y - bottom_right.y)
         }
