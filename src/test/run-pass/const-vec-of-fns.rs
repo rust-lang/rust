@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// FIXME: #7385: hits a codegen bug on OS X x86_64
-
 /*!
  * Try to double-check that static fns have the right size (with or
  * without dummy env ptr, as appropriate) by iterating a size-2 array.
@@ -25,5 +22,8 @@ static closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
     for &bare_fn in bare_fns.iter() { bare_fn() }
-    for &closure in closures.iter() { (*closure)() }
+    for closure in closures.iter() {
+        let S(ref closure) = *closure;
+        (*closure)()
+    }
 }
