@@ -170,7 +170,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let expected_num_region_params = decl_generics.region_param_defs.len();
+    let expected_num_region_params = decl_generics.region_param_defs().len();
     let supplied_num_region_params = path.segments.last().unwrap().lifetimes.len();
     let regions = if expected_num_region_params == supplied_num_region_params {
         path.segments.last().unwrap().lifetimes.map(
@@ -197,8 +197,8 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
 
     // Convert the type parameters supplied by the user.
     let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).len();
-    let formal_ty_param_count = decl_generics.type_param_defs.len();
-    let required_ty_param_count = decl_generics.type_param_defs.iter()
+    let formal_ty_param_count = decl_generics.type_param_defs().len();
+    let required_ty_param_count = decl_generics.type_param_defs().iter()
                                                .take_while(|x| x.default.is_none())
                                                .len();
     if supplied_ty_param_count < required_ty_param_count {
@@ -228,7 +228,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                                  ~"provided type arguments with defaults");
     }
 
-    let defaults = decl_generics.type_param_defs.slice_from(supplied_ty_param_count)
+    let defaults = decl_generics.type_param_defs().slice_from(supplied_ty_param_count)
                                 .iter().map(|&x| x.default.unwrap());
     let tps = path.segments.iter().flat_map(|s| s.types.iter())
                             .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))

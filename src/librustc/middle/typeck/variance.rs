@@ -750,7 +750,7 @@ impl<'a> ConstraintContext<'a> {
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
-        for (i, p) in generics.type_param_defs.iter().enumerate() {
+        for (i, p) in generics.type_param_defs().iter().enumerate() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam, i);
             let variance_i = self.xform(variance, variance_decl);
@@ -760,7 +760,7 @@ impl<'a> ConstraintContext<'a> {
         match substs.regions {
             ty::ErasedRegions => {}
             ty::NonerasedRegions(ref rps) => {
-                for (i, p) in generics.region_param_defs.iter().enumerate() {
+                for (i, p) in generics.region_param_defs().iter().enumerate() {
                     let variance_decl =
                         self.declared_variance(p.def_id, def_id, RegionParam, i);
                     let variance_i = self.xform(variance, variance_decl);

@@ -954,7 +954,7 @@ impl<'a> LookupContext<'a> {
         // If they were not explicitly supplied, just construct fresh
         // type variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.generics.type_param_defs.len();
+        let num_method_tps = candidate.method_ty.generics.type_param_defs().len();
         let m_substs = {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)

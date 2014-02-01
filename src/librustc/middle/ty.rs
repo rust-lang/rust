@@ -34,6 +34,7 @@ use std::cmp;
 use std::hashmap::{HashMap, HashSet};
 use std::ops;
 use std::ptr::to_unsafe_ptr;
+use std::rc::Rc;
 use std::to_bytes;
 use std::to_str::ToStr;
 use std::vec;
@@ -870,15 +871,21 @@ pub struct RegionParameterDef {
 #[deriving(Clone)]
 pub struct Generics {
     /// List of type parameters declared on the item.
-    type_param_defs: @~[TypeParameterDef],
+    type_param_defs: Rc<~[TypeParameterDef]>,
 
     /// List of region parameters declared on the item.
-    region_param_defs: @[RegionParameterDef],
+    region_param_defs: Rc<~[RegionParameterDef]>,
 }
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
-        !self.type_param_defs.is_empty()
+        !self.type_param_defs.borrow().is_empty()
+    }
+    pub fn type_param_defs<'a>(&'a self) -> &'a [TypeParameterDef] {
+        self.type_param_defs.borrow().as_slice()
+    }
+    pub fn region_param_defs<'a>(&'a self) -> &'a [RegionParameterDef] {
+        self.region_param_defs.borrow().as_slice()
     }
 }
 
@@ -3105,7 +3112,7 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::Expr) -> bool {
 pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
                                    id: ast::NodeId)
-                                   -> Option<@~[TypeParameterDef]> {
+                                   -> Option<Rc<~[TypeParameterDef]>> {
     let method_map = method_map.borrow();
     method_map.get().find(&id).map(|method| {
         match method.origin {
@@ -3125,12 +3132,12 @@ pub fn method_call_type_param_defs(tcx: ctxt,
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
-                lookup_trait_def(tcx, trt_id).generics.type_param_defs;
-            @vec::append(
-                (*trait_type_param_defs).clone(),
-                *ty::trait_method(tcx,
-                                  trt_id,
-                                  n_mth).generics.type_param_defs)
+                lookup_trait_def(tcx, trt_id).generics.type_param_defs();
+            Rc::new(vec::append(
+                trait_type_param_defs.to_owned(),
+                ty::trait_method(tcx,
+                                 trt_id,
+                                 n_mth).generics.type_param_defs()))
           }
         }
     })
@@ -4212,7 +4219,7 @@ pub fn lookup_field_type(tcx: ctxt,
                Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
                None => {
                    let tpt = csearch::get_field_type(tcx, struct_id, id);
-                   tcache.get().insert(id, tpt);
+                   tcache.get().insert(id, tpt.clone());
                    tpt.ty
                }
             }

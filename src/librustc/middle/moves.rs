@@ -136,9 +136,9 @@ use util::ppaux::Repr;
 use util::common::indenter;
 use util::ppaux::UserString;
 
-use std::at_vec;
 use std::cell::RefCell;
 use std::hashmap::{HashSet, HashMap};
+use std::rc::Rc;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
@@ -159,7 +159,7 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @RefCell<HashMap<NodeId, @[CaptureVar]>>;
+pub type CaptureMap = @RefCell<HashMap<NodeId, Rc<~[CaptureVar]>>>;
 
 pub type MovesMap = @RefCell<HashSet<NodeId>>;
 
@@ -681,23 +681,22 @@ impl VisitContext {
         self.consume_expr(arg_expr)
     }
 
-    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> @[CaptureVar] {
+    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> Rc<~[CaptureVar]> {
         debug!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
         let _indenter = indenter();
 
         let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
         let sigil = ty::ty_closure_sigil(fn_ty);
         let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
-        if sigil == BorrowedSigil {
+        let v = if sigil == BorrowedSigil {
             // || captures everything by ref
-            at_vec::from_fn(freevars.len(), |i| {
-                let fvar = &freevars[i];
-                CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef}
-            })
+            freevars.iter()
+                    .map(|fvar| CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef})
+                    .collect()
         } else {
             // @fn() and ~fn() capture by copy or by move depending on type
-            at_vec::from_fn(freevars.len(), |i| {
-                let fvar = &freevars[i];
+            freevars.iter()
+                    .map(|fvar| {
                 let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
                 let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
                 debug!("fvar_def_id={:?} fvar_ty={}",
@@ -708,7 +707,9 @@ impl VisitContext {
                     CapCopy
                 };
                 CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
-            })
-        }
+
+                }).collect()
+        };
+        Rc::new(v)
     }
 }

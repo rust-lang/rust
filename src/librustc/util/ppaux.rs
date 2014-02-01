@@ -522,11 +522,11 @@ pub fn parameterized(cx: ctxt,
     }
 
     let generics = if is_trait {
-        ty::lookup_trait_def(cx, did).generics
+        ty::lookup_trait_def(cx, did).generics.clone()
     } else {
         ty::lookup_item_type(cx, did).generics
     };
-    let ty_params = generics.type_param_defs.iter();
+    let ty_params = generics.type_param_defs().iter();
     let num_defaults = ty_params.zip(tps.iter()).rev().take_while(|&(def, &actual)| {
         match def.default {
             Some(default) => default == actual,
@@ -789,8 +789,8 @@ impl Repr for ty::ty_param_bounds_and_ty {
 impl Repr for ty::Generics {
     fn repr(&self, tcx: ctxt) -> ~str {
         format!("Generics(type_param_defs: {}, region_param_defs: {})",
-                self.type_param_defs.repr(tcx),
-                self.region_param_defs.repr(tcx))
+                self.type_param_defs().repr(tcx),
+                self.region_param_defs().repr(tcx))
     }
 }
 

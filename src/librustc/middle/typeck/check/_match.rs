@@ -147,7 +147,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                             ty::enum_variant_with_id(tcx, enm, var);
                         let var_tpt = ty::lookup_item_type(tcx, var);
                         vinfo.args.map(|t| {
-                            if var_tpt.generics.type_param_defs.len() ==
+                            if var_tpt.generics.type_param_defs().len() ==
                                 expected_substs.tps.len()
                             {
                                 ty::subst(tcx, expected_substs, *t)
@@ -172,7 +172,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                              None);
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
-                    arg_types = (*subpats).clone()
+                    arg_types = subpats.clone()
                                           .unwrap_or_default()
                                           .map(|_| ty::mk_err());
                 }
@@ -221,7 +221,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     None);
             fcx.write_error(pat.id);
             kind_name = "[error]";
-            arg_types = (*subpats).clone()
+            arg_types = subpats.clone()
                                   .unwrap_or_default()
                                   .map(|_| ty::mk_err());
         }
@@ -699,4 +699,3 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 
 #[deriving(Eq)]
 enum PointerKind { Send, Borrowed }
-
