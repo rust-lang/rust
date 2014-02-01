@@ -86,7 +86,14 @@ impl<T> Rawlink<T> {
 
     /// Convert the `Rawlink` into an Option value
     fn resolve_immut(&self) -> Option<&T> {
-        unsafe { self.p.to_option() }
+        if self.p.is_null() {
+            None
+        } else {
+            unsafe {
+                let p: &T = &*self.p;
+                Some(p)
+            }
+        }
     }
 
     /// Convert the `Rawlink` into an Option value

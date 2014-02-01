@@ -14,7 +14,6 @@ use cast;
 use clone::Clone;
 #[cfg(not(test))]
 use cmp::Equiv;
-use option::{Option, Some, None};
 use unstable::intrinsics;
 use util::swap;
 
@@ -197,7 +196,6 @@ pub trait RawPtr<T> {
     fn is_null(&self) -> bool;
     fn is_not_null(&self) -> bool;
     fn to_uint(&self) -> uint;
-    unsafe fn to_option(&self) -> Option<&T>;
     unsafe fn offset(self, count: int) -> Self;
 }
 
@@ -218,23 +216,6 @@ impl<T> RawPtr<T> for *T {
     /// Returns the address of this pointer.
     #[inline]
     fn to_uint(&self) -> uint { *self as uint }
-
-    ///
-    /// Returns `None` if the pointer is null, or else returns the value wrapped
-    /// in `Some`.
-    ///
-    /// # Safety Notes
-    ///
-    /// While this method is useful for null-safety, it is important to note
-    /// that this is still an unsafe operation because the returned value could
-    /// be pointing to invalid memory.
-    ///
-    #[inline]
-    unsafe fn to_option(&self) -> Option<&T> {
-        if self.is_null() { None } else {
-            Some(cast::transmute(*self))
-        }
-    }
 
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end.
@@ -259,23 +240,6 @@ impl<T> RawPtr<T> for *mut T {
     /// Returns the address of this pointer.
     #[inline]
     fn to_uint(&self) -> uint { *self as uint }
-
-    ///
-    /// Returns `None` if the pointer is null, or else returns the value wrapped
-    /// in `Some`.
-    ///
-    /// # Safety Notes
-    ///
-    /// While this method is useful for null-safety, it is important to note
-    /// that this is still an unsafe operation because the returned value could
-    /// be pointing to invalid memory.
-    ///
-    #[inline]
-    unsafe fn to_option(&self) -> Option<&T> {
-        if self.is_null() { None } else {
-            Some(cast::transmute(*self))
-        }
-    }
 
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also
@@ -497,23 +461,6 @@ pub mod ptr_tests {
         let mq = unsafe { mp.offset(1) };
         assert!(!mq.is_null());
         assert!(mq.is_not_null());
-    }
-
-    #[test]
-    fn test_to_option() {
-        unsafe {
-            let p: *int = null();
-            assert_eq!(p.to_option(), None);
-
-            let q: *int = &2;
-            assert_eq!(q.to_option().unwrap(), &2);
-
-            let p: *mut int = mut_null();
-            assert_eq!(p.to_option(), None);
-
-            let q: *mut int = &mut 2;
-            assert_eq!(q.to_option().unwrap(), &2);
-        }
     }
 
     #[test]
