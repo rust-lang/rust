@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 pub fn main() {
     assert_eq!((~[0, 1]).to_str(), ~"[0, 1]");
     assert_eq!((&[1, 2]).to_str(), ~"[1, 2]");
-    assert_eq!((@[2, 3]).to_str(), ~"[2, 3]");
 
     let foo = ~[3, 4];
     let bar = &[4, 5];
-    let baz = @[5, 6];
 
     assert_eq!(foo.to_str(), ~"[3, 4]");
     assert_eq!(bar.to_str(), ~"[4, 5]");
-    assert_eq!(baz.to_str(), ~"[5, 6]");
-
 }

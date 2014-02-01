@@ -72,12 +72,6 @@ fn f80() {
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
-fn f90() {
-    let x = ~"hi";
-    let _y = @[x];
-    touch(&x); //~ ERROR use of moved value: `x`
-}
-
 fn f100() {
     let x = ~[~"hi"];
     let _y = x[0];
