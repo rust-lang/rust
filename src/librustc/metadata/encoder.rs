@@ -778,6 +778,12 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
         encode_symbol(ecx, ebml_w, ctor_id);
     }
 
+    // indicate that this is a tuple struct ctor, because downstream users will normally want
+    // the tuple struct definition, but without this there is no way for them to tell that
+    // they actually have a ctor rather than a normal function
+    ebml_w.start_tag(tag_items_data_item_is_tuple_struct_ctor);
+    ebml_w.end_tag();
+
     ebml_w.end_tag();
 }
 
