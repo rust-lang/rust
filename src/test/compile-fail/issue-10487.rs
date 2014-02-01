@@ -11,6 +11,5 @@
 #[feature(managed_boxes)];
 
 static x: ~[int] = ~[123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
-static y: @[int] = @[123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
 
 fn main() {}
