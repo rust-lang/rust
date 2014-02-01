@@ -51,23 +51,16 @@ impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
 }
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+    use unstable::intrinsics::{to_le16, to_le32, to_le64};
+    use cast::transmute;
+
+    // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(&[n as u8,
-              (n >> 8) as u8]),
-      4u => f(&[n as u8,
-              (n >> 8) as u8,
-              (n >> 16) as u8,
-              (n >> 24) as u8]),
-      8u => f(&[n as u8,
-              (n >> 8) as u8,
-              (n >> 16) as u8,
-              (n >> 24) as u8,
-              (n >> 32) as u8,
-              (n >> 40) as u8,
-              (n >> 48) as u8,
-              (n >> 56) as u8]),
+      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_le16(n as i16)) }),
+      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_le32(n as i32)) }),
+      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_le64(n as i64)) }),
       _ => {
 
         let mut bytes: ~[u8] = ~[];
@@ -84,23 +77,16 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 }
 
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+    use unstable::intrinsics::{to_be16, to_be32, to_be64};
+    use cast::transmute;
+
+    // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(&[(n >> 8) as u8,
-              n as u8]),
-      4u => f(&[(n >> 24) as u8,
-              (n >> 16) as u8,
-              (n >> 8) as u8,
-              n as u8]),
-      8u => f(&[(n >> 56) as u8,
-              (n >> 48) as u8,
-              (n >> 40) as u8,
-              (n >> 32) as u8,
-              (n >> 24) as u8,
-              (n >> 16) as u8,
-              (n >> 8) as u8,
-              n as u8]),
+      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_be16(n as i16)) }),
+      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_be32(n as i32)) }),
+      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_be64(n as i64)) }),
       _ => {
         let mut bytes: ~[u8] = ~[];
         let mut i = size;
