@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_send]
-enum Foo { A }
+use std::kinds::marker;
+
+enum Foo {
+    A(marker::NoSend)
+}
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = A;
+    let x = A(marker::NoSend);
     bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
 }

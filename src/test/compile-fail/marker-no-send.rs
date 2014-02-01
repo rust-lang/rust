@@ -10,14 +10,9 @@
 
 use std::kinds::marker;
 
-struct Foo {
-    a: int,
-    ns: marker::NoSend
-}
+fn foo<P:Send>(p: P) { }
 
-fn bar<T: Send>(_: T) {}
-
-fn main() {
-    let x = Foo { a: 5, ns: marker::NoSend };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
+fn main()
+{
+    foo(marker::NoSend); //~ ERROR does not fulfill `Send`
 }

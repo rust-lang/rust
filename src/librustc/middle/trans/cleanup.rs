@@ -214,7 +214,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         self.ccx.tcx.sess.bug("No loop scope found");
     }
 
-    fn normal_exit_block(&self,
+    fn normal_exit_block(&'a self,
                          cleanup_scope: ast::NodeId,
                          exit: uint) -> BasicBlockRef {
         /*!
@@ -226,7 +226,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         self.trans_cleanups_to_exit_scope(LoopExit(cleanup_scope, exit))
     }
 
-    fn return_exit_block(&self) -> BasicBlockRef {
+    fn return_exit_block(&'a self) -> BasicBlockRef {
         /*!
          * Returns a block to branch to which will perform all pending
          * cleanups and then return from this function
@@ -371,7 +371,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         scopes.get().iter().rev().any(|s| s.needs_invoke())
     }
 
-    fn get_landing_pad(&self) -> BasicBlockRef {
+    fn get_landing_pad(&'a self) -> BasicBlockRef {
         /*!
          * Returns a basic block to branch to in the event of a failure.
          * This block will run the failure cleanups and eventually
@@ -481,7 +481,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         f(scopes.get().last().unwrap())
     }
 
-    fn trans_cleanups_to_exit_scope(&self,
+    fn trans_cleanups_to_exit_scope(&'a self,
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef {
         /*!
@@ -641,7 +641,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         prev_llbb
     }
 
-    fn get_or_create_landing_pad(&self) -> BasicBlockRef {
+    fn get_or_create_landing_pad(&'a self) -> BasicBlockRef {
         /*!
          * Creates a landing pad for the top scope, if one does not
          * exist.  The landing pad will perform all cleanups necessary
@@ -903,10 +903,10 @@ pub trait CleanupMethods<'a> {
                                           custom_scope: CustomScopeIndex)
                                           -> &'a Block<'a>;
     fn top_loop_scope(&self) -> ast::NodeId;
-    fn normal_exit_block(&self,
+    fn normal_exit_block(&'a self,
                          cleanup_scope: ast::NodeId,
                          exit: uint) -> BasicBlockRef;
-    fn return_exit_block(&self) -> BasicBlockRef;
+    fn return_exit_block(&'a self) -> BasicBlockRef;
     fn schedule_drop_mem(&self,
                          cleanup_scope: ScopeId,
                          val: ValueRef,
@@ -929,7 +929,7 @@ pub trait CleanupMethods<'a> {
                                     custom_scope: CustomScopeIndex,
                                     cleanup: ~Cleanup);
     fn needs_invoke(&self) -> bool;
-    fn get_landing_pad(&self) -> BasicBlockRef;
+    fn get_landing_pad(&'a self) -> BasicBlockRef;
 }
 
 trait CleanupHelperMethods<'a> {
@@ -940,10 +940,10 @@ trait CleanupHelperMethods<'a> {
     fn trans_scope_cleanups(&self,
                             bcx: &'a Block<'a>,
                             scope: &CleanupScope<'a>) -> &'a Block<'a>;
-    fn trans_cleanups_to_exit_scope(&self,
+    fn trans_cleanups_to_exit_scope(&'a self,
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef;
-    fn get_or_create_landing_pad(&self) -> BasicBlockRef;
+    fn get_or_create_landing_pad(&'a self) -> BasicBlockRef;
     fn scopes_len(&self) -> uint;
     fn push_scope(&self, scope: CleanupScope<'a>);
     fn pop_scope(&self) -> CleanupScope<'a>;

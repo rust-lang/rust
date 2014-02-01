@@ -66,6 +66,7 @@ use cast;
 use container::Container;
 use iter::{Iterator, range};
 use libc;
+use kinds::marker;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
@@ -174,7 +175,7 @@ impl CString {
     pub fn iter<'a>(&'a self) -> CChars<'a> {
         CChars {
             ptr: self.buf,
-            lifetime: unsafe { cast::transmute(self.buf) },
+            marker: marker::ContravariantLifetime,
         }
     }
 }
@@ -332,7 +333,7 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 /// Use with the `std::iter` module.
 pub struct CChars<'a> {
     priv ptr: *libc::c_char,
-    priv lifetime: &'a libc::c_char, // FIXME: #5922
+    priv marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a> Iterator<libc::c_char> for CChars<'a> {

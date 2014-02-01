@@ -33,6 +33,7 @@ use std::cast;
 use std::cell::{Cell, RefCell};
 use std::num;
 use std::ptr;
+use std::kinds::marker;
 use std::mem;
 use std::rt::global_heap;
 use std::uint;
@@ -71,7 +72,6 @@ struct Chunk {
 // different chunks than objects without destructors. This reduces
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
-#[no_freeze]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
@@ -79,6 +79,7 @@ pub struct Arena {
     priv head: Chunk,
     priv pod_head: Chunk,
     priv chunks: RefCell<@List<Chunk>>,
+    priv no_freeze: marker::NoFreeze,
 }
 
 impl Arena {
@@ -91,6 +92,7 @@ impl Arena {
             head: chunk(initial_size, false),
             pod_head: chunk(initial_size, true),
             chunks: RefCell::new(@Nil),
+            no_freeze: marker::NoFreeze,
         }
     }
 }

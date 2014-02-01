@@ -230,6 +230,7 @@ use clone::Clone;
 use container::Container;
 use int;
 use iter::Iterator;
+use kinds::marker;
 use kinds::Send;
 use ops::Drop;
 use option::{Option, Some, None};
@@ -297,9 +298,11 @@ impl<T: Send> Consumer<T>{
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
-#[no_freeze] // can't share ports in an arc
 pub struct Port<T> {
     priv queue: Consumer<T>,
+
+    // can't share in an arc
+    priv marker: marker::NoFreeze,
 }
 
 /// An iterator over messages received on a port, this iterator will block
@@ -311,17 +314,22 @@ pub struct Messages<'a, T> {
 
 /// The sending-half of Rust's channel type. This half can only be owned by one
 /// task
-#[no_freeze] // can't share chans in an arc
 pub struct Chan<T> {
     priv queue: spsc::Producer<T, Packet>,
+
+    // can't share in an arc
+    priv marker: marker::NoFreeze,
 }
 
 /// The sending-half of Rust's channel type. This half can be shared among many
 /// tasks by creating copies of itself through the `clone` method.
-#[no_freeze] // technically this implementation is shareable, but it shouldn't
-             // be required to be shareable in an arc
 pub struct SharedChan<T> {
     priv queue: mpsc::Producer<T, Packet>,
+
+    // can't share in an arc -- technically this implementation is
+    // shareable, but it shouldn't be required to be shareable in an
+    // arc
+    priv marker: marker::NoFreeze,
 }
 
 /// This enumeration is the list of the possible reasons that try_recv could not
@@ -545,7 +553,8 @@ impl<T: Send> Chan<T> {
         // maximum buffer size
         let (c, p) = spsc::queue(128, Packet::new());
         let c = SPSC(c);
-        (Port { queue: c }, Chan { queue: p })
+        (Port { queue: c, marker: marker::NoFreeze },
+         Chan { queue: p, marker: marker::NoFreeze })
     }
 
     /// Sends a value along this channel to be received by the corresponding
@@ -640,7 +649,8 @@ impl<T: Send> SharedChan<T> {
     pub fn new() -> (Port<T>, SharedChan<T>) {
         let (c, p) = mpsc::queue(Packet::new());
         let c = MPSC(c);
-        (Port { queue: c }, SharedChan { queue: p })
+        (Port { queue: c, marker: marker::NoFreeze },
+         SharedChan { queue: p, marker: marker::NoFreeze })
     }
 
     /// Equivalent method to `send` on the `Chan` type (using the same
@@ -706,7 +716,7 @@ impl<T: Send> SharedChan<T> {
 impl<T: Send> Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
         unsafe { (*self.queue.packet()).channels.fetch_add(1, SeqCst); }
-        SharedChan { queue: self.queue.clone() }
+        SharedChan { queue: self.queue.clone(), marker: marker::NoFreeze }
     }
 }
 
