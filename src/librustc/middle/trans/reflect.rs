@@ -140,7 +140,6 @@ impl<'a> Reflector<'a> {
             }
             ty::vstore_slice(_) => (~"slice", ~[]),
             ty::vstore_uniq => (~"uniq", ~[]),
-            ty::vstore_box => (~"box", ~[])
         }
     }
 

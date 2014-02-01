@@ -178,7 +178,6 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_box(_) |
-        ty::ty_vec(_, ty::vstore_box) |
         ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
             Some(deref_ptr(gc_ptr))
         }

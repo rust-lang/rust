@@ -736,7 +736,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_region(r, contra);
             }
 
-            ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box => {
+            ty::vstore_fixed(_) | ty::vstore_uniq => {
             }
         }
     }

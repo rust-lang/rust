@@ -699,7 +699,6 @@ impl<'a> LookupContext<'a> {
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
         match sty {
-            ty_vec(mt, vstore_box) |
             ty_vec(mt, vstore_uniq) |
             ty_vec(mt, vstore_slice(_)) | // NDM(#3148)
             ty_vec(mt, vstore_fixed(_)) => {
@@ -728,7 +727,6 @@ impl<'a> LookupContext<'a> {
                     })
             }
 
-            ty_str(vstore_box) |
             ty_str(vstore_uniq) |
             ty_str(vstore_fixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(

@@ -44,9 +44,6 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
         ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) => {
             ty::mk_uniq(tcx, unboxed_vec_ty)
         }
-        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
-            ty::mk_box(tcx, unboxed_vec_ty)
-        }
         _ => tcx.sess.bug("non boxed-vec type \
                            in tvec::expand_boxed_vec_ty")
     }
@@ -63,21 +60,6 @@ pub fn set_fill(bcx: &Block, vptr: ValueRef, fill: ValueRef) {
 
 pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
-}
-
-pub fn get_bodyptr(bcx: &Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    let vt = vec_types(bcx, t);
-
-    let managed = match ty::get(vt.vec_ty).sty {
-      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => true,
-      _ => false
-    };
-
-    if managed {
-        GEPi(bcx, vptr, [0u, abi::box_field_body])
-    } else {
-        vptr
-    }
 }
 
 pub fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
@@ -381,7 +363,7 @@ pub fn trans_uniq_or_managed_vstore<'a>(bcx: &'a Block<'a>,
     let temp_scope = fcx.push_custom_cleanup_scope();
     fcx.schedule_free_value(cleanup::CustomScope(temp_scope), val, heap);
 
-    let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val, vt.vec_ty));
+    let dataptr = get_dataptr(bcx, val);
 
     debug!("alloc_vec() returned val={}, dataptr={}",
            bcx.val_to_str(val), bcx.val_to_str(dataptr));
@@ -570,10 +552,9 @@ pub fn get_base_and_byte_len(bcx: &Block,
             let len = Mul(bcx, count, vt.llunit_size);
             (base, len)
         }
-        ty::vstore_uniq | ty::vstore_box => {
+        ty::vstore_uniq => {
             assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
-            let llval = Load(bcx, llval);
-            let body = get_bodyptr(bcx, llval, vec_ty);
+            let body = Load(bcx, llval);
             (get_dataptr(bcx, body), get_fill(bcx, body))
         }
     }
@@ -610,10 +591,9 @@ pub fn get_base_and_len(bcx: &Block,
             let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
             (base, count)
         }
-        ty::vstore_uniq | ty::vstore_box => {
+        ty::vstore_uniq => {
             assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
-            let llval = Load(bcx, llval);
-            let body = get_bodyptr(bcx, llval, vec_ty);
+            let body = Load(bcx, llval);
             (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
         }
     }
@@ -730,7 +710,7 @@ pub fn iter_vec_uniq<'r,
                      f: iter_vec_block<'r,'b>)
                      -> &'b Block<'b> {
     let _icx = push_ctxt("tvec::iter_vec_uniq");
-    let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr, vec_ty));
+    let data_ptr = get_dataptr(bcx, vptr);
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 

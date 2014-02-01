@@ -888,7 +888,6 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
                 ty::ty_box(_) |
-                ty::ty_vec(_, ty::vstore_box) |
                 ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
                     n_box += 1;
                 }

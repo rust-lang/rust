@@ -64,10 +64,7 @@ pub fn take_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("take_ty");
     match ty::get(t).sty {
-        ty::ty_box(_) |
-        ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) => {
-            incr_refcnt_of_boxed(bcx, v)
-        }
+        ty::ty_box(_) => incr_refcnt_of_boxed(bcx, v),
         ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
             incr_refcnt_of_boxed(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]))
         }
@@ -111,10 +108,6 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
         match ty::get(t).sty {
             ty::ty_box(typ)
                 if !ty::type_needs_drop(tcx, typ) =>
-            return ty::mk_box(tcx, ty::mk_nil()),
-
-            ty::ty_vec(mt, ty::vstore_box)
-                if !ty::type_needs_drop(tcx, mt.ty) =>
             return ty::mk_box(tcx, ty::mk_nil()),
 
             ty::ty_uniq(typ)
@@ -325,11 +318,6 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
     match ty::get(t).sty {
         ty::ty_box(body_ty) => {
             decr_refcnt_maybe_free(bcx, v0, Some(body_ty))
-        }
-        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
-            let unit_ty = ty::sequence_element_type(ccx.tcx, t);
-            let unboxed_vec_ty = ty::mk_mut_unboxed_vec(ccx.tcx, unit_ty);
-            decr_refcnt_maybe_free(bcx, v0, Some(unboxed_vec_ty))
         }
         ty::ty_uniq(content_ty) => {
             let llbox = Load(bcx, v0);
