@@ -2335,9 +2335,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
+                        let string = token::get_ident(field);
                         format!("attempted to take value of method `{}` on type `{}` \
-                              (try writing an anonymous function)",
-                             token::interner_get(field), actual)
+                                 (try writing an anonymous function)",
+                                string.get(),
+                                actual)
                     },
                     expr_t, None);
             }
@@ -2346,9 +2348,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
+                        let string = token::get_ident(field);
                         format!("attempted access of field `{}` on type `{}`, \
-                              but no field with that name was found",
-                             token::interner_get(field), actual)
+                                 but no field with that name was found",
+                                string.get(),
+                                actual)
                     },
                     expr_t, None);
             }
@@ -2428,8 +2432,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     let name = class_field.name;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
-                        missing_fields.push(
-                            ~"`" + token::interner_get(name) + "`");
+                        let string = token::get_ident(name);
+                        missing_fields.push(~"`" + string.get() + "`");
                     }
                 }
 

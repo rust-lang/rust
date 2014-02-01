@@ -774,7 +774,8 @@ impl BorrowckCtxt {
                         match pat.node {
                             ast::PatIdent(_, ref path, _) => {
                                 let ident = ast_util::path_to_ident(path);
-                                out.push_str(token::ident_to_str(&ident));
+                                let string = token::get_ident(ident.name);
+                                out.push_str(string.get());
                             }
                             _ => {
                                 self.tcx.sess.bug(
@@ -795,8 +796,9 @@ impl BorrowckCtxt {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 match fname {
                     mc::NamedField(ref fname) => {
+                        let string = token::get_ident(*fname);
                         out.push_char('.');
-                        out.push_str(token::interner_get(*fname));
+                        out.push_str(string.get());
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here

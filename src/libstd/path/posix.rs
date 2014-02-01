@@ -830,7 +830,6 @@ mod tests {
         t!(s: "a/b/c", ["d", "/e"], "/e");
         t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
         t!(s: "a/b/c", [~"d", ~"e"], "a/b/c/d/e");
-        t!(s: "a/b/c", [@"d", @"e"], "a/b/c/d/e");
         t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
         t!(v: b!("a/b/c"), [b!("d"), b!("/e"), b!("f")], b!("/e/f"));
         t!(v: b!("a/b/c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a/b/c/d/e"));
@@ -940,7 +939,6 @@ mod tests {
         t!(s: "a/b/c", ["..", "d"], "a/b/d");
         t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
         t!(s: "a/b/c", [~"d", ~"e"], "a/b/c/d/e");
-        t!(s: "a/b/c", [@"d", @"e"], "a/b/c/d/e");
         t!(v: b!("a/b/c"), [b!("d"), b!("e")], b!("a/b/c/d/e"));
         t!(v: b!("a/b/c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a/b/c/d/e"));
         t!(v: b!("a/b/c"), [to_man(b!("d").to_owned()), to_man(b!("e").to_owned())],

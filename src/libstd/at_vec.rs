@@ -338,7 +338,6 @@ mod test {
         assert_eq!(to_managed::<int>([]), @[]);
         assert_eq!(to_managed([true]), @[true]);
         assert_eq!(to_managed([1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
-        assert_eq!(to_managed([@"abc", @"123"]), @[@"abc", @"123"]);
         assert_eq!(to_managed([@[42]]), @[@[42]]);
     }
 

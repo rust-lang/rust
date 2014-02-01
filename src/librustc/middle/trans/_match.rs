@@ -229,6 +229,7 @@ use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
 use syntax::codemap::{Span, DUMMY_SP};
+use syntax::parse::token::InternedString;
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
@@ -1174,7 +1175,7 @@ fn any_tuple_struct_pat(bcx: &Block, m: &[Match], col: uint) -> bool {
 struct DynamicFailureHandler<'a> {
     bcx: &'a Block<'a>,
     sp: Span,
-    msg: @str,
+    msg: InternedString,
     finished: @Cell<Option<BasicBlockRef>>,
 }
 
@@ -1187,7 +1188,7 @@ impl<'a> DynamicFailureHandler<'a> {
 
         let fcx = self.bcx.fcx;
         let fail_cx = fcx.new_block(false, "case_fallthrough", None);
-        controlflow::trans_fail(fail_cx, Some(self.sp), self.msg);
+        controlflow::trans_fail(fail_cx, Some(self.sp), self.msg.clone());
         self.finished.set(Some(fail_cx.llbb));
         fail_cx.llbb
     }
@@ -1891,7 +1892,8 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
             let fail_handler = ~DynamicFailureHandler {
                 bcx: scope_cx,
                 sp: discr_expr.span,
-                msg: @"scrutinizing value that can't exist",
+                msg: InternedString::new("scrutinizing value that can't \
+                                          exist"),
                 finished: fail_cx,
             };
             DynamicFailureHandlerClass(fail_handler)

@@ -14,7 +14,8 @@ use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
 use ast_util;
 use opt_vec::OptVec;
-use parse::token::{interner_get, str_to_ident, special_idents};
+use parse::token::{InternedString, special_idents, str_to_ident};
+use parse::token;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
@@ -125,7 +126,8 @@ pub type Mrk = u32;
 
 impl<S:Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
-        s.emit_str(interner_get(self.name));
+        let string = token::get_ident(self.name);
+        s.emit_str(string.get());
     }
 }
 
@@ -295,9 +297,9 @@ pub type MetaItem = Spanned<MetaItem_>;
 
 #[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum MetaItem_ {
-    MetaWord(@str),
-    MetaList(@str, ~[@MetaItem]),
-    MetaNameValue(@str, Lit),
+    MetaWord(InternedString),
+    MetaList(InternedString, ~[@MetaItem]),
+    MetaNameValue(InternedString, Lit),
 }
 
 // can't be derived because the MetaList requires an unordered comparison
@@ -721,14 +723,14 @@ pub type Lit = Spanned<Lit_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Lit_ {
-    LitStr(@str, StrStyle),
+    LitStr(InternedString, StrStyle),
     LitBinary(@[u8]),
     LitChar(u32),
     LitInt(i64, IntTy),
     LitUint(u64, UintTy),
     LitIntUnsuffixed(i64),
-    LitFloat(@str, FloatTy),
-    LitFloatUnsuffixed(@str),
+    LitFloat(InternedString, FloatTy),
+    LitFloatUnsuffixed(InternedString),
     LitNil,
     LitBool(bool),
 }
@@ -897,11 +899,11 @@ pub enum AsmDialect {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct InlineAsm {
-    asm: @str,
+    asm: InternedString,
     asm_str_style: StrStyle,
-    clobbers: @str,
-    inputs: ~[(@str, @Expr)],
-    outputs: ~[(@str, @Expr)],
+    clobbers: InternedString,
+    inputs: ~[(InternedString, @Expr)],
+    outputs: ~[(InternedString, @Expr)],
     volatile: bool,
     alignstack: bool,
     dialect: AsmDialect
@@ -1074,7 +1076,7 @@ pub enum ViewItem_ {
     // optional @str: if present, this is a location (containing
     // arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
-    ViewItemExternMod(Ident, Option<(@str, StrStyle)>, NodeId),
+    ViewItemExternMod(Ident, Option<(InternedString,StrStyle)>, NodeId),
     ViewItemUse(~[@ViewPath]),
 }
 

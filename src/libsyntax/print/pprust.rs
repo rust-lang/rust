@@ -19,7 +19,7 @@ use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
 use parse::classify::expr_is_simple_block;
-use parse::token::{IdentInterner, ident_to_str, interner_get};
+use parse::token::IdentInterner;
 use parse::{comments, token};
 use parse;
 use print::pp::{break_offset, word, space, zerobreak, hardbreak};
@@ -117,7 +117,7 @@ pub fn print_crate(cm: @CodeMap,
                    intr: @IdentInterner,
                    span_diagnostic: @diagnostic::SpanHandler,
                    crate: &ast::Crate,
-                   filename: @str,
+                   filename: ~str,
                    input: &mut io::Reader,
                    out: ~io::Writer,
                    ann: @PpAnn,
@@ -897,7 +897,7 @@ pub fn print_attribute(s: &mut State, attr: &ast::Attribute) {
     maybe_print_comment(s, attr.span.lo);
     if attr.node.is_sugared_doc {
         let comment = attr.value_str().unwrap();
-        word(&mut s.s, comment);
+        word(&mut s.s, comment.get());
     } else {
         word(&mut s.s, "#[");
         print_meta_item(s, attr.meta());
@@ -1466,25 +1466,25 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
             word(&mut s.s, "asm!");
         }
         popen(s);
-        print_string(s, a.asm, a.asm_str_style);
+        print_string(s, a.asm.get(), a.asm_str_style);
         word_space(s, ":");
-        for &(co, o) in a.outputs.iter() {
-            print_string(s, co, ast::CookedStr);
+        for &(ref co, o) in a.outputs.iter() {
+            print_string(s, co.get(), ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        for &(co, o) in a.inputs.iter() {
-            print_string(s, co, ast::CookedStr);
+        for &(ref co, o) in a.inputs.iter() {
+            print_string(s, co.get(), ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        print_string(s, a.clobbers, ast::CookedStr);
+        print_string(s, a.clobbers.get(), ast::CookedStr);
         pclose(s);
       }
       ast::ExprMac(ref m) => print_mac(s, m),
@@ -1539,11 +1539,13 @@ pub fn print_decl(s: &mut State, decl: &ast::Decl) {
 }
 
 pub fn print_ident(s: &mut State, ident: ast::Ident) {
-    word(&mut s.s, ident_to_str(&ident));
+    let string = token::get_ident(ident.name);
+    word(&mut s.s, string.get());
 }
 
 pub fn print_name(s: &mut State, name: ast::Name) {
-    word(&mut s.s, interner_get(name));
+    let string = token::get_ident(name);
+    word(&mut s.s, string.get());
 }
 
 pub fn print_for_decl(s: &mut State, loc: &ast::Local, coll: &ast::Expr) {
@@ -1930,14 +1932,14 @@ pub fn print_generics(s: &mut State, generics: &ast::Generics) {
 pub fn print_meta_item(s: &mut State, item: &ast::MetaItem) {
     ibox(s, indent_unit);
     match item.node {
-      ast::MetaWord(name) => word(&mut s.s, name),
-      ast::MetaNameValue(name, value) => {
-        word_space(s, name);
+      ast::MetaWord(ref name) => word(&mut s.s, name.get()),
+      ast::MetaNameValue(ref name, ref value) => {
+        word_space(s, name.get());
         word_space(s, "=");
-        print_literal(s, &value);
+        print_literal(s, value);
       }
-      ast::MetaList(name, ref items) => {
-        word(&mut s.s, name);
+      ast::MetaList(ref name, ref items) => {
+        word(&mut s.s, name.get());
         popen(s);
         commasep(s,
                  Consistent,
@@ -1998,7 +2000,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) {
                 space(&mut s.s);
                 word(&mut s.s, "=");
                 space(&mut s.s);
-                print_string(s, *p, style);
+                print_string(s, p.get(), style);
             }
         }
 
@@ -2172,7 +2174,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
       _ => ()
     }
     match lit.node {
-      ast::LitStr(st, style) => print_string(s, st, style),
+      ast::LitStr(ref st, style) => print_string(s, st.get(), style),
       ast::LitChar(ch) => {
           let mut res = ~"'";
           char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
@@ -2202,10 +2204,10 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
             word(&mut s.s, (i as u64).to_str_radix(10u));
         }
       }
-      ast::LitFloat(f, t) => {
-        word(&mut s.s, f.to_owned() + ast_util::float_ty_to_str(t));
+      ast::LitFloat(ref f, t) => {
+        word(&mut s.s, f.get() + ast_util::float_ty_to_str(t));
       }
-      ast::LitFloatUnsuffixed(f) => word(&mut s.s, f),
+      ast::LitFloatUnsuffixed(ref f) => word(&mut s.s, f.get()),
       ast::LitNil => word(&mut s.s, "()"),
       ast::LitBool(val) => {
         if val { word(&mut s.s, "true"); } else { word(&mut s.s, "false"); }

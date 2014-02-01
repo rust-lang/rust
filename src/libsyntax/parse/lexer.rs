@@ -42,7 +42,6 @@ pub struct TokenAndSpan {
 
 pub struct StringReader {
     span_diagnostic: @SpanHandler,
-    src: @str,
     // The absolute offset within the codemap of the next character to read
     pos: Cell<BytePos>,
     // The absolute offset within the codemap of the last character read(curr)
@@ -73,7 +72,6 @@ pub fn new_low_level_string_reader(span_diagnostic: @SpanHandler,
     let initial_char = '\n';
     let r = @StringReader {
         span_diagnostic: span_diagnostic,
-        src: filemap.src,
         pos: Cell::new(filemap.start_pos),
         last_pos: Cell::new(filemap.start_pos),
         col: Cell::new(CharPos(0)),
@@ -93,7 +91,6 @@ pub fn new_low_level_string_reader(span_diagnostic: @SpanHandler,
 fn dup_string_reader(r: @StringReader) -> @StringReader {
     @StringReader {
         span_diagnostic: r.span_diagnostic,
-        src: r.src,
         pos: Cell::new(r.pos.get()),
         last_pos: Cell::new(r.last_pos.get()),
         col: Cell::new(r.col.get()),
@@ -188,7 +185,7 @@ fn fatal_span_verbose(rdr: @StringReader,
                    -> ! {
     let mut m = m;
     m.push_str(": ");
-    let s = rdr.src.slice(
+    let s = rdr.filemap.src.slice(
                   byte_offset(rdr, from_pos).to_uint(),
                   byte_offset(rdr, to_pos).to_uint());
     m.push_str(s);
@@ -239,7 +236,7 @@ fn with_str_from_to<T>(
                     end: BytePos,
                     f: |s: &str| -> T)
                     -> T {
-    f(rdr.src.slice(
+    f(rdr.filemap.src.slice(
             byte_offset(rdr, start).to_uint(),
             byte_offset(rdr, end).to_uint()))
 }
@@ -249,12 +246,12 @@ fn with_str_from_to<T>(
 pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if current_byte_offset < (rdr.src).len() {
+    if current_byte_offset < (rdr.filemap.src).len() {
         assert!(rdr.curr.get() != unsafe {
             transmute(-1u32)
         }); // FIXME: #8971: unsound
         let last_char = rdr.curr.get();
-        let next = rdr.src.char_range_at(current_byte_offset);
+        let next = rdr.filemap.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
         rdr.curr.set(next.ch);
@@ -277,8 +274,8 @@ pub fn is_eof(rdr: @StringReader) -> bool {
 }
 pub fn nextch(rdr: @StringReader) -> char {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if offset < (rdr.src).len() {
-        return rdr.src.char_at(offset);
+    if offset < (rdr.filemap.src).len() {
+        return rdr.filemap.src.char_at(offset);
     } else { return unsafe { transmute(-1u32) }; } // FIXME: #8971: unsound
 }
 
@@ -975,9 +972,9 @@ mod test {
     }
 
     // open a string reader for the given string
-    fn setup(teststr: @str) -> Env {
+    fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"zebra.rs", teststr);
+        let fm = cm.new_filemap(~"zebra.rs", teststr);
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {
@@ -987,7 +984,7 @@ mod test {
 
     #[test] fn t1 () {
         let Env {string_reader} =
-            setup(@"/* my source file */ \
+            setup(~"/* my source file */ \
                     fn main() { println!(\"zebra\"); }\n");
         let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
@@ -1023,14 +1020,14 @@ mod test {
     }
 
     #[test] fn doublecolonparsing () {
-        let env = setup (@"a b");
+        let env = setup (~"a b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_2 () {
-        let env = setup (@"a::b");
+        let env = setup (~"a::b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -1038,7 +1035,7 @@ mod test {
     }
 
     #[test] fn dcparsing_3 () {
-        let env = setup (@"a ::b");
+        let env = setup (~"a ::b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              token::MOD_SEP,
@@ -1046,7 +1043,7 @@ mod test {
     }
 
     #[test] fn dcparsing_4 () {
-        let env = setup (@"a:: b");
+        let env = setup (~"a:: b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -1054,28 +1051,28 @@ mod test {
     }
 
     #[test] fn character_a() {
-        let env = setup(@"'a'");
+        let env = setup(~"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_CHAR('a' as u32));
     }
 
     #[test] fn character_space() {
-        let env = setup(@"' '");
+        let env = setup(~"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_CHAR(' ' as u32));
     }
 
     #[test] fn character_escaped() {
-        let env = setup(@"'\\n'");
+        let env = setup(~"'\\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_CHAR('\n' as u32));
     }
 
     #[test] fn lifetime_name() {
-        let env = setup(@"'abc");
+        let env = setup(~"'abc");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("abc");
@@ -1083,7 +1080,7 @@ mod test {
     }
 
     #[test] fn raw_string() {
-        let env = setup(@"r###\"\"#a\\b\x00c\"\"###");
+        let env = setup(~"r###\"\"#a\\b\x00c\"\"###");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("\"#a\\b\x00c\"");
@@ -1097,7 +1094,7 @@ mod test {
     }
 
     #[test] fn nested_block_comments() {
-        let env = setup(@"/* /* */ */'a'");
+        let env = setup(~"/* /* */ */'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_CHAR('a' as u32));

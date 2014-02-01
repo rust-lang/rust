@@ -58,7 +58,6 @@ pub fn main() {
     t!(format!("{}", 1.0f64), "1");
     t!(format!("{}", "a"), "a");
     t!(format!("{}", ~"a"), "a");
-    t!(format!("{}", @"a"), "a");
     t!(format!("{}", false), "false");
     t!(format!("{}", 'a'), "a");
 
@@ -73,7 +72,6 @@ pub fn main() {
     t!(format!("{:X}", 10u), "A");
     t!(format!("{:s}", "foo"), "foo");
     t!(format!("{:s}", ~"foo"), "foo");
-    t!(format!("{:s}", @"foo"), "foo");
     t!(format!("{:p}", 0x1234 as *int), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
     t!(format!("{:d}", A), "aloha");

@@ -473,10 +473,10 @@ pub fn build_link_meta(sess: Session,
                        symbol_hasher: &mut Sha256)
                        -> LinkMeta {
     // This calculates CMH as defined above
-    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> @str {
+    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> ~str {
         symbol_hasher.reset();
         symbol_hasher.input_str(crateid.to_str());
-        truncated_hash_result(symbol_hasher).to_managed()
+        truncated_hash_result(symbol_hasher)
     }
 
     let crateid = match attr::find_crateid(attrs) {
@@ -510,7 +510,8 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
 pub fn symbol_hash(tcx: ty::ctxt,
                    symbol_hasher: &mut Sha256,
                    t: ty::t,
-                   link_meta: &LinkMeta) -> @str {
+                   link_meta: &LinkMeta)
+                   -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -523,15 +524,14 @@ pub fn symbol_hash(tcx: ty::ctxt,
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with 'h' so that it never blends into adjacent digits
     hash.unshift_char('h');
-    // tjc: allocation is unfortunate; need to change std::hash
-    hash.to_managed()
+    hash
 }
 
-pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
     {
         let type_hashcodes = ccx.type_hashcodes.borrow();
         match type_hashcodes.get().find(&t) {
-            Some(&h) => return h,
+            Some(h) => return h.to_str(),
             None => {}
         }
     }
@@ -539,7 +539,7 @@ pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> @str {
     let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
     let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
     let hash = symbol_hash(ccx.tcx, symbol_hasher.get(), t, &ccx.link_meta);
-    type_hashcodes.get().insert(t, hash);
+    type_hashcodes.get().insert(t, hash.clone());
     hash
 }
 
@@ -963,7 +963,7 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
-        let name = sess.cstore.get_crate_data(cnum).name;
+        let name = sess.cstore.get_crate_data(cnum).name.clone();
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(format!("could not find rlib for: `{}`", name));
@@ -1221,7 +1221,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                 // If we're not doing LTO, then our job is simply to just link
                 // against the archive.
                 if sess.lto() {
-                    let name = sess.cstore.get_crate_data(cnum).name;
+                    let name = sess.cstore.get_crate_data(cnum).name.clone();
                     time(sess.time_passes(), format!("altering {}.rlib", name),
                          (), |()| {
                         let dst = tmpdir.join(cratepath.filename().unwrap());

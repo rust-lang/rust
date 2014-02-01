@@ -1059,15 +1059,15 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
     let mut items: ~[@ast::MetaItem] = ~[];
     reader::tagged_docs(md, tag_meta_item_word, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = nd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
         items.push(attr::mk_word_item(n));
         true
     });
     reader::tagged_docs(md, tag_meta_item_name_value, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = nd.as_str_slice().to_managed();
-        let v = vd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
+        let v = token::intern_and_get_ident(vd.as_str_slice());
         // FIXME (#623): Should be able to decode MetaNameValue variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(n, v));
@@ -1075,7 +1075,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
     });
     reader::tagged_docs(md, tag_meta_item_list, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = nd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
         let subitems = get_meta_items(meta_item_doc);
         items.push(attr::mk_list_item(n, subitems));
         true
@@ -1130,8 +1130,8 @@ pub fn get_crate_attributes(data: &[u8]) -> ~[ast::Attribute] {
 pub struct CrateDep {
     cnum: ast::CrateNum,
     name: ast::Ident,
-    vers: @str,
-    hash: @str
+    vers: ~str,
+    hash: ~str
 }
 
 pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
@@ -1139,9 +1139,9 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
-    fn docstr(doc: ebml::Doc, tag_: uint) -> @str {
+    fn docstr(doc: ebml::Doc, tag_: uint) -> ~str {
         let d = reader::get_doc(doc, tag_);
-        d.as_str_slice().to_managed()
+        d.as_str_slice().to_str()
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         deps.push(CrateDep {cnum: crate_num,
@@ -1159,24 +1159,29 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) {
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
-        write!(out, "{} {}-{}-{}\n",
-                 dep.cnum, token::ident_to_str(&dep.name), dep.hash, dep.vers);
+        let string = token::get_ident(dep.name.name);
+        write!(out,
+               "{} {}-{}-{}\n",
+               dep.cnum,
+               string.get(),
+               dep.hash,
+               dep.vers);
     }
 
     write!(out, "\n");
 }
 
-pub fn get_crate_hash(data: &[u8]) -> @str {
+pub fn get_crate_hash(data: &[u8]) -> ~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    hashdoc.as_str_slice().to_managed()
+    hashdoc.as_str_slice().to_str()
 }
 
-pub fn get_crate_vers(data: &[u8]) -> @str {
+pub fn get_crate_vers(data: &[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     match attr::find_crateid(attrs) {
-        None => @"0.0",
-        Some(crateid) => crateid.version_or_default().to_managed(),
+        None => ~"0.0",
+        Some(crateid) => crateid.version_or_default().to_str(),
     }
 }
 

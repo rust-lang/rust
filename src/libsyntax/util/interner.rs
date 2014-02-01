@@ -14,9 +14,11 @@
 
 use ast::Name;
 
+use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::hashmap::HashMap;
+use std::rc::Rc;
 
 pub struct Interner<T> {
     priv map: @RefCell<HashMap<T, Name>>,
@@ -82,11 +84,49 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     }
 }
 
+#[deriving(Clone, Eq, IterBytes, Ord)]
+pub struct RcStr {
+    priv string: Rc<~str>,
+}
+
+impl TotalEq for RcStr {
+    fn equals(&self, other: &RcStr) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl TotalOrd for RcStr {
+    fn cmp(&self, other: &RcStr) -> Ordering {
+        self.as_slice().cmp(&other.as_slice())
+    }
+}
+
+impl Str for RcStr {
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        let s: &'a str = *self.string.borrow();
+        s
+    }
+
+    #[inline]
+    fn into_owned(self) -> ~str {
+        self.string.borrow().to_owned()
+    }
+}
+
+impl RcStr {
+    pub fn new(string: &str) -> RcStr {
+        RcStr {
+            string: Rc::new(string.to_owned()),
+        }
+    }
+}
+
 // A StrInterner differs from Interner<String> in that it accepts
 // references rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
-    priv map: @RefCell<HashMap<@str, Name>>,
-    priv vect: @RefCell<~[@str]>,
+    priv map: @RefCell<HashMap<RcStr, Name>>,
+    priv vect: @RefCell<~[RcStr]>,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -112,8 +152,8 @@ impl StrInterner {
         }
 
         let new_idx = self.len() as Name;
-        let val = val.to_managed();
-        map.get().insert(val, new_idx);
+        let val = RcStr::new(val);
+        map.get().insert(val.clone(), new_idx);
         let mut vect = self.vect.borrow_mut();
         vect.get().push(val);
         new_idx
@@ -123,7 +163,7 @@ impl StrInterner {
         let new_idx = self.len() as Name;
         // leave out of .map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        vect.get().push(val.to_managed());
+        vect.get().push(RcStr::new(val));
         new_idx
     }
 
@@ -141,14 +181,24 @@ impl StrInterner {
         let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        let existing = vect.get()[idx];
+        let existing = vect.get()[idx].clone();
         vect.get().push(existing);
         new_idx
     }
 
-    pub fn get(&self, idx: Name) -> @str {
+    pub fn get(&self, idx: Name) -> RcStr {
         let vect = self.vect.borrow();
-        vect.get()[idx]
+        vect.get()[idx].clone()
+    }
+
+    /// Returns this string with lifetime tied to the interner. Since
+    /// strings may never be removed from the interner, this is safe.
+    pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
+        let vect = self.vect.borrow();
+        let s: &str = vect.get()[idx].as_slice();
+        unsafe {
+            cast::transmute(s)
+        }
     }
 
     pub fn len(&self) -> uint {
@@ -156,7 +206,7 @@ impl StrInterner {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
+    pub fn find_equiv<Q:Hash + IterBytes + Equiv<RcStr>>(&self, val: &Q)
                                                          -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
@@ -172,42 +222,46 @@ mod tests {
     #[test]
     #[should_fail]
     fn i1 () {
-        let i : Interner<@str> = Interner::new();
+        let i : Interner<RcStr> = Interner::new();
         i.get(13);
     }
 
     #[test]
     fn interner_tests () {
-        let i : Interner<@str> = Interner::new();
+        let i : Interner<RcStr> = Interner::new();
         // first one is zero:
-        assert_eq!(i.intern(@"dog"), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), 0);
         // re-use gets the same entry:
-        assert_eq!(i.intern(@"dog"), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), 0);
         // different string gets a different #:
-        assert_eq!(i.intern(@"cat"), 1);
-        assert_eq!(i.intern(@"cat"), 1);
+        assert_eq!(i.intern(RcStr::new("cat")), 1);
+        assert_eq!(i.intern(RcStr::new("cat")), 1);
         // dog is still at zero
-        assert_eq!(i.intern(@"dog"), 0);
+        assert_eq!(i.intern(RcStr::new("dog")), 0);
         // gensym gets 3
-        assert_eq!(i.gensym(@"zebra" ), 2);
+        assert_eq!(i.gensym(RcStr::new("zebra") ), 2);
         // gensym of same string gets new number :
-        assert_eq!(i.gensym (@"zebra" ), 3);
+        assert_eq!(i.gensym (RcStr::new("zebra") ), 3);
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym(@"dog"), 4);
-        assert_eq!(i.get(0), @"dog");
-        assert_eq!(i.get(1), @"cat");
-        assert_eq!(i.get(2), @"zebra");
-        assert_eq!(i.get(3), @"zebra");
-        assert_eq!(i.get(4), @"dog");
+        assert_eq!(i.gensym(RcStr::new("dog")), 4);
+        assert_eq!(i.get(0), RcStr::new("dog"));
+        assert_eq!(i.get(1), RcStr::new("cat"));
+        assert_eq!(i.get(2), RcStr::new("zebra"));
+        assert_eq!(i.get(3), RcStr::new("zebra"));
+        assert_eq!(i.get(4), RcStr::new("dog"));
     }
 
     #[test]
     fn i3 () {
-        let i : Interner<@str> = Interner::prefill([@"Alan",@"Bob",@"Carol"]);
-        assert_eq!(i.get(0), @"Alan");
-        assert_eq!(i.get(1), @"Bob");
-        assert_eq!(i.get(2), @"Carol");
-        assert_eq!(i.intern(@"Bob"), 1);
+        let i : Interner<RcStr> = Interner::prefill([
+            RcStr::new("Alan"),
+            RcStr::new("Bob"),
+            RcStr::new("Carol")
+        ]);
+        assert_eq!(i.get(0), RcStr::new("Alan"));
+        assert_eq!(i.get(1), RcStr::new("Bob"));
+        assert_eq!(i.get(2), RcStr::new("Carol"));
+        assert_eq!(i.intern(RcStr::new("Bob")), 1);
     }
 
     #[test]
@@ -230,13 +284,13 @@ mod tests {
         assert_eq!(i.gensym("dog"), 4);
         // gensym tests again with gensym_copy:
         assert_eq!(i.gensym_copy(2), 5);
-        assert_eq!(i.get(5), @"zebra");
+        assert_eq!(i.get(5), RcStr::new("zebra"));
         assert_eq!(i.gensym_copy(2), 6);
-        assert_eq!(i.get(6), @"zebra");
-        assert_eq!(i.get(0), @"dog");
-        assert_eq!(i.get(1), @"cat");
-        assert_eq!(i.get(2), @"zebra");
-        assert_eq!(i.get(3), @"zebra");
-        assert_eq!(i.get(4), @"dog");
+        assert_eq!(i.get(6), RcStr::new("zebra"));
+        assert_eq!(i.get(0), RcStr::new("dog"));
+        assert_eq!(i.get(1), RcStr::new("cat"));
+        assert_eq!(i.get(2), RcStr::new("zebra"));
+        assert_eq!(i.get(3), RcStr::new("zebra"));
+        assert_eq!(i.get(4), RcStr::new("dog"));
     }
 }

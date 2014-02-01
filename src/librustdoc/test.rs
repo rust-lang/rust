@@ -137,7 +137,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     }
 }
 
-fn maketest(s: &str, cratename: &str) -> @str {
+fn maketest(s: &str, cratename: &str) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
@@ -156,7 +156,7 @@ fn maketest(s: &str, cratename: &str) -> @str {
         prog.push_str("\n}");
     }
 
-    return prog.to_managed();
+    return prog;
 }
 
 pub struct Collector {

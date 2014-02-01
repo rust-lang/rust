@@ -20,9 +20,8 @@ use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
+use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
-use syntax::parse::token::{IdentInterner, interner_get};
-use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::opt_vec::OptVec;
@@ -53,7 +52,7 @@ pub type TraitMap = HashMap<NodeId,@RefCell<~[DefId]>>;
 pub type ExportMap2 = @RefCell<HashMap<NodeId, ~[Export2]>>;
 
 pub struct Export2 {
-    name: @str,        // The name of the target.
+    name: ~str,        // The name of the target.
     def_id: DefId,     // The definition of the target.
 }
 
@@ -1894,8 +1893,9 @@ impl Resolver {
         csearch::each_child_of_item(self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
+            let child_ident_string = token::get_ident(child_ident.name);
             debug!("(populating external module) ... found ident: {}",
-                   token::ident_to_str(&child_ident));
+                   child_ident_string.get());
             self.build_reduced_graph_for_external_crate_def(module,
                                                             def_like,
                                                             child_ident,
@@ -2114,24 +2114,26 @@ impl Resolver {
     }
 
     fn import_directive_subclass_to_str(&mut self,
-                                            subclass: ImportDirectiveSubclass)
-                                            -> @str {
+                                        subclass: ImportDirectiveSubclass)
+                                        -> ~str {
         match subclass {
-            SingleImport(_target, source) => self.session.str_of(source),
-            GlobImport => @"*"
+            SingleImport(_target, source) => {
+                self.session.str_of(source).to_str()
+            }
+            GlobImport => ~"*"
         }
     }
 
     fn import_path_to_str(&mut self,
-                              idents: &[Ident],
-                              subclass: ImportDirectiveSubclass)
-                              -> @str {
+                          idents: &[Ident],
+                          subclass: ImportDirectiveSubclass)
+                          -> ~str {
         if idents.is_empty() {
             self.import_directive_subclass_to_str(subclass)
         } else {
             (format!("{}::{}",
-                  self.idents_to_str(idents),
-                  self.import_directive_subclass_to_str(subclass))).to_managed()
+                     self.idents_to_str(idents),
+                     self.import_directive_subclass_to_str(subclass)))
         }
     }
 
@@ -2584,7 +2586,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing resolution `{}` in `{}` \
                     to `{}`",
-                   interner_get(name),
+                   token::get_ident(name).get().to_str(),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_));
 
@@ -3101,11 +3103,12 @@ impl Resolver {
         // top of the crate otherwise.
         let mut containing_module;
         let mut i;
-        if "self" == token::ident_to_str(&module_path[0]) {
+        let first_module_path_string = token::get_ident(module_path[0].name);
+        if "self" == first_module_path_string.get() {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 1;
-        } else if "super" == token::ident_to_str(&module_path[0]) {
+        } else if "super" == first_module_path_string.get() {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 0;  // We'll handle `super` below.
@@ -3114,8 +3117,11 @@ impl Resolver {
         }
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() &&
-                "super" == token::ident_to_str(&module_path[i]) {
+        while i < module_path.len() {
+            let string = token::get_ident(module_path[i].name);
+            if "super" != string.get() {
+                break
+            }
             debug!("(resolving module prefix) resolving `super` at {}",
                    self.module_to_str(containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
@@ -3354,10 +3360,10 @@ impl Resolver {
         match namebindings.def_for_namespace(ns) {
             Some(d) => {
                 debug!("(computing exports) YES: export '{}' => {:?}",
-                       interner_get(name),
+                       token::get_ident(name).get().to_str(),
                        def_id_of_def(d));
                 exports2.push(Export2 {
-                    name: interner_get(name),
+                    name: token::get_ident(name).get().to_str(),
                     def_id: def_id_of_def(d)
                 });
             }
@@ -3380,7 +3386,7 @@ impl Resolver {
                 match importresolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'",
-                               interner_get(*name));
+                               token::get_ident(*name).get().to_str());
                         self.add_exports_of_namebindings(exports2,
                                                          *name,
                                                          target.bindings,
@@ -4155,19 +4161,23 @@ impl Resolver {
             for (&key, &binding_0) in map_0.iter() {
                 match map_i.find(&key) {
                   None => {
+                    let string = token::get_ident(key);
                     self.resolve_error(
                         p.span,
                         format!("variable `{}` from pattern \\#1 is \
                                   not bound in pattern \\#{}",
-                             interner_get(key), i + 1));
+                                string.get(),
+                                i + 1));
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
+                        let string = token::get_ident(key);
                         self.resolve_error(
                             binding_i.span,
                             format!("variable `{}` is bound with different \
                                       mode in pattern \\#{} than in pattern \\#1",
-                                 interner_get(key), i + 1));
+                                    string.get(),
+                                    i + 1));
                     }
                   }
                 }
@@ -4175,11 +4185,13 @@ impl Resolver {
 
             for (&key, &binding) in map_i.iter() {
                 if !map_0.contains_key(&key) {
+                    let string = token::get_ident(key);
                     self.resolve_error(
                         binding.span,
                         format!("variable `{}` from pattern \\#{} is \
                                   not bound in pattern \\#1",
-                             interner_get(key), i + 1));
+                                string.get(),
+                                i + 1));
                 }
             }
         }
@@ -4371,9 +4383,10 @@ impl Resolver {
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def, lp)
                                 if mode == RefutableMode => {
+                            let string = token::get_ident(renamed);
                             debug!("(resolving pattern) resolving `{}` to \
                                     struct or enum variant",
-                                   interner_get(renamed));
+                                   string.get());
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4382,17 +4395,19 @@ impl Resolver {
                             self.record_def(pattern.id, (def, lp));
                         }
                         FoundStructOrEnumVariant(..) => {
+                            let string = token::get_ident(renamed);
                             self.resolve_error(pattern.span,
                                                   format!("declaration of `{}` \
                                                         shadows an enum \
                                                         variant or unit-like \
                                                         struct in scope",
-                                                       interner_get(renamed)));
+                                                          string.get()));
                         }
                         FoundConst(def, lp) if mode == RefutableMode => {
+                            let string = token::get_ident(renamed);
                             debug!("(resolving pattern) resolving `{}` to \
                                     constant",
-                                   interner_get(renamed));
+                                   string.get());
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4406,8 +4421,9 @@ impl Resolver {
                                                    allowed here");
                         }
                         BareIdentifierPatternUnresolved => {
+                            let string = token::get_ident(renamed);
                             debug!("(resolving pattern) binding `{}`",
-                                   interner_get(renamed));
+                                   string.get());
 
                             let def = match mode {
                                 RefutableMode => {
@@ -5009,10 +5025,10 @@ impl Resolver {
     }
 
     fn find_best_match_for_name(&mut self, name: &str, max_distance: uint)
-                                -> Option<@str> {
+                                -> Option<~str> {
         let this = &mut *self;
 
-        let mut maybes: ~[@str] = ~[];
+        let mut maybes: ~[~str] = ~[];
         let mut values: ~[uint] = ~[];
 
         let mut j = {
@@ -5024,14 +5040,15 @@ impl Resolver {
             let value_ribs = this.value_ribs.borrow();
             let bindings = value_ribs.get()[j].bindings.borrow();
             for (&k, _) in bindings.get().iter() {
-                maybes.push(interner_get(k));
+                let string = token::get_ident(k);
+                maybes.push(string.get().to_str());
                 values.push(uint::MAX);
             }
         }
 
         let mut smallest = 0;
-        for (i, &other) in maybes.iter().enumerate() {
-            values[i] = name.lev_distance(other);
+        for (i, other) in maybes.iter().enumerate() {
+            values[i] = name.lev_distance(*other);
 
             if values[i] <= values[smallest] {
                 smallest = i;
@@ -5190,7 +5207,9 @@ impl Resolver {
                         self.resolve_error(expr.span,
                                               format!("use of undeclared label \
                                                    `{}`",
-                                                   interner_get(label))),
+                                                   token::get_ident(label)
+                                                    .get()
+                                                    .to_str())),
                     Some(DlDef(def @ DefLabel(_))) => {
                         // FIXME: is AllPublic correct?
                         self.record_def(expr.id, (def, AllPublic))
@@ -5510,7 +5529,7 @@ impl Resolver {
         self.populate_module_if_necessary(module_);
         let children = module_.children.borrow();
         for (&name, _) in children.get().iter() {
-            debug!("* {}", interner_get(name));
+            debug!("* {}", token::get_ident(name).get().to_str());
         }
 
         debug!("Import resolutions:");
@@ -5534,7 +5553,7 @@ impl Resolver {
                 }
             }
 
-            debug!("* {}:{}{}", interner_get(*name),
+            debug!("* {}:{}{}", token::get_ident(*name).get().to_str(),
                    value_repr, type_repr);
         }
     }

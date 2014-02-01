@@ -235,9 +235,10 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
       0u => d::early_error(demitter, "no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
-        if "-" == ifile {
-            let src = str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
-            (d::StrInput(src.to_managed()), None)
+        if ifile == "-" {
+            let src =
+                str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
+            (d::StrInput(src), None)
         } else {
             (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
         }
@@ -319,9 +320,11 @@ fn parse_crate_attrs(sess: session::Session,
         d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
         }
-        d::StrInput(src) => {
-            parse::parse_crate_attrs_from_source_str(
-                d::anon_src(), src, ~[], sess.parse_sess)
+        d::StrInput(ref src) => {
+            parse::parse_crate_attrs_from_source_str(d::anon_src(),
+                                                     (*src).clone(),
+                                                     ~[],
+                                                     sess.parse_sess)
         }
     }
 }

@@ -15,32 +15,32 @@
 
 use back::abi;
 use back::link::*;
-use lib;
 use lib::llvm::{llvm, ValueRef, True};
+use lib;
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::trans::adt;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
-use middle::trans::build::*;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
+use middle::trans::type_::Type;
 use middle::trans::type_of::type_of;
 use middle::ty;
-use util::ppaux;
 use util::ppaux::ty_to_short_str;
-
-use middle::trans::type_::Type;
+use util::ppaux;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::Cell;
 use std::libc::c_uint;
 use syntax::ast;
+use syntax::parse::token;
 
 pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_free");
@@ -471,16 +471,17 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
-    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
-    note_unique_llvm_symbol(ccx, name);
+    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }
     });
+    note_unique_llvm_symbol(ccx, name);
 
-    let ty_name = C_str_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
+    let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx, t));
+    let ty_name = C_str_slice(ccx, ty_name);
 
     let inf = @tydesc_info {
         ty: t,
@@ -498,10 +499,10 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
                         name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
+    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, ~"glue_" + name);
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
-    note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty, ty::mk_nil());
+    note_unique_llvm_symbol(ccx, fn_nm);
     return llfn;
 }
 

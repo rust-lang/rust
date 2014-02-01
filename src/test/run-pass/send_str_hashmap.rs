@@ -63,11 +63,6 @@ pub fn main() {
     assert_eq!(map.find_equiv(&(~"cde")), Some(&c));
     assert_eq!(map.find_equiv(&(~"def")), Some(&d));
 
-    assert_eq!(map.find_equiv(&(@"abc")), Some(&a));
-    assert_eq!(map.find_equiv(&(@"bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&(@"cde")), Some(&c));
-    assert_eq!(map.find_equiv(&(@"def")), Some(&d));
-
     assert_eq!(map.find_equiv(&SendStrStatic("abc")), Some(&a));
     assert_eq!(map.find_equiv(&SendStrStatic("bcd")), Some(&b));
     assert_eq!(map.find_equiv(&SendStrStatic("cde")), Some(&c));

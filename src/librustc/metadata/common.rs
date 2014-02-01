@@ -212,5 +212,5 @@ pub static tag_macro_def: uint = 0x112;
 #[deriving(Clone)]
 pub struct LinkMeta {
     crateid: CrateId,
-    crate_hash: @str,
+    crate_hash: ~str,
 }

@@ -30,6 +30,8 @@ use syntax::ext::base::{ExtCtxt, MacroCrate};
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use syntax::crateid::CrateId;
@@ -77,7 +79,7 @@ fn fold_mod(m: &ast::Mod, fold: &mut CrateSetup) -> ast::Mod {
     fn strip_main(item: @ast::Item) -> @ast::Item {
         @ast::Item {
             attrs: item.attrs.iter().filter_map(|attr| {
-                if "main" != attr.name() {
+                if !attr.name().equiv(&("main")) {
                     Some(*attr)
                 } else {
                     None
@@ -101,13 +103,15 @@ fn fold_item(item: @ast::Item, fold: &mut CrateSetup)
     let mut had_pkg_do = false;
 
     for attr in item.attrs.iter() {
-        if "pkg_do" == attr.name() {
+        if attr.name().equiv(&("pkg_do")) {
             had_pkg_do = true;
             match attr.node.value.node {
                 ast::MetaList(_, ref mis) => {
                     for mi in mis.iter() {
                         match mi.node {
-                            ast::MetaWord(cmd) => cmds.push(cmd.to_owned()),
+                            ast::MetaWord(ref cmd) => {
+                                cmds.push(cmd.get().to_owned())
+                            }
                             _ => {}
                         };
                     }
@@ -314,7 +318,9 @@ pub fn compile_input(context: &BuildContext,
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(@"crate_id", crate_id.to_str().to_managed());
+            attr::mk_name_value_item_str(
+                InternedString::new("crate_id"),
+                token::intern_and_get_ident(crate_id.to_str()));
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
@@ -466,13 +472,14 @@ impl<'a> CrateInstaller<'a> {
 
         match vi.node {
             // ignore metadata, I guess
-            ast::ViewItemExternMod(lib_ident, path_opt, _) => {
-                let lib_name = match path_opt {
-                    Some((p, _)) => p,
-                    None => self.sess.str_of(lib_ident)
+            ast::ViewItemExternMod(ref lib_ident, ref path_opt, _) => {
+                let lib_name = match *path_opt {
+                    Some((ref p, _)) => (*p).clone(),
+                    None => token::get_ident(lib_ident.name),
                 };
                 debug!("Finding and installing... {}", lib_name);
-                let crate_id: CrateId = from_str(lib_name).expect("valid crate id");
+                let crate_id: CrateId =
+                    from_str(lib_name.get()).expect("valid crate id");
                 // Check standard Rust library path first
                 let whatever = system_library(&self.context.sysroot_to_use(), &crate_id);
                 debug!("system library returned {:?}", whatever);
@@ -642,7 +649,7 @@ pub fn find_and_install_dependencies(installer: &mut CrateInstaller,
     visit::walk_crate(installer, c, ())
 }
 
-pub fn mk_string_lit(s: @str) -> ast::Lit {
+pub fn mk_string_lit(s: InternedString) -> ast::Lit {
     Spanned {
         node: ast::LitStr(s, ast::CookedStr),
         span: DUMMY_SP

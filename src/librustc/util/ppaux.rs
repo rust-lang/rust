@@ -824,7 +824,8 @@ impl Repr for ty::Method {
 
 impl Repr for ast::Ident {
     fn repr(&self, _tcx: ctxt) -> ~str {
-        token::ident_to_str(self).to_owned()
+        let string = token::get_ident(self.name);
+        string.get().to_str()
     }
 }
 

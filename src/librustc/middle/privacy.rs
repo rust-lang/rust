@@ -530,8 +530,10 @@ impl<'a> PrivacyVisitor<'a> {
                             ast::ItemTrait(..) => "trait",
                             _ => return false,
                         };
-                        let msg = format!("{} `{}` is private", desc,
-                                          token::ident_to_str(&item.ident));
+                        let string = token::get_ident(item.ident.name);
+                        let msg = format!("{} `{}` is private",
+                                          desc,
+                                          string.get());
                         self.tcx.sess.span_note(span, msg);
                     }
                     Some(..) | None => {}
@@ -588,8 +590,10 @@ impl<'a> PrivacyVisitor<'a> {
             if struct_vis != ast::Public && field.vis == ast::Public { break }
             if !is_local(field.id) ||
                !self.private_accessible(field.id.node) {
-                self.tcx.sess.span_err(span, format!("field `{}` is private",
-                                             token::ident_to_str(&ident)));
+                let string = token::get_ident(ident.name);
+                self.tcx.sess.span_err(span,
+                                       format!("field `{}` is private",
+                                               string.get()))
             }
             break;
         }
@@ -603,8 +607,11 @@ impl<'a> PrivacyVisitor<'a> {
         let method_id = ty::method(self.tcx, method_id).provided_source
                                                        .unwrap_or(method_id);
 
-        self.ensure_public(span, method_id, None,
-                           format!("method `{}`", token::ident_to_str(name)));
+        let string = token::get_ident(name.name);
+        self.ensure_public(span,
+                           method_id,
+                           None,
+                           format!("method `{}`", string.get()));
     }
 
     // Checks that a path is in scope.
@@ -617,10 +624,17 @@ impl<'a> PrivacyVisitor<'a> {
             match *self.last_private_map.get(&path_id) {
                 resolve::AllPublic => {},
                 resolve::DependsOn(def) => {
-                    let name = token::ident_to_str(&path.segments.last().unwrap()
-                                                        .identifier);
-                    self.ensure_public(span, def, Some(origdid),
-                                       format!("{} `{}`", tyname, name));
+                    let name = token::get_ident(path.segments
+                                                    .last()
+                                                    .unwrap()
+                                                    .identifier
+                                                    .name);
+                    self.ensure_public(span,
+                                       def,
+                                       Some(origdid),
+                                       format!("{} `{}`",
+                                               tyname,
+                                               name.get()));
                 }
             }
         };

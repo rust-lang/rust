@@ -291,7 +291,7 @@ pub struct ctxt_ {
     freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
     rcache: creader_cache,
-    short_names_cache: RefCell<HashMap<t, @str>>,
+    short_names_cache: RefCell<HashMap<t, ~str>>,
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
@@ -3344,9 +3344,10 @@ pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
+    let string = token::get_ident(name);
     tcx.sess.bug(format!(
         "No field named `{}` found in the list of fields `{:?}`",
-        token::interner_get(name),
+        string.get(),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -4165,7 +4166,7 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
 pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
     each_attr(tcx, did, |item| {
-        if attr == item.name() {
+        if item.name().equiv(&attr) {
             found = true;
             false
         } else {
@@ -4834,7 +4835,7 @@ pub fn trait_method_of_method(tcx: ctxt,
 
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
-pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
+pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
     use std::hash::{SipState, Streaming};
 
     let mut hash = SipState::new(0, 0);
@@ -4865,7 +4866,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
     };
     let did = |hash: &mut SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
-            local_hash
+            local_hash.clone()
         } else {
             tcx.sess.cstore.get_crate_hash(did.crate)
         };
