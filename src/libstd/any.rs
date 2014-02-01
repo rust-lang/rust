@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -118,7 +118,7 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     }
 }
 
-/// Extension methods for a owning `Any` trait object
+/// Extension methods for an owning `Any` trait object
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.

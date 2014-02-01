@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -476,7 +476,7 @@ pub struct Sha256 {
 }
 
 impl Sha256 {
-    /// Construct an new instance of a SHA-256 digest.
+    /// Construct a new instance of a SHA-256 digest.
     pub fn new() -> Sha256 {
         Sha256 {
             engine: Engine256::new(&H256)

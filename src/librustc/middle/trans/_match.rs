@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -244,7 +244,7 @@ pub enum VecLenOpt {
     vec_len_ge(/* length of prefix */uint)
 }
 
-// An option identifying a branch (either a literal, a enum variant or a
+// An option identifying a branch (either a literal, an enum variant or a
 // range)
 enum Opt {
     lit(Lit),
