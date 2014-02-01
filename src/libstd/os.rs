@@ -815,6 +815,10 @@ fn round_up(from: uint, to: uint) -> uint {
     }
 }
 
+pub fn align_to_page(num: uint) -> uint {
+    round_up(num, page_size())
+}
+
 #[cfg(unix)]
 pub fn page_size() -> uint {
     unsafe {

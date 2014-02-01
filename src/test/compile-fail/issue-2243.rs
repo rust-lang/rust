@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_uv];
-
-extern mod native;
-
-#[cfg(rustpkg)]
-extern mod this = "rustpkg";
-
-#[cfg(rustdoc)]
-extern mod this = "rustdoc";
-
-#[cfg(rustc)]
-extern mod this = "rustc";
-
-#[start]
-fn main(argc: int, argv: **u8) -> int {
-    do native::start(argc, argv) {
-        this::main()
-    }
+// error-pattern: attributes must come before items
+fn main() {
+    4;
+    #[foo];
 }
