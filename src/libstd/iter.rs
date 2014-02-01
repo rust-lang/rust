@@ -882,6 +882,39 @@ pub trait OrdIterator<A> {
     /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     fn min(&mut self) -> Option<A>;
+
+    /// `min_max` finds the mininum and maximum elements in the iterator.
+    ///
+    /// The return type `MinMaxResult` is an enum of three variants:
+    /// - `NoElements` if the iterator is empty.
+    /// - `OneElement(x)` if the iterator has exactly one element.
+    /// - `MinMax(x, y)` is returned otherwise, where `x <= y`. Two values are equal if and only if
+    /// there is more than one element in the iterator and all elements are equal.
+    ///
+    /// On an iterator of length `n`, `min_max` does `1.5 * n` comparisons,
+    /// and so faster than calling `min` and `max separately which does `2 * n` comparisons.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::iter::{NoElements, OneElement, MinMax};
+    ///
+    /// let v: [int, ..0] = [];
+    /// assert_eq!(v.iter().min_max(), NoElements);
+    ///
+    /// let v = [1i];
+    /// assert!(v.iter().min_max() == OneElement(&1));
+    ///
+    /// let v = [1i, 2, 3, 4, 5];
+    /// assert!(v.iter().min_max() == MinMax(&1, &5));
+    ///
+    /// let v = [1i, 2, 3, 4, 5, 6];
+    /// assert!(v.iter().min_max() == MinMax(&1, &6));
+    ///
+    /// let v = [1i, 1, 1, 1];
+    /// assert!(v.iter().min_max() == MinMax(&1, &1));
+    /// ```
+    fn min_max(&mut self) -> MinMaxResult<A>;
 }
 
 impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
@@ -903,6 +936,91 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
                 Some(y) => Some(cmp::min(x, y))
             }
         })
+    }
+
+    fn min_max(&mut self) -> MinMaxResult<A> {
+        let (mut min, mut max) = match self.next() {
+            None => return NoElements,
+            Some(x) => {
+                match self.next() {
+                    None => return OneElement(x),
+                    Some(y) => if x < y {(x, y)} else {(y,x)}
+                }
+            }
+        };
+
+        loop {
+            // `first` and `second` are the two next elements we want to look at.
+            // We first compare `first` and `second` (#1). The smaller one is then compared to
+            // current mininum (#2). The larger one is compared to current maximum (#3). This
+            // way we do 3 comparisons for 2 elements.
+            let first = match self.next() {
+                None => break,
+                Some(x) => x
+            };
+            let second = match self.next() {
+                None => {
+                    if first < min {
+                        min = first;
+                    } else if first > max {
+                        max = first;
+                    }
+                    break;
+                }
+                Some(x) => x
+            };
+            if first < second {
+                if first < min {min = first;}
+                if max < second {max = second;}
+            } else {
+                if second < min {min = second;}
+                if max < first {max = first;}
+            }
+        }
+
+        MinMax(min, max)
+    }
+}
+
+/// `MinMaxResult` is an enum returned by `min_max`. See `OrdIterator::min_max` for more detail.
+#[deriving(Clone, Eq)]
+pub enum MinMaxResult<T> {
+    /// Empty iterator
+    NoElements,
+
+    /// Iterator with one element, so the minimum and maximum are the same
+    OneElement(T),
+
+    /// More than one element in the iterator, the first element is not larger than the second
+    MinMax(T, T)
+}
+
+impl<T: Clone> MinMaxResult<T> {
+    /// `into_option` creates an `Option` of type `(T,T)`. The returned `Option` has variant
+    /// `None` if and only if the `MinMaxResult` has variant `NoElements`. Otherwise variant
+    /// `Some(x,y)` is returned where `x <= y`. If `MinMaxResult` has variant `OneElement(x)`,
+    /// performing this operation will make one clone of `x`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
+    ///
+    /// let r: MinMaxResult<int> = NoElements;
+    /// assert_eq!(r.into_option(), None)
+    ///
+    /// let r = OneElement(1);
+    /// assert_eq!(r.into_option(), Some((1,1)));
+    ///
+    /// let r = MinMax(1,2);
+    /// assert_eq!(r.into_option(), Some((1,2)));
+    /// ```
+    pub fn into_option(self) -> Option<(T,T)> {
+        match self {
+            NoElements => None,
+            OneElement(x) => Some((x.clone(), x)),
+            MinMax(x, y) => Some((x, y))
+        }
     }
 }
 
@@ -2943,5 +3061,35 @@ mod tests {
         assert!( !it.is_empty() );
         it.next();
         assert!( it.is_empty() );
+    }
+
+    #[test]
+    fn test_min_max() {
+        let v: [int, ..0] = [];
+        assert_eq!(v.iter().min_max(), NoElements);
+
+        let v = [1i];
+        assert!(v.iter().min_max() == OneElement(&1));
+
+        let v = [1i, 2, 3, 4, 5];
+        assert!(v.iter().min_max() == MinMax(&1, &5));
+
+        let v = [1i, 2, 3, 4, 5, 6];
+        assert!(v.iter().min_max() == MinMax(&1, &6));
+
+        let v = [1i, 1, 1, 1];
+        assert!(v.iter().min_max() == MinMax(&1, &1));
+    }
+
+    #[test]
+    fn test_MinMaxResult() {
+        let r: MinMaxResult<int> = NoElements;
+        assert_eq!(r.into_option(), None)
+
+        let r = OneElement(1);
+        assert_eq!(r.into_option(), Some((1,1)));
+
+        let r = MinMax(1,2);
+        assert_eq!(r.into_option(), Some((1,2)));
     }
 }
