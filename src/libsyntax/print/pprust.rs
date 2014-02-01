@@ -1058,19 +1058,6 @@ pub fn print_mac(s: &mut State, m: &ast::Mac) {
     }
 }
 
-pub fn print_vstore(s: &mut State, t: ast::Vstore) {
-    match t {
-        ast::VstoreFixed(Some(i)) => word(&mut s.s, format!("{}", i)),
-        ast::VstoreFixed(None) => word(&mut s.s, "_"),
-        ast::VstoreUniq => word(&mut s.s, "~"),
-        ast::VstoreBox => word(&mut s.s, "@"),
-        ast::VstoreSlice(ref r) => {
-            word(&mut s.s, "&");
-            print_opt_lifetime(s, r);
-        }
-    }
-}
-
 pub fn print_expr_vstore(s: &mut State, t: ast::ExprVstore) {
     match t {
       ast::ExprVstoreUniq => word(&mut s.s, "~"),
