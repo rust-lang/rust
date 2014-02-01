@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use std::cast;
+use std::io;
 use std::io::IoError;
 use std::io::net::ip;
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use std::libc;
 use std::mem;
-use std::num::Bounded;
+use std::os;
 use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
@@ -654,9 +655,71 @@ impl Drop for UdpWatcher {
 
 pub struct RawSocketWatcher {
     handle: *uvll::uv_poll_t,
-    socket: uvll::uv_os_socket,
+    socket: uvll::uv_os_socket_t,
     home: HomeHandle,
 }
+
+// TODO This is copied from libnative::io
+// ----------------------------------------------------------------------------
+fn translate_error(errno: i32, detail: bool) -> IoError {
+    #[cfg(windows)]
+    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
+        match errno {
+            libc::EOF => (io::EndOfFile, "end of file"),
+            libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
+            libc::WSAEWOULDBLOCK =>
+                (io::ResourceUnavailable, "resource temporarily unavailable"),
+            libc::WSAENOTCONN => (io::NotConnected, "not connected"),
+            libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
+        }
+    }
+
+    #[cfg(not(windows))]
+    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
+        // FIXME: this should probably be a bit more descriptive...
+        match errno {
+            libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::EPERM | libc::EACCES =>
+                (io::PermissionDenied, "permission denied"),
+            libc::EPIPE => (io::BrokenPipe, "broken pipe"),
+            libc::ENOTCONN => (io::NotConnected, "not connected"),
+            libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
+
+            // These two constants can have the same value on some systems, but
+            // different values on others, so we can't use a match clause
+            x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+                (io::ResourceUnavailable, "resource temporarily unavailable"),
+
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
+        }
+    }
+
+    let (kind, desc) = get_err(errno);
+    IoError {
+        kind: kind,
+        desc: desc,
+        detail: if detail {Some(os::last_os_error())} else {None},
+    }
+}
+
+fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
+// ----------------------------------------------------------------------------
 
 impl RawSocketWatcher {
     pub fn new(io: &mut UvIoFactory, domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
@@ -664,32 +727,42 @@ impl RawSocketWatcher {
     {
         let socket = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
         if socket == -1 {
-            return Err(uv_error_to_io_error(UvError(errno() as i32)));
+            return Err(last_error());
         }
-        if includeIpHeader {
-            let one: c_int = 1;
-            let proto = if domain == libc::AF_INET { libc::IPPROTO_IP } else { libc::IPPROTO_IPV6 };
-            let res = unsafe { libc::setsockopt(socket, proto, libc::IP_HDRINCL, (&one as *c_int) as *c_void, intrinsics::size_of::<c_int>() as u32) };
-            if res == -1 {
-                return Err(uv_error_to_io_error(UvError(errno() as i32)));
-            }
-        }
-        // Make socket non-blocking
-        let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0) };
-        if flags == -1 {
-            return Err(uv_error_to_io_error(UvError(errno() as i32)));
-        }
-        if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
-            return Err(uv_error_to_io_error(UvError(errno() as i32)));
-        }
+
         let raw = RawSocketWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_POLL) },
             home: io.make_handle(),
-            socket: socket,
+            socket: socket
         };
 
+        if includeIpHeader && domain == libc::AF_INET {
+            let one: libc::c_int = 1;
+            // Only windows supports IPV6_HDRINCL
+            let (proto, hdrincl) = (libc::IPPROTO_IP, libc::IP_HDRINCL);
+            let res = unsafe {
+                libc::setsockopt(raw.socket,
+                                 proto,
+                                 hdrincl,
+                                 (&one as *libc::c_int) as *libc::c_void,
+                                 intrinsics::size_of::<libc::c_int>() as u32)
+            };
+            if res == -1 {
+                return Err(last_error());
+            }
+        }
+
+        // Make socket non-blocking - required for libuv
+        let flags = unsafe { libc::fcntl(raw.socket, libc::F_GETFL, 0) };
+        if flags == -1 {
+            return Err(last_error());
+        }
+        if unsafe { libc::fcntl(raw.socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
+            return Err(last_error());
+        }
+
         assert_eq!(unsafe {
-            uvll::uv_poll_init_socket(io.uv_loop(), raw.handle, socket)
+            uvll::uv_poll_init_socket(io.uv_loop(), raw.handle, raw.socket)
         }, 0);
         return Ok(raw);
     }
@@ -712,15 +785,13 @@ impl HomingIO for RawSocketWatcher {
 
 impl rtio::RtioRawSocket for RawSocketWatcher {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> Result<(uint, ip::SocketAddr), IoError>
+        -> Result<(uint, ip::IpAddr), IoError>
     {
-        let max: c_int = Bounded::max_value();
-        assert!(buf.len() <= (max as uint));
-        struct Ctx {
+        struct Ctx<'b> {
             task: Option<BlockedTask>,
-            buf: Option<Buf>,
-            result: Option<(ssize_t, Option<ip::SocketAddr>)>,
-            socket: Option<uvll::uv_os_socket>,
+            buf: &'b [u8],
+            result: Option<(ssize_t, Option<ip::IpAddr>)>,
+            socket: Option<uvll::uv_os_socket_t>,
         }
         let _m = self.fire_homing_missile();
         let a = match unsafe {
@@ -729,7 +800,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             0 => {
                 let mut cx = Ctx {
                     task: None,
-                    buf: Some(slice_to_uv_buf(buf)),
+                    buf: buf,
                     result: None,
                     socket: Some(self.socket),
                 };
@@ -738,7 +809,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
-                        Err(uv_error_to_io_error(UvError(n as c_int))),
+                        Err(last_error()),
                     (n, addr) => Ok((n as uint, addr.unwrap()))
                 }
             }
@@ -763,22 +834,24 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
 
             let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
             let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
-            let len = match (cx.socket, cx.buf) {
-                        (Some(sock), Some(buf)) => unsafe {
-                                                    libc::recvfrom(sock,
-                                                                   buf.base as *mut c_void,
-                                                                   buf.len,
-                                                                   0,
-                                                                   (&mut caddr as *mut libc::sockaddr_storage) as *mut libc::sockaddr,
-                                                                   &mut caddrlen)
-                                                   },
-                        _                       => -1
+            let len = match cx.socket {
+                        Some(sock) => unsafe {
+                            let addr = &mut caddr as *mut libc::sockaddr_storage;
+                            libc::recvfrom(sock,
+                                           cx.buf.as_ptr() as *mut c_void,
+                                           cx.buf.len() as u64,
+                                           0,
+                                           addr as *mut libc::sockaddr,
+                                           &mut caddrlen)
+                        },
+                         _         => -1
                       };
             if len == -1 {
                 cx.result = Some((errno() as ssize_t, None));
+                wakeup(&mut cx.task);
                 return;
             }
-            let addr = Some(sockaddr_to_addr(&caddr, caddrlen as uint));
+            let addr = Some(sockaddr_to_addr(&caddr, caddrlen as uint).ip);
             cx.result = Some((len as ssize_t, addr));
 
             wakeup(&mut cx.task);
@@ -788,11 +861,11 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
     fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
         -> Result<ssize_t, IoError>
     {
-        struct Ctx {
+        struct Ctx<'b> {
             task: Option<BlockedTask>,
-            buf: Option<Buf>,
+            buf: &'b [u8],
             result: Option<ssize_t>,
-            socket: Option<uvll::uv_os_socket>,
+            socket: Option<uvll::uv_os_socket_t>,
             addr: ip::IpAddr,
         }
         let _m = self.fire_homing_missile();
@@ -803,7 +876,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             0 => {
                 let mut cx = Ctx {
                     task: None,
-                    buf: Some(slice_to_uv_buf(buf)),
+                    buf: buf,
                     result: None,
                     socket: Some(self.socket),
                     addr: dst
@@ -813,7 +886,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     n if n < 0 =>
-                        Err(uv_error_to_io_error(UvError(n as c_int))),
+                        Err(last_error()),
                     n => Ok(n)
                 }
             }
@@ -828,6 +901,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             };
             if status < 0 {
                 cx.result = Some(status as ssize_t);
+                wakeup(&mut cx.task);
                 return;
             }
 
@@ -835,27 +909,19 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 assert_eq!(uvll::uv_poll_stop(handle), 0)
             }
 
-            let len = match (cx.socket, cx.buf) {
-                        (Some(sock), Some(buf)) => { let (addr, len) = addr_to_sockaddr(ip::SocketAddr{ ip: cx.addr, port: 0 });
-                                                        unsafe {
-                                                            if match cx.addr { ip::Ipv4Addr(..) => true, ip::Ipv6Addr(..) => false } {
-                                                                libc::sendto(sock,
-                                                                    buf.base as *c_void,
-                                                                    buf.len,
-                                                                    0,
-                                                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
-                                                                    len as libc::socklen_t)
-                                                            } else {
-                                                                libc::sendto(sock,
-                                                                    buf.base as *c_void,
-                                                                    buf.len,
-                                                                    0,
-                                                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
-                                                                    len as libc::socklen_t)
-                                                                }
-                                                        }
-                                                    },
-                        _                       => -1
+            let len = match cx.socket {
+                        Some(sock) => {
+                            let (addr, len) = addr_to_sockaddr(ip::SocketAddr{ ip: cx.addr, port: 0 });
+                            unsafe {
+                                libc::sendto(sock,
+                                    cx.buf.as_ptr() as *c_void,
+                                    cx.buf.len() as u64,
+                                    0,
+                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
+                                    len as libc::socklen_t)
+                            }
+                        },
+                        _       => -1
                       };
 
             cx.result = if len < 0 {

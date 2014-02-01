@@ -608,12 +608,13 @@ impl RawSocket {
     pub fn new(domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
         -> IoResult<RawSocket>
     {
-        let socket = RawSocket {
-                        fd: unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) }
-                     };
-        if socket.fd == -1 {
+        let sock = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
+        if sock == -1 {
             return Err(super::last_error());
         }
+
+        let socket = RawSocket { fd: sock };
+
         if includeIpHeader && domain == libc::AF_INET {
             let one: libc::c_int = 1;
             // Only windows supports IPV6_HDRINCL
@@ -635,7 +636,7 @@ impl RawSocket {
 
 impl rtio::RtioRawSocket for RawSocket {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> IoResult<(uint, ip::SocketAddr)>
+        -> IoResult<(uint, ip::IpAddr)>
     {
         let mut caddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
         let mut caddrlen = unsafe {
@@ -655,7 +656,7 @@ impl rtio::RtioRawSocket for RawSocket {
         }
 
         return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
-            Ok((len as uint, addr))
+            Ok((len as uint, addr.ip))
         });
     }
 

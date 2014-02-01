@@ -178,10 +178,8 @@ impl IoFactory for UvIoFactory {
 
     fn raw_socket_new(&mut self, domain: rtio::CommDomain, protocol: rtio::Protocol,
                       includeIpHeader: bool) -> Result<~rtio::RtioRawSocket, IoError> {
-        match RawSocketWatcher::new(self, domain, protocol, includeIpHeader) {
-            Ok(r) => Ok(~r as ~rtio::RtioRawSocket),
-            Err(e) => Err(e),
-        }
+        RawSocketWatcher::new(self, domain, protocol, includeIpHeader)
+            .map(|rsw| ~rsw as ~rtio::RtioRawSocket)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int,

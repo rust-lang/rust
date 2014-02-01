@@ -10,7 +10,7 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use io::net::ip::{IpAddr, SocketAddr};
+use io::net::ip::{IpAddr};
 use io::{io_error, EndOfFile};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket, Protocol, CommDomain};
 
@@ -25,7 +25,7 @@ impl RawSocket {
         })
     }
 
-    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {
+    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
         match self.obj.recvfrom(buf) {
             Ok((nread, src)) => Some((nread, src)),
             Err(ioerr) => {
@@ -38,10 +38,13 @@ impl RawSocket {
         }
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) {
+    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Option<uint> {
         match self.obj.sendto(buf, dst) {
-            Ok(_) => (),
-            Err(ioerr) => io_error::cond.raise(ioerr),
+            Ok(len) => Some(len as uint),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
+            },
         }
     }
 }

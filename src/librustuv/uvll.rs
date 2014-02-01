@@ -105,7 +105,7 @@ pub struct uv_buf_t {
 }
 
 #[cfg(unix)]
-pub type uv_os_socket = c_int;
+pub type uv_os_socket_t = c_int;
 
 // see libuv/include/uv-win.h
 #[cfg(windows)]
@@ -115,7 +115,7 @@ pub struct uv_buf_t {
 }
 
 #[cfg(windows)]
-pub type uv_os_socket = libc::SOCKET;
+pub type uv_os_socket_t = libc::SOCKET;
 
 #[repr(C)]
 pub enum uv_run_mode {
@@ -651,7 +651,7 @@ extern {
                        cb: uv_fs_cb) -> c_int;
 
     // poll bindings
-    pub fn uv_poll_init_socket(l: *uv_loop_t, h: *uv_poll_t, s: uv_os_socket) -> c_int;
+    pub fn uv_poll_init_socket(l: *uv_loop_t, h: *uv_poll_t, s: uv_os_socket_t) -> c_int;
     pub fn uv_poll_start(h: *uv_poll_t, events: c_int, cb: uv_poll_cb) -> c_int;
     pub fn uv_poll_stop(h: *uv_poll_t) -> c_int;
 

@@ -243,7 +243,7 @@ pub trait RtioUdpSocket : RtioSocket {
 }
 
 pub trait RtioRawSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError>;
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
     fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<ssize_t, IoError>;
 }
 
