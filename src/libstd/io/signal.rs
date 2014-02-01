@@ -203,6 +203,7 @@ mod test {
     fn test_io_signal_invalid_signum() {
         use io;
         use super::User1;
+        use result::{Ok, Err};
         let mut s = Listener::new();
         let mut called = false;
         match s.register(User1) {

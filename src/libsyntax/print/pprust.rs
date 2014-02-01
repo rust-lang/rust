@@ -964,11 +964,7 @@ pub fn print_attribute(s: &mut State, attr: &ast::Attribute) -> io::IoResult<()>
     if_ok!(maybe_print_comment(s, attr.span.lo));
     if attr.node.is_sugared_doc {
         let comment = attr.value_str().unwrap();
-<<<<<<< HEAD
-        word(&mut s.s, comment.get());
-=======
-        if_ok!(word(&mut s.s, comment));
->>>>>>> syntax: Remove io_error usage
+        if_ok!(word(&mut s.s, comment.get()));
     } else {
         if_ok!(word(&mut s.s, "#["));
         if_ok!(print_meta_item(s, attr.meta()));
@@ -1139,24 +1135,7 @@ pub fn print_mac(s: &mut State, m: &ast::Mac) -> io::IoResult<()> {
     }
 }
 
-<<<<<<< HEAD
-pub fn print_expr_vstore(s: &mut State, t: ast::ExprVstore) {
-=======
-pub fn print_vstore(s: &mut State, t: ast::Vstore) -> io::IoResult<()> {
-    match t {
-        ast::VstoreFixed(Some(i)) => word(&mut s.s, format!("{}", i)),
-        ast::VstoreFixed(None) => word(&mut s.s, "_"),
-        ast::VstoreUniq => word(&mut s.s, "~"),
-        ast::VstoreBox => word(&mut s.s, "@"),
-        ast::VstoreSlice(ref r) => {
-            if_ok!(word(&mut s.s, "&"));
-            print_opt_lifetime(s, r)
-        }
-    }
-}
-
 pub fn print_expr_vstore(s: &mut State, t: ast::ExprVstore) -> io::IoResult<()> {
->>>>>>> syntax: Remove io_error usage
     match t {
       ast::ExprVstoreUniq => word(&mut s.s, "~"),
       ast::ExprVstoreSlice => word(&mut s.s, "&"),
@@ -1557,51 +1536,27 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         } else {
             if_ok!(word(&mut s.s, "asm!"));
         }
-<<<<<<< HEAD
-        popen(s);
-        print_string(s, a.asm.get(), a.asm_str_style);
-        word_space(s, ":");
-        for &(ref co, o) in a.outputs.iter() {
-            print_string(s, co.get(), ast::CookedStr);
-            popen(s);
-            print_expr(s, o);
-            pclose(s);
-            word_space(s, ",");
-        }
-        word_space(s, ":");
-        for &(ref co, o) in a.inputs.iter() {
-            print_string(s, co.get(), ast::CookedStr);
-            popen(s);
-            print_expr(s, o);
-            pclose(s);
-            word_space(s, ",");
-        }
-        word_space(s, ":");
-        print_string(s, a.clobbers.get(), ast::CookedStr);
-        pclose(s);
-=======
         if_ok!(popen(s));
-        if_ok!(print_string(s, a.asm, a.asm_str_style));
+        if_ok!(print_string(s, a.asm.get(), a.asm_str_style));
         if_ok!(word_space(s, ":"));
-        for &(co, o) in a.outputs.iter() {
-            if_ok!(print_string(s, co, ast::CookedStr));
+        for &(ref co, o) in a.outputs.iter() {
+            if_ok!(print_string(s, co.get(), ast::CookedStr));
             if_ok!(popen(s));
             if_ok!(print_expr(s, o));
             if_ok!(pclose(s));
             if_ok!(word_space(s, ","));
         }
         if_ok!(word_space(s, ":"));
-        for &(co, o) in a.inputs.iter() {
-            if_ok!(print_string(s, co, ast::CookedStr));
+        for &(ref co, o) in a.inputs.iter() {
+            if_ok!(print_string(s, co.get(), ast::CookedStr));
             if_ok!(popen(s));
             if_ok!(print_expr(s, o));
             if_ok!(pclose(s));
             if_ok!(word_space(s, ","));
         }
         if_ok!(word_space(s, ":"));
-        if_ok!(print_string(s, a.clobbers, ast::CookedStr));
+        if_ok!(print_string(s, a.clobbers.get(), ast::CookedStr));
         if_ok!(pclose(s));
->>>>>>> syntax: Remove io_error usage
       }
       ast::ExprMac(ref m) => if_ok!(print_mac(s, m)),
       ast::ExprParen(e) => {
@@ -1659,23 +1614,14 @@ pub fn print_decl(s: &mut State, decl: &ast::Decl) -> io::IoResult<()> {
     }
 }
 
-<<<<<<< HEAD
-pub fn print_ident(s: &mut State, ident: ast::Ident) {
-    let string = token::get_ident(ident.name);
-    word(&mut s.s, string.get());
-}
-
-pub fn print_name(s: &mut State, name: ast::Name) {
-    let string = token::get_ident(name);
-    word(&mut s.s, string.get());
-=======
 pub fn print_ident(s: &mut State, ident: ast::Ident) -> io::IoResult<()> {
-    word(&mut s.s, ident_to_str(&ident))
+    let string = token::get_ident(ident.name);
+    word(&mut s.s, string.get())
 }
 
 pub fn print_name(s: &mut State, name: ast::Name) -> io::IoResult<()> {
-    word(&mut s.s, interner_get(name))
->>>>>>> syntax: Remove io_error usage
+    let string = token::get_ident(name);
+    word(&mut s.s, string.get())
 }
 
 pub fn print_for_decl(s: &mut State, loc: &ast::Local,
@@ -2088,38 +2034,23 @@ pub fn print_generics(s: &mut State,
 pub fn print_meta_item(s: &mut State, item: &ast::MetaItem) -> io::IoResult<()> {
     if_ok!(ibox(s, indent_unit));
     match item.node {
-<<<<<<< HEAD
-      ast::MetaWord(ref name) => word(&mut s.s, name.get()),
-      ast::MetaNameValue(ref name, ref value) => {
-        word_space(s, name.get());
-        word_space(s, "=");
-        print_literal(s, value);
-      }
-      ast::MetaList(ref name, ref items) => {
-        word(&mut s.s, name.get());
-        popen(s);
-        commasep(s,
-                 Consistent,
-                 items.as_slice(),
-                 |p, &i| print_meta_item(p, i));
-        pclose(s);
-=======
-      ast::MetaWord(name) => { if_ok!(word(&mut s.s, name)); }
-      ast::MetaNameValue(name, value) => {
-        if_ok!(word_space(s, name));
-        if_ok!(word_space(s, "="));
-        if_ok!(print_literal(s, &value));
-      }
-      ast::MetaList(name, ref items) => {
-        if_ok!(word(&mut s.s, name));
-        if_ok!(popen(s));
-        if_ok!(commasep(s,
-                        Consistent,
-                        items.as_slice(),
-                        |p, &i| print_meta_item(p, i)));
-        if_ok!(pclose(s));
->>>>>>> syntax: Remove io_error usage
-      }
+        ast::MetaWord(ref name) => {
+            if_ok!(word(&mut s.s, name.get()));
+        }
+        ast::MetaNameValue(ref name, ref value) => {
+            if_ok!(word_space(s, name.get()));
+            if_ok!(word_space(s, "="));
+            if_ok!(print_literal(s, value));
+        }
+        ast::MetaList(ref name, ref items) => {
+            if_ok!(word(&mut s.s, name.get()));
+            if_ok!(popen(s));
+            if_ok!(commasep(s,
+                            Consistent,
+                            items.as_slice(),
+                            |p, &i| print_meta_item(p, i)));
+            if_ok!(pclose(s));
+        }
     }
     end(s)
 }
@@ -2171,17 +2102,10 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> 
             if_ok!(head(s, "extern mod"));
             if_ok!(print_ident(s, id));
             for &(ref p, style) in optional_path.iter() {
-<<<<<<< HEAD
-                space(&mut s.s);
-                word(&mut s.s, "=");
-                space(&mut s.s);
-                print_string(s, p.get(), style);
-=======
                 if_ok!(space(&mut s.s));
                 if_ok!(word(&mut s.s, "="));
                 if_ok!(space(&mut s.s));
-                if_ok!(print_string(s, *p, style));
->>>>>>> syntax: Remove io_error usage
+                if_ok!(print_string(s, p.get(), style));
             }
         }
 
@@ -2373,88 +2297,54 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
       _ => ()
     }
     match lit.node {
-<<<<<<< HEAD
       ast::LitStr(ref st, style) => print_string(s, st.get(), style),
       ast::LitChar(ch) => {
           let mut res = ~"'";
           char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
           res.push_char('\'');
-          word(&mut s.s, res);
+          word(&mut s.s, res)
       }
       ast::LitInt(i, t) => {
         if i < 0_i64 {
             word(&mut s.s,
                  ~"-" + (-i as u64).to_str_radix(10u)
-                 + ast_util::int_ty_to_str(t));
+                 + ast_util::int_ty_to_str(t))
         } else {
             word(&mut s.s,
                  (i as u64).to_str_radix(10u)
-                 + ast_util::int_ty_to_str(t));
-=======
-        ast::LitStr(st, style) => print_string(s, st, style),
-        ast::LitChar(ch) => {
-            let mut res = ~"'";
-            char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
-            res.push_char('\'');
-            word(&mut s.s, res)
+                 + ast_util::int_ty_to_str(t))
         }
-        ast::LitInt(i, t) => {
-            if i < 0_i64 {
-                word(&mut s.s, ~"-" + (-i as u64).to_str_radix(10u)
-                               + ast_util::int_ty_to_str(t))
-            } else {
-                word(&mut s.s, (i as u64).to_str_radix(10u)
-                                + ast_util::int_ty_to_str(t))
-            }
->>>>>>> syntax: Remove io_error usage
-        }
-        ast::LitUint(u, t) => {
-            word(&mut s.s, u.to_str_radix(10u) + ast_util::uint_ty_to_str(t))
-        }
-        ast::LitIntUnsuffixed(i) => {
-            if i < 0_i64 {
-                word(&mut s.s, ~"-" + (-i as u64).to_str_radix(10u))
-            } else {
-                word(&mut s.s, (i as u64).to_str_radix(10u))
-            }
-        }
-        ast::LitFloat(f, t) => {
-            word(&mut s.s, f.to_owned() + ast_util::float_ty_to_str(t))
-        }
-        ast::LitFloatUnsuffixed(f) => word(&mut s.s, f),
-        ast::LitNil => word(&mut s.s, "()"),
-        ast::LitBool(val) => {
-            if val { word(&mut s.s, "true") } else { word(&mut s.s, "false") }
-        }
-        ast::LitBinary(arr) => {
-            if_ok!(ibox(s, indent_unit));
-            if_ok!(word(&mut s.s, "["));
-            if_ok!(commasep_cmnt(s, Inconsistent, arr,
-                                 |s, u| word(&mut s.s, format!("{}", *u)),
-                                 |_| lit.span));
-            if_ok!(word(&mut s.s, "]"));
-            end(s)
-        }
-<<<<<<< HEAD
       }
+      ast::LitUint(u, t) => {
+        word(&mut s.s,
+             u.to_str_radix(10u)
+             + ast_util::uint_ty_to_str(t))
+      }
+      ast::LitIntUnsuffixed(i) => {
+        if i < 0_i64 {
+            word(&mut s.s, ~"-" + (-i as u64).to_str_radix(10u))
+        } else {
+            word(&mut s.s, (i as u64).to_str_radix(10u))
+        }
+      }
+
       ast::LitFloat(ref f, t) => {
-        word(&mut s.s, f.get() + ast_util::float_ty_to_str(t));
+        word(&mut s.s, f.get() + ast_util::float_ty_to_str(t))
       }
       ast::LitFloatUnsuffixed(ref f) => word(&mut s.s, f.get()),
       ast::LitNil => word(&mut s.s, "()"),
       ast::LitBool(val) => {
-        if val { word(&mut s.s, "true"); } else { word(&mut s.s, "false"); }
+        if val { word(&mut s.s, "true") } else { word(&mut s.s, "false") }
       }
       ast::LitBinary(ref arr) => {
-        ibox(s, indent_unit);
-        word(&mut s.s, "[");
-        commasep_cmnt(s, Inconsistent, *arr.borrow(), |s, u| word(&mut s.s, format!("{}", *u)),
-                      |_| lit.span);
-        word(&mut s.s, "]");
-        end(s);
+        if_ok!(ibox(s, indent_unit));
+        if_ok!(word(&mut s.s, "["));
+        if_ok!(commasep_cmnt(s, Inconsistent, *arr.borrow(),
+                             |s, u| word(&mut s.s, format!("{}", *u)),
+                             |_| lit.span));
+        if_ok!(word(&mut s.s, "]"));
+        end(s)
       }
-=======
->>>>>>> syntax: Remove io_error usage
     }
 }
 

@@ -48,7 +48,6 @@ impl PuritySpace {
 }
 
 impl fmt::Show for clean::Generics {
-impl fmt::Default for clean::Generics {
     fn fmt(g: &clean::Generics, f: &mut fmt::Formatter) -> fmt::Result {
         if g.lifetimes.len() == 0 && g.type_params.len() == 0 { return Ok(()) }
         if_ok!(f.buf.write("&lt;".as_bytes()));

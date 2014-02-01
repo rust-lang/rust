@@ -192,9 +192,10 @@ mod test {
 
         match stream.read(buf) {
             Ok(..) => fail!(),
-            Err(ref e) if cfg!(windows) => assert_eq!(e.kind, NotConnected),
-            Err(ref e) if cfg!(unix) => assert_eq!(e.kind, EndOfFile),
-            Err(..) => fail!(),
+            Err(ref e) => {
+                assert!(e.kind == NotConnected || e.kind == EndOfFile,
+                        "unknown kind: {:?}", e.kind);
+            }
         }
     })
 
@@ -217,9 +218,10 @@ mod test {
 
         match stream.read(buf) {
             Ok(..) => fail!(),
-            Err(ref e) if cfg!(windows) => assert_eq!(e.kind, NotConnected),
-            Err(ref e) if cfg!(unix) => assert_eq!(e.kind, EndOfFile),
-            Err(..) => fail!(),
+            Err(ref e) => {
+                assert!(e.kind == NotConnected || e.kind == EndOfFile,
+                        "unknown kind: {:?}", e.kind);
+            }
         }
     })
 

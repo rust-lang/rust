@@ -561,7 +561,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
-                    FindClose(find_handle);
+                    assert!(FindClose(find_handle) != 0);
                     free(wfd_ptr as *mut c_void);
                     Ok(paths)
                 } else {
@@ -683,7 +683,9 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
                                   ptr::mut_null())
             })
         };
-        if handle == ptr::mut_null() { return Err(super::last_error()) }
+        if handle as int == libc::INVALID_HANDLE_VALUE as int {
+            return Err(super::last_error())
+        }
         let ret = fill_utf16_buf_and_decode(|buf, sz| {
             unsafe {
                 libc::GetFinalPathNameByHandleW(handle, buf as *u16, sz,
@@ -694,7 +696,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             Some(s) => Ok(Path::new(s)),
             None => Err(super::last_error()),
         };
-        unsafe { libc::CloseHandle(handle) };
+        assert!(unsafe { libc::CloseHandle(handle) } != 0);
         return ret;
 
     }

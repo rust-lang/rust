@@ -477,35 +477,26 @@ will look like `"\\{"`.
 
 */
 
-#[cfg(not(stage0))]
-use prelude::*;
-
 use cast;
 use char::Char;
+use container::Container;
 use io::MemWriter;
 use io;
-use str;
+use iter::{Iterator, range};
+use num::Signed;
+use option::{Option,Some,None};
 use repr;
+use result::{Ok, Err};
+use str::StrSlice;
+use str;
 use util;
+use vec::ImmutableVector;
 use vec;
 
 // NOTE this is just because the `prelude::*` import above includes
 // default::Default, so the reexport doesn't work.
 #[cfg(stage0)]
 pub use Default = fmt::Show; // export required for `format!()` etc.
-
-#[cfg(stage0)]
-use container::Container;
-#[cfg(stage0)]
-use iter::{Iterator, range};
-#[cfg(stage0)]
-use option::{Option,Some,None};
-#[cfg(stage0)]
-use vec::ImmutableVector;
-#[cfg(stage0)]
-use str::StrSlice;
-#[cfg(stage0)]
-use num::Signed;
 
 pub mod parse;
 pub mod rt;
@@ -628,7 +619,7 @@ macro_rules! uniform_fn_call_workaround {
     ($( $name: ident, $trait_: ident; )*) => {
         $(
             #[doc(hidden)]
-            pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) {
+            pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
                 $trait_::fmt(x, fmt)
             }
             )*

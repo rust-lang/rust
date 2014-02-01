@@ -19,14 +19,20 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[feature(macro_rules)];
 #[deny(non_camel_case_types)];
 #[allow(missing_doc)];
 
 use std::os;
+use std::io;
 use terminfo::TermInfo;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
 use terminfo::parm::{expand, Number, Variables};
+
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
 
 pub mod terminfo;
 
