@@ -651,11 +651,6 @@ pub fn gensym(str : &str) -> Name {
     interner.gensym(str)
 }
 
-// map an interned representation back to a string
-pub fn interner_get(name : Name) -> @str {
-    get_ident_interner().get(name)
-}
-
 // maps a string to an identifier with an empty syntax context
 pub fn str_to_ident(str : &str) -> ast::Ident {
     ast::Ident::new(intern(str))
@@ -677,28 +672,6 @@ pub fn fresh_name(src : &ast::Ident) -> Name {
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
     /*let num = rand::rng().gen_uint_range(0,0xffff);
     gensym(format!("{}_{}",ident_to_str(src),num))*/
-}
-
-// it looks like there oughta be a str_ptr_eq fn, but no one bothered to implement it?
-
-// determine whether two @str values are pointer-equal
-pub fn str_ptr_eq(a : @str, b : @str) -> bool {
-    unsafe {
-        let p : uint = cast::transmute(a);
-        let q : uint = cast::transmute(b);
-        let result = p == q;
-        // got to transmute them back, to make sure the ref count is correct:
-        let _junk1 : @str = cast::transmute(p);
-        let _junk2 : @str = cast::transmute(q);
-        result
-    }
-}
-
-// return true when two identifiers refer (through the intern table) to the same ptr_eq
-// string. This is used to compare identifiers in places where hygienic comparison is
-// not wanted (i.e. not lexical vars).
-pub fn ident_spelling_eq(a : &ast::Ident, b : &ast::Ident) -> bool {
-    str_ptr_eq(interner_get(a.name),interner_get(b.name))
 }
 
 // create a fresh mark.

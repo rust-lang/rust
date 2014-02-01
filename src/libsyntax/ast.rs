@@ -14,8 +14,8 @@ use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
 use ast_util;
 use opt_vec::OptVec;
-use parse::token::{InternedString, interner_get, special_idents};
-use parse::token::{str_to_ident};
+use parse::token::{InternedString, special_idents, str_to_ident};
+use parse::token;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
@@ -126,7 +126,8 @@ pub type Mrk = u32;
 
 impl<S:Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
-        s.emit_str(interner_get(self.name));
+        let string = token::get_ident(self.name);
+        s.emit_str(string.get());
     }
 }
 
