@@ -405,15 +405,6 @@ impl ToStr for Sigil {
     }
 }
 
-#[deriving(Eq, Encodable, Decodable, IterBytes)]
-pub enum Vstore {
-    // FIXME (#3469): Change uint to @expr (actually only constant exprs)
-    VstoreFixed(Option<uint>),     // [1,2,3,4]
-    VstoreUniq,                    // ~[1,2,3,4]
-    VstoreBox,                     // @[1,2,3,4]
-    VstoreSlice(Option<Lifetime>)  // &'foo? [1,2,3,4]
-}
-
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum ExprVstore {
     ExprVstoreUniq,                 // ~[1,2,3,4]
