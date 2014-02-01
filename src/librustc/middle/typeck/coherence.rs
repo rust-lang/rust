@@ -47,13 +47,13 @@ use syntax::visit;
 
 use std::cell::RefCell;
 use std::hashmap::HashSet;
-use std::result::Ok;
+use std::rc::Rc;
 use std::vec;
 
 pub struct UniversalQuantificationResult {
     monotype: t,
     type_variables: ~[ty::t],
-    type_param_defs: @~[ty::TypeParameterDef]
+    type_param_defs: Rc<~[ty::TypeParameterDef]>
 }
 
 pub fn get_base_type(inference_context: @InferCtxt,
@@ -356,11 +356,11 @@ impl CoherenceChecker {
             // construct the polytype for the method based on the method_ty
             let new_generics = ty::Generics {
                 type_param_defs:
-                    @vec::append(
-                        (*impl_poly_type.generics.type_param_defs).clone(),
-                        *new_method_ty.generics.type_param_defs),
+                    Rc::new(vec::append(
+                        impl_poly_type.generics.type_param_defs().to_owned(),
+                            new_method_ty.generics.type_param_defs())),
                 region_param_defs:
-                    impl_poly_type.generics.region_param_defs
+                    impl_poly_type.generics.region_param_defs.clone()
             };
             let new_polytype = ty::ty_param_bounds_and_ty {
                 generics: new_generics,
@@ -449,7 +449,7 @@ impl CoherenceChecker {
                     let polytype_b = self.get_self_type_for_implementation(
                             implementation_b);
 
-                    if self.polytypes_unify(polytype_a, polytype_b) {
+                    if self.polytypes_unify(polytype_a.clone(), polytype_b) {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(
                             self.span_of_impl(implementation_b),
@@ -497,13 +497,13 @@ impl CoherenceChecker {
     pub fn universally_quantify_polytype(&self,
                                          polytype: ty_param_bounds_and_ty)
                                          -> UniversalQuantificationResult {
-        let region_parameter_count = polytype.generics.region_param_defs.len();
+        let region_parameter_count = polytype.generics.region_param_defs().len();
         let region_parameters =
             self.inference_context.next_region_vars(
                 infer::BoundRegionInCoherence,
                 region_parameter_count);
 
-        let bounds_count = polytype.generics.type_param_defs.len();
+        let bounds_count = polytype.generics.type_param_defs().len();
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
         let substitutions = substs {
@@ -518,7 +518,7 @@ impl CoherenceChecker {
         UniversalQuantificationResult {
             monotype: monotype,
             type_variables: substitutions.tps,
-            type_param_defs: polytype.generics.type_param_defs
+            type_param_defs: polytype.generics.type_param_defs.clone()
         }
     }
 
@@ -770,7 +770,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
     // determine how many type parameters were declared on the impl
     let num_impl_type_parameters = {
         let impl_polytype = ty::lookup_item_type(tcx, impl_id);
-        impl_polytype.generics.type_param_defs.len()
+        impl_polytype.generics.type_param_defs().len()
     };
 
     // determine how many type parameters appear on the trait
@@ -778,7 +778,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
 
     // the current method type has the type parameters from the trait + method
     let num_method_type_parameters =
-        num_trait_type_parameters + method.generics.type_param_defs.len();
+        num_trait_type_parameters + method.generics.type_param_defs().len();
 
     // the new method type will have the type parameters from the impl + method
     let combined_tps = vec::from_fn(num_method_type_parameters, |i| {
@@ -789,7 +789,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
             // replace type parameters that belong to method with another
             // type parameter, this time with the index adjusted
             let method_index = i - num_trait_type_parameters;
-            let type_param_def = &method.generics.type_param_defs[method_index];
+            let type_param_def = &method.generics.type_param_defs()[method_index];
             let new_index = num_impl_type_parameters + method_index;
             ty::mk_param(tcx, new_index, type_param_def.def_id)
         }

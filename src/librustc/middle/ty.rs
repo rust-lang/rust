@@ -34,6 +34,7 @@ use std::cmp;
 use std::hashmap::{HashMap, HashSet};
 use std::ops;
 use std::ptr::to_unsafe_ptr;
+use std::rc::Rc;
 use std::to_bytes;
 use std::to_str::ToStr;
 use std::vec;
@@ -129,7 +130,6 @@ pub struct mt {
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
-    vstore_box,
     vstore_slice(Region)
 }
 
@@ -226,10 +226,10 @@ pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
 
-    /// Convert from @[]/~[]/&[] to &[] (or str)
+    /// Convert from ~[]/&[] to &[] (or str)
     AutoBorrowVec(Region, ast::Mutability),
 
-    /// Convert from @[]/~[]/&[] to &&[] (or str)
+    /// Convert from ~[]/&[] to &&[] (or str)
     AutoBorrowVecRef(Region, ast::Mutability),
 
     /// Convert from @fn()/~fn()/|| to ||
@@ -291,7 +291,7 @@ pub struct ctxt_ {
     freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
     rcache: creader_cache,
-    short_names_cache: RefCell<HashMap<t, @str>>,
+    short_names_cache: RefCell<HashMap<t, ~str>>,
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
@@ -870,15 +870,21 @@ pub struct RegionParameterDef {
 #[deriving(Clone)]
 pub struct Generics {
     /// List of type parameters declared on the item.
-    type_param_defs: @~[TypeParameterDef],
+    type_param_defs: Rc<~[TypeParameterDef]>,
 
     /// List of region parameters declared on the item.
-    region_param_defs: @[RegionParameterDef],
+    region_param_defs: Rc<~[RegionParameterDef]>,
 }
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
-        !self.type_param_defs.is_empty()
+        !self.type_param_defs.borrow().is_empty()
+    }
+    pub fn type_param_defs<'a>(&'a self) -> &'a [TypeParameterDef] {
+        self.type_param_defs.borrow().as_slice()
+    }
+    pub fn region_param_defs<'a>(&'a self) -> &'a [RegionParameterDef] {
+        self.region_param_defs.borrow().as_slice()
     }
 }
 
@@ -1551,7 +1557,7 @@ pub fn type_is_box(ty: t) -> bool {
 
 pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
-      ty_box(_) | ty_vec(_, vstore_box) | ty_str(vstore_box) => true,
+      ty_box(_) => true,
       _ => false
     }
 }
@@ -1675,10 +1681,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
           }
           ty_uniq(_) |
           ty_str(vstore_uniq) |
-          ty_str(vstore_box) |
-          ty_vec(_, vstore_uniq) |
-          ty_vec(_, vstore_box)
-          => {
+          ty_vec(_, vstore_uniq) => {
             // Once we're inside a box, the annihilator will find
             // it and destroy it.
             if !encountered_box {
@@ -2021,10 +2024,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 tc_mt(cx, mt, cache).owned_pointer()
             }
 
-            ty_vec(mt, vstore_box) => {
-                tc_mt(cx, mt, cache).managed_pointer()
-            }
-
             ty_vec(ref mt, vstore_slice(r)) => {
                 tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
@@ -2032,10 +2031,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_vec(mt, vstore_fixed(_)) => {
                 tc_mt(cx, mt, cache)
-            }
-
-            ty_str(vstore_box) => {
-                TC::Managed
             }
 
             ty_str(vstore_slice(r)) => {
@@ -2523,8 +2518,8 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
-      ty_str(vstore_uniq) | ty_str(vstore_box) |
-      ty_vec(_, vstore_uniq) | ty_vec(_, vstore_box) |
+      ty_str(vstore_uniq) |
+      ty_vec(_, vstore_uniq) |
       ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
@@ -3105,7 +3100,7 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::Expr) -> bool {
 pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
                                    id: ast::NodeId)
-                                   -> Option<@~[TypeParameterDef]> {
+                                   -> Option<Rc<~[TypeParameterDef]>> {
     let method_map = method_map.borrow();
     method_map.get().find(&id).map(|method| {
         match method.origin {
@@ -3125,12 +3120,12 @@ pub fn method_call_type_param_defs(tcx: ctxt,
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
-                lookup_trait_def(tcx, trt_id).generics.type_param_defs;
-            @vec::append(
-                (*trait_type_param_defs).clone(),
-                *ty::trait_method(tcx,
-                                  trt_id,
-                                  n_mth).generics.type_param_defs)
+                lookup_trait_def(tcx, trt_id).generics.type_param_defs();
+            Rc::new(vec::append(
+                trait_type_param_defs.to_owned(),
+                ty::trait_method(tcx,
+                                 trt_id,
+                                 n_mth).generics.type_param_defs()))
           }
         }
     })
@@ -3296,7 +3291,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprUnary(..) |
         ast::ExprAddrOf(..) |
         ast::ExprBinary(..) |
-        ast::ExprVstore(_, ast::ExprVstoreBox) |
         ast::ExprVstore(_, ast::ExprVstoreUniq) => {
             RvalueDatumExpr
         }
@@ -3344,9 +3338,10 @@ pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
+    let string = token::get_ident(name);
     tcx.sess.bug(format!(
         "No field named `{}` found in the list of fields `{:?}`",
-        token::interner_get(name),
+        string.get(),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -4165,7 +4160,7 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
 pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
     each_attr(tcx, did, |item| {
-        if attr == item.name() {
+        if item.name().equiv(&attr) {
             found = true;
             false
         } else {
@@ -4211,7 +4206,7 @@ pub fn lookup_field_type(tcx: ctxt,
                Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
                None => {
                    let tpt = csearch::get_field_type(tcx, struct_id, id);
-                   tcache.get().insert(id, tpt);
+                   tcache.get().insert(id, tpt.clone());
                    tpt.ty
                }
             }
@@ -4419,7 +4414,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 
         fn fold_vstore(&mut self, vstore: vstore) -> vstore {
             match vstore {
-                vstore_fixed(..) | vstore_uniq | vstore_box => vstore,
+                vstore_fixed(..) | vstore_uniq => vstore,
                 vstore_slice(_) => vstore_slice(ReStatic)
             }
         }
@@ -4834,7 +4829,7 @@ pub fn trait_method_of_method(tcx: ctxt,
 
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
-pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
+pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
     use std::hash::{SipState, Streaming};
 
     let mut hash = SipState::new(0, 0);
@@ -4856,7 +4851,6 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
         match v {
             vstore_fixed(_) => hash.input([0]),
             vstore_uniq => hash.input([1]),
-            vstore_box => hash.input([2]),
             vstore_slice(r) => {
                 hash.input([3]);
                 region(hash, r);
@@ -4865,7 +4859,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
     };
     let did = |hash: &mut SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
-            local_hash
+            local_hash.clone()
         } else {
             tcx.sess.cstore.get_crate_hash(did.crate)
         };

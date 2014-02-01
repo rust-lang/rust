@@ -733,7 +733,7 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
                                 span: Span) {
         let capture_map = this.bccx.capture_map.borrow();
         let cap_vars = capture_map.get().get(&closure_id);
-        for cap_var in cap_vars.iter() {
+        for cap_var in cap_vars.borrow().iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
             this.check_if_path_is_moved(closure_id, span,
@@ -839,4 +839,3 @@ fn check_loans_in_block<'a>(this: &mut CheckLoanCtxt<'a>,
     visit::walk_block(this, blk, ());
     this.check_for_conflicting_loans(blk.id);
 }
-

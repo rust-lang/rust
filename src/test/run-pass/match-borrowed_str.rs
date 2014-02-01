@@ -43,19 +43,15 @@ fn g2(ref_1: &str, ref_2: &str) -> ~str {
 }
 
 pub fn main() {
-    assert_eq!(f1(@"a"), ~"found a");
     assert_eq!(f1(~"b"), ~"found b");
     assert_eq!(f1(&"c"), ~"not found");
     assert_eq!(f1("d"), ~"not found");
-    assert_eq!(f2(@"a"), ~"found a");
     assert_eq!(f2(~"b"), ~"found b");
     assert_eq!(f2(&"c"), ~"not found (c)");
     assert_eq!(f2("d"), ~"not found (d)");
-    assert_eq!(g1(@"a", @"b"), ~"found a,b");
     assert_eq!(g1(~"b", ~"c"), ~"found b,c");
     assert_eq!(g1(&"c", &"d"), ~"not found");
     assert_eq!(g1("d", "e"), ~"not found");
-    assert_eq!(g2(@"a", @"b"), ~"found a,b");
     assert_eq!(g2(~"b", ~"c"), ~"found b,c");
     assert_eq!(g2(&"c", &"d"), ~"not found (c, d)");
     assert_eq!(g2("d", "e"), ~"not found (d, e)");

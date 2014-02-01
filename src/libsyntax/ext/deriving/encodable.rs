@@ -80,6 +80,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token;
 
 pub fn expand_deriving_encodable(cx: &ExtCtxt,
                                  span: Span,
@@ -125,10 +126,17 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
         Struct(ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = ~[];
-            for (i, &FieldInfo { name, self_, span, .. }) in fields.iter().enumerate() {
+            for (i, &FieldInfo {
+                    name,
+                    self_,
+                    span,
+                    ..
+                }) in fields.iter().enumerate() {
                 let name = match name {
-                    Some(id) => cx.str_of(id),
-                    None => format!("_field{}", i).to_managed()
+                    Some(id) => token::get_ident(id.name),
+                    None => {
+                        token::intern_and_get_ident(format!("_field{}", i))
+                    }
                 };
                 let enc = cx.expr_method_call(span, self_, encode, ~[blkencoder]);
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
@@ -141,10 +149,15 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            cx.expr_method_call(trait_span, encoder, cx.ident_of("emit_struct"),
-                                ~[cx.expr_str(trait_span, cx.str_of(substr.type_ident)),
-                                  cx.expr_uint(trait_span, fields.len()),
-                                  blk])
+            cx.expr_method_call(trait_span,
+                                encoder,
+                                cx.ident_of("emit_struct"),
+                                ~[
+                cx.expr_str(trait_span,
+                            token::get_ident(substr.type_ident.name)),
+                cx.expr_uint(trait_span, fields.len()),
+                blk
+            ])
         }
 
         EnumMatching(idx, variant, ref fields) => {
@@ -167,7 +180,8 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            let name = cx.expr_str(trait_span, cx.str_of(variant.node.name));
+            let name = cx.expr_str(trait_span,
+                                   token::get_ident(variant.node.name.name));
             let call = cx.expr_method_call(trait_span, blkencoder,
                                            cx.ident_of("emit_enum_variant"),
                                            ~[name,
@@ -175,11 +189,14 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
                                              cx.expr_uint(trait_span, fields.len()),
                                              blk]);
             let blk = cx.lambda_expr_1(trait_span, call, blkarg);
-            let ret = cx.expr_method_call(trait_span, encoder,
+            let ret = cx.expr_method_call(trait_span,
+                                          encoder,
                                           cx.ident_of("emit_enum"),
-                                          ~[cx.expr_str(trait_span,
-                                            cx.str_of(substr.type_ident)),
-                                            blk]);
+                                          ~[
+                cx.expr_str(trait_span,
+                            token::get_ident(substr.type_ident.name)),
+                blk
+            ]);
             cx.expr_block(cx.block(trait_span, ~[me], Some(ret)))
         }
 

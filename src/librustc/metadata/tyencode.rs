@@ -45,7 +45,7 @@ pub struct ctxt {
 pub struct ty_abbrev {
     pos: uint,
     len: uint,
-    s: @str
+    s: ~str
 }
 
 pub enum abbrev_ctxt {
@@ -65,19 +65,21 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
               let short_names_cache = cx.tcx.short_names_cache.borrow();
               result_str_opt = short_names_cache.get()
                                                 .find(&t)
-                                                .map(|result| *result);
+                                                .map(|result| {
+                                                    (*result).clone()
+                                                });
           }
           let result_str = match result_str_opt {
             Some(s) => s,
             None => {
                 let wr = &mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
-                let s = str::from_utf8(wr.get_ref()).unwrap().to_managed();
+                let s = str::from_utf8(wr.get_ref()).unwrap();
                 let mut short_names_cache = cx.tcx
                                               .short_names_cache
                                               .borrow_mut();
-                short_names_cache.get().insert(t, s);
-                s
+                short_names_cache.get().insert(t, s.to_str());
+                s.to_str()
             }
           };
           w.write(result_str.as_bytes());
@@ -103,7 +105,7 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
           let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
           if abbrev_len < len {
               // I.e. it's actually an abbreviation.
-              let s = format!("\\#{:x}:{:x}\\#", pos, len).to_managed();
+              let s = format!("\\#{:x}:{:x}\\#", pos, len);
               let a = ty_abbrev { pos: pos as uint,
                                   len: len as uint,
                                   s: s };
@@ -217,7 +219,6 @@ pub fn enc_vstore(w: &mut MemWriter, cx: @ctxt, v: ty::vstore) {
     match v {
         ty::vstore_fixed(u) => mywrite!(w, "{}|", u),
         ty::vstore_uniq => mywrite!(w, "~"),
-        ty::vstore_box => mywrite!(w, "@"),
         ty::vstore_slice(r) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);

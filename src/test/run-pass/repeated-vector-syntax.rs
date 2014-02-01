@@ -16,7 +16,7 @@ struct Foo {
 }
 
 pub fn main() {
-    let x = [ @[true], ..512 ];
+    let x = [ [true], ..512 ];
     let y = [ 0, ..1 ];
 
     error!("{:?}", x);

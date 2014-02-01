@@ -646,13 +646,6 @@ pub mod traits {
         fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
 
-    impl<T:Eq> Eq for @[T] {
-        #[inline]
-        fn eq(&self, other: &@[T]) -> bool { self.as_slice() == *other }
-        #[inline]
-        fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
-    }
-
     impl<'a,T:TotalEq> TotalEq for &'a [T] {
         fn equals(&self, other: & &'a [T]) -> bool {
             self.len() == other.len() &&
@@ -665,22 +658,12 @@ pub mod traits {
         fn equals(&self, other: &~[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
     }
 
-    impl<T:TotalEq> TotalEq for @[T] {
-        #[inline]
-        fn equals(&self, other: &@[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
-    }
-
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
-        #[inline]
-        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-    }
-
-    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for @[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
@@ -694,11 +677,6 @@ pub mod traits {
     impl<T: TotalOrd> TotalOrd for ~[T] {
         #[inline]
         fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-    }
-
-    impl<T: TotalOrd> TotalOrd for @[T] {
-        #[inline]
-        fn cmp(&self, other: &@[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a, T: Eq + Ord> Ord for &'a [T] {
@@ -728,17 +706,6 @@ pub mod traits {
         fn ge(&self, other: &~[T]) -> bool { self.as_slice() >= other.as_slice() }
         #[inline]
         fn gt(&self, other: &~[T]) -> bool { self.as_slice() > other.as_slice() }
-    }
-
-    impl<T: Eq + Ord> Ord for @[T] {
-        #[inline]
-        fn lt(&self, other: &@[T]) -> bool { self.as_slice() < other.as_slice() }
-        #[inline]
-        fn le(&self, other: &@[T]) -> bool { self.as_slice() <= other.as_slice() }
-        #[inline]
-        fn ge(&self, other: &@[T]) -> bool { self.as_slice() >= other.as_slice() }
-        #[inline]
-        fn gt(&self, other: &@[T]) -> bool { self.as_slice() > other.as_slice() }
     }
 
     impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
@@ -774,11 +741,6 @@ impl<'a,T> Vector<T> for &'a [T] {
 }
 
 impl<T> Vector<T> for ~[T] {
-    #[inline(always)]
-    fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
-}
-
-impl<T> Vector<T> for @[T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
 }
@@ -831,15 +793,6 @@ impl<T: Clone> CloneableVector<T> for ~[T] {
 
     #[inline(always)]
     fn into_owned(self) -> ~[T] { self }
-}
-
-/// Extension methods for managed vectors
-impl<T: Clone> CloneableVector<T> for @[T] {
-    #[inline]
-    fn to_owned(&self) -> ~[T] { self.as_slice().to_owned() }
-
-    #[inline(always)]
-    fn into_owned(self) -> ~[T] { self.to_owned() }
 }
 
 /// Extension methods for vectors
@@ -2637,10 +2590,6 @@ impl<A> Default for ~[A] {
     fn default() -> ~[A] { ~[] }
 }
 
-impl<A> Default for @[A] {
-    fn default() -> @[A] { @[] }
-}
-
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
         /// An iterator for iterating over a vector.
@@ -3116,14 +3065,6 @@ mod tests {
         assert_eq!(v_b.len(), 2u);
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
-
-        // Test on managed heap.
-        let vec_managed = @[1, 2, 3, 4, 5];
-        let v_c = vec_managed.slice(0u, 3u).to_owned();
-        assert_eq!(v_c.len(), 3u);
-        assert_eq!(v_c[0], 1);
-        assert_eq!(v_c[1], 2);
-        assert_eq!(v_c[2], 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
@@ -4060,7 +4001,6 @@ mod tests {
         );
 
         t!(&[int]);
-        t!(@[int]);
         t!(~[int]);
     }
 

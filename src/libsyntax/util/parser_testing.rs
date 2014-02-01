@@ -17,29 +17,29 @@ use parse::token;
 
 // map a string to tts, using a made-up filename: return both the TokenTree's
 // and the ParseSess
-pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::TokenTree], @ParseSess) {
+pub fn string_to_tts_and_sess (source_str : ~str) -> (~[ast::TokenTree], @ParseSess) {
     let ps = new_parse_sess(None);
-    (filemap_to_tts(ps,string_to_filemap(ps,source_str,@"bogofile")),ps)
+    (filemap_to_tts(ps,string_to_filemap(ps,source_str,~"bogofile")),ps)
 }
 
 // map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str : @str) -> ~[ast::TokenTree] {
+pub fn string_to_tts(source_str : ~str) -> ~[ast::TokenTree] {
     let (tts,_) = string_to_tts_and_sess(source_str);
     tts
 }
 
-pub fn string_to_parser_and_sess(source_str: @str) -> (Parser,@ParseSess) {
+pub fn string_to_parser_and_sess(source_str: ~str) -> (Parser,@ParseSess) {
     let ps = new_parse_sess(None);
-    (new_parser_from_source_str(ps,~[],@"bogofile",source_str),ps)
+    (new_parser_from_source_str(ps,~[],~"bogofile",source_str),ps)
 }
 
 // map string to parser (via tts)
-pub fn string_to_parser(source_str: @str) -> Parser {
+pub fn string_to_parser(source_str: ~str) -> Parser {
     let (p,_) = string_to_parser_and_sess(source_str);
     p
 }
 
-fn with_error_checking_parse<T>(s: @str, f: |&mut Parser| -> T) -> T {
+fn with_error_checking_parse<T>(s: ~str, f: |&mut Parser| -> T) -> T {
     let mut p = string_to_parser(s);
     let x = f(&mut p);
     p.abort_if_errors();
@@ -47,34 +47,34 @@ fn with_error_checking_parse<T>(s: @str, f: |&mut Parser| -> T) -> T {
 }
 
 // parse a string, return a crate.
-pub fn string_to_crate (source_str : @str) -> ast::Crate {
+pub fn string_to_crate (source_str : ~str) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
         p.parse_crate_mod()
     })
 }
 
 // parse a string, return a crate and the ParseSess
-pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@ParseSess) {
+pub fn string_to_crate_and_sess (source_str : ~str) -> (ast::Crate,@ParseSess) {
     let (mut p,ps) = string_to_parser_and_sess(source_str);
     (p.parse_crate_mod(),ps)
 }
 
 // parse a string, return an expr
-pub fn string_to_expr (source_str : @str) -> @ast::Expr {
+pub fn string_to_expr (source_str : ~str) -> @ast::Expr {
     with_error_checking_parse(source_str, |p| {
         p.parse_expr()
     })
 }
 
 // parse a string, return an item
-pub fn string_to_item (source_str : @str) -> Option<@ast::Item> {
+pub fn string_to_item (source_str : ~str) -> Option<@ast::Item> {
     with_error_checking_parse(source_str, |p| {
         p.parse_item(~[])
     })
 }
 
 // parse a string, return a stmt
-pub fn string_to_stmt(source_str : @str) -> @ast::Stmt {
+pub fn string_to_stmt(source_str : ~str) -> @ast::Stmt {
     with_error_checking_parse(source_str, |p| {
         p.parse_stmt(~[])
     })
@@ -82,7 +82,7 @@ pub fn string_to_stmt(source_str : @str) -> @ast::Stmt {
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't
 // (currently) affect parsing.
-pub fn string_to_pat(source_str : @str) -> @ast::Pat {
+pub fn string_to_pat(source_str : ~str) -> @ast::Pat {
     string_to_parser(source_str).parse_pat()
 }
 

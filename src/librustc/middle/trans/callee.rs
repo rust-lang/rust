@@ -220,7 +220,7 @@ fn resolve_default_method_vtables(bcx: &Block,
         bcx.tcx(), param_substs, impl_res.trait_vtables);
 
     // Now we pull any vtables for parameters on the actual method.
-    let num_method_vtables = method.generics.type_param_defs.len();
+    let num_method_vtables = method.generics.type_param_defs().len();
     let method_vtables = match impl_vtables {
         Some(vtables) => {
             let num_impl_type_parameters =

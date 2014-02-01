@@ -30,11 +30,9 @@ pub fn main() {
 
     ([1]).test_imm();
     (~[1]).test_imm();
-    (@[1]).test_imm();
     (&[1]).test_imm();
     ("test").test_imm();
     (~"test").test_imm();
-    (@"test").test_imm();
     (&"test").test_imm();
 
     // FIXME: Other types of mutable vecs don't currently exist

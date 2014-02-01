@@ -156,7 +156,6 @@ fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
 
     match next(st) {
       '~' => ty::vstore_uniq,
-      '@' => ty::vstore_box,
       '&' => ty::vstore_slice(parse_region(st, conv)),
       c => st.tcx.sess.bug(format!("parse_vstore(): bad input '{}'", c))
     }

@@ -321,15 +321,14 @@ fn fold_meta_item_<T: Folder>(mi: @MetaItem, fld: &mut T) -> @MetaItem {
     @Spanned {
         node:
             match mi.node {
-                MetaWord(id) => MetaWord(id),
-                MetaList(id, ref mis) => {
+                MetaWord(ref id) => MetaWord((*id).clone()),
+                MetaList(ref id, ref mis) => {
                     let fold_meta_item = |x| fold_meta_item_(x, fld);
-                    MetaList(
-                        id,
-                        mis.map(|e| fold_meta_item(*e))
-                    )
+                    MetaList((*id).clone(), mis.map(|e| fold_meta_item(*e)))
                 }
-                MetaNameValue(id, s) => MetaNameValue(id, s)
+                MetaNameValue(ref id, ref s) => {
+                    MetaNameValue((*id).clone(), (*s).clone())
+                }
             },
         span: fld.new_span(mi.span) }
 }
@@ -498,12 +497,10 @@ fn fold_variant_arg_<T: Folder>(va: &VariantArg, folder: &mut T) -> VariantArg {
 pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
                                        -> ViewItem{
     let inner_view_item = match vi.node {
-        ViewItemExternMod(ref ident,
-                             string,
-                             node_id) => {
+        ViewItemExternMod(ref ident, ref string, node_id) => {
             ViewItemExternMod(ident.clone(),
-                                 string,
-                                 folder.new_id(node_id))
+                              (*string).clone(),
+                              folder.new_id(node_id))
         }
         ViewItemUse(ref view_paths) => {
             ViewItemUse(folder.fold_view_paths(*view_paths))
@@ -815,8 +812,12 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprInlineAsm(ref a) => {
             ExprInlineAsm(InlineAsm {
-                inputs: a.inputs.map(|&(c, input)| (c, folder.fold_expr(input))),
-                outputs: a.outputs.map(|&(c, out)| (c, folder.fold_expr(out))),
+                inputs: a.inputs.map(|&(ref c, input)| {
+                    ((*c).clone(), folder.fold_expr(input))
+                }),
+                outputs: a.outputs.map(|&(ref c, out)| {
+                    ((*c).clone(), folder.fold_expr(out))
+                }),
                 .. (*a).clone()
             })
         }
@@ -898,7 +899,8 @@ mod test {
     // make sure idents get transformed everywhere
     #[test] fn ident_transformation () {
         let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(@"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
+        let ast = string_to_crate(
+            ~"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
                      pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,
@@ -909,8 +911,9 @@ mod test {
     // even inside macro defs....
     #[test] fn ident_transformation_in_defs () {
         let mut zz_fold = ToZzIdentFolder;
-        let ast = string_to_crate(@"macro_rules! a {(b $c:expr $(d $e:token)f+
-=> (g $(d $d $e)+))} ");
+        let ast = string_to_crate(
+            ~"macro_rules! a {(b $c:expr $(d $e:token)f+ => \
+              (g $(d $d $e)+))} ");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
                      pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,

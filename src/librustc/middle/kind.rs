@@ -277,7 +277,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
               ExprPath(_) => {
                 let did = ast_util::def_id_of_def(def_map.get()
                                                          .get_copy(&e.id));
-                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
+                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs.clone()
               }
               _ => {
                 // Type substitutions should only occur on paths and
@@ -289,6 +289,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                     "non path/method call expr has type substs??")
               }
             };
+            let type_param_defs = type_param_defs.borrow();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \
@@ -362,8 +363,8 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
             for ts in r.iter() {
                 let def_map = cx.tcx.def_map.borrow();
                 let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
-                let type_param_defs =
-                    ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+                let generics = ty::lookup_item_type(cx.tcx, did).generics;
+                let type_param_defs = generics.type_param_defs();
                 for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
                     check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
                 }

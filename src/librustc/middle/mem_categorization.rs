@@ -178,9 +178,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_box(_) |
-        ty::ty_vec(_, ty::vstore_box) |
-        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
-        ty::ty_str(ty::vstore_box) => {
+        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
             Some(deref_ptr(gc_ptr))
         }
 
@@ -1233,7 +1231,10 @@ pub fn ptr_sigil(ptr: PointerKind) -> ~str {
 impl Repr for InteriorKind {
     fn repr(&self, _tcx: ty::ctxt) -> ~str {
         match *self {
-            InteriorField(NamedField(fld)) => token::interner_get(fld).to_owned(),
+            InteriorField(NamedField(fld)) => {
+                let string = token::get_ident(fld);
+                string.get().to_owned()
+            }
             InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => ~"[]",
         }

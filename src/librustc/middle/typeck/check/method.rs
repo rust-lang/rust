@@ -555,8 +555,10 @@ impl<'a> LookupContext<'a> {
                 return; // already visited
             }
         }
+
+        let method_name = token::get_ident(self.m_name);
         debug!("push_candidates_from_impl: {} {} {}",
-               token::interner_get(self.m_name),
+               method_name.get(),
                impl_info.ident.repr(self.tcx()),
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
@@ -697,7 +699,6 @@ impl<'a> LookupContext<'a> {
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
         match sty {
-            ty_vec(mt, vstore_box) |
             ty_vec(mt, vstore_uniq) |
             ty_vec(mt, vstore_slice(_)) | // NDM(#3148)
             ty_vec(mt, vstore_fixed(_)) => {
@@ -726,7 +727,6 @@ impl<'a> LookupContext<'a> {
                     })
             }
 
-            ty_str(vstore_box) |
             ty_str(vstore_uniq) |
             ty_str(vstore_fixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(
@@ -952,7 +952,7 @@ impl<'a> LookupContext<'a> {
         // If they were not explicitly supplied, just construct fresh
         // type variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.generics.type_param_defs.len();
+        let num_method_tps = candidate.method_ty.generics.type_param_defs().len();
         let m_substs = {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)

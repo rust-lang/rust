@@ -3079,7 +3079,7 @@ A value of type `str` is a Unicode string,
 represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
 Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
-such as `&str`, `@str` or `~str`.
+such as `&str` or `~str`.
 
 ### Tuple types
 
@@ -3115,7 +3115,7 @@ Such a definite-sized vector type is a first-class type, since its size is known
 A vector without such a size is said to be of _indefinite_ size,
 and is therefore not a _first-class_ type.
 An indefinite-size vector can only be instantiated through a pointer type,
-such as `&[T]`, `@[T]` or `~[T]`.
+such as `&[T]` or `~[T]`.
 The kind of a vector type depends on the kind of its element type,
 as with other simple structural types.
 
