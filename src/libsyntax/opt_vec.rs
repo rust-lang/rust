@@ -62,10 +62,10 @@ impl<T> OptVec<T> {
         }
     }
 
-    pub fn mut_last<'a>(&'a mut self) -> &'a mut T {
+    pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
         match *self {
             Vec(ref mut v) => v.mut_last(),
-            Empty => fail!("mut_last on empty opt_vec")
+            Empty => None
         }
     }
 
