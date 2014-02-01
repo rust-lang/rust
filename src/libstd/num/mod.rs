@@ -440,7 +440,39 @@ pub trait Primitive: Clone
 /// A collection of traits relevant to primitive signed and unsigned integers
 pub trait Int: Integer
              + Primitive
-             + Bitwise {}
+             + Bitwise
+             + CheckedAdd
+             + CheckedSub
+             // + CheckedMul // FIXME #8849: currently not impled on 32-bit
+             + CheckedDiv {}
+
+/// Returns the smallest power of 2 greater than or equal to `n`.
+#[inline]
+pub fn next_power_of_two<T: Unsigned + Int>(n: T) -> T {
+    let halfbits: T = cast(size_of::<T>() * 4).unwrap();
+    let mut tmp: T = n - one();
+    let mut shift: T = one();
+    while shift <= halfbits {
+        tmp = tmp | (tmp >> shift);
+        shift = shift << one();
+    }
+    tmp + one()
+}
+
+/// Returns the smallest power of 2 greater than or equal to `n`. If the next
+/// power of two is greater than the type's maximum value, `None` is returned,
+/// otherwise the power of 2 is wrapped in `Some`.
+#[inline]
+pub fn checked_next_power_of_two<T: Unsigned + Int>(n: T) -> Option<T> {
+    let halfbits: T = cast(size_of::<T>() * 4).unwrap();
+    let mut tmp: T = n - one();
+    let mut shift: T = one();
+    while shift <= halfbits {
+        tmp = tmp | (tmp >> shift);
+        shift = shift << one();
+    }
+    tmp.checked_add(&one())
+}
 
 /// Used for representing the classification of floating point numbers
 #[deriving(Eq)]
@@ -1589,6 +1621,48 @@ mod tests {
         assert_eq!(third.checked_mul(&4), None);
     }
 
+    macro_rules! test_next_power_of_two(
+        ($test_name:ident, $T:ident) => (
+            fn $test_name() {
+                #[test];
+                assert_eq!(next_power_of_two::<$T>(0), 0);
+                let mut next_power = 1;
+                for i in range::<$T>(1, 40) {
+                     assert_eq!(next_power_of_two(i), next_power);
+                     if i == next_power { next_power *= 2 }
+                }
+            }
+        )
+    )
+
+    test_next_power_of_two!(test_next_power_of_two_u8, u8)
+    test_next_power_of_two!(test_next_power_of_two_u16, u16)
+    test_next_power_of_two!(test_next_power_of_two_u32, u32)
+    test_next_power_of_two!(test_next_power_of_two_u64, u64)
+    test_next_power_of_two!(test_next_power_of_two_uint, uint)
+
+    macro_rules! test_checked_next_power_of_two(
+        ($test_name:ident, $T:ident) => (
+            fn $test_name() {
+                #[test];
+                assert_eq!(checked_next_power_of_two::<$T>(0), None);
+                let mut next_power = 1;
+                for i in range::<$T>(1, 40) {
+                     assert_eq!(checked_next_power_of_two(i), Some(next_power));
+                     if i == next_power { next_power *= 2 }
+                }
+                assert!(checked_next_power_of_two::<$T>($T::MAX / 2).is_some());
+                assert_eq!(checked_next_power_of_two::<$T>($T::MAX - 1), None);
+                assert_eq!(checked_next_power_of_two::<$T>($T::MAX), None);
+            }
+        )
+    )
+
+    test_checked_next_power_of_two!(test_checked_next_power_of_two_u8, u8)
+    test_checked_next_power_of_two!(test_checked_next_power_of_two_u16, u16)
+    test_checked_next_power_of_two!(test_checked_next_power_of_two_u32, u32)
+    test_checked_next_power_of_two!(test_checked_next_power_of_two_u64, u64)
+    test_checked_next_power_of_two!(test_checked_next_power_of_two_uint, uint)
 
     #[deriving(Eq)]
     struct Value { x: int }

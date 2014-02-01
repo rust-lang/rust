@@ -177,9 +177,9 @@ pub mod raw {
     use cast::{transmute, transmute_copy};
     use container::Container;
     use option::None;
-    use ptr;
     use mem;
-    use uint;
+    use num::next_power_of_two;
+    use ptr;
     use unstable::intrinsics::{move_val_init, TyDesc};
     use unstable::intrinsics;
     use unstable::raw::{Box, Vec};
@@ -293,7 +293,7 @@ pub mod raw {
      */
     #[inline]
     pub unsafe fn reserve_at_least<T>(v: &mut @[T], n: uint) {
-        reserve(v, uint::next_power_of_two(n));
+        reserve(v, next_power_of_two(n));
     }
 }
 

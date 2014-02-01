@@ -120,10 +120,3 @@ impl CheckedMul for int {
         }
     }
 }
-
-#[test]
-fn test_overflows() {
-    assert!((::int::MAX > 0));
-    assert!((::int::MIN <= 0));
-    assert!((::int::MIN + ::int::MAX + 1 == 0));
-}
