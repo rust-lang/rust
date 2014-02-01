@@ -46,10 +46,10 @@ fn root<'a, K:KindOps>(datum: &Datum<K>,
                        _span: Span,
                        root_key: root_map_key,
                        root_info: RootInfo) -> &'a Block<'a> {
-    //! In some cases, borrowck will decide that an @T/@[]/@str
-    //! value must be rooted for the program to be safe.  In that
-    //! case, we will call this function, which will stash a copy
-    //! away until we exit the scope `scope_id`.
+    //! In some cases, borrowck will decide that an @T value must be
+    //! rooted for the program to be safe.  In that case, we will call
+    //! this function, which will stash a copy away until we exit the
+    //! scope `scope_id`.
 
     debug!("write_guard::root(root_key={:?}, root_info={:?}, datum={:?})",
            root_key, root_info, datum.to_str(bcx.ccx()));
@@ -62,4 +62,3 @@ fn root<'a, K:KindOps>(datum: &Datum<K>,
         cleanup::AstScope(root_info.scope), (),
         |(), bcx, llval| datum.shallow_copy_and_take(bcx, llval)).bcx
 }
-

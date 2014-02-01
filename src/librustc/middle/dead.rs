@@ -360,9 +360,10 @@ impl DeadVisitor {
 
     fn warn_dead_code(&mut self, id: ast::NodeId,
                       span: codemap::Span, ident: &ast::Ident) {
+        let string = token::get_ident(ident.name);
         self.tcx.sess.add_lint(DeadCode, id, span,
                                format!("code is never used: `{}`",
-                                       token::ident_to_str(ident)));
+                                       string.get()));
     }
 }
 

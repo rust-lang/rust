@@ -160,7 +160,7 @@ pub struct LocWithOpt {
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
 
-#[deriving(IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub enum MacroFormat {
     // e.g. #[deriving(...)] <item>
     MacroAttribute,
@@ -168,9 +168,9 @@ pub enum MacroFormat {
     MacroBang
 }
 
-#[deriving(IterBytes)]
+#[deriving(Clone, IterBytes)]
 pub struct NameAndSpan {
-    name: @str,
+    name: ~str,
     // the format with which the macro was invoked.
     format: MacroFormat,
     span: Option<Span>
@@ -183,7 +183,7 @@ pub struct ExpnInfo {
     callee: NameAndSpan
 }
 
-pub type FileName = @str;
+pub type FileName = ~str;
 
 pub struct FileLines
 {
@@ -206,7 +206,7 @@ pub struct FileMap {
     /// e.g. `<anon>`
     name: FileName,
     /// The complete source code
-    src: @str,
+    src: ~str,
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
@@ -267,7 +267,7 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, src: ~str) -> @FileMap {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.get().last() {
             None => 0,
@@ -301,7 +301,7 @@ impl CodeMap {
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         LocWithOpt {
-            filename: loc.file.name,
+            filename: loc.file.name.to_str(),
             line: loc.line,
             col: loc.col,
             file: Some(loc.file)
@@ -324,7 +324,7 @@ impl CodeMap {
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         let lo = self.lookup_char_pos(sp.lo);
-        lo.file.name
+        lo.file.name.to_str()
     }
 
     pub fn span_to_lines(&self, sp: Span) -> @FileLines {
@@ -468,7 +468,7 @@ mod test {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
+        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         fm.next_line(BytePos(0));
         assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
@@ -480,7 +480,7 @@ mod test {
     #[should_fail]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
+        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));

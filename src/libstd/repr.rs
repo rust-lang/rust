@@ -272,10 +272,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     }
 
     fn visit_estr_box(&mut self) -> bool {
-        self.get::<@str>(|this, s| {
-            this.writer.write(['@' as u8]);
-            this.write_escaped_slice(*s);
-        })
+        true
     }
 
     fn visit_estr_uniq(&mut self) -> bool {
@@ -628,7 +625,6 @@ fn test_repr() {
     exact_test(&false, "false");
     exact_test(&1.234, "1.234f64");
     exact_test(&(&"hello"), "\"hello\"");
-    exact_test(&(@"hello"), "@\"hello\"");
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
@@ -641,12 +637,6 @@ fn test_repr() {
     exact_test(&(0 as *mut ()), "(0x0 as *mut ())");
 
     exact_test(&(1,), "(1,)");
-    exact_test(&(@[1,2,3,4,5,6,7,8]),
-               "@[1, 2, 3, 4, 5, 6, 7, 8]");
-    exact_test(&(@[1u8,2u8,3u8,4u8]),
-               "@[1u8, 2u8, 3u8, 4u8]");
-    exact_test(&(@["hi", "there"]),
-               "@[\"hi\", \"there\"]");
     exact_test(&(~["hi", "there"]),
                "~[\"hi\", \"there\"]");
     exact_test(&(&["hi", "there"]),

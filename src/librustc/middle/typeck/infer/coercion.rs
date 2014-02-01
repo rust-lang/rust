@@ -67,7 +67,7 @@ we may want to adjust precisely when coercions occur.
 
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn, AutoBorrowObj};
 use middle::ty::{AutoDerefRef};
-use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
+use middle::ty::{vstore_slice, vstore_uniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -272,7 +272,6 @@ impl Coerce {
                b.inf_str(self.get_ref().infcx));
 
         match *sty_a {
-            ty::ty_str(vstore_box) |
             ty::ty_str(vstore_uniq) => {}
             _ => {
                 return self.subtype(a, b);

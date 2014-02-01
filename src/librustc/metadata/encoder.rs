@@ -21,29 +21,28 @@ use middle::ty;
 use middle::typeck;
 use middle;
 
+use extra::serialize::Encodable;
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::io::MemWriter;
 use std::str;
 use std::vec;
-
-use extra::serialize::Encodable;
-
 use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::*;
-use syntax::attr;
+use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
+use syntax::attr;
 use syntax::codemap;
 use syntax::diagnostic::SpanHandler;
+use syntax::parse::token::InternedString;
 use syntax::parse::token::special_idents;
-use syntax::ast_util;
+use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
-use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
@@ -172,7 +171,7 @@ pub fn def_to_str(did: DefId) -> ~str {
 
 fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
                              ecx: &EncodeContext,
-                             params: @~[ty::TypeParameterDef],
+                             params: &[ty::TypeParameterDef],
                              tag: uint) {
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
@@ -189,7 +188,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
 
 fn encode_region_param_defs(ebml_w: &mut writer::Encoder,
                             ecx: &EncodeContext,
-                            params: @[ty::RegionParameterDef]) {
+                            params: &[ty::RegionParameterDef]) {
     for param in params.iter() {
         ebml_w.start_tag(tag_region_param_def);
 
@@ -216,9 +215,9 @@ fn encode_item_variances(ebml_w: &mut writer::Encoder,
 fn encode_bounds_and_type(ebml_w: &mut writer::Encoder,
                           ecx: &EncodeContext,
                           tpt: &ty::ty_param_bounds_and_ty) {
-    encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs,
+    encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs(),
                               tag_items_data_item_ty_param_bounds);
-    encode_region_param_defs(ebml_w, ecx, tpt.generics.region_param_defs);
+    encode_region_param_defs(ebml_w, ecx, tpt.generics.region_param_defs());
     encode_type(ecx, ebml_w, tpt.ty);
 }
 
@@ -491,7 +490,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     exp: &middle::resolve::Export2) {
     match ecx.tcx.items.find(exp.def_id.node) {
         Some(ast_map::NodeItem(item, path)) => {
-            let original_name = ecx.tcx.sess.str_of(item.ident);
+            let original_name = token::get_ident(item.ident.name);
 
             //
             // We don't need to reexport static methods on items
@@ -503,7 +502,7 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
             // encoded metadata for static methods relative to Bar,
             // but not yet for Foo.
             //
-            if mod_path != *path || exp.name != original_name {
+            if mod_path != *path || original_name.get() != exp.name {
                 if !encode_reexported_static_base_methods(ecx, ebml_w, exp) {
                     if encode_reexported_static_trait_methods(ecx, ebml_w, exp) {
                         debug!("(encode reexported static methods) {} \
@@ -793,7 +792,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ecx, ebml_w, method_ty.ident);
     encode_ty_type_param_defs(ebml_w, ecx,
-                              method_ty.generics.type_param_defs,
+                              method_ty.generics.type_param_defs(),
                               tag_item_method_tps);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
@@ -834,7 +833,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     for &ast_method in ast_method_opt.iter() {
-        let num_params = tpt.generics.type_param_defs.len();
+        let num_params = tpt.generics.type_param_defs().len();
         if num_params > 0u || is_default_impl
             || should_inline(ast_method.attrs) {
             (ecx.encode_inlined_item)(
@@ -1178,10 +1177,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(ebml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_ty_type_param_defs(ebml_w, ecx,
-                                  trait_def.generics.type_param_defs,
+                                  trait_def.generics.type_param_defs(),
                                   tag_items_data_item_ty_param_bounds);
         encode_region_param_defs(ebml_w, ecx,
-                                 trait_def.generics.region_param_defs);
+                                 trait_def.generics.region_param_defs());
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -1357,11 +1356,10 @@ fn my_visit_foreign_item(ni: &ForeignItem,
                          index: @RefCell<~[entry<i64>]>) {
     match items.get(ni.id) {
         ast_map::NodeForeignItem(_, abi, _, pt) => {
+            let string = token::get_ident(ni.ident.name);
             debug!("writing foreign item {}::{}",
-                   ast_map::path_to_str(
-                       *pt,
-                       token::get_ident_interner()),
-                   token::ident_to_str(&ni.ident));
+                   ast_map::path_to_str(*pt, token::get_ident_interner()),
+                   string.get());
 
             let mut ebml_w = unsafe {
                 ebml_w.unsafe_clone()
@@ -1513,32 +1511,32 @@ fn write_i64(writer: &mut MemWriter, &n: &i64) {
 
 fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
     match mi.node {
-      MetaWord(name) => {
+      MetaWord(ref name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(name.as_bytes());
+        ebml_w.writer.write(name.get().as_bytes());
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
-      MetaNameValue(name, value) => {
+      MetaNameValue(ref name, ref value) => {
         match value.node {
-          LitStr(value, _) => {
+          LitStr(ref value, _) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
-            ebml_w.writer.write(name.as_bytes());
+            ebml_w.writer.write(name.get().as_bytes());
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
-            ebml_w.writer.write(value.as_bytes());
+            ebml_w.writer.write(value.get().as_bytes());
             ebml_w.end_tag();
             ebml_w.end_tag();
           }
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      MetaList(name, ref items) => {
+      MetaList(ref name, ref items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(name.as_bytes());
+        ebml_w.writer.write(name.get().as_bytes());
         ebml_w.end_tag();
         for inner_item in items.iter() {
             encode_meta_item(ebml_w, *inner_item);
@@ -1569,13 +1567,13 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
         attr::mk_attr(
             attr::mk_name_value_item_str(
-                @"crate_id",
-                ecx.link_meta.crateid.to_str().to_managed()))
+                InternedString::new("crate_id"),
+                token::intern_and_get_ident(ecx.link_meta.crateid.to_str())))
     }
 
     let mut attrs = ~[];
     for attr in crate.attrs.iter() {
-        if "crate_id" != attr.name()  {
+        if !attr.name().equiv(&("crate_id")) {
             attrs.push(*attr);
         }
     }
@@ -1621,7 +1619,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
     ebml_w.start_tag(tag_crate_deps);
     let r = get_ordered_deps(ecx, cstore);
     for dep in r.iter() {
-        encode_crate_dep(ecx, ebml_w, *dep);
+        encode_crate_dep(ecx, ebml_w, (*dep).clone());
     }
     ebml_w.end_tag();
 }

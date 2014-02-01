@@ -22,7 +22,6 @@ use codemap::{Span, respan};
 use parse::parser::Parser;
 use parse::token;
 
-use std::str;
 use std::to_bytes;
 
 /// The specific types of unsupported syntax
@@ -45,6 +44,8 @@ pub enum ObsoleteSyntax {
     ObsoleteMultipleImport,
     ObsoleteExternModAttributesInParens,
     ObsoleteManagedPattern,
+    ObsoleteManagedString,
+    ObsoleteManagedVec,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -150,6 +151,14 @@ impl ParserObsoleteMethods for Parser {
                 "use a nested `match` expression instead of a managed box \
                  pattern"
             ),
+            ObsoleteManagedString => (
+                "managed string",
+                "use `Rc<~str>` instead of a managed string"
+            ),
+            ObsoleteManagedVec => (
+                "managed vector",
+                "use `Rc<~[T]>` instead of a managed vector"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -178,7 +187,8 @@ impl ParserObsoleteMethods for Parser {
     fn is_obsolete_ident(&mut self, ident: &str) -> bool {
         match self.token {
             token::IDENT(sid, _) => {
-                str::eq_slice(self.id_to_str(sid), ident)
+                let interned_string = token::get_ident(sid.name);
+                interned_string.equiv(&ident)
             }
             _ => false
         }

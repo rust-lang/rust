@@ -30,7 +30,10 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             }
         } else {
             match *e {
-                ast::TTTok(_, token::IDENT(ident,_)) => res_str.push_str(cx.str_of(ident)),
+                ast::TTTok(_, token::IDENT(ident,_)) => {
+                    let interned_str = token::get_ident(ident.name);
+                    res_str.push_str(interned_str.get())
+                }
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
                     return MacResult::dummy_expr();

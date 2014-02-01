@@ -14,6 +14,8 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
+use parse::token;
 
 pub fn expand_deriving_to_str(cx: &ExtCtxt,
                               span: Span,
@@ -47,18 +49,22 @@ pub fn expand_deriving_to_str(cx: &ExtCtxt,
 // doesn't invoke the to_str() method on each field. Hence we mirror
 // the logic of the repr_to_str() method, but with tweaks to call to_str()
 // on sub-fields.
-fn to_str_substructure(cx: &ExtCtxt, span: Span,
-                       substr: &Substructure) -> @Expr {
+fn to_str_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure)
+                       -> @Expr {
     let to_str = cx.ident_of("to_str");
 
-    let doit = |start: &str, end: @str, name: ast::Ident,
+    let doit = |start: &str,
+                end: InternedString,
+                name: ast::Ident,
                 fields: &[FieldInfo]| {
         if fields.len() == 0 {
-            cx.expr_str_uniq(span, cx.str_of(name))
+            cx.expr_str_uniq(span, token::get_ident(name.name))
         } else {
             let buf = cx.ident_of("buf");
-            let start = cx.str_of(name) + start;
-            let init = cx.expr_str_uniq(span, start.to_managed());
+            let interned_str = token::get_ident(name.name);
+            let start =
+                token::intern_and_get_ident(interned_str.get() + start);
+            let init = cx.expr_str_uniq(span, start);
             let mut stmts = ~[cx.stmt_let(span, true, buf, init)];
             let push_str = cx.ident_of("push_str");
 
@@ -70,38 +76,53 @@ fn to_str_substructure(cx: &ExtCtxt, span: Span,
 
             for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
                 if i > 0 {
-                    push(cx.expr_str(span, @", "));
+                    push(cx.expr_str(span, InternedString::new(", ")));
                 }
                 match name {
                     None => {}
                     Some(id) => {
-                        let name = cx.str_of(id) + ": ";
-                        push(cx.expr_str(span, name.to_managed()));
+                        let interned_id = token::get_ident(id.name);
+                        let name = interned_id.get() + ": ";
+                        push(cx.expr_str(span,
+                                         token::intern_and_get_ident(name)));
                     }
                 }
                 push(cx.expr_method_call(span, self_, to_str, ~[]));
             }
             push(cx.expr_str(span, end));
 
-            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span, buf))))
+            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span,
+                                                                   buf))))
         }
     };
 
     return match *substr.fields {
         Struct(ref fields) => {
             if fields.len() == 0 || fields[0].name.is_none() {
-                doit("(", @")", substr.type_ident, *fields)
+                doit("(",
+                     InternedString::new(")"),
+                     substr.type_ident,
+                     *fields)
             } else {
-                doit("{", @"}", substr.type_ident, *fields)
+                doit("{",
+                     InternedString::new("}"),
+                     substr.type_ident,
+                     *fields)
             }
         }
 
         EnumMatching(_, variant, ref fields) => {
             match variant.node.kind {
                 ast::TupleVariantKind(..) =>
-                    doit("(", @")", variant.node.name, *fields),
+                    doit("(",
+                         InternedString::new(")"),
+                         variant.node.name,
+                         *fields),
                 ast::StructVariantKind(..) =>
-                    doit("{", @"}", variant.node.name, *fields),
+                    doit("{",
+                         InternedString::new("}"),
+                         variant.node.name,
+                         *fields),
             }
         }
 

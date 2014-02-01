@@ -44,6 +44,7 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::ext::base::CrateLoader;
 use syntax::parse;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
 use syntax;
@@ -60,12 +61,14 @@ pub enum PpMode {
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-pub fn anon_src() -> @str { @"<anon>" }
+pub fn anon_src() -> ~str {
+    "<anon>".to_str()
+}
 
-pub fn source_name(input: &Input) -> @str {
+pub fn source_name(input: &Input) -> ~str {
     match *input {
       // FIXME (#9639): This needs to handle non-utf8 paths
-      FileInput(ref ifile) => ifile.as_str().unwrap().to_managed(),
+      FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
       StrInput(_) => anon_src()
     }
 }
@@ -73,39 +76,41 @@ pub fn source_name(input: &Input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        abi::OsWin32 =>   @"win32",
-        abi::OsMacos =>   @"macos",
-        abi::OsLinux =>   @"linux",
-        abi::OsAndroid => @"android",
-        abi::OsFreebsd => @"freebsd"
+        abi::OsWin32 =>   InternedString::new("win32"),
+        abi::OsMacos =>   InternedString::new("macos"),
+        abi::OsLinux =>   InternedString::new("linux"),
+        abi::OsAndroid => InternedString::new("android"),
+        abi::OsFreebsd => InternedString::new("freebsd"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
     let (end,arch,wordsz) = match sess.targ_cfg.arch {
-        abi::X86 =>    (@"little", @"x86",    @"32"),
-        abi::X86_64 => (@"little", @"x86_64", @"64"),
-        abi::Arm =>    (@"little", @"arm",    @"32"),
-        abi::Mips =>   (@"big",    @"mips",   @"32")
+        abi::X86 =>    ("little", "x86",    "32"),
+        abi::X86_64 => ("little", "x86_64", "64"),
+        abi::Arm =>    ("little", "arm",    "32"),
+        abi::Mips =>   ("big",    "mips",   "32")
     };
 
     let fam = match sess.targ_cfg.os {
-        abi::OsWin32 => @"windows",
-        _ => @"unix"
+        abi::OsWin32 => InternedString::new("windows"),
+        _ => InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
-         attr::mk_word_item(fam),
-         mk(@"target_os", tos),
-         mk(@"target_family", fam),
-         mk(@"target_arch", arch),
-         mk(@"target_endian", end),
-         mk(@"target_word_size", wordsz),
+         attr::mk_word_item(fam.clone()),
+         mk(InternedString::new("target_os"), tos),
+         mk(InternedString::new("target_family"), fam),
+         mk(InternedString::new("target_arch"), InternedString::new(arch)),
+         mk(InternedString::new("target_endian"), InternedString::new(end)),
+         mk(InternedString::new("target_word_size"),
+            InternedString::new(wordsz)),
     ];
 }
 
-pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
+pub fn append_configuration(cfg: &mut ast::CrateConfig,
+                            name: InternedString) {
     if !cfg.iter().any(|mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
@@ -118,9 +123,15 @@ pub fn build_configuration(sess: Session) ->
     let default_cfg = default_configuration(sess);
     let mut user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
-    if sess.opts.test { append_configuration(&mut user_cfg, @"test") }
+    if sess.opts.test {
+        append_configuration(&mut user_cfg, InternedString::new("test"))
+    }
     // If the user requested GC, then add the GC cfg
-    append_configuration(&mut user_cfg, if sess.opts.gc { @"gc" } else { @"nogc" });
+    append_configuration(&mut user_cfg, if sess.opts.gc {
+        InternedString::new("gc")
+    } else {
+        InternedString::new("nogc")
+    });
     return vec::append(user_cfg, default_cfg);
 }
 
@@ -129,7 +140,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
-        parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -137,8 +148,7 @@ pub enum Input {
     /// Load source from file
     FileInput(Path),
     /// The string is the source
-    // FIXME (#2319): Don't really want to box the source string
-    StrInput(@str)
+    StrInput(~str)
 }
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
@@ -148,9 +158,11 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
             }
-            StrInput(src) => {
-                parse::parse_crate_from_source_str(
-                    anon_src(), src, cfg.clone(), sess.parse_sess)
+            StrInput(ref src) => {
+                parse::parse_crate_from_source_str(anon_src(),
+                                                   (*src).clone(),
+                                                   cfg.clone(),
+                                                   sess.parse_sess)
             }
         }
     })
@@ -474,13 +486,13 @@ fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames, crate
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[@str] = {
+    let files: ~[~str] = {
         let files = sess.codemap.files.borrow();
         files.get()
              .iter()
              .filter_map(|fmap| {
                  if fmap.is_real_file() {
-                     Some(fmap.name)
+                     Some(fmap.name.clone())
                  } else {
                      None
                  }
@@ -615,7 +627,7 @@ pub fn pretty_print_input(sess: Session,
         _ => @pprust::NoAnn as @pprust::PpAnn,
     };
 
-    let src = sess.codemap.get_filemap(source_name(input)).src;
+    let src = &sess.codemap.get_filemap(source_name(input)).src;
     let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
@@ -1100,17 +1112,17 @@ pub fn build_output_filenames(input: &Input,
 
           let mut stem = match *input {
               // FIXME (#9639): This needs to handle non-utf8 paths
-              FileInput(ref ifile) => (*ifile).filestem_str().unwrap().to_managed(),
-              StrInput(_) => @"rust_out"
+              FileInput(ref ifile) => {
+                  (*ifile).filestem_str().unwrap().to_str()
+              }
+              StrInput(_) => ~"rust_out"
           };
 
           // If a crateid is present, we use it as the link name
           let crateid = attr::find_crateid(attrs);
           match crateid {
               None => {}
-              Some(crateid) => {
-                  stem = crateid.name.to_managed()
-              }
+              Some(crateid) => stem = crateid.name.to_str(),
           }
 
           if sess.building_library.get() {
@@ -1201,7 +1213,7 @@ mod test {
         let sessopts = build_session_options(~"rustc", matches, @diagnostic::DefaultEmitter);
         let sess = build_session(sessopts, None, @diagnostic::DefaultEmitter);
         let cfg = build_configuration(sess);
-        let mut test_items = cfg.iter().filter(|m| "test" == m.name());
+        let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }

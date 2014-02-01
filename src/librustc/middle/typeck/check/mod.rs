@@ -564,7 +564,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
         let param_env = ty::construct_parameter_environment(
                 ccx.tcx,
                 None,
-                *fn_tpt.generics.type_param_defs,
+                fn_tpt.generics.type_param_defs(),
                 [],
                 [],
                 body.id);
@@ -674,9 +674,9 @@ fn check_method_body(ccx: @CrateCtxt,
         ty::construct_parameter_environment(
             ccx.tcx,
             self_bound,
-            *item_generics.type_param_defs,
-            *method_generics.type_param_defs,
-            item_generics.region_param_defs,
+            item_generics.type_param_defs(),
+            method_generics.type_param_defs(),
+            item_generics.region_param_defs(),
             method.body.id);
 
     // Compute the fty from point of view of inside fn
@@ -776,7 +776,7 @@ fn compare_impl_method(tcx: ty::ctxt,
     debug!("compare_impl_method()");
     let infcx = infer::new_infer_ctxt(tcx);
 
-    let impl_tps = impl_generics.type_param_defs.len();
+    let impl_tps = impl_generics.type_param_defs().len();
 
     // Try to give more informative error messages about self typing
     // mismatches.  Note that any mismatch will also be detected
@@ -812,8 +812,8 @@ fn compare_impl_method(tcx: ty::ctxt,
         }
     }
 
-    let num_impl_m_type_params = impl_m.generics.type_param_defs.len();
-    let num_trait_m_type_params = trait_m.generics.type_param_defs.len();
+    let num_impl_m_type_params = impl_m.generics.type_param_defs().len();
+    let num_trait_m_type_params = trait_m.generics.type_param_defs().len();
     if num_impl_m_type_params != num_trait_m_type_params {
         tcx.sess.span_err(
             impl_m_span,
@@ -838,10 +838,10 @@ fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    for (i, trait_param_def) in trait_m.generics.type_param_defs.iter().enumerate() {
-        // For each of the corresponding impl ty param's bounds...
-        let impl_param_def = &impl_m.generics.type_param_defs[i];
+    let it = trait_m.generics.type_param_defs().iter()
+        .zip(impl_m.generics.type_param_defs().iter());
 
+    for (i, (trait_param_def, impl_param_def)) in it.enumerate() {
         // Check that the impl does not require any builtin-bounds
         // that the trait does not guarantee:
         let extra_bounds =
@@ -886,15 +886,15 @@ fn compare_impl_method(tcx: ty::ctxt,
     // impl type is "&'a str", then this would replace the self
     // type with a free region `self`.
     let dummy_impl_tps: ~[ty::t] =
-        impl_generics.type_param_defs.iter().enumerate().
+        impl_generics.type_param_defs().iter().enumerate().
         map(|(i,t)| ty::mk_param(tcx, i, t.def_id)).
         collect();
     let dummy_method_tps: ~[ty::t] =
-        impl_m.generics.type_param_defs.iter().enumerate().
+        impl_m.generics.type_param_defs().iter().enumerate().
         map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
         collect();
     let dummy_impl_regions: OptVec<ty::Region> =
-        impl_generics.region_param_defs.iter().
+        impl_generics.region_param_defs().iter().
         map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
                 bound_region: ty::BrNamed(l.def_id, l.ident)})).
@@ -1374,8 +1374,8 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let (n_tps, n_rps, raw_ty) = {
         let ity = ty::lookup_item_type(tcx, did);
-        (ity.generics.type_param_defs.len(),
-         ity.generics.region_param_defs.len(),
+        (ity.generics.type_param_defs().len(),
+         ity.generics.region_param_defs().len(),
          ity.ty)
     };
 
@@ -1419,10 +1419,10 @@ fn generics_of_static_method_container(type_context: ty::ctxt,
                                        -> ty::Generics {
     match provenance {
         ast::FromTrait(trait_def_id) => {
-            ty::lookup_trait_def(type_context, trait_def_id).generics
+            ty::lookup_trait_def(type_context, trait_def_id).generics.clone()
         }
         ast::FromImpl(impl_def_id) => {
-            ty::lookup_item_type(type_context, impl_def_id).generics
+            ty::lookup_item_type(type_context, impl_def_id).generics.clone()
         }
     }
 }
@@ -1485,7 +1485,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
 
             // Make sure lifetime parameterization agrees with the trait or
             // implementation type.
-            let trait_region_parameter_count = generics.region_param_defs.len();
+            let trait_region_parameter_count = generics.region_param_defs().len();
             let supplied_region_parameter_count = trait_segment.lifetimes.len();
             if trait_region_parameter_count != supplied_region_parameter_count
                 && supplied_region_parameter_count != 0 {
@@ -1501,8 +1501,8 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
             // Make sure the number of type parameters supplied on the trait
             // or implementation segment equals the number of type parameters
             // on the trait or implementation definition.
-            let formal_ty_param_count = generics.type_param_defs.len();
-            let required_ty_param_count = generics.type_param_defs.iter()
+            let formal_ty_param_count = generics.type_param_defs().len();
+            let required_ty_param_count = generics.type_param_defs().iter()
                                                   .take_while(|x| x.default.is_none())
                                                   .len();
             let supplied_ty_param_count = trait_segment.types.len();
@@ -1517,7 +1517,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
                 } else {
                     "s"
                 };
-                let needs = if required_ty_param_count < generics.type_param_defs.len() {
+                let needs = if required_ty_param_count < generics.type_param_defs().len() {
                     "needs at least"
                 } else {
                     "needs"
@@ -1539,7 +1539,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
                 } else {
                     "s"
                 };
-                let needs = if required_ty_param_count < generics.type_param_defs.len() {
+                let needs = if required_ty_param_count < generics.type_param_defs().len() {
                     "needs at most"
                 } else {
                     "needs"
@@ -2335,9 +2335,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
+                        let string = token::get_ident(field);
                         format!("attempted to take value of method `{}` on type `{}` \
-                              (try writing an anonymous function)",
-                             token::interner_get(field), actual)
+                                 (try writing an anonymous function)",
+                                string.get(),
+                                actual)
                     },
                     expr_t, None);
             }
@@ -2346,9 +2348,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
+                        let string = token::get_ident(field);
                         format!("attempted access of field `{}` on type `{}`, \
-                              but no field with that name was found",
-                             token::interner_get(field), actual)
+                                 but no field with that name was found",
+                                string.get(),
+                                actual)
                     },
                     expr_t, None);
             }
@@ -2428,8 +2432,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     let name = class_field.name;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
-                        missing_fields.push(
-                            ~"`" + token::interner_get(name) + "`");
+                        let string = token::get_ident(name);
+                        missing_fields.push(~"`" + string.get() + "`");
                     }
                 }
 
@@ -2461,8 +2465,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the class is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, class_id);
-        let type_parameter_count = item_type.generics.type_param_defs.len();
-        let region_parameter_count = item_type.generics.region_param_defs.len();
+        let type_parameter_count = item_type.generics.type_param_defs().len();
+        let region_parameter_count = item_type.generics.region_param_defs().len();
         let raw_type = item_type.ty;
 
         // Generate the struct type.
@@ -2519,8 +2523,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, enum_id);
-        let type_parameter_count = item_type.generics.type_param_defs.len();
-        let region_parameter_count = item_type.generics.region_param_defs.len();
+        let type_parameter_count = item_type.generics.type_param_defs().len();
+        let region_parameter_count = item_type.generics.region_param_defs().len();
         let raw_type = item_type.ty;
 
         // Generate the enum type.
@@ -3706,8 +3710,8 @@ pub fn instantiate_path(fcx: @FnCtxt,
                         node_id: ast::NodeId) {
     debug!(">>> instantiate_path");
 
-    let ty_param_count = tpt.generics.type_param_defs.len();
-    let ty_param_req = tpt.generics.type_param_defs.iter()
+    let ty_param_count = tpt.generics.type_param_defs().len();
+    let ty_param_req = tpt.generics.type_param_defs().iter()
                                                    .take_while(|x| x.default.is_none())
                                                    .len();
     let mut ty_substs_len = 0;
@@ -3722,7 +3726,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
     // determine the region parameters, using the value given by the user
     // (if any) and otherwise using a fresh region variable
-    let num_expected_regions = tpt.generics.region_param_defs.len();
+    let num_expected_regions = tpt.generics.region_param_defs().len();
     let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
         pth.segments.last().unwrap().lifetimes.map(
@@ -3751,7 +3755,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
         ast::DefStaticMethod(_, provenance @ ast::FromTrait(_), _) => {
             let generics = generics_of_static_method_container(fcx.ccx.tcx,
                                                                provenance);
-            (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs.len()))
+            (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs().len()))
         }
         _ => (ty_param_count, ty_param_req, None),
     };
@@ -3796,7 +3800,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
         // at the appropriate position.
         let mut result = ~[];
         let mut pushed = false;
-        let defaults = tpt.generics.type_param_defs.iter()
+        let defaults = tpt.generics.type_param_defs().iter()
                           .enumerate().filter_map(|(i, x)| {
             match self_parameter_index {
                 Some(index) if index == i => None,
@@ -3905,7 +3909,6 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
                               -> ty::vstore {
     match v {
         ast::ExprVstoreUniq => ty::vstore_uniq,
-        ast::ExprVstoreBox => ty::vstore_box,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             match e.node {
                 ast::ExprLit(..) |
@@ -4301,7 +4304,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
                     variadic: false}
     });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
-    let i_n_tps = i_ty.generics.type_param_defs.len();
+    let i_n_tps = i_ty.generics.type_param_defs().len();
     if i_n_tps != n_tps {
         tcx.sess.span_err(it.span, format!("intrinsic has wrong number \
                                          of type parameters: found {}, \

@@ -202,12 +202,10 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                     unpack_datum!(bcx, auto_ref(bcx, datum, expr))
                 }
                 Some(AutoBorrowVec(..)) => {
-                    unpack_datum!(bcx, auto_slice(bcx, adj.autoderefs,
-                                                  expr, datum))
+                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
                 }
                 Some(AutoBorrowVecRef(..)) => {
-                    unpack_datum!(bcx, auto_slice_and_ref(bcx, adj.autoderefs,
-                                                          expr, datum))
+                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
                 Some(AutoBorrowFn(..)) => {
                     let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
@@ -271,7 +269,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
     fn auto_slice<'a>(
                   bcx: &'a Block<'a>,
-                  autoderefs: uint,
                   expr: &ast::Expr,
                   datum: Datum<Expr>)
                   -> DatumBlock<'a, Expr> {
@@ -290,8 +287,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let datum = unpack_datum!(
             bcx, datum.to_lvalue_datum(bcx, "auto_slice", expr.id));
 
-        let (bcx, base, len) =
-            datum.get_vec_base_and_len(bcx, expr.span, expr.id, autoderefs+1);
+        let (base, len) = datum.get_vec_base_and_len(bcx);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -323,11 +319,10 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
     fn auto_slice_and_ref<'a>(
                           bcx: &'a Block<'a>,
-                          autoderefs: uint,
                           expr: &ast::Expr,
                           datum: Datum<Expr>)
                           -> DatumBlock<'a, Expr> {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, autoderefs, expr, datum);
+        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
         auto_ref(bcx, datum, expr)
     }
 
@@ -519,19 +514,10 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprIndex(_, base, idx) => {
             trans_index(bcx, expr, base, idx)
         }
-        ast::ExprVstore(contents, ast::ExprVstoreBox) => {
-            fcx.push_ast_cleanup_scope(contents.id);
-            let datum = unpack_datum!(
-                bcx, tvec::trans_uniq_or_managed_vstore(bcx, heap_managed,
-                                                        expr, contents));
-            bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
-            DatumBlock(bcx, datum)
-        }
         ast::ExprVstore(contents, ast::ExprVstoreUniq) => {
             fcx.push_ast_cleanup_scope(contents.id);
             let datum = unpack_datum!(
-                bcx, tvec::trans_uniq_or_managed_vstore(bcx, heap_exchange,
-                                                        expr, contents));
+                bcx, tvec::trans_uniq_vstore(bcx, expr, contents));
             bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
             DatumBlock(bcx, datum)
         }
@@ -543,9 +529,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             let heap = heap_exchange;
             return trans_boxed_expr(bcx, box_ty, contents, contents_ty, heap)
         }
-        ast::ExprLit(lit) => {
-            trans_immediate_lit(bcx, expr, *lit)
-        }
+        ast::ExprLit(lit) => trans_immediate_lit(bcx, expr, (*lit).clone()),
         ast::ExprBinary(_, op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
             {
@@ -636,8 +620,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
     let vt = tvec::vec_types(bcx, base_datum.ty);
     base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
 
-    let (bcx, base, len) =
-        base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id, 0);
+    let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
     debug!("trans_index: base {}", bcx.val_to_str(base));
     debug!("trans_index: len {}", bcx.val_to_str(len));
@@ -836,8 +819,8 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(s, _) => {
-                    tvec::trans_lit_str(bcx, expr, s, dest)
+                ast::LitStr(ref s, _) => {
+                    tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
                     bcx.tcx()
@@ -1799,9 +1782,9 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>)
             let external_srcs = ccx.external_srcs.borrow();
             srccrate = match external_srcs.get().find(&bcx.fcx.id) {
                 Some(&src) => {
-                    ccx.sess.cstore.get_crate_data(src.crate).name
+                    ccx.sess.cstore.get_crate_data(src.crate).name.clone()
                 }
-                None => ccx.link_meta.crateid.name.to_managed(),
+                None => ccx.link_meta.crateid.name.to_str(),
             };
         };
         let mut modpath = ~[PathMod(ccx.sess.ident_of(srccrate))];
@@ -2032,4 +2015,3 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         DatumBlock { bcx: bcx, datum: datum }
     }
 }
-

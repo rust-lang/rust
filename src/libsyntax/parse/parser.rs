@@ -29,7 +29,7 @@ use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
-use ast::{ExprVec, ExprVstore, ExprVstoreSlice, ExprVstoreBox};
+use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
 use ast::{ExprVstoreUniq, Onceness, Once, Many};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
@@ -71,10 +71,9 @@ use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
-use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
-use parse::token::{is_ident_or_path};
-use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
-use parse::token::{token_to_binop};
+use parse::token::{INTERPOLATED, InternedString, can_begin_expr, get_ident};
+use parse::token::{get_ident_interner, is_ident, is_ident_or_path};
+use parse::token::{is_plain_ident, keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
@@ -345,7 +344,7 @@ pub struct Parser {
     /// extra detail when the same error is seen twice
     obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: ~[@str],
+    mod_path_stack: ~[InternedString],
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: ~[Span],
     /* do not copy the parser; its state is tied to outside state */
@@ -531,10 +530,11 @@ impl Parser {
     // otherwise, eat it.
     pub fn expect_keyword(&mut self, kw: keywords::Keyword) {
         if !self.eat_keyword(kw) {
-            let id_str = self.id_to_str(kw.to_ident()).to_str();
+            let id_ident = kw.to_ident();
+            let id_interned_str = token::get_ident(id_ident.name);
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `{}`, found `{}`",
-                               id_str,
+                               id_interned_str.get(),
                                token_str))
         }
     }
@@ -802,8 +802,8 @@ impl Parser {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
 
-    pub fn id_to_str(&mut self, id: Ident) -> @str {
-        get_ident_interner().get(id.name)
+    pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
+        get_ident(id.name)
     }
 
     // Is the current token one of the keywords that signals a bare function
@@ -1291,7 +1291,7 @@ impl Parser {
         }
 
         // other things are parsed as @/~ + a type.  Note that constructs like
-        // @[] and @str will be resolved during typeck to slices and so forth,
+        // ~[] and ~str will be resolved during typeck to slices and so forth,
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         if sigil == OwnedSigil {
@@ -1401,11 +1401,18 @@ impl Parser {
             token::LIT_INT(i, it) => LitInt(i, it),
             token::LIT_UINT(u, ut) => LitUint(u, ut),
             token::LIT_INT_UNSUFFIXED(i) => LitIntUnsuffixed(i),
-            token::LIT_FLOAT(s, ft) => LitFloat(self.id_to_str(s), ft),
-            token::LIT_FLOAT_UNSUFFIXED(s) =>
-                LitFloatUnsuffixed(self.id_to_str(s)),
-            token::LIT_STR(s) => LitStr(self.id_to_str(s), ast::CookedStr),
-            token::LIT_STR_RAW(s, n) => LitStr(self.id_to_str(s), ast::RawStr(n)),
+            token::LIT_FLOAT(s, ft) => {
+                LitFloat(self.id_to_interned_str(s), ft)
+            }
+            token::LIT_FLOAT_UNSUFFIXED(s) => {
+                LitFloatUnsuffixed(self.id_to_interned_str(s))
+            }
+            token::LIT_STR(s) => {
+                LitStr(self.id_to_interned_str(s), ast::CookedStr)
+            }
+            token::LIT_STR_RAW(s, n) => {
+                LitStr(self.id_to_interned_str(s), ast::RawStr(n))
+            }
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
             _ => { self.unexpected_last(tok); }
         }
@@ -2284,11 +2291,19 @@ impl Parser {
             self.bump();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn @[...] into a @-vec
+            // HACK: pretending @[] is a (removed) @-vec
             ex = match e.node {
               ExprVec(..) |
-              ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
-              ExprLit(lit) if lit_is_str(lit) => ExprVstore(e, ExprVstoreBox),
+              ExprRepeat(..) => {
+                  self.obsolete(e.span, ObsoleteManagedVec);
+                  // the above error means that no-one will know we're
+                  // lying... hopefully.
+                  ExprVstore(e, ExprVstoreUniq)
+              }
+              ExprLit(lit) if lit_is_str(lit) => {
+                  self.obsolete(self.last_span, ObsoleteManagedString);
+                  ExprVstore(e, ExprVstoreUniq)
+              }
               _ => self.mk_unary(UnBox, e)
             };
           }
@@ -2806,34 +2821,11 @@ impl Parser {
           token::AT => {
             self.bump();
             let sub = self.parse_pat();
-            hi = sub.span.hi;
-            // HACK: parse @"..." as a literal of a vstore @str
-            pat = match sub.node {
-              PatLit(e) => {
-                  match e.node {
-                      ExprLit(lit) if lit_is_str(lit) => {
-                        let vst = @Expr {
-                            id: ast::DUMMY_NODE_ID,
-                            node: ExprVstore(e, ExprVstoreBox),
-                            span: mk_sp(lo, hi),
-                        };
-                        PatLit(vst)
-                      }
-                      _ => {
-                        self.obsolete(self.span, ObsoleteManagedPattern);
-                        PatUniq(sub)
-                      }
-                  }
-              }
-              _ => {
-                self.obsolete(self.span, ObsoleteManagedPattern);
-                PatUniq(sub)
-              }
-            };
-            hi = self.last_span.hi;
+            self.obsolete(self.span, ObsoleteManagedPattern);
+            let hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
-                node: pat,
+                node: PatUniq(sub),
                 span: mk_sp(lo, hi)
             }
           }
@@ -3429,7 +3421,9 @@ impl Parser {
         loop {
             match self.token {
                 token::LIFETIME(lifetime) => {
-                    if "static" == self.id_to_str(lifetime) {
+                    let lifetime_interned_string =
+                        token::get_ident(lifetime.name);
+                    if lifetime_interned_string.equiv(&("static")) {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(self.span,
@@ -3970,8 +3964,9 @@ impl Parser {
                 fields.push(self.parse_struct_decl_field());
             }
             if fields.len() == 0 {
+                let string = get_ident_interner().get(class_name.name);
                 self.fatal(format!("Unit-like struct definition should be written as `struct {};`",
-                                get_ident_interner().get(class_name.name)));
+                                   string.as_slice()));
             }
             self.bump();
         } else if self.token == token::LPAREN {
@@ -4142,11 +4137,11 @@ impl Parser {
     }
 
     fn push_mod_path(&mut self, id: Ident, attrs: &[Attribute]) {
-        let default_path = token::interner_get(id.name);
+        let default_path = self.id_to_interned_str(id);
         let file_path = match ::attr::first_attr_value_str_by_name(attrs,
                                                                    "path") {
             Some(d) => d,
-            None => default_path
+            None => default_path,
         };
         self.mod_path_stack.push(file_path)
     }
@@ -4169,7 +4164,8 @@ impl Parser {
                 outer_attrs, "path") {
             Some(d) => dir_path.join(d),
             None => {
-                let mod_name = token::interner_get(id.name).to_owned();
+                let mod_string = token::get_ident(id.name);
+                let mod_name = mod_string.get().to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
                 let default_path = dir_path.join(default_path_str.as_slice());
@@ -4524,7 +4520,8 @@ impl Parser {
             token::LIT_STR(s)
             | token::LIT_STR_RAW(s, _) => {
                 self.bump();
-                let the_string = ident_to_str(&s);
+                let identifier_string = token::get_ident(s.name);
+                let the_string = identifier_string.get();
                 let mut abis = AbiSet::empty();
                 for word in the_string.words() {
                     match abi::lookup(word) {
@@ -4860,7 +4857,6 @@ impl Parser {
 
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!("parsed view path: {}", self.id_to_str(first_ident));
         match self.token {
           token::EQ => {
             // x = foo::bar
@@ -5119,17 +5115,20 @@ impl Parser {
         }
     }
 
-    pub fn parse_optional_str(&mut self) -> Option<(@str, ast::StrStyle)> {
+    pub fn parse_optional_str(&mut self)
+                              -> Option<(InternedString, ast::StrStyle)> {
         let (s, style) = match self.token {
-            token::LIT_STR(s) => (s, ast::CookedStr),
-            token::LIT_STR_RAW(s, n) => (s, ast::RawStr(n)),
+            token::LIT_STR(s) => (self.id_to_interned_str(s), ast::CookedStr),
+            token::LIT_STR_RAW(s, n) => {
+                (self.id_to_interned_str(s), ast::RawStr(n))
+            }
             _ => return None
         };
         self.bump();
-        Some((ident_to_str(&s), style))
+        Some((s, style))
     }
 
-    pub fn parse_str(&mut self) -> (@str, StrStyle) {
+    pub fn parse_str(&mut self) -> (InternedString, StrStyle) {
         match self.parse_optional_str() {
             Some(s) => { s }
             _ =>  self.fatal("expected string literal")

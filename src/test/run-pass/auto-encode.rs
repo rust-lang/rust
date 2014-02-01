@@ -144,9 +144,6 @@ pub fn main() {
     let a = &Point {x: 3u, y: 5u};
     test_ebml(a);
 
-    let a = &@[1u, 2u, 3u];
-    test_ebml(a);
-
     let a = &Top(22u);
     test_ebml(a);
 

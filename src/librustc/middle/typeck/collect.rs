@@ -44,6 +44,7 @@ use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::ppaux;
 use util::ppaux::Repr;
 
+use std::rc::Rc;
 use std::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
@@ -285,9 +286,9 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let dummy_defid = ast::DefId {crate: 0, node: 0};
 
         // Represents [A',B',C']
-        let num_trait_bounds = trait_ty_generics.type_param_defs.len();
+        let num_trait_bounds = trait_ty_generics.type_param_defs().len();
         let non_shifted_trait_tps = vec::from_fn(num_trait_bounds, |i| {
-            ty::mk_param(tcx, i, trait_ty_generics.type_param_defs[i].def_id)
+            ty::mk_param(tcx, i, trait_ty_generics.type_param_defs()[i].def_id)
         });
 
         // Represents [D']
@@ -295,18 +296,18 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
                                       dummy_defid);
 
         // Represents [E',F',G']
-        let num_method_bounds = m.generics.type_param_defs.len();
+        let num_method_bounds = m.generics.type_param_defs().len();
         let shifted_method_tps = vec::from_fn(num_method_bounds, |i| {
             ty::mk_param(tcx, i + num_trait_bounds + 1,
-                         m.generics.type_param_defs[i].def_id)
+                         m.generics.type_param_defs()[i].def_id)
         });
 
         // Convert the regions 'a, 'b, 'c defined on the trait into
         // bound regions on the fn. Note that because these appear in the
         // bound for `Self` they must be early bound.
-        let new_early_region_param_defs = trait_ty_generics.region_param_defs;
+        let new_early_region_param_defs = trait_ty_generics.region_param_defs.clone();
         let rps_from_trait =
-            trait_ty_generics.region_param_defs.iter().
+            trait_ty_generics.region_param_defs().iter().
             enumerate().
             map(|(index,d)| ty::ReEarlyBound(d.def_id.node, index, d.ident)).
             collect();
@@ -334,7 +335,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let mut new_type_param_defs = ~[];
         let substd_type_param_defs =
             trait_ty_generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs);
+        new_type_param_defs.push_all(*substd_type_param_defs.borrow());
 
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
@@ -351,7 +352,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
 
         // add in the type parameters from the method
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs);
+        new_type_param_defs.push_all(*substd_type_param_defs.borrow());
 
         debug!("static method {} type_param_defs={} ty={}, substs={}",
                m.def_id.repr(tcx),
@@ -363,7 +364,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         tcache.get().insert(m.def_id,
                           ty_param_bounds_and_ty {
                               generics: ty::Generics {
-                                  type_param_defs: @new_type_param_defs,
+                                  type_param_defs: Rc::new(new_type_param_defs),
                                   region_param_defs: new_early_region_param_defs
                               },
                               ty: ty
@@ -383,7 +384,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
         let fty = astconv::ty_of_method(this, *m_id, *m_purity, trait_self_ty,
                                         *m_explicit_self, m_decl);
-        let num_trait_type_params = trait_generics.type_param_defs.len();
+        let num_trait_type_params = trait_generics.type_param_defs().len();
         ty::Method::new(
             *m_ident,
             // FIXME(#5121) -- distinguish early vs late lifetime params
@@ -466,7 +467,7 @@ fn convert_methods(ccx: &CrateCtxt,
 {
     let tcx = ccx.tcx;
     for m in ms.iter() {
-        let num_rcvr_ty_params = rcvr_ty_generics.type_param_defs.len();
+        let num_rcvr_ty_params = rcvr_ty_generics.type_param_defs().len();
         let m_ty_generics = ty_generics(ccx, &m.generics, num_rcvr_ty_params);
         let mty = @ty_of_method(ccx,
                                 container,
@@ -489,10 +490,10 @@ fn convert_methods(ccx: &CrateCtxt,
                 // itself
                 ty_param_bounds_and_ty {
                     generics: ty::Generics {
-                        type_param_defs: @vec::append(
-                            (*rcvr_ty_generics.type_param_defs).clone(),
-                            *m_ty_generics.type_param_defs),
-                        region_param_defs: rcvr_ty_generics.region_param_defs,
+                        type_param_defs: Rc::new(vec::append(
+                            rcvr_ty_generics.type_param_defs().to_owned(),
+                            m_ty_generics.type_param_defs())),
+                        region_param_defs: rcvr_ty_generics.region_param_defs.clone(),
                     },
                     ty: fty
                 });
@@ -574,7 +575,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             let mut tcache = tcx.tcache.borrow_mut();
             tcache.get().insert(local_def(it.id),
                               ty_param_bounds_and_ty {
-                                  generics: i_ty_generics,
+                                  generics: i_ty_generics.clone(),
                                   ty: selfty});
         }
 
@@ -637,7 +638,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
         {
             let mut tcache = tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
         }
 
         convert_struct(ccx, struct_def, tpt, it.id);
@@ -816,7 +817,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
     {
         let tcache = tcx.tcache.borrow();
         match tcache.get().find(&def_id) {
-            Some(&tpt) => return tpt,
+            Some(tpt) => return tpt.clone(),
             _ => {}
         }
     }
@@ -826,7 +827,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             let tpt = no_params(typ);
 
             let mut tcache = tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
             return tpt;
         }
         ast::ItemFn(decl, purity, abi, ref generics, _) => {
@@ -838,8 +839,8 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                                               decl);
             let tpt = ty_param_bounds_and_ty {
                 generics: ty::Generics {
-                    type_param_defs: ty_generics.type_param_defs,
-                    region_param_defs: @[],
+                    type_param_defs: ty_generics.type_param_defs.clone(),
+                    region_param_defs: Rc::new(~[]),
                 },
                 ty: ty::mk_bare_fn(ccx.tcx, tofd)
             };
@@ -849,14 +850,14 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                     ppaux::ty_to_str(tcx, tpt.ty));
 
             let mut tcache = ccx.tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
             return tpt;
         }
         ast::ItemTy(t, ref generics) => {
             {
                 let mut tcache = tcx.tcache.borrow_mut();
                 match tcache.get().find(&local_def(it.id)) {
-                    Some(&tpt) => return tpt,
+                    Some(tpt) => return tpt.clone(),
                     None => { }
                 }
             }
@@ -870,7 +871,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             };
 
             let mut tcache = tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
             return tpt;
         }
         ast::ItemEnum(_, ref generics) => {
@@ -884,7 +885,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             };
 
             let mut tcache = tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
             return tpt;
         }
         ast::ItemTrait(..) => {
@@ -902,7 +903,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             };
 
             let mut tcache = tcx.tcache.borrow_mut();
-            tcache.get().insert(local_def(it.id), tpt);
+            tcache.get().insert(local_def(it.id), tpt.clone());
             return tpt;
         }
         ast::ItemImpl(..) | ast::ItemMod(_) |
@@ -925,8 +926,8 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
         ast::ForeignItemStatic(t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
-                    type_param_defs: @~[],
-                    region_param_defs: @[],
+                    type_param_defs: Rc::new(~[]),
+                    region_param_defs: Rc::new(~[]),
                 },
                 ty: ast_ty_to_ty(ccx, &ExplicitRscope, t)
             }
@@ -938,11 +939,11 @@ pub fn ty_generics(ccx: &CrateCtxt,
                    generics: &ast::Generics,
                    base_index: uint) -> ty::Generics {
     return ty::Generics {
-        region_param_defs: generics.lifetimes.iter().map(|l| {
+        region_param_defs: Rc::new(generics.lifetimes.iter().map(|l| {
                 ty::RegionParameterDef { ident: l.ident,
                                          def_id: local_def(l.id) }
-            }).collect(),
-        type_param_defs: @generics.ty_params.mapi_to_vec(|offset, param| {
+            }).collect()),
+        type_param_defs: Rc::new(generics.ty_params.mapi_to_vec(|offset, param| {
             let existing_def_opt = {
                 let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
                 ty_param_defs.get().find(&param.id).map(|def| *def)
@@ -969,7 +970,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     def
                 }
             }
-        })
+        }))
     };
 
     fn compute_bounds(
@@ -1040,7 +1041,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     };
 
     let mut tcache = ccx.tcx.tcache.borrow_mut();
-    tcache.get().insert(def_id, tpt);
+    tcache.get().insert(def_id, tpt.clone());
     return tpt;
 }
 
@@ -1049,11 +1050,11 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
                       self_ty: Option<ty::t>) -> ty::substs
 {
     let params: ~[ty::t] =
-        ty_generics.type_param_defs.iter().enumerate().map(
+        ty_generics.type_param_defs().iter().enumerate().map(
             |(i, t)| ty::mk_param(ccx.tcx, i, t.def_id)).collect();
 
     let regions: OptVec<ty::Region> =
-        ty_generics.region_param_defs.iter().enumerate().map(
+        ty_generics.region_param_defs().iter().enumerate().map(
             |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.ident)).collect();
 
     substs {regions: ty::NonerasedRegions(regions),

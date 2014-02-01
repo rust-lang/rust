@@ -57,12 +57,14 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                                 ty_to_str(cx.tcx, lit_int_ty)))
             }
         }
-        ast::LitFloat(fs, t) => C_floating(fs, Type::float_from_ty(t)),
-        ast::LitFloatUnsuffixed(fs) => {
+        ast::LitFloat(ref fs, t) => {
+            C_floating(fs.get(), Type::float_from_ty(t))
+        }
+        ast::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
             match ty::get(lit_float_ty).sty {
                 ty::ty_float(t) => {
-                    C_floating(fs, Type::float_from_ty(t))
+                    C_floating(fs.get(), Type::float_from_ty(t))
                 }
                 _ => {
                     cx.sess.span_bug(lit.span,
@@ -72,8 +74,8 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         }
         ast::LitBool(b) => C_bool(b),
         ast::LitNil => C_nil(),
-        ast::LitStr(s, _) => C_str_slice(cx, s),
-        ast::LitBinary(data) => C_binary_slice(cx, data),
+        ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
+        ast::LitBinary(ref data) => C_binary_slice(cx, *data.borrow()),
     }
 }
 
@@ -312,7 +314,9 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
     unsafe {
         let _icx = push_ctxt("const_expr");
         return match e.node {
-          ast::ExprLit(lit) => (consts::const_lit(cx, e, *lit), true),
+          ast::ExprLit(lit) => {
+              (consts::const_lit(cx, e, (*lit).clone()), true)
+          }
           ast::ExprBinary(_, b, e1, e2) => {
             let (te1, _) = const_expr(cx, e1, is_local);
             let (te2, _) = const_expr(cx, e2, is_local);

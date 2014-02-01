@@ -30,7 +30,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
-
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cast::transmute;
@@ -41,6 +40,7 @@ use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use syntax::ast::{Ident};
 use syntax::ast_map::{Path, PathElem, PathPrettyName};
 use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 
@@ -446,8 +446,9 @@ impl<'a> Block<'a> {
     }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    pub fn ident(&self, ident: Ident) -> @str {
-        token::ident_to_str(&ident)
+    pub fn ident(&self, ident: Ident) -> ~str {
+        let string = token::get_ident(ident.name);
+        string.get().to_str()
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
@@ -597,18 +598,19 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CrateContext, s: @str) -> ValueRef {
+pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
     unsafe {
         {
             let const_cstr_cache = cx.const_cstr_cache.borrow();
-            match const_cstr_cache.get().find_equiv(&s) {
+            match const_cstr_cache.get().find(&s) {
                 Some(&llval) => return llval,
                 None => ()
             }
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx,
-                                                s.as_ptr() as *c_char, s.len() as c_uint,
+                                                s.get().as_ptr() as *c_char,
+                                                s.get().len() as c_uint,
                                                 False);
 
         let gsym = token::gensym("str");
@@ -627,9 +629,9 @@ pub fn C_cstr(cx: &CrateContext, s: @str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CrateContext, s: @str) -> ValueRef {
+pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     unsafe {
-        let len = s.len();
+        let len = s.get().len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
         C_struct([cs, C_uint(cx, len)], false)
     }
@@ -766,7 +768,6 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
         ty::ty_float(_) => MonoFloat,
         ty::ty_rptr(..) | ty::ty_uniq(..) | ty::ty_box(..) |
         ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) |
-        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) |
         ty::ty_bare_fn(..) => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits
@@ -970,7 +971,8 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
 pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
                                        -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-    let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
+    let filename_cstr = C_cstr(bcx.ccx(),
+                               token::intern_and_get_ident(loc.file.name));
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p());
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

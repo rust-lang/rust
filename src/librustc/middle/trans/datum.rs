@@ -528,49 +528,8 @@ impl Datum<Lvalue> {
         }
     }
 
-    pub fn get_vec_base_and_byte_len<'a>(
-                                     &self,
-                                     mut bcx: &'a Block<'a>,
-                                     span: Span,
-                                     expr_id: ast::NodeId,
-                                     derefs: uint)
-                                     -> (&'a Block<'a>, ValueRef, ValueRef) {
-        //! Converts a vector into the slice pair. Performs rooting
-        //! and write guards checks.
-
-        // only imp't for @[] and @str, but harmless
-        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs);
-        let (base, len) = self.get_vec_base_and_byte_len_no_root(bcx);
-        (bcx, base, len)
-    }
-
-    pub fn get_vec_base_and_byte_len_no_root(&self, bcx: &Block)
-                                             -> (ValueRef, ValueRef) {
-        //! Converts a vector into the slice pair. Des not root
-        //! nor perform write guard checks.
-
-        tvec::get_base_and_byte_len(bcx, self.val, self.ty)
-    }
-
-    pub fn get_vec_base_and_len<'a>(&self,
-                                    mut bcx: &'a Block<'a>,
-                                    span: Span,
-                                    expr_id: ast::NodeId,
-                                    derefs: uint)
-                                    -> (&'a Block<'a>, ValueRef, ValueRef) {
-        //! Converts a vector into the slice pair. Performs rooting
-        //! and write guards checks.
-
-        // only imp't for @[] and @str, but harmless
-        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs);
-        let (base, len) = self.get_vec_base_and_len_no_root(bcx);
-        (bcx, base, len)
-    }
-
-    pub fn get_vec_base_and_len_no_root<'a>(&self, bcx: &'a Block<'a>)
-                                            -> (ValueRef, ValueRef) {
-        //! Converts a vector into the slice pair. Des not root
-        //! nor perform write guard checks.
+    pub fn get_vec_base_and_len<'a>(&self, bcx: &'a Block<'a>) -> (ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair.
 
         tvec::get_base_and_len(bcx, self.val, self.ty)
     }

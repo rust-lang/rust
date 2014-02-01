@@ -17,46 +17,35 @@ Unicode string manipulation (`str` type)
 Rust's string type is one of the core primitive types of the language. While
 represented by the name `str`, the name `str` is not actually a valid type in
 Rust. Each string must also be decorated with its ownership. This means that
-there are three common kinds of strings in rust:
+there are two common kinds of strings in rust:
 
 * `~str` - This is an owned string. This type obeys all of the normal semantics
            of the `~T` types, meaning that it has one, and only one, owner. This
            type cannot be implicitly copied, and is moved out of when passed to
            other functions.
 
-* `@str` - This is a managed string. Similarly to `@T`, this type can be
-           implicitly copied, and each implicit copy will increment the
-           reference count to the string. This means that there is no "true
-           owner" of the string, and the string will be deallocated when the
-           reference count reaches 0.
-
-* `&str` - Finally, this is the borrowed string type. This type of string can
-           only be created from one of the other two kinds of strings. As the
-           name "borrowed" implies, this type of string is owned elsewhere, and
-           this string cannot be moved out of.
+* `&str` - This is the borrowed string type. This type of string can only be
+           created from the other kind of string. As the name "borrowed"
+           implies, this type of string is owned elsewhere, and this string
+           cannot be moved out of.
 
 As an example, here's a few different kinds of strings.
 
 ```rust
-#[feature(managed_boxes)];
-
 fn main() {
     let owned_string = ~"I am an owned string";
-    let managed_string = @"This string is garbage-collected";
     let borrowed_string1 = "This string is borrowed with the 'static lifetime";
     let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
-    let borrowed_string3: &str = managed_string; // managed strings can also be borrowed
 }
  ```
 
-From the example above, you can see that rust has 3 different kinds of string
-literals. The owned/managed literals correspond to the owned/managed string
-types, but the "borrowed literal" is actually more akin to C's concept of a
-static string.
+From the example above, you can see that rust has 2 different kinds of string
+literals. The owned literals correspond to the owned string types, but the
+"borrowed literal" is actually more akin to C's concept of a static string.
 
-When a string is declared without a `~` or `@` sigil, then the string is
-allocated statically in the rodata of the executable/library. The string then
-has the type `&'static str` meaning that the string is valid for the `'static`
+When a string is declared without a `~` sigil, then the string is allocated
+statically in the rodata of the executable/library. The string then has the
+type `&'static str` meaning that the string is valid for the `'static`
 lifetime, otherwise known as the lifetime of the entire program. As can be
 inferred from the type, these static strings are not mutable.
 
@@ -89,11 +78,9 @@ The actual representation of strings have direct mappings to vectors:
 
 * `~str` is the same as `~[u8]`
 * `&str` is the same as `&[u8]`
-* `@str` is the same as `@[u8]`
 
 */
 
-use at_vec;
 use cast;
 use cast::transmute;
 use char;
@@ -155,16 +142,6 @@ impl FromStr for ~str {
 impl<'a> ToStr for &'a str {
     #[inline]
     fn to_str(&self) -> ~str { self.to_owned() }
-}
-
-impl ToStr for @str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
-}
-
-impl<'a> FromStr for @str {
-    #[inline]
-    fn from_str(s: &str) -> Option<@str> { Some(s.to_managed()) }
 }
 
 /// Convert a byte to a UTF-8 string
@@ -1140,11 +1117,6 @@ pub mod traits {
         fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
-    impl TotalOrd for @str {
-        #[inline]
-        fn cmp(&self, other: &@str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-    }
-
     impl<'a> Eq for &'a str {
         #[inline]
         fn eq(&self, other: & &'a str) -> bool {
@@ -1157,13 +1129,6 @@ pub mod traits {
     impl Eq for ~str {
         #[inline]
         fn eq(&self, other: &~str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
-
-    impl Eq for @str {
-        #[inline]
-        fn eq(&self, other: &@str) -> bool {
             eq_slice((*self), (*other))
         }
     }
@@ -1182,13 +1147,6 @@ pub mod traits {
         }
     }
 
-    impl TotalEq for @str {
-        #[inline]
-        fn equals(&self, other: &@str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
-
     impl<'a> Ord for &'a str {
         #[inline]
         fn lt(&self, other: & &'a str) -> bool { self.cmp(other) == Less }
@@ -1199,17 +1157,7 @@ pub mod traits {
         fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
     }
 
-    impl Ord for @str {
-        #[inline]
-        fn lt(&self, other: &@str) -> bool { self.cmp(other) == Less }
-    }
-
     impl<'a, S: Str> Equiv<S> for &'a str {
-        #[inline]
-        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-    }
-
-    impl<'a, S: Str> Equiv<S> for @str {
         #[inline]
         fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
@@ -1250,16 +1198,6 @@ impl<'a> Str for ~str {
     fn into_owned(self) -> ~str { self }
 }
 
-impl<'a> Str for @str {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = *self; s
-    }
-
-    #[inline]
-    fn into_owned(self) -> ~str { self.to_owned() }
-}
-
 impl<'a> Container for &'a str {
     #[inline]
     fn len(&self) -> uint {
@@ -1268,11 +1206,6 @@ impl<'a> Container for &'a str {
 }
 
 impl Container for ~str {
-    #[inline]
-    fn len(&self) -> uint { self.as_slice().len() }
-}
-
-impl Container for @str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
 }
@@ -1733,9 +1666,6 @@ pub trait StrSlice<'a> {
 
     /// Copy a slice into a new owned str.
     fn to_owned(&self) -> ~str;
-
-    /// Copy a slice into a new managed str.
-    fn to_managed(&self) -> @str;
 
     /// Converts to a vector of `u16` encoded as UTF-16.
     fn to_utf16(&self) -> ~[u16];
@@ -2246,14 +2176,6 @@ impl<'a> StrSlice<'a> for &'a str {
         }
     }
 
-    #[inline]
-    fn to_managed(&self) -> @str {
-        unsafe {
-            let v: *&[u8] = cast::transmute(self);
-            cast::transmute(at_vec::to_managed(*v))
-        }
-    }
-
     fn to_utf16(&self) -> ~[u16] {
         let mut u = ~[];
         for ch in self.chars() {
@@ -2682,20 +2604,6 @@ impl DeepClone for ~str {
     }
 }
 
-impl Clone for @str {
-    #[inline]
-    fn clone(&self) -> @str {
-        *self
-    }
-}
-
-impl DeepClone for @str {
-    #[inline]
-    fn deep_clone(&self) -> @str {
-        *self
-    }
-}
-
 impl FromIterator<char> for ~str {
     #[inline]
     fn from_iterator<T: Iterator<char>>(iterator: &mut T) -> ~str {
@@ -2725,10 +2633,6 @@ impl<'a> Default for &'a str {
 
 impl Default for ~str {
     fn default() -> ~str { ~"" }
-}
-
-impl Default for @str {
-    fn default() -> @str { @"" }
 }
 
 #[cfg(test)]
@@ -3537,12 +3441,6 @@ mod tests {
     }
 
     #[test]
-    fn test_to_managed() {
-        assert_eq!("abc".to_managed(), @"abc");
-        assert_eq!("abcdef".slice(1, 5).to_managed(), @"bcde");
-    }
-
-    #[test]
     fn test_total_ord() {
         "1234".cmp(& &"123") == Greater;
         "123".cmp(& &"1234") == Less;
@@ -3579,15 +3477,12 @@ mod tests {
                 let e = $e;
                 assert_eq!(s1 + s2, e.to_owned());
                 assert_eq!(s1.to_owned() + s2, e.to_owned());
-                assert_eq!(s1.to_managed() + s2, e.to_owned());
             } }
         );
 
         t!("foo",  "bar", "foobar");
-        t!("foo", @"bar", "foobar");
         t!("foo", ~"bar", "foobar");
         t!("ศไทย中",  "华Việt Nam", "ศไทย中华Việt Nam");
-        t!("ศไทย中", @"华Việt Nam", "ศไทย中华Việt Nam");
         t!("ศไทย中", ~"华Việt Nam", "ศไทย中华Việt Nam");
     }
 
@@ -3874,7 +3769,6 @@ mod tests {
         }
 
         t::<&str>();
-        t::<@str>();
         t::<~str>();
     }
 
@@ -3886,7 +3780,6 @@ mod tests {
 
         let s = ~"01234";
         assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len([@"01", @"2", @"34", @""]));
         assert_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
         assert_eq!(5, sum_len([s.as_slice()]));
     }
@@ -3957,8 +3850,6 @@ mod tests {
     fn test_from_str() {
       let owned: Option<~str> = from_str(&"string");
       assert_eq!(owned, Some(~"string"));
-      let managed: Option<@str> = from_str(&"string");
-      assert_eq!(managed, Some(@"string"));
     }
 }
 

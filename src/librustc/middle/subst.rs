@@ -13,8 +13,9 @@
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
+
+use std::rc::Rc;
 use syntax::opt_vec::OptVec;
-use std::at_vec;
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -84,10 +85,9 @@ impl<T:Subst> Subst for ~[T] {
         self.map(|t| t.subst(tcx, substs))
     }
 }
-
-impl<T:Subst> Subst for @[T] {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @[T] {
-        at_vec::map(*self, |t| t.subst(tcx, substs))
+impl<T:Subst> Subst for Rc<T> {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Rc<T> {
+        Rc::new(self.borrow().subst(tcx, substs))
     }
 }
 

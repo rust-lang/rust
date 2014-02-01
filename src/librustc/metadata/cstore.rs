@@ -32,7 +32,7 @@ pub enum MetadataBlob {
 }
 
 pub struct crate_metadata {
-    name: @str,
+    name: ~str,
     data: MetadataBlob,
     cnum_map: cnum_map,
     cnum: ast::CrateNum
@@ -89,12 +89,12 @@ impl CStore {
         *metas.get().get(&cnum)
     }
 
-    pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> @str {
+    pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> ~str {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn get_crate_vers(&self, cnum: ast::CrateNum) -> @str {
+    pub fn get_crate_vers(&self, cnum: ast::CrateNum) -> ~str {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_vers(cdata.data())
     }
@@ -192,7 +192,7 @@ impl CStore {
 
     // returns hashes of crates directly used by this crate. Hashes are sorted by
     // (crate name, crate version, crate hash) in lexicographic order (not semver)
-    pub fn get_dep_hashes(&self) -> ~[@str] {
+    pub fn get_dep_hashes(&self) -> ~[~str] {
         let mut result = ~[];
 
         let extern_mod_crate_map = self.extern_mod_crate_map.borrow();
@@ -202,7 +202,7 @@ impl CStore {
             let vers = decoder::get_crate_vers(cdata.data());
             debug!("Add hash[{}]: {} {}", cdata.name, vers, hash);
             result.push(crate_hash {
-                name: cdata.name,
+                name: cdata.name.clone(),
                 vers: vers,
                 hash: hash
             });
@@ -215,15 +215,15 @@ impl CStore {
             debug!("  hash[{}]: {}", x.name, x.hash);
         }
 
-        result.map(|ch| ch.hash)
+        result.move_iter().map(|crate_hash { hash, ..}| hash).collect()
     }
 }
 
 #[deriving(Clone, TotalEq, TotalOrd)]
 struct crate_hash {
-    name: @str,
-    vers: @str,
-    hash: @str,
+    name: ~str,
+    vers: ~str,
+    hash: ~str,
 }
 
 impl crate_metadata {

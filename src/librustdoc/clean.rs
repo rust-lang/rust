@@ -11,8 +11,6 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
-use its = syntax::parse::token::ident_to_str;
-
 use syntax;
 use syntax::ast;
 use syntax::ast_map;
@@ -20,6 +18,8 @@ use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttributeMethods;
 use syntax::codemap::Pos;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
@@ -223,9 +223,13 @@ pub enum Attribute {
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self) -> Attribute {
         match self.node {
-            ast::MetaWord(s) => Word(s.to_owned()),
-            ast::MetaList(ref s, ref l) => List(s.to_owned(), l.clean()),
-            ast::MetaNameValue(s, ref v) => NameValue(s.to_owned(), lit_to_str(v))
+            ast::MetaWord(ref s) => Word(s.get().to_owned()),
+            ast::MetaList(ref s, ref l) => {
+                List(s.get().to_owned(), l.clean())
+            }
+            ast::MetaNameValue(ref s, ref v) => {
+                NameValue(s.get().to_owned(), lit_to_str(v))
+            }
         }
     }
 }
@@ -238,21 +242,24 @@ impl Clean<Attribute> for ast::Attribute {
 
 // This is a rough approximation that gets us what we want.
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
-    fn name(&self) -> @str {
+    fn name(&self) -> InternedString {
         match **self {
-            Word(ref n) | List(ref n, _) | NameValue(ref n, _) =>
-                n.to_managed()
+            Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
+                token::intern_and_get_ident(*n)
+            }
         }
     }
 
-    fn value_str(&self) -> Option<@str> {
+    fn value_str(&self) -> Option<InternedString> {
         match **self {
-            NameValue(_, ref v) => Some(v.to_managed()),
+            NameValue(_, ref v) => Some(token::intern_and_get_ident(*v)),
             _ => None,
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
-    fn name_str_pair(&self) -> Option<(@str, @str)> { None }
+    fn name_str_pair(&self) -> Option<(InternedString, InternedString)> {
+        None
+    }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -867,24 +874,25 @@ impl Clean<PathSegment> for ast::PathSegment {
 }
 
 fn path_to_str(p: &ast::Path) -> ~str {
-    use syntax::parse::token::interner_get;
+    use syntax::parse::token;
 
     let mut s = ~"";
     let mut first = true;
-    for i in p.segments.iter().map(|x| interner_get(x.identifier.name)) {
+    for i in p.segments.iter().map(|x| token::get_ident(x.identifier.name)) {
         if !first || p.global {
             s.push_str("::");
         } else {
             first = false;
         }
-        s.push_str(i);
+        s.push_str(i.get());
     }
     s
 }
 
 impl Clean<~str> for ast::Ident {
     fn clean(&self) -> ~str {
-        its(self).to_owned()
+        let string = token::get_ident(self.name);
+        string.get().to_owned()
     }
 }
 
@@ -1030,8 +1038,13 @@ pub enum ViewItemInner {
 impl Clean<ViewItemInner> for ast::ViewItem_ {
     fn clean(&self) -> ViewItemInner {
         match self {
-            &ast::ViewItemExternMod(ref i, ref p, ref id) =>
-                ExternMod(i.clean(), p.map(|(ref x, _)| x.to_owned()), *id),
+            &ast::ViewItemExternMod(ref i, ref p, ref id) => {
+                let string = match *p {
+                    None => None,
+                    Some((ref x, _)) => Some(x.get().to_owned()),
+                };
+                ExternMod(i.clean(), string, *id)
+            }
             &ast::ViewItemUse(ref vp) => Import(vp.clean())
         }
     }
@@ -1137,14 +1150,14 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
-        ast::LitStr(st, _) => st.to_owned(),
-        ast::LitBinary(data) => format!("{:?}", data.as_slice()),
+        ast::LitStr(ref st, _) => st.get().to_owned(),
+        ast::LitBinary(ref data) => format!("{:?}", data.borrow().as_slice()),
         ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
         ast::LitIntUnsuffixed(i) => i.to_str(),
-        ast::LitFloat(f, _t) => f.to_str(),
-        ast::LitFloatUnsuffixed(f) => f.to_str(),
+        ast::LitFloat(ref f, _t) => f.get().to_str(),
+        ast::LitFloatUnsuffixed(ref f) => f.get().to_str(),
         ast::LitBool(b) => b.to_str(),
         ast::LitNil => ~"",
     }

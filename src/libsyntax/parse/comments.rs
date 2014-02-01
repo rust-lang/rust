@@ -54,7 +54,6 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
 }
 
 pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
-
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
         let mut i = 0u;
@@ -348,10 +347,10 @@ pub struct Literal {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                         @diagnostic::SpanHandler,
-                                    path: @str,
+                                    path: ~str,
                                     srdr: &mut io::Reader)
                                  -> (~[Comment], ~[Literal]) {
-    let src = str::from_utf8_owned(srdr.read_to_end()).unwrap().to_managed();
+    let src = str::from_utf8_owned(srdr.read_to_end()).unwrap();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);

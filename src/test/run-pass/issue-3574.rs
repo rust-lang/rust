@@ -26,5 +26,4 @@ pub fn main()
 {
     assert!(compare("foo", "foo"));
     assert!(compare(~"foo", ~"foo"));
-    assert!(compare(@"foo", @"foo"));
 }

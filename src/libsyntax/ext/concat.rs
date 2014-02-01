@@ -14,6 +14,7 @@ use ast;
 use codemap;
 use ext::base;
 use ext::build::AstBuilder;
+use parse::token;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
@@ -28,9 +29,10 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
         match e.node {
             ast::ExprLit(lit) => {
                 match lit.node {
-                    ast::LitStr(s, _) | ast::LitFloat(s, _)
-                    | ast::LitFloatUnsuffixed(s) => {
-                        accumulator.push_str(s);
+                    ast::LitStr(ref s, _) |
+                    ast::LitFloat(ref s, _) |
+                    ast::LitFloatUnsuffixed(ref s) => {
+                        accumulator.push_str(s.get());
                     }
                     ast::LitChar(c) => {
                         accumulator.push_char(char::from_u32(c).unwrap());
@@ -55,5 +57,5 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
-    return base::MRExpr(cx.expr_str(sp, accumulator.to_managed()));
+    base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(accumulator)))
 }

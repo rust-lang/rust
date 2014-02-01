@@ -41,8 +41,6 @@ pub fn main() {
     check_type!(~int);
     check_type!(@int);
     check_type!(~str);
-    check_type!(@str);
     check_type!(~[int]);
-    check_type!(@[int]);
     check_type!(extern fn());
 }
