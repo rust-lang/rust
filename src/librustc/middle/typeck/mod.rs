@@ -70,6 +70,7 @@ use util::ppaux;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
+use std::rc::Rc;
 use std::result;
 use extra::list::List;
 use extra::list;
@@ -271,8 +272,8 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: @~[],
-                                region_param_defs: @[]},
+        generics: ty::Generics {type_param_defs: Rc::new(~[]),
+                                region_param_defs: Rc::new(~[])},
         ty: t
     }
 }

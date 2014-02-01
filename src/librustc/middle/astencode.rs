@@ -32,10 +32,10 @@ use syntax::fold::Folder;
 use syntax::parse::token;
 use syntax;
 
-use std::at_vec;
 use std::libc;
 use std::cast;
 use std::io::Seek;
+use std::rc::Rc;
 
 use extra::ebml::reader;
 use extra::ebml;
@@ -812,13 +812,13 @@ impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
                     this.emit_struct_field("type_param_defs", 0, |this| {
-                        this.emit_from_vec(*tpbt.generics.type_param_defs,
+                        this.emit_from_vec(tpbt.generics.type_param_defs(),
                                            |this, type_param_def| {
                             this.emit_type_param_def(ecx, type_param_def);
                         })
                     });
                     this.emit_struct_field("region_param_defs", 1, |this| {
-                        tpbt.generics.region_param_defs.encode(this);
+                        tpbt.generics.region_param_defs().encode(this);
                     })
                 })
             });
@@ -997,7 +997,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_tcache, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_tpbt(ecx, *tpbt);
+                    ebml_w.emit_tpbt(ecx, tpbt.clone());
                 })
             })
         }
@@ -1064,7 +1064,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(*cap_vars, |ebml_w, cap_var| {
+                    ebml_w.emit_from_vec(*cap_vars.borrow(), |ebml_w, cap_var| {
                         cap_var.encode(ebml_w);
                     })
                 })
@@ -1183,8 +1183,8 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                                 this.read_struct_field("type_param_defs",
                                                        0,
                                                        |this| {
-                                    @this.read_to_vec(|this|
-                                        this.read_type_param_def(xcx))
+                                    Rc::new(this.read_to_vec(|this|
+                                                             this.read_type_param_def(xcx)))
                             }),
                             region_param_defs:
                                 this.read_struct_field("region_param_defs",
@@ -1382,13 +1382,11 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_capture_map => {
                         let cvars =
-                            at_vec::to_managed_move(
-                                val_dsr.read_to_vec(
-                                    |val_dsr| val_dsr.read_capture_var(xcx)));
+                                val_dsr.read_to_vec(|val_dsr| val_dsr.read_capture_var(xcx));
                         let mut capture_map = dcx.maps
                                                  .capture_map
                                                  .borrow_mut();
-                        capture_map.get().insert(id, cvars);
+                        capture_map.get().insert(id, Rc::new(cvars));
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(

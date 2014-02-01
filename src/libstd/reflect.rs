@@ -250,7 +250,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
+    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
         true
     }
 

@@ -502,7 +502,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
         let capture_map = this.capture_map.borrow();
         let cvs = capture_map.get().get(&expr.id);
         let mut call_caps = ~[];
-        for cv in cvs.iter() {
+        for cv in cvs.borrow().iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = this.add_live_node(FreeVarNode(cv.span));

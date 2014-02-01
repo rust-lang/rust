@@ -25,11 +25,11 @@ use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
-use std::at_vec;
 use std::u64;
 use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;
+use std::rc::Rc;
 use std::vec;
 use extra::ebml::reader;
 use extra::ebml;
@@ -246,7 +246,7 @@ fn item_ty_param_defs(item: ebml::Doc,
                       tcx: ty::ctxt,
                       cdata: Cmd,
                       tag: uint)
-                      -> @~[ty::TypeParameterDef] {
+                      -> Rc<~[ty::TypeParameterDef]> {
     let mut bounds = ~[];
     reader::tagged_docs(item, tag, |p| {
         let bd = parse_type_param_def_data(
@@ -255,15 +255,15 @@ fn item_ty_param_defs(item: ebml::Doc,
         bounds.push(bd);
         true
     });
-    @bounds
+    Rc::new(bounds)
 }
 
 fn item_region_param_defs(item_doc: ebml::Doc,
                           tcx: ty::ctxt,
                           cdata: Cmd)
-                          -> @[ty::RegionParameterDef] {
-    at_vec::build(None, |push| {
-        reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
+                          -> Rc<~[ty::RegionParameterDef]> {
+    let mut v = ~[];
+    reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
             let ident_str_doc = reader::get_doc(rp_doc,
                                                 tag_region_param_def_ident);
             let ident = item_name(tcx.sess.intr(), ident_str_doc);
@@ -271,11 +271,11 @@ fn item_region_param_defs(item_doc: ebml::Doc,
                                              tag_region_param_def_def_id);
             let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
             let def_id = translate_def_id(cdata, def_id);
-            push(ty::RegionParameterDef { ident: ident,
-                                          def_id: def_id });
+            v.push(ty::RegionParameterDef { ident: ident,
+                                            def_id: def_id });
             true
         });
-    })
+    Rc::new(v)
 }
 
 fn item_ty_param_count(item: ebml::Doc) -> uint {

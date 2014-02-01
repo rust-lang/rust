@@ -171,7 +171,7 @@ pub fn def_to_str(did: DefId) -> ~str {
 
 fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
                              ecx: &EncodeContext,
-                             params: @~[ty::TypeParameterDef],
+                             params: &[ty::TypeParameterDef],
                              tag: uint) {
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
@@ -188,7 +188,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
 
 fn encode_region_param_defs(ebml_w: &mut writer::Encoder,
                             ecx: &EncodeContext,
-                            params: @[ty::RegionParameterDef]) {
+                            params: &[ty::RegionParameterDef]) {
     for param in params.iter() {
         ebml_w.start_tag(tag_region_param_def);
 
@@ -215,9 +215,9 @@ fn encode_item_variances(ebml_w: &mut writer::Encoder,
 fn encode_bounds_and_type(ebml_w: &mut writer::Encoder,
                           ecx: &EncodeContext,
                           tpt: &ty::ty_param_bounds_and_ty) {
-    encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs,
+    encode_ty_type_param_defs(ebml_w, ecx, tpt.generics.type_param_defs(),
                               tag_items_data_item_ty_param_bounds);
-    encode_region_param_defs(ebml_w, ecx, tpt.generics.region_param_defs);
+    encode_region_param_defs(ebml_w, ecx, tpt.generics.region_param_defs());
     encode_type(ecx, ebml_w, tpt.ty);
 }
 
@@ -786,7 +786,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ecx, ebml_w, method_ty.ident);
     encode_ty_type_param_defs(ebml_w, ecx,
-                              method_ty.generics.type_param_defs,
+                              method_ty.generics.type_param_defs(),
                               tag_item_method_tps);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
@@ -827,7 +827,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     for &ast_method in ast_method_opt.iter() {
-        let num_params = tpt.generics.type_param_defs.len();
+        let num_params = tpt.generics.type_param_defs().len();
         if num_params > 0u || is_default_impl
             || should_inline(ast_method.attrs) {
             (ecx.encode_inlined_item)(
@@ -1171,10 +1171,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(ebml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_ty_type_param_defs(ebml_w, ecx,
-                                  trait_def.generics.type_param_defs,
+                                  trait_def.generics.type_param_defs(),
                                   tag_items_data_item_ty_param_bounds);
         encode_region_param_defs(ebml_w, ecx,
-                                 trait_def.generics.region_param_defs);
+                                 trait_def.generics.region_param_defs());
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);

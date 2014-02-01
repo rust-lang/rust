@@ -182,7 +182,7 @@ pub fn trans_static_method_callee(bcx: &Block,
     // out which impl the `Trait<T1...Tn>` bound on the type `self` was
     // bound to.
     let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
-        generics.type_param_defs.len();
+        generics.type_param_defs().len();
 
     let mname = if method_id.crate == ast::LOCAL_CRATE {
         {
@@ -318,7 +318,7 @@ pub fn combine_impl_and_methods_tps(bcx: &Block,
 
     let ccx = bcx.ccx();
     let method = ty::method(ccx.tcx, mth_did);
-    let n_m_tps = method.generics.type_param_defs.len();
+    let n_m_tps = method.generics.type_param_defs().len();
     let node_substs = node_id_type_params(bcx, callee_id);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx));
     let ty_substs
