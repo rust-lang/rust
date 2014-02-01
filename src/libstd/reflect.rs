@@ -251,9 +251,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<@[u8]>();
-        if ! self.inner.visit_evec_box(mtbl, inner) { return false; }
-        self.bump_past::<@[u8]>();
         true
     }
 

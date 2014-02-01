@@ -637,12 +637,6 @@ fn test_repr() {
     exact_test(&(0 as *mut ()), "(0x0 as *mut ())");
 
     exact_test(&(1,), "(1,)");
-    exact_test(&(@[1,2,3,4,5,6,7,8]),
-               "@[1, 2, 3, 4, 5, 6, 7, 8]");
-    exact_test(&(@[1u8,2u8,3u8,4u8]),
-               "@[1u8, 2u8, 3u8, 4u8]");
-    exact_test(&(@["hi", "there"]),
-               "@[\"hi\", \"there\"]");
     exact_test(&(~["hi", "there"]),
                "~[\"hi\", \"there\"]");
     exact_test(&(&["hi", "there"]),
