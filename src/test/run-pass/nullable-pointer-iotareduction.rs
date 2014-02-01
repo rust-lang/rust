@@ -79,7 +79,6 @@ pub fn main() {
     check_type!(~18: ~int);
     check_type!(@19: @int);
     check_type!(~"foo": ~str);
-    check_type!(@"bar": @str);
     check_type!(~[20, 22]: ~[int]);
     check_type!(@[]: @[int]);
     check_type!(@[24, 26]: @[int]);
