@@ -1233,7 +1233,10 @@ pub fn ptr_sigil(ptr: PointerKind) -> ~str {
 impl Repr for InteriorKind {
     fn repr(&self, _tcx: ty::ctxt) -> ~str {
         match *self {
-            InteriorField(NamedField(fld)) => token::interner_get(fld).to_owned(),
+            InteriorField(NamedField(fld)) => {
+                let string = token::get_ident(fld);
+                string.get().to_owned()
+            }
             InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => ~"[]",
         }

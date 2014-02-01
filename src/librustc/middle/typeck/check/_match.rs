@@ -339,9 +339,11 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             if found_fields.contains(&i) {
                 continue;
             }
+
+            let string = token::get_ident(field.name);
             tcx.sess.span_err(span,
                               format!("pattern does not mention field `{}`",
-                                   token::interner_get(field.name)));
+                                      string.get()));
         }
     }
 }
