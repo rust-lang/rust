@@ -117,6 +117,7 @@ use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
 use mem;
 use mem::size_of;
+use kinds::marker;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
@@ -1055,12 +1056,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 Items{ptr: p,
-                            end: (p as uint + self.len()) as *T,
-                            lifetime: None}
+                      end: (p as uint + self.len()) as *T,
+                      marker: marker::ContravariantLifetime::<'a>}
             } else {
                 Items{ptr: p,
-                            end: p.offset(self.len() as int),
-                            lifetime: None}
+                      end: p.offset(self.len() as int),
+                      marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -2281,12 +2282,12 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
-                               end: (p as uint + self.len()) as *mut T,
-                               lifetime: None}
+                         end: (p as uint + self.len()) as *mut T,
+                         marker: marker::ContravariantLifetime::<'a>}
             } else {
                 MutItems{ptr: p,
-                               end: p.offset(self.len() as int),
-                               lifetime: None}
+                         end: p.offset(self.len() as int),
+                         marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -2638,7 +2639,7 @@ macro_rules! iterator {
         pub struct $name<'a, T> {
             priv ptr: $ptr,
             priv end: $ptr,
-            priv lifetime: Option<$elem> // FIXME: #5922
+            priv marker: marker::ContravariantLifetime<'a>,
         }
 
         impl<'a, T> Iterator<$elem> for $name<'a, T> {

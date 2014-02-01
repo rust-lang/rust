@@ -24,6 +24,7 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use arena::TypedArena;
 use std::libc::c_uint;
 use std::option::{Some,None};
 use std::vec;
@@ -292,10 +293,17 @@ impl<'a> Reflector<'a> {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, false,
-                                                    [opaqueptrty],
-                                                    ty::mk_u64(), sym);
-                let fcx = new_fn_ctxt(ccx, ~[], llfdecl, false, ty::mk_u64(), None);
+                let llfdecl = decl_internal_rust_fn(ccx, false, [opaqueptrty], ty::mk_u64(), sym);
+                let arena = TypedArena::new();
+                let fcx = new_fn_ctxt(ccx,
+                                      ~[],
+                                      llfdecl,
+                                      -1, // id
+                                      false,
+                                      ty::mk_u64(),
+                                      None,
+                                      None,
+                                      &arena);
                 init_function(&fcx, false, ty::mk_u64(), None);
 
                 let arg = unsafe {

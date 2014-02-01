@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_freeze]
-struct Foo { a: int }
+use std::kinds::marker;
+
+struct Foo { a: int, m: marker::NoFreeze }
 
 fn bar<T: Freeze>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5 };
+    let x = Foo { a: 5, m: marker::NoFreeze };
     bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Freeze`
 }

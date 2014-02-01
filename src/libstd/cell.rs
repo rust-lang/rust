@@ -13,19 +13,22 @@
 use prelude::*;
 use cast;
 use util::NonCopyable;
+use kinds::{marker,Pod};
 
 /// A mutable memory location that admits only `Pod` data.
-#[no_freeze]
-#[deriving(Clone)]
 pub struct Cell<T> {
     priv value: T,
+    priv marker1: marker::InvariantType<T>,
+    priv marker2: marker::NoFreeze,
 }
 
-impl<T: ::kinds::Pod> Cell<T> {
+impl<T:Pod> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: value,
+            marker1: marker::InvariantType::<T>,
+            marker2: marker::NoFreeze,
         }
     }
 
@@ -44,12 +47,19 @@ impl<T: ::kinds::Pod> Cell<T> {
     }
 }
 
+impl<T:Pod> Clone for Cell<T> {
+    fn clone(&self) -> Cell<T> {
+        Cell::new(self.get())
+    }
+}
+
 /// A mutable memory location with dynamically checked borrow rules
-#[no_freeze]
 pub struct RefCell<T> {
     priv value: T,
     priv borrow: BorrowFlag,
-    priv nc: NonCopyable
+    priv nc: NonCopyable,
+    priv marker1: marker::InvariantType<T>,
+    priv marker2: marker::NoFreeze,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -62,6 +72,8 @@ impl<T> RefCell<T> {
     /// Create a new `RefCell` containing `value`
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
+            marker1: marker::InvariantType::<T>,
+            marker2: marker::NoFreeze,
             value: value,
             borrow: UNUSED,
             nc: NonCopyable
