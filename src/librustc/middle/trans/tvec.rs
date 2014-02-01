@@ -110,11 +110,10 @@ pub fn alloc_uniq_raw<'a>(
     alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
-pub fn alloc_vec<'a>(
+pub fn alloc_uniq_vec<'a>(
                  bcx: &'a Block<'a>,
                  unit_ty: ty::t,
-                 elts: uint,
-                 heap: heap)
+                 elts: uint)
                  -> Result<'a> {
     let _icx = push_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
@@ -125,7 +124,7 @@ pub fn alloc_vec<'a>(
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
                 else { fill };
     let Result {bcx: bcx, val: vptr} =
-        alloc_raw(bcx, unit_ty, fill, alloc, heap);
+        alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange);
     return rslt(bcx, vptr);
 }
 
@@ -302,70 +301,62 @@ pub fn trans_lit_str<'a>(
 }
 
 
-pub fn trans_uniq_or_managed_vstore<'a>(bcx: &'a Block<'a>,
-                                        heap: heap,
-                                        vstore_expr: &ast::Expr,
-                                        content_expr: &ast::Expr)
-                                        -> DatumBlock<'a, Expr> {
+pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
+                             vstore_expr: &ast::Expr,
+                             content_expr: &ast::Expr)
+                             -> DatumBlock<'a, Expr> {
     /*!
-     * @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
-     * appropriate heap and write the array elements into them.
+     * ~[...] and ~"..." allocate boxes in the exchange heap and write
+     * the array elements into them.
      */
 
-    debug!("trans_uniq_or_managed_vstore(vstore_expr={}, heap={:?})",
-           bcx.expr_to_str(vstore_expr), heap);
+    debug!("trans_uniq_vstore(vstore_expr={})", bcx.expr_to_str(vstore_expr));
     let fcx = bcx.fcx;
 
     // Handle ~"".
-    match heap {
-        heap_exchange => {
-            match content_expr.node {
-                ast::ExprLit(lit) => {
-                    match lit.node {
-                        ast::LitStr(ref s, _) => {
-                            let llptrval = C_cstr(bcx.ccx(), (*s).clone());
-                            let llptrval = PointerCast(bcx,
-                                                       llptrval,
-                                                       Type::i8p());
-                            let llsizeval = C_uint(bcx.ccx(), s.get().len());
-                            let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
-                            let lldestval = rvalue_scratch_datum(bcx,
-                                                                 typ,
-                                                                 "");
-                            let alloc_fn = langcall(bcx,
-                                                    Some(lit.span),
-                                                    "",
-                                                    StrDupUniqFnLangItem);
-                            let bcx = callee::trans_lang_call(
-                                bcx,
-                                alloc_fn,
-                                [ llptrval, llsizeval ],
-                                Some(expr::SaveIn(lldestval.val))).bcx;
-                            return DatumBlock(bcx, lldestval).to_expr_datumblock();
-                        }
-                        _ => {}
-                    }
+    match content_expr.node {
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(ref s, _) => {
+                    let llptrval = C_cstr(bcx.ccx(), (*s).clone());
+                    let llptrval = PointerCast(bcx,
+                                               llptrval,
+                                               Type::i8p());
+                    let llsizeval = C_uint(bcx.ccx(), s.get().len());
+                    let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
+                    let lldestval = rvalue_scratch_datum(bcx,
+                                                         typ,
+                                                         "");
+                    let alloc_fn = langcall(bcx,
+                                            Some(lit.span),
+                                            "",
+                                            StrDupUniqFnLangItem);
+                    let bcx = callee::trans_lang_call(
+                        bcx,
+                        alloc_fn,
+                        [ llptrval, llsizeval ],
+                        Some(expr::SaveIn(lldestval.val))).bcx;
+                    return DatumBlock(bcx, lldestval).to_expr_datumblock();
                 }
                 _ => {}
             }
         }
-        heap_exchange_closure => fail!("vectors use exchange_alloc"),
-        heap_managed => {}
+        _ => {}
     }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
 
-    let Result {bcx, val} = alloc_vec(bcx, vt.unit_ty, count, heap);
+    let Result {bcx, val} = alloc_uniq_vec(bcx, vt.unit_ty, count);
 
     // Create a temporary scope lest execution should fail while
     // constructing the vector.
     let temp_scope = fcx.push_custom_cleanup_scope();
-    fcx.schedule_free_value(cleanup::CustomScope(temp_scope), val, heap);
+    fcx.schedule_free_value(cleanup::CustomScope(temp_scope), val, heap_exchange);
 
     let dataptr = get_dataptr(bcx, val);
 
-    debug!("alloc_vec() returned val={}, dataptr={}",
+    debug!("alloc_uniq_vec() returned val={}, dataptr={}",
            bcx.val_to_str(val), bcx.val_to_str(dataptr));
 
     let bcx = write_content(bcx, &vt, vstore_expr,

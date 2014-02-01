@@ -202,12 +202,10 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                     unpack_datum!(bcx, auto_ref(bcx, datum, expr))
                 }
                 Some(AutoBorrowVec(..)) => {
-                    unpack_datum!(bcx, auto_slice(bcx, adj.autoderefs,
-                                                  expr, datum))
+                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
                 }
                 Some(AutoBorrowVecRef(..)) => {
-                    unpack_datum!(bcx, auto_slice_and_ref(bcx, adj.autoderefs,
-                                                          expr, datum))
+                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
                 Some(AutoBorrowFn(..)) => {
                     let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
@@ -271,7 +269,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
     fn auto_slice<'a>(
                   bcx: &'a Block<'a>,
-                  autoderefs: uint,
                   expr: &ast::Expr,
                   datum: Datum<Expr>)
                   -> DatumBlock<'a, Expr> {
@@ -290,8 +287,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         let datum = unpack_datum!(
             bcx, datum.to_lvalue_datum(bcx, "auto_slice", expr.id));
 
-        let (bcx, base, len) =
-            datum.get_vec_base_and_len(bcx, expr.span, expr.id, autoderefs+1);
+        let (base, len) = datum.get_vec_base_and_len(bcx);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -323,11 +319,10 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
     fn auto_slice_and_ref<'a>(
                           bcx: &'a Block<'a>,
-                          autoderefs: uint,
                           expr: &ast::Expr,
                           datum: Datum<Expr>)
                           -> DatumBlock<'a, Expr> {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, autoderefs, expr, datum);
+        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
         auto_ref(bcx, datum, expr)
     }
 
@@ -522,8 +517,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprVstore(contents, ast::ExprVstoreUniq) => {
             fcx.push_ast_cleanup_scope(contents.id);
             let datum = unpack_datum!(
-                bcx, tvec::trans_uniq_or_managed_vstore(bcx, heap_exchange,
-                                                        expr, contents));
+                bcx, tvec::trans_uniq_vstore(bcx, expr, contents));
             bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
             DatumBlock(bcx, datum)
         }
@@ -626,8 +620,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
     let vt = tvec::vec_types(bcx, base_datum.ty);
     base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
 
-    let (bcx, base, len) =
-        base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id, 0);
+    let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
     debug!("trans_index: base {}", bcx.val_to_str(base));
     debug!("trans_index: len {}", bcx.val_to_str(len));

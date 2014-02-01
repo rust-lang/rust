@@ -334,7 +334,7 @@ pub fn trans_fail_expr<'a>(
                 unpack_datum!(bcx, expr::trans_to_lvalue(bcx, arg_expr, "fail"));
 
             if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _) = arg_datum.get_vec_base_and_len_no_root(bcx);
+                let (lldata, _) = arg_datum.get_vec_base_and_len(bcx);
                 return trans_fail_value(bcx, sp_opt, lldata);
             } else if bcx.unreachable.get() || ty::type_is_bot(arg_datum.ty) {
                 return bcx;

@@ -1032,7 +1032,6 @@ fn match_datum(bcx: &Block,
 
 fn extract_vec_elems<'a>(
                      bcx: &'a Block<'a>,
-                     pat_span: Span,
                      pat_id: ast::NodeId,
                      elem_count: uint,
                      slice: Option<uint>,
@@ -1041,7 +1040,7 @@ fn extract_vec_elems<'a>(
                      -> ExtractedBlock<'a> {
     let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
-    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span, pat_id, 0);
+    let (base, len) = vec_datum.get_vec_base_and_len(bcx);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
 
     let mut elems = vec::from_fn(elem_count, |i| {
@@ -1512,13 +1511,11 @@ fn compile_submatch_continue<'r,
                                 vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
-    let mut pat_span = DUMMY_SP;
     for br in m.iter() {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 {
             pat_id = br.pats[col].id;
-            pat_span = br.pats[col].span;
         }
     }
 
@@ -1767,7 +1764,7 @@ fn compile_submatch_continue<'r,
                     vec_len_ge(i) => (n + 1u, Some(i)),
                     vec_len_eq => (n, None)
                 };
-                let args = extract_vec_elems(opt_cx, pat_span, pat_id, n,
+                let args = extract_vec_elems(opt_cx, pat_id, n,
                                              slice, val, test_val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
