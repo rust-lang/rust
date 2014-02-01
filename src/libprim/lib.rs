@@ -19,6 +19,7 @@
 #[no_std];
 #[feature(globs)];
 #[feature(phase)];
+#[feature(macro_rules)];
 
 #[cfg(test)] #[phase(syntax)] extern mod std;
 
