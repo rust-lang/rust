@@ -115,9 +115,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_float(t) => Type::float_from_ty(t),
 
         ty::ty_str(ty::vstore_uniq) |
-        ty::ty_str(ty::vstore_box) |
         ty::ty_vec(_, ty::vstore_uniq) |
-        ty::ty_vec(_, ty::vstore_box) |
         ty::ty_box(..) |
         ty::ty_uniq(..) |
         ty::ty_ptr(..) |
@@ -220,13 +218,6 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         let repr = adt::represent_type(cx, t);
         let name = llvm_type_name(cx, an_enum, did, substs.tps);
         adt::incomplete_type_of(cx, repr, name)
-      }
-      ty::ty_str(ty::vstore_box) => {
-          Type::at_box(cx, Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
-      }
-      ty::ty_vec(ref mt, ty::vstore_box) => {
-          let e_ty = type_of(cx, mt.ty);
-          Type::at_box(cx, Type::vec(cx.sess.targ_cfg.arch, &e_ty)).ptr_to()
       }
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()

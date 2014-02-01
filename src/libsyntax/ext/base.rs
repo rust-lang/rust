@@ -16,7 +16,7 @@ use ext;
 use ext::expand;
 use parse;
 use parse::token;
-use parse::token::{ident_to_str, intern, str_to_ident};
+use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
@@ -31,7 +31,7 @@ use std::unstable::dynamic_lib::DynamicLibrary;
 // ast::MacInvocTT.
 
 pub struct MacroDef {
-    name: @str,
+    name: ~str,
     ext: SyntaxExtension
 }
 
@@ -335,7 +335,8 @@ impl<'a> ExtCtxt<'a> {
                     Some(@ExpnInfo {
                         call_site: Span {lo: cs.lo, hi: cs.hi,
                                          expn_info: self.backtrace},
-                        callee: *callee});
+                        callee: (*callee).clone()
+                    });
             }
         }
     }
@@ -396,9 +397,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.trace_mac = x
     }
-    pub fn str_of(&self, id: ast::Ident) -> @str {
-        ident_to_str(&id)
-    }
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
@@ -407,11 +405,11 @@ impl<'a> ExtCtxt<'a> {
 /// Extract a string literal from `expr`, emitting `err_msg` if `expr`
 /// is not a string literal. This does not stop compilation on error,
 /// merely emits a non-fatal error and returns None.
-pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr,
-                   err_msg: &str) -> Option<(@str, ast::StrStyle)> {
+pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str)
+                   -> Option<(InternedString, ast::StrStyle)> {
     match expr.node {
         ast::ExprLit(l) => match l.node {
-            ast::LitStr(s, style) => return Some((s, style)),
+            ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)
@@ -424,7 +422,9 @@ pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr,
 /// compilation should call
 /// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
 /// done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree],
+pub fn check_zero_tts(cx: &ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
         cx.span_err(sp, format!("{} takes no arguments", name));
@@ -437,13 +437,16 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
-                               -> Option<@str> {
+                               -> Option<~str> {
     if tts.len() != 1 {
         cx.span_err(sp, format!("{} takes 1 argument.", name));
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
-                | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => return Some(cx.str_of(ident)),
+            | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
+                let interned_str = token::get_ident(ident.name);
+                return Some(interned_str.get().to_str())
+            }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }
     }

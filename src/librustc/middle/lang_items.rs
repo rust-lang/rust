@@ -26,8 +26,9 @@ use middle::ty::{BuiltinBound, BoundFreeze, BoundPod, BoundSend, BoundSized};
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
-use syntax::visit;
+use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
+use syntax::visit;
 
 use std::hashmap::HashMap;
 use std::iter::Enumerate;
@@ -182,11 +183,11 @@ impl LanguageItemCollector {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<@str> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     for attribute in attrs.iter() {
         match attribute.name_str_pair() {
-            Some((key, value)) if "lang" == key => {
-                return Some(value);
+            Some((ref key, ref value)) if key.equiv(&("lang")) => {
+                return Some((*value).clone());
             }
             Some(..) | None => {}
         }

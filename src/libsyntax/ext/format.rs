@@ -14,23 +14,24 @@ use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use rsparse = parse;
-use parse::token;
 use opt_vec;
+use parse::token::InternedString;
+use parse::token;
+use rsparse = parse;
 use std::fmt::parse;
 use std::hashmap::{HashMap, HashSet};
 use std::vec;
 
 #[deriving(Eq)]
 enum ArgumentType {
-    Known(@str),
+    Known(~str),
     Unsigned,
     String,
 }
 
 enum Position {
     Exact(uint),
-    Named(@str),
+    Named(~str),
 }
 
 struct Context<'a> {
@@ -42,12 +43,12 @@ struct Context<'a> {
     args: ~[@ast::Expr],
     arg_types: ~[Option<ArgumentType>],
     // Parsed named expressions and the types that we've found for them so far
-    names: HashMap<@str, @ast::Expr>,
-    name_types: HashMap<@str, ArgumentType>,
+    names: HashMap<~str, @ast::Expr>,
+    name_types: HashMap<~str, ArgumentType>,
 
     // Collection of the compiled `rt::Piece` structures
     pieces: ~[@ast::Expr],
-    name_positions: HashMap<@str, uint>,
+    name_positions: HashMap<~str, uint>,
     method_statics: ~[@ast::Item],
 
     // Updated as arguments are consumed or methods are entered
@@ -104,10 +105,11 @@ impl<'a> Context<'a> {
                         return (extra, None);
                     }
                 };
-                let name = self.ecx.str_of(ident);
+                let interned_name = token::get_ident(ident.name);
+                let name = interned_name.get();
                 p.expect(&token::EQ);
                 let e = p.parse_expr();
-                match self.names.find(&name) {
+                match self.names.find_equiv(&name) {
                     None => {}
                     Some(prev) => {
                         self.ecx.span_err(e.span, format!("duplicate argument \
@@ -117,7 +119,7 @@ impl<'a> Context<'a> {
                         continue
                     }
                 }
-                self.names.insert(name, e);
+                self.names.insert(name.to_str(), e);
             } else {
                 self.args.push(p.parse_expr());
                 self.arg_types.push(None);
@@ -156,13 +158,13 @@ impl<'a> Context<'a> {
                         Exact(i)
                     }
                     parse::ArgumentIs(i) => Exact(i),
-                    parse::ArgumentNamed(s) => Named(s.to_managed()),
+                    parse::ArgumentNamed(s) => Named(s.to_str()),
                 };
 
                 // and finally the method being applied
                 match arg.method {
                     None => {
-                        let ty = Known(arg.format.ty.to_managed());
+                        let ty = Known(arg.format.ty.to_str());
                         self.verify_arg_type(pos, ty);
                     }
                     Some(ref method) => { self.verify_method(pos, *method); }
@@ -184,7 +186,7 @@ impl<'a> Context<'a> {
                 self.verify_arg_type(Exact(i), Unsigned);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s.to_managed()), Unsigned);
+                self.verify_arg_type(Named(s.to_str()), Unsigned);
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
@@ -259,7 +261,13 @@ impl<'a> Context<'a> {
                     self.ecx.span_err(self.fmtsp, msg);
                     return;
                 }
-                self.verify_same(self.args[arg].span, ty, self.arg_types[arg]);
+                {
+                    let arg_type = match self.arg_types[arg] {
+                        None => None,
+                        Some(ref x) => Some(x)
+                    };
+                    self.verify_same(self.args[arg].span, &ty, arg_type);
+                }
                 if self.arg_types[arg].is_none() {
                     self.arg_types[arg] = Some(ty);
                 }
@@ -274,10 +282,9 @@ impl<'a> Context<'a> {
                         return;
                     }
                 };
-                self.verify_same(span, ty,
-                                 self.name_types.find(&name).map(|&x| x));
+                self.verify_same(span, &ty, self.name_types.find(&name));
                 if !self.name_types.contains_key(&name) {
-                    self.name_types.insert(name, ty);
+                    self.name_types.insert(name.clone(), ty);
                 }
                 // Assign this named argument a slot in the arguments array if
                 // it hasn't already been assigned a slot.
@@ -297,30 +304,36 @@ impl<'a> Context<'a> {
     ///
     /// Obviously `Some(Some(x)) != Some(Some(y))`, but we consider it true
     /// that: `Some(None) == Some(Some(x))`
-    fn verify_same(&self, sp: Span, ty: ArgumentType,
-                   before: Option<ArgumentType>) {
+    fn verify_same(&self,
+                   sp: Span,
+                   ty: &ArgumentType,
+                   before: Option<&ArgumentType>) {
         let cur = match before {
             None => return,
             Some(t) => t,
         };
-        if ty == cur { return }
+        if *ty == *cur {
+            return
+        }
         match (cur, ty) {
-            (Known(cur), Known(ty)) => {
+            (&Known(ref cur), &Known(ref ty)) => {
                 self.ecx.span_err(sp,
                                   format!("argument redeclared with type `{}` when \
-                                           it was previously `{}`", ty, cur));
+                                           it was previously `{}`",
+                                          *ty,
+                                          *cur));
             }
-            (Known(cur), _) => {
+            (&Known(ref cur), _) => {
                 self.ecx.span_err(sp,
                                   format!("argument used to format with `{}` was \
                                            attempted to not be used for formatting",
-                                           cur));
+                                           *cur));
             }
-            (_, Known(ty)) => {
+            (_, &Known(ref ty)) => {
                 self.ecx.span_err(sp,
                                   format!("argument previously used as a format \
                                            argument attempted to be used as `{}`",
-                                           ty));
+                                           *ty));
             }
             (_, _) => {
                 self.ecx.span_err(sp, "argument declared with multiple formats");
@@ -333,13 +346,18 @@ impl<'a> Context<'a> {
     fn static_attrs(&self) -> ~[ast::Attribute] {
         // Flag statics as `address_insignificant` so LLVM can merge duplicate
         // globals as much as possible (which we're generating a whole lot of).
-        let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
+        let unnamed = self.ecx
+                          .meta_word(self.fmtsp,
+                                     InternedString::new(
+                                         "address_insignificant"));
         let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
 
         // Do not warn format string as dead code
-        let dead_code = self.ecx.meta_word(self.fmtsp, @"dead_code");
+        let dead_code = self.ecx.meta_word(self.fmtsp,
+                                           InternedString::new("dead_code"));
         let allow_dead_code = self.ecx.meta_list(self.fmtsp,
-                                                 @"allow", ~[dead_code]);
+                                                 InternedString::new("allow"),
+                                                 ~[dead_code]);
         let allow_dead_code = self.ecx.attribute(self.fmtsp, allow_dead_code);
         return ~[unnamed, allow_dead_code];
     }
@@ -391,9 +409,8 @@ impl<'a> Context<'a> {
                     self.ecx.expr_path(path)
                 }
                 parse::CountIsName(n) => {
-                    let n = n.to_managed();
-                    let i = match self.name_positions.find_copy(&n) {
-                        Some(i) => i,
+                    let i = match self.name_positions.find_equiv(&n) {
+                        Some(&i) => i,
                         None => 0, // error already emitted elsewhere
                     };
                     let i = i + self.args.len();
@@ -410,7 +427,7 @@ impl<'a> Context<'a> {
                         let result = arm.result.iter().map(|p| {
                             self.trans_piece(p)
                         }).collect();
-                        let s = arm.selector.to_managed();
+                        let s = token::intern_and_get_ident(arm.selector);
                         let selector = self.ecx.expr_str(sp, s);
                         self.ecx.expr_struct(sp, p, ~[
                             self.ecx.field_imm(sp,
@@ -486,8 +503,12 @@ impl<'a> Context<'a> {
 
         match *piece {
             parse::String(s) => {
-                self.ecx.expr_call_global(sp, rtpath("String"),
-                                          ~[self.ecx.expr_str(sp, s.to_managed())])
+                let s = token::intern_and_get_ident(s);
+                self.ecx.expr_call_global(sp,
+                                          rtpath("String"),
+                                          ~[
+                    self.ecx.expr_str(sp, s)
+                ])
             }
             parse::CurrentArgument => {
                 let nil = self.ecx.expr_lit(sp, ast::LitNil);
@@ -509,9 +530,8 @@ impl<'a> Context<'a> {
                     // Named arguments are converted to positional arguments at
                     // the end of the list of arguments
                     parse::ArgumentNamed(n) => {
-                        let n = n.to_managed();
-                        let i = match self.name_positions.find_copy(&n) {
-                            Some(i) => i,
+                        let i = match self.name_positions.find_equiv(&n) {
+                            Some(&i) => i,
                             None => 0, // error already emitted elsewhere
                         };
                         let i = i + self.args.len();
@@ -623,14 +643,17 @@ impl<'a> Context<'a> {
             locals.push(self.format_arg(e.span, Exact(i),
                                         self.ecx.expr_ident(e.span, name)));
         }
-        for (&name, &e) in self.names.iter() {
-            if !self.name_types.contains_key(&name) { continue }
+        for (name, &e) in self.names.iter() {
+            if !self.name_types.contains_key(name) {
+                continue
+            }
 
-            let lname = self.ecx.ident_of(format!("__arg{}", name));
+            let lname = self.ecx.ident_of(format!("__arg{}", *name));
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, lname, e));
-            names[*self.name_positions.get(&name)] =
-                Some(self.format_arg(e.span, Named(name),
+            names[*self.name_positions.get(name)] =
+                Some(self.format_arg(e.span,
+                                     Named((*name).clone()),
                                      self.ecx.expr_ident(e.span, lname)));
         }
 
@@ -672,16 +695,16 @@ impl<'a> Context<'a> {
                                            Some(result)))
     }
 
-    fn format_arg(&self, sp: Span, argno: Position,
-                  arg: @ast::Expr) -> @ast::Expr {
+    fn format_arg(&self, sp: Span, argno: Position, arg: @ast::Expr)
+                  -> @ast::Expr {
         let ty = match argno {
-            Exact(i) => self.arg_types[i].unwrap(),
-            Named(s) => *self.name_types.get(&s)
+            Exact(ref i) => self.arg_types[*i].get_ref(),
+            Named(ref s) => self.name_types.get(s)
         };
 
-        let fmt_trait = match ty {
-            Known(tyname) => {
-                match tyname.as_slice() {
+        let fmt_trait = match *ty {
+            Known(ref tyname) => {
+                match (*tyname).as_slice() {
                     ""  => "Default",
                     "?" => "Poly",
                     "b" => "Bool",
@@ -698,8 +721,9 @@ impl<'a> Context<'a> {
                     "x" => "LowerHex",
                     "X" => "UpperHex",
                     _ => {
-                        self.ecx.span_err(sp, format!("unknown format trait \
-                                                       `{}`", tyname));
+                        self.ecx.span_err(sp,
+                                          format!("unknown format trait `{}`",
+                                                  *tyname));
                         "Dummy"
                     }
                 }
@@ -757,8 +781,9 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
     // Be sure to recursively expand macros just in case the format string uses
     // a macro to build the format expression.
     let expr = cx.ecx.expand_expr(efmt);
-    let fmt = match expr_to_str(cx.ecx, expr,
-                                     "format argument must be a string literal.") {
+    let fmt = match expr_to_str(cx.ecx,
+                                expr,
+                                "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
         None => return MacResult::dummy_expr()
     };
@@ -770,7 +795,7 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
             cx.ecx.span_err(efmt.span, m);
         }
     }).inside(|| {
-        for piece in parse::Parser::new(fmt) {
+        for piece in parse::Parser::new(fmt.get()) {
             if !err {
                 cx.verify_piece(&piece);
                 let piece = cx.trans_piece(&piece);

@@ -76,16 +76,17 @@ use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
 use syntax::ast_util::{local_def, is_local};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use syntax::{ast, ast_util, ast_map};
-use syntax::attr::AttrMetaMethods;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
-use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::visit;
+use syntax::{ast, ast_util, ast_map};
 
 pub use middle::trans::context::task_llcx;
 
@@ -359,7 +360,7 @@ pub fn malloc_raw_dyn<'a>(
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
-        // we treat ~fn, @fn and @[] as @ here, which isn't ideal
+        // we treat ~fn as @ here, which isn't ideal
         let langcall = match heap {
             heap_managed => {
                 require_alloc_fn(bcx, t, MallocFnLangItem)
@@ -509,7 +510,7 @@ pub fn set_no_split_stack(f: ValueRef) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: @str) {
+pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: ~str) {
     let mut all_llvm_symbols = ccx.all_llvm_symbols.borrow_mut();
     if all_llvm_symbols.get().contains(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
@@ -604,7 +605,8 @@ pub fn compare_scalar_types<'a>(
             rslt(
                 controlflow::trans_fail(
                     cx, None,
-                    @"attempt to compare values of type type"),
+                    InternedString::new("attempt to compare values of type \
+                                         type")),
                 C_nil())
         }
         _ => {
@@ -856,9 +858,9 @@ pub fn fail_if_zero<'a>(
                     rhs_t: ty::t)
                     -> &'a Block<'a> {
     let text = if divrem == ast::BiDiv {
-        @"attempted to divide by zero"
+        "attempted to divide by zero"
     } else {
-        @"attempted remainder with a divisor of zero"
+        "attempted remainder with a divisor of zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
@@ -875,7 +877,7 @@ pub fn fail_if_zero<'a>(
       }
     };
     with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, Some(span), text)
+        controlflow::trans_fail(bcx, Some(span), InternedString::new(text))
     })
 }
 
@@ -1951,7 +1953,7 @@ fn exported_name(ccx: &CrateContext, path: ast_map::Path,
                  ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
-        Some(name) => name.to_owned(),
+        Some(name) => name.get().to_owned(),
 
         // Don't mangle
         _ if attr::contains_name(attrs, "no_mangle")
@@ -2099,7 +2101,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
                     match attr::first_attr_value_str_by_name(i.attrs, "link_section") {
                         Some(sect) => unsafe {
-                            sect.with_c_str(|buf| {
+                            sect.get().with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
                             })
                         },
@@ -2161,9 +2163,9 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                     ccx.crate_map
                                 }
                             } else {
-                                let ident = foreign::link_name(ccx, ni);
+                                let ident = foreign::link_name(ni);
                                 unsafe {
-                                    ident.with_c_str(|buf| {
+                                    ident.get().with_c_str(|buf| {
                                         let ty = type_of(ccx, ty);
                                         llvm::LLVMAddGlobal(ccx.llmod,
                                                             ty.to_ref(), buf)
@@ -2476,21 +2478,21 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
         let mut keys = ~[];
         let module_data = ccx.module_data.borrow();
         for (k, _) in module_data.get().iter() {
-            keys.push(k.to_managed());
+            keys.push(k.clone());
         }
         keys
     };
 
     for key in keys.iter() {
-            let llstrval = C_str_slice(ccx, *key);
-            let module_data = ccx.module_data.borrow();
-            let val = *module_data.get().find_equiv(key).unwrap();
-            let v_ptr = p2i(ccx, val);
-            let elt = C_struct([
-                llstrval,
-                v_ptr
-            ], false);
-            elts.push(elt);
+        let llstrval = C_str_slice(ccx, token::intern_and_get_ident(*key));
+        let module_data = ccx.module_data.borrow();
+        let val = *module_data.get().find_equiv(key).unwrap();
+        let v_ptr = p2i(ccx, val);
+        let elt = C_struct([
+            llstrval,
+            v_ptr
+        ], false);
+        elts.push(elt);
     }
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));

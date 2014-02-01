@@ -266,13 +266,6 @@ impl<A:IterBytes> IterBytes for ~[A] {
     }
 }
 
-impl<A:IterBytes> IterBytes for @[A] {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.as_slice().iter_bytes(lsb0, f)
-    }
-}
-
 impl<'a> IterBytes for &'a str {
     #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
@@ -282,13 +275,6 @@ impl<'a> IterBytes for &'a str {
 }
 
 impl IterBytes for ~str {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.as_slice().iter_bytes(lsb0, f)
-    }
-}
-
-impl IterBytes for @str {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         self.as_slice().iter_bytes(lsb0, f)

@@ -17,21 +17,15 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print managed->val.fill
-// check:$1 = 24
-// debugger:print *((uint64_t[3]*)(managed->val.elements))
-// check:$2 = {7, 8, 9}
-
 // debugger:print unique->fill
-// check:$3 = 32
+// check:$1 = 32
 // debugger:print *((uint64_t[4]*)(unique->elements))
-// check:$4 = {10, 11, 12, 13}
+// check:$2 = {10, 11, 12, 13}
 
 #[allow(unused_variable)];
 
 fn main() {
 
-    let managed: @[i64] = @[7, 8, 9];
     let unique: ~[i64] = ~[10, 11, 12, 13];
 
     zzz();

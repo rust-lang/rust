@@ -75,12 +75,12 @@ pub fn expand_meta_deriving(cx: &ExtCtxt,
         MetaList(_, ref titems) => {
             titems.rev_iter().fold(in_items, |in_items, &titem| {
                 match titem.node {
-                    MetaNameValue(tname, _) |
-                    MetaList(tname, _) |
-                    MetaWord(tname) => {
+                    MetaNameValue(ref tname, _) |
+                    MetaList(ref tname, _) |
+                    MetaWord(ref tname) => {
                         macro_rules! expand(($func:path) => ($func(cx, titem.span,
                                                                    titem, in_items)));
-                        match tname.as_slice() {
+                        match tname.get() {
                             "Clone" => expand!(clone::expand_deriving_clone),
                             "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 

@@ -15,32 +15,32 @@
 
 use back::abi;
 use back::link::*;
-use lib;
 use lib::llvm::{llvm, ValueRef, True};
+use lib;
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::trans::adt;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
-use middle::trans::build::*;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
+use middle::trans::type_::Type;
 use middle::trans::type_of::type_of;
 use middle::ty;
-use util::ppaux;
 use util::ppaux::ty_to_short_str;
-
-use middle::trans::type_::Type;
+use util::ppaux;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::Cell;
 use std::libc::c_uint;
 use syntax::ast;
+use syntax::parse::token;
 
 pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_free");
@@ -64,10 +64,7 @@ pub fn take_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("take_ty");
     match ty::get(t).sty {
-        ty::ty_box(_) |
-        ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) => {
-            incr_refcnt_of_boxed(bcx, v)
-        }
+        ty::ty_box(_) => incr_refcnt_of_boxed(bcx, v),
         ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
             incr_refcnt_of_boxed(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]))
         }
@@ -111,10 +108,6 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
         match ty::get(t).sty {
             ty::ty_box(typ)
                 if !ty::type_needs_drop(tcx, typ) =>
-            return ty::mk_box(tcx, ty::mk_nil()),
-
-            ty::ty_vec(mt, ty::vstore_box)
-                if !ty::type_needs_drop(tcx, mt.ty) =>
             return ty::mk_box(tcx, ty::mk_nil()),
 
             ty::ty_uniq(typ)
@@ -326,11 +319,6 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
         ty::ty_box(body_ty) => {
             decr_refcnt_maybe_free(bcx, v0, Some(body_ty))
         }
-        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
-            let unit_ty = ty::sequence_element_type(ccx.tcx, t);
-            let unboxed_vec_ty = ty::mk_mut_unboxed_vec(ccx.tcx, unit_ty);
-            decr_refcnt_maybe_free(bcx, v0, Some(unboxed_vec_ty))
-        }
         ty::ty_uniq(content_ty) => {
             let llbox = Load(bcx, v0);
             let not_null = IsNotNull(bcx, llbox);
@@ -471,16 +459,17 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
-    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
-    note_unique_llvm_symbol(ccx, name);
+    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }
     });
+    note_unique_llvm_symbol(ccx, name);
 
-    let ty_name = C_str_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
+    let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx, t));
+    let ty_name = C_str_slice(ccx, ty_name);
 
     let inf = @tydesc_info {
         ty: t,
@@ -498,10 +487,10 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
                         name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
+    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, ~"glue_" + name);
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
-    note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty, ty::mk_nil());
+    note_unique_llvm_symbol(ccx, fn_nm);
     return llfn;
 }
 

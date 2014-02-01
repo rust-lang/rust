@@ -176,8 +176,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some(@"true"),
-                        val(const_bool(false)) => Some(@"false"),
+                        val(const_bool(true)) => Some(~"true"),
+                        val(const_bool(false)) => Some(~"false"),
                         _ => None
                     }
                 }
@@ -197,7 +197,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                 }
                 ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                     match *ctor {
-                        vec(n) => Some(format!("vectors of length {}", n).to_managed()),
+                        vec(n) => Some(format!("vectors of length {}", n)),
                         _ => None
                     }
                 }
@@ -214,9 +214,14 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
 
 type matrix = ~[~[@Pat]];
 
-enum useful { useful(ty::t, ctor), useful_, not_useful }
+#[deriving(Clone)]
+enum useful {
+    useful(ty::t, ctor),
+    useful_,
+    not_useful,
+}
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 enum ctor {
     single,
     variant(DefId),
@@ -261,7 +266,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                                           val(const_bool(false)),
                                           0u, left_ty)
                   }
-                  ref u => *u,
+                  ref u => (*u).clone(),
                 }
               }
               ty::ty_enum(eid, _) => {
@@ -269,7 +274,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                     match is_useful_specialized(cx, m, v, variant(va.id),
                                                 va.args.len(), left_ty) {
                       not_useful => (),
-                      ref u => return *u,
+                      ref u => return (*u).clone(),
                     }
                 }
                 not_useful
@@ -289,7 +294,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 for n in iter::range(0u, max_len + 1) {
                   match is_useful_specialized(cx, m, v, vec(n), n, left_ty) {
                     not_useful => (),
-                    ref u => return *u,
+                    ref u => return (*u).clone(),
                   }
                 }
                 not_useful
@@ -304,15 +309,15 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
             match is_useful(cx,
                             &m.iter().filter_map(|r| default(cx, *r)).collect::<matrix>(),
                             v.tail()) {
-              useful_ => useful(left_ty, *ctor),
-              ref u => *u,
+              useful_ => useful(left_ty, (*ctor).clone()),
+              ref u => (*u).clone(),
             }
           }
         }
       }
       Some(ref v0_ctor) => {
         let arity = ctor_arity(cx, v0_ctor, left_ty);
-        is_useful_specialized(cx, m, v, *v0_ctor, arity, left_ty)
+        is_useful_specialized(cx, m, v, (*v0_ctor).clone(), arity, left_ty)
       }
     }
 }
@@ -329,7 +334,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
         cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap());
     match could_be_useful {
       useful_ => useful(lty, ctor),
-      ref u => *u,
+      ref u => (*u).clone(),
     }
 }
 
@@ -407,7 +412,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
             let r = pat_ctor_id(cx, r[0]);
             for id in r.iter() {
                 if !found.contains(id) {
-                    found.push(*id);
+                    found.push((*id).clone());
                 }
             }
         }
@@ -770,8 +775,8 @@ fn specialize(cx: &MatchCheckCtxt,
             }
             PatRange(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
-                    val(ref v) => (*v, *v),
-                    range(ref lo, ref hi) => (*lo, *hi),
+                    val(ref v) => ((*v).clone(), (*v).clone()),
+                    range(ref lo, ref hi) => ((*lo).clone(), (*hi).clone()),
                     single => return Some(r.tail().to_owned()),
                     _ => fail!("type error")
                 };

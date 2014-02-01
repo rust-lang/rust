@@ -18,6 +18,7 @@ use middle::ty;
 use middle::typeck;
 
 use std::vec;
+use std::rc::Rc;
 use reader = extra::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;
@@ -221,8 +222,8 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
                  class_id, def) );
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: @~[],
-                                region_param_defs: @[]},
+        generics: ty::Generics {type_param_defs: Rc::new(~[]),
+                                region_param_defs: Rc::new(~[])},
         ty: ty
     }
 }

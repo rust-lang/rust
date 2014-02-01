@@ -17,6 +17,7 @@ use codemap::Span;
 use ext::base;
 use ext::base::*;
 use parse;
+use parse::token::InternedString;
 use parse::token;
 
 enum State {
@@ -43,7 +44,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                            cx.cfg(),
                                            tts.to_owned());
 
-    let mut asm = @"";
+    let mut asm = InternedString::new("");
     let mut asm_str_style = None;
     let mut outputs = ~[];
     let mut inputs = ~[];
@@ -79,10 +80,10 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (constraint, _str_style) = p.parse_str();
 
-                    if constraint.starts_with("+") {
+                    if constraint.get().starts_with("+") {
                         cx.span_unimpl(p.last_span,
                                        "'+' (read+write) output operand constraint modifier");
-                    } else if !constraint.starts_with("=") {
+                    } else if !constraint.get().starts_with("=") {
                         cx.span_err(p.last_span, "output operand constraint lacks '='");
                     }
 
@@ -104,9 +105,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (constraint, _str_style) = p.parse_str();
 
-                    if constraint.starts_with("=") {
+                    if constraint.get().starts_with("=") {
                         cx.span_err(p.last_span, "input operand constraint contains '='");
-                    } else if constraint.starts_with("+") {
+                    } else if constraint.get().starts_with("+") {
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
@@ -137,11 +138,11 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             Options => {
                 let (option, _str_style) = p.parse_str();
 
-                if "volatile" == option {
+                if option.equiv(&("volatile")) {
                     volatile = true;
-                } else if "alignstack" == option {
+                } else if option.equiv(&("alignstack")) {
                     alignstack = true;
-                } else if "intel" == option {
+                } else if option.equiv(&("intel")) {
                     dialect = ast::AsmIntel;
                 }
 
@@ -191,9 +192,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     MRExpr(@ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
-            asm: asm,
+            asm: token::intern_and_get_ident(asm.get()),
             asm_str_style: asm_str_style.unwrap(),
-            clobbers: cons.to_managed(),
+            clobbers: token::intern_and_get_ident(cons),
             inputs: inputs,
             outputs: outputs,
             volatile: volatile,

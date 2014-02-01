@@ -194,16 +194,6 @@ pub struct BorrowStats {
 //
 // Note that there is no entry with derefs:3---the type of that expression
 // is T, which is not a box.
-//
-// Note that implicit dereferences also occur with indexing of `@[]`,
-// `@str`, etc.  The same rules apply. So, for example, given a
-// variable `x` of type `@[@[...]]`, if I have an instance of the
-// expression `x[0]` which is then auto-slice'd, there would be two
-// potential entries in the root map, both with the id of the `x[0]`
-// expression. The entry with `derefs==0` refers to the deref of `x`
-// used as part of evaluating `x[0]`. The entry with `derefs==1`
-// refers to the deref of the `x[0]` that occurs as part of the
-// auto-slice.
 #[deriving(Eq, IterBytes)]
 pub struct root_map_key {
     id: ast::NodeId,
@@ -774,7 +764,8 @@ impl BorrowckCtxt {
                         match pat.node {
                             ast::PatIdent(_, ref path, _) => {
                                 let ident = ast_util::path_to_ident(path);
-                                out.push_str(token::ident_to_str(&ident));
+                                let string = token::get_ident(ident.name);
+                                out.push_str(string.get());
                             }
                             _ => {
                                 self.tcx.sess.bug(
@@ -795,8 +786,9 @@ impl BorrowckCtxt {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 match fname {
                     mc::NamedField(ref fname) => {
+                        let string = token::get_ident(*fname);
                         out.push_char('.');
-                        out.push_str(token::interner_get(*fname));
+                        out.push_str(string.get());
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here

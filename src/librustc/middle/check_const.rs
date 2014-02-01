@@ -192,8 +192,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     "references in constants may only refer to \
                      immutable values");
           },
-          ExprVstore(_, ExprVstoreUniq) |
-          ExprVstore(_, ExprVstoreBox) => {
+          ExprVstore(_, ExprVstoreUniq) => {
               sess.span_err(e.span, "cannot allocate vectors in constant expressions")
           },
 

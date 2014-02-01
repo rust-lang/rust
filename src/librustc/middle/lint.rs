@@ -34,18 +34,17 @@
 //! Context itself, span_lint should be used instead of add_lint.
 
 use driver::session;
+use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
+use middle::pat_util;
 use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
-use middle::typeck;
-use middle::pat_util;
-use metadata::csearch;
-use util::ppaux::{ty_to_str};
-use std::to_str::ToStr;
-
-use middle::typeck::infer;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
+use middle::typeck::infer;
+use middle::typeck;
+use std::to_str::ToStr;
+use util::ppaux::{ty_to_str};
 
 use std::cmp;
 use std::hashmap::HashMap;
@@ -59,13 +58,14 @@ use std::u64;
 use std::u8;
 use extra::smallintmap::SmallIntMap;
 use syntax::ast_map;
-use syntax::attr;
-use syntax::attr::{AttrMetaMethods, AttributeMethods};
-use syntax::codemap::Span;
-use syntax::parse::token;
-use syntax::{ast, ast_util, visit};
 use syntax::ast_util::IdVisitingOperation;
+use syntax::attr::{AttrMetaMethods, AttributeMethods};
+use syntax::attr;
+use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::visit::Visitor;
+use syntax::{ast, ast_util, visit};
 
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub enum Lint {
@@ -540,10 +540,16 @@ impl<'a> Context<'a> {
         });
 
         let old_is_doc_hidden = self.is_doc_hidden;
-        self.is_doc_hidden = self.is_doc_hidden ||
-            attrs.iter().any(|attr| ("doc" == attr.name() && match attr.meta_item_list()
-                                     { None => false,
-                                       Some(l) => attr::contains_name(l, "hidden") }));
+        self.is_doc_hidden =
+            self.is_doc_hidden ||
+            attrs.iter()
+                 .any(|attr| {
+                     attr.name().equiv(&("doc")) &&
+                     match attr.meta_item_list() {
+                         None => false,
+                         Some(l) => attr::contains_name(l, "hidden")
+                     }
+                 });
 
         f(self);
 
@@ -569,12 +575,12 @@ impl<'a> Context<'a> {
 // Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::Attribute],
-                 f: |@ast::MetaItem, level, @str| -> bool)
+                 f: |@ast::MetaItem, level, InternedString| -> bool)
                  -> bool {
     let xs = [allow, warn, deny, forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);
-        for attr in attrs.iter().filter(|m| level_name == m.name()) {
+        for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
@@ -585,8 +591,8 @@ pub fn each_lint(sess: session::Session,
             };
             for meta in metas.iter() {
                 match meta.node {
-                    ast::MetaWord(lintname) => {
-                        if !f(*meta, level, lintname) {
+                    ast::MetaWord(ref lintname) => {
+                        if !f(*meta, level, (*lintname).clone()) {
                             return false;
                         }
                     }
@@ -603,15 +609,17 @@ pub fn each_lint(sess: session::Session,
 // Check from a list of attributes if it contains the appropriate
 // `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
 pub fn contains_lint(attrs: &[ast::Attribute],
-                    level: level, lintname: &'static str) -> bool {
+                     level: level,
+                     lintname: &'static str)
+                     -> bool {
     let level_name = level_to_str(level);
-    for attr in attrs.iter().filter(|m| level_name == m.name()) {
+    for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
         if attr.meta_item_list().is_none() {
             continue
         }
         let list = attr.meta_item_list().unwrap();
         for meta_item in list.iter() {
-            if lintname == meta_item.name() {
+            if meta_item.name().equiv(&lintname) {
                 return true;
             }
         }
@@ -879,8 +887,7 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
         let mut n_uniq = 0;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
-                ty::ty_box(_) | ty::ty_str(ty::vstore_box) |
-                ty::ty_vec(_, ty::vstore_box) |
+                ty::ty_box(_) |
                 ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
                     n_box += 1;
                 }
@@ -1240,8 +1247,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
     // Warn if string and vector literals with sigils, or boxing expressions,
     // are immediately borrowed.
     let allocation = match e.node {
-        ast::ExprVstore(e2, ast::ExprVstoreUniq) |
-        ast::ExprVstore(e2, ast::ExprVstoreBox) => {
+        ast::ExprVstore(e2, ast::ExprVstoreUniq) => {
             match e2.node {
                 ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
                     VectorAllocation
@@ -1314,7 +1320,7 @@ fn check_missing_doc_attrs(cx: &Context,
 
     let has_doc = attrs.iter().any(|a| {
         match a.node.value.node {
-            ast::MetaNameValue(ref name, _) if "doc" == *name => true,
+            ast::MetaNameValue(ref name, _) if name.equiv(&("doc")) => true,
             _ => false
         }
     });

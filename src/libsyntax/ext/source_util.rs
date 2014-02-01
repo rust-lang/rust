@@ -16,11 +16,13 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use parse;
-use parse::token::{get_ident_interner};
+use parse::token::get_ident_interner;
+use parse::token;
 use print::pprust;
 
 use std::io;
 use std::io::File;
+use std::rc::Rc;
 use std::str;
 
 // These macros all relate to the file system; they either return
@@ -57,21 +59,26 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    let filename = loc.file.name;
+    let filename = token::intern_and_get_ident(loc.file.name);
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, get_ident_interner());
-    base::MRExpr(cx.expr_str(sp, s.to_managed()))
+    base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(s)))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
-    base::MRExpr(cx.expr_str(sp,
-                             cx.mod_path().map(|x| cx.str_of(*x)).connect("::").to_managed()))
+    let string = cx.mod_path()
+                   .map(|x| {
+                        let interned_str = token::get_ident(x.name);
+                        interned_str.get().to_str()
+                    })
+                   .connect("::");
+    base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(string)))
 }
 
 // include! : parse the given file as an expr
@@ -113,11 +120,11 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let src = src.to_managed();
-            let filename = file.display().to_str().to_managed();
+            let filename = file.display().to_str();
+            let interned = token::intern_and_get_ident(src);
             cx.parse_sess.cm.new_filemap(filename, src);
 
-            base::MRExpr(cx.expr_str(sp, src))
+            base::MRExpr(cx.expr_str(sp, interned))
         }
         None => {
             cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
@@ -129,8 +136,6 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         -> base::MacResult
 {
-    use std::at_vec;
-
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bin!") {
         Some(f) => f,
         None => return MacResult::dummy_expr()
@@ -142,8 +147,7 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             return MacResult::dummy_expr();
         }
         Ok(bytes) => {
-            let bytes = at_vec::to_managed_move(bytes);
-            base::MRExpr(cx.expr_lit(sp, ast::LitBinary(bytes)))
+            base::MRExpr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }
 }

@@ -42,7 +42,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
     // module that we've got.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for (cnum, path) in crates.move_iter() {
-        let name = sess.cstore.get_crate_data(cnum).name;
+        let name = sess.cstore.get_crate_data(cnum).name.clone();
         let path = match path {
             Some(p) => p,
             None => {

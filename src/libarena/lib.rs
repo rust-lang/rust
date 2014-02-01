@@ -27,7 +27,6 @@ extern mod extra;
 use extra::list::{List, Cons, Nil};
 use extra::list;
 
-use std::at_vec;
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
 use std::cell::{Cell, RefCell};
@@ -35,19 +34,30 @@ use std::num;
 use std::ptr;
 use std::kinds::marker;
 use std::mem;
+use std::rc::Rc;
 use std::rt::global_heap;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
 use std::unstable::intrinsics;
 use std::util;
+use std::vec;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
 #[deriving(Clone)]
 struct Chunk {
-    data: RefCell<@[u8]>,
+    data: Rc<RefCell<~[u8]>>,
     fill: Cell<uint>,
     is_pod: Cell<bool>,
+}
+impl Chunk {
+    fn capacity(&self) -> uint {
+        self.data.borrow().borrow().get().capacity()
+    }
+
+    unsafe fn as_ptr(&self) -> *u8 {
+        self.data.borrow().borrow().get().as_ptr()
+    }
 }
 
 // Arenas are used to quickly allocate objects that share a
@@ -97,10 +107,8 @@ impl Arena {
 }
 
 fn chunk(size: uint, is_pod: bool) -> Chunk {
-    let mut v: @[u8] = @[];
-    unsafe { at_vec::raw::reserve(&mut v, size); }
     Chunk {
-        data: RefCell::new(unsafe { cast::transmute(v) }),
+        data: Rc::new(RefCell::new(vec::with_capacity(size))),
         fill: Cell::new(0u),
         is_pod: Cell::new(is_pod),
     }
@@ -131,10 +139,7 @@ fn round_up(base: uint, align: uint) -> uint {
 // in it.
 unsafe fn destroy_chunk(chunk: &Chunk) {
     let mut idx = 0;
-    let buf = {
-        let data = chunk.data.borrow();
-        data.get().as_ptr()
-    };
+    let buf = chunk.as_ptr();
     let fill = chunk.fill.get();
 
     while idx < fill {
@@ -172,11 +177,13 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TyDesc, bool) {
 }
 
 impl Arena {
+    fn chunk_size(&self) -> uint {
+        self.pod_head.capacity()
+    }
     // Functions for the POD part of the arena
     fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
-        let chunk_size = at_vec::capacity(self.pod_head.data.get());
-        let new_min_chunk_size = num::max(n_bytes, chunk_size);
+        let new_min_chunk_size = num::max(n_bytes, self.chunk_size());
         self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
         self.pod_head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
@@ -190,7 +197,7 @@ impl Arena {
             let this = transmute_mut_region(self);
             let start = round_up(this.pod_head.fill.get(), align);
             let end = start + n_bytes;
-            if end > at_vec::capacity(this.pod_head.data.get()) {
+            if end > self.chunk_size() {
                 return this.alloc_pod_grow(n_bytes, align);
             }
             this.pod_head.fill.set(end);
@@ -198,7 +205,7 @@ impl Arena {
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill.get());
 
-            ptr::offset(this.pod_head.data.get().as_ptr(), start as int)
+            this.pod_head.as_ptr().offset(start as int)
         }
     }
 
@@ -217,8 +224,7 @@ impl Arena {
     fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
                          -> (*u8, *u8) {
         // Allocate a new chunk.
-        let chunk_size = at_vec::capacity(self.head.data.get());
-        let new_min_chunk_size = num::max(n_bytes, chunk_size);
+        let new_min_chunk_size = num::max(n_bytes, self.chunk_size());
         self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
         self.head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
@@ -244,7 +250,7 @@ impl Arena {
                 end = start + n_bytes;
             }
 
-            if end > at_vec::capacity(self.head.data.get()) {
+            if end > self.head.capacity() {
                 return self.alloc_nonpod_grow(n_bytes, align);
             }
 
@@ -254,7 +260,7 @@ impl Arena {
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
-            let buf = self.head.data.get().as_ptr();
+            let buf = self.head.as_ptr();
             return (ptr::offset(buf, tydesc_start as int), ptr::offset(buf, start as int));
         }
     }
@@ -606,5 +612,3 @@ mod test {
         })
     }
 }
-
-

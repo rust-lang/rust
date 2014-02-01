@@ -35,20 +35,12 @@ pub fn main() {
         baz: ~[],
         bar: ~32,
     };
-    let _t1_at = Thing1 {
-        baz: @[],
-        bar: ~32,
-    };
     let _t2_fixed = Thing2 {
         baz: &[],
         bar: 32,
     };
     Thing2 {
         baz: ~[],
-        bar: 32,
-    };
-    let _t2_at = Thing2 {
-        baz: @[],
         bar: 32,
     };
 }

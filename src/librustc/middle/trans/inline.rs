@@ -152,7 +152,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
 
             let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
             let num_type_params =
-                impl_tpt.generics.type_param_defs.len() +
+                impl_tpt.generics.type_param_defs().len() +
                 mth.generics.ty_params.len();
 
           if num_type_params == 0 {
