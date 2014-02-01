@@ -974,7 +974,7 @@ static other_attrs: &'static [&'static str] = &[
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold", "macro_registrar",
+    "no_split_stack", "cold", "macro_registrar", "linkage",
 
     // internal attribute: bypass privacy inside items
     "!resolve_unexported",
