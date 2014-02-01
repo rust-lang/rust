@@ -12,7 +12,7 @@ use ast;
 use ast::{P, Name, Mrk};
 use ast_util;
 use parse::token;
-use util::interner::StrInterner;
+use util::interner::{RcStr, StrInterner};
 use util::interner;
 
 use extra::serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -214,8 +214,11 @@ pub fn to_str(input: @IdentInterner, t: &Token) -> ~str {
       }
 
       /* Name components */
-      IDENT(s, _) => input.get(s.name).to_owned(),
-      LIFETIME(s) => format!("'{}", input.get(s.name)),
+      IDENT(s, _) => input.get(s.name).into_owned(),
+      LIFETIME(s) => {
+          let name = input.get(s.name);
+          format!("'{}", name.as_slice())
+      }
       UNDERSCORE => ~"_",
 
       /* Other */
@@ -549,7 +552,7 @@ pub fn get_ident_interner() -> @IdentInterner {
 #[no_send]
 #[deriving(Clone, Eq, IterBytes, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
-    priv string: @str,
+    priv string: RcStr,
 }
 
 #[unsafe_destructor]
@@ -563,13 +566,12 @@ impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
         InternedString {
-            string: string.to_managed(),
+            string: RcStr::new(string),
         }
     }
 
-    // NB: Do not make this public. We are trying to remove `@str`.
     #[inline]
-    fn new_from_at_str(string: @str) -> InternedString {
+    fn new_from_rc_str(string: RcStr) -> InternedString {
         InternedString {
             string: string,
         }
@@ -594,7 +596,7 @@ impl BytesContainer for InternedString {
 
 impl fmt::Default for InternedString {
     fn fmt(obj: &InternedString, f: &mut fmt::Formatter) {
-        write!(f.buf, "{}", obj.string);
+        write!(f.buf, "{}", obj.string.as_slice());
     }
 }
 
@@ -613,7 +615,7 @@ impl<D:Decoder> Decodable<D> for InternedString {
 
 impl<E:Encoder> Encodable<E> for InternedString {
     fn encode(&self, e: &mut E) {
-        e.emit_str(self.string)
+        e.emit_str(self.string.as_slice())
     }
 }
 
@@ -622,7 +624,7 @@ impl<E:Encoder> Encodable<E> for InternedString {
 #[inline]
 pub fn get_ident(idx: Name) -> InternedString {
     let interner = get_ident_interner();
-    InternedString::new_from_at_str(interner.get(idx))
+    InternedString::new_from_rc_str(interner.get(idx))
 }
 
 /// Interns and returns the string contents of an identifier, using the
