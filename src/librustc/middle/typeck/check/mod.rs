@@ -3909,7 +3909,6 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
                               -> ty::vstore {
     match v {
         ast::ExprVstoreUniq => ty::vstore_uniq,
-        ast::ExprVstoreBox => ty::vstore_box,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             match e.node {
                 ast::ExprLit(..) |

@@ -417,7 +417,6 @@ pub enum Vstore {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum ExprVstore {
     ExprVstoreUniq,                 // ~[1,2,3,4]
-    ExprVstoreBox,                  // @[1,2,3,4]
     ExprVstoreSlice,                // &[1,2,3,4]
     ExprVstoreMutSlice,             // &mut [1,2,3,4]
 }

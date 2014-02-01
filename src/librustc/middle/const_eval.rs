@@ -240,7 +240,6 @@ impl ConstEvalVisitor {
                 match vstore {
                     ast::ExprVstoreSlice => self.classify(e),
                     ast::ExprVstoreUniq |
-                    ast::ExprVstoreBox |
                     ast::ExprVstoreMutSlice => non_const
                 }
             }

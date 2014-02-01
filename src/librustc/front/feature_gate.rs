@@ -228,8 +228,7 @@ impl Visitor<()> for Context {
 
     fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         match e.node {
-            ast::ExprUnary(_, ast::UnBox, _) |
-            ast::ExprVstore(_, ast::ExprVstoreBox) => {
+            ast::ExprUnary(_, ast::UnBox, _) => {
                 self.gate_box(e.span);
             }
             _ => {}
