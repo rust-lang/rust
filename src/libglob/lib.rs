@@ -226,7 +226,7 @@ impl Pattern {
      * The `-` character can be specified inside a character sequence pattern by
      * placing it at the start or the end, e.g. `[abc-]`.
      *
-     * When a `[` does not have a closing `]` before the end of the string then
+     * When a `[` does not have a closing `]` before the end of the `ByteContainer` then
      * the `[` will be treated literally.
      */
     pub fn new<T: BytesContainer>(pattern: T) -> Pattern {
@@ -289,22 +289,22 @@ impl Pattern {
     }
 
     /**
-     * Escape metacharacters within the given string by surrounding them in
-     * brackets. The resulting string will, when compiled into a `Pattern`,
-     * match the input string and nothing else.
+     * Escape metacharacters within the given `BytesContainer` by surrounding them in
+     * brackets. The resulting vector will, when compiled into a `Pattern`,
+     * match the input `BytesContainer` and nothing else.
      */
-    pub fn escape(s: &str) -> ~str {
-        let mut escaped = ~"";
-        for c in s.chars() {
-            match c {
+    pub fn escape<T: BytesContainer>(s: T) -> ~[u8] {
+        let mut escaped = ~[];
+        for c in s.container_as_bytes().iter() {
+            match *c {
                 // note that ! does not need escaping because it is only special inside brackets
-                '?' | '*' | '[' | ']' => {
-                    escaped.push_char('[');
-                    escaped.push_char(c);
-                    escaped.push_char(']');
+                QMARK | STAR | LBRACKET | RBRACKET => {
+                    escaped.push(LBRACKET);
+                    escaped.push(*c);
+                    escaped.push(RBRACKET);
                 }
                 c => {
-                    escaped.push_char(c);
+                    escaped.push(c);
                 }
             }
         }
@@ -384,11 +384,11 @@ impl Pattern {
                         }
 
                         // cannot infer an appropriate lifetime for autoref due to conflicting requirements
-                        let c = file.shift_ref().unwrap();
-                        if require_literal(c) {
+                        let byte = file.shift_ref().unwrap();
+                        if require_literal(byte) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char.set(Some(c));
+                        prev_char.set(Some(byte));
                     }
                 }
                 _ => {
@@ -396,19 +396,19 @@ impl Pattern {
                         return EntirePatternDoesntMatch;
                     }
 
-                    let c = file.shift_ref().unwrap();
+                    let byte = file.shift_ref().unwrap();
                     let matches = match *token {
                         AnyByte => {
-                            !require_literal(c)
+                            !require_literal(byte)
                         }
                         AnyWithin(ref specifiers) => {
-                            !require_literal(c) && in_byte_specifier(*specifiers, c, options)
+                            !require_literal(byte) && in_byte_specifier(*specifiers, byte, options)
                         }
                         AnyExcept(ref specifiers) => {
-                            !require_literal(c) && !in_byte_specifier(*specifiers, c, options)
+                            !require_literal(byte) && !in_byte_specifier(*specifiers, byte, options)
                         }
                         Byte(c2) => {
-                            bytes_eq(c, &c2, options.case_sensitive)
+                            bytes_eq(byte, &c2, options.case_sensitive)
                         }
                         AnySequence => {
                             unreachable!()
@@ -417,7 +417,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char.set(Some(c));
+                    prev_char.set(Some(byte));
                 }
             }
         }
@@ -699,7 +699,7 @@ mod test {
     #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
-        assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
+        assert_eq!(Pattern::escape(s), "_[[]_[]]_[?]_[*]_!_".as_bytes().to_owned());
         assert!(Pattern::new(Pattern::escape(s)).matches(s));
     }
 
