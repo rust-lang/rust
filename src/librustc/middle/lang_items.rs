@@ -273,4 +273,17 @@ lets_do_this! {
     37, ManagedHeapLangItem,             "managed_heap",            managed_heap;
     38, ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     39, GcLangItem,                      "gc",                      gc;
+
+    40, CovariantTypeItem,               "covariant_type",          covariant_type;
+    41, ContravariantTypeItem,           "contravariant_type",      contravariant_type;
+    42, InvariantTypeItem,               "invariant_type",          invariant_type;
+
+    43, CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
+    44, ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
+    45, InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
+
+    46, NoFreezeItem,                    "no_freeze_bound",         no_freeze_bound;
+    47, NoSendItem,                      "no_send_bound",           no_send_bound;
+    48, NoPodItem,                       "no_pod_bound",            no_pod_bound;
+    49, ManagedItem,                     "managed_bound",           managed_bound;
 }

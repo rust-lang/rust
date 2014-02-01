@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,14 +10,17 @@
 
 use std::kinds::marker;
 
-struct Foo {
-    a: int,
-    ns: marker::NoSend
+struct invariant<'a> {
+    marker: marker::InvariantLifetime<'a>
 }
 
-fn bar<T: Send>(_: T) {}
+fn to_same_lifetime<'r>(bi: invariant<'r>) {
+    let bj: invariant<'r> = bi;
+}
+
+fn to_longer_lifetime<'r>(bi: invariant<'r>) -> invariant<'static> {
+    bi //~ ERROR mismatched types
+}
 
 fn main() {
-    let x = Foo { a: 5, ns: marker::NoSend };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
 }

@@ -27,6 +27,7 @@ use cast::transmute;
 use ops::Drop;
 use cmp::{Eq, Ord};
 use clone::{Clone, DeepClone};
+use kinds::marker;
 use rt::global_heap::exchange_free;
 use ptr::read_ptr;
 use option::{Option, Some, None};
@@ -39,16 +40,19 @@ struct RcBox<T> {
 
 /// Immutable reference counted pointer type
 #[unsafe_no_drop_flag]
-#[no_send]
 pub struct Rc<T> {
-    priv ptr: *mut RcBox<T>
+    priv ptr: *mut RcBox<T>,
+    priv marker: marker::NoSend
 }
 
 impl<T> Rc<T> {
     /// Construct a new reference-counted box
     pub fn new(value: T) -> Rc<T> {
         unsafe {
-            Rc { ptr: transmute(~RcBox { value: value, strong: 1, weak: 0 }) }
+            Rc {
+                ptr: transmute(~RcBox { value: value, strong: 1, weak: 0 }),
+                marker: marker::NoSend,
+            }
         }
     }
 }
@@ -64,7 +68,7 @@ impl<T> Rc<T> {
     pub fn downgrade(&self) -> Weak<T> {
         unsafe {
             (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr }
+            Weak { ptr: self.ptr, marker: marker::NoSend }
         }
     }
 }
@@ -91,7 +95,7 @@ impl<T> Clone for Rc<T> {
     fn clone(&self) -> Rc<T> {
         unsafe {
             (*self.ptr).strong += 1;
-            Rc { ptr: self.ptr }
+            Rc { ptr: self.ptr, marker: marker::NoSend }
         }
     }
 }
@@ -127,9 +131,9 @@ impl<T: Ord> Ord for Rc<T> {
 
 /// Weak reference to a reference-counted box
 #[unsafe_no_drop_flag]
-#[no_send]
 pub struct Weak<T> {
-    priv ptr: *mut RcBox<T>
+    priv ptr: *mut RcBox<T>,
+    priv marker: marker::NoSend
 }
 
 impl<T> Weak<T> {
@@ -140,7 +144,7 @@ impl<T> Weak<T> {
                 None
             } else {
                 (*self.ptr).strong += 1;
-                Some(Rc { ptr: self.ptr })
+                Some(Rc { ptr: self.ptr, marker: marker::NoSend })
             }
         }
     }
@@ -165,7 +169,7 @@ impl<T> Clone for Weak<T> {
     fn clone(&self) -> Weak<T> {
         unsafe {
             (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr }
+            Weak { ptr: self.ptr, marker: marker::NoSend }
         }
     }
 }

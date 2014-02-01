@@ -45,6 +45,7 @@ use sync;
 use sync::{Mutex, RWLock};
 
 use std::cast;
+use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
 
@@ -150,9 +151,10 @@ impl<T:Freeze + Send> Clone for Arc<T> {
 struct MutexArcInner<T> { lock: Mutex, failed: bool, data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
-#[no_freeze]
-pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
-
+pub struct MutexArc<T> {
+    priv x: UnsafeArc<MutexArcInner<T>>,
+    priv marker: marker::NoFreeze,
+}
 
 impl<T:Send> Clone for MutexArc<T> {
     /// Duplicate a mutex-protected Arc. See arc::clone for more details.
@@ -160,7 +162,8 @@ impl<T:Send> Clone for MutexArc<T> {
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexArc { x: self.x.clone() }
+        MutexArc { x: self.x.clone(),
+                   marker: marker::NoFreeze, }
     }
 }
 
@@ -179,7 +182,8 @@ impl<T:Send> MutexArc<T> {
             lock: Mutex::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        MutexArc { x: UnsafeArc::new(data) }
+        MutexArc { x: UnsafeArc::new(data),
+                   marker: marker::NoFreeze, }
     }
 
     /**
@@ -318,16 +322,17 @@ struct RWArcInner<T> { lock: RWLock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[no_freeze]
 pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
+    priv marker: marker::NoFreeze,
 }
 
 impl<T:Freeze + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> RWArc<T> {
-        RWArc { x: self.x.clone() }
+        RWArc { x: self.x.clone(),
+                marker: marker::NoFreeze, }
     }
 
 }
@@ -347,7 +352,8 @@ impl<T:Freeze + Send> RWArc<T> {
             lock: RWLock::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        RWArc { x: UnsafeArc::new(data), }
+        RWArc { x: UnsafeArc::new(data),
+                marker: marker::NoFreeze, }
     }
 
     /**

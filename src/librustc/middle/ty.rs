@@ -1772,7 +1772,9 @@ def_type_content_sets!(
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000__00000000__0001,
 
-        // Things that make values considered not POD (same as `Moves`)
+        // Things that make values considered not POD (would be same
+        // as `Moves`, but for the fact that managed data `@` is
+        // not considered POD)
         Nonpod                              = 0b0000__00001111__0000,
 
         // Bits to set when a managed value is encountered
@@ -2051,7 +2053,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 if ty::has_dtor(cx, did) {
                     res = res | TC::OwnsDtor;
                 }
-                apply_attributes(cx, did, res)
+                apply_lang_items(cx, did, res)
             }
 
             ty_tup(ref tys) => {
@@ -2066,7 +2068,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
-                apply_attributes(cx, did, res)
+                apply_lang_items(cx, did, res)
             }
 
             ty_param(p) => {
@@ -2121,13 +2123,21 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         mc | tc_ty(cx, mt.ty, cache)
     }
 
-    fn apply_attributes(cx: ctxt,
+    fn apply_lang_items(cx: ctxt,
                         did: ast::DefId,
                         tc: TypeContents)
                         -> TypeContents {
-        tc |
-            TC::ReachesMutable.when(has_attr(cx, did, "no_freeze")) |
-            TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send"))
+        if Some(did) == cx.lang_items.no_freeze_bound() {
+            tc | TC::ReachesMutable
+        } else if Some(did) == cx.lang_items.no_send_bound() {
+            tc | TC::ReachesNonsendAnnot
+        } else if Some(did) == cx.lang_items.managed_bound() {
+            tc | TC::Managed
+        } else if Some(did) == cx.lang_items.no_pod_bound() {
+            tc | TC::OwnsAffine
+        } else {
+            tc
+        }
     }
 
     fn borrowed_contents(region: ty::Region,

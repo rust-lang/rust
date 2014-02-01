@@ -281,7 +281,7 @@ pub struct FunctionContext<'a> {
     path: Path,
 
     // The arena that blocks are allocated from.
-    block_arena: TypedArena<Block<'a>>,
+    block_arena: &'a TypedArena<Block<'a>>,
 
     // This function's enclosing crate context.
     ccx: @CrateContext,
