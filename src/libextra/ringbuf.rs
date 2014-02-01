@@ -303,7 +303,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining2
         };
         self.nelts -= 1;
-        Some(r.mut_shift_ref().get_mut_ref())
+        Some(r.mut_shift_ref().unwrap().get_mut_ref())
     }
 
     #[inline]
@@ -325,7 +325,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining1
         };
         self.nelts -= 1;
-        Some(r.mut_pop_ref().get_mut_ref())
+        Some(r.mut_pop_ref().unwrap().get_mut_ref())
     }
 }
 

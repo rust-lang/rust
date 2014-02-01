@@ -662,7 +662,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.get().mut_last();
+            let last_scope = scopes.get().mut_last().unwrap();
             match last_scope.cached_landing_pad {
                 Some(llbb) => { return llbb; }
                 None => {
