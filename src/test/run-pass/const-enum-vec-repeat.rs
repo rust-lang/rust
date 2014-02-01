@@ -10,6 +10,6 @@
 
 enum State { ST_NULL, ST_WHITESPACE = 1 }
 
-fn main() {
+pub fn main() {
     ~[ST_NULL, ..(ST_WHITESPACE as uint)];
 }
