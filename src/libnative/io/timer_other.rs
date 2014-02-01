@@ -85,11 +85,48 @@ pub enum Req {
 }
 
 // returns the current time (in milliseconds)
+#[cfg(not(target_os = "linux"))]
 fn now() -> u64 {
     unsafe {
         let mut now: libc::timeval = intrinsics::init();
         assert_eq!(imp::gettimeofday(&mut now, ptr::null()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
+    }
+}
+
+// Use CLOCK_MONOTONIC_COARSE when available (Linux >= 2.6.32) and accurate
+// enough for millisecond resolution, else fall back to CLOCK_MONOTONIC.
+// The coarse clock uses the vDSO and skips the system call entirely.
+// FIXME(bnoordhuis) Not safe to enable on Android because old versions
+// of the NDK don't have clock_getres() and clock_gettime().  It should
+// be possible to work around that using weak linking but that requires
+// weak symbol support first.  (Either that or by parsing the auxiliary
+// vector at start-up and looking up the vDSO from there.)
+#[cfg(target_os = "linux")]
+fn now() -> u64 {
+    use std::sync::atomics::{INIT_ATOMIC_INT, AtomicInt, SeqCst};
+    use std::unstable::intrinsics;
+
+    extern {
+        fn clock_getres(_: libc::c_int, _: *mut libc::timespec) -> libc::c_int;
+        fn clock_gettime(_: libc::c_int, _: *mut libc::timespec) -> libc::c_int;
+    }
+
+    static mut clock_id: AtomicInt = INIT_ATOMIC_INT;
+    unsafe {
+        let mut ts: libc::timespec = intrinsics::uninit();
+        let mut id = clock_id.load(SeqCst) as libc::c_int;
+        // Note: this trick doesn't work for CLOCK_REALTIME, it has clock id 0.
+        if id == 0 {
+            let rc = clock_getres(CLOCK_MONOTONIC_COARSE, &mut ts);
+            id = match rc == 0 && ts.tv_sec == 0 && ts.tv_nsec <= 1_000_000 {
+                true => CLOCK_MONOTONIC_COARSE,
+                false => CLOCK_MONOTONIC,
+            };
+            clock_id.store(id as int, SeqCst);
+        }
+        assert_eq!(clock_gettime(id, &mut ts), 0);
+        ts.tv_sec as u64 * 1000 + ts.tv_nsec as u64 / 1_000_000
     }
 }
 
