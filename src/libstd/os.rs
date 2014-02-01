@@ -145,6 +145,49 @@ fn with_env_lock<T>(f: || -> T) -> T {
     }
 }
 
+/**
+  Given a **T (pointer to an array of pointers),
+  iterate through each *T, up to the provided `len`,
+  passing to the provided callback function
+
+  SAFETY NOTE: Pointer-arithmetic. Dragons be here.
+*/
+unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
+    use ptr::offset;
+
+    debug!("array_each_with_len: before iterate");
+    if arr as uint == 0 {
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
+    }
+    //let start_ptr = *arr;
+    for e in range(0, len) {
+        let n = offset(arr, e as int);
+        cb(*n);
+    }
+    debug!("array_each_with_len: after iterate");
+}
+
+/**
+  Given a null-pointer-terminated **T (pointer to
+  an array of pointers), iterate through each *T,
+  passing to the provided callback function
+
+  SAFETY NOTE: This will only work with a null-terminated
+  pointer array. Barely less-dodgy Pointer Arithmetic.
+  Dragons be here.
+*/
+unsafe fn array_each<T>(arr: **T, cb: |*T|) {
+    use ptr::buf_len;
+
+    if arr as uint == 0 {
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
+    }
+    let len = buf_len(arr);
+    debug!("array_each inferred len: {}", len);
+    array_each_with_len(arr, len, cb);
+}
+
+
 /// Returns a vector of (variable, value) pairs for all the environment
 /// variables of the current process.
 pub fn env() -> ~[(~str,~str)] {
@@ -181,7 +224,7 @@ pub fn env() -> ~[(~str,~str)] {
                        os::last_os_error());
             }
             let mut result = ~[];
-            ptr::array_each(environ, |e| {
+            array_each(environ, |e| {
                 let env_pair = str::raw::from_c_str(e);
                 debug!("get_env_pairs: {}", env_pair);
                 result.push(env_pair);
@@ -1301,11 +1344,15 @@ mod tests {
     use prelude::*;
     use c_str::ToCStr;
     use option;
+    use libc;
     use os::{env, getcwd, getenv, make_absolute, args};
     use os::{setenv, unsetenv};
     use os;
+    use ptr::null;
     use rand::Rng;
     use rand;
+    use str;
+    use super::{array_each, array_each_with_len};
 
 
     #[test]
@@ -1546,4 +1593,92 @@ mod tests {
     }
 
     // More recursive_mkdir tests are in extra::tempfile
+
+    #[test]
+    fn test_ptr_array_each_with_len() {
+        unsafe {
+            let one = "oneOne".to_c_str();
+            let two = "twoTwo".to_c_str();
+            let three = "threeThree".to_c_str();
+            let arr = ~[
+                one.with_ref(|buf| buf),
+                two.with_ref(|buf| buf),
+                three.with_ref(|buf| buf),
+            ];
+            let expected_arr = [
+                one, two, three
+            ];
+
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            array_each_with_len(arr.as_ptr(), arr.len(), |e| {
+                    let actual = str::raw::from_c_str(e);
+                    let expected = expected_arr[ctr].with_ref(|buf| {
+                            str::raw::from_c_str(buf)
+                        });
+                    debug!(
+                        "test_ptr_array_each_with_len e: {}, a: {}",
+                        expected, actual);
+                    assert_eq!(actual, expected);
+                    ctr += 1;
+                    iteration_count += 1;
+                });
+            assert_eq!(iteration_count, 3u);
+        }
+    }
+
+    #[test]
+    fn test_ptr_array_each() {
+        unsafe {
+            let one = "oneOne".to_c_str();
+            let two = "twoTwo".to_c_str();
+            let three = "threeThree".to_c_str();
+            let arr = ~[
+                one.with_ref(|buf| buf),
+                two.with_ref(|buf| buf),
+                three.with_ref(|buf| buf),
+                // fake a null terminator
+                null(),
+            ];
+            let expected_arr = [
+                one, two, three
+            ];
+
+            let arr_ptr = arr.as_ptr();
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            array_each(arr_ptr, |e| {
+                    let actual = str::raw::from_c_str(e);
+                    let expected = expected_arr[ctr].with_ref(|buf| {
+                        str::raw::from_c_str(buf)
+                    });
+                    debug!(
+                        "test_ptr_array_each e: {}, a: {}",
+                        expected, actual);
+                    assert_eq!(actual, expected);
+                    ctr += 1;
+                    iteration_count += 1;
+                });
+            assert_eq!(iteration_count, 3);
+        }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_ptr_array_each_with_len_null_ptr() {
+        unsafe {
+            array_each_with_len(0 as **libc::c_char, 1, |e| {
+                str::raw::from_c_str(e);
+            });
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_ptr_array_each_null_ptr() {
+        unsafe {
+            array_each(0 as **libc::c_char, |e| {
+                str::raw::from_c_str(e);
+            });
+        }
+    }
 }
