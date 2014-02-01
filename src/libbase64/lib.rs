@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,6 +9,14 @@
 // except according to those terms.
 
 //! Base64 binary-to-text encoding
+
+#[crate_id = "base64#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+
+extern mod extra;
+
 use std::str;
 
 /// Available encoding character sets
@@ -63,8 +71,8 @@ impl<'a> ToBase64 for &'a [u8] {
      * # Example
      *
      * ```rust
-     * extern mod extra;
-     * use extra::base64::{ToBase64, STANDARD};
+     * extern mod base64;
+     * use base64::{ToBase64, STANDARD};
      *
      * fn main () {
      *     let str = [52,32].to_base64(STANDARD);
@@ -189,8 +197,8 @@ impl<'a> FromBase64 for &'a str {
      * This converts a string literal to base64 and back.
      *
      * ```rust
-     * extern mod extra;
-     * use extra::base64::{ToBase64, FromBase64, STANDARD};
+     * extern mod base64;
+     * use base64::{ToBase64, FromBase64, STANDARD};
      * use std::str;
      *
      * fn main () {
@@ -261,8 +269,8 @@ impl<'a> FromBase64 for &'a str {
 
 #[cfg(test)]
 mod test {
-    use test::BenchHarness;
-    use base64::*;
+    use extra::test::BenchHarness;
+    use super::{ToBase64, FromBase64, STANDARD, URL_SAFE, Config};
 
     #[test]
     fn test_to_base64_basic() {
