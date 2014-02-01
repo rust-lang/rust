@@ -3079,7 +3079,7 @@ A value of type `str` is a Unicode string,
 represented as a vector of 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
 Since `str` is of unknown size, it is not a _first class_ type,
 but can only be instantiated through a pointer type,
-such as `&str`, `@str` or `~str`.
+such as `&str` or `~str`.
 
 ### Tuple types
 
