@@ -1213,7 +1213,7 @@ mod test {
         let sessopts = build_session_options(~"rustc", matches, @diagnostic::DefaultEmitter);
         let sess = build_session(sessopts, None, @diagnostic::DefaultEmitter);
         let cfg = build_configuration(sess);
-        let mut test_items = cfg.iter().filter(|m| "test" == m.name());
+        let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }

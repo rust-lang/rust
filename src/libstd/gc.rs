@@ -35,7 +35,6 @@ pub struct Gc<T> {
 }
 
 #[cfg(test)]
-#[no_send]
 pub struct Gc<T> {
     priv ptr: @T,
     priv marker: marker::NoSend,
