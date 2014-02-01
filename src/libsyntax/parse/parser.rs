@@ -2295,7 +2295,10 @@ impl Parser {
             ex = match e.node {
               ExprVec(..) |
               ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
-              ExprLit(lit) if lit_is_str(lit) => ExprVstore(e, ExprVstoreBox),
+              ExprLit(lit) if lit_is_str(lit) => {
+                  self.obsolete(self.last_span, ObsoleteManagedString);
+                  ExprVstore(e, ExprVstoreBox)
+              }
               _ => self.mk_unary(UnBox, e)
             };
           }

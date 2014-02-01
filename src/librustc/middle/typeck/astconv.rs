@@ -413,8 +413,17 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 // will run after this as long as the path isn't a trait.
                 let def_map = tcx.def_map.borrow();
                 match def_map.get().find(&id) {
-                    Some(&ast::DefPrimTy(ast::TyStr)) if a_seq_ty.mutbl == ast::MutImmutable => {
+                    Some(&ast::DefPrimTy(ast::TyStr)) if
+                            a_seq_ty.mutbl == ast::MutImmutable => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
+                        match vst {
+                            ty::vstore_box => {
+                                tcx.sess.span_err(path.span,
+                                                  "managed strings are not \
+                                                   supported")
+                            }
+                            _ => {}
+                        }
                         return ty::mk_str(tcx, vst);
                     }
                     Some(&ast::DefTrait(trait_def_id)) => {

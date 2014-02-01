@@ -25,7 +25,6 @@ fn main() {
     @[1]; //~ ERROR type uses managed
     //~^ ERROR type uses managed
     fn f(_: @Clone) {} //~ ERROR type uses managed
-    //~^ ERROR type uses managed
 
     ~2; //~ ERROR type uses owned
     ~[1]; //~ ERROR type uses owned
