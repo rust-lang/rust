@@ -185,7 +185,6 @@ mod tests {
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
         assert_eq!(s.to_str(), ~"abcde");
-        assert!(s.equiv(&@"abcde"));
         assert!(s.lt(&SendStrOwned(~"bcdef")));
         assert_eq!(SendStrStatic(""), Default::default());
 
@@ -193,7 +192,6 @@ mod tests {
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
         assert_eq!(o.to_str(), ~"abcde");
-        assert!(o.equiv(&@"abcde"));
         assert!(o.lt(&SendStrStatic("bcdef")));
         assert_eq!(SendStrOwned(~""), Default::default());
 

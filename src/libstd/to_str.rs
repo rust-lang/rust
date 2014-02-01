@@ -195,7 +195,6 @@ mod tests {
         assert_eq!(false.to_str(), ~"false");
         assert_eq!(().to_str(), ~"()");
         assert_eq!((~"hi").to_str(), ~"hi");
-        assert_eq!((@"hi").to_str(), ~"hi");
     }
 
     #[test]
