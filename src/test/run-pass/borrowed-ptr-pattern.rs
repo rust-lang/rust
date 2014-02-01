@@ -17,5 +17,4 @@ fn foo<T:Clone>(x: &T) -> T{
 pub fn main() {
     assert_eq!(foo(&3), 3);
     assert_eq!(foo(&'a'), 'a');
-    assert_eq!(foo(&@"Dogs rule, cats drool"), @"Dogs rule, cats drool");
 }
