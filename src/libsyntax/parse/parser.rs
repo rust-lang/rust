@@ -29,7 +29,7 @@ use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
-use ast::{ExprVec, ExprVstore, ExprVstoreSlice, ExprVstoreBox};
+use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
 use ast::{ExprVstoreUniq, Onceness, Once, Many};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
@@ -2291,16 +2291,18 @@ impl Parser {
             self.bump();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn @[...] into a @-vec
+            // HACK: pretending @[] is a (removed) @-vec
             ex = match e.node {
               ExprVec(..) |
               ExprRepeat(..) => {
                   self.obsolete(e.span, ObsoleteManagedVec);
-                  ExprVstore(e, ExprVstoreBox)
+                  // the above error means that no-one will know we're
+                  // lying... hopefully.
+                  ExprVstore(e, ExprVstoreUniq)
               }
               ExprLit(lit) if lit_is_str(lit) => {
                   self.obsolete(self.last_span, ObsoleteManagedString);
-                  ExprVstore(e, ExprVstoreBox)
+                  ExprVstore(e, ExprVstoreUniq)
               }
               _ => self.mk_unary(UnBox, e)
             };
@@ -2819,34 +2821,11 @@ impl Parser {
           token::AT => {
             self.bump();
             let sub = self.parse_pat();
-            hi = sub.span.hi;
-            // HACK: parse @"..." as a literal of a vstore @str
-            pat = match sub.node {
-              PatLit(e) => {
-                  match e.node {
-                      ExprLit(lit) if lit_is_str(lit) => {
-                        let vst = @Expr {
-                            id: ast::DUMMY_NODE_ID,
-                            node: ExprVstore(e, ExprVstoreBox),
-                            span: mk_sp(lo, hi),
-                        };
-                        PatLit(vst)
-                      }
-                      _ => {
-                        self.obsolete(self.span, ObsoleteManagedPattern);
-                        PatUniq(sub)
-                      }
-                  }
-              }
-              _ => {
-                self.obsolete(self.span, ObsoleteManagedPattern);
-                PatUniq(sub)
-              }
-            };
-            hi = self.last_span.hi;
+            self.obsolete(self.span, ObsoleteManagedPattern);
+            let hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
-                node: pat,
+                node: sub,
                 span: mk_sp(lo, hi)
             }
           }

@@ -519,14 +519,6 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprIndex(_, base, idx) => {
             trans_index(bcx, expr, base, idx)
         }
-        ast::ExprVstore(contents, ast::ExprVstoreBox) => {
-            fcx.push_ast_cleanup_scope(contents.id);
-            let datum = unpack_datum!(
-                bcx, tvec::trans_uniq_or_managed_vstore(bcx, heap_managed,
-                                                        expr, contents));
-            bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, contents.id);
-            DatumBlock(bcx, datum)
-        }
         ast::ExprVstore(contents, ast::ExprVstoreUniq) => {
             fcx.push_ast_cleanup_scope(contents.id);
             let datum = unpack_datum!(
@@ -2030,4 +2022,3 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         DatumBlock { bcx: bcx, datum: datum }
     }
 }
-

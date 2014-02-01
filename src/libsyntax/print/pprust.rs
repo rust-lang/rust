@@ -1074,7 +1074,6 @@ pub fn print_vstore(s: &mut State, t: ast::Vstore) {
 pub fn print_expr_vstore(s: &mut State, t: ast::ExprVstore) {
     match t {
       ast::ExprVstoreUniq => word(&mut s.s, "~"),
-      ast::ExprVstoreBox => word(&mut s.s, "@"),
       ast::ExprVstoreSlice => word(&mut s.s, "&"),
       ast::ExprVstoreMutSlice => {
         word(&mut s.s, "&");
