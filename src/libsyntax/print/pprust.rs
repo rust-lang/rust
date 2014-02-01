@@ -2212,10 +2212,10 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
       ast::LitBool(val) => {
         if val { word(&mut s.s, "true"); } else { word(&mut s.s, "false"); }
       }
-      ast::LitBinary(arr) => {
+      ast::LitBinary(ref arr) => {
         ibox(s, indent_unit);
         word(&mut s.s, "[");
-        commasep_cmnt(s, Inconsistent, arr, |s, u| word(&mut s.s, format!("{}", *u)),
+        commasep_cmnt(s, Inconsistent, *arr.borrow(), |s, u| word(&mut s.s, format!("{}", *u)),
                       |_| lit.span);
         word(&mut s.s, "]");
         end(s);
