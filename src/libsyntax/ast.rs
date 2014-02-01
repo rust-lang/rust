@@ -20,6 +20,7 @@ use parse::token;
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::option::Option;
+use std::rc::Rc;
 use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -724,7 +725,7 @@ pub type Lit = Spanned<Lit_>;
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
-    LitBinary(@[u8]),
+    LitBinary(Rc<~[u8]>),
     LitChar(u32),
     LitInt(i64, IntTy),
     LitUint(u64, UintTy),

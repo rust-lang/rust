@@ -22,6 +22,7 @@ use print::pprust;
 
 use std::io;
 use std::io::File;
+use std::rc::Rc;
 use std::str;
 
 // These macros all relate to the file system; they either return
@@ -135,8 +136,6 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         -> base::MacResult
 {
-    use std::at_vec;
-
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bin!") {
         Some(f) => f,
         None => return MacResult::dummy_expr()
@@ -148,8 +147,7 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             return MacResult::dummy_expr();
         }
         Ok(bytes) => {
-            let bytes = at_vec::to_managed_move(bytes);
-            base::MRExpr(cx.expr_lit(sp, ast::LitBinary(bytes)))
+            base::MRExpr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }
 }
