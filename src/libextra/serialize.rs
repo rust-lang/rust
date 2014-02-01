@@ -18,7 +18,6 @@ Core encoding and decoding interfaces.
 #[forbid(non_camel_case_types)];
 
 
-use std::at_vec;
 use std::hashmap::{HashMap, HashSet};
 use std::rc::Rc;
 use std::trie::{TrieMap, TrieSet};
@@ -438,26 +437,6 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     fn decode(d: &mut D) -> ~[T] {
         d.read_seq(|d, len| {
             vec::from_fn(len, |i| {
-                d.read_seq_elt(i, |d| Decodable::decode(d))
-            })
-        })
-    }
-}
-
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))
-            }
-        })
-    }
-}
-
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
-    fn decode(d: &mut D) -> @[T] {
-        d.read_seq(|d, len| {
-            at_vec::from_fn(len, |i| {
                 d.read_seq_elt(i, |d| Decodable::decode(d))
             })
         })
