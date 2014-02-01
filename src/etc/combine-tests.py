@@ -69,6 +69,7 @@ extern mod run_pass_stage2;
 use run_pass_stage2::*;
 use std::io;
 use std::io::Writer;
+#[allow(warnings)]
 fn main() {
     let mut out = io::stdout();
 """

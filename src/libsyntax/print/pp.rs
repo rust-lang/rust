@@ -299,19 +299,34 @@ impl Printer {
             if !self.scan_stack_empty {
                 self.check_stack(0);
                 let left = self.token[self.left].clone();
-                self.advance_left(left, self.size[self.left]);
+                if_ok!(self.advance_left(left, self.size[self.left]));
             }
-            Begin(b) => {
-                if self.scan_stack_empty {
-                    self.left_total = 1;
-                    self.right_total = 1;
-                    self.left = 0u;
-                    self.right = 0u;
-                } else { self.advance_right(); }
-                debug!("pp Begin({})/buffer ~[{},{}]",
-                b.offset, self.left, self.right);
+            self.indent(0);
+            Ok(())
+          }
+          Begin(b) => {
+            if self.scan_stack_empty {
+                self.left_total = 1;
+                self.right_total = 1;
+                self.left = 0u;
+                self.right = 0u;
+            } else { self.advance_right(); }
+            debug!("pp Begin({})/buffer ~[{},{}]",
+                   b.offset, self.left, self.right);
+            self.token[self.right] = t;
+            self.size[self.right] = -self.right_total;
+            self.scan_push(self.right);
+            Ok(())
+          }
+          End => {
+            if self.scan_stack_empty {
+                debug!("pp End/print ~[{},{}]", self.left, self.right);
+                self.print(t, 0)
+            } else {
+                debug!("pp End/buffer ~[{},{}]", self.left, self.right);
+                self.advance_right();
                 self.token[self.right] = t;
-                self.size[self.right] = -self.right_total;
+                self.size[self.right] = -1;
                 self.scan_push(self.right);
                 Ok(())
             }
@@ -330,12 +345,13 @@ impl Printer {
             self.token[self.right] = t;
             self.size[self.right] = -self.right_total;
             self.right_total += b.blank_space;
+            Ok(())
           }
           String(ref s, len) => {
             if self.scan_stack_empty {
                 debug!("pp String('{}')/print ~[{},{}]",
                        *s, self.left, self.right);
-                self.print(t.clone(), len);
+                self.print(t.clone(), len)
             } else {
                 debug!("pp String('{}')/buffer ~[{},{}]",
                        *s, self.left, self.right);
@@ -343,8 +359,9 @@ impl Printer {
                 self.token[self.right] = t.clone();
                 self.size[self.right] = len;
                 self.right_total += len;
-                self.check_stream();
+                self.check_stream()
             }
+          }
         }
     }
     pub fn check_stream(&mut self) -> io::IoResult<()> {
@@ -360,8 +377,10 @@ impl Printer {
                 }
             }
             let left = self.token[self.left].clone();
-            self.advance_left(left, self.size[self.left]);
-            if self.left != self.right { self.check_stream(); }
+            if_ok!(self.advance_left(left, self.size[self.left]));
+            if self.left != self.right {
+                if_ok!(self.check_stream());
+            }
         }
         Ok(())
     }
@@ -405,7 +424,7 @@ impl Printer {
         debug!("advnce_left ~[{},{}], sizeof({})={}", self.left, self.right,
                self.left, L);
         if L >= 0 {
-            self.print(x.clone(), L);
+            let ret = self.print(x.clone(), L);
             match x {
               Break(b) => self.left_total += b.blank_space,
               String(_, len) => {
@@ -417,7 +436,7 @@ impl Printer {
                 self.left += 1u;
                 self.left %= self.buf_len;
                 let left = self.token[self.left].clone();
-                self.advance_left(left, self.size[self.left]);
+                if_ok!(self.advance_left(left, self.size[self.left]));
             }
             ret
         } else {
@@ -477,7 +496,7 @@ impl Printer {
         }
         write!(self.out, "{}", s)
     }
-    pub fn print(&mut self, x: Token, L: int) {
+    pub fn print(&mut self, x: Token, L: int) -> io::IoResult<()> {
         debug!("print {} {} (remaining line space={})", tok_str(x.clone()), L,
                self.space);
         debug!("{}", buf_str(self.token.clone(),
@@ -587,16 +606,16 @@ pub fn end(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(End) }
 
 pub fn eof(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(Eof) }
 
-pub fn word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_str(), wrd.len() as int));
+pub fn word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
+    p.pretty_print(String(/* bad */ wrd.to_str(), wrd.len() as int))
 }
 
-pub fn huge_word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_str(), SIZE_INFINITY));
+pub fn huge_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
+    p.pretty_print(String(/* bad */ wrd.to_str(), SIZE_INFINITY))
 }
 
-pub fn zero_word(p: &mut Printer, wrd: &str) {
-    p.pretty_print(String(/* bad */ wrd.to_str(), 0));
+pub fn zero_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
+    p.pretty_print(String(/* bad */ wrd.to_str(), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: uint) -> io::IoResult<()> {

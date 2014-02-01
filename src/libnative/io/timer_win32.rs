@@ -62,8 +62,8 @@ fn helper(input: libc::HANDLE, messages: Port<Req>) {
                         c.send(());
                         match objs.iter().position(|&o| o == obj) {
                             Some(i) => {
-                                objs.remove(i);
-                                chans.remove(i - 1);
+                                drop(objs.remove(i));
+                                drop(chans.remove(i - 1));
                             }
                             None => {}
                         }
@@ -83,8 +83,8 @@ fn helper(input: libc::HANDLE, messages: Port<Req>) {
                 }
             };
             if remove {
-                objs.remove(idx as uint);
-                chans.remove(idx as uint - 1);
+                drop(objs.remove(idx as uint));
+                drop(chans.remove(idx as uint - 1));
             }
         }
     }
@@ -133,7 +133,7 @@ impl rtio::RtioTimer for Timer {
                                   ptr::mut_null(), 0)
         }, 1);
 
-        unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE); }
+        let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
     }
 
     fn oneshot(&mut self, msecs: u64) -> Port<()> {
@@ -173,7 +173,7 @@ impl rtio::RtioTimer for Timer {
 impl Drop for Timer {
     fn drop(&mut self) {
         self.remove();
-        unsafe { libc::CloseHandle(self.obj); }
+        assert!(unsafe { libc::CloseHandle(self.obj) != 0 });
     }
 }
 

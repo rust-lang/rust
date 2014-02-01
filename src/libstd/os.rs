@@ -1535,6 +1535,7 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
+        drop(chunk);
 
         fs::unlink(&path).unwrap();
     }

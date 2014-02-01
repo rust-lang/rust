@@ -804,13 +804,13 @@ impl<'a> fmt::Show for Item<'a> {
     fn fmt(it: &Item<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
         match attr::find_stability(it.item.attrs.iter()) {
             Some(ref stability) => {
-                write!(fmt.buf,
+                if_ok!(write!(fmt.buf,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level.to_str(),
                        reason = match stability.text {
                            Some(ref s) => (*s).clone(),
                            None => InternedString::new(""),
-                       });
+                       }));
             }
             None => {}
         }

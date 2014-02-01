@@ -46,6 +46,7 @@ Some examples of obvious things you might want to do
 * Write a line to a file
 
     ```rust
+    # #[allow(unused_must_use)];
     use std::io::File;
 
     let mut file = File::create(&Path::new("message.txt"));
@@ -83,6 +84,7 @@ Some examples of obvious things you might want to do
   `write_str` and `write_line` methods.
 
     ```rust,should_fail
+    # #[allow(unused_must_use)];
     use std::io::net::ip::SocketAddr;
     use std::io::net::tcp::TcpStream;
 
@@ -188,6 +190,7 @@ be an error.
 If you wanted to handle the error though you might write:
 
 ```rust
+# #[allow(unused_must_use)];
 use std::io::File;
 
 match File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n")) {
@@ -360,7 +363,7 @@ pub struct IoError {
     detail: Option<~str>
 }
 
-impl fmt::Default for IoError {
+impl fmt::Show for IoError {
     fn fmt(err: &IoError, fmt: &mut fmt::Formatter) -> fmt::Result {
         if_ok!(fmt.buf.write_str(err.desc));
         match err.detail {
@@ -515,14 +518,13 @@ pub trait Reader {
     /// Returns any non-EOF error immediately. Previously read bytes are
     /// discarded when an error is returned.
     ///
-    /// When EOF is encountered, all bytes read up to that point are returned,
-    /// but if 0 bytes have been read then the EOF error is returned.
+    /// When EOF is encountered, all bytes read up to that point are returned.
     fn read_to_end(&mut self) -> IoResult<~[u8]> {
         let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
         loop {
             match self.push_bytes(&mut buf, DEFAULT_BUF_SIZE) {
                 Ok(()) => {}
-                Err(ref e) if buf.len() > 0 && e.kind == EndOfFile => break,
+                Err(ref e) if e.kind == EndOfFile => break,
                 Err(e) => return Err(e)
             }
         }

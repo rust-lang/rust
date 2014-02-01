@@ -1160,12 +1160,12 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     let r = get_crate_deps(data);
     for dep in r.iter() {
         let string = token::get_ident(dep.name.name);
-        write!(out,
-               "{} {}-{}-{}\n",
-               dep.cnum,
-               string.get(),
-               dep.hash,
-               dep.vers);
+        if_ok!(write!(out,
+                      "{} {}-{}-{}\n",
+                      dep.cnum,
+                      string.get(),
+                      dep.hash,
+                      dep.vers));
     }
 
     if_ok!(write!(out, "\n"));
