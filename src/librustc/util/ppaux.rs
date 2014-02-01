@@ -260,7 +260,6 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(n) => format!("{}", n),
       ty::vstore_uniq => ~"~",
-      ty::vstore_box => ~"@",
       ty::vstore_slice(r) => region_ptr_to_str(cx, r)
     }
 }

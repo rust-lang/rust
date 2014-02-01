@@ -1896,23 +1896,6 @@ fn vec_metadata(cx: &CrateContext,
         span);
 }
 
-fn boxed_vec_metadata(cx: &CrateContext,
-                      element_type: ty::t,
-                      span: Span)
-                   -> DICompositeType {
-    let element_llvm_type = type_of::type_of(cx, element_type);
-    let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
-    let vec_type_name: &str = format!("[{}]", ppaux::ty_to_str(cx.tcx, element_type));
-    let vec_metadata = vec_metadata(cx, element_type, span);
-
-    return boxed_type_metadata(
-        cx,
-        Some(vec_type_name),
-        vec_llvm_type,
-        vec_metadata,
-        span);
-}
-
 fn vec_slice_metadata(cx: &CrateContext,
                       vec_type: ty::t,
                       element_type: ty::t,
@@ -2093,9 +2076,6 @@ fn type_metadata(cx: &CrateContext,
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::vstore_box => {
-                    fail!("unexpected managed string")
-                }
                 ty::vstore_slice(_region) => {
                     vec_slice_metadata(cx, t, i8_t, usage_site_span)
                 }
@@ -2115,10 +2095,6 @@ fn type_metadata(cx: &CrateContext,
                 ty::vstore_uniq => {
                     let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
-                }
-                ty::vstore_box => {
-                    let boxed_vec_metadata = boxed_vec_metadata(cx, mt.ty, usage_site_span);
-                    pointer_type_metadata(cx, t, boxed_vec_metadata)
                 }
                 ty::vstore_slice(_) => {
                     vec_slice_metadata(cx, t, mt.ty, usage_site_span)

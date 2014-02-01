@@ -604,7 +604,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           ty::ty_vec(mt, vstore) => {
             let region_var = match vstore {
                 ty::vstore_slice(r) => r,
-                ty::vstore_box | ty::vstore_uniq | ty::vstore_fixed(_) => {
+                ty::vstore_uniq | ty::vstore_fixed(_) => {
                     default_region_var
                 }
             };

@@ -219,7 +219,6 @@ pub fn enc_vstore(w: &mut MemWriter, cx: @ctxt, v: ty::vstore) {
     match v {
         ty::vstore_fixed(u) => mywrite!(w, "{}|", u),
         ty::vstore_uniq => mywrite!(w, "~"),
-        ty::vstore_box => mywrite!(w, "@"),
         ty::vstore_slice(r) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);

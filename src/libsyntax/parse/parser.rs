@@ -2825,7 +2825,7 @@ impl Parser {
             let hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
-                node: sub,
+                node: PatUniq(sub),
                 span: mk_sp(lo, hi)
             }
           }

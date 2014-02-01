@@ -202,7 +202,6 @@ pub fn super_fold_vstore<T:TypeFolder>(this: &mut T,
     match vstore {
         ty::vstore_fixed(i) => ty::vstore_fixed(i),
         ty::vstore_uniq => ty::vstore_uniq,
-        ty::vstore_box => ty::vstore_box,
         ty::vstore_slice(r) => ty::vstore_slice(this.fold_region(r)),
     }
 }

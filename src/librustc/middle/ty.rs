@@ -130,7 +130,6 @@ pub struct mt {
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
-    vstore_box,
     vstore_slice(Region)
 }
 
@@ -1558,7 +1557,7 @@ pub fn type_is_box(ty: t) -> bool {
 
 pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
-      ty_box(_) | ty_vec(_, vstore_box) | ty_str(vstore_box) => true,
+      ty_box(_) => true,
       _ => false
     }
 }
@@ -1682,10 +1681,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
           }
           ty_uniq(_) |
           ty_str(vstore_uniq) |
-          ty_str(vstore_box) |
-          ty_vec(_, vstore_uniq) |
-          ty_vec(_, vstore_box)
-          => {
+          ty_vec(_, vstore_uniq) => {
             // Once we're inside a box, the annihilator will find
             // it and destroy it.
             if !encountered_box {
@@ -2028,10 +2024,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 tc_mt(cx, mt, cache).owned_pointer()
             }
 
-            ty_vec(mt, vstore_box) => {
-                tc_mt(cx, mt, cache).managed_pointer()
-            }
-
             ty_vec(ref mt, vstore_slice(r)) => {
                 tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
@@ -2039,10 +2031,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_vec(mt, vstore_fixed(_)) => {
                 tc_mt(cx, mt, cache)
-            }
-
-            ty_str(vstore_box) => {
-                TC::Managed
             }
 
             ty_str(vstore_slice(r)) => {
@@ -2530,8 +2518,8 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
-      ty_str(vstore_uniq) | ty_str(vstore_box) |
-      ty_vec(_, vstore_uniq) | ty_vec(_, vstore_box) |
+      ty_str(vstore_uniq) |
+      ty_vec(_, vstore_uniq) |
       ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
@@ -4426,7 +4414,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 
         fn fold_vstore(&mut self, vstore: vstore) -> vstore {
             match vstore {
-                vstore_fixed(..) | vstore_uniq | vstore_box => vstore,
+                vstore_fixed(..) | vstore_uniq => vstore,
                 vstore_slice(_) => vstore_slice(ReStatic)
             }
         }
@@ -4863,7 +4851,6 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
         match v {
             vstore_fixed(_) => hash.input([0]),
             vstore_uniq => hash.input([1]),
-            vstore_box => hash.input([2]),
             vstore_slice(r) => {
                 hash.input([3]);
                 region(hash, r);
