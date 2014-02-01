@@ -183,9 +183,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_estr_box(&mut self) -> bool {
-        self.align_to::<@str>();
-        if ! self.inner.visit_estr_box() { return false; }
-        self.bump_past::<@str>();
         true
     }
 
