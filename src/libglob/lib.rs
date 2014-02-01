@@ -687,6 +687,16 @@ mod test {
     }
 
     #[test]
+    fn test_non_utf8_matches() {
+        let mut pattern = "*some/path/to/".as_bytes().to_owned();
+        pattern.push(super::STAR);
+
+        let mut path = "some/path/to/".as_bytes().to_owned();
+        path.push(0xFFu8);
+        assert!(Pattern::new(pattern).matches(path));
+    }
+
+    #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
         assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
