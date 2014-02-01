@@ -446,6 +446,13 @@ mod tests {
     use num::Bitwise;
 
     #[test]
+    fn test_overflows() {
+        assert!(MAX > 0);
+        assert!(MIN <= 0);
+        assert_eq!(MIN + MAX + 1, 0);
+    }
+
+    #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);
     }

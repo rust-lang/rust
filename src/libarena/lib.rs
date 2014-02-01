@@ -36,7 +36,6 @@ use std::ptr;
 use std::kinds::marker;
 use std::mem;
 use std::rt::global_heap;
-use std::uint;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
 use std::unstable::intrinsics;
 use std::util;
@@ -180,7 +179,7 @@ impl Arena {
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
         self.pod_head =
-            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
+            chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
 
         return self.alloc_pod_inner(n_bytes, align);
     }
@@ -222,7 +221,7 @@ impl Arena {
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
         self.head =
-            chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
+            chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
 
         return self.alloc_nonpod_inner(n_bytes, align);
     }

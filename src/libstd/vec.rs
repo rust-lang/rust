@@ -109,7 +109,7 @@ use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use num::{Integer, CheckedAdd, Saturating};
+use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -1487,7 +1487,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n));
+        self.reserve(checked_next_power_of_two(n).unwrap_or(n));
     }
 
     #[inline]
