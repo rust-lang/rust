@@ -3344,9 +3344,10 @@ pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
                      -> uint {
     let mut i = 0u;
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
+    let string = token::get_ident(name);
     tcx.sess.bug(format!(
         "No field named `{}` found in the list of fields `{:?}`",
-        token::interner_get(name),
+        string.get(),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 

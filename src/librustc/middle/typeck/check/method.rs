@@ -555,8 +555,10 @@ impl<'a> LookupContext<'a> {
                 return; // already visited
             }
         }
+
+        let method_name = token::get_ident(self.m_name);
         debug!("push_candidates_from_impl: {} {} {}",
-               token::interner_get(self.m_name),
+               method_name.get(),
                impl_info.ident.repr(self.tcx()),
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
