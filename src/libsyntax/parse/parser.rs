@@ -4178,7 +4178,8 @@ impl Parser {
                 outer_attrs, "path") {
             Some(d) => dir_path.join(d),
             None => {
-                let mod_name = token::interner_get(id.name).to_owned();
+                let mod_string = token::get_ident(id.name);
+                let mod_name = mod_string.get().to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
                 let default_path = dir_path.join(default_path_str.as_slice());
