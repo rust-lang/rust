@@ -215,15 +215,7 @@ impl CStore {
             debug!("  hash[{}]: {}", x.name, x.hash);
         }
 
-        let mut hashes = ~[];
-        for ch in result.move_iter() {
-            let crate_hash {
-                hash,
-                ..
-            } = ch;
-            hashes.push(hash)
-        }
-        hashes
+        result.move_iter().map(|crate_hash { hash, ..}| hash).collect()
     }
 }
 

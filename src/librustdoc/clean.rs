@@ -878,16 +878,13 @@ fn path_to_str(p: &ast::Path) -> ~str {
 
     let mut s = ~"";
     let mut first = true;
-    for i in p.segments.iter().map(|x| {
-            let string = token::get_ident(x.identifier.name);
-            string.get().to_str()
-    }) {
+    for i in p.segments.iter().map(|x| token::get_ident(x.identifier.name)) {
         if !first || p.global {
             s.push_str("::");
         } else {
             first = false;
         }
-        s.push_str(i);
+        s.push_str(i.get());
     }
     s
 }

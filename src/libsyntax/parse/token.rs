@@ -554,13 +554,6 @@ pub struct InternedString {
     priv string: RcStr,
 }
 
-#[unsafe_destructor]
-impl Drop for InternedString {
-    fn drop(&mut self) {
-        // No-op just to make this not implicitly copyable.
-    }
-}
-
 impl InternedString {
     #[inline]
     pub fn new(string: &'static str) -> InternedString {
