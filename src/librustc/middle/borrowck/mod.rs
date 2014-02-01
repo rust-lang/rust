@@ -194,16 +194,6 @@ pub struct BorrowStats {
 //
 // Note that there is no entry with derefs:3---the type of that expression
 // is T, which is not a box.
-//
-// Note that implicit dereferences also occur with indexing of `@[]`,
-// `@str`, etc.  The same rules apply. So, for example, given a
-// variable `x` of type `@[@[...]]`, if I have an instance of the
-// expression `x[0]` which is then auto-slice'd, there would be two
-// potential entries in the root map, both with the id of the `x[0]`
-// expression. The entry with `derefs==0` refers to the deref of `x`
-// used as part of evaluating `x[0]`. The entry with `derefs==1`
-// refers to the deref of the `x[0]` that occurs as part of the
-// auto-slice.
 #[deriving(Eq, IterBytes)]
 pub struct root_map_key {
     id: ast::NodeId,

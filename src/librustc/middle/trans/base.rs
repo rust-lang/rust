@@ -360,7 +360,7 @@ pub fn malloc_raw_dyn<'a>(
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
-        // we treat ~fn, @fn and @[] as @ here, which isn't ideal
+        // we treat ~fn as @ here, which isn't ideal
         let langcall = match heap {
             heap_managed => {
                 require_alloc_fn(bcx, t, MallocFnLangItem)

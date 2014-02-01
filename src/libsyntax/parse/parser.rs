@@ -1291,7 +1291,7 @@ impl Parser {
         }
 
         // other things are parsed as @/~ + a type.  Note that constructs like
-        // @[] and @str will be resolved during typeck to slices and so forth,
+        // ~[] and ~str will be resolved during typeck to slices and so forth,
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         if sigil == OwnedSigil {
