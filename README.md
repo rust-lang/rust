@@ -71,9 +71,9 @@ fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
-* Windows (7, Server 2008 R2), x86 only
-* Linux (various distributions), x86 and x86-64
-* OSX 10.6 ("Snow Leopard") or greater, x86 and x86-64
+* Windows (7, 8, Server 2008 R2), x86 only
+* Linux (2.6.18 or later, various distributions), x86 and x86-64
+* OSX 10.7 (Lion) or greater, x86 and x86-64
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.

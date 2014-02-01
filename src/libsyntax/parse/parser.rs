@@ -3926,21 +3926,15 @@ impl Parser {
         };
 
         let mut meths = ~[];
-        let inner_attrs = if self.eat(&token::SEMI) {
-            self.obsolete(self.last_span, ObsoleteEmptyImpl);
-            None
-        } else {
-            self.expect(&token::LBRACE);
-            let (inner_attrs, next) = self.parse_inner_attrs_and_next();
-            let mut method_attrs = Some(next);
-            while !self.eat(&token::RBRACE) {
-                meths.push(self.parse_method(method_attrs));
-                method_attrs = None;
-            }
-            Some(inner_attrs)
-        };
+        self.expect(&token::LBRACE);
+        let (inner_attrs, next) = self.parse_inner_attrs_and_next();
+        let mut method_attrs = Some(next);
+        while !self.eat(&token::RBRACE) {
+            meths.push(self.parse_method(method_attrs));
+            method_attrs = None;
+        }
 
-        (ident, ItemImpl(generics, opt_trait, ty, meths), inner_attrs)
+        (ident, ItemImpl(generics, opt_trait, ty, meths), Some(inner_attrs))
     }
 
     // parse a::B<~str,int>

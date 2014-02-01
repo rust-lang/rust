@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -737,7 +737,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
     /*!
      * Instantiates the path for the given trait reference, assuming that
      * it's bound to a valid trait type. Returns the def_id for the defining
-     * trait. Fails if the type is a type other than an trait type.
+     * trait. Fails if the type is a type other than a trait type.
      */
 
     // FIXME(#5121) -- distinguish early vs late lifetime params

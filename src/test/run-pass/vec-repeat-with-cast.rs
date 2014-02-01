@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-// When all branches of a match expression result in fail, the entire
-// match expression results in fail.
-pub fn main() {
-    let _x =
-        match true {
-          true => { 10 }
-          false => { match true { true => { fail!() } false => { fail!() } } }
-        };
-}
+pub fn main() { let _a = [0, ..1 as uint]; }
