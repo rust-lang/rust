@@ -310,18 +310,6 @@ impl<D:Decoder> Decodable<D> for ~str {
     }
 }
 
-impl<S:Encoder> Encodable<S> for @str {
-    fn encode(&self, s: &mut S) {
-        s.emit_str(*self)
-    }
-}
-
-impl<D:Decoder> Decodable<D> for @str {
-    fn decode(d: &mut D) -> @str {
-        d.read_str().to_managed()
-    }
-}
-
 impl<S:Encoder> Encodable<S> for f32 {
     fn encode(&self, s: &mut S) {
         s.emit_f32(*self)

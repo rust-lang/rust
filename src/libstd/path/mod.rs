@@ -604,19 +604,6 @@ impl BytesContainer for ~str {
     fn is_str(_: Option<~str>) -> bool { true }
 }
 
-impl BytesContainer for @str {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.as_slice())
-    }
-    #[inline]
-    fn is_str(_: Option<@str>) -> bool { true }
-}
-
 impl<'a> BytesContainer for &'a [u8] {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {

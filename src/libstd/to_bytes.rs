@@ -288,13 +288,6 @@ impl IterBytes for ~str {
     }
 }
 
-impl IterBytes for @str {
-    #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        self.as_slice().iter_bytes(lsb0, f)
-    }
-}
-
 impl<A:IterBytes> IterBytes for Option<A> {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
