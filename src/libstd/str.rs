@@ -3478,7 +3478,6 @@ mod tests {
                 let e = $e;
                 assert_eq!(s1 + s2, e.to_owned());
                 assert_eq!(s1.to_owned() + s2, e.to_owned());
-                assert_eq!(s1.to_managed() + s2, e.to_owned());
             } }
         );
 

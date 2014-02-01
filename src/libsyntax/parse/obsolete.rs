@@ -45,6 +45,7 @@ pub enum ObsoleteSyntax {
     ObsoleteMultipleImport,
     ObsoleteExternModAttributesInParens,
     ObsoleteManagedPattern,
+    ObsoleteManagedString,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -153,6 +154,10 @@ impl ParserObsoleteMethods for Parser {
                 "managed pointer pattern",
                 "use a nested `match` expression instead of a managed box \
                  pattern"
+            ),
+            ObsoleteManagedString => (
+                "managed string",
+                "use `Rc<~str>` instead of a managed string"
             ),
         };
 

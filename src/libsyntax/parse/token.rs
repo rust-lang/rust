@@ -544,8 +544,8 @@ pub fn get_ident_interner() -> @IdentInterner {
 /// interner lives for the life of the task, this can be safely treated as an
 /// immortal string, as long as it never crosses between tasks.
 ///
-/// XXX(pcwalton): You must be careful about what you do in the destructors of
-/// objects stored in TLS, because they may run after the interner is
+/// FIXME(pcwalton): You must be careful about what you do in the destructors
+/// of objects stored in TLS, because they may run after the interner is
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
@@ -585,8 +585,9 @@ impl InternedString {
 
 impl BytesContainer for InternedString {
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        // XXX(pcwalton): This is a workaround for the incorrect signature of
-        // `BytesContainer`, which is itself a workaround for the lack of DST.
+        // FIXME(pcwalton): This is a workaround for the incorrect signature
+        // of `BytesContainer`, which is itself a workaround for the lack of
+        // DST.
         unsafe {
             let this = self.get();
             cast::transmute(this.container_as_bytes())

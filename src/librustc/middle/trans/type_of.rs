@@ -222,7 +222,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         adt::incomplete_type_of(cx, repr, name)
       }
       ty::ty_str(ty::vstore_box) => {
-          Type::at_box(cx, Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
+          fail!("unexpected managed string")
       }
       ty::ty_vec(ref mt, ty::vstore_box) => {
           let e_ty = type_of(cx, mt.ty);
