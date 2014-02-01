@@ -3979,8 +3979,9 @@ impl Parser {
                 fields.push(self.parse_struct_decl_field());
             }
             if fields.len() == 0 {
+                let string = get_ident_interner().get(class_name.name);
                 self.fatal(format!("Unit-like struct definition should be written as `struct {};`",
-                                get_ident_interner().get(class_name.name)));
+                                   string.as_slice()));
             }
             self.bump();
         } else if self.token == token::LPAREN {
