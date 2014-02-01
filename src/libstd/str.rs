@@ -104,13 +104,12 @@ use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
 use libc;
-use num::{Saturating};
+use num::{Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use from_str::FromStr;
-use uint;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;
@@ -2640,7 +2639,7 @@ impl OwnedStr for ~str {
 
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n))
+        self.reserve(checked_next_power_of_two(n).unwrap_or(n))
     }
 
     #[inline]

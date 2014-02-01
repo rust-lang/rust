@@ -64,7 +64,6 @@ use num;
 use option::{None, Option, Some};
 use rand::Rng;
 use rand;
-use uint;
 use util::replace;
 use vec::{ImmutableVector, MutableVector, OwnedVector, Items, MutItems};
 use vec_ng;
@@ -388,7 +387,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn reserve_at_least(&mut self, n: uint) {
         if n > self.buckets.len() {
             let buckets = n * 4 / 3 + 1;
-            self.resize(uint::next_power_of_two(buckets));
+            self.resize(num::next_power_of_two(buckets));
         }
     }
 
