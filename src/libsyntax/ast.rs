@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -680,7 +680,7 @@ pub enum TokenTree {
 //
 // As a final, horrifying aside, note that macro-by-example's input is
 // also matched by one of these matchers. Holy self-referential! It is matched
-// by an MatchSeq, specifically this one:
+// by a MatchSeq, specifically this one:
 //
 //                   $( $lhs:matchers => $rhs:tt );+
 //

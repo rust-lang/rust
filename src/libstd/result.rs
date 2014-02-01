@@ -102,7 +102,7 @@ impl<T, E> Result<T, E> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Result<T, E>` to `Result<U, E>` by applying a function to an
+    /// Maps a `Result<T, E>` to `Result<U, E>` by applying a function to an
     /// contained `Ok` value, leaving an `Err` value untouched.
     ///
     /// This function can be used to compose the results of two functions.
@@ -120,7 +120,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps an `Result<T, E>` to `Result<T, F>` by applying a function to an
+    /// Maps a `Result<T, E>` to `Result<T, F>` by applying a function to an
     /// contained `Err` value, leaving an `Ok` value untouched.
     ///
     /// This function can be used to pass through a successful result while handling

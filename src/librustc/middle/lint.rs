@@ -371,7 +371,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("unused_must_use",
     LintSpec {
         lint: UnusedMustUse,
-        desc: "unused result of an type flagged as #[must_use]",
+        desc: "unused result of a type flagged as #[must_use]",
         default: warn,
     }),
 

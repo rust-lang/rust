@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -385,7 +385,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     }
 
     // Handle @, ~, and & being able to mean strs and vecs.
-    // If a_seq_ty is a str or a vec, make it an str/vec.
+    // If a_seq_ty is a str or a vec, make it a str/vec.
     // Also handle first-class trait types.
     fn mk_pointer<AC:AstConv,
                   RS:RegionScope>(

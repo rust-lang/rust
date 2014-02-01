@@ -485,7 +485,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     }
 }
 
-/// This is rather subtle.  When we are casting a value to a instantiated
+/// This is rather subtle.  When we are casting a value to an instantiated
 /// trait like `a as trait<'r>`, regionck already ensures that any references
 /// that appear in the type of `a` are bounded by `'r` (ed.: rem
 /// FIXME(#5723)).  However, it is possible that there are *type parameters*
@@ -516,7 +516,7 @@ pub fn check_cast_for_escaping_regions(
     target_ty: ty::t,
     source_span: Span)
 {
-    // Determine what type we are casting to; if it is not an trait, then no
+    // Determine what type we are casting to; if it is not a trait, then no
     // worries.
     match ty::get(target_ty).sty {
         ty::ty_trait(..) => {}
