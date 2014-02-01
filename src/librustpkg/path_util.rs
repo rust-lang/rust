@@ -21,9 +21,7 @@ use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
 use std::io;
 use std::io::fs;
-use extra::hex::ToHex;
 use syntax::crateid::CrateId;
-use rustc::util::sha2::{Digest, Sha256};
 use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
 use rustc::driver::driver::host_triple;
 use messages::*;
@@ -206,24 +204,27 @@ pub fn system_library(sysroot: &Path, crate_id: &CrateId) -> Option<Path> {
 }
 
 fn library_in(crate_id: &CrateId, dir_to_search: &Path) -> Option<Path> {
-    let mut hasher = Sha256::new();
-    hasher.reset();
-    hasher.input_str(crate_id.to_str());
-    let hash = hasher.result_bytes().to_hex();
-    let hash = hash.slice_chars(0, 8);
-
-    let lib_name = format!("{}-{}-{}", crate_id.name, hash, crate_id.version_or_default());
-    let filenames = [
-        format!("{}{}.{}", "lib", lib_name, "rlib"),
-        format!("{}{}{}", os::consts::DLL_PREFIX, lib_name, os::consts::DLL_SUFFIX),
+    let version_str = match crate_id.version {
+        Some(ref v) => format!("-{}", *v),
+        None => ~"",
+    };
+    let patterns = ~[
+        (format!("lib{}", crate_id.name), format!("{}.rlib", version_str)),
+        (format!("{}{}", os::consts::DLL_PREFIX, crate_id.name),
+         format!("{}{}", version_str, os::consts::DLL_SUFFIX)),
     ];
 
-    for filename in filenames.iter() {
-        debug!("filename = {}", filename.as_slice());
-        let path = dir_to_search.join(filename.as_slice());
-        if path.exists() {
-            debug!("found: {}", path.display());
-            return Some(path);
+    for (prefix, suffix) in patterns.move_iter() {
+        let files = match io::result(|| fs::readdir(dir_to_search)) {
+            Ok(dir) => dir, Err(..) => continue,
+        };
+        for file in files.move_iter() {
+            let filename = match file.filename_str() {
+                Some(s) => s, None => continue,
+            };
+            if filename.starts_with(prefix) && filename.ends_with(suffix) {
+                return Some(file.clone())
+            }
         }
     }
     debug!("warning: library_in_workspace didn't find a library in {} for {}",
