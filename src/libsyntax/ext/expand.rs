@@ -1224,7 +1224,7 @@ mod test {
     fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
-            (ref str,ref conns, bic) => (str.to_managed(), conns.clone(), bic)
+            (ref str,ref conns, bic) => (str.to_owned(), conns.clone(), bic)
         };
         let cr = expand_crate_str(teststr.to_owned());
         // find the bindings:
@@ -1304,7 +1304,7 @@ foo_module!()
 
         let cxbinds : ~[&ast::Ident] =
             bindings.iter().filter(|b| {
-                let string = token::get_ident(b);
+                let string = token::get_ident(b.name);
                 "xx" == string.get()
             }).collect();
         let cxbind = match cxbinds {

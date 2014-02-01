@@ -874,11 +874,14 @@ impl Clean<PathSegment> for ast::PathSegment {
 }
 
 fn path_to_str(p: &ast::Path) -> ~str {
-    use syntax::parse::token::interner_get;
+    use syntax::parse::token;
 
     let mut s = ~"";
     let mut first = true;
-    for i in p.segments.iter().map(|x| interner_get(x.identifier.name)) {
+    for i in p.segments.iter().map(|x| {
+            let string = token::get_ident(x.identifier.name);
+            string.get().to_str()
+    }) {
         if !first || p.global {
             s.push_str("::");
         } else {

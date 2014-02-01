@@ -2094,8 +2094,7 @@ fn type_metadata(cx: &CrateContext,
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
                 ty::vstore_box => {
-                    let boxed_vec_metadata = boxed_vec_metadata(cx, i8_t, usage_site_span);
-                    pointer_type_metadata(cx, t, boxed_vec_metadata)
+                    fail!("unexpected managed string")
                 }
                 ty::vstore_slice(_region) => {
                     vec_slice_metadata(cx, t, i8_t, usage_site_span)
