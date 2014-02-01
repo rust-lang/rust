@@ -804,7 +804,7 @@ pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
     fn to_owned(&self) -> ~[T];
 
-    /// Convert `self` into a owned vector, not making a copy if possible.
+    /// Convert `self` into an owned vector, not making a copy if possible.
     fn into_owned(self) -> ~[T];
 }
 

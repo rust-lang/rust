@@ -83,7 +83,7 @@ Some examples of obvious things you might want to do
     let lines: ~[~str] = file.lines().collect();
     ```
 
-* Make an simple HTTP request
+* Make a simple HTTP request
   FIXME This needs more improvement: TcpStream constructor taking &str,
   `write_str` and `write_line` methods.
 

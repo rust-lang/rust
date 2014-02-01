@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -2008,7 +2008,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
     }
 
-    // could be either a expr_binop or an expr_assign_binop
+    // could be either an expr_binop or an expr_assign_binop
     fn check_binop(fcx: @FnCtxt,
                    callee_id: ast::NodeId,
                    expr: &ast::Expr,

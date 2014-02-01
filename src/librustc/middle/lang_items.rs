@@ -33,41 +33,28 @@ use std::hashmap::HashMap;
 use std::iter::Enumerate;
 use std::vec;
 
-
-// Get the last "argument" (has to be done recursively to avoid phoney local ambiguity error)
-macro_rules! last {
-    ( $first:expr, $( $remainder:expr, )+ ) => ( last!( $( $remainder, )+ ) );
-    ( $first:expr, ) => ( $first )
-}
-
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! lets_do_this {
-    // secondary rule to allow us to use `$num` as both an expression
-    // and a pattern.
     (
-        $( $num:tt, $variant:ident, $name:expr, $method:ident; )*
-    ) => {
-        lets_do_this!(count = 1 + last!($($num,)*),
-                      $($num, $variant, $name, $method; )*)
-    };
-
-    (
-        count = $num_lang_items:expr, $( $num:pat, $variant:ident, $name:expr, $method:ident; )*
+        $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
+#[deriving(FromPrimitive)]
 pub enum LangItem {
     $($variant),*
 }
 
 pub struct LanguageItems {
-    items: [Option<ast::DefId>, ..$num_lang_items]
+    items: ~[Option<ast::DefId>],
 }
 
 impl LanguageItems {
     pub fn new() -> LanguageItems {
+        fn foo(_: LangItem) -> Option<ast::DefId> { None }
+
         LanguageItems {
-            items: [ None, ..$num_lang_items ]
+            items: ~[$(foo($variant)),*]
         }
     }
 
@@ -76,9 +63,10 @@ impl LanguageItems {
     }
 
     pub fn item_name(index: uint) -> &'static str {
-        match index {
-            $( $num => $name, )*
-            _ => "???"
+        let item: Option<LangItem> = FromPrimitive::from_uint(index);
+        match item {
+            $( Some($variant) => $name, )*
+            None => "???"
         }
     }
 
@@ -208,13 +196,12 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<@str> {
 }
 
 pub fn collect_language_items(crate: &ast::Crate,
-                              session: Session)
-                           -> LanguageItems {
+                              session: Session) -> @LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
     collector.collect(crate);
     let LanguageItemCollector { items, .. } = collector;
     session.abort_if_errors();
-    items
+    @items
 }
 
 // End of the macro
@@ -222,68 +209,68 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-//  ID, Variant name,                    Name,                      Method name;
-    0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
-    1,  SendTraitLangItem,               "send",                    send_trait;
-    2,  SizedTraitLangItem,              "sized",                   sized_trait;
-    3,  PodTraitLangItem,                "pod",                     pod_trait;
+//  Variant name,                    Name,                      Method name;
+    FreezeTraitLangItem,             "freeze",                  freeze_trait;
+    SendTraitLangItem,               "send",                    send_trait;
+    SizedTraitLangItem,              "sized",                   sized_trait;
+    PodTraitLangItem,                "pod",                     pod_trait;
 
-    4,  DropTraitLangItem,               "drop",                    drop_trait;
+    DropTraitLangItem,               "drop",                    drop_trait;
 
-    5,  AddTraitLangItem,                "add",                     add_trait;
-    6,  SubTraitLangItem,                "sub",                     sub_trait;
-    7,  MulTraitLangItem,                "mul",                     mul_trait;
-    8,  DivTraitLangItem,                "div",                     div_trait;
-    9,  RemTraitLangItem,                "rem",                     rem_trait;
-    10, NegTraitLangItem,                "neg",                     neg_trait;
-    11, NotTraitLangItem,                "not",                     not_trait;
-    12, BitXorTraitLangItem,             "bitxor",                  bitxor_trait;
-    13, BitAndTraitLangItem,             "bitand",                  bitand_trait;
-    14, BitOrTraitLangItem,              "bitor",                   bitor_trait;
-    15, ShlTraitLangItem,                "shl",                     shl_trait;
-    16, ShrTraitLangItem,                "shr",                     shr_trait;
-    17, IndexTraitLangItem,              "index",                   index_trait;
+    AddTraitLangItem,                "add",                     add_trait;
+    SubTraitLangItem,                "sub",                     sub_trait;
+    MulTraitLangItem,                "mul",                     mul_trait;
+    DivTraitLangItem,                "div",                     div_trait;
+    RemTraitLangItem,                "rem",                     rem_trait;
+    NegTraitLangItem,                "neg",                     neg_trait;
+    NotTraitLangItem,                "not",                     not_trait;
+    BitXorTraitLangItem,             "bitxor",                  bitxor_trait;
+    BitAndTraitLangItem,             "bitand",                  bitand_trait;
+    BitOrTraitLangItem,              "bitor",                   bitor_trait;
+    ShlTraitLangItem,                "shl",                     shl_trait;
+    ShrTraitLangItem,                "shr",                     shr_trait;
+    IndexTraitLangItem,              "index",                   index_trait;
 
-    18, EqTraitLangItem,                 "eq",                      eq_trait;
-    19, OrdTraitLangItem,                "ord",                     ord_trait;
+    EqTraitLangItem,                 "eq",                      eq_trait;
+    OrdTraitLangItem,                "ord",                     ord_trait;
 
-    20, StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
-    21, UniqStrEqFnLangItem,             "uniq_str_eq",             uniq_str_eq_fn;
-    22, FailFnLangItem,                  "fail_",                   fail_fn;
-    23, FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
-    24, ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
-    25, ClosureExchangeMallocFnLangItem, "closure_exchange_malloc", closure_exchange_malloc_fn;
-    26, ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
-    27, MallocFnLangItem,                "malloc",                  malloc_fn;
-    28, FreeFnLangItem,                  "free",                    free_fn;
-    29, StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
+    StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
+    UniqStrEqFnLangItem,             "uniq_str_eq",             uniq_str_eq_fn;
+    FailFnLangItem,                  "fail_",                   fail_fn;
+    FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
+    ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
+    ClosureExchangeMallocFnLangItem, "closure_exchange_malloc", closure_exchange_malloc_fn;
+    ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
+    MallocFnLangItem,                "malloc",                  malloc_fn;
+    FreeFnLangItem,                  "free",                    free_fn;
+    StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
 
-    30, StartFnLangItem,                 "start",                   start_fn;
+    StartFnLangItem,                 "start",                   start_fn;
 
-    31, TyDescStructLangItem,            "ty_desc",                 ty_desc;
-    32, TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
-    33, OpaqueStructLangItem,            "opaque",                  opaque;
+    TyDescStructLangItem,            "ty_desc",                 ty_desc;
+    TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
+    OpaqueStructLangItem,            "opaque",                  opaque;
 
-    34, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
+    EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
 
-    35, TypeIdLangItem,                  "type_id",                 type_id;
+    TypeIdLangItem,                  "type_id",                 type_id;
 
-    36, EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
+    EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
 
-    37, ManagedHeapLangItem,             "managed_heap",            managed_heap;
-    38, ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
-    39, GcLangItem,                      "gc",                      gc;
+    ManagedHeapLangItem,             "managed_heap",            managed_heap;
+    ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
+    GcLangItem,                      "gc",                      gc;
 
-    40, CovariantTypeItem,               "covariant_type",          covariant_type;
-    41, ContravariantTypeItem,           "contravariant_type",      contravariant_type;
-    42, InvariantTypeItem,               "invariant_type",          invariant_type;
+    CovariantTypeItem,               "covariant_type",          covariant_type;
+    ContravariantTypeItem,           "contravariant_type",      contravariant_type;
+    InvariantTypeItem,               "invariant_type",          invariant_type;
 
-    43, CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
-    44, ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
-    45, InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
+    CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
+    ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
+    InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
 
-    46, NoFreezeItem,                    "no_freeze_bound",         no_freeze_bound;
-    47, NoSendItem,                      "no_send_bound",           no_send_bound;
-    48, NoPodItem,                       "no_pod_bound",            no_pod_bound;
-    49, ManagedItem,                     "managed_bound",           managed_bound;
+    NoFreezeItem,                    "no_freeze_bound",         no_freeze_bound;
+    NoSendItem,                      "no_send_bound",           no_send_bound;
+    NoPodItem,                       "no_pod_bound",            no_pod_bound;
+    ManagedItem,                     "managed_bound",           managed_bound;
 }

@@ -162,17 +162,25 @@ impl CString {
     }
 
     /// Converts the CString into a `&str` without copying.
-    /// Returns None if the CString is not UTF-8 or is null.
+    /// Returns None if the CString is not UTF-8.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
     #[inline]
     pub fn as_str<'a>(&'a self) -> Option<&'a str> {
-        if self.buf.is_null() { return None; }
         let buf = self.as_bytes();
         let buf = buf.slice_to(buf.len()-1); // chop off the trailing NUL
         str::from_utf8(buf)
     }
 
     /// Return a CString iterator.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
     pub fn iter<'a>(&'a self) -> CChars<'a> {
+        if self.buf.is_null() { fail!("CString is null!"); }
         CChars {
             ptr: self.buf,
             marker: marker::ContravariantLifetime,
@@ -191,8 +199,14 @@ impl Drop for CString {
 }
 
 impl Container for CString {
+    /// Return the number of bytes in the CString (not including the NUL terminator).
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
     #[inline]
     fn len(&self) -> uint {
+        if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
             ptr::position(self.buf, |c| *c == 0)
         }
@@ -562,8 +576,27 @@ mod tests {
         assert_eq!(c_str.as_str(), Some(""));
         let c_str = bytes!("foo", 0xff).to_c_str();
         assert_eq!(c_str.as_str(), None);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_as_str_fail() {
         let c_str = unsafe { CString::new(ptr::null(), false) };
-        assert_eq!(c_str.as_str(), None);
+        c_str.as_str();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_len_fail() {
+        let c_str = unsafe { CString::new(ptr::null(), false) };
+        c_str.len();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iter_fail() {
+        let c_str = unsafe { CString::new(ptr::null(), false) };
+        c_str.iter();
     }
 }
 
