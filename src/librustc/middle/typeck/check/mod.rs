@@ -1969,6 +1969,21 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         fcx.write_ty(id, if_ty);
     }
 
+    fn has_op_method(fcx: @FnCtxt,
+                        callee_id: ast::NodeId,
+                        op_ex: &ast::Expr,
+                        self_t: ty::t,
+                        opname: ast::Name,
+                        args: &[@ast::Expr],
+                        deref_args: DerefArgs,
+                        autoderef_receiver: AutoderefReceiverFlag,
+                        _expected_result: Option<ty::t>
+                       ) -> bool {
+        method::lookup(fcx, op_ex, args[0], callee_id, opname,
+                       self_t, [], deref_args, CheckTraitsOnly,
+                       autoderef_receiver).is_some()
+    }
+
     fn lookup_op_method(fcx: @FnCtxt,
                         callee_id: ast::NodeId,
                         op_ex: &ast::Expr,
@@ -3195,27 +3210,36 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                       let resolved = structurally_resolved_type(fcx,
                                                                 expr.span,
                                                                 raw_base_t);
-                      let index_ident = tcx.sess.ident_of("index");
-                      let error_message = || {
-                        fcx.type_error_message(expr.span,
-                                               |actual| {
-                                                format!("cannot index a value \
-                                                      of type `{}`",
-                                                     actual)
-                                               },
-                                               base_t,
-                                               None);
+
+                      let mutable = match ty::get(resolved).sty {
+                        ty::ty_rptr(_, ty::mt{ ty: _, mutbl: ast::MutMutable }) => true,
+                        _ => false
                       };
-                      let ret_ty = lookup_op_method(fcx,
-                                                    callee_id,
-                                                    expr,
-                                                    resolved,
-                                                    index_ident.name,
-                                                    [base, idx],
-                                                    DoDerefArgs,
-                                                    AutoderefReceiver,
-                                                    error_message,
-                                                    expected);
+
+                      let lookup = |name| {
+                          let ident = tcx.sess.ident_of(name);
+                          lookup_op_method(fcx, callee_id, expr, resolved, ident.name,
+                                          [base, idx], DoDerefArgs, AutoderefReceiver,
+                                          || fcx.type_error_message(expr.span, |actual| {
+                                              format!("cannot {:s} a value of type `{:s}`", name, actual)
+                                          }, base_t, None), expected)
+                      };
+
+                      let has_op = |name| {
+                          let ident = tcx.sess.ident_of(name);
+                          has_op_method(fcx, callee_id, expr, resolved, ident.name,
+                                          [base, idx], DoDerefArgs, AutoderefReceiver,
+                                          expected)
+                      };
+
+                      let ret_ty = if mutable {
+                          lookup("index_mut")
+                      } else if has_op("index_ref") {
+                          lookup("index_ref")
+                      } else {
+                          lookup("index")
+                      };
+
                       fcx.write_ty(id, ret_ty);
                   }
               }

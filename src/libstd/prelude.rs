@@ -33,7 +33,7 @@ pub use kinds::{Freeze, Pod, Send, Sized};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
-pub use ops::{Shl, Shr, Index};
+pub use ops::{Shl, Shr, Index, IndexMut, IndexRef};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 

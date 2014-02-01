@@ -5286,6 +5286,12 @@ impl Resolver {
             ExprIndex(..) => {
                 let i = self.lang_items.index_trait();
                 self.add_fixed_trait_for_expr(expr.id, i);
+
+                let j = self.lang_items.index_mut_trait();
+                self.add_fixed_trait_for_expr(expr.id, j);
+
+                let k = self.lang_items.index_ref_trait();
+                self.add_fixed_trait_for_expr(expr.id, k);
             }
             _ => {
                 // Nothing to do.
@@ -5382,9 +5388,12 @@ impl Resolver {
     fn add_fixed_trait_for_expr(&mut self,
                                     expr_id: NodeId,
                                     trait_id: Option<DefId>) {
+
+        let trait_map = &mut self.trait_map;
+
         match trait_id {
             Some(trait_id) => {
-                self.trait_map.insert(expr_id, @RefCell::new(~[trait_id]));
+                trait_map.mangle(expr_id, trait_id, |_, id| @RefCell::new(~[id]), |_, old, id| old.borrow_mut().get().push(id));
             }
             None => {}
         }
