@@ -81,6 +81,7 @@ extern mod prim;
 pub use prim::cast;
 pub use prim::kinds;
 pub use prim::mem;
+pub use prim::ptr;
 
 mod macros;
 
@@ -124,7 +125,6 @@ pub mod str;
 pub mod ascii;
 pub mod send_str;
 
-pub mod ptr;
 pub mod owned;
 pub mod managed;
 mod reference;

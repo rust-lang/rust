@@ -42,6 +42,20 @@ pub trait Clone {
     }
 }
 
+impl<T> Clone for *T {
+    #[inline]
+    fn clone(&self) -> *T {
+        *self
+    }
+}
+
+impl<T> Clone for *mut T {
+    #[inline]
+    fn clone(&self) -> *mut T {
+        *self
+    }
+}
+
 impl<T: Clone> Clone for ~T {
     /// Return a copy of the owned box.
     #[inline]

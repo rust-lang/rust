@@ -34,3 +34,4 @@ pub mod cast;
 pub mod intrinsics;
 #[cfg(not(test))] pub mod kinds;
 pub mod mem;
+pub mod ptr;

@@ -22,8 +22,10 @@ and `Eq` to overload the `==` and `!=` operators.
 
 #[allow(missing_doc)];
 
+use cast;
 use kinds::marker;
 use prim::intrinsics::TypeId;
+use ptr::RawPtr;
 
 /**
 * Trait for values that can be compared for equality and inequality.
@@ -49,6 +51,60 @@ impl Eq for TypeId {
         self.t == other.t
     }
 }
+
+impl<T> Eq for *T {
+    #[inline]
+    fn eq(&self, other: &*T) -> bool {
+        *self == *other
+    }
+    #[inline]
+    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
+}
+
+impl<T> Eq for *mut T {
+    #[inline]
+    fn eq(&self, other: &*mut T) -> bool {
+        *self == *other
+    }
+    #[inline]
+    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
+}
+
+impl<_R> Eq for extern "C" fn() -> _R {
+    #[inline]
+    fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
+        let self_: *() = unsafe { cast::transmute(*self) };
+        let other_: *() = unsafe { cast::transmute(*other) };
+        self_ == other_
+    }
+    #[inline]
+    fn ne(&self, other: &extern "C" fn() -> _R) -> bool {
+        !self.eq(other)
+    }
+}
+
+macro_rules! fnptreq(
+    ($($p:ident),*) => {
+        impl<_R,$($p),*> Eq for extern "C" fn($($p),*) -> _R {
+            #[inline]
+            fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
+                let self_: *() = unsafe { cast::transmute(*self) };
+                let other_: *() = unsafe { cast::transmute(*other) };
+                self_ == other_
+            }
+            #[inline]
+            fn ne(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
+                !self.eq(other)
+            }
+        }
+    }
+)
+
+fnptreq!(A)
+fnptreq!(A,B)
+fnptreq!(A,B,C)
+fnptreq!(A,B,C,D)
+fnptreq!(A,B,C,D,E)
 
 /// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
 pub trait TotalEq {
@@ -180,12 +236,62 @@ pub trait Ord {
     fn ge(&self, other: &Self) -> bool { !self.lt(other) }
 }
 
+impl<T> Ord for *T {
+    #[inline]
+    fn lt(&self, other: &*T) -> bool {
+        *self < *other
+    }
+    #[inline]
+    fn le(&self, other: &*T) -> bool {
+        *self <= *other
+    }
+    #[inline]
+    fn ge(&self, other: &*T) -> bool {
+        *self >= *other
+    }
+    #[inline]
+    fn gt(&self, other: &*T) -> bool {
+        *self > *other
+    }
+}
+
+impl<T> Ord for *mut T {
+    #[inline]
+    fn lt(&self, other: &*mut T) -> bool {
+        *self < *other
+    }
+    #[inline]
+    fn le(&self, other: &*mut T) -> bool {
+        *self <= *other
+    }
+    #[inline]
+    fn ge(&self, other: &*mut T) -> bool {
+        *self >= *other
+    }
+    #[inline]
+    fn gt(&self, other: &*mut T) -> bool {
+        *self > *other
+    }
+}
+
 /// The equivalence relation. Two values may be equivalent even if they are
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `~str` keys.
 pub trait Equiv<T> {
     fn equiv(&self, other: &T) -> bool;
+}
+
+impl<T> Equiv<*mut T> for *T {
+    fn equiv(&self, other: &*mut T) -> bool {
+        self.to_uint() == other.to_uint()
+    }
+}
+
+impl<T> Equiv<*T> for *mut T {
+    fn equiv(&self, other: &*T) -> bool {
+        self.to_uint() == other.to_uint()
+    }
 }
 
 #[inline]

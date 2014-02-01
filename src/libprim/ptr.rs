@@ -10,14 +10,7 @@
 
 //! Unsafe pointer utility functions
 
-use cast;
-use clone::Clone;
-#[cfg(not(test))]
-use cmp::Equiv;
-use unstable::intrinsics;
-use util::swap;
-
-#[cfg(not(test))] use cmp::{Eq, Ord};
+use intrinsics;
 
 /// Calculate the offset from a pointer.
 /// The `count` argument is in units of T; e.g. a `count` of 3
@@ -41,21 +34,6 @@ pub unsafe fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
 pub unsafe fn buf_len<T>(buf: **T) -> uint {
     position(buf, |i| *i == null())
 }
-
-impl<T> Clone for *T {
-    #[inline]
-    fn clone(&self) -> *T {
-        *self
-    }
-}
-
-impl<T> Clone for *mut T {
-    #[inline]
-    fn clone(&self) -> *mut T {
-        *self
-    }
-}
-
 /// Return the first offset `i` such that `f(buf[i]) == true`.
 #[inline]
 pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
@@ -140,7 +118,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
 
     // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
-    cast::forget(tmp);
+    intrinsics::forget(tmp);
 }
 
 /**
@@ -149,7 +127,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
  */
 #[inline]
 pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
-    swap(cast::transmute(dest), &mut src); // cannot overlap
+    swap_ptr(dest, &mut src);
     src
 }
 
@@ -251,134 +229,15 @@ impl<T> RawPtr<T> for *mut T {
     unsafe fn offset(self, count: int) -> *mut T { mut_offset(self, count) }
 }
 
-// Equality for pointers
-#[cfg(not(test))]
-impl<T> Eq for *T {
-    #[inline]
-    fn eq(&self, other: &*T) -> bool {
-        *self == *other
-    }
-    #[inline]
-    fn ne(&self, other: &*T) -> bool { !self.eq(other) }
-}
-
-#[cfg(not(test))]
-impl<T> Eq for *mut T {
-    #[inline]
-    fn eq(&self, other: &*mut T) -> bool {
-        *self == *other
-    }
-    #[inline]
-    fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
-}
-
-// Equivalence for pointers
-#[cfg(not(test))]
-impl<T> Equiv<*mut T> for *T {
-    fn equiv(&self, other: &*mut T) -> bool {
-        self.to_uint() == other.to_uint()
-    }
-}
-
-#[cfg(not(test))]
-impl<T> Equiv<*T> for *mut T {
-    fn equiv(&self, other: &*T) -> bool {
-        self.to_uint() == other.to_uint()
-    }
-}
-
-// Equality for extern "C" fn pointers
-#[cfg(not(test))]
-mod externfnpointers {
-    use cast;
-    use cmp::Eq;
-
-    impl<_R> Eq for extern "C" fn() -> _R {
-        #[inline]
-        fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
-            let self_: *() = unsafe { cast::transmute(*self) };
-            let other_: *() = unsafe { cast::transmute(*other) };
-            self_ == other_
-        }
-        #[inline]
-        fn ne(&self, other: &extern "C" fn() -> _R) -> bool {
-            !self.eq(other)
-        }
-    }
-    macro_rules! fnptreq(
-        ($($p:ident),*) => {
-            impl<_R,$($p),*> Eq for extern "C" fn($($p),*) -> _R {
-                #[inline]
-                fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    let self_: *() = unsafe { cast::transmute(*self) };
-                    let other_: *() = unsafe { cast::transmute(*other) };
-                    self_ == other_
-                }
-                #[inline]
-                fn ne(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    !self.eq(other)
-                }
-            }
-        }
-    )
-    fnptreq!(A)
-    fnptreq!(A,B)
-    fnptreq!(A,B,C)
-    fnptreq!(A,B,C,D)
-    fnptreq!(A,B,C,D,E)
-}
-
-// Comparison for pointers
-#[cfg(not(test))]
-impl<T> Ord for *T {
-    #[inline]
-    fn lt(&self, other: &*T) -> bool {
-        *self < *other
-    }
-    #[inline]
-    fn le(&self, other: &*T) -> bool {
-        *self <= *other
-    }
-    #[inline]
-    fn ge(&self, other: &*T) -> bool {
-        *self >= *other
-    }
-    #[inline]
-    fn gt(&self, other: &*T) -> bool {
-        *self > *other
-    }
-}
-
-#[cfg(not(test))]
-impl<T> Ord for *mut T {
-    #[inline]
-    fn lt(&self, other: &*mut T) -> bool {
-        *self < *other
-    }
-    #[inline]
-    fn le(&self, other: &*mut T) -> bool {
-        *self <= *other
-    }
-    #[inline]
-    fn ge(&self, other: &*mut T) -> bool {
-        *self >= *other
-    }
-    #[inline]
-    fn gt(&self, other: &*mut T) -> bool {
-        *self > *other
-    }
-}
-
 #[cfg(test)]
 pub mod ptr_tests {
     use super::*;
-    use prelude::*;
+    use std::prelude::*;
 
-    use c_str::ToCStr;
-    use cast;
-    use libc;
-    use str;
-    use vec::{ImmutableVector, MutableVector};
+    use std::c_str::ToCStr;
+    use std::cast;
+    use std::libc;
+    use std::vec::{ImmutableVector, MutableVector};
 
     #[test]
     fn test() {
@@ -419,13 +278,11 @@ pub mod ptr_tests {
 
     #[test]
     fn test_position() {
-        use libc::c_char;
-
         "hello".with_c_str(|p| {
             unsafe {
-                assert!(2u == position(p, |c| *c == 'l' as c_char));
-                assert!(4u == position(p, |c| *c == 'o' as c_char));
-                assert!(5u == position(p, |c| *c == 0 as c_char));
+                assert!(2u == position(p, |c| *c == 'l' as libc::c_char));
+                assert!(4u == position(p, |c| *c == 'o' as libc::c_char));
+                assert!(5u == position(p, |c| *c == 0 as libc::c_char));
             }
         })
     }
