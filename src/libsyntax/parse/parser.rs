@@ -2294,7 +2294,10 @@ impl Parser {
             // HACK: turn @[...] into a @-vec
             ex = match e.node {
               ExprVec(..) |
-              ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
+              ExprRepeat(..) => {
+                  self.obsolete(e.span, ObsoleteManagedVec);
+                  ExprVstore(e, ExprVstoreBox)
+              }
               ExprLit(lit) if lit_is_str(lit) => {
                   self.obsolete(self.last_span, ObsoleteManagedString);
                   ExprVstore(e, ExprVstoreBox)

@@ -45,6 +45,7 @@ pub enum ObsoleteSyntax {
     ObsoleteExternModAttributesInParens,
     ObsoleteManagedPattern,
     ObsoleteManagedString,
+    ObsoleteManagedVec,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -153,6 +154,10 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteManagedString => (
                 "managed string",
                 "use `Rc<~str>` instead of a managed string"
+            ),
+            ObsoleteManagedVec => (
+                "managed vector",
+                "use `Rc<~[T]>` instead of a managed vector"
             ),
         };
 
