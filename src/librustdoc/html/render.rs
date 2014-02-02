@@ -250,7 +250,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let mut dst = cx.dst.join(crate.name.as_slice());
     if_ok!(mkdir(&dst));
     if_ok!(write(dst.join("jquery.js"),
-                 include_str!("static/jquery-2.0.3.min.js")));
+                 include_str!("static/jquery-2.1.0.min.js")));
     if_ok!(write(dst.join("main.js"), include_str!("static/main.js")));
     if_ok!(write(dst.join("main.css"), include_str!("static/main.css")));
     if_ok!(write(dst.join("normalize.css"),
