@@ -75,6 +75,7 @@ src/.DS_Store
 /doc/latex
 /doc/std
 /doc/arena
+/doc/base64
 /doc/extra
 /doc/flate
 /doc/glob

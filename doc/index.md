@@ -38,6 +38,7 @@ li {list-style-type: none; }
 * [The Rust compiler, `librustc`](rustc/index.html)
 
 * [The `arena` allocation library](arena/index.html)
+* [The `base64` encoding library](base64/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `glob` file path matching library](glob/index.html)
 

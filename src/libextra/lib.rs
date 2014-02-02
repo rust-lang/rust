@@ -69,7 +69,6 @@ pub mod json;
 pub mod tempfile;
 pub mod term;
 pub mod time;
-pub mod base64;
 pub mod workcache;
 pub mod enum_set;
 #[path="num/bigint.rs"]
