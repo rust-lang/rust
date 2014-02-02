@@ -3744,6 +3744,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
                 infer::BoundRegionInTypeOrImpl(span),
                 num_expected_regions))
     };
+    let regions = ty::NonerasedRegions(regions);
 
     // Special case: If there is a self parameter, omit it from the list of
     // type parameters.
@@ -3762,12 +3763,12 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
     // determine values for type parameters, using the values given by
     // the user (if any) and otherwise using fresh type variables
-    let tps = if ty_substs_len == 0 {
-        fcx.infcx().next_ty_vars(ty_param_count)
+    let (tps, regions) = if ty_substs_len == 0 {
+        (fcx.infcx().next_ty_vars(ty_param_count), regions)
     } else if ty_param_count == 0 {
         fcx.ccx.tcx.sess.span_err
             (span, "this item does not take type parameters");
-        fcx.infcx().next_ty_vars(ty_param_count)
+        (fcx.infcx().next_ty_vars(ty_param_count), regions)
     } else if ty_substs_len > user_ty_param_count {
         let expected = if user_ty_param_req < user_ty_param_count {
             "expected at most"
@@ -3778,7 +3779,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
             (span,
              format!("too many type parameters provided: {} {}, found {}",
                   expected, user_ty_param_count, ty_substs_len));
-        fcx.infcx().next_ty_vars(ty_param_count)
+        (fcx.infcx().next_ty_vars(ty_param_count), regions)
     } else if ty_substs_len < user_ty_param_req {
         let expected = if user_ty_param_req < user_ty_param_count {
             "expected at least"
@@ -3789,7 +3790,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
             (span,
              format!("not enough type parameters provided: {} {}, found {}",
                   expected, user_ty_param_req, ty_substs_len));
-        fcx.infcx().next_ty_vars(ty_param_count)
+        (fcx.infcx().next_ty_vars(ty_param_count), regions)
     } else {
         if ty_substs_len > user_ty_param_req {
             fcx.tcx().sess.add_lint(lint::DefaultTypeParamUsage, node_id, pth.span,
@@ -3798,50 +3799,71 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
         // Build up the list of type parameters, inserting the self parameter
         // at the appropriate position.
-        let mut result = ~[];
+        let mut tps = ~[];
         let mut pushed = false;
+        for (i, ty) in pth.segments.iter()
+                                   .flat_map(|segment| segment.types.iter())
+                                   .map(|&ast_type| fcx.to_ty(ast_type))
+                                   .enumerate() {
+            match self_parameter_index {
+                Some(index) if index == i => {
+                    tps.push(fcx.infcx().next_ty_vars(1)[0]);
+                    pushed = true;
+                }
+                _ => {}
+            }
+            tps.push(ty)
+        }
+
+        let mut substs = substs {
+            regions: regions,
+            self_ty: None,
+            tps: tps
+        };
+
         let defaults = tpt.generics.type_param_defs().iter()
                           .enumerate().filter_map(|(i, x)| {
             match self_parameter_index {
                 Some(index) if index == i => None,
                 _ => Some(x.default)
             }
-        }).skip(ty_substs_len).map(|x| match x {
-            Some(default) => default,
-            None => {
-                fcx.tcx().sess.span_bug(span,
-                    "missing default for a not explicitely provided type param")
-            }
         });
-        for (i, ty) in pth.segments.iter()
-                                   .flat_map(|segment| segment.types.iter())
-                                   .map(|&ast_type| fcx.to_ty(ast_type))
-                                   .chain(defaults).enumerate() {
+        for (i, default) in defaults.skip(ty_substs_len).enumerate() {
             match self_parameter_index {
-                Some(index) if index == i => {
-                    result.push(fcx.infcx().next_ty_vars(1)[0]);
+                Some(index) if index == i + ty_substs_len => {
+                    substs.tps.push(fcx.infcx().next_ty_vars(1)[0]);
                     pushed = true;
                 }
                 _ => {}
             }
-            result.push(ty)
+            match default {
+                Some(default) => {
+                    let ty = default.subst_spanned(fcx.tcx(), &substs, Some(span));
+                    substs.tps.push(ty);
+                }
+                None => {
+                    fcx.tcx().sess.span_bug(span,
+                        "missing default for a not explicitely provided type param")
+                }
+            }
         }
 
         // If the self parameter goes at the end, insert it there.
         if !pushed && self_parameter_index.is_some() {
-            result.push(fcx.infcx().next_ty_vars(1)[0])
+            substs.tps.push(fcx.infcx().next_ty_vars(1)[0])
         }
 
-        assert_eq!(result.len(), ty_param_count)
-        result
+        assert_eq!(substs.tps.len(), ty_param_count)
+
+        let substs {tps, regions, ..} = substs;
+        (tps, regions)
     };
 
-    let substs = substs {
-        regions: ty::NonerasedRegions(regions),
+    fcx.write_ty_substs(node_id, tpt.ty, substs {
+        regions: regions,
         self_ty: None,
         tps: tps
-    };
-    fcx.write_ty_substs(node_id, tpt.ty, substs);
+    });
 
     debug!("<<<");
 }
