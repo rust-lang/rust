@@ -52,8 +52,8 @@ documentation.
     > options are also supported, pass `--help` for more information on them.
 
     When complete, `make install` will place several programs into
-    `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-    API-documentation tool, and `rustpkg`, the Rust package manager and build
+    `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
+    API-documentation tool.
     system.
 3. Read the [tutorial].
 4. Enjoy!

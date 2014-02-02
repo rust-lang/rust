@@ -150,8 +150,9 @@ pub struct Options {
     lint_opts: ~[(lint::Lint, lint::level)],
     save_temps: bool,
     output_type: back::link::OutputType,
-    // This is mutable for rustpkg, which updates search paths based on the
-    // parsed code.
+    // This was mutable for rustpkg, which updates search paths based on the
+    // parsed code. It remains mutable in case its replacements wants to use
+    // this.
     addl_lib_search_paths: @RefCell<HashSet<Path>>,
     ar: Option<~str>,
     linker: Option<~str>,

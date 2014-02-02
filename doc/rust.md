@@ -791,7 +791,7 @@ extern mod extra; // equivalent to: extern mod extra = "extra";
 
 extern mod rustextra = "extra"; // linking to 'extra' under another name
 
-extern mod foo = "some/where/rust-foo#foo:1.0"; // a full package ID for rustpkg
+extern mod foo = "some/where/rust-foo#foo:1.0"; // a full package ID for external tools
 ~~~~
 
 ##### Use declarations

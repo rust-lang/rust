@@ -370,7 +370,6 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 # libraries
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	$$(foreach dep,$$(CRATES),$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
 	$$(foreach dep,$$(HOST_CRATES),$$(HLIB$(1)_H_$(3))/stamp.$$(dep))
