@@ -206,9 +206,6 @@ endef
 $(foreach target,$(CFG_TARGET),\
   $(eval $(call DEF_X,$(target))))
 
-# Look in doc and src dirs.
-VPATH := $(S)doc $(S)src
-
 # "Source" files we generate in builddir along the way.
 GENERATED :=
 
