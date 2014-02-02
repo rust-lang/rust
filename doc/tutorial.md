@@ -326,10 +326,10 @@ Rust will assume that an unsuffixed integer literal has type
 `int`.
 
 ~~~~
-let a = 1;       // a is an int
-let b = 10i;     // b is an int, due to the 'i' suffix
-let c = 100u;    // c is a uint
-let d = 1000i32; // d is an i32
+let a = 1;       // `a` is an `int`
+let b = 10i;     // `b` is an `int`, due to the `i` suffix
+let c = 100u;    // `c` is a `uint`
+let d = 1000i32; // `d` is an `i32`
 ~~~~
 
 There are two floating-point types: `f32`, and `f64`.
@@ -400,10 +400,10 @@ error when the types of the directives don't match the types of the arguments.
 ~~~~
 # let mystery_object = ();
 
-// {} will print the "default format" of a type
+// `{}` will print the "default format" of a type
 println!("{} is {}", "the answer", 43);
 
-// {:?} will conveniently print any type
+// `{:?}` will conveniently print any type
 println!("what is this thing: {:?}", mystery_object);
 ~~~~
 
@@ -612,7 +612,7 @@ struct without inherited mutability would result in a type error.
 let mut mypoint = Point { x: 1.0, y: 1.0 };
 let origin = Point { x: 0.0, y: 0.0 };
 
-mypoint.y += 1.0; // mypoint is mutable, and its fields as well
+mypoint.y += 1.0; // `mypoint` is mutable, and its fields as well
 origin.y += 1.0; // ERROR: assigning to immutable field
 ~~~~
 
@@ -1085,8 +1085,8 @@ Avoiding a move can be done with the library-defined `clone` method:
 
 ~~~~
 let x = ~5;
-let y = x.clone(); // y is a newly allocated box
-let z = x; // no new memory allocated, x can no longer be used
+let y = x.clone(); // `y` is a newly allocated box
+let z = x; // no new memory allocated, `x` can no longer be used
 ~~~~
 
 The `clone` method is provided by the `Clone` trait, and can be derived for
@@ -1340,7 +1340,7 @@ fn foo() -> (u64, u64, u64, u64, u64, u64) {
     (5, 5, 5, 5, 5, 5)
 }
 
-let x = ~foo(); // allocates a ~ box, and writes the integers directly to it
+let x = ~foo(); // allocates a `~` box, and writes the integers directly to it
 ~~~~
 
 Beyond the properties granted by the size, an owned box behaves as a regular
@@ -1353,7 +1353,7 @@ y += 2;
 
 let x = ~5; // immutable
 let mut y = ~5; // mutable
-*y += 2; // the * operator is needed to access the contained value
+*y += 2; // the `*` operator is needed to access the contained value
 ~~~~
 
 # References
@@ -1451,9 +1451,9 @@ of a non-`Freeze` type is [`RefCell<T>`][refcell].
 ~~~~
 let mut x = 5;
 {
-    let y = &x; // x is now frozen, it cannot be modified
+    let y = &x; // `x` is now frozen, it cannot be modified
 }
-// x is now unfrozen again
+// `x` is now unfrozen again
 # x = 3;
 ~~~~
 
@@ -1559,7 +1559,7 @@ let mut numbers = ~[1, 2, 3];
 numbers.push(4);
 numbers.push(5);
 
-// The type of a unique vector is written as ~[int]
+// The type of a unique vector is written as `~[int]`
 let more_numbers: ~[int] = numbers;
 
 // The original `numbers` value can no longer be used, due to move semantics.
@@ -1576,7 +1576,7 @@ the elements.
 // A slice
 let xs = &[1, 2, 3];
 
-// Slices have their type written as &[int]
+// Slices have their type written as `&[int]`
 let ys: &[int] = xs;
 
 // Other vector types coerce to slices
@@ -1586,7 +1586,7 @@ let zs: &[int] = three;
 // An unadorned string literal is an immutable string slice
 let string = "foobar";
 
-// A string slice type is written as &str
+// A string slice type is written as `&str`
 let view: &str = string.slice(0, 3);
 ~~~
 
@@ -1600,7 +1600,7 @@ let mut xs = [1, 2, 3];
 let view = xs.mut_slice(0, 2);
 view[0] = 5;
 
-// The type of a mutable slice is written as &mut [T]
+// The type of a mutable slice is written as `&mut [T]`
 let ys: &mut [int] = &mut [1, 2, 3];
 ~~~
 
@@ -2546,7 +2546,7 @@ that binary is collectively called a 'crate'.
 For example, for a simple hello world program your crate only consists of this code:
 
 ~~~~
-// main.rs
+// `main.rs`
 fn main() {
     println!("Hello world!");
 }
@@ -2675,8 +2675,8 @@ fn main() {
     f.farmer.rest();
 
     // This wouldn't compile because both are private:
-    // f.feed_chickens();
-    // let chicken_counter = f.chickens.len();
+    // `f.feed_chickens();`
+    // `let chicken_counter = f.chickens.len();`
 }
 # fn make_me_a_farm() -> farm::Farm { farm::make_me_a_farm() }
 # fn make_me_a_chicken() -> farm::Chicken { 0 }
@@ -2708,8 +2708,8 @@ If it finds both, that's a compile error.
 So, if we want to move the content of `mod farm` into it's own file, it would look like this:
 
 ~~~~ {.ignore}
-// main.rs - contains body of the crate root
-mod farm; // Compiler will look for 'farm.rs' and 'farm/mod.rs'
+// `main.rs` - contains body of the crate root
+mod farm; // Compiler will look for `farm.rs` and `farm/mod.rs`
 
 fn main() {
     println!("Hello farm!");
@@ -2718,7 +2718,7 @@ fn main() {
 ~~~~
 
 ~~~~
-// farm.rs - contains body of module 'farm' in the crate root
+// `farm.rs` - contains body of module 'farm' in the crate root
 pub fn chicken() { println!("cluck cluck"); }
 pub fn cow() { println!("mooo"); }
 
@@ -2743,7 +2743,7 @@ is contained in, if any.
 For example, given a file with this module body:
 
 ~~~ {.ignore}
-// src/main.rs
+// `src/main.rs`
 mod plants;
 mod animals {
     mod fish;
@@ -2771,13 +2771,13 @@ depending on how and where you've moved a module body to its own file.
 For example, if we move the `animals` module above into its own file...
 
 ~~~ {.ignore}
-// src/main.rs
+// `src/main.rs`
 mod plants;
 mod animals;
 ~~~
 
 ~~~ {.ignore}
-// src/animals.rs or src/animals/mod.rs
+// `src/animals.rs` or `src/animals/mod.rs`
 mod fish;
 mod mammals {
     mod humans;
@@ -2874,7 +2874,7 @@ use farm::cow;
 fn cow() { println!("Mooo!") }
 
 fn main() {
-    cow() // resolves to the locally defined cow() function
+    cow() // resolves to the locally defined `cow()` function
 }
 ~~~
 
@@ -2924,21 +2924,21 @@ fn main() {
 And here an example with multiple files:
 
 ~~~{.ignore}
-// a.rs - crate root
+// `a.rs` - crate root
 use b::foo;
 mod b;
 fn main() { foo(); }
 ~~~
 
 ~~~{.ignore}
-// b.rs
+// `b.rs`
 use b::c::bar;
 pub mod c;
 pub fn foo() { bar(); }
 ~~~
 
 ~~~
-// c.rs
+// `c.rs`
 pub fn bar() { println!("Baz!"); }
 # fn main() {}
 ~~~
@@ -3101,7 +3101,7 @@ without conflict.
 Therefore, if you plan to compile your crate as a library, you should annotate it with that information:
 
 ~~~~
-// lib.rs
+// `lib.rs`
 
 # #[crate_type = "lib"];
 // Package ID
@@ -3125,7 +3125,7 @@ Other crate settings and metadata include things like enabling/disabling certain
 or setting the crate type (library or executable) explicitly:
 
 ~~~~
-// lib.rs
+// `lib.rs`
 // ...
 
 // This crate is a library ("bin" is the default)
@@ -3144,7 +3144,7 @@ Now for something that you can actually compile yourself.
 We define two crates, and use one of them as a library in the other.
 
 ~~~~
-// world.rs
+// `world.rs`
 #[crate_id = "world#0.42"];
 # extern mod extra;
 pub fn explore() -> &'static str { "world" }
@@ -3152,7 +3152,7 @@ pub fn explore() -> &'static str { "world" }
 ~~~~
 
 ~~~~ {.ignore}
-// main.rs
+// `main.rs`
 extern mod world;
 fn main() { println!("hello {}", world::explore()); }
 ~~~~
@@ -3203,7 +3203,7 @@ For example, it re-exports `range` which is defined in `std::iter::range`:
 use iter_range = std::iter::range;
 
 fn main() {
-    // range is imported by default
+    // `range` is imported by default
     for _ in range(0, 10) {}
 
     // Doesn't hinder you from importing it under a different name yourself
