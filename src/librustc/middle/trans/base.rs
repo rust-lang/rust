@@ -1084,6 +1084,28 @@ pub fn with_cond<'a>(
     next_cx
 }
 
+pub fn call_lifetime_start(cx: &Block, ptr: ValueRef, llty: Type) {
+    let _icx = push_ctxt("lifetime_start");
+    let ccx = cx.ccx();
+
+    // let llty = type_of::type_of(ccx, t);
+    let size = machine::llsize_of(ccx, llty);
+    let lifetime_start = ccx.intrinsics.get_copy(&("llvm.lifetime.start"));
+    let ptr = PointerCast(cx, ptr, Type::i8p());
+    Call(cx, lifetime_start, [size, ptr], []);
+}
+
+pub fn call_lifetime_end(cx: &Block, ptr: ValueRef, t: ty::t) {
+    let _icx = push_ctxt("lifetime_end");
+    let ccx = cx.ccx();
+
+    let llty = type_of::type_of(ccx, t);
+    let size = machine::llsize_of(ccx, llty);
+    let lifetime_end = ccx.intrinsics.get_copy(&("llvm.lifetime.end"));
+    let ptr = PointerCast(cx, ptr, Type::i8p());
+    Call(cx, lifetime_end, [size, ptr], []);
+}
+
 pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
@@ -1171,6 +1193,8 @@ pub fn alloca_maybe_zeroed(cx: &Block, ty: Type, name: &str, zero: bool) -> Valu
         let b = cx.fcx.ccx.builder();
         b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
         memzero(&b, p, ty);
+    } else {
+        call_lifetime_start(cx, p, ty);
     }
     p
 }
@@ -1183,7 +1207,9 @@ pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
         }
     }
     debuginfo::clear_source_location(cx.fcx);
-    return ArrayAlloca(cx, ty, v);
+    let p = ArrayAlloca(cx, ty, v);
+    call_lifetime_start(cx, p, ty);
+    p
 }
 
 pub struct BasicBlocks {
@@ -2419,6 +2445,9 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
         [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
 
     ifn!(intrinsics, "llvm.expect.i1", [Type::i1(), Type::i1()], Type::i1());
+
+    ifn!(intrinsics, "llvm.lifetime.start", [Type::i64(), i8p], Type::void());
+    ifn!(intrinsics, "llvm.lifetime.end", [Type::i64(), i8p], Type::void());
 
     return intrinsics;
 }

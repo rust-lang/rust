@@ -80,6 +80,8 @@ pub fn get_simple_intrinsic(ccx: @CrateContext, item: &ast::ForeignItem) -> Opti
         "bswap16" => Some(ccx.intrinsics.get_copy(&("llvm.bswap.i16"))),
         "bswap32" => Some(ccx.intrinsics.get_copy(&("llvm.bswap.i32"))),
         "bswap64" => Some(ccx.intrinsics.get_copy(&("llvm.bswap.i64"))),
+        "lifetime_start" => Some(ccx.intrinsics.get_copy(&("llvm.lifetime.start"))),
+        "lifetime_end" => Some(ccx.intrinsics.get_copy(&("llvm.lifetime.end"))),
         _ => None
     }
 }

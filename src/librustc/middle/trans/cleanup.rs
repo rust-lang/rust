@@ -244,6 +244,11 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          * instance of `ty`
          */
 
+        self.schedule_clean(cleanup_scope, ~LifetimeEnd {
+            val: val,
+            ty: ty
+        });
+
         if !ty::type_needs_drop(self.ccx.tcx, ty) { return; }
         let drop = ~DropValue {
             is_immediate: false,
@@ -828,6 +833,22 @@ impl Cleanup for DropValue {
         } else {
             glue::drop_ty(bcx, self.val, self.ty)
         }
+    }
+}
+
+pub struct LifetimeEnd {
+    val: ValueRef,
+    ty: ty::t,
+}
+
+impl Cleanup for LifetimeEnd {
+    fn clean_on_unwind(&self) -> bool {
+        false
+    }
+
+    fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
+        base::call_lifetime_end(bcx, self.val, self.ty);
+        bcx
     }
 }
 
