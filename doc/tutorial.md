@@ -117,8 +117,8 @@ can be adjusted by passing a `--prefix` argument to
 for more information on them.
 
 When complete, `make install` will place several programs into
-`/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool; and `rustpkg`, the Rust package manager.
+`/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
+API-documentation tool.
 
 [tarball]: http://static.rust-lang.org/dist/rust-0.9.tar.gz
 [win-exe]: http://static.rust-lang.org/dist/rust-0.9-install.exe
@@ -3087,15 +3087,6 @@ they model most closely what people expect to shadow.
 If you use `extern mod`, per default `rustc` will look for libraries in the library search path (which you can
 extend with the `-L` switch).
 
-However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
-libraries if you use it for building your crate. How it works is explained [here][rustpkg],
-but for this tutorial it's only important to know that you can optionally annotate an
-`extern mod` statement with a package id that rustpkg can use to identify it:
-
-~~~ {.ignore}
-extern mod rust = "github.com/mozilla/rust"; // pretend Rust is a simple library
-~~~
-
 ## Crate metadata and settings
 
 For every crate you can define a number of metadata items, such as link name, version or author.
@@ -3145,11 +3136,6 @@ or setting the crate type (library or executable) explicitly:
 #[warn(non_camel_case_types)]
 # fn farm() {}
 ~~~~
-
-> ***Note:*** The rules regarding package IDs, both as attributes and as used
-              in `extern mod`, as well as their interaction with `rustpkg` are
-              currently not clearly defined and will likely change in the
-              future.
 
 ## A minimal example
 
@@ -3253,7 +3239,8 @@ library.  You can use them by linking to `extra` with an `extern mod extra;`.
 [extra library]: extra/index.html
 
 Right now `extra` contains those definitions directly, but in the future it will likely just
-re-export a bunch of 'officially blessed' crates that get managed with `rustpkg`.
+re-export a bunch of 'officially blessed' crates that get managed with a
+package manager.
 
 # What next?
 
@@ -3267,7 +3254,6 @@ guides on individual topics.
 * [The foreign function interface][ffi]
 * [Containers and iterators][container]
 * [Error-handling and Conditions][conditions]
-* [Packaging up Rust code][rustpkg]
 * [Documenting Rust code][rustdoc]
 * [Testing Rust code][testing]
 * [The Rust Runtime][runtime]
@@ -3281,7 +3267,6 @@ There is further documentation on the [wiki], however those tend to be even more
 [ffi]: guide-ffi.html
 [container]: guide-container.html
 [conditions]: guide-conditions.html
-[rustpkg]: guide-rustpkg.html
 [testing]: guide-testing.html
 [runtime]: guide-runtime.html
 [rustdoc]: rustdoc.html
