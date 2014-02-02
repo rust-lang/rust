@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::Default`. Example usage:
+//! of `fmt::Show`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -32,7 +32,7 @@ use std::str;
 use std::unstable::intrinsics;
 use std::vec;
 
-/// A unit struct which has the `fmt::Default` trait implemented. When
+/// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(&'a str);
@@ -209,7 +209,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-impl<'a> fmt::Default for Markdown<'a> {
+impl<'a> fmt::Show for Markdown<'a> {
     fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) {
         let Markdown(md) = *md;
         // This is actually common enough to special-case

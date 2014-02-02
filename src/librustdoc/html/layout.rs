@@ -24,7 +24,7 @@ pub struct Page<'a> {
     root_path: &'a str,
 }
 
-pub fn render<T: fmt::Default, S: fmt::Default>(
+pub fn render<T: fmt::Show, S: fmt::Show>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
 {
     write!(dst,
