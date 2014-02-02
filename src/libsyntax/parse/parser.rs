@@ -866,7 +866,10 @@ impl Parser {
 
         */
 
-        let opt_abis = self.parse_opt_abis();
+        let opt_abis = if self.eat_keyword(keywords::Extern) {
+            self.parse_opt_abis()
+        } else { None };
+
         let abis = opt_abis.unwrap_or(AbiSet::Rust());
         let purity = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
@@ -4308,91 +4311,78 @@ impl Parser {
         }
     }
 
-    // parse extern foo; or extern mod foo { ... } or extern { ... }
+    /// Parse extern crate links
+    ///
+    /// # Example
+    ///
+    /// extern crate extra;
+    /// extern crate foo = "bar";
+    fn parse_item_extern_crate(&mut self,
+                                lo: BytePos,
+                                visibility: Visibility,
+                                attrs: ~[Attribute])
+                                -> ItemOrViewItem {
+
+        let (maybe_path, ident) = match self.token {
+            token::IDENT(..) => {
+                let the_ident = self.parse_ident();
+                self.expect_one_of(&[], &[token::EQ, token::SEMI]);
+                let path = if self.token == token::EQ {
+                    self.bump();
+                    Some(self.parse_str())
+                } else {None};
+
+                self.expect(&token::SEMI);
+                (path, the_ident)
+            }
+            _ => {
+                let token_str = self.this_token_to_str();
+                self.span_fatal(self.span,
+                                format!("expected extern crate name but found `{}`",
+                                        token_str));
+            }
+        };
+
+        IoviViewItem(ast::ViewItem {
+                node: ViewItemExternMod(ident, maybe_path, ast::DUMMY_NODE_ID),
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            })
+    }
+
+    /// Parse `extern` for foreign ABIs
+    /// modules.
+    ///
+    /// `extern` is expected to have been
+    /// consumed before calling this method
+    ///
+    /// # Examples:
+    ///
+    /// extern "C" {}
+    /// extern {}
     fn parse_item_foreign_mod(&mut self,
                               lo: BytePos,
                               opt_abis: Option<AbiSet>,
                               visibility: Visibility,
-                              attrs: ~[Attribute],
-                              items_allowed: bool)
+                              attrs: ~[Attribute])
                               -> ItemOrViewItem {
-        let mut must_be_named_mod = false;
-        if self.is_keyword(keywords::Mod) {
-            must_be_named_mod = true;
-            self.expect_keyword(keywords::Mod);
-        } else if self.token != token::LBRACE {
-            let token_str = self.this_token_to_str();
-            self.span_fatal(self.span,
-                            format!("expected `\\{` or `mod` but found `{}`",
-                                    token_str))
-        }
 
-        let (named, maybe_path, ident) = match self.token {
-            token::IDENT(..) => {
-                let the_ident = self.parse_ident();
-                let path = if self.token == token::EQ {
-                    self.bump();
-                    Some(self.parse_str())
-                }
-                else { None };
-                (true, path, the_ident)
-            }
-            _ => {
-                if must_be_named_mod {
-                    let token_str = self.this_token_to_str();
-                    self.span_fatal(self.span,
-                                    format!("expected foreign module name but \
-                                             found `{}`",
-                                            token_str))
-                }
+        self.expect(&token::LBRACE);
 
-                (false, None,
-                 special_idents::clownshoes_foreign_mod)
-            }
-        };
+        let abis = opt_abis.unwrap_or(AbiSet::C());
 
-        // extern mod foo { ... } or extern { ... }
-        if items_allowed && self.eat(&token::LBRACE) {
-            // `extern mod foo { ... }` is obsolete.
-            if named {
-                self.obsolete(self.last_span, ObsoleteNamedExternModule);
-            }
+        let (inner, next) = self.parse_inner_attrs_and_next();
+        let m = self.parse_foreign_mod_items(abis, next);
+        self.expect(&token::RBRACE);
 
-            let abis = opt_abis.unwrap_or(AbiSet::C());
-
-            let (inner, next) = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(abis, next);
-            self.expect(&token::RBRACE);
-
-            let item = self.mk_item(lo,
-                                    self.last_span.hi,
-                                    ident,
-                                    ItemForeignMod(m),
-                                    visibility,
-                                    maybe_append(attrs, Some(inner)));
-            return IoviItem(item);
-        }
-
-        if opt_abis.is_some() {
-            self.span_err(self.span, "an ABI may not be specified here");
-        }
-
-
-        if self.token == token::LPAREN {
-            // `extern mod foo (name = "bar"[,vers = "version"]) is obsolete,
-            // `extern mod foo = "bar#[version]";` should be used.
-            // Parse obsolete options to avoid wired parser errors
-            self.parse_optional_meta();
-            self.obsolete(self.span, ObsoleteExternModAttributesInParens);
-        }
-        // extern mod foo;
-        self.expect(&token::SEMI);
-        IoviViewItem(ast::ViewItem {
-            node: ViewItemExternMod(ident, maybe_path, ast::DUMMY_NODE_ID),
-            attrs: attrs,
-            vis: visibility,
-            span: mk_sp(lo, self.last_span.hi)
-        })
+        let item = self.mk_item(lo,
+                                self.last_span.hi,
+                                special_idents::clownshoes_foreign_mod,
+                                ItemForeignMod(m),
+                                visibility,
+                                maybe_append(attrs, Some(inner)));
+        return IoviItem(item);
     }
 
     // parse type Foo = Bar;
@@ -4504,10 +4494,6 @@ impl Parser {
     // Parses a string as an ABI spec on an extern type or module. Consumes
     // the `extern` keyword, if one is found.
     fn parse_opt_abis(&mut self) -> Option<AbiSet> {
-        if !self.eat_keyword(keywords::Extern) {
-            return None
-        }
-
         match self.token {
             token::LIT_STR(s)
             | token::LIT_STR_RAW(s, _) => {
@@ -4585,7 +4571,20 @@ impl Parser {
             });
         }
         // either a view item or an item:
-        if self.is_keyword(keywords::Extern) {
+        if self.eat_keyword(keywords::Extern) {
+            let next_is_mod = self.eat_keyword(keywords::Mod);
+
+            if next_is_mod || self.eat_keyword(keywords::Crate) {
+                // NOTE(flaper87): Uncomment this when this changes gets into stage0
+                //
+                // if next_is_mod {
+                //    self.span_err(self.span,
+                //                   format!("`extern mod` is obsolete, use `extern crate` instead \
+                //                           to refer to external crates."))
+                // }
+                return self.parse_item_extern_crate(lo, visibility, attrs);
+            }
+
             let opt_abis = self.parse_opt_abis();
 
             if self.eat_keyword(keywords::Fn) {
@@ -4600,12 +4599,15 @@ impl Parser {
                                         visibility,
                                         maybe_append(attrs, extra_attrs));
                 return IoviItem(item);
-            } else  {
-                // EXTERN MODULE ITEM (IoviViewItem)
-                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs,
-                                                   true);
+            } else if self.token == token::LBRACE {
+                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs);
             }
+
+            let token_str = self.this_token_to_str();
+            self.span_fatal(self.span,
+                            format!("expected `\\{` or `fn` but found `{}`", token_str));
         }
+
         // the rest are all guaranteed to be items:
         if self.is_keyword(keywords::Static) {
             // STATIC ITEM
