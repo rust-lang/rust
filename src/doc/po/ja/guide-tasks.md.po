@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,28 +17,28 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
-#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
-#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: src/doc/guide-conditions.md:4 src/doc/guide-ffi.md:4
+#: src/doc/guide-lifetimes.md:4 src/doc/guide-macros.md:4
+#: src/doc/guide-tasks.md:4 src/doc/rust.md:4 src/doc/tutorial.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-tasks.md:2
+#: src/doc/guide-tasks.md:2
 #, fuzzy
 #| msgid "[Tasks and communication][tasks]"
 msgid "% The Rust Tasks and Communication Guide"
 msgstr "[タスクと通信][tasks]"
 
 #. type: Plain text
-#: doc/guide-tasks.md:64
+#: src/doc/guide-tasks.md:64
 #, fuzzy
 #| msgid "# Syntax basics"
 msgid "# Basics"
 msgstr "# 基本的な構文"
 
 #. type: Plain text
-#: doc/guide-tasks.md:73 doc/guide-tasks.md:132
+#: src/doc/guide-tasks.md:73 src/doc/guide-tasks.md:127
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~~ # use std::task::spawn;"
@@ -47,14 +47,14 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-tasks.md:113
+#: src/doc/guide-tasks.md:108
 #, fuzzy
 #| msgid "## Conditionals"
 msgid "## Communication"
 msgstr "## 条件式"
 
 #. type: Plain text
-#: doc/guide-tasks.md:214
+#: src/doc/guide-tasks.md:209
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ # use std::task::spawn;"
@@ -63,7 +63,7 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-tasks.md:246
+#: src/doc/guide-tasks.md:241
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ # use std::task::spawn; # use std::vec;"
@@ -72,7 +72,7 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-tasks.md:327
+#: src/doc/guide-tasks.md:322
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ # use std::vec; # use std::rand; use extra::arc::Arc;"

@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,28 +17,48 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-testing.md:2
+#: src/doc/guide-testing.md:2
 #, fuzzy
 #| msgid "% The Rust Language Tutorial"
 msgid "% The Rust Testing Guide"
 msgstr "% Rust 言語チュートリアル"
 
 #. type: Plain text
-#: doc/guide-testing.md:4
+#: src/doc/guide-testing.md:4
 #, fuzzy
 #| msgid "# Getting started"
 msgid "# Quick start"
 msgstr "# はじめに"
 
 #. type: Plain text
-#: doc/guide-testing.md:127 doc/tutorial.md:776
+#: src/doc/guide-testing.md:11
+#, fuzzy, no-wrap
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid ""
+"~~~\n"
+"fn return_two() -> int {\n"
+"    2\n"
+"}\n"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:97
 #, fuzzy
-#| msgid "## A minimal example"
+#| msgid "## Structs"
+msgid "## Parallelism"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:127 src/doc/tutorial.md:786
+#, fuzzy
 msgid "For example:"
 msgstr "## 最小限の例"
 
 #. type: Plain text
-#: doc/guide-testing.md:131
+#: src/doc/guide-testing.md:131
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ extern mod extra; use std::vec;"
@@ -47,28 +67,56 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-testing.md:167
+#: src/doc/guide-testing.md:150
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "Advice on writing benchmarks:"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:167
 #, fuzzy
 #| msgid "## Tuples"
 msgid "## Examples"
 msgstr "## タプル"
 
 #. type: Plain text
-#: doc/guide-testing.md:169
+#: src/doc/guide-testing.md:169
 #, fuzzy
 #| msgid "## Tuple structs"
 msgid "### Typical test run"
 msgstr "## タプル構造体"
 
 #. type: Plain text
-#: doc/guide-testing.md:197
+#: src/doc/guide-testing.md:183
+#, fuzzy
+#| msgid "## Structs"
+msgid "### Test run with failures"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:197
 #, fuzzy
 #| msgid "# Dereferencing pointers"
 msgid "### Running ignored tests"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-testing.md:235
+#: src/doc/guide-testing.md:209
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "### Running a subset of tests"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:223
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "### Running benchmarks"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: src/doc/guide-testing.md:235
 #, fuzzy
 #| msgid "## Declaring and implementing traits"
 msgid "## Saving and ratcheting metrics"

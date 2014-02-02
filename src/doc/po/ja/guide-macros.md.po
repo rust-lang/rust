@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,78 +17,85 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
-#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
-#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: src/doc/guide-conditions.md:4 src/doc/guide-ffi.md:4
+#: src/doc/guide-lifetimes.md:4 src/doc/guide-macros.md:4
+#: src/doc/guide-tasks.md:4 src/doc/rust.md:4 src/doc/tutorial.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-macros.md:2
+#: src/doc/guide-macros.md:2
 #, fuzzy
 #| msgid "% The Rust Language Tutorial"
 msgid "% The Rust Macros Guide"
 msgstr "% Rust 言語チュートリアル"
 
 #. type: Plain text
-#: doc/guide-macros.md:67
+#: src/doc/guide-macros.md:67
 #, fuzzy
 #| msgid "## Do syntax"
 msgid "# Invocation syntax"
 msgstr "## do 構文"
 
 #. type: Plain text
-#: doc/guide-macros.md:100
+#: src/doc/guide-macros.md:100
 #, fuzzy
 #| msgid "# Introduction"
 msgid "## Invocation location"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-macros.md:115
+#: src/doc/guide-macros.md:115
 #, fuzzy
 #| msgid "## Traits"
 msgid "# Transcription syntax"
 msgstr "## トレイト"
 
 #. type: Plain text
-#: doc/guide-macros.md:135
+#: src/doc/guide-macros.md:135
 #, fuzzy
 #| msgid "# Introduction"
 msgid "## Interpolation location"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-macros.md:143
+#: src/doc/guide-macros.md:143
 #, fuzzy
 #| msgid "# Introduction"
 msgid "## Invocation"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-macros.md:181
+#: src/doc/guide-macros.md:181
 #, fuzzy
 #| msgid "## Traits"
 msgid "### Transcription"
 msgstr "## トレイト"
 
 #. type: Plain text
-#: doc/guide-macros.md:193
+#: src/doc/guide-macros.md:193
 #, fuzzy
 #| msgid "## Pattern matching"
 msgid "## Parsing limitations"
 msgstr "## パターンマッチ"
 
 #. type: Plain text
-#: doc/guide-macros.md:212
+#: src/doc/guide-macros.md:212
 #, fuzzy
 #| msgid "## Pattern matching"
 msgid "# Macro argument pattern matching"
 msgstr "## パターンマッチ"
 
 #. type: Plain text
-#: doc/guide-macros.md:214
+#: src/doc/guide-macros.md:214
 #, fuzzy
 #| msgid "## Conventions"
 msgid "## Motivation"
 msgstr "## 本書の表記について"
+
+#. type: Plain text
+#: src/doc/guide-macros.md:216
+#, fuzzy
+#| msgid "## Primitive types and literals"
+msgid "Now consider code like the following:"
+msgstr "## プリミティブ型とリテラル"
