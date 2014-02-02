@@ -20,6 +20,7 @@
 #[feature(globs)];
 #[feature(phase)];
 #[feature(macro_rules)];
+#[feature(managed_boxes)];
 
 #[cfg(test)] #[phase(syntax)] extern mod std;
 
@@ -36,5 +37,6 @@ pub mod intrinsics;
 #[cfg(not(test))] pub mod kinds;
 pub mod mem;
 pub mod ptr;
+pub mod raw;
 pub mod util;
 pub mod tuple;

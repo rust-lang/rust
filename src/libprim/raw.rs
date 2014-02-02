@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast;
-use unstable::intrinsics::TyDesc;
+use intrinsics::TyDesc;
 
 /// The representation of a Rust managed box
 pub struct Box<T> {

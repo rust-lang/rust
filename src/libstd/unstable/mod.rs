@@ -14,6 +14,7 @@ use prelude::*;
 use libc::uintptr_t;
 
 pub use prim::intrinsics;
+pub use prim::raw;
 
 pub mod dynamic_lib;
 
@@ -23,7 +24,6 @@ pub mod simd;
 pub mod lang;
 pub mod sync;
 pub mod mutex;
-pub mod raw;
 pub mod stack;
 
 /**
