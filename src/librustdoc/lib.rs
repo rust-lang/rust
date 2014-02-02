@@ -20,16 +20,16 @@ extern mod rustc;
 extern mod extra;
 extern mod serialize;
 extern mod sync;
+extern mod getopts;
 
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
-use extra::getopts;
-use extra::getopts::groups;
 use extra::json;
 use serialize::{Decodable, Encodable};
 use extra::time;
+use getopts::groups;
 
 pub mod clean;
 pub mod core;
@@ -81,7 +81,7 @@ pub fn main() {
 }
 
 pub fn opts() -> ~[groups::OptGroup] {
-    use extra::getopts::groups::*;
+    use getopts::groups::*;
     ~[
         optflag("h", "help", "show this help message"),
         optflag("", "version", "print rustdoc's version"),

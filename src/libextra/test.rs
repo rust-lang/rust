@@ -17,8 +17,8 @@
 
 extern mod term;
 
-use getopts;
 use getopts::groups;
+use getopts;
 use json::ToJson;
 use json;
 use serialize::Decodable;

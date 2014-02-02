@@ -37,6 +37,7 @@ extern mod arena;
 extern mod syntax;
 extern mod serialize;
 extern mod sync;
+extern mod getopts;
 
 use back::link;
 use driver::session;
@@ -50,8 +51,7 @@ use std::os;
 use std::str;
 use std::task;
 use std::vec;
-use extra::getopts::groups;
-use extra::getopts;
+use getopts::groups;
 use syntax::ast;
 use syntax::attr;
 use syntax::diagnostic::Emitter;
