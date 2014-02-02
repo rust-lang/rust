@@ -260,6 +260,7 @@ tidy:
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
+		| grep '^$(S)src/doc' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
@@ -715,7 +716,7 @@ define DEF_DOC_TEST_HOST
 doc-$(2)-extract$(1):
 	@$$(call E, extract: $(2) tests)
 	$$(Q)rm -f $(1)/test/doc-$(2)/*.rs
-	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/$(2).md $(1)/test/doc-$(2)
+	$$(Q)$$(EXTRACT_TESTS) $$(D)/$(2).md $(1)/test/doc-$(2)
 
 endef
 
