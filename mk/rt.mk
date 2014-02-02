@@ -67,13 +67,14 @@ NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
 
-$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.ll $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
+	    $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
 	    -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
 
-$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.c $$(MKFILE_DEPS)
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
@@ -81,7 +82,8 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.c $$(MKFILE_DEPS)
 		-I $$(S)src/libuv/include -I $$(S)src/rt \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 
-$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.S $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.S $$(MKFILE_DEPS) \
+	    $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)

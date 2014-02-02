@@ -45,13 +45,7 @@ clean-misc:
 	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -Rf tmp/*
 	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz $(PKG_NAME)-*.exe dist
-	$(Q)rm -Rf $(foreach ext, \
-                 html aux cp fn ky log pdf pg toc tp vr cps epub, \
-                 $(wildcard doc/*.$(ext)))
-	$(Q)find doc/std doc/extra -mindepth 1 | xargs rm -Rf
-	$(Q)rm -Rf doc/version.md
-	$(Q)rm -Rf $(foreach sub, index styles files search javascript, \
-                 $(wildcard doc/*/$(sub)))
+	$(Q)rm -Rf doc
 
 define CLEAN_GENERIC
 
