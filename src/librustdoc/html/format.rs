@@ -10,7 +10,7 @@
 
 //! HTML formatting module
 //!
-//! This module contains a large number of `fmt::Default` implementations for
+//! This module contains a large number of `fmt::Show` implementations for
 //! various types in `rustdoc::clean`. These implementations all currently
 //! assume that HTML output is desired, although it may be possible to redesign
 //! them in the future to instead emit any format desired.
@@ -47,7 +47,7 @@ impl PuritySpace {
     }
 }
 
-impl fmt::Default for clean::Generics {
+impl fmt::Show for clean::Generics {
     fn fmt(g: &clean::Generics, f: &mut fmt::Formatter) {
         if g.lifetimes.len() == 0 && g.type_params.len() == 0 { return }
         f.buf.write("&lt;".as_bytes());
@@ -77,14 +77,14 @@ impl fmt::Default for clean::Generics {
     }
 }
 
-impl fmt::Default for clean::Lifetime {
+impl fmt::Show for clean::Lifetime {
     fn fmt(l: &clean::Lifetime, f: &mut fmt::Formatter) {
         f.buf.write("'".as_bytes());
         f.buf.write(l.get_ref().as_bytes());
     }
 }
 
-impl fmt::Default for clean::TyParamBound {
+impl fmt::Show for clean::TyParamBound {
     fn fmt(bound: &clean::TyParamBound, f: &mut fmt::Formatter) {
         match *bound {
             clean::RegionBound => {
@@ -97,7 +97,7 @@ impl fmt::Default for clean::TyParamBound {
     }
 }
 
-impl fmt::Default for clean::Path {
+impl fmt::Show for clean::Path {
     fn fmt(path: &clean::Path, f: &mut fmt::Formatter) {
         if path.global { f.buf.write("::".as_bytes()) }
         for (i, seg) in path.segments.iter().enumerate() {
@@ -269,7 +269,7 @@ fn typarams(w: &mut io::Writer, typarams: &Option<~[clean::TyParamBound]>) {
     }
 }
 
-impl fmt::Default for clean::Type {
+impl fmt::Show for clean::Type {
     fn fmt(g: &clean::Type, f: &mut fmt::Formatter) {
         match *g {
             clean::TyParamBinder(id) | clean::Generic(id) => {
@@ -374,7 +374,7 @@ impl fmt::Default for clean::Type {
     }
 }
 
-impl fmt::Default for clean::FnDecl {
+impl fmt::Show for clean::FnDecl {
     fn fmt(d: &clean::FnDecl, f: &mut fmt::Formatter) {
         write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = d.inputs,
@@ -383,7 +383,7 @@ impl fmt::Default for clean::FnDecl {
     }
 }
 
-impl fmt::Default for ~[clean::Argument] {
+impl fmt::Show for ~[clean::Argument] {
     fn fmt(inputs: &~[clean::Argument], f: &mut fmt::Formatter) {
         let mut args = ~"";
         for (i, input) in inputs.iter().enumerate() {
@@ -397,7 +397,7 @@ impl fmt::Default for ~[clean::Argument] {
     }
 }
 
-impl<'a> fmt::Default for Method<'a> {
+impl<'a> fmt::Show for Method<'a> {
     fn fmt(m: &Method<'a>, f: &mut fmt::Formatter) {
         let Method(selfty, d) = *m;
         let mut args = ~"";
@@ -433,7 +433,7 @@ impl<'a> fmt::Default for Method<'a> {
     }
 }
 
-impl fmt::Default for VisSpace {
+impl fmt::Show for VisSpace {
     fn fmt(v: &VisSpace, f: &mut fmt::Formatter) {
         match v.get() {
             Some(ast::Public) => { write!(f.buf, "pub "); }
@@ -443,7 +443,7 @@ impl fmt::Default for VisSpace {
     }
 }
 
-impl fmt::Default for PuritySpace {
+impl fmt::Show for PuritySpace {
     fn fmt(p: &PuritySpace, f: &mut fmt::Formatter) {
         match p.get() {
             ast::UnsafeFn => write!(f.buf, "unsafe "),
@@ -453,7 +453,7 @@ impl fmt::Default for PuritySpace {
     }
 }
 
-impl fmt::Default for clean::ViewPath {
+impl fmt::Show for clean::ViewPath {
     fn fmt(v: &clean::ViewPath, f: &mut fmt::Formatter) {
         match *v {
             clean::SimpleImport(ref name, ref src) => {
@@ -478,7 +478,7 @@ impl fmt::Default for clean::ViewPath {
     }
 }
 
-impl fmt::Default for clean::ImportSource {
+impl fmt::Show for clean::ImportSource {
     fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
         match v.did {
             // FIXME: shouldn't be restricted to just local imports
@@ -495,7 +495,7 @@ impl fmt::Default for clean::ImportSource {
     }
 }
 
-impl fmt::Default for clean::ViewListIdent {
+impl fmt::Show for clean::ViewListIdent {
     fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
         match v.source {
             // FIXME: shouldn't be limited to just local imports
