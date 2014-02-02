@@ -89,12 +89,6 @@ doc/rust.epub: rust.md
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
 
-DOCS += doc/rustpkg.html
-doc/rustpkg.html: rustpkg.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
 DOCS += doc/rustdoc.html
 doc/rustdoc.html: rustdoc.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
@@ -208,12 +202,6 @@ doc/guide-tasks.html: $(S)doc/guide-tasks.md $(HTML_DEPS)
 
 DOCS += doc/guide-conditions.html
 doc/guide-conditions.html: $(S)doc/guide-conditions.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-rustpkg.html
-doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
