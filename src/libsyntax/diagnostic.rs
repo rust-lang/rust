@@ -16,7 +16,7 @@ use std::io;
 use std::io::stdio::StdWriter;
 use std::iter::range;
 use std::local_data;
-use extra::term;
+use term;
 
 static BUG_REPORT_URL: &'static str =
     "http://static.rust-lang.org/doc/master/complement-bugreport.html";

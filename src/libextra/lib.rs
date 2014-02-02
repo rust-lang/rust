@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -67,7 +67,6 @@ pub mod ebml;
 pub mod getopts;
 pub mod json;
 pub mod tempfile;
-pub mod term;
 pub mod time;
 pub mod base64;
 pub mod workcache;
@@ -86,8 +85,6 @@ pub mod uuid;
 
 #[cfg(unicode)]
 mod unicode;
-
-pub mod terminfo;
 
 // Compiler support modules
 

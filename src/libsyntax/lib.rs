@@ -31,6 +31,7 @@ This API is completely unstable and subject to change.
 #[deny(non_camel_case_types)];
 
 extern mod extra;
+extern mod term;
 
 pub mod util {
     pub mod interner;
