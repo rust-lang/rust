@@ -525,13 +525,25 @@ pub fn parameterized(cx: ctxt,
     } else {
         ty::lookup_item_type(cx, did).generics
     };
-    let ty_params = generics.type_param_defs().iter();
-    let num_defaults = ty_params.zip(tps.iter()).rev().take_while(|&(def, &actual)| {
-        match def.default {
-            Some(default) => default == actual,
-            None => false
-        }
-    }).len();
+    let ty_params = generics.type_param_defs();
+    let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
+    let num_defaults = if has_defaults {
+        // We should have a borrowed version of substs instead of cloning.
+        let mut substs = ty::substs {
+            tps: tps.to_owned(),
+            regions: regions.clone(),
+            self_ty: None
+        };
+        ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
+            substs.tps.pop();
+            match def.default {
+                Some(default) => ty::subst(cx, &substs, default) == actual,
+                None => false
+            }
+        }).len()
+    } else {
+        0
+    };
 
     for t in tps.slice_to(tps.len() - num_defaults).iter() {
         strs.push(ty_to_str(cx, *t))

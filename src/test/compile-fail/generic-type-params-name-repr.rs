@@ -15,6 +15,9 @@ struct B;
 struct C;
 struct Foo<T = A, U = B, V = C>;
 
+struct Hash<T>;
+struct HashMap<K, V, H = Hash<K>>;
+
 fn main() {
     // Ensure that the printed type doesn't include the default type params...
     let _: Foo<int> = ();
@@ -23,6 +26,12 @@ fn main() {
     // ...even when they're present, but the same types as the defaults.
     let _: Foo<int, B, C> = ();
     //~^ ERROR mismatched types: expected `Foo<int>` but found `()`
+
+    // Including cases where the default is using previous type params.
+    let _: HashMap<~str, int> = ();
+    //~^ ERROR mismatched types: expected `HashMap<~str,int>` but found `()`
+    let _: HashMap<~str, int, Hash<~str>> = ();
+    //~^ ERROR mismatched types: expected `HashMap<~str,int>` but found `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, int, C> = ();
