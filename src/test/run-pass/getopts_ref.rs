@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern mod getopts;
 
-use extra::getopts::{optopt, getopts};
+use getopts::{optopt, getopts};
 
 pub fn main() {
     let args = ~[];

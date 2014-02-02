@@ -14,13 +14,13 @@
 #[deny(warnings)];
 
 extern mod extra;
+extern mod getopts;
 
 use std::os;
 use std::io;
 use std::io::fs;
 
-use extra::getopts;
-use extra::getopts::groups::{optopt, optflag, reqopt};
+use getopts::groups::{optopt, optflag, reqopt};
 use extra::test;
 
 use common::config;

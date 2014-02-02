@@ -16,11 +16,11 @@ use std::run;
 use std::str;
 
 use extra::tempfile::TempDir;
-use extra::getopts;
 use extra::test;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
+use getopts;
 use syntax::diagnostic;
 use syntax::parse;
 

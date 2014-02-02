@@ -73,7 +73,6 @@ pub mod lru_cache;
 // And ... other stuff
 
 pub mod url;
-pub mod getopts;
 pub mod json;
 pub mod tempfile;
 pub mod time;

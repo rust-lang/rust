@@ -30,8 +30,8 @@
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
 //! ~~~{.rust}
-//! extern mod extra;
-//! use extra::getopts::{optopt,optflag,getopts,Opt};
+//! extern mod getopts;
+//! use getopts::{optopt,optflag,getopts,Opt};
 //! use std::os;
 //!
 //! fn do_work(inp: &str, out: Option<~str>) {
@@ -76,6 +76,14 @@
 //!     do_work(input, output);
 //! }
 //! ~~~
+
+#[crate_id = "getopts#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+#[allow(missing_doc)];
+
+#[feature(globs)];
 
 use std::cmp::Eq;
 use std::result::{Err, Ok};
@@ -519,8 +527,8 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
 /// A module which provides a way to specify descriptions and
 /// groups of short and long option names, together.
 pub mod groups {
-    use getopts::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
-    use getopts::{Short, Yes};
+    use super::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
+    use super::{Short, Yes};
 
     /// One group of options, e.g., both -h and --help, along with
     /// their shared description and properties.
@@ -671,8 +679,8 @@ pub mod groups {
     }
 
     /// Parse command line args with the provided long format options.
-    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> ::getopts::Result {
-        ::getopts::getopts(args, opts.map(|x| x.long_to_short()))
+    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> super::Result {
+        super::getopts(args, opts.map(|x| x.long_to_short()))
     }
 
     fn format_option(opt: &OptGroup) -> ~str {
@@ -901,8 +909,8 @@ pub mod groups {
 #[cfg(test)]
 mod tests {
 
-    use getopts::groups::OptGroup;
-    use getopts::*;
+    use super::groups::OptGroup;
+    use super::*;
 
     use std::result::{Err, Ok};
     use std::result;

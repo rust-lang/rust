@@ -19,8 +19,9 @@
 */
 
 extern mod extra;
+extern mod getopts;
 
-use extra::{time, getopts};
+use extra::time;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
