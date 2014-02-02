@@ -10,20 +10,7 @@
 
 //! Unsafe casting functions
 
-use ptr::RawPtr;
-use mem;
-use unstable::intrinsics;
-use ptr::copy_nonoverlapping_memory;
-
-/// Casts the value at `src` to U. The two types must have the same length.
-#[inline]
-pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = intrinsics::uninit();
-    let dest_ptr: *mut u8 = transmute(&mut dest);
-    let src_ptr: *u8 = transmute(src);
-    copy_nonoverlapping_memory(dest_ptr, src_ptr, mem::size_of::<U>());
-    dest
-}
+use intrinsics;
 
 /**
  * Move a thing into the void
@@ -34,13 +21,6 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
  */
 #[inline]
 pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
-
-/**
- * Force-increment the reference count on a shared box. If used
- * carelessly, this can leak the box.
- */
-#[inline]
-pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
 
 /**
  * Transform a value of one type into a value of another type.
@@ -72,13 +52,13 @@ pub unsafe fn transmute_region<'a,'b,T>(ptr: &'a T) -> &'b T {
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_mut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *mut T {
+pub unsafe fn transmute_mut_unsafe<T>(ptr: *T) -> *mut T {
     transmute(ptr)
 }
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_immut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *T {
+pub unsafe fn transmute_immut_unsafe<T>(ptr: *mut T) -> *T {
     transmute(ptr)
 }
 
@@ -106,43 +86,32 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
     transmute_region(ptr)
 }
 
-
-/****************************************************************************
- * Tests
- ****************************************************************************/
+/// Casts the value at `src` to U. The two types must have the same length.
+#[inline]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    let mut dest: U = intrinsics::uninit();
+    let dest_ptr: *mut u8 = transmute(&mut dest);
+    let src_ptr: *u8 = transmute(src);
+    intrinsics::copy_nonoverlapping_memory(dest_ptr, src_ptr, intrinsics::size_of::<U>());
+    dest
+}
 
 #[cfg(test)]
 mod tests {
-    use cast::{bump_box_refcount, transmute};
-    use unstable::raw;
+    use super::*;
 
     #[test]
     fn test_transmute_copy() {
-        assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
-    }
-
-    #[test]
-    fn test_bump_managed_refcount() {
-        unsafe {
-            let managed = @~"box box box";      // refcount 1
-            bump_box_refcount(managed);     // refcount 2
-            let ptr: *int = transmute(managed); // refcount 2
-            let _box1: @~str = ::cast::transmute_copy(&ptr);
-            let _box2: @~str = ::cast::transmute_copy(&ptr);
-            assert!(*_box1 == ~"box box box");
-            assert!(*_box2 == ~"box box box");
-            // Will destroy _box1 and _box2. Without the bump, this would
-            // use-after-free. With too many bumps, it would leak.
-        }
+        assert_eq!(1u, unsafe { transmute_copy(&1) });
     }
 
     #[test]
     fn test_transmute() {
         unsafe {
-            let x = @100u8;
-            let x: *raw::Box<u8> = transmute(x);
-            assert!((*x).data == 100);
-            let _x: @int = transmute(x);
+            let x = ~100u8;
+            let x: *u8 = transmute(x);
+            assert!(*x == 100);
+            let _x: ~u8 = transmute(x);
         }
     }
 

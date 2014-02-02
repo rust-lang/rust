@@ -49,12 +49,12 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate arena glob
+TARGET_CRATES := prim std extra green rustuv native flate arena glob
 HOST_CRATES := syntax rustc rustdoc rustpkg
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustpkg rustdoc rustc
 
-DEPS_std := native:rustrt
+DEPS_std := prim native:rustrt
 DEPS_extra := std
 DEPS_green := std
 DEPS_rustuv := std native:uv native:uv_support

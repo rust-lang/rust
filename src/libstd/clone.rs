@@ -22,6 +22,7 @@ the `clone` method.
 */
 
 use std::kinds::Freeze;
+use prim::kinds::marker;
 
 /// A common trait for cloning an object.
 pub trait Clone {
@@ -38,6 +39,20 @@ pub trait Clone {
     #[inline(always)]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
+    }
+}
+
+impl<T> Clone for *T {
+    #[inline]
+    fn clone(&self) -> *T {
+        *self
+    }
+}
+
+impl<T> Clone for *mut T {
+    #[inline]
+    fn clone(&self) -> *mut T {
+        *self
     }
 }
 
@@ -210,6 +225,56 @@ extern_fn_deep_clone!(A, B, C, D, E)
 extern_fn_deep_clone!(A, B, C, D, E, F)
 extern_fn_deep_clone!(A, B, C, D, E, F, G)
 extern_fn_deep_clone!(A, B, C, D, E, F, G, H)
+
+impl<T> Clone for marker::CovariantType<T> {
+    #[inline]
+    fn clone(&self) -> marker::CovariantType<T> { *self }
+}
+
+impl<T> Clone for marker::ContravariantType<T> {
+    #[inline]
+    fn clone(&self) -> marker::ContravariantType<T> { *self }
+}
+
+impl<T> Clone for marker::InvariantType<T> {
+    #[inline]
+    fn clone(&self) -> marker::InvariantType<T> { *self }
+}
+
+impl<'a> Clone for marker::CovariantLifetime<'a> {
+    #[inline]
+    fn clone(&self) -> marker::CovariantLifetime<'a> { *self }
+}
+
+impl<'a> Clone for marker::ContravariantLifetime<'a> {
+    #[inline]
+    fn clone(&self) -> marker::ContravariantLifetime<'a> { *self }
+}
+
+impl<'a> Clone for marker::InvariantLifetime<'a> {
+    #[inline]
+    fn clone(&self) -> marker::InvariantLifetime<'a> { *self }
+}
+
+impl Clone for marker::NoFreeze {
+    #[inline]
+    fn clone(&self) -> marker::NoFreeze { *self }
+}
+
+impl Clone for marker::NoSend {
+    #[inline]
+    fn clone(&self) -> marker::NoSend { *self }
+}
+
+impl Clone for marker::NoPod {
+    #[inline]
+    fn clone(&self) -> marker::NoPod { marker::NoPod }
+}
+
+impl Clone for marker::Managed {
+    #[inline]
+    fn clone(&self) -> marker::Managed { *self }
+}
 
 #[test]
 fn test_owned_clone() {

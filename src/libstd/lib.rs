@@ -61,6 +61,8 @@
 #[deny(missing_doc)];
 #[allow(unknown_features)];
 
+extern mod prim;
+
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
@@ -73,9 +75,13 @@
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd = "std";
-#[cfg(test)] pub use kinds = realstd::kinds;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
+
+pub use prim::cast;
+pub use prim::kinds;
+pub use prim::mem;
+pub use prim::ptr;
 
 mod macros;
 
@@ -119,7 +125,6 @@ pub mod str;
 pub mod ascii;
 pub mod send_str;
 
-pub mod ptr;
 pub mod owned;
 pub mod managed;
 mod reference;
@@ -129,7 +134,6 @@ pub mod gc;
 
 /* Core language traits */
 
-#[cfg(not(test))] pub mod kinds;
 #[cfg(not(test))] pub mod ops;
 #[cfg(not(test))] pub mod cmp;
 
@@ -175,14 +179,12 @@ pub mod io;
 pub mod path;
 pub mod rand;
 pub mod run;
-pub mod cast;
 pub mod fmt;
 pub mod cleanup;
 #[deprecated]
 pub mod condition;
 pub mod logging;
 pub mod util;
-pub mod mem;
 
 
 /* Unsupported interfaces */
