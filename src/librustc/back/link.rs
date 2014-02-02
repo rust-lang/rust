@@ -121,6 +121,11 @@ pub mod write {
                 })
             }
 
+            let pic_mode = match sess.no_pic() {
+                true  => lib::llvm::RelocDynamicNoPic,
+                false => lib::llvm::RelocPIC
+            };
+
             let OptLevel = match sess.opts.optimize {
               session::No => lib::llvm::CodeGenLevelNone,
               session::Less => lib::llvm::CodeGenLevelLess,
@@ -141,7 +146,7 @@ pub mod write {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
                             lib::llvm::CodeModelDefault,
-                            lib::llvm::RelocPIC,
+                            pic_mode,
                             OptLevel,
                             true,
                             use_softfp,

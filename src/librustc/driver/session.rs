@@ -60,6 +60,7 @@ debugging_opts!(
         NO_VERIFY,
         BORROWCK_STATS,
         NO_LANDING_PADS,
+        NO_PIC,
         DEBUG_LLVM,
         COUNT_TYPE_SIZES,
         META_STATS,
@@ -95,6 +96,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
      ("borrowck-stats", "gather borrowck statistics",  BORROWCK_STATS),
      ("no-landing-pads", "omit landing pads for unwinding",
       NO_LANDING_PADS),
+     ("no-pic", "do not produce position independent code", NO_PIC),
      ("debug-llvm", "enable debug output from LLVM", DEBUG_LLVM),
      ("count-type-sizes", "count the sizes of aggregate types",
       COUNT_TYPE_SIZES),
@@ -350,6 +352,9 @@ impl Session_ {
     }
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(NO_LANDING_PADS)
+    }
+    pub fn no_pic(&self) -> bool {
+        self.debugging_opt(NO_PIC)
     }
 
     // DEPRECATED. This function results in a lot of allocations when they
