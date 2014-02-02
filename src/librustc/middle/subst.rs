@@ -13,8 +13,10 @@
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
+use util::ppaux::Repr;
 
 use std::rc::Rc;
+use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -22,9 +24,16 @@ use syntax::opt_vec::OptVec;
 //
 // Just call `foo.subst(tcx, substs)` to perform a substitution across
 // `foo`.
+// Or use `foo.subst_spanned(tcx, substs, Some(span))` when there is more
+// information available (for better errors).
 
 pub trait Subst {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self;
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self {
+        self.subst_spanned(tcx, substs, None)
+    }
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> Self;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -36,11 +45,18 @@ pub trait Subst {
 // our current method/trait matching algorithm. - Niko
 
 impl Subst for ty::t {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::t {
-        if ty::substs_is_noop(substs) {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::t {
+        if ty::substs_is_noop(substs) && !ty::type_has_params(*self) {
             *self
         } else {
-            let mut folder = SubstFolder {tcx: tcx, substs: substs};
+            let mut folder = SubstFolder {
+                tcx: tcx,
+                substs: substs,
+                span: span,
+                root_ty: Some(*self)
+            };
             folder.fold_ty(*self)
         }
     }
@@ -48,7 +64,13 @@ impl Subst for ty::t {
 
 struct SubstFolder<'a> {
     tcx: ty::ctxt,
-    substs: &'a ty::substs
+    substs: &'a ty::substs,
+
+    // The location for which the substitution is performed, if available.
+    span: Option<Span>,
+
+    // The root type that is being substituted, if available.
+    root_ty: Option<ty::t>
 }
 
 impl<'a> TypeFolder for SubstFolder<'a> {
@@ -65,14 +87,42 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 
         match ty::get(t).sty {
             ty::ty_param(p) => {
-                self.substs.tps[p.idx]
+                if p.idx < self.substs.tps.len() {
+                    self.substs.tps[p.idx]
+                } else {
+                    let root_msg = match self.root_ty {
+                        Some(root) => format!(" in the substitution of `{}`",
+                                              root.repr(self.tcx)),
+                        None => ~""
+                    };
+                    let m = format!("missing type param `{}`{}",
+                                    t.repr(self.tcx), root_msg);
+                    match self.span {
+                        Some(span) => self.tcx.sess.span_err(span, m),
+                        None => self.tcx.sess.err(m)
+                    }
+                    ty::mk_err()
+                }
             }
             ty::ty_self(_) => {
-                self.substs.self_ty.expect("ty_self not found in substs")
+                match self.substs.self_ty {
+                    Some(ty) => ty,
+                    None => {
+                        let root_msg = match self.root_ty {
+                            Some(root) => format!(" in the substitution of `{}`",
+                                                  root.repr(self.tcx)),
+                            None => ~""
+                        };
+                        let m = format!("missing `Self` type param{}", root_msg);
+                        match self.span {
+                            Some(span) => self.tcx.sess.span_err(span, m),
+                            None => self.tcx.sess.err(m)
+                        }
+                        ty::mk_err()
+                    }
+                }
             }
-            _ => {
-                ty_fold::super_fold_ty(self, t)
-            }
+            _ => ty_fold::super_fold_ty(self, t)
         }
     }
 }
@@ -81,112 +131,145 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 // Other types
 
 impl<T:Subst> Subst for ~[T] {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ~[T] {
-        self.map(|t| t.subst(tcx, substs))
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ~[T] {
+        self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }
 impl<T:Subst> Subst for Rc<T> {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Rc<T> {
-        Rc::new(self.borrow().subst(tcx, substs))
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> Rc<T> {
+        Rc::new(self.borrow().subst_spanned(tcx, substs, span))
     }
 }
 
 impl<T:Subst> Subst for OptVec<T> {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> OptVec<T> {
-        self.map(|t| t.subst(tcx, substs))
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> OptVec<T> {
+        self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }
 
 impl<T:Subst + 'static> Subst for @T {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @T {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> @T {
         match self {
-            t => @(**t).subst(tcx, substs)
+            t => @(**t).subst_spanned(tcx, substs, span)
         }
     }
 }
 
 impl<T:Subst> Subst for Option<T> {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Option<T> {
-        self.as_ref().map(|t| t.subst(tcx, substs))
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> Option<T> {
+        self.as_ref().map(|t| t.subst_spanned(tcx, substs, span))
     }
 }
 
 impl Subst for ty::TraitRef {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::TraitRef {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::TraitRef {
         ty::TraitRef {
             def_id: self.def_id,
-            substs: self.substs.subst(tcx, substs)
+            substs: self.substs.subst_spanned(tcx, substs, span)
         }
     }
 }
 
 impl Subst for ty::substs {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::substs {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::substs {
         ty::substs {
-            regions: self.regions.subst(tcx, substs),
-            self_ty: self.self_ty.map(|typ| typ.subst(tcx, substs)),
-            tps: self.tps.map(|typ| typ.subst(tcx, substs))
+            regions: self.regions.subst_spanned(tcx, substs, span),
+            self_ty: self.self_ty.map(|typ| typ.subst_spanned(tcx, substs, span)),
+            tps: self.tps.map(|typ| typ.subst_spanned(tcx, substs, span))
         }
     }
 }
 
 impl Subst for ty::RegionSubsts {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::RegionSubsts {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::RegionSubsts {
         match *self {
             ty::ErasedRegions => {
                 ty::ErasedRegions
             }
             ty::NonerasedRegions(ref regions) => {
-                ty::NonerasedRegions(regions.subst(tcx, substs))
+                ty::NonerasedRegions(regions.subst_spanned(tcx, substs, span))
             }
         }
     }
 }
 
 impl Subst for ty::BareFnTy {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::BareFnTy {
-        let mut folder = SubstFolder {tcx: tcx, substs: substs};
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::BareFnTy {
+        let mut folder = SubstFolder {
+            tcx: tcx,
+            substs: substs,
+            span: span,
+            root_ty: None
+        };
         folder.fold_bare_fn_ty(self)
     }
 }
 
 impl Subst for ty::ParamBounds {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::ParamBounds {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::ParamBounds {
         ty::ParamBounds {
             builtin_bounds: self.builtin_bounds,
-            trait_bounds: self.trait_bounds.subst(tcx, substs)
+            trait_bounds: self.trait_bounds.subst_spanned(tcx, substs, span)
         }
     }
 }
 
 impl Subst for ty::TypeParameterDef {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::TypeParameterDef {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::TypeParameterDef {
         ty::TypeParameterDef {
             ident: self.ident,
             def_id: self.def_id,
-            bounds: self.bounds.subst(tcx, substs),
-            default: self.default.map(|x| x.subst(tcx, substs))
+            bounds: self.bounds.subst_spanned(tcx, substs, span),
+            default: self.default.map(|x| x.subst_spanned(tcx, substs, span))
         }
     }
 }
 
 impl Subst for ty::Generics {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::Generics {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::Generics {
         ty::Generics {
-            type_param_defs: self.type_param_defs.subst(tcx, substs),
-            region_param_defs: self.region_param_defs.subst(tcx, substs),
+            type_param_defs: self.type_param_defs.subst_spanned(tcx, substs, span),
+            region_param_defs: self.region_param_defs.subst_spanned(tcx, substs, span),
         }
     }
 }
 
 impl Subst for ty::RegionParameterDef {
-    fn subst(&self, _: ty::ctxt, _: &ty::substs) -> ty::RegionParameterDef {
+    fn subst_spanned(&self, _: ty::ctxt,
+                     _: &ty::substs,
+                     _: Option<Span>) -> ty::RegionParameterDef {
         *self
     }
 }
 
 impl Subst for ty::Region {
-    fn subst(&self, _tcx: ty::ctxt, substs: &ty::substs) -> ty::Region {
+    fn subst_spanned(&self, _tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     _: Option<Span>) -> ty::Region {
         // Note: This routine only handles regions that are bound on
         // type declarationss and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
@@ -206,10 +289,12 @@ impl Subst for ty::Region {
 }
 
 impl Subst for ty::ty_param_bounds_and_ty {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::ty_param_bounds_and_ty {
+    fn subst_spanned(&self, tcx: ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>) -> ty::ty_param_bounds_and_ty {
         ty::ty_param_bounds_and_ty {
-            generics: self.generics.subst(tcx, substs),
-            ty: self.ty.subst(tcx, substs)
+            generics: self.generics.subst_spanned(tcx, substs, span),
+            ty: self.ty.subst_spanned(tcx, substs, span)
         }
     }
 }
