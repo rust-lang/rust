@@ -195,7 +195,30 @@ def make_snapshot(stage, triple):
 
     return file1
 
-def determine_curr_snapshot_info(triple):
+def curr_snapshot_rev():
+  i = 0
+  found_snap = False
+  date = None
+  rev = None
+
+  f = open(snapshotfile)
+  for line in f.readlines():
+    i += 1
+    parsed = parse_line(i, line)
+    if (not parsed): continue
+
+    if parsed["type"] == "snapshot":
+      date = parsed["date"]
+      rev = parsed["rev"]
+      found_snap = True
+      break
+
+  if not found_snap:
+    raise Exception("no snapshot entries in file")
+
+  return (date, rev)
+
+def determine_curr_snapshot(triple):
   i = 0
   platform = get_platform(triple)
 
@@ -228,7 +251,4 @@ def determine_curr_snapshot_info(triple):
     raise Exception("no snapshot file found for platform %s, rev %s" %
                     (platform, rev))
 
-  return (date, rev, platform, hsh)
-
-def determine_curr_snapshot(triple):
-  return full_snapshot_name(*determine_curr_snapshot_info(triple))
+  return full_snapshot_name(date, rev, platform, hsh)
