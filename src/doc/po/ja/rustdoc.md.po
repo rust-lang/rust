@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,36 +17,43 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/rustdoc.md:2
+#: src/doc/rustdoc.md:2
 #, fuzzy
 #| msgid "## Using the rust tool"
 msgid "% Rust Documentation"
 msgstr "## `rust` コマンドを利用する"
 
 #. type: Plain text
-#: doc/rustdoc.md:9
+#: src/doc/rustdoc.md:9
 #, fuzzy
 #| msgid "## Using the rust tool"
 msgid "# Creating Documentation"
 msgstr "## `rust` コマンドを利用する"
 
 #. type: Plain text
-#: doc/rustdoc.md:79
+#: src/doc/rustdoc.md:79
 #, fuzzy
 #| msgid "## Using the rust tool"
 msgid "# Using the Documentation"
 msgstr "## `rust` コマンドを利用する"
 
 #. type: Plain text
-#: doc/rustdoc.md:90
+#: src/doc/rustdoc.md:90
 #, fuzzy
 #| msgid "## Using the rust tool"
 msgid "# Testing the Documentation"
 msgstr "## `rust` コマンドを利用する"
 
 #. type: Plain text
-#: doc/rustdoc.md:102
+#: src/doc/rustdoc.md:102
 #, fuzzy
 #| msgid "# Dereferencing pointers"
 msgid "## Defining tests"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: src/doc/rustdoc.md:159
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "## Running tests (advanced)"
 msgstr "# ポインタのデリファレンス"
