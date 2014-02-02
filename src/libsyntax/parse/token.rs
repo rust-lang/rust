@@ -587,7 +587,7 @@ impl BytesContainer for InternedString {
     }
 }
 
-impl fmt::Default for InternedString {
+impl fmt::Show for InternedString {
     fn fmt(obj: &InternedString, f: &mut fmt::Formatter) {
         write!(f.buf, "{}", obj.string.as_slice());
     }

@@ -206,7 +206,7 @@ impl<T, E> Result<T, E> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
+impl<T: fmt::Show, E: fmt::Show> fmt::Show for Result<T, E> {
     #[inline]
     fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) {
         match *s {
