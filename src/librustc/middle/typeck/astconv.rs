@@ -52,6 +52,7 @@
 
 use middle::const_eval;
 use middle::lint;
+use middle::subst::Subst;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
@@ -228,16 +229,23 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                                  ~"provided type arguments with defaults");
     }
 
-    let defaults = decl_generics.type_param_defs().slice_from(supplied_ty_param_count)
-                                .iter().map(|&x| x.default.unwrap());
     let tps = path.segments.iter().flat_map(|s| s.types.iter())
                             .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
-                            .chain(defaults).collect();
-    substs {
+                            .collect();
+
+    let mut substs = substs {
         regions: ty::NonerasedRegions(regions),
         self_ty: self_ty,
         tps: tps
+    };
+
+    for param in decl_generics.type_param_defs()
+                              .slice_from(supplied_ty_param_count).iter() {
+        let ty = param.default.unwrap().subst_spanned(tcx, &substs, Some(path.span));
+        substs.tps.push(ty);
     }
+
+    substs
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,

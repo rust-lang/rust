@@ -52,6 +52,16 @@ fn default_foo(x: Foo) {
     assert_eq!(x.baz(), (1, 'a'));
 }
 
+#[deriving(Eq)]
+struct BazHelper<T>(T);
+
+#[deriving(Eq)]
+// Ensure that we can use previous type parameters in defaults.
+struct Baz<T, U = BazHelper<T>, V = Option<U>>(T, U, V);
+
 fn main() {
     default_foo(Foo { a: (1, 'a') });
+
+    let x: Baz<bool> = Baz(true, BazHelper(false), Some(BazHelper(true)));
+    assert_eq!(x, Baz(true, BazHelper(false), Some(BazHelper(true))));
 }
