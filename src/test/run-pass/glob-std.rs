@@ -16,7 +16,6 @@ extern mod glob;
 
 use glob::glob;
 use extra::tempfile::TempDir;
-use std::unstable::finally::Finally;
 use std::{os, unstable};
 use std::io;
 

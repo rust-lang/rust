@@ -40,7 +40,6 @@ use prelude::*;
 use ptr;
 use str;
 use fmt;
-use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
 /// Delegates to the libc close() function, returning the same return value.
@@ -133,15 +132,14 @@ Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: || -> T) -> T {
     use unstable::mutex::{Mutex, MUTEX_INIT};
-    use unstable::finally::Finally;
 
     static mut lock: Mutex = MUTEX_INIT;
 
     unsafe {
-        return (|| {
-            lock.lock();
-            f()
-        }).finally(|| lock.unlock());
+        lock.lock();
+        finally!(lock.unlock());
+
+        f()
     }
 }
 

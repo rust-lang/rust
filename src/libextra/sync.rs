@@ -22,11 +22,21 @@ use std::comm;
 use std::unstable::sync::Exclusive;
 use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
-use std::unstable::finally::Finally;
 use std::util;
 use std::util::NonCopyable;
 
 use arc::MutexArc;
+
+#[cfg(stage0)] // SNAP b6400f9
+macro_rules! finally {
+    ($e: expr) => {
+        // this `let` has to be free-standing, so that it's directly
+        // in the scope of the callee of `finally!`, to get the dtor to
+        // run at the right time.
+        let _guard = ::std::finally::FinallyGuard::new(|| $e);
+    }
+}
+
 
 /****************************************************************************
  * Internals
@@ -140,12 +150,9 @@ impl<Q:Send> Sem<Q> {
     }
 
     pub fn access<U>(&self, blk: || -> U) -> U {
-        (|| {
-            self.acquire();
-            blk()
-        }).finally(|| {
-            self.release();
-        })
+        self.acquire();
+        finally!(self.release());
+        blk()
     }
 }
 
@@ -233,15 +240,13 @@ impl<'a> Condvar<'a> {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            (|| {
-                let _ = WaitEnd.take_unwrap().recv();
-            }).finally(|| {
+            finally!(
                 // Reacquire the condvar.
                 match self.order {
                     Just(lock) => lock.access(|| self.sem.acquire()),
                     Nothing => self.sem.acquire(),
-                }
-            })
+                });
+            let _ = WaitEnd.take_unwrap().recv();
         })
     }
 
@@ -497,9 +502,8 @@ impl RWLock {
                     state.read_mode = true;
                 }
             });
-            (|| {
-                blk()
-            }).finally(|| {
+
+            finally!({
                 let state = &mut *self.state.get();
                 assert!(state.read_mode);
                 let old_count = state.read_count.fetch_sub(1, atomics::Release);
@@ -512,7 +516,8 @@ impl RWLock {
                     // this access MUST NOT go inside the exclusive access.
                     (&self.access_lock).release();
                 }
-            })
+            });
+            blk()
         }
     }
 
@@ -600,9 +605,7 @@ impl RWLock {
         (&self.order_lock).acquire();
         (&self.access_lock).acquire();
         (&self.order_lock).release();
-        (|| {
-            blk(RWLockWriteMode { lock: self, token: NonCopyable })
-        }).finally(|| {
+        finally!({
             let writer_or_last_reader;
             // Check if we're releasing from read mode or from write mode.
             let state = unsafe { &mut *self.state.get() };
@@ -627,7 +630,8 @@ impl RWLock {
                 // Nobody left inside; release the "reader cloud" lock.
                 (&self.access_lock).release();
             }
-        })
+        });
+        blk(RWLockWriteMode { lock: self, token: NonCopyable })
     }
 
     /// To be called inside of the write_downgrade block.
@@ -1011,7 +1015,6 @@ mod tests {
     #[ignore(reason = "linked failure")]
     #[test]
     fn test_mutex_killed_broadcast() {
-        use std::unstable::finally::Finally;
 
         let m = Mutex::new();
         let m2 = m.clone();
@@ -1027,13 +1030,12 @@ mod tests {
                 task::spawn(proc() { // linked
                     mi.lock_cond(|cond| {
                         c.send(()); // tell sibling to go ahead
-                        (|| {
-                            cond.wait(); // block forever
-                        }).finally(|| {
+                        finally!({
                             error!("task unwinding and sending");
                             c.send(());
                             error!("task unwinding and done sending");
-                        })
+                        });
+                        cond.wait(); // block forever
                     })
                 });
             }
