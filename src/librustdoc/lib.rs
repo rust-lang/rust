@@ -21,6 +21,7 @@ extern mod extra;
 extern mod serialize;
 extern mod sync;
 extern mod getopts;
+extern mod collections;
 
 use std::local_data;
 use std::io;
@@ -326,7 +327,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson],
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = ~extra::treemap::TreeMap::new();
+    let mut json = ~collections::TreeMap::new();
     json.insert(~"schema", json::String(SCHEMA_VERSION.to_owned()));
     let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
 

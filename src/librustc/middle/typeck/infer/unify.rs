@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use extra::smallintmap::SmallIntMap;
+use collections::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;

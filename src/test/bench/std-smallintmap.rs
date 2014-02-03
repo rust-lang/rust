@@ -11,8 +11,9 @@
 // Microbenchmark for the smallintmap library
 
 extern mod extra;
+extern mod collections;
 
-use extra::smallintmap::SmallIntMap;
+use collections::SmallIntMap;
 use std::os;
 use std::uint;
 

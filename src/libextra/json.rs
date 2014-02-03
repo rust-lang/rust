@@ -98,9 +98,11 @@ A basic `ToJson` example using a TreeMap of attribute name / attribute value:
 
 
 ```rust
+extern mod collections;
+
 use extra::json;
 use extra::json::ToJson;
-use extra::treemap::TreeMap;
+use collections::TreeMap;
 
 pub struct MyStruct  {
     attr1: u8,
@@ -185,10 +187,12 @@ Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
 extern mod serialize;
+extern mod collections;
+
 use extra::json;
 use extra::json::ToJson;
 use serialize::{Encodable, Decodable};
-use extra::treemap::TreeMap;
+use collections::TreeMap;
 
 #[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
 pub struct TestStruct1  {
@@ -236,7 +240,7 @@ use std::to_str;
 
 use serialize::Encodable;
 use serialize;
-use treemap::TreeMap;
+use collections::TreeMap;
 
 macro_rules! if_ok( ($e:expr) => (
     match $e { Ok(e) => e, Err(e) => { self.error = Err(e); return } }
@@ -1588,7 +1592,7 @@ mod tests {
 
     use std::io;
     use serialize::{Encodable, Decodable};
-    use treemap::TreeMap;
+    use collections::TreeMap;
 
     #[deriving(Eq, Encodable, Decodable)]
     enum Animal {

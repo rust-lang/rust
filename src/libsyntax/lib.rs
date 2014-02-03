@@ -35,6 +35,7 @@ This API is completely unstable and subject to change.
 extern mod extra;
 extern mod serialize;
 extern mod term;
+extern mod collections;
 
 pub mod util {
     pub mod interner;
