@@ -12,26 +12,20 @@ This program is a compiler for the Rust language, available at
 .SH OPTIONS
 
 .TP
-\fB\-\-bin\fR
-Compile an executable crate (default)
-.TP
-\fB\-c\fR
-Compile and assemble, but do not link
+\fB\-\-crate-type=[bin|lib|dylib|rlib|staticlib]\fR
+Configure the flavor of rust crate that is generated (default `bin`)
 .TP
 \fB\-\-cfg\fR SPEC
 Configure the compilation environment
 .TP
-\fB\-\-emit\-llvm\fR
-Produce an LLVM bitcode file
+\fB\-\-emit=[asm,ir,bc,obj,link]\fR
+Configure the output that rustc will produce
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Display this message
 .TP
 \fB\-L\fR PATH
 Add a directory to the library search path
-.TP
-\fB\-\-lib\fR
-Compile a library crate
 .TP
 \fB\-\-linker\fR LINKER
 Program to use for linking instead of the default
@@ -49,7 +43,7 @@ Run all passes except translation; no output
 Equivalent to \fI\-\-opt\-level=2\fR
 .TP
 \fB\-o\fR FILENAME
-Write output to <filename>
+Write output to <filename>. Ignored if more than one --emit is specified.
 .TP
 \fB\-\-opt\-level\fR LEVEL
 Optimize with possible levels 0-3
@@ -60,7 +54,8 @@ the default passes for the optimization level. A value of 'list'
 will list the available passes.
 .TP
 \fB\-\-out\-dir\fR DIR
-Write output to compiler-chosen filename in <dir>
+Write output to compiler-chosen filename in <dir>. Ignored if -o is specified.
+(default the current directory)
 .TP
 \fB\-\-parse\-only\fR
 Parse only; do not compile, assemble, or link
@@ -70,9 +65,6 @@ Pretty-print the input instead of compiling; valid types are: normal
 (un-annotated source), expanded (crates expanded), typed (crates
 expanded, with type annotations), or identified (fully parenthesized,
 AST nodes and blocks with IDs)
-.TP
-\fB\-S\fR
-Compile only; do not assemble or link
 .TP
 \fB\-\-save\-temps\fR
 Write intermediate files (.bc, .opt.bc, .o) in addition to normal output
@@ -120,7 +112,7 @@ To build an executable from a source file with a main function:
     $ rustc -o hello hello.rs
 
 To build a library from a source file:
-    $ rustc --lib hello-lib.rs
+    $ rustc --crate-type=lib hello-lib.rs
 
 To build either with a crate (.rs) file:
     $ rustc hello.rs

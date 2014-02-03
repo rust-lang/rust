@@ -245,7 +245,7 @@ actual:\n\
         };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = ~[~"-",
-                         ~"--no-trans", ~"--lib",
+                         ~"--no-trans", ~"--crate-type=lib",
                          ~"--target=" + target,
                          ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
@@ -659,7 +659,7 @@ fn compile_test_(config: &config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
     let args = make_compile_args(config, props, link_args + extra_args,
-                                 make_exe_name, testfile);
+                                 |a, b| ThisFile(make_exe_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
@@ -702,8 +702,12 @@ fn compose_and_run_compiler(
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_props = load_props(&abs_ab);
         let aux_args =
-            make_compile_args(config, &aux_props, ~[~"--dylib"] + extra_link_args,
-                              |a,b| make_lib_name(a, b, testfile), &abs_ab);
+            make_compile_args(config, &aux_props, ~[~"--crate-type=dylib"]
+                                                  + extra_link_args,
+                              |a,b| {
+                                  let f = make_lib_name(a, b, testfile);
+                                  ThisDirectory(f.dir_path())
+                              }, &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
         if !auxres.status.success() {
@@ -741,10 +745,15 @@ fn compose_and_run(config: &config, testfile: &Path,
                           prog, args, procenv, input);
 }
 
+enum TargetLocation {
+    ThisFile(Path),
+    ThisDirectory(Path),
+}
+
 fn make_compile_args(config: &config,
                      props: &TestProps,
                      extras: ~[~str],
-                     xform: |&config, &Path| -> Path,
+                     xform: |&config, &Path| -> TargetLocation,
                      testfile: &Path)
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
@@ -755,10 +764,14 @@ fn make_compile_args(config: &config,
     };
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = ~[testfile.as_str().unwrap().to_owned(),
-                     ~"-o", xform_file.as_str().unwrap().to_owned(),
                      ~"-L", config.build_base.as_str().unwrap().to_owned(),
                      ~"--target=" + target]
         + extras;
+    let path = match xform_file {
+        ThisFile(path) => { args.push(~"-o"); path }
+        ThisDirectory(path) => { args.push(~"--out-dir"); path }
+    };
+    args.push(path.as_str().unwrap().to_owned());
     args.push_all_move(split_maybe_args(&config.rustcflags));
     args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
@@ -1043,10 +1056,10 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
-    let llvm_args = ~[~"-c", ~"--lib", ~"--save-temps"];
+    let llvm_args = ~[~"--emit=obj", ~"--crate-type=lib", ~"--save-temps"];
     let args = make_compile_args(config, props,
                                  link_args + llvm_args,
-                                 make_o_name, testfile);
+                                 |a, b| ThisFile(make_o_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
