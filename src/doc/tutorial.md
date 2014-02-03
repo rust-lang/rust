@@ -624,7 +624,7 @@ origin.y += 1.0; // ERROR: assigning to immutable field
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
     Point { x: 0.0, y: yy } => println!("{}", yy),
-    Point { x: xx,  y: yy } => println!("{} {}", xx, yy),
+    Point { x: xx,  y: yy } => println!("{} {}", xx, yy)
 }
 ~~~~
 
@@ -639,7 +639,7 @@ reuses the field name as the binding name.
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x, .. } => println!("{}", x),
+    Point { x, .. } => println!("{}", x)
 }
 ~~~
 
