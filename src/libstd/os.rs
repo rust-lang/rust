@@ -28,20 +28,30 @@
 
 #[allow(missing_doc)];
 
+#[cfg(target_os = "macos")]
+#[cfg(windows)]
+use iter::range;
+
 use clone::Clone;
 use container::Container;
-#[cfg(target_os = "macos")]
-use iter::range;
 use libc;
 use libc::{c_char, c_void, c_int};
-use option::{Some, None};
+use option::{Some, None, Option};
 use os;
-use prelude::*;
+use ops::Drop;
+use result::{Err, Ok, Result};
 use ptr;
 use str;
+use str::{Str, StrSlice};
+use cmp::Equiv;
 use fmt;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
+use path::{Path, GenericPath};
+use iter::Iterator;
+use vec::{Vector, CloneableVector, ImmutableVector, MutableVector, OwnedVector};
+use ptr::RawPtr;
+use c_str::ToCStr;
 
 /// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: int) -> int {
@@ -396,6 +406,8 @@ pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(windows)]
     fn load_self() -> Option<~[u8]> {
+        use str::OwnedStr;
+
         unsafe {
             use os::win32::fill_utf16_buf_and_decode;
             fill_utf16_buf_and_decode(|buf, sz| {

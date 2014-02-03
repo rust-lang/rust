@@ -11,12 +11,16 @@
 // Migrate documentation over from `std::vec` when it is removed.
 #[doc(hidden)];
 
-use prelude::*;
+use ops::Drop;
+use option::{None, Option, Some};
+use clone::Clone;
+use iter::{DoubleEndedIterator, Iterator};
+use num::CheckedMul;
 use container::Container;
 use mem::size_of;
 use cast::{forget, transmute};
 use rt::global_heap::{malloc_raw, realloc_raw};
-use vec::Items;
+use vec::{ImmutableVector, Items, MutableVector};
 use unstable::raw::Slice;
 use ptr::{offset, read_ptr};
 use libc::{free, c_void};
