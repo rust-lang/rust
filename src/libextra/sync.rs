@@ -959,7 +959,7 @@ mod tests {
     fn test_mutex_cond_no_waiter() {
         let m = Mutex::new();
         let m2 = m.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             m.lock_cond(|_x| { })
         });
         m2.lock_cond(|cond| {

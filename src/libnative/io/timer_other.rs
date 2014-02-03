@@ -187,7 +187,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                fd.inner_read(buf).unwrap();
+                assert_eq!(fd.inner_read(buf).unwrap(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}
@@ -216,7 +216,8 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        unsafe { libc::usleep((ms * 1000) as libc::c_uint); }
+        // FIXME: this can fail because of EINTR, what do do?
+        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
     }
 
     fn inner(&mut self) -> ~Inner {

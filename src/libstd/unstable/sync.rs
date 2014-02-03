@@ -200,7 +200,7 @@ mod tests {
             // accesses will also fail.
             let x = Exclusive::new(1);
             let x2 = x.clone();
-            task::try(proc() {
+            let _ = task::try(proc() {
                 x2.with(|one| assert_eq!(*one, 2))
             });
             x.with(|one| assert_eq!(*one, 1));

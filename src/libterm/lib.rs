@@ -19,14 +19,20 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[feature(macro_rules)];
 #[deny(non_camel_case_types)];
 #[allow(missing_doc)];
 
 use std::os;
+use std::io;
 use terminfo::TermInfo;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
 use terminfo::parm::{expand, Number, Variables};
+
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
 
 pub mod terminfo;
 
@@ -141,45 +147,48 @@ impl<T: Writer> Terminal<T> {
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns true if the color was set, false otherwise.
-    pub fn fg(&mut self, color: color::Color) -> bool {
+    /// Returns Ok(true) if the color was set, Ok(false) otherwise, and Err(e)
+    /// if there was an I/O error
+    pub fn fg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.unwrap());
-                return true
+                if_ok!(self.out.write(s.unwrap()));
+                return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
             }
         }
-        false
+        Ok(false)
     }
     /// Sets the background color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns true if the color was set, false otherwise.
-    pub fn bg(&mut self, color: color::Color) -> bool {
+    /// Returns Ok(true) if the color was set, Ok(false) otherwise, and Err(e)
+    /// if there was an I/O error
+    pub fn bg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                self.out.write(s.unwrap());
-                return true
+                if_ok!(self.out.write(s.unwrap()));
+                return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
             }
         }
-        false
+        Ok(false)
     }
 
     /// Sets the given terminal attribute, if supported.
-    /// Returns true if the attribute was supported, false otherwise.
-    pub fn attr(&mut self, attr: attr::Attr) -> bool {
+    /// Returns Ok(true) if the attribute was supported, Ok(false) otherwise,
+    /// and Err(e) if there was an I/O error.
+    pub fn attr(&mut self, attr: attr::Attr) -> io::IoResult<bool> {
         match attr {
             attr::ForegroundColor(c) => self.fg(c),
             attr::BackgroundColor(c) => self.bg(c),
@@ -189,13 +198,13 @@ impl<T: Writer> Terminal<T> {
                 if parm.is_some() {
                     let s = expand(*parm.unwrap(), [], &mut Variables::new());
                     if s.is_ok() {
-                        self.out.write(s.unwrap());
-                        return true
+                        if_ok!(self.out.write(s.unwrap()));
+                        return Ok(true)
                     } else {
                         warn!("{}", s.unwrap_err());
                     }
                 }
-                false
+                Ok(false)
             }
         }
     }
@@ -214,7 +223,7 @@ impl<T: Writer> Terminal<T> {
     }
 
     /// Resets all terminal attributes and color to the default.
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> io::IoResult<()> {
         let mut cap = self.ti.strings.find_equiv(&("sgr0"));
         if cap.is_none() {
             // are there any terminals that have color/attrs and not sgr0?
@@ -228,7 +237,7 @@ impl<T: Writer> Terminal<T> {
             expand(*op, [], &mut Variables::new())
         });
         if s.is_ok() {
-            self.out.write(s.unwrap());
+            return self.out.write(s.unwrap())
         } else if self.num_colors > 0 {
             warn!("{}", s.unwrap_err());
         } else {
@@ -236,6 +245,7 @@ impl<T: Writer> Terminal<T> {
             // but it's not worth testing all known attributes just for this.
             debug!("{}", s.unwrap_err());
         }
+        Ok(())
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
@@ -252,11 +262,11 @@ impl<T: Writer> Terminal<T> {
 }
 
 impl<T: Writer> Writer for Terminal<T> {
-    fn write(&mut self, buf: &[u8]) {
-        self.out.write(buf);
+    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
+        self.out.write(buf)
     }
 
-    fn flush(&mut self) {
-        self.out.flush();
+    fn flush(&mut self) -> io::IoResult<()> {
+        self.out.flush()
     }
 }

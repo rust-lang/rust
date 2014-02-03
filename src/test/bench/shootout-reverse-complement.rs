@@ -36,11 +36,12 @@ fn make_complements() -> [u8, ..256] {
 
 fn main() {
     let complements = make_complements();
-    let mut data = if std::os::getenv("RUST_BENCH").is_some() {
+    let data = if std::os::getenv("RUST_BENCH").is_some() {
         File::open(&Path::new("shootout-k-nucleotide.data")).read_to_end()
     } else {
         stdin().read_to_end()
     };
+    let mut data = data.unwrap();
 
     for seq in data.mut_split(|c| *c == '>' as u8) {
         // skip header and last \n

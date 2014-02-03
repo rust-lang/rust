@@ -208,7 +208,7 @@ impl<T, E> Result<T, E> {
 
 impl<T: fmt::Show, E: fmt::Show> fmt::Show for Result<T, E> {
     #[inline]
-    fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) {
+    fn fmt(s: &Result<T, E>, f: &mut fmt::Formatter) -> fmt::Result {
         match *s {
             Ok(ref t) => write!(f.buf, "Ok({})", *t),
             Err(ref e) => write!(f.buf, "Err({})", *e)

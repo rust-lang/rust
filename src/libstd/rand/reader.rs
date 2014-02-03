@@ -11,7 +11,7 @@
 //! A wrapper around any Reader to treat it as an RNG.
 
 use container::Container;
-use option::{Some, None};
+use result::{Ok, Err};
 use io::Reader;
 
 use rand::Rng;
@@ -49,26 +49,26 @@ impl<R: Reader> Rng for ReaderRng<R> {
         // platform just involves blitting the bytes into the memory
         // of the u32, similarly for BE on BE; avoiding byteswapping.
         if cfg!(target_endian="little") {
-            self.reader.read_le_u32()
+            self.reader.read_le_u32().unwrap()
         } else {
-            self.reader.read_be_u32()
+            self.reader.read_be_u32().unwrap()
         }
     }
     fn next_u64(&mut self) -> u64 {
         // see above for explanation.
         if cfg!(target_endian="little") {
-            self.reader.read_le_u64()
+            self.reader.read_le_u64().unwrap()
         } else {
-            self.reader.read_be_u64()
+            self.reader.read_be_u64().unwrap()
         }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
         if v.len() == 0 { return }
         match self.reader.read(v) {
-            Some(n) if n == v.len() => return,
-            Some(n) => fail!("ReaderRng.fill_bytes could not fill buffer: \
-                              read {} out of {} bytes.", n, v.len()),
-            None => fail!("ReaderRng.fill_bytes reached eof.")
+            Ok(n) if n == v.len() => return,
+            Ok(n) => fail!("ReaderRng.fill_bytes could not fill buffer: \
+                            read {} out of {} bytes.", n, v.len()),
+            Err(e) => fail!("ReaderRng.fill_bytes error: {}", e)
         }
     }
 }

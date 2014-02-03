@@ -21,6 +21,7 @@
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
+#[deny(unused_result, unused_must_use)];
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
@@ -61,9 +62,10 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     rt::init(argc, argv);
     let mut exit_code = None;
     let mut main = Some(main);
-    task::new((my_stack_bottom, my_stack_top)).run(|| {
+    let t = task::new((my_stack_bottom, my_stack_top)).run(|| {
         exit_code = Some(run(main.take_unwrap()));
     });
+    drop(t);
     unsafe { rt::cleanup(); }
     // If the exit code wasn't set, then the task block must have failed.
     return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);

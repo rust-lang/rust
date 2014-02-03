@@ -1111,15 +1111,15 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
 }
 
 fn list_crate_attributes(intr: @IdentInterner, md: ebml::Doc, hash: &str,
-                         out: &mut io::Writer) {
-    write!(out, "=Crate Attributes ({})=\n", hash);
+                         out: &mut io::Writer) -> io::IoResult<()> {
+    if_ok!(write!(out, "=Crate Attributes ({})=\n", hash));
 
     let r = get_attributes(md);
     for attr in r.iter() {
-        write!(out, "{}\n", pprust::attribute_to_str(attr, intr));
+        if_ok!(write!(out, "{}\n", pprust::attribute_to_str(attr, intr)));
     }
 
-    write!(out, "\n\n");
+    write!(out, "\n\n")
 }
 
 pub fn get_crate_attributes(data: &[u8]) -> ~[ast::Attribute] {
@@ -1154,21 +1154,22 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
     return deps;
 }
 
-fn list_crate_deps(data: &[u8], out: &mut io::Writer) {
-    write!(out, "=External Dependencies=\n");
+fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
+    if_ok!(write!(out, "=External Dependencies=\n"));
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
         let string = token::get_ident(dep.name.name);
-        write!(out,
-               "{} {}-{}-{}\n",
-               dep.cnum,
-               string.get(),
-               dep.hash,
-               dep.vers);
+        if_ok!(write!(out,
+                      "{} {}-{}-{}\n",
+                      dep.cnum,
+                      string.get(),
+                      dep.hash,
+                      dep.vers));
     }
 
-    write!(out, "\n");
+    if_ok!(write!(out, "\n"));
+    Ok(())
 }
 
 pub fn get_crate_hash(data: &[u8]) -> ~str {
@@ -1186,11 +1187,11 @@ pub fn get_crate_vers(data: &[u8]) -> ~str {
 }
 
 pub fn list_crate_metadata(intr: @IdentInterner, bytes: &[u8],
-                           out: &mut io::Writer) {
+                           out: &mut io::Writer) -> io::IoResult<()> {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    list_crate_attributes(intr, md, hash, out);
-    list_crate_deps(bytes, out);
+    if_ok!(list_crate_attributes(intr, md, hash, out));
+    list_crate_deps(bytes, out)
 }
 
 // Translates a def_id from an external crate to a def_id for the current

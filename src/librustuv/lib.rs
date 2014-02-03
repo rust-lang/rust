@@ -40,6 +40,7 @@ via `close` and `delete` methods.
 #[crate_type = "dylib"];
 
 #[feature(macro_rules)];
+#[deny(unused_result, unused_must_use)];
 
 #[cfg(test)] extern mod green;
 
@@ -207,7 +208,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
 
 fn wakeup(slot: &mut Option<BlockedTask>) {
     assert!(slot.is_some());
-    slot.take_unwrap().wake().map(|t| t.reawaken(true));
+    let _ = slot.take_unwrap().wake().map(|t| t.reawaken(true));
 }
 
 pub struct Request {
@@ -276,7 +277,7 @@ impl Loop {
     pub fn wrap(handle: *uvll::uv_loop_t) -> Loop { Loop { handle: handle } }
 
     pub fn run(&mut self) {
-        unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) };
+        assert_eq!(unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) }, 0);
     }
 
     pub fn close(&mut self) {

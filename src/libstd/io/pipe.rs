@@ -14,7 +14,7 @@
 //! enough so that pipes can be created to child processes.
 
 use prelude::*;
-use io::{io_error, EndOfFile};
+use io::IoResult;
 use libc;
 use rt::rtio::{RtioPipe, LocalIo};
 
@@ -32,17 +32,15 @@ impl PipeStream {
     ///
     /// # Example
     ///
-    ///     use std::libc;
-    ///     use std::io::pipe;
+    /// ```rust
+    /// # #[allow(unused_must_use)];
+    /// use std::libc;
+    /// use std::io::pipe::PipeStream;
     ///
-    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
-    ///     pipe.write(bytes!("Hello, stderr!"));
-    ///
-    /// # Failure
-    ///
-    /// If the pipe cannot be created, an error will be raised on the
-    /// `io_error` condition.
-    pub fn open(fd: libc::c_int) -> Option<PipeStream> {
+    /// let mut pipe = PipeStream::open(libc::STDERR_FILENO);
+    /// pipe.write(bytes!("Hello, stderr!"));
+    /// ```
+    pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
         LocalIo::maybe_raise(|io| {
             io.pipe_open(fd).map(|obj| PipeStream { obj: obj })
         })
@@ -54,29 +52,11 @@ impl PipeStream {
 }
 
 impl Reader for PipeStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.obj.read(buf) {
-            Ok(read) => Some(read),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                return None;
-            }
-        }
-    }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) {
-        match self.obj.write(buf) {
-            Ok(_) => (),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-            }
-        }
-    }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
 #[cfg(test)]
@@ -91,12 +71,12 @@ mod test {
         let (p, c) = Chan::new();
         spawn(proc() {
             let mut out = out;
-            out.write([10]);
+            out.write([10]).unwrap();
             p.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
-        input.read(buf);
+        input.read(buf).unwrap();
         c.send(());
     })
 }

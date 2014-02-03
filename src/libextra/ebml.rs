@@ -12,6 +12,10 @@
 
 use std::str;
 
+macro_rules! if_ok( ($e:expr) => (
+    match $e { Ok(e) => e, Err(e) => { self.last_error = Err(e); return } }
+) )
+
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
@@ -595,9 +599,15 @@ pub mod writer {
 
     // ebml writing
     pub struct Encoder<'a> {
-        // FIXME(#5665): this should take a trait object
+        // FIXME(#5665): this should take a trait object. Note that if you
+        //               delete this comment you should consider removing the
+        //               unwrap()'s below of the results of the calls to
+        //               write(). We're guaranteed that writing into a MemWriter
+        //               won't fail, but this is not true for all I/O streams in
+        //               general.
         writer: &'a mut MemWriter,
         priv size_positions: ~[uint],
+        last_error: io::IoResult<()>,
     }
 
     fn write_sized_vuint(w: &mut MemWriter, n: uint, size: uint) {
@@ -609,7 +619,7 @@ pub mod writer {
             4u => w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
             _ => fail!("vint to write too big: {}", n)
-        };
+        }.unwrap()
     }
 
     fn write_vuint(w: &mut MemWriter, n: uint) {
@@ -624,7 +634,8 @@ pub mod writer {
         let size_positions: ~[uint] = ~[];
         Encoder {
             writer: w,
-            size_positions: size_positions
+            size_positions: size_positions,
+            last_error: Ok(()),
         }
     }
 
@@ -635,6 +646,7 @@ pub mod writer {
             Encoder {
                 writer: cast::transmute_copy(&self.writer),
                 size_positions: self.size_positions.clone(),
+                last_error: Ok(()),
             }
         }
 
@@ -645,18 +657,18 @@ pub mod writer {
             write_vuint(self.writer, tag_id);
 
             // Write a placeholder four-byte size.
-            self.size_positions.push(self.writer.tell() as uint);
+            self.size_positions.push(if_ok!(self.writer.tell()) as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
-            self.writer.write(zeroes);
+            if_ok!(self.writer.write(zeroes));
         }
 
         pub fn end_tag(&mut self) {
             let last_size_pos = self.size_positions.pop().unwrap();
-            let cur_pos = self.writer.tell();
-            self.writer.seek(last_size_pos as i64, io::SeekSet);
+            let cur_pos = if_ok!(self.writer.tell());
+            if_ok!(self.writer.seek(last_size_pos as i64, io::SeekSet));
             let size = (cur_pos as uint - last_size_pos - 4);
             write_sized_vuint(self.writer, size, 4u);
-            self.writer.seek(cur_pos as i64, io::SeekSet);
+            if_ok!(self.writer.seek(cur_pos as i64, io::SeekSet));
 
             debug!("End tag (size = {})", size);
         }
@@ -670,7 +682,7 @@ pub mod writer {
         pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) {
             write_vuint(self.writer, tag_id);
             write_vuint(self.writer, b.len());
-            self.writer.write(b);
+            self.writer.write(b).unwrap();
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
@@ -723,12 +735,12 @@ pub mod writer {
 
         pub fn wr_bytes(&mut self, b: &[u8]) {
             debug!("Write {} bytes", b.len());
-            self.writer.write(b);
+            self.writer.write(b).unwrap();
         }
 
         pub fn wr_str(&mut self, s: &str) {
             debug!("Write str: {}", s);
-            self.writer.write(s.as_bytes());
+            self.writer.write(s.as_bytes()).unwrap();
         }
     }
 

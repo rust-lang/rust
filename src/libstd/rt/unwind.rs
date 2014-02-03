@@ -464,9 +464,10 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
             match task.stderr.take() {
                 Some(mut stderr) => {
                     Local::put(task);
-                    format_args!(|args| ::fmt::writeln(stderr, args),
-                                 "task '{}' failed at '{}', {}:{}",
-                                 n, msg_s, file, line);
+                    // FIXME: what to do when the task printing fails?
+                    let _err = format_args!(|args| ::fmt::writeln(stderr, args),
+                                            "task '{}' failed at '{}', {}:{}",
+                                            n, msg_s, file, line);
                     task = Local::take();
 
                     match util::replace(&mut task.stderr, Some(stderr)) {

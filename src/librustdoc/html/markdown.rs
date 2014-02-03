@@ -109,7 +109,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-pub fn render(w: &mut io::Writer, s: &str) {
+pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
     extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
             let my_opaque: &my_opaque = cast::transmute(opaque);
@@ -159,11 +159,12 @@ pub fn render(w: &mut io::Writer, s: &str) {
         sd_markdown_render(ob, s.as_ptr(), s.len() as libc::size_t, markdown);
         sd_markdown_free(markdown);
 
-        vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
-            w.write(buf);
+        let ret = vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
+            w.write(buf)
         });
 
         bufrelease(ob);
+        ret
     }
 }
 
@@ -210,10 +211,10 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 }
 
 impl<'a> fmt::Show for Markdown<'a> {
-    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) {
+    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *md;
         // This is actually common enough to special-case
-        if md.len() == 0 { return; }
-        render(fmt.buf, md.as_slice());
+        if md.len() == 0 { return Ok(()) }
+        render(fmt.buf, md.as_slice())
     }
 }

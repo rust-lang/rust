@@ -111,17 +111,14 @@ impl FileDesc {
 }
 
 impl io::Reader for FileDesc {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.inner_read(buf) { Ok(n) => Some(n), Err(..) => None }
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        self.inner_read(buf)
     }
 }
 
 impl io::Writer for FileDesc {
-    fn write(&mut self, buf: &[u8]) {
-        match self.inner_write(buf) {
-            Ok(()) => {}
-            Err(e) => { io::io_error::cond.raise(e); }
-        }
+    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
+        self.inner_write(buf)
     }
 }
 
@@ -425,7 +422,7 @@ impl rtio::RtioFileStream for CFile {
 
 impl Drop for CFile {
     fn drop(&mut self) {
-        unsafe { libc::fclose(self.file); }
+        unsafe { let _ = libc::fclose(self.file); }
     }
 }
 
@@ -515,7 +512,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                     paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);
                 }
-                closedir(dir_ptr);
+                assert_eq!(closedir(dir_ptr), 0);
                 Ok(paths)
             } else {
                 Err(super::last_error())
@@ -564,7 +561,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
-                    FindClose(find_handle);
+                    assert!(FindClose(find_handle) != 0);
                     free(wfd_ptr as *mut c_void);
                     Ok(paths)
                 } else {
@@ -686,7 +683,9 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
                                   ptr::mut_null())
             })
         };
-        if handle == ptr::mut_null() { return Err(super::last_error()) }
+        if handle as int == libc::INVALID_HANDLE_VALUE as int {
+            return Err(super::last_error())
+        }
         let ret = fill_utf16_buf_and_decode(|buf, sz| {
             unsafe {
                 libc::GetFinalPathNameByHandleW(handle, buf as *u16, sz,
@@ -697,7 +696,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             Some(s) => Ok(Path::new(s)),
             None => Err(super::last_error()),
         };
-        unsafe { libc::CloseHandle(handle) };
+        assert!(unsafe { libc::CloseHandle(handle) } != 0);
         return ret;
 
     }
@@ -935,7 +934,7 @@ mod tests {
             let mut reader = FileDesc::new(input, true);
             let mut writer = FileDesc::new(out, true);
 
-            writer.inner_write(bytes!("test"));
+            writer.inner_write(bytes!("test")).unwrap();
             let mut buf = [0u8, ..4];
             match reader.inner_read(buf) {
                 Ok(4) => {
@@ -960,9 +959,9 @@ mod tests {
             assert!(!f.is_null());
             let mut file = CFile::new(f);
 
-            file.write(bytes!("test"));
+            file.write(bytes!("test")).unwrap();
             let mut buf = [0u8, ..4];
-            file.seek(0, io::SeekSet);
+            let _ = file.seek(0, io::SeekSet).unwrap();
             match file.read(buf) {
                 Ok(4) => {
                     assert_eq!(buf[0], 't' as u8);

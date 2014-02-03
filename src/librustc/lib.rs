@@ -54,6 +54,11 @@ use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
 
+#[cfg(stage0)]
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
+
 pub mod middle {
     pub mod trans;
     pub mod ty;
@@ -236,8 +241,8 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
       1u => {
         let ifile = matches.free[0].as_slice();
         if ifile == "-" {
-            let src =
-                str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
+            let contents = io::stdin().read_to_end().unwrap();
+            let src = str::from_utf8_owned(contents).unwrap();
             (d::StrInput(src), None)
         } else {
             (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
@@ -267,7 +272,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
           d::FileInput(ref ifile) => {
             let mut stdout = io::stdout();
             d::list_metadata(sess, &(*ifile),
-                                  &mut stdout as &mut io::Writer);
+                             &mut stdout as &mut io::Writer).unwrap();
           }
           d::StrInput(_) => {
             d::early_error(demitter, "can not list metadata for stdin");

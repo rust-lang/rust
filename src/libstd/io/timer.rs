@@ -39,8 +39,8 @@ loop {
 */
 
 use comm::Port;
-use option::Option;
 use rt::rtio::{IoFactory, LocalIo, RtioTimer};
+use io::IoResult;
 
 pub struct Timer {
     priv obj: ~RtioTimer
@@ -48,7 +48,8 @@ pub struct Timer {
 
 /// Sleep the current task for `msecs` milliseconds.
 pub fn sleep(msecs: u64) {
-    let mut timer = Timer::new().expect("timer::sleep: could not create a Timer");
+    let timer = Timer::new();
+    let mut timer = timer.ok().expect("timer::sleep: could not create a Timer");
 
     timer.sleep(msecs)
 }
@@ -57,7 +58,7 @@ impl Timer {
     /// Creates a new timer which can be used to put the current task to sleep
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
-    pub fn new() -> Option<Timer> {
+    pub fn new() -> IoResult<Timer> {
         LocalIo::maybe_raise(|io| io.timer_init().map(|t| Timer { obj: t }))
     }
 

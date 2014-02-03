@@ -234,7 +234,13 @@ pub fn run_tests(config: &config) {
     // For context, see #8904
     io::test::raise_fd_limit();
     let res = test::run_tests_console(&opts, tests);
-    if !res { fail!("Some tests failed"); }
+    match res {
+        Ok(true) => {}
+        Ok(false) => fail!("Some tests failed"),
+        Err(e) => {
+            println!("I/O failure during tests: {}", e);
+        }
+    }
 }
 
 pub fn test_opts(config: &config) -> test::TestOpts {
@@ -255,7 +261,7 @@ pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug!("making tests from {}",
            config.src_base.display());
     let mut tests = ~[];
-    let dirs = fs::readdir(&config.src_base);
+    let dirs = fs::readdir(&config.src_base).unwrap();
     for file in dirs.iter() {
         let file = file.clone();
         debug!("inspecting file {}", file.display());
