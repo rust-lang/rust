@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back::link;
 use back::target_strs;
 use back;
 use driver::driver::host_triple;
@@ -139,7 +138,7 @@ pub enum OptLevel {
 pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    outputs: ~[OutputStyle],
+    crate_types: ~[CrateType],
 
     gc: bool,
     optimize: OptLevel,
@@ -149,7 +148,7 @@ pub struct Options {
     extra_debuginfo: bool,
     lint_opts: ~[(lint::Lint, lint::level)],
     save_temps: bool,
-    output_type: back::link::OutputType,
+    output_types: ~[back::link::OutputType],
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
@@ -192,11 +191,11 @@ pub enum EntryFnType {
 }
 
 #[deriving(Eq, Clone, TotalOrd, TotalEq)]
-pub enum OutputStyle {
-    OutputExecutable,
-    OutputDylib,
-    OutputRlib,
-    OutputStaticlib,
+pub enum CrateType {
+    CrateTypeExecutable,
+    CrateTypeDylib,
+    CrateTypeRlib,
+    CrateTypeStaticlib,
 }
 
 pub struct Session_ {
@@ -219,7 +218,7 @@ pub struct Session_ {
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::Lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
-    outputs: @RefCell<~[OutputStyle]>,
+    crate_types: @RefCell<~[CrateType]>,
 }
 
 pub type Session = @Session_;
@@ -374,7 +373,7 @@ impl Session_ {
 /// Some reasonable defaults
 pub fn basic_options() -> @Options {
     @Options {
-        outputs: ~[],
+        crate_types: ~[],
         gc: false,
         optimize: No,
         custom_passes: ~[],
@@ -383,7 +382,7 @@ pub fn basic_options() -> @Options {
         extra_debuginfo: false,
         lint_opts: ~[],
         save_temps: false,
-        output_type: link::OutputTypeExe,
+        output_types: ~[],
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
         ar: None,
         linker: None,
@@ -413,10 +412,10 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
 
 pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     if options.test { return false }
-    for output in options.outputs.iter() {
+    for output in options.crate_types.iter() {
         match *output {
-            OutputExecutable => {}
-            OutputStaticlib | OutputDylib | OutputRlib => return true
+            CrateTypeExecutable => {}
+            CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
     match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
@@ -430,30 +429,30 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     }
 }
 
-pub fn default_lib_output() -> OutputStyle {
-    OutputRlib
+pub fn default_lib_output() -> CrateType {
+    CrateTypeRlib
 }
 
-pub fn collect_outputs(session: &Session,
-                       attrs: &[ast::Attribute]) -> ~[OutputStyle] {
+pub fn collect_crate_types(session: &Session,
+                           attrs: &[ast::Attribute]) -> ~[CrateType] {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return ~[OutputExecutable];
+        return ~[CrateTypeExecutable];
     }
-    let mut base = session.opts.outputs.clone();
+    let mut base = session.opts.crate_types.clone();
     let mut iter = attrs.iter().filter_map(|a| {
         if a.name().equiv(&("crate_type")) {
             match a.value_str() {
-                Some(ref n) if n.equiv(&("rlib")) => Some(OutputRlib),
-                Some(ref n) if n.equiv(&("dylib")) => Some(OutputDylib),
+                Some(ref n) if n.equiv(&("rlib")) => Some(CrateTypeRlib),
+                Some(ref n) if n.equiv(&("dylib")) => Some(CrateTypeDylib),
                 Some(ref n) if n.equiv(&("lib")) => {
                     Some(default_lib_output())
                 }
                 Some(ref n) if n.equiv(&("staticlib")) => {
-                    Some(OutputStaticlib)
+                    Some(CrateTypeStaticlib)
                 }
-                Some(ref n) if n.equiv(&("bin")) => Some(OutputExecutable),
+                Some(ref n) if n.equiv(&("bin")) => Some(CrateTypeExecutable),
                 Some(_) => {
                     session.add_lint(lint::UnknownCrateType,
                                      ast::CRATE_NODE_ID,
@@ -473,7 +472,7 @@ pub fn collect_outputs(session: &Session,
     });
     base.extend(&mut iter);
     if base.len() == 0 {
-        base.push(OutputExecutable);
+        base.push(CrateTypeExecutable);
     }
     base.sort();
     base.dedup();
