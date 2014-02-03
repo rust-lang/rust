@@ -78,7 +78,6 @@ pub mod rational;
 #[path="num/complex.rs"]
 pub mod complex;
 pub mod stats;
-pub mod semver;
 pub mod hex;
 pub mod uuid;
 
