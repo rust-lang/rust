@@ -18,9 +18,9 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use iter::Iterator;
-use vec::{ImmutableVector, MutableVector, Vector};
+use vec::{ImmutableVector,MutableVector,Vector};
 use to_bytes::IterBytes;
-use option::{Option, Some, None};
+use option::{Option,Some,None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
