@@ -49,7 +49,7 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate arena glob term
+TARGET_CRATES := std extra green rustuv native flate arena glob term semver
 HOST_CRATES := syntax rustc rustdoc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -66,6 +66,7 @@ DEPS_flate := std native:miniz
 DEPS_arena := std extra
 DEPS_glob := std
 DEPS_term := std
+DEPS_semver := std
 
 TOOL_DEPS_compiletest := extra green rustuv
 TOOL_DEPS_rustdoc := rustdoc green rustuv
