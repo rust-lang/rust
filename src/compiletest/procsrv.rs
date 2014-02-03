@@ -58,9 +58,9 @@ pub fn run(lib_path: &str,
     });
 
     match opt_process {
-        Some(ref mut process) => {
+        Ok(ref mut process) => {
             for input in input.iter() {
-                process.input().write(input.as_bytes());
+                process.input().write(input.as_bytes()).unwrap();
             }
             let run::ProcessOutput { status, output, error } = process.finish_with_output();
 
@@ -70,7 +70,7 @@ pub fn run(lib_path: &str,
                 err: str::from_utf8_owned(error).unwrap()
             })
         },
-        None => None
+        Err(..) => None
     }
 }
 
@@ -90,13 +90,13 @@ pub fn run_background(lib_path: &str,
     });
 
     match opt_process {
-        Some(mut process) => {
+        Ok(mut process) => {
             for input in input.iter() {
-                process.input().write(input.as_bytes());
+                process.input().write(input.as_bytes()).unwrap();
             }
 
             Some(process)
         },
-        None => None
+        Err(..) => None
     }
 }

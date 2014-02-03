@@ -103,7 +103,8 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
         let mut f = Some(f);
         let mut task = task;
         task.put_runtime(ops as ~rt::Runtime);
-        task.run(|| { f.take_unwrap()() });
+        let t = task.run(|| { f.take_unwrap()() });
+        drop(t);
         bookkeeping::decrement();
     })
 }

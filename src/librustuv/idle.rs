@@ -52,7 +52,7 @@ impl IdleWatcher {
                 let data = uvll::get_data_for_uv_handle(handle);
                 let f: ~proc() = cast::transmute(data);
                 (*f)();
-                uvll::uv_idle_stop(handle);
+                assert_eq!(uvll::uv_idle_stop(handle), 0);
                 uvll::uv_close(handle, close_cb);
             }
         }
@@ -122,7 +122,7 @@ mod test {
                     }
                 }
             };
-            task.wake().map(|t| t.reawaken(true));
+            let _ = task.wake().map(|t| t.reawaken(true));
         }
     }
 

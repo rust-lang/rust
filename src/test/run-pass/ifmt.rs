@@ -12,6 +12,7 @@
 
 #[feature(macro_rules)];
 #[deny(warnings)];
+#[allow(unused_must_use)];
 
 use std::fmt;
 use std::io::MemWriter;
@@ -22,10 +23,14 @@ struct A;
 struct B;
 
 impl fmt::Signed for A {
-    fn fmt(_: &A, f: &mut fmt::Formatter) { f.buf.write("aloha".as_bytes()); }
+    fn fmt(_: &A, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write("aloha".as_bytes())
+    }
 }
 impl fmt::Signed for B {
-    fn fmt(_: &B, f: &mut fmt::Formatter) { f.buf.write("adios".as_bytes()); }
+    fn fmt(_: &B, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write("adios".as_bytes())
+    }
 }
 
 macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
@@ -286,9 +291,9 @@ fn test_format_args() {
     let mut buf = MemWriter::new();
     {
         let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { fmt::write(w, args) }, "{}", 1);
-        format_args!(|args| { fmt::write(w, args) }, "test");
-        format_args!(|args| { fmt::write(w, args) }, "{test}", test=3);
+        format_args!(|args| { fmt::write(w, args); }, "{}", 1);
+        format_args!(|args| { fmt::write(w, args); }, "test");
+        format_args!(|args| { fmt::write(w, args); }, "{test}", test=3);
     }
     let s = str::from_utf8_owned(buf.unwrap()).unwrap();
     t!(s, "1test3");

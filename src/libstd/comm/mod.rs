@@ -1252,7 +1252,7 @@ mod test {
             spawn(proc() {
                 let _p = port;
             });
-            task::try(proc() {
+            let _ = task::try(proc() {
                 chan.send(1);
             });
         }

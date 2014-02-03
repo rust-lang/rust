@@ -20,10 +20,11 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
+use result::{Ok, Err};
 use comm::{Port, SharedChan};
 use container::{Map, MutableMap};
 use hashmap;
-use option::{Some, None};
+use io;
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 
 #[repr(int)]
@@ -112,23 +113,22 @@ impl Listener {
     /// a signal, and a later call to `recv` will return the signal that was
     /// received while no task was waiting on it.
     ///
-    /// # Failure
+    /// # Error
     ///
     /// If this function fails to register a signal handler, then an error will
-    /// be raised on the `io_error` condition and the function will return
-    /// false.
-    pub fn register(&mut self, signum: Signum) -> bool {
+    /// be returned.
+    pub fn register(&mut self, signum: Signum) -> io::IoResult<()> {
         if self.handles.contains_key(&signum) {
-            return true; // self is already listening to signum, so succeed
+            return Ok(()); // self is already listening to signum, so succeed
         }
         match LocalIo::maybe_raise(|io| {
             io.signal(signum, self.chan.clone())
         }) {
-            Some(handle) => {
+            Ok(handle) => {
                 self.handles.insert(signum, handle);
-                true
+                Ok(())
             }
-            None => false
+            Err(e) => Err(e)
         }
     }
 
@@ -159,7 +159,7 @@ mod test {
     #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
-        signal.register(Interrupt);
+        signal.register(Interrupt).unwrap();
         sigint();
         timer::sleep(10);
         match signal.port.recv() {
@@ -172,8 +172,8 @@ mod test {
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
-        s1.register(Interrupt);
-        s2.register(Interrupt);
+        s1.register(Interrupt).unwrap();
+        s2.register(Interrupt).unwrap();
         sigint();
         timer::sleep(10);
         match s1.port.recv() {
@@ -190,8 +190,8 @@ mod test {
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
-        s1.register(Interrupt);
-        s2.register(Interrupt);
+        s1.register(Interrupt).unwrap();
+        s2.register(Interrupt).unwrap();
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);
@@ -203,15 +203,14 @@ mod test {
     fn test_io_signal_invalid_signum() {
         use io;
         use super::User1;
+        use result::{Ok, Err};
         let mut s = Listener::new();
         let mut called = false;
-        io::io_error::cond.trap(|_| {
-            called = true;
-        }).inside(|| {
-            if s.register(User1) {
+        match s.register(User1) {
+            Ok(..) => {
                 fail!("Unexpected successful registry of signum {:?}", User1);
             }
-        });
-        assert!(called);
+            Err(..) => {}
+        }
     }
 }

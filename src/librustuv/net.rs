@@ -953,11 +953,11 @@ mod test {
         spawn(proc() {
             let port2 = port.recv();
             let mut stream = TcpWatcher::connect(local_loop(), addr).unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
             port2.recv();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
+            stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
             port2.recv();
         });
 
@@ -1008,7 +1008,7 @@ mod test {
         while stream.is_err() {
             stream = TcpWatcher::connect(local_loop(), addr);
         }
-        stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]);
+        stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
 
     #[should_fail] #[test]
@@ -1028,7 +1028,7 @@ mod test {
             let w = TcpListener::bind(local_loop(), addr).unwrap();
             let mut w = w.listen().unwrap();
             chan.send(());
-            w.accept();
+            drop(w.accept().unwrap());
         });
         port.recv();
         let _w = TcpWatcher::connect(local_loop(), addr).unwrap();

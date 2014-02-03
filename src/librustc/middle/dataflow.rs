@@ -88,7 +88,7 @@ struct LoopScope<'a> {
 }
 
 impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
-    fn pre(&self, node: pprust::AnnNode) {
+    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         let (ps, id) = match node {
             pprust::NodeExpr(ps, expr) => (ps, expr.id),
             pprust::NodeBlock(ps, blk) => (ps, blk.id),
@@ -117,9 +117,10 @@ impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
 
             let comment_str = format!("id {}: {}{}{}",
                                       id, entry_str, gens_str, kills_str);
-            pprust::synth_comment(ps, comment_str);
-            pp::space(&mut ps.s);
+            if_ok!(pprust::synth_comment(ps, comment_str));
+            if_ok!(pp::space(&mut ps.s));
         }
+        Ok(())
     }
 }
 
@@ -347,18 +348,20 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
         debug!("Dataflow result:");
         debug!("{}", {
             let this = @(*self).clone();
-            this.pretty_print_to(~io::stderr() as ~io::Writer, blk);
+            this.pretty_print_to(~io::stderr() as ~io::Writer, blk).unwrap();
             ""
         });
     }
 
-    fn pretty_print_to(@self, wr: ~io::Writer, blk: &ast::Block) {
+    fn pretty_print_to(@self, wr: ~io::Writer,
+                       blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self.tcx.sess.intr(),
                                                     self as @pprust::PpAnn);
-        pprust::cbox(&mut ps, pprust::indent_unit);
-        pprust::ibox(&mut ps, 0u);
-        pprust::print_block(&mut ps, blk);
-        pp::eof(&mut ps.s);
+        if_ok!(pprust::cbox(&mut ps, pprust::indent_unit));
+        if_ok!(pprust::ibox(&mut ps, 0u));
+        if_ok!(pprust::print_block(&mut ps, blk));
+        if_ok!(pp::eof(&mut ps.s));
+        Ok(())
     }
 }
 

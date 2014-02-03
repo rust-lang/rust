@@ -189,58 +189,61 @@ impl Level {
     }
 }
 
-fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
-    local_data_key!(tls_terminal: ~Option<term::Terminal<StdWriter>>)
+fn print_maybe_styled(msg: &str, color: term::attr::Attr) -> io::IoResult<()> {
+    local_data_key!(tls_terminal: Option<term::Terminal<StdWriter>>)
+
 
     fn is_stderr_screen() -> bool {
         use std::libc;
         unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
     }
-    fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str, c: term::attr::Attr) {
-        term.attr(c);
-        term.write(s.as_bytes());
-        term.reset();
+    fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str,
+                               c: term::attr::Attr) -> io::IoResult<()> {
+        if_ok!(term.attr(c));
+        if_ok!(term.write(s.as_bytes()));
+        if_ok!(term.reset());
+        Ok(())
     }
 
     if is_stderr_screen() {
         local_data::get_mut(tls_terminal, |term| {
             match term {
                 Some(term) => {
-                    match **term {
+                    match *term {
                         Some(ref mut term) => write_pretty(term, msg, color),
                         None => io::stderr().write(msg.as_bytes())
                     }
                 }
                 None => {
-                    let t = ~match term::Terminal::new(io::stderr()) {
+                    let (t, ret) = match term::Terminal::new(io::stderr()) {
                         Ok(mut term) => {
-                            write_pretty(&mut term, msg, color);
-                            Some(term)
+                            let r = write_pretty(&mut term, msg, color);
+                            (Some(term), r)
                         }
                         Err(_) => {
-                            io::stderr().write(msg.as_bytes());
-                            None
+                            (None, io::stderr().write(msg.as_bytes()))
                         }
                     };
                     local_data::set(tls_terminal, t);
+                    ret
                 }
             }
-        });
+        })
     } else {
-        io::stderr().write(msg.as_bytes());
+        io::stderr().write(msg.as_bytes())
     }
 }
 
-fn print_diagnostic(topic: &str, lvl: Level, msg: &str) {
-    let mut stderr = io::stderr();
-
+fn print_diagnostic(topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
     if !topic.is_empty() {
-        write!(&mut stderr as &mut io::Writer, "{} ", topic);
+        let mut stderr = io::stderr();
+        if_ok!(write!(&mut stderr as &mut io::Writer, "{} ", topic));
     }
 
-    print_maybe_styled(format!("{}: ", lvl.to_str()),
-                       term::attr::ForegroundColor(lvl.color()));
-    print_maybe_styled(format!("{}\n", msg), term::attr::Bold);
+    if_ok!(print_maybe_styled(format!("{}: ", lvl.to_str()),
+                              term::attr::ForegroundColor(lvl.color())));
+    if_ok!(print_maybe_styled(format!("{}\n", msg), term::attr::Bold));
+    Ok(())
 }
 
 pub struct DefaultEmitter;
@@ -250,20 +253,28 @@ impl Emitter for DefaultEmitter {
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: Level) {
-        match cmsp {
+        let error = match cmsp {
             Some((cm, sp)) => emit(cm, sp, msg, lvl, false),
             None => print_diagnostic("", lvl, msg),
+        };
+
+        match error {
+            Ok(()) => {}
+            Err(e) => fail!("failed to print diagnostics: {}", e),
         }
     }
 
     fn custom_emit(&self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level) {
-        emit(cm, sp, msg, lvl, true);
+        match emit(cm, sp, msg, lvl, true) {
+            Ok(()) => {}
+            Err(e) => fail!("failed to print diagnostics: {}", e),
+        }
     }
 }
 
 fn emit(cm: &codemap::CodeMap, sp: Span,
-        msg: &str, lvl: Level, custom: bool) {
+        msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
     let ss = cm.span_to_str(sp);
     let lines = cm.span_to_lines(sp);
     if custom {
@@ -272,19 +283,19 @@ fn emit(cm: &codemap::CodeMap, sp: Span,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
-        print_diagnostic(ses, lvl, msg);
-        custom_highlight_lines(cm, sp, lvl, lines);
+        if_ok!(print_diagnostic(ses, lvl, msg));
+        if_ok!(custom_highlight_lines(cm, sp, lvl, lines));
     } else {
-        print_diagnostic(ss, lvl, msg);
-        highlight_lines(cm, sp, lvl, lines);
+        if_ok!(print_diagnostic(ss, lvl, msg));
+        if_ok!(highlight_lines(cm, sp, lvl, lines));
     }
-    print_macro_backtrace(cm, sp);
+    print_macro_backtrace(cm, sp)
 }
 
 fn highlight_lines(cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: &codemap::FileLines) {
+                   lines: &codemap::FileLines) -> io::IoResult<()> {
     let fm = lines.file;
     let mut err = io::stderr();
     let err = &mut err as &mut io::Writer;
@@ -297,12 +308,13 @@ fn highlight_lines(cm: &codemap::CodeMap,
     }
     // Print the offending lines
     for line in display_lines.iter() {
-        write!(err, "{}:{} {}\n", fm.name, *line + 1, fm.get_line(*line as int));
+        if_ok!(write!(err, "{}:{} {}\n", fm.name, *line + 1,
+                      fm.get_line(*line as int)));
     }
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
         let s = format!("{}:{} ", fm.name, last_line + 1u);
-        write!(err, "{0:1$}...\n", "", s.len());
+        if_ok!(write!(err, "{0:1$}...\n", "", s.len()));
     }
 
     // FIXME (#3260)
@@ -334,7 +346,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
                 _ => s.push_char(' '),
             };
         }
-        write!(err, "{}", s);
+        if_ok!(write!(err, "{}", s));
         let mut s = ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
@@ -342,8 +354,10 @@ fn highlight_lines(cm: &codemap::CodeMap,
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for _ in range(0, num_squigglies) { s.push_char('~'); }
         }
-        print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
+        if_ok!(print_maybe_styled(s + "\n",
+                                  term::attr::ForegroundColor(lvl.color())));
     }
+    Ok(())
 }
 
 // Here are the differences between this and the normal `highlight_lines`:
@@ -355,23 +369,23 @@ fn highlight_lines(cm: &codemap::CodeMap,
 fn custom_highlight_lines(cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
-                          lines: &codemap::FileLines) {
+                          lines: &codemap::FileLines) -> io::IoResult<()> {
     let fm = lines.file;
     let mut err = io::stderr();
     let err = &mut err as &mut io::Writer;
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {
-        write!(err, "{}:{} {}\n", fm.name,
-               lines[0] + 1, fm.get_line(lines[0] as int));
-        write!(err, "...\n");
+        if_ok!(write!(err, "{}:{} {}\n", fm.name,
+                      lines[0] + 1, fm.get_line(lines[0] as int)));
+        if_ok!(write!(err, "...\n"));
         let last_line = lines[lines.len()-1];
-        write!(err, "{}:{} {}\n", fm.name,
-               last_line + 1, fm.get_line(last_line as int));
+        if_ok!(write!(err, "{}:{} {}\n", fm.name,
+                      last_line + 1, fm.get_line(last_line as int)));
     } else {
         for line in lines.iter() {
-            write!(err, "{}:{} {}\n", fm.name,
-                   *line + 1, fm.get_line(*line as int));
+            if_ok!(write!(err, "{}:{} {}\n", fm.name,
+                          *line + 1, fm.get_line(*line as int)));
         }
     }
     let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
@@ -381,22 +395,24 @@ fn custom_highlight_lines(cm: &codemap::CodeMap,
     let mut s = ~"";
     for _ in range(0, skip) { s.push_char(' '); }
     s.push_char('^');
-    print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
+    print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()))
 }
 
-fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
+fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) -> io::IoResult<()> {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-        print_diagnostic(ss, Note,
-                         format!("in expansion of {}{}{}", pre, ei.callee.name, post));
+        if_ok!(print_diagnostic(ss, Note,
+                                format!("in expansion of {}{}{}", pre,
+                                        ei.callee.name, post)));
         let ss = cm.span_to_str(ei.call_site);
-        print_diagnostic(ss, Note, "expansion site");
-        print_macro_backtrace(cm, ei.call_site);
+        if_ok!(print_diagnostic(ss, Note, "expansion site"));
+        if_ok!(print_macro_backtrace(cm, ei.call_site));
     }
+    Ok(())
 }
 
 pub fn expect<T:Clone>(diag: @SpanHandler, opt: Option<T>, msg: || -> ~str)

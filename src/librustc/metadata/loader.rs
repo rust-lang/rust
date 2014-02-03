@@ -381,13 +381,13 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 pub fn list_file_metadata(intr: @IdentInterner,
                           os: Os,
                           path: &Path,
-                          out: &mut io::Writer) {
+                          out: &mut io::Writer) -> io::IoResult<()> {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr,
                                                           bytes.as_slice(),
                                                           out),
       option::None => {
-        write!(out, "could not find metadata in {}.\n", path.display())
+          write!(out, "could not find metadata in {}.\n", path.display())
       }
     }
 }

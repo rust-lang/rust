@@ -306,7 +306,7 @@ mod tests {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.send(());
-            p.accept();
+            drop(p.accept().unwrap());
         });
         port.recv();
         let _c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();

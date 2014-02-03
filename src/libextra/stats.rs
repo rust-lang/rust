@@ -322,14 +322,15 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary(w: &mut io::Writer, s: &Summary) {
+pub fn write_5_number_summary(w: &mut io::Writer,
+                              s: &Summary) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
                      s.min,
                      q1,
                      q2,
                      q3,
-                     s.max);
+                     s.max)
 }
 
 /// Render a boxplot to the provided writer. The boxplot shows the min, max and quartiles of the
@@ -344,7 +345,8 @@ pub fn write_5_number_summary(w: &mut io::Writer, s: &Summary) {
 ///   10 |        [--****#******----------]          | 40
 /// ~~~~
 
-pub fn write_boxplot(w: &mut io::Writer, s: &Summary, width_hint: uint) {
+pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
+                     width_hint: uint) -> io::IoResult<()> {
 
     let (q1,q2,q3) = s.quartiles;
 
@@ -374,48 +376,49 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary, width_hint: uint) {
     let range_width = width_hint - overhead_width;;
     let char_step = range / (range_width as f64);
 
-    write!(w, "{} |", lostr);
+    if_ok!(write!(w, "{} |", lostr));
 
     let mut c = 0;
     let mut v = lo;
 
     while c < range_width && v < s.min {
-        write!(w, " ");
+        if_ok!(write!(w, " "));
         v += char_step;
         c += 1;
     }
-    write!(w, "[");
+    if_ok!(write!(w, "["));
     c += 1;
     while c < range_width && v < q1 {
-        write!(w, "-");
+        if_ok!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < q2 {
-        write!(w, "*");
+        if_ok!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
-    write!(w, r"\#");
+    if_ok!(write!(w, r"\#"));
     c += 1;
     while c < range_width && v < q3 {
-        write!(w, "*");
+        if_ok!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < s.max {
-        write!(w, "-");
+        if_ok!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
-    write!(w, "]");
+    if_ok!(write!(w, "]"));
     while c < range_width {
-        write!(w, " ");
+        if_ok!(write!(w, " "));
         v += char_step;
         c += 1;
     }
 
-    write!(w, "| {}", histr);
+    if_ok!(write!(w, "| {}", histr));
+    Ok(())
 }
 
 /// Returns a HashMap with the number of occurrences of every element in the
@@ -453,11 +456,11 @@ mod tests {
 
         let mut w = io::stdout();
         let w = &mut w as &mut io::Writer;
-        write!(w, "\n");
-        write_5_number_summary(w, &summ2);
-        write!(w, "\n");
-        write_boxplot(w, &summ2, 50);
-        write!(w, "\n");
+        (write!(w, "\n")).unwrap();
+        write_5_number_summary(w, &summ2).unwrap();
+        (write!(w, "\n")).unwrap();
+        write_boxplot(w, &summ2, 50).unwrap();
+        (write!(w, "\n")).unwrap();
 
         assert_eq!(summ.sum, summ2.sum);
         assert_eq!(summ.min, summ2.min);
@@ -1000,7 +1003,7 @@ mod tests {
         fn t(s: &Summary, expected: ~str) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
-            write_boxplot(&mut m as &mut io::Writer, s, 30);
+            write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
             let out = str::from_utf8_owned(m.unwrap()).unwrap();
             assert_eq!(out, expected);
         }

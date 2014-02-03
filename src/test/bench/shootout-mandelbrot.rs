@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
 use std::io::BufferedWriter;
 
 struct DummyWriter;
 impl Writer for DummyWriter {
-    fn write(&mut self, _: &[u8]) {}
+    fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
 }
 
 static ITER: int = 50;
