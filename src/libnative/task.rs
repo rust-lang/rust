@@ -143,6 +143,8 @@ impl rt::Runtime for Ops {
 
     fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }
 
+    fn can_block(&self) -> bool { true }
+
     // This function gets a little interesting. There are a few safety and
     // ownership violations going on here, but this is all done in the name of
     // shared state. Additionally, all of the violations are protected with a
@@ -231,7 +233,7 @@ impl rt::Runtime for Ops {
 
     // See the comments on `deschedule` for why the task is forgotten here, and
     // why it's valid to do so.
-    fn reawaken(mut ~self, mut to_wake: ~Task, _can_resched: bool) {
+    fn reawaken(mut ~self, mut to_wake: ~Task) {
         unsafe {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self as ~rt::Runtime);

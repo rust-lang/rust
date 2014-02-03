@@ -22,7 +22,7 @@
 
 use std::cast;
 use std::rt;
-use std::unstable::mutex::{Once, ONCE_INIT};
+use std::unstable::mutex::{Mutex, MUTEX_INIT};
 
 use bookkeeping;
 use io::timer::{Req, Shutdown};
@@ -37,10 +37,12 @@ static mut HELPER_CHAN: *mut SharedChan<Req> = 0 as *mut SharedChan<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
 
 pub fn boot(helper: fn(imp::signal, Port<Req>)) {
-    static mut INIT: Once = ONCE_INIT;
+    static mut LOCK: Mutex = MUTEX_INIT;
+    static mut INITIALIZED: bool = false;
 
     unsafe {
-        INIT.doit(|| {
+        LOCK.lock();
+        if !INITIALIZED {
             let (msgp, msgc) = SharedChan::new();
             HELPER_CHAN = cast::transmute(~msgc);
             let (receive, send) = imp::new();
@@ -52,7 +54,9 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
             });
 
             rt::at_exit(proc() { shutdown() });
-        })
+            INITIALIZED = true;
+        }
+        LOCK.unlock();
     }
 }
 
