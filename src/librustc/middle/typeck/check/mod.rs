@@ -4030,29 +4030,32 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
 
         //We only care about the operation here
         match split[1] {
-            "cxchg" => (0, ~[ty::mk_mut_rptr(tcx,
+            "cxchg" => (1, ~[ty::mk_mut_rptr(tcx,
                                              ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                             ty::mk_int()),
-                        ty::mk_int(),
-                        ty::mk_int()
-                        ], ty::mk_int()),
-            "load" => (0,
+                                             param(ccx, 0)),
+                        param(ccx, 0),
+                        param(ccx, 0),
+                        ], param(ccx, 0)),
+            "load" => (1,
                ~[
-                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int())
+                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
+                                  param(ccx, 0))
                ],
-              ty::mk_int()),
-            "store" => (0,
+              param(ccx, 0)),
+            "store" => (1,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
-                  ty::mk_int()
+                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
+                                  param(ccx, 0)),
+                  param(ccx, 0)
                ],
                ty::mk_nil()),
 
-            "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or"   | "xor"  | "max"  |
+            "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
-                (0, ~[ty::mk_mut_rptr(tcx,
+                (1, ~[ty::mk_mut_rptr(tcx,
                                       ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                      ty::mk_int()), ty::mk_int() ], ty::mk_int())
+                                      param(ccx, 0)), param(ccx, 0) ],
+                 param(ccx, 0))
             }
             "fence" => {
                 (0, ~[], ty::mk_nil())
@@ -4085,16 +4088,6 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
             }
             "needs_drop" => (1u, ~[], ty::mk_bool()),
             "owns_managed" => (1u, ~[], ty::mk_bool()),
-            "atomic_xchg"     | "atomic_xadd"     | "atomic_xsub"     |
-            "atomic_xchg_acq" | "atomic_xadd_acq" | "atomic_xsub_acq" |
-            "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {
-              (0,
-               ~[
-                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), ty::mk_int()),
-                  ty::mk_int()
-               ],
-               ty::mk_int())
-            }
 
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {

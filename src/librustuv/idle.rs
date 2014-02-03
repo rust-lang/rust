@@ -122,7 +122,7 @@ mod test {
                     }
                 }
             };
-            let _ = task.wake().map(|t| t.reawaken(true));
+            let _ = task.wake().map(|t| t.reawaken());
         }
     }
 
