@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,7 +17,21 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/complement-lang-faq.md:83
+#: src/doc/complement-lang-faq.md:2
+#, fuzzy
+#| msgid "## Structs"
+msgid "% Language FAQ"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/complement-lang-faq.md:4
+#, fuzzy
+#| msgid "## Structs"
+msgid "# General language issues"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/complement-lang-faq.md:83
 #, fuzzy
 #| msgid ""
 #| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
@@ -33,7 +47,23 @@ msgstr ""
 "developing-Rust"
 
 #. type: Plain text
-#: doc/complement-lang-faq.md:110
+#: src/doc/complement-lang-faq.md:99
+#, fuzzy
+#| msgid ""
+#| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
+#| "https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+msgid ""
+"[sprocketnes]: https://github.com/pcwalton/sprocketnes [hash]: https://"
+"github.com/mozilla/rust/blob/master/src/libstd/hash.rs [HashMap]: https://"
+"github.com/mozilla/rust/blob/master/src/libstd/hashmap.rs [json]: https://"
+"github.com/mozilla/rust/blob/master/src/libextra/json.rs"
+msgstr ""
+"[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
+"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
+"developing-Rust"
+
+#. type: Plain text
+#: src/doc/complement-lang-faq.md:110
 #, fuzzy
 #| msgid ""
 #| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
@@ -45,3 +75,10 @@ msgstr ""
 "[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
 "[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
 "developing-Rust"
+
+#. type: Plain text
+#: src/doc/complement-lang-faq.md:131
+#, fuzzy
+#| msgid "## Structs"
+msgid "# Specific language issues"
+msgstr "## 構造体"

@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,35 +17,49 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
-#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
-#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: src/doc/guide-conditions.md:4 src/doc/guide-ffi.md:4
+#: src/doc/guide-lifetimes.md:4 src/doc/guide-macros.md:4
+#: src/doc/guide-tasks.md:4 src/doc/rust.md:4 src/doc/tutorial.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:2
+#: src/doc/guide-lifetimes.md:2
 #, fuzzy
 #| msgid "% The Rust Language Tutorial"
 msgid "% The Rust References and Lifetimes Guide"
 msgstr "% Rust 言語チュートリアル"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:26
+#: src/doc/guide-lifetimes.md:26
 #, fuzzy
 #| msgid "## A minimal example"
 msgid "# By example"
 msgstr "## 最小限の例"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:33
+#: src/doc/guide-lifetimes.md:33
 #, fuzzy
 #| msgid "As an example, consider a simple struct type, `Point`:"
 msgid "As an example, consider a simple struct type `Point`:"
 msgstr "例として、シンプルな構造体型の `Point` について考えます。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:41
+#: src/doc/guide-lifetimes.md:37
+#, fuzzy
+#| msgid ""
+#| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
+#| "20f }; println(fmt!(\"%f\", point.x)); ~~~"
+msgid "~~~ struct Point {x: f64, y: f64} ~~~"
+msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
+
+#. type: Plain text
+#: src/doc/guide-lifetimes.md:41
 #, fuzzy
 #| msgid ""
 #| "We can use this simple definition to allocate points in many different "
@@ -61,7 +75,7 @@ msgstr ""
 "なった場所に `Point` 型のオブジェクトを割り当てています。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:48
+#: src/doc/guide-lifetimes.md:48
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -78,7 +92,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:60
+#: src/doc/guide-lifetimes.md:60
 #, fuzzy
 #| msgid ""
 #| "Suppose we want to write a procedure that computes the distance between "
@@ -115,13 +129,13 @@ msgstr ""
 "です。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:72 doc/tutorial.md:1394
+#: src/doc/guide-lifetimes.md:72 src/doc/tutorial.md:1409
 msgid "Now we can call `compute_distance()` in various ways:"
 msgstr ""
 "上記の `compute_distance()` 関数は、様々な方法で呼び出すことができます。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:82
+#: src/doc/guide-lifetimes.md:82
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -141,7 +155,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:89
+#: src/doc/guide-lifetimes.md:89
 #, fuzzy
 #| msgid ""
 #| "Here the `&` operator is used to take the address of the variable "
@@ -164,7 +178,7 @@ msgstr ""
 "(_borrowing_) と呼びます。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:95
+#: src/doc/guide-lifetimes.md:95
 #, fuzzy
 #| msgid ""
 #| "In the case of the boxes `managed_box` and `owned_box`, however, no "
@@ -186,7 +200,7 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:105
+#: src/doc/guide-lifetimes.md:105
 #, fuzzy
 #| msgid ""
 #| "Whenever a value is borrowed, there are some limitations on what you can "
@@ -216,7 +230,7 @@ msgstr ""
 "コープを抜ける) を待たなければなりません。"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:114
+#: src/doc/guide-lifetimes.md:114
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
@@ -232,7 +246,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:124
+#: src/doc/guide-lifetimes.md:124
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
@@ -248,7 +262,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:134
+#: src/doc/guide-lifetimes.md:134
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
@@ -264,35 +278,35 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:180
+#: src/doc/guide-lifetimes.md:180
 #, fuzzy
 #| msgid "# Borrowed pointers"
 msgid "# Borrowing managed boxes and rooting"
 msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:262
+#: src/doc/guide-lifetimes.md:262
 #, fuzzy
 #| msgid "# Borrowed pointers"
 msgid "# Borrowing owned boxes"
 msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:367
+#: src/doc/guide-lifetimes.md:367
 #, fuzzy
 #| msgid "# Borrowed pointers"
 msgid "# Borrowing and enums"
 msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:477
+#: src/doc/guide-lifetimes.md:477
 #, fuzzy
 #| msgid "# Dereferencing pointers"
 msgid "# Returning references"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:490
+#: src/doc/guide-lifetimes.md:490
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
@@ -308,7 +322,25 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:659
+#: src/doc/guide-lifetimes.md:533
+#, fuzzy, no-wrap
+#| msgid "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: 20f }; println(fmt!(\"%f\", point.x)); ~~~"
+msgid ""
+"~~~ {.ignore}\n"
+"struct Point {x: f64, y: f64}\n"
+"fn get_x_sh(p: @Point) -> &f64 {\n"
+"    &p.x // Error reported here\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
+
+#. type: Plain text
+#: src/doc/guide-lifetimes.md:659
 #, fuzzy
 #| msgid "## Conventions"
 msgid "# Conclusion"
