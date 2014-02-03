@@ -127,8 +127,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let exe = outdir.path().join("rust_out");
     let out = run::process_output(exe.as_str().unwrap(), []);
     match out {
-        None => fail!("couldn't run the test"),
-        Some(out) => {
+        Err(e) => fail!("couldn't run the test: {}", e),
+        Ok(out) => {
             if !out.status.success() {
                 fail!("test executable failed:\n{}",
                       str::from_utf8(out.error));

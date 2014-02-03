@@ -96,7 +96,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
             if fd == input {
                 let mut buf = [0, ..1];
                 // drain the input file descriptor of its input
-                FileDesc::new(fd, false).inner_read(buf).unwrap();
+                let _ = FileDesc::new(fd, false).inner_read(buf).unwrap();
                 incoming = true;
             } else {
                 let mut bits = [0, ..8];
@@ -104,7 +104,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 //
                 // FIXME: should this perform a send() this number of
                 //      times?
-                FileDesc::new(fd, false).inner_read(bits).unwrap();
+                let _ = FileDesc::new(fd, false).inner_read(bits).unwrap();
                 let remove = {
                     match map.find(&fd).expect("fd unregistered") {
                         &(ref c, oneshot) => !c.try_send(()) || oneshot
@@ -166,7 +166,8 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        unsafe { libc::usleep((ms * 1000) as libc::c_uint); }
+        // FIXME: this can fail because of EINTR, what do do?
+        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
     }
 
     fn remove(&mut self) {

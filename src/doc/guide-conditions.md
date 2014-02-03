@@ -47,7 +47,7 @@ An example program that does this task reads like this:
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -55,7 +55,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -71,7 +71,6 @@ fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
 
     // Path takes a generic by-value, rather than by reference
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
     let mut reader = BufferedReader::new(File::open(&path));
 
@@ -245,7 +244,7 @@ and trapping its exit status using `task::try`:
 use std::io::{BufferedReader, File};
 use std::task;
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -253,7 +252,7 @@ use std::task;
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -277,7 +276,6 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
@@ -347,7 +345,7 @@ but similarly clear as the version that used `fail!` in the logic where the erro
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -355,7 +353,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -374,7 +372,6 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
@@ -415,7 +412,7 @@ and replaces bad input lines with the pair `(-1,-1)`:
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -423,7 +420,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -447,7 +444,6 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
@@ -489,7 +485,7 @@ Changing the condition's return type from `(int,int)` to `Option<(int,int)>` wil
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{IoResult, File};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -497,7 +493,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -522,7 +518,6 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
@@ -573,7 +568,7 @@ This can be encoded in the handler API by introducing a helper type: `enum Malfo
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -581,7 +576,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -615,7 +610,6 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
@@ -696,7 +690,7 @@ a second condition and a helper function will suffice:
 # #[allow(unused_imports)];
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
-#     use std::io::File;
+#     use std::io::{File, IoResult};
 #     use std::io::MemReader;
 #     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -704,7 +698,7 @@ use std::io::{BufferedReader, File};
 #                                        789 123\n\
 #                                        45 67\n\
 #                                        ");
-#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#     pub fn new(_inner: IoResult<File>) -> BufferedReader<MemReader> {
 #           BufferedReader::new(MemReader::new(s.to_owned()))
 #     }
 # }
@@ -752,7 +746,6 @@ fn parse_int(x: &str) -> int {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-#    let _g = std::io::ignore_io_error();
     let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));

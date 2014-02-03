@@ -11,6 +11,7 @@
 //! Utilities for spawning and managing processes
 
 #[allow(missing_doc)];
+#[deny(unused_must_use)];
 
 use comm::SharedChan;
 use io::Reader;
@@ -119,7 +120,8 @@ impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Option<Process> {
+    pub fn new(prog: &str, args: &[~str],
+               options: ProcessOptions) -> io::IoResult<Process> {
         let ProcessOptions { env, dir, in_fd, out_fd, err_fd } = options;
         let env = env.as_ref().map(|a| a.as_slice());
         let cwd = dir.as_ref().map(|a| a.as_str().unwrap());
@@ -138,10 +140,7 @@ impl Process {
             cwd: cwd,
             io: rtio,
         };
-        match process::Process::new(rtconfig) {
-            Some(inner) => Some(Process { inner: inner }),
-            None => None
-        }
+        process::Process::new(rtconfig).map(|p| Process { inner: p })
     }
 
     /// Returns the unique id of the process
@@ -224,19 +223,17 @@ impl Process {
         let ch_clone = ch.clone();
 
         spawn(proc() {
-            let _guard = io::ignore_io_error();
             let mut error = error;
             match error {
                 Some(ref mut e) => ch.send((2, e.read_to_end())),
-                None => ch.send((2, ~[]))
+                None => ch.send((2, Ok(~[])))
             }
         });
         spawn(proc() {
-            let _guard = io::ignore_io_error();
             let mut output = output;
             match output {
                 Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
-                None => ch_clone.send((1, ~[]))
+                None => ch_clone.send((1, Ok(~[])))
             }
         });
 
@@ -251,8 +248,8 @@ impl Process {
         };
 
         return ProcessOutput {status: status,
-                              output: outs,
-                              error: errs};
+                              output: outs.ok().unwrap_or(~[]),
+                              error: errs.ok().unwrap_or(~[]) };
     }
 
     /**
@@ -262,9 +259,10 @@ impl Process {
      * On Posix OSs SIGTERM will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    pub fn destroy(&mut self) {
-        self.inner.signal(io::process::PleaseExitSignal);
+    pub fn destroy(&mut self) -> io::IoResult<()> {
+        let ret = self.inner.signal(io::process::PleaseExitSignal);
         self.finish();
+        return ret;
     }
 
     /**
@@ -274,9 +272,12 @@ impl Process {
      * On Posix OSs SIGKILL will be sent to the process. On Win32
      * TerminateProcess(..) will be called.
      */
-    pub fn force_destroy(&mut self) {
-        self.inner.signal(io::process::MustDieSignal);
+    pub fn force_destroy(&mut self) -> io::IoResult<()> {
+        // This should never fail because we own the process
+        let ret = self.inner.signal(io::process::MustDieSignal);
         self.finish();
+        return ret;
+
     }
 }
 
@@ -293,18 +294,14 @@ impl Process {
  *
  * The process's exit code, or None if the child process could not be started
  */
-pub fn process_status(prog: &str, args: &[~str]) -> Option<ProcessExit> {
-    let mut opt_prog = Process::new(prog, args, ProcessOptions {
+pub fn process_status(prog: &str, args: &[~str]) -> io::IoResult<ProcessExit> {
+    Process::new(prog, args, ProcessOptions {
         env: None,
         dir: None,
         in_fd: Some(unsafe { libc::dup(libc::STDIN_FILENO) }),
         out_fd: Some(unsafe { libc::dup(libc::STDOUT_FILENO) }),
         err_fd: Some(unsafe { libc::dup(libc::STDERR_FILENO) })
-    });
-    match opt_prog {
-        Some(ref mut prog) => Some(prog.finish()),
-        None => None
-    }
+    }).map(|mut p| p.finish())
 }
 
 /**
@@ -320,12 +317,10 @@ pub fn process_status(prog: &str, args: &[~str]) -> Option<ProcessExit> {
  * The process's stdout/stderr output and exit code, or None if the child process could not be
  * started.
  */
-pub fn process_output(prog: &str, args: &[~str]) -> Option<ProcessOutput> {
-    let mut opt_prog = Process::new(prog, args, ProcessOptions::new());
-    match opt_prog {
-        Some(ref mut prog) => Some(prog.finish_with_output()),
-        None => None
-    }
+pub fn process_output(prog: &str, args: &[~str]) -> io::IoResult<ProcessOutput> {
+    Process::new(prog, args, ProcessOptions::new()).map(|mut p| {
+        p.finish_with_output()
+    })
 }
 
 #[cfg(test)]
@@ -337,33 +332,25 @@ mod tests {
     use task::spawn;
     use unstable::running_on_valgrind;
     use io::pipe::PipeStream;
-    use io::{io_error, FileNotFound};
+    use io::{FileNotFound};
     use libc::c_int;
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_process_status() {
-        let mut status = run::process_status("false", []).expect("failed to exec `false`");
+        let mut status = run::process_status("false", []).unwrap();
         assert!(status.matches_exit_status(1));
 
-        status = run::process_status("true", []).expect("failed to exec `true`");
+        status = run::process_status("true", []).unwrap();
         assert!(status.success());
     }
 
     #[test]
     fn test_process_output_fail_to_start() {
-        // If the executable does not exist, then the io_error condition should be raised with
-        // IoErrorKind FileNotFound.
-
-        let mut trapped_io_error = false;
-        let opt_outp = io_error::cond.trap(|e| {
-            trapped_io_error = true;
-            assert_eq!(e.kind, FileNotFound);
-        }).inside(|| -> Option<run::ProcessOutput> {
-            run::process_output("/no-binary-by-this-name-should-exist", [])
-        });
-        assert!(trapped_io_error);
-        assert!(opt_outp.is_none());
+        match run::process_output("/no-binary-by-this-name-should-exist", []) {
+            Err(e) => assert_eq!(e.kind, FileNotFound),
+            Ok(..) => fail!()
+        }
     }
 
     #[test]
@@ -371,7 +358,7 @@ mod tests {
     fn test_process_output_output() {
 
         let run::ProcessOutput {status, output, error}
-             = run::process_output("echo", [~"hello"]).expect("failed to exec `echo`");
+             = run::process_output("echo", [~"hello"]).unwrap();
         let output_str = str::from_utf8_owned(output).unwrap();
 
         assert!(status.success());
@@ -387,7 +374,7 @@ mod tests {
     fn test_process_output_error() {
 
         let run::ProcessOutput {status, output, error}
-             = run::process_output("mkdir", [~"."]).expect("failed to exec `mkdir`");
+             = run::process_output("mkdir", [~"."]).unwrap();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, ~[]);
@@ -408,7 +395,7 @@ mod tests {
             in_fd: Some(pipe_in.input),
             out_fd: Some(pipe_out.out),
             err_fd: Some(pipe_err.out)
-        }).expect("failed to exec `cat`");
+        }).unwrap();
 
         os::close(pipe_in.input as int);
         os::close(pipe_out.out as int);
@@ -426,27 +413,18 @@ mod tests {
 
     fn writeclose(fd: c_int, s: &str) {
         let mut writer = PipeStream::open(fd);
-        writer.write(s.as_bytes());
+        writer.write(s.as_bytes()).unwrap();
     }
 
     fn readclose(fd: c_int) -> ~str {
-        let mut res = ~[];
-        let mut reader = PipeStream::open(fd);
-        let mut buf = [0, ..1024];
-        loop {
-            match reader.read(buf) {
-                Some(n) => { res.push_all(buf.slice_to(n)); }
-                None => break
-            }
-        }
-        str::from_utf8_owned(res).unwrap()
+        PipeStream::open(fd).read_to_str().unwrap()
     }
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_once() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
-            .expect("failed to exec `false`");
+            .unwrap();
         assert!(prog.finish().matches_exit_status(1));
     }
 
@@ -454,7 +432,7 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_finish_twice() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
-            .expect("failed to exec `false`");
+            .unwrap();
         assert!(prog.finish().matches_exit_status(1));
         assert!(prog.finish().matches_exit_status(1));
     }
@@ -464,7 +442,7 @@ mod tests {
     fn test_finish_with_output_once() {
 
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new())
-            .expect("failed to exec `echo`");
+            .unwrap();
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
         let output_str = str::from_utf8_owned(output).unwrap();
@@ -482,7 +460,7 @@ mod tests {
     fn test_finish_with_output_twice() {
 
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new())
-            .expect("failed to exec `echo`");
+            .unwrap();
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
@@ -511,14 +489,14 @@ mod tests {
         run::Process::new("pwd", [], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        }).expect("failed to exec `pwd`")
+        }).unwrap()
     }
     #[cfg(unix,target_os="android")]
     fn run_pwd(dir: Option<&Path>) -> run::Process {
         run::Process::new("/system/bin/sh", [~"-c",~"pwd"], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        }).expect("failed to exec `/system/bin/sh`")
+        }).unwrap()
     }
 
     #[cfg(windows)]
@@ -526,7 +504,7 @@ mod tests {
         run::Process::new("cmd", [~"/c", ~"cd"], run::ProcessOptions {
             dir: dir,
             .. run::ProcessOptions::new()
-        }).expect("failed to run `cmd`")
+        }).unwrap()
     }
 
     #[test]
@@ -537,8 +515,8 @@ mod tests {
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat();
-        let child_stat = child_dir.stat();
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
@@ -554,8 +532,8 @@ mod tests {
         let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
         let child_dir = Path::new(output.trim());
 
-        let parent_stat = parent_dir.stat();
-        let child_stat = child_dir.stat();
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
 
         assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
         assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
@@ -566,14 +544,14 @@ mod tests {
         run::Process::new("env", [], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        }).expect("failed to exec `env`")
+        }).unwrap()
     }
     #[cfg(unix,target_os="android")]
     fn run_env(env: Option<~[(~str, ~str)]>) -> run::Process {
         run::Process::new("/system/bin/sh", [~"-c",~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        }).expect("failed to exec `/system/bin/sh`")
+        }).unwrap()
     }
 
     #[cfg(windows)]
@@ -581,7 +559,7 @@ mod tests {
         run::Process::new("cmd", [~"/c", ~"set"], run::ProcessOptions {
             env: env,
             .. run::ProcessOptions::new()
-        }).expect("failed to run `cmd`")
+        }).unwrap()
     }
 
     #[test]

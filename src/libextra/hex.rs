@@ -201,7 +201,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let b = s.as_bytes().to_hex();
         bh.iter(|| {
-            b.from_hex();
+            b.from_hex().unwrap();
         });
         bh.bytes = b.len() as u64;
     }

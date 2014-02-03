@@ -736,14 +736,15 @@ impl Liveness {
     pub fn write_vars(&self,
                       wr: &mut io::Writer,
                       ln: LiveNode,
-                      test: |uint| -> LiveNode) {
+                      test: |uint| -> LiveNode) -> io::IoResult<()> {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars.get()) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                write!(wr, " {}", Variable(var_idx).to_str());
+                if_ok!(write!(wr, " {}", Variable(var_idx).to_str()));
             }
         }
+        Ok(())
     }
 
     pub fn find_loop_scope(&self,
@@ -781,6 +782,7 @@ impl Liveness {
         *loop_scope.get().last().unwrap()
     }
 
+    #[allow(unused_must_use)]
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
         let mut wr = io::MemWriter::new();
         {

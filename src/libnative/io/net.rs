@@ -112,8 +112,8 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
     }
 }
 
-#[cfg(windows)] unsafe fn close(sock: sock_t) { libc::closesocket(sock); }
-#[cfg(unix)]    unsafe fn close(sock: sock_t) { libc::close(sock); }
+#[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
+#[cfg(unix)]    unsafe fn close(sock: sock_t) { let _ = libc::close(sock); }
 
 fn sockname(fd: sock_t,
             f: extern "system" unsafe fn(sock_t, *mut libc::sockaddr,

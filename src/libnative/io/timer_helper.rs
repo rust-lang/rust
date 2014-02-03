@@ -126,11 +126,11 @@ mod imp {
     }
 
     pub fn signal(handle: HANDLE) {
-        unsafe { SetEvent(handle); }
+        assert!(unsafe { SetEvent(handle) != 0 });
     }
 
     pub fn close(handle: HANDLE) {
-        unsafe { CloseHandle(handle); }
+        assert!(unsafe { CloseHandle(handle) != 0 });
     }
 
     extern "system" {

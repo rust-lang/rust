@@ -66,6 +66,8 @@ impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     pub fn bump_past<T>(&mut self) {
         self.bump(mem::size_of::<T>());
     }
+
+    pub fn unwrap(self) -> V { self.inner }
 }
 
 /// Abstract type-directed pointer-movement using the MovePtr trait

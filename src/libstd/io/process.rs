@@ -14,7 +14,7 @@ use prelude::*;
 
 use libc;
 use io;
-use io::io_error;
+use io::IoResult;
 use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 use fmt;
@@ -93,7 +93,7 @@ pub enum ProcessExit {
 
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
-    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) {
+    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) -> fmt::Result {
         match *obj {
             ExitStatus(code) =>  write!(f.buf, "exit code: {}", code),
             ExitSignal(code) =>  write!(f.buf, "signal: {}", code),
@@ -118,7 +118,7 @@ impl ProcessExit {
 impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
-    pub fn new(config: ProcessConfig) -> Option<Process> {
+    pub fn new(config: ProcessConfig) -> IoResult<Process> {
         let mut config = Some(config);
         LocalIo::maybe_raise(|io| {
             io.spawn(config.take_unwrap()).map(|(p, io)| {
@@ -141,14 +141,9 @@ impl Process {
     /// Note that this is purely a wrapper around libuv's `uv_process_kill`
     /// function.
     ///
-    /// If the signal delivery fails, then the `io_error` condition is raised on
-    pub fn signal(&mut self, signal: int) {
-        match self.handle.kill(signal) {
-            Ok(()) => {}
-            Err(err) => {
-                io_error::cond.raise(err)
-            }
-        }
+    /// If the signal delivery fails, the corresponding error is returned.
+    pub fn signal(&mut self, signal: int) -> IoResult<()> {
+        self.handle.kill(signal)
     }
 
     /// Wait for the child to exit completely, returning the status that it
@@ -176,7 +171,6 @@ impl Drop for Process {
 mod tests {
     use io::process::{ProcessConfig, Process};
     use prelude::*;
-    use str;
 
     // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
@@ -190,7 +184,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().success());
     })
@@ -206,7 +200,7 @@ mod tests {
             cwd: None,
             io: io,
         };
-        match io::result(|| Process::new(args)) {
+        match Process::new(args) {
             Ok(..) => fail!(),
             Err(..) => {}
         }
@@ -224,7 +218,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().matches_exit_status(1));
     })
@@ -240,7 +234,7 @@ mod tests {
             io: io,
         };
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait() {
             process::ExitSignal(1) => {},
@@ -249,20 +243,12 @@ mod tests {
     })
 
     pub fn read_all(input: &mut Reader) -> ~str {
-        let mut ret = ~"";
-        let mut buf = [0, ..1024];
-        loop {
-            match input.read(buf) {
-                None => { break }
-                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n)).unwrap()); }
-            }
-        }
-        return ret;
+        input.read_to_str().unwrap()
     }
 
     pub fn run_output(args: ProcessConfig) -> ~str {
         let p = Process::new(args);
-        assert!(p.is_some());
+        assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.io[0].is_none());
         assert!(p.io[1].is_some());
@@ -312,8 +298,8 @@ mod tests {
             cwd: None,
             io: io,
         };
-        let mut p = Process::new(args).expect("didn't create a proces?!");
-        p.io[0].get_mut_ref().write("foobar".as_bytes());
+        let mut p = Process::new(args).unwrap();
+        p.io[0].get_mut_ref().write("foobar".as_bytes()).unwrap();
         p.io[0] = None; // close stdin;
         let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
         assert!(p.wait().success());

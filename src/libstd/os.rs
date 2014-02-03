@@ -372,9 +372,9 @@ pub fn self_exe_name() -> Option<Path> {
     fn load_self() -> Option<~[u8]> {
         use std::io;
 
-        match io::result(|| io::fs::readlink(&Path::new("/proc/self/exe"))) {
-            Ok(Some(path)) => Some(path.as_vec().to_owned()),
-            Ok(None) | Err(..) => None
+        match io::fs::readlink(&Path::new("/proc/self/exe")) {
+            Ok(path) => Some(path.as_vec().to_owned()),
+            Err(..) => None
         }
     }
 
@@ -929,7 +929,7 @@ pub enum MapError {
 }
 
 impl fmt::Show for MapError {
-    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) -> fmt::Result {
         let str = match *val {
             ErrFdNotAvail => "fd not available for reading or writing",
             ErrInvalidFd => "Invalid fd",
@@ -944,23 +944,19 @@ impl fmt::Show for MapError {
             ErrAlreadyExists => "File mapping for specified file already exists",
             ErrZeroLength => "Zero-length mapping not allowed",
             ErrUnknown(code) => {
-                write!(out.buf, "Unknown error = {}", code);
-                return
+                return write!(out.buf, "Unknown error = {}", code)
             },
             ErrVirtualAlloc(code) => {
-                write!(out.buf, "VirtualAlloc failure = {}", code);
-                return
+                return write!(out.buf, "VirtualAlloc failure = {}", code)
             },
             ErrCreateFileMappingW(code) => {
-                format!("CreateFileMappingW failure = {}", code);
-                return
+                return write!(out.buf, "CreateFileMappingW failure = {}", code)
             },
             ErrMapViewOfFile(code) => {
-                write!(out.buf, "MapViewOfFile failure = {}", code);
-                return
+                return write!(out.buf, "MapViewOfFile failure = {}", code)
             }
         };
-        write!(out.buf, "{}", str);
+        write!(out.buf, "{}", str)
     }
 }
 
@@ -1496,7 +1492,6 @@ mod tests {
         use result::{Ok, Err};
         use os::*;
         use libc::*;
-        use io;
         use io::fs;
 
         #[cfg(unix)]
@@ -1540,9 +1535,9 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
+        drop(chunk);
 
-        let _guard = io::ignore_io_error();
-        fs::unlink(&path);
+        fs::unlink(&path).unwrap();
     }
 
     // More recursive_mkdir tests are in extra::tempfile

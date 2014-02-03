@@ -26,6 +26,7 @@ pub struct Page<'a> {
 
 pub fn render<T: fmt::Show, S: fmt::Show>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
+    -> fmt::Result
 {
     write!(dst,
 "<!DOCTYPE html>
@@ -121,7 +122,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     favicon   = nonestr(layout.favicon),
     sidebar   = *sidebar,
     crate     = layout.crate,
-    );
+    )
 }
 
 fn nonestr<'a>(s: &'a str) -> &'a str {

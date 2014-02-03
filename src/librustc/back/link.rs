@@ -100,7 +100,6 @@ pub mod write {
     use util::common::time;
 
     use std::c_str::ToCStr;
-    use std::io;
     use std::libc::{c_uint, c_int};
     use std::path::Path;
     use std::run;
@@ -297,12 +296,8 @@ pub mod write {
             assembly.as_str().unwrap().to_owned()];
 
         debug!("{} '{}'", cc, args.connect("' '"));
-        let opt_prog = {
-            let _guard = io::ignore_io_error();
-            run::process_output(cc, args)
-        };
-        match opt_prog {
-            Some(prog) => {
+        match run::process_output(cc, args) {
+            Ok(prog) => {
                 if !prog.status.success() {
                     sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
                     sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
@@ -310,8 +305,8 @@ pub mod write {
                     sess.abort_if_errors();
                 }
             },
-            None => {
-                sess.err(format!("could not exec the linker `{}`", cc));
+            Err(e) => {
+                sess.err(format!("could not exec the linker `{}`: {}", cc, e));
                 sess.abort_if_errors();
             }
         }
@@ -768,6 +763,15 @@ fn get_system_tool(sess: Session, tool: &str) -> ~str {
     }
 }
 
+fn remove(sess: Session, path: &Path) {
+    match fs::unlink(path) {
+        Ok(..) => {}
+        Err(e) => {
+            sess.err(format!("failed to remove {}: {}", path.display(), e));
+        }
+    }
+}
+
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary(sess: Session,
@@ -785,17 +789,15 @@ pub fn link_binary(sess: Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.save_temps {
-        fs::unlink(obj_filename);
-        fs::unlink(&obj_filename.with_extension("metadata.o"));
+        remove(sess, obj_filename);
+        remove(sess, &obj_filename.with_extension("metadata.o"));
     }
 
     out_filenames
 }
 
 fn is_writeable(p: &Path) -> bool {
-    use std::io;
-
-    match io::result(|| p.stat()) {
+    match p.stat() {
         Err(..) => true,
         Ok(m) => m.perm & io::UserWrite == io::UserWrite
     }
@@ -884,7 +886,7 @@ fn link_rlib(sess: Session,
     for &(ref l, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeStatic => {
-                a.add_native_library(l.as_slice());
+                a.add_native_library(l.as_slice()).unwrap();
             }
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
@@ -919,16 +921,23 @@ fn link_rlib(sess: Session,
             // the same filename for metadata (stomping over one another)
             let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
             let metadata = tmpdir.path().join(METADATA_FILENAME);
-            fs::File::create(&metadata).write(trans.metadata);
+            match fs::File::create(&metadata).write(trans.metadata) {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to write {}: {}",
+                                     metadata.display(), e));
+                    sess.abort_if_errors();
+                }
+            }
             a.add_file(&metadata, false);
-            fs::unlink(&metadata);
+            remove(sess, &metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
             let bc = obj_filename.with_extension("bc");
             a.add_file(&bc, false);
             if !sess.opts.save_temps {
-                fs::unlink(&bc);
+                remove(sess, &bc);
             }
 
             // After adding all files to the archive, we need to update the
@@ -959,7 +968,7 @@ fn link_rlib(sess: Session,
 // metadata file).
 fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
     let mut a = link_rlib(sess, None, obj_filename, out_filename);
-    a.add_native_library("morestack");
+    a.add_native_library("morestack").unwrap();
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
@@ -970,7 +979,7 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
                 continue
             }
         };
-        a.add_rlib(&p, name, sess.lto());
+        a.add_rlib(&p, name, sess.lto()).unwrap();
         let native_libs = csearch::get_native_libraries(sess.cstore, cnum);
         for &(kind, ref lib) in native_libs.iter() {
             let name = match kind {
@@ -1004,14 +1013,10 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
-    let opt_prog = {
-        let _guard = io::ignore_io_error();
-        time(sess.time_passes(), "running linker", (), |()|
-             run::process_output(cc_prog, cc_args))
-    };
-
-    match opt_prog {
-        Some(prog) => {
+    let prog = time(sess.time_passes(), "running linker", (), |()|
+                    run::process_output(cc_prog, cc_args));
+    match prog {
+        Ok(prog) => {
             if !prog.status.success() {
                 sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
                 sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
@@ -1019,8 +1024,8 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
                 sess.abort_if_errors();
             }
         },
-        None => {
-            sess.err(format!("could not exec the linker `{}`", cc_prog));
+        Err(e) => {
+            sess.err(format!("could not exec the linker `{}`: {}", cc_prog, e));
             sess.abort_if_errors();
         }
     }
@@ -1030,8 +1035,14 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     // the symbols
     if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        run::process_status("dsymutil",
-                            [out_filename.as_str().unwrap().to_owned()]);
+        match run::process_status("dsymutil",
+                                  [out_filename.as_str().unwrap().to_owned()]) {
+            Ok(..) => {}
+            Err(e) => {
+                sess.err(format!("failed to run dsymutil: {}", e));
+                sess.abort_if_errors();
+            }
+        }
     }
 }
 
@@ -1225,7 +1236,16 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                     time(sess.time_passes(), format!("altering {}.rlib", name),
                          (), |()| {
                         let dst = tmpdir.join(cratepath.filename().unwrap());
-                        fs::copy(&cratepath, &dst);
+                        match fs::copy(&cratepath, &dst) {
+                            Ok(..) => {}
+                            Err(e) => {
+                                sess.err(format!("failed to copy {} to {}: {}",
+                                                 cratepath.display(),
+                                                 dst.display(),
+                                                 e));
+                                sess.abort_if_errors();
+                            }
+                        }
                         let dst_str = dst.as_str().unwrap().to_owned();
                         let mut archive = Archive::open(sess, dst);
                         archive.remove_file(format!("{}.o", name));

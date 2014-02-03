@@ -14,7 +14,7 @@ use comm::{Port, Chan};
 use cmp;
 use io;
 use option::{None, Option, Some};
-use super::{Reader, Writer};
+use super::{Reader, Writer, IoResult};
 use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
 
 /// Allows reading from a port.
@@ -49,7 +49,7 @@ impl PortReader {
 }
 
 impl Reader for PortReader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let mut num_read = 0;
         loop {
             match self.buf {
@@ -71,10 +71,9 @@ impl Reader for PortReader {
             self.closed = self.buf.is_none();
         }
         if self.closed && num_read == 0 {
-            io::io_error::cond.raise(io::standard_error(io::EndOfFile));
-            None
+            Err(io::standard_error(io::EndOfFile))
         } else {
-            Some(num_read)
+            Ok(num_read)
         }
     }
 }
@@ -98,13 +97,15 @@ impl ChanWriter {
 }
 
 impl Writer for ChanWriter {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if !self.chan.try_send(buf.to_owned()) {
-            io::io_error::cond.raise(io::IoError {
+            Err(io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",
                 detail: None
-            });
+            })
+        } else {
+            Ok(())
         }
     }
 }
@@ -132,36 +133,28 @@ mod test {
         let mut buf = ~[0u8, ..3];
 
 
-        assert_eq!(Some(0), reader.read([]));
+        assert_eq!(Ok(0), reader.read([]));
 
-        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(buf));
         assert_eq!(~[1,2,3], buf);
 
-        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(Ok(3), reader.read(buf));
         assert_eq!(~[4,5,6], buf);
 
-        assert_eq!(Some(2), reader.read(buf));
+        assert_eq!(Ok(2), reader.read(buf));
         assert_eq!(~[7,8,6], buf);
 
-        let mut err = None;
-        let result = io::io_error::cond.trap(|io::standard_error(k, _, _)| {
-            err = Some(k)
-        }).inside(|| {
-            reader.read(buf)
-        });
-        assert_eq!(Some(io::EndOfFile), err);
-        assert_eq!(None, result);
+        match reader.read(buf) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
         assert_eq!(~[7,8,6], buf);
 
         // Ensure it continues to fail in the same way.
-        err = None;
-        let result = io::io_error::cond.trap(|io::standard_error(k, _, _)| {
-            err = Some(k)
-        }).inside(|| {
-            reader.read(buf)
-        });
-        assert_eq!(Some(io::EndOfFile), err);
-        assert_eq!(None, result);
+        match reader.read(buf) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+        }
         assert_eq!(~[7,8,6], buf);
     }
 
@@ -169,18 +162,15 @@ mod test {
     fn test_chan_writer() {
         let (port, chan) = Chan::new();
         let mut writer = ChanWriter::new(chan);
-        writer.write_be_u32(42);
+        writer.write_be_u32(42).unwrap();
 
         let wanted = ~[0u8, 0u8, 0u8, 42u8];
         let got = task::try(proc() { port.recv() }).unwrap();
         assert_eq!(wanted, got);
 
-        let mut err = None;
-        io::io_error::cond.trap(|io::IoError { kind, .. } | {
-            err = Some(kind)
-        }).inside(|| {
-            writer.write_u8(1)
-        });
-        assert_eq!(Some(io::BrokenPipe), err);
+        match writer.write_u8(1) {
+            Ok(..) => fail!(),
+            Err(e) => assert_eq!(e.kind, io::BrokenPipe),
+        }
     }
 }

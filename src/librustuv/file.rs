@@ -140,9 +140,9 @@ impl FsRequest {
             let mut paths = ~[];
             let path = CString::new(path.with_ref(|p| p), false);
             let parent = Path::new(path);
-            c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
-                                      Some(req.get_result() as uint),
-                                      |rel| {
+            let _ = c_str::from_c_multistring(req.get_ptr() as *libc::c_char,
+                                              Some(req.get_result() as uint),
+                                              |rel| {
                 let p = rel.as_bytes();
                 paths.push(parent.join(p.slice_to(rel.len())));
             });
@@ -378,7 +378,8 @@ impl Drop for FileWatcher {
             rtio::CloseAsynchronously => {
                 unsafe {
                     let req = uvll::malloc_req(uvll::UV_FS);
-                    uvll::uv_fs_close(self.loop_.handle, req, self.fd, close_cb);
+                    assert_eq!(uvll::uv_fs_close(self.loop_.handle, req,
+                                                 self.fd, close_cb), 0);
                 }
 
                 extern fn close_cb(req: *uvll::uv_fs_t) {

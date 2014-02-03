@@ -27,13 +27,14 @@
 #[allow(missing_doc)];
 
 use container::Container;
+use io::{Writer, IoResult};
 use iter::Iterator;
+use num::ToStrRadix;
 use option::{Some, None};
-use io::Writer;
+use result::Ok;
 use str::OwnedStr;
 use to_bytes::IterBytes;
 use vec::ImmutableVector;
-use num::ToStrRadix;
 
 // Alias `SipState` to `State`.
 pub use State = hash::SipState;
@@ -164,7 +165,7 @@ macro_rules! compress (
 impl Writer for SipState {
     // Methods for io::writer
     #[inline]
-    fn write(&mut self, msg: &[u8]) {
+    fn write(&mut self, msg: &[u8]) -> IoResult<()> {
         let length = msg.len();
         self.length += length;
 
@@ -180,7 +181,7 @@ impl Writer for SipState {
                     t += 1;
                 }
                 self.ntail += length;
-                return;
+                return Ok(())
             }
 
             let mut t = 0;
@@ -222,17 +223,14 @@ impl Writer for SipState {
             t += 1
         }
         self.ntail = left;
-    }
-
-    fn flush(&mut self) {
-        // No-op
+        Ok(())
     }
 }
 
 impl Streaming for SipState {
     #[inline]
     fn input(&mut self, buf: &[u8]) {
-        self.write(buf);
+        self.write(buf).unwrap();
     }
 
     #[inline]

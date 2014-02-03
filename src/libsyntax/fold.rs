@@ -861,6 +861,7 @@ pub fn noop_fold_stmt<T: Folder>(s: &Stmt, folder: &mut T) -> SmallVector<@Stmt>
 
 #[cfg(test)]
 mod test {
+    use std::io;
     use ast;
     use util::parser_testing::{string_to_crate, matches_codepattern};
     use parse::token;
@@ -868,8 +869,9 @@ mod test {
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: &mut pprust::State, crate: &ast::Crate) {
-        pprust::print_mod(s, &crate.module, crate.attrs);
+    fn fake_print_crate(s: &mut pprust::State,
+                        crate: &ast::Crate) -> io::IoResult<()> {
+        pprust::print_mod(s, &crate.module, crate.attrs)
     }
 
     // change every identifier to "zz"

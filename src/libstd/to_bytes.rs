@@ -349,7 +349,7 @@ impl<A:IterBytes> ToBytes for A {
 
         let mut m = ::io::MemWriter::new();
         self.iter_bytes(lsb0, |bytes| {
-            m.write(bytes);
+            m.write(bytes).unwrap();
             true
         });
         m.unwrap()

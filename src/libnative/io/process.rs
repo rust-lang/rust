@@ -102,9 +102,9 @@ impl Process {
                                    cwd.as_ref(), in_fd, out_fd, err_fd);
 
         unsafe {
-            for pipe in in_pipe.iter() { libc::close(pipe.input); }
-            for pipe in out_pipe.iter() { libc::close(pipe.out); }
-            for pipe in err_pipe.iter() { libc::close(pipe.out); }
+            for pipe in in_pipe.iter() { let _ = libc::close(pipe.input); }
+            for pipe in out_pipe.iter() { let _ = libc::close(pipe.out); }
+            for pipe in err_pipe.iter() { let _ = libc::close(pipe.out); }
         }
 
         match res {
@@ -149,9 +149,8 @@ impl rtio::RtioProcess for Process {
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
             match signal {
                 io::process::PleaseExitSignal | io::process::MustDieSignal => {
-                    libc::funcs::extra::kernel32::TerminateProcess(
-                        cast::transmute(pid), 1);
-                    Ok(())
+                    let ret = libc::TerminateProcess(pid as libc::HANDLE, 1);
+                    super::mkerr_winbool(ret)
                 }
                 _ => Err(io::IoError {
                     kind: io::OtherIoError,
@@ -163,8 +162,8 @@ impl rtio::RtioProcess for Process {
 
         #[cfg(not(windows))]
         unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            libc::funcs::posix88::signal::kill(pid, signal as c_int);
-            Ok(())
+            let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
+            super::mkerr_libc(r)
         }
     }
 }
@@ -255,9 +254,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
             })
         });
 
-        CloseHandle(si.hStdInput);
-        CloseHandle(si.hStdOutput);
-        CloseHandle(si.hStdError);
+        assert!(CloseHandle(si.hStdInput) != 0);
+        assert!(CloseHandle(si.hStdOutput) != 0);
+        assert!(CloseHandle(si.hStdError) != 0);
 
         match create_err {
             Some(err) => return Err(err),
@@ -269,7 +268,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         // able to close it later. We don't close the process handle however
         // because std::we want the process id to stay valid at least until the
         // calling code closes the process handle.
-        CloseHandle(pi.hThread);
+        assert!(CloseHandle(pi.hThread) != 0);
 
         Ok(SpawnProcessResult {
             pid: pi.dwProcessId as pid_t,
@@ -445,24 +444,24 @@ fn spawn_process_os(prog: &str, args: &[~str],
         rustrt::rust_unset_sigprocmask();
 
         if in_fd == -1 {
-            libc::close(libc::STDIN_FILENO);
+            let _ = libc::close(libc::STDIN_FILENO);
         } else if retry(|| dup2(in_fd, 0)) == -1 {
             fail!("failure in dup2(in_fd, 0): {}", os::last_os_error());
         }
         if out_fd == -1 {
-            libc::close(libc::STDOUT_FILENO);
+            let _ = libc::close(libc::STDOUT_FILENO);
         } else if retry(|| dup2(out_fd, 1)) == -1 {
             fail!("failure in dup2(out_fd, 1): {}", os::last_os_error());
         }
         if err_fd == -1 {
-            libc::close(libc::STDERR_FILENO);
+            let _ = libc::close(libc::STDERR_FILENO);
         } else if retry(|| dup2(err_fd, 2)) == -1 {
             fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
         for fd in range(3, getdtablesize()).rev() {
             if fd != output.fd() {
-                close(fd as c_int);
+                let _ = close(fd as c_int);
             }
         }
 
@@ -478,7 +477,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             }
         });
         with_argv(prog, args, |argv| {
-            execvp(*argv, argv);
+            let _ = execvp(*argv, argv);
             let errno = os::errno();
             let bytes = [
                 (errno << 24) as u8,
@@ -576,9 +575,9 @@ fn with_dirp<T>(d: Option<&Path>, cb: |*libc::c_char| -> T) -> T {
 
 #[cfg(windows)]
 fn free_handle(handle: *()) {
-    unsafe {
-        libc::funcs::extra::kernel32::CloseHandle(cast::transmute(handle));
-    }
+    assert!(unsafe {
+        libc::CloseHandle(cast::transmute(handle)) != 0
+    })
 }
 
 #[cfg(unix)]
@@ -629,15 +628,15 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
             loop {
                 let mut status = 0;
                 if GetExitCodeProcess(process, &mut status) == FALSE {
-                    CloseHandle(process);
+                    assert!(CloseHandle(process) != 0);
                     fail!("failure in GetExitCodeProcess: {}", os::last_os_error());
                 }
                 if status != STILL_ACTIVE {
-                    CloseHandle(process);
+                    assert!(CloseHandle(process) != 0);
                     return p::ExitStatus(status as int);
                 }
                 if WaitForSingleObject(process, INFINITE) == WAIT_FAILED {
-                    CloseHandle(process);
+                    assert!(CloseHandle(process) != 0);
                     fail!("failure in WaitForSingleObject: {}", os::last_os_error());
                 }
             }

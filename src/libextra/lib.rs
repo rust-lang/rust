@@ -34,6 +34,11 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
+#[cfg(stage0)]
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
+
 // Utility modules
 
 pub mod c_vec;
