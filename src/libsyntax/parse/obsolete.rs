@@ -30,7 +30,6 @@ pub enum ObsoleteSyntax {
     ObsoleteSwap,
     ObsoleteUnsafeBlock,
     ObsoleteBareFnType,
-    ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
     ObsoleteUnsafeExternFn,
     ObsoleteTraitFuncVisibility,
@@ -42,7 +41,6 @@ pub enum ObsoleteSyntax {
     ObsoleteBoxedClosure,
     ObsoleteClosureType,
     ObsoleteMultipleImport,
-    ObsoleteExternModAttributesInParens,
     ObsoleteManagedPattern,
     ObsoleteManagedString,
     ObsoleteManagedVec,
@@ -85,11 +83,6 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteBareFnType => (
                 "bare function type",
                 "use `|A| -> B` or `extern fn(A) -> B` instead"
-            ),
-            ObsoleteNamedExternModule => (
-                "named external module",
-                "instead of `extern mod foo { ... }`, write `mod foo { \
-                 extern { ... } }`"
             ),
             ObsoleteMultipleLocalDecl => (
                 "declaration of multiple locals at once",
@@ -140,11 +133,6 @@ impl ParserObsoleteMethods for Parser {
             ObsoleteMultipleImport => (
                 "multiple imports",
                 "only one import is allowed per `use` statement"
-            ),
-            ObsoleteExternModAttributesInParens => (
-                "`extern mod` with linkage attribute list",
-                "use `extern mod foo = \"bar\";` instead of \
-                `extern mod foo (name = \"bar\")`"
             ),
             ObsoleteManagedPattern => (
                 "managed pointer pattern",
