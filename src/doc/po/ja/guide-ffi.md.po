@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,21 +17,21 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
-#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
-#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: src/doc/guide-conditions.md:4 src/doc/guide-ffi.md:4
+#: src/doc/guide-lifetimes.md:4 src/doc/guide-macros.md:4
+#: src/doc/guide-tasks.md:4 src/doc/rust.md:4 src/doc/tutorial.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-ffi.md:2
+#: src/doc/guide-ffi.md:2
 #, fuzzy
 #| msgid "[The foreign function interface][ffi]"
 msgid "% The Rust Foreign Function Interface Guide"
 msgstr "[他言語間インターフェース (foreign function inferface)][ffi]"
 
 #. type: Plain text
-#: doc/guide-ffi.md:16
+#: src/doc/guide-ffi.md:16
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~~ {.ignore} use std::libc::size_t;"
@@ -40,7 +40,7 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-ffi.md:48
+#: src/doc/guide-ffi.md:48
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~~ {.ignore} use std::libc::{c_int, size_t};"
@@ -49,12 +49,63 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-ffi.md:168 doc/tutorial.md:875
+#: src/doc/guide-ffi.md:145
+#, fuzzy
+#| msgid "## Structs"
+msgid "# Stack management"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:168 src/doc/tutorial.md:885
 msgid "# Destructors"
 msgstr "# デストラクタ"
 
 #. type: Plain text
-#: doc/guide-ffi.md:333
+#: src/doc/guide-ffi.md:264
+#, fuzzy
+#| msgid "## A minimal example"
+msgid "A basic example is:"
+msgstr "## 最小限の例"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:323
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"struct RustObject {\n"
+"    a: i32,\n"
+"    // other members\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:390
+#, fuzzy
+#| msgid "## Freezing"
+msgid "# Linking"
+msgstr "## 凍結"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:437
+#, fuzzy
+#| msgid "# Vectors and strings"
+msgid "## The `link_args` attribute"
+msgstr "# ベクタと文字列"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:459
+#, fuzzy
+#| msgid "## Conventions"
+msgid "# Unsafe blocks"
+msgstr "## 本書の表記について"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:470
 #, fuzzy
 #| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgid "~~~~ unsafe fn kaboom(ptr: *int) -> int { *ptr } ~~~~"
@@ -64,7 +115,7 @@ msgstr ""
 "~~~~~~~~\n"
 
 #. type: Plain text
-#: doc/guide-ffi.md:344
+#: src/doc/guide-ffi.md:481
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~{.ignore} use std::libc;"
@@ -73,10 +124,17 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-ffi.md:363
+#: src/doc/guide-ffi.md:500
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~{.ignore} use std::libc; use std::ptr;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"
+
+#. type: Plain text
+#: src/doc/guide-ffi.md:516
+#, fuzzy
+#| msgid "## Using the rust tool"
+msgid "# Foreign calling conventions"
+msgstr "## `rust` コマンドを利用する"

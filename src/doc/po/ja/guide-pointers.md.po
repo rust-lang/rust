@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,14 +17,14 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-pointers.md:2
+#: src/doc/guide-pointers.md:2
 #, fuzzy
 #| msgid "% The Rust Language Tutorial"
 msgid "% The Rust Pointer Guide"
 msgstr "% Rust 言語チュートリアル"
 
 #. type: Plain text
-#: doc/guide-pointers.md:21
+#: src/doc/guide-pointers.md:21
 #, fuzzy
 #| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgid "~~~rust fn succ(x: &int) -> int { *x + 1 } ~~~"
@@ -34,7 +34,44 @@ msgstr ""
 "~~~~~~~~\n"
 
 #. type: Plain text
-#: doc/guide-pointers.md:58
+#: src/doc/guide-pointers.md:31
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust{.ignore}\n"
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:50
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust\n"
+"# fn succ(x: &int) -> int { *x + 1 }\n"
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(&number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:58
 #, fuzzy
 #| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgid "~~~rust fn succ(x: int) -> int { x + 1 }"
@@ -44,7 +81,41 @@ msgstr ""
 "~~~~~~~~\n"
 
 #. type: Plain text
-#: doc/guide-pointers.md:115
+#: src/doc/guide-pointers.md:65
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:109
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust\n"
+"# fn transform(p: Point) -> Point { p }\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:115
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -60,7 +131,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:129
+#: src/doc/guide-pointers.md:129
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -80,7 +151,25 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:145
+#: src/doc/guide-pointers.md:141 src/doc/guide-pointers.md:221
+#: src/doc/guide-pointers.md:238 src/doc/guide-pointers.md:300
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~rust\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:145
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -94,7 +183,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:152
+#: src/doc/guide-pointers.md:152
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -111,35 +200,74 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:162
+#: src/doc/guide-pointers.md:162
 #, fuzzy
 #| msgid "# Borrowed pointers"
 msgid "# Owned Pointers"
 msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/guide-pointers.md:175
+#: src/doc/guide-pointers.md:175
 #, fuzzy
 msgid "## References to Traits"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-pointers.md:181
+#: src/doc/guide-pointers.md:181
 #, fuzzy
 #| msgid "# Data structures"
 msgid "## Recursive Data Structures"
 msgstr "# データ構造"
 
 #. type: Plain text
-#: doc/guide-pointers.md:229
+#: src/doc/guide-pointers.md:189
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~rust\n"
+"enum List<T> {\n"
+"    Nil,\n"
+"    Cons(T, ~List<T>),\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:195
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let list: List<int> = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));\n"
+"    println!(\"{:?}\", list);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:215
+#, fuzzy
+msgid "For example, this will work:"
+msgstr "## 最小限の例"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:229
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
 "fn main() {\n"
 "    let a = Point { x: 10, y: 20 };\n"
-"    do spawn {\n"
+"    spawn(proc() {\n"
 "        println!(\"{}\", a.x);\n"
-"    }\n"
+"    });\n"
 "}\n"
 "~~~\n"
 msgstr ""
@@ -149,15 +277,15 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:246
+#: src/doc/guide-pointers.md:246
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
 "fn main() {\n"
 "    let a = ~Point { x: 10, y: 20 };\n"
-"    do spawn {\n"
+"    spawn(proc() {\n"
 "        println!(\"{}\", a.x);\n"
-"    }\n"
+"    });\n"
 "}\n"
 "~~~\n"
 msgstr ""
@@ -167,14 +295,31 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:251
+#: src/doc/guide-pointers.md:251
 #, fuzzy
 #| msgid "## Managed boxes"
 msgid "# Managed Pointers"
 msgstr "## マネージドボックス"
 
 #. type: Plain text
-#: doc/guide-pointers.md:277
+#: src/doc/guide-pointers.md:269
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~rust{.ignore}\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:277
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -192,7 +337,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:308
+#: src/doc/guide-pointers.md:308
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -210,13 +355,13 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:326 doc/tutorial.md:1345
+#: src/doc/guide-pointers.md:326 src/doc/tutorial.md:1360
 #, fuzzy
 msgid "# References"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-pointers.md:336
+#: src/doc/guide-pointers.md:336
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~rust use std::num::sqrt;"
@@ -225,7 +370,23 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/guide-pointers.md:352
+#: src/doc/guide-pointers.md:341
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"struct Point {\n"
+"    x: f32,\n"
+"    y: f32,\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:352
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -239,7 +400,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/guide-pointers.md:378
+#: src/doc/guide-pointers.md:378
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -257,14 +418,72 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/guide-pointers.md:433
+#: src/doc/guide-pointers.md:396
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust\n"
+"fn main() {\n"
+"    let mut x = ~5;\n"
+"    if *x < 10 {\n"
+"        let y = &x;\n"
+"        println!(\"Oh no: {:?}\", y);\n"
+"        return;\n"
+"    }\n"
+"    *x -= 1;\n"
+"    println!(\"Oh no: {:?}\", x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:407
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust{.ignore}\n"
+"fn main() {\n"
+"    let mut x = ~5;\n"
+"    if *x < 10 {\n"
+"        let y = &x;\n"
+"        *x -= 1;\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:415
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"        println!(\"Oh no: {:?}\", y);\n"
+"        return;\n"
+"    }\n"
+"    *x -= 1;\n"
+"    println!(\"Oh no: {:?}\", x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:433
 #, fuzzy
 #| msgid "# Dereferencing pointers"
 msgid "# Returning Pointers"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-pointers.md:444
+#: src/doc/guide-pointers.md:444
 #, fuzzy, no-wrap
 #| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgid ""
@@ -278,7 +497,24 @@ msgstr ""
 "~~~~~~~~\n"
 
 #. type: Plain text
-#: doc/guide-pointers.md:457 doc/guide-pointers.md:471
+#: src/doc/guide-pointers.md:450
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:457 src/doc/guide-pointers.md:471
 #, fuzzy, no-wrap
 #| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgid ""
@@ -290,3 +526,51 @@ msgstr ""
 "~~~~\n"
 "let square = |x: int| -> uint { (x * x) as uint };\n"
 "~~~~~~~~\n"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:463
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = ~foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:477
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = @foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/guide-pointers.md:491
+#, fuzzy
+#| msgid "# Modules and crates"
+msgid "# Related Resources"
+msgstr "# モジュールとクレート"
+
+#. type: Bullet: '* '
+#: src/doc/guide-pointers.md:492
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[Lifetimes guide](guide-lifetimes.html)"
+msgstr "% Rust 言語チュートリアル"

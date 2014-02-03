@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8\n"
-"POT-Creation-Date: 2014-01-14 21:02+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2013-08-08 22:27+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,50 +17,49 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
-#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
-#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+#: src/doc/guide-conditions.md:4 src/doc/guide-ffi.md:4
+#: src/doc/guide-lifetimes.md:4 src/doc/guide-macros.md:4
+#: src/doc/guide-tasks.md:4 src/doc/rust.md:4 src/doc/tutorial.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/guide-ffi.md:168 doc/tutorial.md:875
+#: src/doc/guide-ffi.md:168 src/doc/tutorial.md:885
 msgid "# Destructors"
 msgstr "# デストラクタ"
 
 #. type: Plain text
-#: doc/guide-lifetimes.md:72 doc/tutorial.md:1394
+#: src/doc/guide-lifetimes.md:72 src/doc/tutorial.md:1409
 msgid "Now we can call `compute_distance()` in various ways:"
 msgstr ""
 "上記の `compute_distance()` 関数は、様々な方法で呼び出すことができます。"
 
 #. type: Plain text
-#: doc/guide-pointers.md:326 doc/tutorial.md:1345
+#: src/doc/guide-pointers.md:326 src/doc/tutorial.md:1360
 #, fuzzy
 msgid "# References"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/guide-testing.md:127 doc/tutorial.md:776
+#: src/doc/guide-testing.md:127 src/doc/tutorial.md:786
 #, fuzzy
-#| msgid "## A minimal example"
 msgid "For example:"
 msgstr "## 最小限の例"
 
 #. type: Plain text
-#: doc/rust.md:1388 doc/tutorial.md:2508
+#: src/doc/rust.md:1391 src/doc/tutorial.md:2495
 msgid "Likewise, supertrait methods may also be called on trait objects."
 msgstr ""
 "同様に、スーパートレイトのメソッドは、トレイトオブジェクトについても呼び出す"
 "ことが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:2
+#: src/doc/tutorial.md:2
 msgid "% The Rust Language Tutorial"
 msgstr "% Rust 言語チュートリアル"
 
 #. type: Plain text
-#: doc/tutorial.md:13
+#: src/doc/tutorial.md:13
 msgid ""
 "Rust is a programming language with a focus on type safety, memory safety, "
 "concurrency and performance. It is intended for writing large-scale, high-"
@@ -78,7 +77,7 @@ msgstr ""
 "的型付けされた、コンパイル型の言語です。"
 
 #. type: Plain text
-#: doc/tutorial.md:17
+#: src/doc/tutorial.md:17
 msgid ""
 "As a multi-paradigm language, Rust supports writing code in procedural, "
 "functional and object-oriented styles. Some of its pleasant high-level "
@@ -89,7 +88,7 @@ msgstr ""
 "す。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:30
+#: src/doc/tutorial.md:30
 msgid ""
 "**Type inference.** Type annotations on local variable declarations are "
 "optional."
@@ -97,7 +96,7 @@ msgstr ""
 "**型推論:** ローカル変数の宣言では型注釈 (type annotation) を省略できます。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:30
+#: src/doc/tutorial.md:30
 msgid ""
 "**Safe task-based concurrency.** Rust's lightweight tasks do not share "
 "memory, instead communicating through messages."
@@ -106,7 +105,7 @@ msgstr ""
 "るのではなく、メッセージを介して通信します。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:30
+#: src/doc/tutorial.md:30
 msgid ""
 "**Higher-order functions.** Efficient and flexible closures provide "
 "iteration and other control structures"
@@ -115,7 +114,7 @@ msgstr ""
 "造を実現できます。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:30
+#: src/doc/tutorial.md:30
 msgid ""
 "**Pattern matching and algebraic data types.** Pattern matching on Rust's "
 "enumeration types (a more powerful version of C's enums, similar to "
@@ -127,7 +126,7 @@ msgstr ""
 "ログラムの論理を、コンパクトで表現力豊かに記述することができます。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:30
+#: src/doc/tutorial.md:30
 msgid ""
 "**Polymorphism.** Rust has type-parametric functions and types, type classes "
 "and OO-style interfaces."
@@ -136,12 +135,12 @@ msgstr ""
 "ジェクト指向風のインターフェースがあります。"
 
 #. type: Plain text
-#: doc/tutorial.md:32
+#: src/doc/tutorial.md:32
 msgid "## Scope"
 msgstr "## 本文書の位置づけ"
 
 #. type: Plain text
-#: doc/tutorial.md:38
+#: src/doc/tutorial.md:38
 msgid ""
 "This is an introductory tutorial for the Rust programming language. It "
 "covers the fundamentals of the language, including the syntax, the type "
@@ -154,7 +153,7 @@ msgstr ""
 "テップは) を参照してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:42
+#: src/doc/tutorial.md:42
 msgid ""
 "This tutorial assumes that the reader is already familiar with one or more "
 "languages in the C family. Understanding of pointers and general memory "
@@ -165,12 +164,12 @@ msgstr ""
 "知識が役に立つでしょう。"
 
 #. type: Plain text
-#: doc/tutorial.md:44
+#: src/doc/tutorial.md:44
 msgid "## Conventions"
 msgstr "## 本書の表記について"
 
 #. type: Plain text
-#: doc/tutorial.md:47
+#: src/doc/tutorial.md:47
 msgid ""
 "Throughout the tutorial, language keywords and identifiers defined in "
 "example code are displayed in `code font`."
@@ -179,7 +178,7 @@ msgstr ""
 "を `code font` のように示します。"
 
 #. type: Plain text
-#: doc/tutorial.md:53
+#: src/doc/tutorial.md:53
 msgid ""
 "Code snippets are indented, and also shown in a monospaced font. Not all "
 "snippets constitute whole programs. For brevity, we'll often show fragments "
@@ -195,7 +194,7 @@ msgstr ""
 "ださい。"
 
 #. type: Plain text
-#: doc/tutorial.md:57
+#: src/doc/tutorial.md:57
 msgid ""
 "> ***Warning:*** Rust is a language under ongoing development. Notes > about "
 "potential changes to the language, implementation > deficiencies, and other "
@@ -206,12 +205,12 @@ msgstr ""
 "注意してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:59
+#: src/doc/tutorial.md:59
 msgid "# Getting started"
 msgstr "# はじめに"
 
 #. type: Plain text
-#: doc/tutorial.md:67
+#: src/doc/tutorial.md:67
 #, fuzzy
 #| msgid ""
 #| "The Rust compiler currently must be built from a [tarball], unless you "
@@ -228,7 +227,7 @@ msgstr ""
 "トーラー][win-exe] の使用をおすすめします。"
 
 #. type: Plain text
-#: doc/tutorial.md:72
+#: src/doc/tutorial.md:72
 #, fuzzy
 #| msgid ""
 #| "Since the Rust compiler is written in Rust, it must be built by a "
@@ -249,29 +248,35 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:74
+#: src/doc/tutorial.md:74
 msgid "Snapshot binaries are currently built and tested on several platforms:"
 msgstr ""
 "スナップショットバイナリは、現時点では以下のプラットフォーム向けのものがあり"
 "ます。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:78
-msgid "Windows (7, Server 2008 R2), x86 only"
+#: src/doc/tutorial.md:78
+#, fuzzy
+#| msgid "Windows (7, Server 2008 R2), x86 only"
+msgid "Windows (7, 8, Server 2008 R2), x86 only"
 msgstr "Windows (7, Server 2008 R2), x86 のみ"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:78
-msgid "Linux (various distributions), x86 and x86-64"
+#: src/doc/tutorial.md:78
+#, fuzzy
+#| msgid "Linux (various distributions), x86 and x86-64"
+msgid "Linux (2.6.18 or later, various distributions), x86 and x86-64"
 msgstr "Linux (各種ディストリビューション), x86 または x86-64"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:78
-msgid "OSX 10.6 (\"Snow Leopard\") or greater, x86 and x86-64"
+#: src/doc/tutorial.md:78
+#, fuzzy
+#| msgid "OSX 10.6 (\"Snow Leopard\") or greater, x86 and x86-64"
+msgid "OSX 10.7 (Lion) or greater, x86 and x86-64"
 msgstr "OSX 10.6 (\"Snow Leopard\") 以降, x86 または x86-64"
 
 #. type: Plain text
-#: doc/tutorial.md:81
+#: src/doc/tutorial.md:81
 msgid ""
 "You may find that other platforms work, but these are our \"tier 1\" "
 "supported build environments that are most likely to work."
@@ -280,7 +285,7 @@ msgstr ""
 "1\" プラットフォームとしてサポートされているのは上記のみです。"
 
 #. type: Plain text
-#: doc/tutorial.md:88
+#: src/doc/tutorial.md:88
 msgid ""
 "> ***Note:*** Windows users should read the detailed > \"[getting started]"
 "[wiki-start]\" notes on the wiki. Even when using > the binary installer, "
@@ -295,7 +300,7 @@ msgstr ""
 "ません。このような制限があることはは、本当に残念です。"
 
 #. type: Plain text
-#: doc/tutorial.md:92
+#: src/doc/tutorial.md:92
 #, fuzzy
 #| msgid ""
 #| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
@@ -310,45 +315,45 @@ msgstr ""
 "developing-Rust"
 
 #. type: Plain text
-#: doc/tutorial.md:95
+#: src/doc/tutorial.md:95
 msgid ""
 "To build from source you will also need the following prerequisite packages:"
 msgstr "ソースからビルドするためには、以下のパッケージが必要です。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:101
+#: src/doc/tutorial.md:101
 msgid "g++ 4.4 or clang++ 3.x"
 msgstr "g++ 4.4 または clang++ 3.x"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:101
+#: src/doc/tutorial.md:101
 msgid "python 2.6 or later (but not 3.x)"
 msgstr "python 2.6 以降 (ただし、 3.x は除く)"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:101
+#: src/doc/tutorial.md:101
 msgid "perl 5.0 or later"
 msgstr "perl 5.0 以降"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:101
+#: src/doc/tutorial.md:101
 msgid "gnu make 3.81 or later"
 msgstr "gnu make 3.81 以降"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:101
+#: src/doc/tutorial.md:101
 msgid "curl"
 msgstr "curl"
 
 #. type: Plain text
-#: doc/tutorial.md:104
+#: src/doc/tutorial.md:104
 msgid ""
 "If you've fulfilled those prerequisites, something along these lines should "
 "work."
 msgstr "上記条件を満たしていれば、以下のような手順でビルド可能なはずです。"
 
 #. type: Plain text
-#: doc/tutorial.md:112
+#: src/doc/tutorial.md:112
 #, fuzzy
 #| msgid ""
 #| "~~~~ {.notrust} $ curl -O http://static.rust-lang.org/dist/rust-0.7.tar."
@@ -366,7 +371,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:118
+#: src/doc/tutorial.md:118
 msgid ""
 "You may need to use `sudo make install` if you do not normally have "
 "permission to modify the destination directory. The install locations can be "
@@ -379,11 +384,15 @@ msgstr ""
 "ポートしています。詳細については、 `--help` 引数を指定して実行してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:122
+#: src/doc/tutorial.md:122
+#, fuzzy
+#| msgid ""
+#| "When complete, `make install` will place several programs into `/usr/"
+#| "local/bin`: `rustc`, the Rust compiler; `rustdoc`, the API-documentation "
+#| "tool; and `rustpkg`, the Rust package manager."
 msgid ""
 "When complete, `make install` will place several programs into `/usr/local/"
-"bin`: `rustc`, the Rust compiler; `rustdoc`, the API-documentation tool; and "
-"`rustpkg`, the Rust package manager."
+"bin`: `rustc`, the Rust compiler, and `rustdoc`, the API-documentation tool."
 msgstr ""
 "ビルド完了後、`make install` を実行すると、以下のプログラムが `/usr/local/"
 "bin` にインストールされます。\n"
@@ -393,7 +402,7 @@ msgstr ""
 "* `rustpkg`: Rust のパッケージマネージャ\n"
 
 #. type: Plain text
-#: doc/tutorial.md:125
+#: src/doc/tutorial.md:125
 #, fuzzy
 #| msgid ""
 #| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
@@ -406,12 +415,12 @@ msgstr ""
 "[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
 
 #. type: Plain text
-#: doc/tutorial.md:127
+#: src/doc/tutorial.md:127
 msgid "## Compiling your first program"
 msgstr "## 最初のプログラム"
 
 #. type: Plain text
-#: doc/tutorial.md:130
+#: src/doc/tutorial.md:130
 msgid ""
 "Rust program files are, by convention, given the extension `.rs`. Say we "
 "have a file `hello.rs` containing this program:"
@@ -420,7 +429,7 @@ msgstr ""
 "容を持つファイル、`hello.rs` が存在するとします。"
 
 #. type: Plain text
-#: doc/tutorial.md:136
+#: src/doc/tutorial.md:136
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -437,7 +446,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:140
+#: src/doc/tutorial.md:140
 msgid ""
 "If the Rust compiler was installed successfully, running `rustc hello.rs` "
 "will produce an executable called `hello` (or `hello.exe` on Windows) which, "
@@ -448,7 +457,7 @@ msgstr ""
 "が可能です。このファイルを実行すれば、予想通りの出力が得られるでしょう。"
 
 #. type: Plain text
-#: doc/tutorial.md:145
+#: src/doc/tutorial.md:145
 #, fuzzy
 #| msgid ""
 #| "The Rust compiler tries to provide useful information when it encounters "
@@ -467,7 +476,7 @@ msgstr ""
 "が出力されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:158
+#: src/doc/tutorial.md:158
 #, fuzzy
 #| msgid ""
 #| "In its simplest form, a Rust program is a `.rs` file with some types and "
@@ -492,12 +501,12 @@ msgstr ""
 "プログラムから利用するライブラリとしてコンパイルすることも可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:160
+#: src/doc/tutorial.md:160
 msgid "## Editing Rust code"
 msgstr "## Rust のコードを編集する"
 
 #. type: Plain text
-#: doc/tutorial.md:170
+#: src/doc/tutorial.md:170
 msgid ""
 "There are vim highlighting and indentation scripts in the Rust source "
 "distribution under `src/etc/vim/`. There is an emacs mode under `src/etc/"
@@ -518,7 +527,7 @@ msgstr ""
 "etc/kate` 以下です。"
 
 #. type: Plain text
-#: doc/tutorial.md:177
+#: src/doc/tutorial.md:177
 msgid ""
 "There is ctags support via `src/etc/ctags.rust`, but many other tools and "
 "editors are not yet supported. If you end up writing a Rust mode for your "
@@ -529,7 +538,7 @@ msgstr ""
 "ディタ向けのRust モードを作成した場合、リンクを貼りたいのでお知らせください。"
 
 #. type: Plain text
-#: doc/tutorial.md:180
+#: src/doc/tutorial.md:180
 msgid ""
 "[sublime]: http://github.com/dbp/sublime-rust [sublime-pkg]: http://wbond."
 "net/sublime_packages/package_control"
@@ -538,12 +547,12 @@ msgstr ""
 "[sublime-pkg]: http://wbond.net/sublime_packages/package_control"
 
 #. type: Plain text
-#: doc/tutorial.md:182
+#: src/doc/tutorial.md:182
 msgid "# Syntax basics"
 msgstr "# 基本的な構文"
 
 #. type: Plain text
-#: doc/tutorial.md:190
+#: src/doc/tutorial.md:190
 msgid ""
 "Assuming you've programmed in any C-family language (C++, Java, JavaScript, "
 "C#, or PHP), Rust will feel familiar. Code is arranged in blocks delineated "
@@ -561,7 +570,7 @@ msgstr ""
 "レータは C++ と同様 2つのコロン (`::`) です。"
 
 #. type: Plain text
-#: doc/tutorial.md:195
+#: src/doc/tutorial.md:195
 msgid ""
 "The main surface difference to be aware of is that the condition at the head "
 "of control structures like `if` and `while` does not require parentheses, "
@@ -574,7 +583,7 @@ msgstr ""
 "とはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:208
+#: src/doc/tutorial.md:208
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -604,7 +613,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:212
+#: src/doc/tutorial.md:212
 msgid ""
 "The `let` keyword introduces a local variable. Variables are immutable by "
 "default. To introduce a local variable that you can re-assign later, use "
@@ -615,7 +624,7 @@ msgstr ""
 "mut` を用います。"
 
 #. type: Plain text
-#: doc/tutorial.md:216
+#: src/doc/tutorial.md:216
 msgid "~~~~ let hi = \"hi\"; let mut count = 0;"
 msgstr ""
 "~~~~\n"
@@ -623,7 +632,24 @@ msgstr ""
 " let mut count = 0;"
 
 #. type: Plain text
-#: doc/tutorial.md:226
+#: src/doc/tutorial.md:222
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"while count < 10 {\n"
+"    println!(\"count is {}\", count);\n"
+"    count += 1;\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:226
 #, fuzzy
 #| msgid ""
 #| "Although Rust can almost always infer the types of local variables, you "
@@ -640,7 +666,7 @@ msgstr ""
 "(static item) には、常に型注釈を指定しなければなりません。"
 
 #. type: Plain text
-#: doc/tutorial.md:233
+#: src/doc/tutorial.md:233
 msgid ""
 "~~~~ static MONSTER_FACTOR: f64 = 57.8; let monster_size = MONSTER_FACTOR * "
 "10.0; let monster_size: int = 50; ~~~~"
@@ -652,7 +678,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:242
+#: src/doc/tutorial.md:242
 msgid ""
 "Local variables may shadow earlier declarations, as in the previous example: "
 "`monster_size` was first declared as a `f64`, and then a second "
@@ -672,7 +698,7 @@ msgstr ""
 "ます (`let _monster_size = 50;`)。"
 
 #. type: Plain text
-#: doc/tutorial.md:248
+#: src/doc/tutorial.md:248
 msgid ""
 "Rust identifiers start with an alphabetic character or an underscore, and "
 "after that may contain any sequence of alphabetic characters, numbers, or "
@@ -687,7 +713,7 @@ msgstr ""
 "されています。"
 
 #. type: Plain text
-#: doc/tutorial.md:253
+#: src/doc/tutorial.md:253
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -701,12 +727,12 @@ msgstr ""
 "~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:255
+#: src/doc/tutorial.md:255
 msgid "## Expressions and semicolons"
 msgstr "## 式とセミコロン"
 
 #. type: Plain text
-#: doc/tutorial.md:261
+#: src/doc/tutorial.md:261
 msgid ""
 "Though it isn't apparent in all code, there is a fundamental difference "
 "between Rust's syntax and predecessors like C.  Many constructs that are "
@@ -720,12 +746,12 @@ msgstr ""
 "ようにコードを書きますが、"
 
 #. type: Plain text
-#: doc/tutorial.md:275
+#: src/doc/tutorial.md:275
 msgid "But, in Rust, you don't have to repeat the name `price`:"
 msgstr "Rust では、変数名 `price` を繰り返し書く必要はありません。"
 
 #. type: Plain text
-#: doc/tutorial.md:293
+#: src/doc/tutorial.md:293
 msgid ""
 "Both pieces of code are exactly equivalent: they assign a value to `price` "
 "depending on the condition that holds. Note that there are no semicolons in "
@@ -740,7 +766,7 @@ msgstr ""
 "最後の式の値になります**。"
 
 #. type: Plain text
-#: doc/tutorial.md:299
+#: src/doc/tutorial.md:299
 msgid ""
 "Put another way, the semicolon in Rust *ignores the value of an "
 "expression*.  Thus, if the branches of the `if` had looked like `{ 4; }`, "
@@ -755,7 +781,7 @@ msgstr ""
 "には節のうち実行されたものの値が代入されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:304
+#: src/doc/tutorial.md:304
 msgid ""
 "In short, everything that's not a declaration (declarations are `let` for "
 "variables; `fn` for functions; and any top-level named items such as [traits]"
@@ -767,7 +793,7 @@ msgstr ""
 "すべてが式となります。関数のボディ部も式です。"
 
 #. type: Plain text
-#: doc/tutorial.md:312
+#: src/doc/tutorial.md:312
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -786,12 +812,12 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:314
+#: src/doc/tutorial.md:314
 msgid "## Primitive types and literals"
 msgstr "## プリミティブ型とリテラル"
 
 #. type: Plain text
-#: doc/tutorial.md:321
+#: src/doc/tutorial.md:321
 msgid ""
 "There are general signed and unsigned integer types, `int` and `uint`, as "
 "well as 8-, 16-, 32-, and 64-bit variants, `i8`, `u16`, etc.  Integers can "
@@ -808,7 +834,7 @@ msgstr ""
 "応します。"
 
 #. type: Plain text
-#: doc/tutorial.md:327
+#: src/doc/tutorial.md:327
 msgid ""
 "In the absence of an integer literal suffix, Rust will infer the integer "
 "type based on type annotations and function signatures in the surrounding "
@@ -820,14 +846,21 @@ msgstr ""
 "フィックスなしの整数リテラルは `int` 型だとみなされます。"
 
 #. type: Plain text
-#: doc/tutorial.md:334
-#, no-wrap
+#: src/doc/tutorial.md:334
+#, fuzzy, no-wrap
+#| msgid ""
+#| "~~~~\n"
+#| "let a = 1;       // a is an int\n"
+#| "let b = 10i;     // b is an int, due to the 'i' suffix\n"
+#| "let c = 100u;    // c is a uint\n"
+#| "let d = 1000i32; // d is an i32\n"
+#| "~~~~\n"
 msgid ""
 "~~~~\n"
-"let a = 1;       // a is an int\n"
-"let b = 10i;     // b is an int, due to the 'i' suffix\n"
-"let c = 100u;    // c is a uint\n"
-"let d = 1000i32; // d is an i32\n"
+"let a = 1;       // `a` is an `int`\n"
+"let b = 10i;     // `b` is an `int`, due to the `i` suffix\n"
+"let c = 100u;    // `c` is a `uint`\n"
+"let d = 1000i32; // `d` is an `i32`\n"
 "~~~~\n"
 msgstr ""
 "~~~~\n"
@@ -838,7 +871,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:339
+#: src/doc/tutorial.md:339
 #, fuzzy
 #| msgid ""
 #| "There are two floating-point types: `f32`, and `f64`. Floating-point "
@@ -858,12 +891,12 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:341
+#: src/doc/tutorial.md:341
 msgid "The keywords `true` and `false` produce literals of type `bool`."
 msgstr "`true` キーワードと `false` キーワードは、`bool` 型のリテラルです。"
 
 #. type: Plain text
-#: doc/tutorial.md:348
+#: src/doc/tutorial.md:348
 #, fuzzy
 #| msgid ""
 #| "Characters, the `char` type, are four-byte Unicode codepoints, whose "
@@ -888,18 +921,18 @@ msgstr ""
 "タと文字列) の章で述べます。"
 
 #. type: Plain text
-#: doc/tutorial.md:356
+#: src/doc/tutorial.md:356
 msgid "The nil type, written `()`, has a single value, also written `()`."
 msgstr ""
 "nil 型は `()` と表記されます。 nil 型の唯一の値も `()` と表記されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:358
+#: src/doc/tutorial.md:358
 msgid "## Operators"
 msgstr "## 演算子"
 
 #. type: Plain text
-#: doc/tutorial.md:363
+#: src/doc/tutorial.md:363
 msgid ""
 "Rust's set of operators contains very few surprises. Arithmetic is done with "
 "`*`, `/`, `%`, `+`, and `-` (multiply, quotient, remainder, add, and "
@@ -912,7 +945,7 @@ msgstr ""
 "ポートされています。"
 
 #. type: Plain text
-#: doc/tutorial.md:366
+#: src/doc/tutorial.md:366
 #, fuzzy
 #| msgid ""
 #| "Note that, if applied to an integer value, `!` flips all the bits (like "
@@ -925,7 +958,7 @@ msgstr ""
 "じ動作) が行われることに注意してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:370
+#: src/doc/tutorial.md:370
 msgid ""
 "The comparison operators are the traditional `==`, `!=`, `<`, `>`, `<=`, and "
 "`>=`. Short-circuiting (lazy) boolean operators are written `&&` (and) and "
@@ -936,7 +969,7 @@ msgstr ""
 "ります。"
 
 #. type: Plain text
-#: doc/tutorial.md:377
+#: src/doc/tutorial.md:377
 #, fuzzy
 #| msgid ""
 #| "For type casting, Rust uses the binary `as` operator.  It takes an "
@@ -956,7 +989,7 @@ msgstr ""
 "た型に変換します。"
 
 #. type: Plain text
-#: doc/tutorial.md:383
+#: src/doc/tutorial.md:383
 msgid "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
 msgstr ""
 "~~~~\n"
@@ -966,7 +999,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:385
+#: src/doc/tutorial.md:385
 #, fuzzy
 #| msgid ""
 #| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
@@ -979,12 +1012,12 @@ msgstr ""
 "[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
 
 #. type: Plain text
-#: doc/tutorial.md:387
+#: src/doc/tutorial.md:387
 msgid "## Syntax extensions"
 msgstr "## 構文拡張"
 
 #. type: Plain text
-#: doc/tutorial.md:395
+#: src/doc/tutorial.md:395
 #, fuzzy, no-wrap
 #| msgid ""
 #| "*Syntax extensions* are special forms that are not built into the language,\n"
@@ -1004,7 +1037,7 @@ msgid ""
 msgstr "**構文拡張** *(Syntax extensions)* は言語組み込みではなく、ライブラリにより提供される特殊形式 (スペシャルフォーム) です。プログラム中に構文拡張が登場したことを外見上明確にするため、構文拡張の名前には末尾に `!` をつけますなければなりません。標準ライブラリではいくつかの構文拡張が定義されていますが、その中でも最も有用なのは `fmt!` です。`fmt!` は `sprintf`スタイルの書式整形を行うもので、後のコード例の中でも何度か見かけることになるでしょう。\n"
 
 #. type: Plain text
-#: doc/tutorial.md:399
+#: src/doc/tutorial.md:399
 #, fuzzy
 #| msgid ""
 #| "`fmt!` supports most of the directives that [printf][pf] supports, but "
@@ -1021,20 +1054,20 @@ msgstr ""
 "一致しない場合はコンパイルエラーとなります。"
 
 #. type: Plain text
-#: doc/tutorial.md:402
+#: src/doc/tutorial.md:402
 msgid "~~~~ # let mystery_object = ();"
 msgstr ""
 "~~~~\n"
 "# let mystery_object = ();"
 
 #. type: Plain text
-#: doc/tutorial.md:409
+#: src/doc/tutorial.md:409
 #, fuzzy
 #| msgid ""
 #| "// %? will conveniently print any type println(fmt!(\"what is this thing: "
 #| "%?\", mystery_object)); ~~~~"
 msgid ""
-"// {:?} will conveniently print any type println!(\"what is this thing: "
+"// `{:?}` will conveniently print any type println!(\"what is this thing: "
 "{:?}\", mystery_object); ~~~~"
 msgstr ""
 "// %? は任意の型を表示できる便利なディレクティブです\n"
@@ -1042,7 +1075,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:412
+#: src/doc/tutorial.md:412
 #, fuzzy
 #| msgid ""
 #| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
@@ -1055,7 +1088,7 @@ msgstr ""
 "[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
 
 #. type: Plain text
-#: doc/tutorial.md:416
+#: src/doc/tutorial.md:416
 #, fuzzy
 #| msgid ""
 #| "You can define your own syntax extensions with the macro system. For "
@@ -1069,17 +1102,17 @@ msgstr ""
 "[マクロチュートリアル][macros] を参照してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:418
+#: src/doc/tutorial.md:418
 msgid "# Control structures"
 msgstr "# 制御構造"
 
 #. type: Plain text
-#: doc/tutorial.md:420
+#: src/doc/tutorial.md:420
 msgid "## Conditionals"
 msgstr "## 条件式"
 
 #. type: Plain text
-#: doc/tutorial.md:424
+#: src/doc/tutorial.md:424
 msgid ""
 "We've seen `if` expressions a few times already. To recap, braces are "
 "compulsory, an `if` can have an optional `else` clause, and multiple `if`/"
@@ -1090,7 +1123,7 @@ msgstr ""
 "構文は互いに連鎖できる、ということでした。"
 
 #. type: Plain text
-#: doc/tutorial.md:439
+#: src/doc/tutorial.md:439
 msgid ""
 "The condition given to an `if` construct *must* be of type `bool` (no "
 "implicit conversion happens). If the arms are blocks that have a value, this "
@@ -1102,12 +1135,29 @@ msgstr ""
 "るものは、すべて同じ型の値でなければなりません。"
 
 #. type: Plain text
-#: doc/tutorial.md:449
+#: src/doc/tutorial.md:447
+#, fuzzy, no-wrap
+#| msgid "~~~~ fn line(a: int, b: int, x: int) -> int { a * x + b } fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
+msgid ""
+"~~~~\n"
+"fn signum(x: int) -> int {\n"
+"    if x < 0 { -1 }\n"
+"    else if x > 0 { 1 }\n"
+"    else { 0 }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~\n"
+"fn line(a: int, b: int, x: int) -> int { a * x + b }\n"
+"fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
+
+#. type: Plain text
+#: src/doc/tutorial.md:449
 msgid "## Pattern matching"
 msgstr "## パターンマッチ"
 
 #. type: Plain text
-#: doc/tutorial.md:455
+#: src/doc/tutorial.md:455
 msgid ""
 "Rust's `match` construct is a generalized, cleaned-up version of C's "
 "`switch` construct. You provide it with a value and a number of *arms*, each "
@@ -1124,7 +1174,7 @@ msgstr ""
 "ターンとの比較は行われません。"
 
 #. type: Plain text
-#: doc/tutorial.md:469
+#: src/doc/tutorial.md:469
 msgid ""
 "Unlike in C, there is no \"falling through\" between arms: only one arm "
 "executes, and it doesn't have to explicitly `break` out of the construct "
@@ -1135,7 +1185,7 @@ msgstr ""
 "する必要はありません。"
 
 #. type: Plain text
-#: doc/tutorial.md:478
+#: src/doc/tutorial.md:478
 #, fuzzy
 #| msgid ""
 #| "A `match` arm consists of a *pattern*, then an arrow `=>`, followed by an "
@@ -1170,7 +1220,7 @@ msgstr ""
 "す)。"
 
 #. type: Plain text
-#: doc/tutorial.md:483
+#: src/doc/tutorial.md:483
 msgid ""
 "The patterns in a match arm are followed by a fat arrow, `=>`, then an "
 "expression to evaluate. Each case is separated by commas. It's often "
@@ -1181,7 +1231,7 @@ msgstr ""
 "を記述することも可能で、その場合は arm 末尾のカンマを省略することが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:496
+#: src/doc/tutorial.md:496
 msgid ""
 "`match` constructs must be *exhaustive*: they must have an arm covering "
 "every possible case. For example, the typechecker would reject the previous "
@@ -1193,7 +1243,7 @@ msgstr ""
 "ンの arm を削除した場合、型検査によりコンパイルエラーとされます。"
 
 #. type: Plain text
-#: doc/tutorial.md:500
+#: src/doc/tutorial.md:500
 msgid ""
 "A powerful application of pattern matching is *destructuring*: matching in "
 "order to bind names to the contents of data types."
@@ -1202,7 +1252,7 @@ msgstr ""
 "造化代入とは、データ型内部の値を名前に束縛 (bind) することです。"
 
 #. type: Plain text
-#: doc/tutorial.md:504
+#: src/doc/tutorial.md:504
 msgid ""
 "> ***Note:*** The following code makes use of tuples (`(f64, f64)`) which > "
 "are explained in section 5.3. For now you can think of tuples as a list of > "
@@ -1213,7 +1263,7 @@ msgstr ""
 "い。"
 
 #. type: Plain text
-#: doc/tutorial.md:523
+#: src/doc/tutorial.md:525
 #, fuzzy
 #| msgid ""
 #| "A variable name in a pattern matches any value, *and* binds that name to "
@@ -1226,7 +1276,8 @@ msgid ""
 "value of the matched value inside of the arm's action. Thus, `(0.0, y)` "
 "matches any tuple whose first element is zero, and binds `y` to the second "
 "element. `(x, y)` matches any two-element tuple, and binds both elements to "
-"variables."
+"variables.  A subpattern can also be bound to a variable, using `variable @ "
+"pattern`. For example:"
 msgstr ""
 "パターン内に登場する変数は、任意の値にマッチ **するだけでなく**、arm のアク"
 "ション内ではマッチした値が変数の名前に束縛されます。従って、 `(0f, y)` は1つ"
@@ -1235,7 +1286,7 @@ msgstr ""
 "数に束縛されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:530
+#: src/doc/tutorial.md:540
 msgid ""
 "Any `match` arm can have a guard clause (written `if EXPR`), called a "
 "*pattern guard*, which is an expression of type `bool` that determines, "
@@ -1251,7 +1302,7 @@ msgstr ""
 "用例が示されています。"
 
 #. type: Plain text
-#: doc/tutorial.md:535
+#: src/doc/tutorial.md:545
 msgid ""
 "You've already seen simple `let` bindings, but `let` is a little fancier "
 "than you've been led to believe. It, too, supports destructuring patterns. "
@@ -1263,7 +1314,7 @@ msgstr ""
 "定義することが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:540
+#: src/doc/tutorial.md:550
 msgid ""
 "~~~~ # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) } let (a, b) = "
 "get_tuple_of_two_ints(); ~~~~"
@@ -1274,7 +1325,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:544
+#: src/doc/tutorial.md:554
 msgid ""
 "Let bindings only work with _irrefutable_ patterns: that is, patterns that "
 "can never fail to match. This excludes `let` from matching literals and most "
@@ -1286,12 +1337,12 @@ msgstr ""
 "ん。"
 
 #. type: Plain text
-#: doc/tutorial.md:546
+#: src/doc/tutorial.md:556
 msgid "## Loops"
 msgstr "## ループ"
 
 #. type: Plain text
-#: doc/tutorial.md:551
+#: src/doc/tutorial.md:561
 #, fuzzy
 #| msgid ""
 #| "`while` denotes a loop that iterates as long as its given condition "
@@ -1310,7 +1361,7 @@ msgstr ""
 "ション) を中断し、次の繰り返しを実行します。"
 
 #. type: Plain text
-#: doc/tutorial.md:560
+#: src/doc/tutorial.md:570
 msgid ""
 "`loop` denotes an infinite loop, and is the preferred way of writing `while "
 "true`:"
@@ -1319,24 +1370,24 @@ msgstr ""
 "が推奨されています。"
 
 #. type: Plain text
-#: doc/tutorial.md:572
+#: src/doc/tutorial.md:582
 msgid ""
 "This code prints out a weird sequence of numbers and stops as soon as it "
 "finds one that can be divided by five."
 msgstr "このコードは 5 で割り切れる数値が現れるまで、数値を出力し続けます。"
 
 #. type: Plain text
-#: doc/tutorial.md:574
+#: src/doc/tutorial.md:584
 msgid "# Data structures"
 msgstr "# データ構造"
 
 #. type: Plain text
-#: doc/tutorial.md:576
+#: src/doc/tutorial.md:586
 msgid "## Structs"
 msgstr "## 構造体"
 
 #. type: Plain text
-#: doc/tutorial.md:581
+#: src/doc/tutorial.md:591
 msgid ""
 "Rust struct types must be declared before they are used using the `struct` "
 "syntax: `struct Name { field1: T1, field2: T2 [, ...] }`, where `T1`, "
@@ -1349,7 +1400,7 @@ msgstr ""
 "うに、構造体宣言から `struct` を取り除いたものと同じ構文で作成します。"
 
 #. type: Plain text
-#: doc/tutorial.md:585
+#: src/doc/tutorial.md:595
 msgid ""
 "Structs are quite similar to C structs and are even laid out the same way in "
 "memory (so you can read from a Rust struct in C, and vice-versa). Use the "
@@ -1360,7 +1411,25 @@ msgstr ""
 "フィールドにアクセスするには、 `mypoint.x` のように、ドット演算子を用います。"
 
 #. type: Plain text
-#: doc/tutorial.md:595
+#: src/doc/tutorial.md:602
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~~\n"
+"struct Point {\n"
+"    x: f64,\n"
+"    y: f64\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:605
 #, fuzzy
 #| msgid ""
 #| "Inherited mutability means that any field of a struct may be mutable, if "
@@ -1376,7 +1445,7 @@ msgstr ""
 "フィールドに配置された構造体のフィールドもまた、ミュータブルになります) 。"
 
 #. type: Plain text
-#: doc/tutorial.md:599
+#: src/doc/tutorial.md:609
 msgid ""
 "With a value (say, `mypoint`) of such a type in a mutable location, you can "
 "do `mypoint.y += 1.0`. But in an immutable location, such an assignment to a "
@@ -1388,7 +1457,7 @@ msgstr ""
 "このような代入操作は型エラーとなります。"
 
 #. type: Plain text
-#: doc/tutorial.md:604
+#: src/doc/tutorial.md:614
 msgid ""
 "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point "
 "{ x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
@@ -1399,10 +1468,14 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/tutorial.md:608
+#: src/doc/tutorial.md:618
+#, fuzzy
+#| msgid ""
+#| "mypoint.y += 1.0; // mypoint is mutable, and its fields as well origin.y "
+#| "+= 1.0; // ERROR: assigning to immutable field ~~~~"
 msgid ""
-"mypoint.y += 1.0; // mypoint is mutable, and its fields as well origin.y += "
-"1.0; // ERROR: assigning to immutable field ~~~~"
+"mypoint.y += 1.0; // `mypoint` is mutable, and its fields as well origin.y "
+"+= 1.0; // ERROR: assigning to immutable field ~~~~"
 msgstr ""
 "mypoint.y += 1.0;\n"
 "// mypoint はミュータブル\n"
@@ -1410,7 +1483,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:611
+#: src/doc/tutorial.md:621
 msgid ""
 "`match` patterns destructure structs. The basic syntax is `Name { fieldname: "
 "pattern, ... }`:"
@@ -1419,7 +1492,7 @@ msgstr ""
 "は、 `Name { fieldname: pattern, ... }` という構文を持ちます。"
 
 #. type: Plain text
-#: doc/tutorial.md:620
+#: src/doc/tutorial.md:630
 #, fuzzy, no-wrap
 #| msgid "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: 20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
@@ -1439,7 +1512,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:627
+#: src/doc/tutorial.md:637
 #, fuzzy
 #| msgid ""
 #| "In general, the field names of a struct do not have to appear in the same "
@@ -1462,7 +1535,7 @@ msgstr ""
 "フィールドを無視することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:635
+#: src/doc/tutorial.md:645
 #, fuzzy, no-wrap
 #| msgid "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: 20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
@@ -1481,21 +1554,25 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:637
+#: src/doc/tutorial.md:647
 msgid "## Enums"
 msgstr "## 列挙型"
 
 #. type: Plain text
-#: doc/tutorial.md:640
+#: src/doc/tutorial.md:650
+#, fuzzy
+#| msgid ""
+#| "Enums are datatypes that have several alternate representations. For "
+#| "example, consider the type shown earlier:"
 msgid ""
 "Enums are datatypes that have several alternate representations. For "
-"example, consider the type shown earlier:"
+"example, consider the following type:"
 msgstr ""
 "列挙型 (enum) は、いくつかの代替表現を持つデータ型です。例えば、以下の型につ"
 "いて考えます。"
 
 #. type: Plain text
-#: doc/tutorial.md:654
+#: src/doc/tutorial.md:664
 #, fuzzy
 #| msgid ""
 #| "A value of this type is either a `Circle`, in which case it contains a "
@@ -1517,7 +1594,7 @@ msgstr ""
 "静的に保証されるという点でより良いものとなっています。"
 
 #. type: Plain text
-#: doc/tutorial.md:660
+#: src/doc/tutorial.md:670
 #, fuzzy
 #| msgid ""
 #| "The above declaration will define a type `Shape` that can refer to such "
@@ -1538,7 +1615,7 @@ msgstr ""
 "ことができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:663
+#: src/doc/tutorial.md:673
 msgid ""
 "Enum variants need not have parameters. This `enum` declaration, for "
 "example, is equivalent to a C enum:"
@@ -1547,7 +1624,7 @@ msgstr ""
 "言は C の列挙型と等価です。"
 
 #. type: Plain text
-#: doc/tutorial.md:675
+#: src/doc/tutorial.md:685
 msgid ""
 "This declaration defines `North`, `East`, `South`, and `West` as constants, "
 "all of which have type `Direction`."
@@ -1556,7 +1633,7 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:679
+#: src/doc/tutorial.md:689
 msgid ""
 "When an enum is C-like (that is, when none of the variants have parameters), "
 "it is possible to explicitly set the discriminator values to a constant "
@@ -1566,7 +1643,7 @@ msgstr ""
 "識別値 (discriminator value) を明示的に指定することも可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:692
+#: src/doc/tutorial.md:702
 msgid ""
 "If an explicit discriminator is not specified for a variant, the value "
 "defaults to the value of the previous variant plus one. If the first variant "
@@ -1578,7 +1655,7 @@ msgstr ""
 "で言うと、 `North` は 0、 `East` は 1、 `South` は 2、`West` は3となります。"
 
 #. type: Plain text
-#: doc/tutorial.md:695
+#: src/doc/tutorial.md:705
 msgid ""
 "When an enum is C-like, you can apply the `as` cast operator to convert it "
 "to its discriminator value as an `int`."
@@ -1587,7 +1664,7 @@ msgstr ""
 "値へ変換することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:699
+#: src/doc/tutorial.md:709
 msgid ""
 "For enum types with multiple variants, destructuring is the only way to get "
 "at their contents. All variant constructors can be used as patterns, as in "
@@ -1598,7 +1675,7 @@ msgstr ""
 "トのコンストラクタは、パターンとして用いることもできます。"
 
 #. type: Plain text
-#: doc/tutorial.md:716
+#: src/doc/tutorial.md:726
 #, fuzzy
 #| msgid ""
 #| "You can write a lone `_` to ignore an individual field, and can ignore "
@@ -1616,17 +1693,17 @@ msgstr ""
 "い形式で記述します。"
 
 #. type: Plain text
-#: doc/tutorial.md:731
+#: src/doc/tutorial.md:741
 msgid "Enum variants may also be structs. For example:"
 msgstr "以下の例のように、列挙型バリアントを構造体にすることも可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:755
+#: src/doc/tutorial.md:765
 msgid "## Tuples"
 msgstr "## タプル"
 
 #. type: Plain text
-#: doc/tutorial.md:760
+#: src/doc/tutorial.md:770
 #, fuzzy
 #| msgid ""
 #| "Tuples in Rust behave exactly like structs, except that their fields do "
@@ -1645,7 +1722,7 @@ msgstr ""
 "す (必要ならば、ユニット型 `()` を 0 要素のタプルと見なすことはできます。)"
 
 #. type: Plain text
-#: doc/tutorial.md:767
+#: src/doc/tutorial.md:777
 #, fuzzy, no-wrap
 #| msgid ""
 #| "For example:\n"
@@ -1673,12 +1750,12 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:769
+#: src/doc/tutorial.md:779
 msgid "## Tuple structs"
 msgstr "## タプル構造体"
 
 #. type: Plain text
-#: doc/tutorial.md:774
+#: src/doc/tutorial.md:784
 msgid ""
 "Rust also has _tuple structs_, which behave like both structs and tuples, "
 "except that, unlike tuples, tuple structs have names (so `Foo(1, 2)` has a "
@@ -1691,7 +1768,7 @@ msgstr ""
 "フィールド__ は名前を持ちません。"
 
 #. type: Plain text
-#: doc/tutorial.md:784
+#: src/doc/tutorial.md:794
 #, fuzzy, no-wrap
 #| msgid ""
 #| "For example:\n"
@@ -1720,7 +1797,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:791
+#: src/doc/tutorial.md:801
 msgid ""
 "There is a special case for tuple structs with a single field, which are "
 "sometimes called \"newtypes\" (after Haskell's \"newtype\" feature). These "
@@ -1733,7 +1810,7 @@ msgstr ""
 "きます。この新しい型は、元にした型とは異なった型として扱われます。"
 
 #. type: Plain text
-#: doc/tutorial.md:795
+#: src/doc/tutorial.md:805
 msgid "~~~~ struct GizmoId(int); ~~~~"
 msgstr ""
 "~~~~\n"
@@ -1741,7 +1818,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:798
+#: src/doc/tutorial.md:808
 #, fuzzy
 #| msgid ""
 #| "Types like this can be useful to differentiate between data that have the "
@@ -1754,7 +1831,7 @@ msgstr ""
 "データを扱う場合に用いると便利です。"
 
 #. type: Plain text
-#: doc/tutorial.md:803
+#: src/doc/tutorial.md:813
 msgid "~~~~ struct Inches(int); struct Centimeters(int); ~~~~"
 msgstr ""
 "~~~~\n"
@@ -1763,7 +1840,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:807
+#: src/doc/tutorial.md:817
 #, fuzzy
 #| msgid ""
 #| "The above definitions allow for a simple way for programs to avoid "
@@ -1777,7 +1854,7 @@ msgstr ""
 "が可能になります。"
 
 #. type: Plain text
-#: doc/tutorial.md:810
+#: src/doc/tutorial.md:820
 #, fuzzy
 #| msgid "~~~~ struct GizmoId(int); ~~~~"
 msgid "~~~ # struct Inches(int);"
@@ -1787,12 +1864,12 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:817
+#: src/doc/tutorial.md:827
 msgid "# Functions"
 msgstr "# 関数"
 
 #. type: Plain text
-#: doc/tutorial.md:825
+#: src/doc/tutorial.md:835
 #, fuzzy
 #| msgid ""
 #| "We've already seen several function definitions. Like all other static "
@@ -1816,7 +1893,7 @@ msgstr ""
 "ができます (モジュールについては、[後述](#モジュールとクレート)します) 。"
 
 #. type: Plain text
-#: doc/tutorial.md:831
+#: src/doc/tutorial.md:841
 #, fuzzy, no-wrap
 #| msgid "~~~~ fn line(a: int, b: int, x: int) -> int { a * x + b } fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
 msgid ""
@@ -1831,7 +1908,7 @@ msgstr ""
 "fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
 
 #. type: Plain text
-#: doc/tutorial.md:836
+#: src/doc/tutorial.md:846
 msgid ""
 "The `return` keyword immediately returns from the body of a function. It is "
 "optionally followed by an expression to return. A function can also return a "
@@ -1843,7 +1920,7 @@ msgstr ""
 "値) も関数の戻り値になります。"
 
 #. type: Plain text
-#: doc/tutorial.md:842
+#: src/doc/tutorial.md:852
 #, fuzzy, no-wrap
 #| msgid "~~~~ fn line(a: int, b: int, x: int) -> int { a * x + b } fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
 msgid ""
@@ -1858,7 +1935,7 @@ msgstr ""
 "fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
 
 #. type: Plain text
-#: doc/tutorial.md:849
+#: src/doc/tutorial.md:859
 msgid ""
 "It's better Rust style to write a return value this way instead of writing "
 "an explicit `return`. The utility of `return` comes in when returning early "
@@ -1872,27 +1949,27 @@ msgstr ""
 "の型や、戻り値を返す処理を省略することが可能です。以下の2つの関数は等価です。"
 
 #. type: Plain text
-#: doc/tutorial.md:852
+#: src/doc/tutorial.md:862
 msgid "~~~~ fn do_nothing_the_hard_way() -> () { return (); }"
 msgstr ""
 "~~~~\n"
 "fn do_nothing_the_hard_way() -> () { return (); }"
 
 #. type: Plain text
-#: doc/tutorial.md:855
+#: src/doc/tutorial.md:865
 msgid "fn do_nothing_the_easy_way() { } ~~~~"
 msgstr ""
 "fn do_nothing_the_easy_way() { }\n"
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:857
+#: src/doc/tutorial.md:867
 msgid ""
 "Ending the function with a semicolon like so is equivalent to returning `()`."
 msgstr "以下のように、セミコロンで終わる関数は `()` を返す関数と等価です。"
 
 #. type: Plain text
-#: doc/tutorial.md:861
+#: src/doc/tutorial.md:871
 msgid ""
 "~~~~ fn line(a: int, b: int, x: int) -> int { a * x + b } fn oops(a: int, b: "
 "int, x: int) -> ()  { a * x + b; }"
@@ -1902,7 +1979,7 @@ msgstr ""
 "fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }"
 
 #. type: Plain text
-#: doc/tutorial.md:865
+#: src/doc/tutorial.md:875
 msgid "assert!(8 == line(5, 3, 1)); assert!(() == oops(5, 3, 1)); ~~~~"
 msgstr ""
 "assert!(8 == line(5, 3, 1));\n"
@@ -1910,7 +1987,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:869
+#: src/doc/tutorial.md:879
 msgid ""
 "As with `match` expressions and `let` bindings, function arguments support "
 "pattern destructuring. Like `let`, argument patterns must be irrefutable, as "
@@ -1922,7 +1999,7 @@ msgstr ""
 "し、呼び出し元へ返します。"
 
 #. type: Plain text
-#: doc/tutorial.md:873
+#: src/doc/tutorial.md:883
 msgid "~~~ fn first((value, _): (int, f64)) -> int { value } ~~~"
 msgstr ""
 "~~~\n"
@@ -1930,7 +2007,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:879
+#: src/doc/tutorial.md:889
 msgid ""
 "A *destructor* is a function responsible for cleaning up the resources used "
 "by an object when it is no longer accessible. Destructors can be defined to "
@@ -1941,7 +2018,7 @@ msgstr ""
 "リのようなリソースの解放を処理するために定義することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:883
+#: src/doc/tutorial.md:893
 #, fuzzy
 #| msgid ""
 #| "Objects are never accessible after their destructor has been called, so "
@@ -1958,7 +2035,7 @@ msgstr ""
 "び出されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:885
+#: src/doc/tutorial.md:895
 msgid ""
 "The `~` sigil represents a unique handle for a memory allocation on the heap:"
 msgstr ""
@@ -1966,7 +2043,7 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:897
+#: src/doc/tutorial.md:907
 msgid ""
 "Rust includes syntax for heap memory allocation in the language since it's "
 "commonly used, but the same semantics can be implemented by a type with a "
@@ -1977,12 +2054,12 @@ msgstr ""
 "り実装することが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:899
+#: src/doc/tutorial.md:909
 msgid "# Ownership"
 msgstr "# 所有権"
 
 #. type: Plain text
-#: doc/tutorial.md:904
+#: src/doc/tutorial.md:914
 msgid ""
 "Rust formalizes the concept of object ownership to delegate management of an "
 "object's lifetime to either a variable or a task-local garbage collector. An "
@@ -1997,7 +2074,7 @@ msgstr ""
 "断します。"
 
 #. type: Plain text
-#: doc/tutorial.md:908
+#: src/doc/tutorial.md:918
 #, fuzzy
 #| msgid ""
 #| "Ownership is recursive, so mutability is inherited recursively and a "
@@ -2018,7 +2095,7 @@ msgstr ""
 "きにデストラクタが呼び出されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:912
+#: src/doc/tutorial.md:922
 msgid ""
 "~~~~ // the struct owns the objects contained in the `x` and `y` fields "
 "struct Foo { x: int, y: ~int }"
@@ -2028,7 +2105,7 @@ msgstr ""
 "struct Foo { x: int, y: ~int }"
 
 #. type: Plain text
-#: doc/tutorial.md:919
+#: src/doc/tutorial.md:929
 #, no-wrap
 msgid ""
 "{\n"
@@ -2045,7 +2122,7 @@ msgstr ""
 "// `a` の含まれているスコープから抜けるとき、 構造体のフィールドの `~int` のデストラクタが呼ばれる\n"
 
 #. type: Plain text
-#: doc/tutorial.md:924
+#: src/doc/tutorial.md:934
 msgid ""
 "// `b` is mutable, and the mutability is inherited by the objects it owns "
 "let mut b = Foo { x: 5, y: ~10 }; b.x = 10; ~~~~"
@@ -2057,7 +2134,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:931
+#: src/doc/tutorial.md:941
 #, fuzzy
 #| msgid ""
 #| "If an object doesn't contain garbage-collected boxes, it consists of a "
@@ -2081,7 +2158,7 @@ msgstr ""
 "** ことは依然可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:934
+#: src/doc/tutorial.md:944
 #, fuzzy
 #| msgid ""
 #| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
@@ -2094,24 +2171,53 @@ msgstr ""
 "[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
 
 #. type: Plain text
-#: doc/tutorial.md:963
+#: src/doc/tutorial.md:946
+#, fuzzy
+#| msgid "# Introduction"
+msgid "# Implementing a linked list"
+msgstr "# イントロダクション"
+
+#. type: Plain text
+#: src/doc/tutorial.md:973
 #, fuzzy
 #| msgid "# Boxes"
 msgid "## Boxes"
 msgstr "# ボックス"
 
 #. type: Plain text
-#: doc/tutorial.md:1032
+#: src/doc/tutorial.md:986
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"struct Foo {\n"
+"    a: u32,\n"
+"    b: u32,\n"
+"    c: u32,\n"
+"    d: u32\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:1047
 #, fuzzy
 #| msgid "# Move semantics"
 msgid "## Move semantics"
 msgstr "# ムーブセマンティクス"
 
 #. type: Plain text
-#: doc/tutorial.md:1076
+#: src/doc/tutorial.md:1091
+#, fuzzy
+#| msgid ""
+#| "~~~~ let x = ~5; let y = x.clone(); // y is a newly allocated box let z = "
+#| "x; // no new memory allocated, x can no longer be used ~~~~"
 msgid ""
-"~~~~ let x = ~5; let y = x.clone(); // y is a newly allocated box let z = "
-"x; // no new memory allocated, x can no longer be used ~~~~"
+"~~~~ let x = ~5; let y = x.clone(); // `y` is a newly allocated box let z = "
+"x; // no new memory allocated, `x` can no longer be used ~~~~"
 msgstr ""
 "~~~~\n"
 "let x = ~5;\n"
@@ -2121,7 +2227,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1105
+#: src/doc/tutorial.md:1120
 msgid ""
 "~~~~ let r = ~13; let mut s = r; // box becomes mutable *s += 1; let t = "
 "s; // box becomes immutable ~~~~"
@@ -2134,27 +2240,27 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1129
+#: src/doc/tutorial.md:1144
 #, fuzzy
 msgid "## References"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/tutorial.md:1175
+#: src/doc/tutorial.md:1190
 #, fuzzy
 #| msgid "## Using other crates"
 msgid "## Lists of other types"
 msgstr "## 他のクレートの利用"
 
 #. type: Plain text
-#: doc/tutorial.md:1307
+#: src/doc/tutorial.md:1322
 #, fuzzy
 #| msgid "## Managed boxes"
 msgid "# More on boxes"
 msgstr "## マネージドボックス"
 
 #. type: Plain text
-#: doc/tutorial.md:1338
+#: src/doc/tutorial.md:1353
 msgid "~~~~ let x = 5; // immutable let mut y = 5; // mutable y += 2;"
 msgstr ""
 "~~~~\n"
@@ -2163,9 +2269,13 @@ msgstr ""
 "y += 2;"
 
 #. type: Plain text
-#: doc/tutorial.md:1343
+#: src/doc/tutorial.md:1358
+#, fuzzy
+#| msgid ""
+#| "let x = ~5; // immutable let mut y = ~5; // mutable *y += 2; // the * "
+#| "operator is needed to access the contained value ~~~~"
 msgid ""
-"let x = ~5; // immutable let mut y = ~5; // mutable *y += 2; // the * "
+"let x = ~5; // immutable let mut y = ~5; // mutable *y += 2; // the `*` "
 "operator is needed to access the contained value ~~~~"
 msgstr ""
 "let x = ~5; // イミュータブル\n"
@@ -2174,7 +2284,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1352
+#: src/doc/tutorial.md:1367
 #, fuzzy
 #| msgid ""
 #| "Rust's borrowed pointers are a general purpose reference type. In "
@@ -2195,12 +2305,30 @@ msgstr ""
 "生きしないことがコンパイラにより保証されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1354
+#: src/doc/tutorial.md:1369
 msgid "As an example, consider a simple struct type, `Point`:"
 msgstr "例として、シンプルな構造体型の `Point` について考えます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1365
+#: src/doc/tutorial.md:1376
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~\n"
+"struct Point {\n"
+"    x: f64,\n"
+"    y: f64\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:1380
 msgid ""
 "We can use this simple definition to allocate points in many different ways. "
 "For example, in this code, each of these three local variables contains a "
@@ -2211,7 +2339,7 @@ msgstr ""
 "なった場所に `Point` 型のオブジェクトを割り当てています。"
 
 #. type: Plain text
-#: doc/tutorial.md:1372
+#: src/doc/tutorial.md:1387
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -2228,7 +2356,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/tutorial.md:1382
+#: src/doc/tutorial.md:1397
 #, fuzzy
 #| msgid ""
 #| "Suppose we want to write a procedure that computes the distance between "
@@ -2263,7 +2391,7 @@ msgstr ""
 "です。"
 
 #. type: Plain text
-#: doc/tutorial.md:1404
+#: src/doc/tutorial.md:1419
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
 msgid ""
@@ -2283,7 +2411,7 @@ msgstr ""
 "let origin = Point { x: 0.0, y: 0.0 };"
 
 #. type: Plain text
-#: doc/tutorial.md:1411
+#: src/doc/tutorial.md:1426
 #, fuzzy
 #| msgid ""
 #| "Here the `&` operator is used to take the address of the variable "
@@ -2306,7 +2434,7 @@ msgstr ""
 "(_borrowing_) と呼びます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1417
+#: src/doc/tutorial.md:1432
 #, fuzzy
 #| msgid ""
 #| "In the case of the boxes `managed_box` and `owned_box`, however, no "
@@ -2328,7 +2456,7 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:1426
+#: src/doc/tutorial.md:1441
 #, fuzzy
 #| msgid ""
 #| "Whenever a value is borrowed, there are some limitations on what you can "
@@ -2356,7 +2484,7 @@ msgstr ""
 "コープを抜ける) を待たなければなりません。"
 
 #. type: Plain text
-#: doc/tutorial.md:1429
+#: src/doc/tutorial.md:1444
 #, fuzzy
 #| msgid ""
 #| "For a more in-depth explanation of borrowed pointers, read the [borrowed "
@@ -2369,12 +2497,12 @@ msgstr ""
 "してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:1431
+#: src/doc/tutorial.md:1446
 msgid "## Freezing"
 msgstr "## 凍結"
 
 #. type: Plain text
-#: doc/tutorial.md:1435
+#: src/doc/tutorial.md:1450
 #, fuzzy
 #| msgid ""
 #| "Borrowing an immutable pointer to an object freezes it and prevents "
@@ -2391,15 +2519,24 @@ msgstr ""
 "されます (凍結された値を変更しようとすると、コンパイルエラーとなります)。"
 
 #. type: Plain text
-#: doc/tutorial.md:1444
-#, no-wrap
+#: src/doc/tutorial.md:1459
+#, fuzzy, no-wrap
+#| msgid ""
+#| "~~~~\n"
+#| "let mut x = 5;\n"
+#| "{\n"
+#| "    let y = &x; // x is now frozen, it cannot be modified\n"
+#| "}\n"
+#| "// x is now unfrozen again\n"
+#| "# x = 3;\n"
+#| "~~~~\n"
 msgid ""
 "~~~~\n"
 "let mut x = 5;\n"
 "{\n"
-"    let y = &x; // x is now frozen, it cannot be modified\n"
+"    let y = &x; // `x` is now frozen, it cannot be modified\n"
 "}\n"
-"// x is now unfrozen again\n"
+"// `x` is now unfrozen again\n"
 "# x = 3;\n"
 "~~~~\n"
 msgstr ""
@@ -2413,7 +2550,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:1446
+#: src/doc/tutorial.md:1461
 #, fuzzy
 #| msgid ""
 #| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
@@ -2426,12 +2563,12 @@ msgstr ""
 "[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
 
 #. type: Plain text
-#: doc/tutorial.md:1448
+#: src/doc/tutorial.md:1463
 msgid "# Dereferencing pointers"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/tutorial.md:1451
+#: src/doc/tutorial.md:1466
 msgid ""
 "Rust uses the unary star operator (`*`) to access the contents of a box or "
 "pointer, similarly to C."
@@ -2440,7 +2577,7 @@ msgstr ""
 "項スター演算子 (`*`) を使います。"
 
 #. type: Plain text
-#: doc/tutorial.md:1456
+#: src/doc/tutorial.md:1471
 msgid "~~~ let managed = @10; let owned = ~20; let borrowed = &30;"
 msgstr ""
 "~~~\n"
@@ -2449,14 +2586,14 @@ msgstr ""
 "let borrowed = &30;"
 
 #. type: Plain text
-#: doc/tutorial.md:1459
+#: src/doc/tutorial.md:1474
 msgid "let sum = *managed + *owned + *borrowed; ~~~"
 msgstr ""
 "let sum = *managed + *owned + *borrowed;\n"
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1463
+#: src/doc/tutorial.md:1478
 msgid ""
 "Dereferenced mutable pointers may appear on the left hand side of "
 "assignments. Such an assignment modifies the value that the pointer points "
@@ -2466,7 +2603,7 @@ msgstr ""
 "きます。このような代入文は、ポインタが指す値を変更します。"
 
 #. type: Plain text
-#: doc/tutorial.md:1467
+#: src/doc/tutorial.md:1482
 #, fuzzy
 #| msgid "~~~ let managed = @mut 10; let mut owned = ~20;"
 msgid "~~~ let managed = @10; let mut owned = ~20;"
@@ -2476,14 +2613,14 @@ msgstr ""
 "let mut owned = ~20;"
 
 #. type: Plain text
-#: doc/tutorial.md:1470
+#: src/doc/tutorial.md:1485
 msgid "let mut value = 30; let borrowed = &mut value;"
 msgstr ""
 "let mut value = 30;\n"
 "let borrowed = &mut value;"
 
 #. type: Plain text
-#: doc/tutorial.md:1478
+#: src/doc/tutorial.md:1493
 msgid ""
 "Pointers have high operator precedence, but lower precedence than the dot "
 "operator used for field and method access. This precedence order can "
@@ -2494,7 +2631,7 @@ msgstr ""
 "弧だらけなものになることがあります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1488
+#: src/doc/tutorial.md:1503
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } # enum Shape { Rectangle(Point, "
@@ -2520,7 +2657,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1492
+#: src/doc/tutorial.md:1507
 msgid ""
 "To combat this ugliness the dot operator applies _automatic pointer "
 "dereferencing_ to the receiver (the value on the left-hand side of the dot), "
@@ -2531,7 +2668,7 @@ msgstr ""
 "レシーバを明示的にデリファレンスする必要がなくなります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1502
+#: src/doc/tutorial.md:1517
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } # enum Shape { Rectangle(Point, "
@@ -2555,7 +2692,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1506
+#: src/doc/tutorial.md:1521
 msgid ""
 "You can write an expression that dereferences any number of pointers "
 "automatically. For example, if you feel inclined, you could write something "
@@ -2565,7 +2702,7 @@ msgstr ""
 "うと思えば以下のような馬鹿げたものを書くこともできます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1512
+#: src/doc/tutorial.md:1527
 #, fuzzy
 #| msgid ""
 #| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
@@ -2581,17 +2718,17 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1514
+#: src/doc/tutorial.md:1529
 msgid "The indexing operator (`[]`) also auto-dereferences."
 msgstr "添字演算子 (`[]`) も自動でリファレンスを行います。"
 
 #. type: Plain text
-#: doc/tutorial.md:1516
+#: src/doc/tutorial.md:1531
 msgid "# Vectors and strings"
 msgstr "# ベクタと文字列"
 
 #. type: Plain text
-#: doc/tutorial.md:1520
+#: src/doc/tutorial.md:1535
 #, fuzzy
 #| msgid ""
 #| "A vector is a contiguous section of memory containing zero or more values "
@@ -2610,17 +2747,17 @@ msgstr ""
 "場合もあります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1593
+#: src/doc/tutorial.md:1608
 msgid "Square brackets denote indexing into a vector:"
 msgstr "角括弧はベクタの添字を表します。"
 
 #. type: Plain text
-#: doc/tutorial.md:1607
+#: src/doc/tutorial.md:1622
 msgid "A vector can be destructured using pattern matching:"
 msgstr "ベクタはパターンマッチにより destructuring することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1620
+#: src/doc/tutorial.md:1635
 #, fuzzy
 #| msgid ""
 #| "Both vectors and strings support a number of useful [methods](#methods), "
@@ -2633,7 +2770,7 @@ msgstr ""
 "ソッド](#methods) を持ちます。以下にいくつか例を挙げます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1623
+#: src/doc/tutorial.md:1638
 #, fuzzy
 #| msgid "[`std::vec`]: std/vec.html [`std::str`]: std/str.html"
 msgid "[`std::vec`]: std/vec/index.html [`std::str`]: std/str/index.html"
@@ -2642,7 +2779,7 @@ msgstr ""
 "[`std::str`]: std/str.html"
 
 #. type: Plain text
-#: doc/tutorial.md:1635
+#: src/doc/tutorial.md:1650
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ use std::rc::Rc;"
@@ -2651,7 +2788,7 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/tutorial.md:1654
+#: src/doc/tutorial.md:1669
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
 msgid "~~~ use std::gc::Gc;"
@@ -2660,12 +2797,12 @@ msgstr ""
 "use std::task::spawn;"
 
 #. type: Plain text
-#: doc/tutorial.md:1671
+#: src/doc/tutorial.md:1686
 msgid "# Closures"
 msgstr "# クロージャ"
 
 #. type: Plain text
-#: doc/tutorial.md:1676
+#: src/doc/tutorial.md:1691
 msgid ""
 "Named functions, like those we've seen so far, may not refer to local "
 "variables declared outside the function: they do not close over their "
@@ -2678,14 +2815,14 @@ msgstr ""
 "コードを書くことはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:1679
+#: src/doc/tutorial.md:1694
 msgid "~~~~ {.ignore} let foo = 10;"
 msgstr ""
 "~~~~ {.ignore}\n"
 "let foo = 10;"
 
 #. type: Plain text
-#: doc/tutorial.md:1684
+#: src/doc/tutorial.md:1699
 #, no-wrap
 msgid ""
 "fn bar() -> int {\n"
@@ -2699,7 +2836,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:1687
+#: src/doc/tutorial.md:1702
 msgid ""
 "Rust also supports _closures_, functions that can access variables in the "
 "enclosing scope."
@@ -2708,14 +2845,14 @@ msgstr ""
 "ポートしています。"
 
 #. type: Plain text
-#: doc/tutorial.md:1690
+#: src/doc/tutorial.md:1705
 msgid "~~~~ fn call_closure_with_ten(b: |int|) { b(10); }"
 msgstr ""
 "~~~~\n"
 "fn call_closure_with_ten(b: |int|) { b(10); }"
 
 #. type: Plain text
-#: doc/tutorial.md:1693
+#: src/doc/tutorial.md:1708
 #, fuzzy
 #| msgid ""
 #| "let captured_var = 20; let closure = |arg| println(fmt!(\"captured_var="
@@ -2729,14 +2866,14 @@ msgstr ""
 "arg));"
 
 #. type: Plain text
-#: doc/tutorial.md:1696
+#: src/doc/tutorial.md:1711
 msgid "call_closure_with_ten(closure); ~~~~"
 msgstr ""
 "call_closure_with_ten(closure);\n"
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1702
+#: src/doc/tutorial.md:1717
 msgid ""
 "Closures begin with the argument list between vertical bars and are followed "
 "by a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, "
@@ -2750,7 +2887,7 @@ msgstr ""
 "場合、ブロックの値は最後の式の値となり、そうでなければ `()` となります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1707
+#: src/doc/tutorial.md:1722
 msgid ""
 "The types of the arguments are generally omitted, as is the return type, "
 "because the compiler can almost always infer them. In the rare case where "
@@ -2762,7 +2899,7 @@ msgstr ""
 "場合は、引数と戻り値の型注釈を付けることがあります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1711
+#: src/doc/tutorial.md:1726
 msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
 msgstr ""
 "~~~~\n"
@@ -2770,7 +2907,7 @@ msgstr ""
 "~~~~~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:1715
+#: src/doc/tutorial.md:1730
 msgid ""
 "There are several forms of closure, each with its own role. The most common, "
 "called a _stack closure_, has type `||` and can directly access local "
@@ -2781,7 +2918,7 @@ msgstr ""
 "カル変数に直接アクセスすることができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1720
+#: src/doc/tutorial.md:1735
 msgid "~~~~ let mut max = 0; [1, 2, 3].map(|x| if *x > max { max = *x }); ~~~~"
 msgstr ""
 "~~~~\n"
@@ -2790,7 +2927,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1729
+#: src/doc/tutorial.md:1744
 msgid ""
 "Stack closures are very efficient because their environment is allocated on "
 "the call stack and refers by pointer to captured locals. To ensure that "
@@ -2808,12 +2945,12 @@ msgstr ""
 "ず、スタッククロージャは Rust のコードのあちこちに登場します。"
 
 #. type: Plain text
-#: doc/tutorial.md:1731
+#: src/doc/tutorial.md:1746
 msgid "## Owned closures"
 msgstr "## 所有クロージャ"
 
 #. type: Plain text
-#: doc/tutorial.md:1738
+#: src/doc/tutorial.md:1753
 msgid ""
 "Owned closures, written `proc`, hold on to things that can safely be sent "
 "between processes. They copy the values they close over, much like managed "
@@ -2828,12 +2965,12 @@ msgstr ""
 "利用されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1740
+#: src/doc/tutorial.md:1755
 msgid "## Closure compatibility"
 msgstr "## クロージャの互換性"
 
 #. type: Plain text
-#: doc/tutorial.md:1747
+#: src/doc/tutorial.md:1762
 msgid ""
 "Rust closures have a convenient subtyping property: you can pass any kind of "
 "closure (as long as the arguments and return types match) to functions that "
@@ -2850,7 +2987,7 @@ msgstr ""
 "ロージャを渡すことができるよになります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1755
+#: src/doc/tutorial.md:1770
 msgid ""
 "~~~~ fn call_twice(f: ||) { f(); f(); } let closure = || { \"I'm a closure, "
 "and it doesn't matter what type I am\"; }; fn function() { \"I'm a normal "
@@ -2866,7 +3003,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1759
+#: src/doc/tutorial.md:1774
 msgid ""
 "> ***Note:*** Both the syntax and the semantics will be changing > in small "
 "ways. At the moment they can be unsound in some > scenarios, particularly "
@@ -2877,12 +3014,12 @@ msgstr ""
 "舞いが起こされる場合があります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1761
+#: src/doc/tutorial.md:1776
 msgid "## Do syntax"
 msgstr "## do 構文"
 
 #. type: Plain text
-#: doc/tutorial.md:1764
+#: src/doc/tutorial.md:1779
 #, fuzzy
 #| msgid ""
 #| "The `do` expression provides a way to treat higher-order functions "
@@ -2895,7 +3032,7 @@ msgstr ""
 "を提供します。"
 
 #. type: Plain text
-#: doc/tutorial.md:1776
+#: src/doc/tutorial.md:1791
 msgid ""
 "As a caller, if we use a closure to provide the final operator argument, we "
 "can write it in a way that has a pleasant, block-like structure."
@@ -2904,65 +3041,7 @@ msgstr ""
 "コードを書くことが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:1786
-#, fuzzy
-#| msgid ""
-#| "This is such a useful pattern that Rust has a special form of function "
-#| "call that can be written more like a built-in control structure:"
-msgid ""
-"This is such a useful pattern that Rust has a special form of function call "
-"for these functions."
-msgstr ""
-"このような便利なパターンに対応するため、Rust には、言語組み込みの制御構造のよ"
-"うな記述が可能な、特別な関数呼び出し形式があります。"
-
-#. type: Plain text
-#: doc/tutorial.md:1798
-#, fuzzy
-#| msgid ""
-#| "The call is prefixed with the keyword `do` and, instead of writing the "
-#| "final closure inside the argument list, it appears outside of the "
-#| "parentheses, where it looks more like a typical block of code."
-msgid ""
-"The call is prefixed with the keyword `do` and, instead of writing the final "
-"procedure inside the argument list, it appears outside of the parentheses, "
-"where it looks more like a typical block of code."
-msgstr ""
-"関数呼び出しの前には `do` キーワードをつけ、引数リストの中に最後のクロージャ"
-"引数を書くのではなく、普通のコードブロックのように、丸括弧の外に記述します。"
-
-#. type: Plain text
-#: doc/tutorial.md:1803
-msgid ""
-"`do` is a convenient way to create tasks with the `task::spawn` function.  "
-"`spawn` has the signature `spawn(fn: proc())`. In other words, it is a "
-"function that takes an owned closure that takes no arguments."
-msgstr ""
-"`task::spawn` 関数を用いてタスクを生成する場合、 `do` を用いると便利です。"
-"`spawn` は、 `spawn(fn: proc())` という方を持っています。言い換えると、"
-"`spawn` は「引数をとらない所有クロージャ」を引数としてとる関数ということで"
-"す。"
-
-#. type: Plain text
-#: doc/tutorial.md:1806 doc/tutorial.md:1818
-msgid "~~~~ use std::task::spawn;"
-msgstr ""
-"~~~~\n"
-"use std::task::spawn;"
-
-#. type: Plain text
-#: doc/tutorial.md:1815
-msgid ""
-"Look at all those bars and parentheses -- that's two empty argument lists "
-"back to back. Since that is so unsightly, empty argument lists may be "
-"omitted from `do` expressions."
-msgstr ""
-"このコードの丸括弧と縦棒に注目してください。立て続けに2の空の引数リストが現れ"
-"ているます。これは非常に見苦しいので、`do` 式では空の引数リストを省略すること"
-"が可能です。"
-
-#. type: Plain text
-#: doc/tutorial.md:1826
+#: src/doc/tutorial.md:1813
 msgid ""
 "If you want to see the output of `debug!` statements, you will need to turn "
 "on `debug!` logging.  To enable `debug!` logging, set the RUST_LOG "
@@ -2976,12 +3055,12 @@ msgstr ""
 "は `foo` になります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1828
+#: src/doc/tutorial.md:1815
 msgid "# Methods"
 msgstr "# メソッド"
 
 #. type: Plain text
-#: doc/tutorial.md:1834
+#: src/doc/tutorial.md:1821
 msgid ""
 "Methods are like functions except that they always begin with a special "
 "argument, called `self`, which has the type of the method's receiver. The "
@@ -2993,7 +3072,7 @@ msgstr ""
 "のです。メソッドはドット記法を浸かって `my_vec.len()` のように呼び出します。"
 
 #. type: Plain text
-#: doc/tutorial.md:1838
+#: src/doc/tutorial.md:1825
 msgid ""
 "_Implementations_, written with the `impl` keyword, can define methods on "
 "most Rust types, including structs and enums.  As an example, let's define a "
@@ -3004,7 +3083,25 @@ msgstr ""
 "す。例のように、 `draw` メソッドを `Shape` 列挙型に定義してみましょう。"
 
 #. type: Plain text
-#: doc/tutorial.md:1864
+#: src/doc/tutorial.md:1833
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~\n"
+"# fn draw_circle(p: Point, f: f64) { }\n"
+"# fn draw_rectangle(p: Point, p: Point) { }\n"
+"struct Point {\n"
+"    x: f64,\n"
+"    y: f64\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: src/doc/tutorial.md:1851
 #, fuzzy
 #| msgid "let s = Circle(Point { x: 1f, y: 2f }, 3f); s.draw(); ~~~"
 msgid "let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0); s.draw(); ~~~"
@@ -3014,7 +3111,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1868
+#: src/doc/tutorial.md:1855
 msgid ""
 "This defines an _implementation_ for `Shape` containing a single method, "
 "`draw`. In most respects the `draw` method is defined like any other "
@@ -3025,7 +3122,7 @@ msgstr ""
 "うに定義されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1873
+#: src/doc/tutorial.md:1860
 msgid ""
 "The type of `self` is the type on which the method is implemented, or a "
 "pointer thereof. As an argument it is written either `self`, `&self`, "
@@ -3037,7 +3134,7 @@ msgstr ""
 "様、メソッドを呼び出すための互換性のあるポインタ型をもつ必要があります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1888
+#: src/doc/tutorial.md:1875
 #, fuzzy, no-wrap
 #| msgid ""
 #| "~~~\n"
@@ -3092,7 +3189,7 @@ msgstr ""
 "// 自動的に借用ポインタに変換される\n"
 
 #. type: Plain text
-#: doc/tutorial.md:1890
+#: src/doc/tutorial.md:1877
 #, fuzzy
 #| msgid "let s = Circle(Point { x: 1f, y: 2f }, 3f); s.draw(); ~~~"
 msgid "let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);"
@@ -3102,7 +3199,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1896
+#: src/doc/tutorial.md:1883
 #, fuzzy
 #| msgid ""
 #| "(@s).draw_managed(); (~s).draw_owned(); (&s).draw_borrowed(); s."
@@ -3118,7 +3215,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1900
+#: src/doc/tutorial.md:1887
 #, fuzzy
 #| msgid ""
 #| "Methods typically take a borrowed pointer self type, so the compiler will "
@@ -3131,7 +3228,7 @@ msgstr ""
 "借用ポインタに変換するためあらゆる手段を講じます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1918
+#: src/doc/tutorial.md:1905
 #, fuzzy, no-wrap
 #| msgid ""
 #| "~~~\n"
@@ -3189,7 +3286,7 @@ msgstr ""
 "// 自動的に借用ポインタに変換される\n"
 
 #. type: Plain text
-#: doc/tutorial.md:1921
+#: src/doc/tutorial.md:1908
 #, fuzzy
 #| msgid "(@s).draw_borrowed(); (~s).draw_borrowed();"
 msgid "(@s).draw_reference(); (~s).draw_reference();"
@@ -3198,7 +3295,7 @@ msgstr ""
 "(~s).draw_borrowed();"
 
 #. type: Plain text
-#: doc/tutorial.md:1925
+#: src/doc/tutorial.md:1912
 #, fuzzy
 #| msgid ""
 #| "// Unlike typical function arguments, the self value will // "
@@ -3211,7 +3308,7 @@ msgstr ""
 "s.draw_borrowed();"
 
 #. type: Plain text
-#: doc/tutorial.md:1928
+#: src/doc/tutorial.md:1915
 #, fuzzy
 #| msgid "// ... and dereferenced (& &s).draw_borrowed();"
 msgid "// ... and dereferenced (& &s).draw_reference();"
@@ -3220,7 +3317,7 @@ msgstr ""
 "(& &s).draw_borrowed();"
 
 #. type: Plain text
-#: doc/tutorial.md:1932
+#: src/doc/tutorial.md:1919
 #, fuzzy
 #| msgid "// ... and dereferenced and borrowed (&@~s).draw_borrowed(); ~~~"
 msgid "// ... and dereferenced and borrowed (&@~s).draw_reference(); ~~~"
@@ -3230,7 +3327,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:1936
+#: src/doc/tutorial.md:1923
 msgid ""
 "Implementations may also define standalone (sometimes called \"static\")  "
 "methods. The absence of a `self` parameter distinguishes such methods.  "
@@ -3242,7 +3339,7 @@ msgstr ""
 "定義することが推奨されています。"
 
 #. type: Plain text
-#: doc/tutorial.md:1945
+#: src/doc/tutorial.md:1932
 msgid ""
 "To call such a method, just prefix it with the type name and a double colon:"
 msgstr ""
@@ -3250,12 +3347,12 @@ msgstr ""
 "出せます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1956
+#: src/doc/tutorial.md:1943
 msgid "# Generics"
 msgstr "# ジェネリクス"
 
 #. type: Plain text
-#: doc/tutorial.md:1964
+#: src/doc/tutorial.md:1951
 msgid ""
 "Throughout this tutorial, we've been defining functions that act only on "
 "specific data types. With type parameters we can also define functions whose "
@@ -3271,7 +3368,7 @@ msgstr ""
 "`map` というジェネリック関数について考えます。"
 
 #. type: Plain text
-#: doc/tutorial.md:1979
+#: src/doc/tutorial.md:1966
 msgid ""
 "When defined with type parameters, as denoted by `<T, U>`, this function can "
 "be applied to any type of vector, as long as the type of `function`'s "
@@ -3282,7 +3379,7 @@ msgstr ""
 "任意の型のベクタを引数として渡すことが可能になります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1989
+#: src/doc/tutorial.md:1976
 msgid ""
 "Inside a generic function, the names of the type parameters (capitalized by "
 "convention) stand for opaque types. All you can do with instances of these "
@@ -3303,14 +3400,14 @@ msgstr ""
 "することで、関数の引数としてとることのできる型の範囲が広がります。"
 
 #. type: Plain text
-#: doc/tutorial.md:1991
+#: src/doc/tutorial.md:1978
 msgid ""
 "Generic `type`, `struct`, and `enum` declarations follow the same pattern:"
 msgstr ""
 "ジェネリックな型、構造体、および列挙型の宣言は、同じパターンに従います。"
 
 #. type: Plain text
-#: doc/tutorial.md:1995
+#: src/doc/tutorial.md:1982
 msgid "~~~~ use std::hashmap::HashMap; type Set<T> = HashMap<T, ()>;"
 msgstr ""
 "~~~~\n"
@@ -3318,7 +3415,7 @@ msgstr ""
 "type Set<T> = HashMap<T, ()>;"
 
 #. type: Plain text
-#: doc/tutorial.md:2008
+#: src/doc/tutorial.md:1995
 msgid ""
 "These declarations can be instantiated to valid types like `Set<int>`, "
 "`Stack<int>`, and `Option<int>`."
@@ -3327,7 +3424,7 @@ msgstr ""
 "な型を生成することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2014
+#: src/doc/tutorial.md:2001
 msgid ""
 "The last type in that example, `Option`, appears frequently in Rust code.  "
 "Because Rust does not have null pointers (except in unsafe code), we need "
@@ -3342,7 +3439,7 @@ msgstr ""
 "ることが一般的です。"
 
 #. type: Plain text
-#: doc/tutorial.md:2033
+#: src/doc/tutorial.md:2020
 msgid ""
 "The Rust compiler compiles generic functions very efficiently by "
 "*monomorphizing* them. *Monomorphization* is a fancy name for a simple idea: "
@@ -3359,12 +3456,12 @@ msgstr ""
 "の特性を持ちます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2035
+#: src/doc/tutorial.md:2022
 msgid "## Traits"
 msgstr "## トレイト"
 
 #. type: Plain text
-#: doc/tutorial.md:2047
+#: src/doc/tutorial.md:2034
 #, fuzzy
 #| msgid ""
 #| "Within a generic function the operations available on generic types are "
@@ -3398,7 +3495,7 @@ msgstr ""
 "より、型パラメータが示す得る型の集合を限定することができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2054
+#: src/doc/tutorial.md:2041
 #, fuzzy
 #| msgid ""
 #| "As motivation, let us consider copying in Rust.  The `clone` method is "
@@ -3421,7 +3518,7 @@ msgstr ""
 "クタをもつ型をコピーすることはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:2060
+#: src/doc/tutorial.md:2047
 #, fuzzy
 #| msgid ""
 #| "This complicates handling of generic functions.  If you have a type "
@@ -3439,7 +3536,7 @@ msgstr ""
 "う。"
 
 #. type: Plain text
-#: doc/tutorial.md:2067
+#: src/doc/tutorial.md:2054
 #, no-wrap
 msgid ""
 "~~~~ {.ignore}\n"
@@ -3457,7 +3554,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2073
+#: src/doc/tutorial.md:2060
 #, fuzzy
 #| msgid ""
 #| "However, we can tell the compiler that the `head` function is only for "
@@ -3475,7 +3572,7 @@ msgstr ""
 "ドを使うことで、値のコピーを明示的に作成し、戻り値として返すことができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2080
+#: src/doc/tutorial.md:2067
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3493,7 +3590,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2090
+#: src/doc/tutorial.md:2077
 #, fuzzy
 #| msgid ""
 #| "This says that we can call `head` on any type `T` as long as that type "
@@ -3514,7 +3611,7 @@ msgstr ""
 "レイトを実装していない型に対して `head` を呼び出すことはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:2095
+#: src/doc/tutorial.md:2082
 #, fuzzy
 #| msgid ""
 #| "While most traits can be defined and implemented by user code, two traits "
@@ -3530,7 +3627,7 @@ msgstr ""
 "上書きすることはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:2099
+#: src/doc/tutorial.md:2086
 #, fuzzy, no-wrap
 #| msgid ""
 #| "* `Send` - Sendable types.\n"
@@ -3545,7 +3642,7 @@ msgstr ""
 "マネージドボックスやマネージドクロージャ、借用ポインタを含まない場合、型は送信可能である。"
 
 #. type: Plain text
-#: doc/tutorial.md:2103
+#: src/doc/tutorial.md:2090
 #, fuzzy, no-wrap
 #| msgid ""
 #| "* `Freeze` - Constant (immutable) types.\n"
@@ -3561,7 +3658,7 @@ msgstr ""
 "本質的に変更可能な値を含まない型のことです。本質的に変更可能な値には、`@mut` や標準ライブラリで定義されている `Cell` が含まれます。\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2112
+#: src/doc/tutorial.md:2099
 msgid ""
 "> ***Note:*** These two traits were referred to as 'kinds' in earlier > "
 "iterations of the language, and often still are."
@@ -3570,7 +3667,7 @@ msgstr ""
 "でもそう呼ばれる場合があります。"
 
 #. type: Plain text
-#: doc/tutorial.md:2118
+#: src/doc/tutorial.md:2105
 #, fuzzy
 #| msgid ""
 #| "Additionally, the `Drop` trait is used to define destructors. This trait "
@@ -3589,7 +3686,23 @@ msgstr ""
 "されるメソッドを1つ定義しています。"
 
 #. type: Plain text
-#: doc/tutorial.md:2135
+#: src/doc/tutorial.md:2110
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~\n"
+"struct TimeBomb {\n"
+"    explosivity: uint\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2122
 msgid ""
 "It is illegal to call `drop` directly. Only code inserted by the compiler "
 "may call it."
@@ -3598,12 +3711,12 @@ msgstr ""
 "が `drop` を呼び出すことができます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2137
+#: src/doc/tutorial.md:2124
 msgid "## Declaring and implementing traits"
 msgstr "## トレイトの宣言と実装"
 
 #. type: Plain text
-#: doc/tutorial.md:2142
+#: src/doc/tutorial.md:2129
 #, fuzzy
 #| msgid ""
 #| "A trait consists of a set of methods without bodies, or may be empty, as "
@@ -3620,7 +3733,7 @@ msgstr ""
 "のを表しメソッドを1つもつ `Printable` トレイトは以下のように宣言できます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2148
+#: src/doc/tutorial.md:2135
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -3637,7 +3750,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2161
+#: src/doc/tutorial.md:2148
 #, fuzzy
 #| msgid ""
 #| "Traits may be implemented for specific types with [impls]. An impl that "
@@ -3654,12 +3767,27 @@ msgstr ""
 "定義の先頭にトレイトの名前を含みます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2163
+#: src/doc/tutorial.md:2150
 msgid "[impls]: #methods"
 msgstr "[impls]: #メソッド"
 
 #. type: Plain text
-#: doc/tutorial.md:2177
+#: src/doc/tutorial.md:2160 src/doc/tutorial.md:2206
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"impl Printable for ~str {\n"
+"    fn print(&self) { println!(\"{}\", *self) }\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2164
 msgid "# 1.print(); # (~\"foo\").print(); ~~~~"
 msgstr ""
 "# 1.print();\n"
@@ -3667,7 +3795,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2180
+#: src/doc/tutorial.md:2167
 #, fuzzy
 #| msgid ""
 #| "Methods defined in an implementation of a trait may be called just like "
@@ -3684,14 +3812,29 @@ msgstr ""
 "されるでしょう。"
 
 #. type: Plain text
-#: doc/tutorial.md:2182
+#: src/doc/tutorial.md:2169
 #, fuzzy
 #| msgid "## Deriving implementations for traits"
 msgid "## Default method implementations in trait definitions"
 msgstr "## トレイトの実装の導出"
 
 #. type: Plain text
-#: doc/tutorial.md:2202
+#: src/doc/tutorial.md:2185
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"impl Printable for bool {\n"
+"    fn print(&self) { println!(\"{:?}\", *self) }\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2189
 #, fuzzy
 #| msgid "# 1.print(); # (~\"foo\").print(); ~~~~"
 msgid "# true.print(); # 3.14159.print(); ~~~~"
@@ -3701,7 +3844,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2229
+#: src/doc/tutorial.md:2216
 #, fuzzy
 #| msgid "# 1.print(); # (~\"foo\").print(); ~~~~"
 msgid ""
@@ -3712,7 +3855,46 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2260
+#: src/doc/tutorial.md:2227
+#, fuzzy
+#| msgid "## Tuples"
+msgid "## Type-parameterized traits"
+msgstr "## タプル"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2235
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~~\n"
+"trait Seq<T> {\n"
+"    fn length(&self) -> uint;\n"
+"}\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2240
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"impl<T> Seq<T> for ~[T] {\n"
+"    fn length(&self) -> uint { self.len() }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2247
 msgid ""
 "The implementation has to explicitly declare the type parameter that it "
 "binds, `T`, before using it to specify its trait type. Rust requires this "
@@ -3726,7 +3908,7 @@ msgstr ""
 "れるもの) は、型を定義するのではなく、型を **参照** します。"
 
 #. type: Plain text
-#: doc/tutorial.md:2265
+#: src/doc/tutorial.md:2252
 msgid ""
 "The type parameters bound by a trait are in scope in each of the method "
 "declarations. So, re-declaring the type parameter `T` as an explicit type "
@@ -3738,7 +3920,7 @@ msgstr ""
 "る明示的な型パラメータとして再宣言すると、コンパイル時エラーとなります。"
 
 #. type: Plain text
-#: doc/tutorial.md:2270
+#: src/doc/tutorial.md:2257
 msgid ""
 "Within a trait definition, `Self` is a special type that you can think of as "
 "a type parameter. An implementation of the trait for any given type `T` "
@@ -3750,7 +3932,7 @@ msgstr ""
 "えられます。以下のトレイトは等価性演算をサポートする型を意味します。"
 
 #. type: Plain text
-#: doc/tutorial.md:2277
+#: src/doc/tutorial.md:2264
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -3768,7 +3950,7 @@ msgstr ""
 "}\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2283
+#: src/doc/tutorial.md:2270
 #, no-wrap
 msgid ""
 "// In an impl, `self` refers just to the value of the receiver\n"
@@ -3784,7 +3966,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2288
+#: src/doc/tutorial.md:2275
 msgid ""
 "Notice that in the trait definition, `equals` takes a second parameter of "
 "type `Self`.  In contrast, in the `impl`, `equals` takes a second parameter "
@@ -3795,7 +3977,7 @@ msgstr ""
 "シーバの名前としてのみ使用されます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2293
+#: src/doc/tutorial.md:2280
 msgid ""
 "Just as in type implementations, traits can define standalone (static)  "
 "methods.  These methods are called by prefixing the method name with the "
@@ -3808,7 +3990,7 @@ msgstr ""
 "め、型推論を行います。"
 
 #. type: Plain text
-#: doc/tutorial.md:2299
+#: src/doc/tutorial.md:2286
 #, fuzzy
 #| msgid ""
 #| "~~~~ use std::f64::consts::pi; trait Shape { fn new(area: f64) -> Self; } "
@@ -3824,7 +4006,7 @@ msgstr ""
 "struct Square { length: f64 }"
 
 #. type: Plain text
-#: doc/tutorial.md:2311
+#: src/doc/tutorial.md:2298
 msgid ""
 "let area = 42.5; let c: Circle = Shape::new(area); let s: Square = Shape::"
 "new(area); ~~~~"
@@ -3835,12 +4017,12 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2313
+#: src/doc/tutorial.md:2300
 msgid "## Bounded type parameters and static method dispatch"
 msgstr "## 境界型パラメータと静的メソッドディスパッチ"
 
 #. type: Plain text
-#: doc/tutorial.md:2318
+#: src/doc/tutorial.md:2305
 msgid ""
 "Traits give us a language for defining predicates on types, or abstract "
 "properties that types can have. We can use this language to define _bounds_ "
@@ -3852,7 +4034,7 @@ msgstr ""
 "なります。"
 
 #. type: Plain text
-#: doc/tutorial.md:2333
+#: src/doc/tutorial.md:2320
 msgid ""
 "Declaring `T` as conforming to the `Printable` trait (as we earlier did with "
 "`Clone`) makes it possible to call methods from that trait on values of type "
@@ -3867,7 +4049,7 @@ msgstr ""
 "ル時エラーとなります。"
 
 #. type: Plain text
-#: doc/tutorial.md:2336
+#: src/doc/tutorial.md:2323
 msgid ""
 "Type parameters can have multiple bounds by separating them with `+`, as in "
 "this version of `print_all` that copies elements."
@@ -3876,7 +4058,7 @@ msgstr ""
 "`print_all` は、ベクタの要素をコピーするバージョンです。"
 
 #. type: Plain text
-#: doc/tutorial.md:2352
+#: src/doc/tutorial.md:2339
 msgid ""
 "Method calls to bounded type parameters are _statically dispatched_, "
 "imposing no more overhead than normal function invocation, so are the "
@@ -3888,17 +4070,17 @@ msgstr ""
 "型パラメータが推奨されます。 "
 
 #. type: Plain text
-#: doc/tutorial.md:2354
+#: src/doc/tutorial.md:2341
 msgid "This usage of traits is similar to Haskell type classes."
 msgstr "トレイトのこのような使い方は、Haskell の型クラスと似ています。"
 
 #. type: Plain text
-#: doc/tutorial.md:2356
+#: src/doc/tutorial.md:2343
 msgid "## Trait objects and dynamic method dispatch"
 msgstr "## トレイトオブジェクトと動的メソッドディスパッチ"
 
 #. type: Plain text
-#: doc/tutorial.md:2360
+#: src/doc/tutorial.md:2347
 msgid ""
 "The above allows us to define functions that polymorphically act on values "
 "of a single unknown type that conforms to a given trait.  However, consider "
@@ -3908,7 +4090,7 @@ msgstr ""
 "フィックにふるまう関数を定義しました。ここでは、以下の関数について考えます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2366
+#: src/doc/tutorial.md:2353
 msgid ""
 "~~~~ # type Circle = int; type Rectangle = int; # impl Drawable for int { fn "
 "draw(&self) {} } # fn new_circle() -> int { 1 } trait Drawable { fn "
@@ -3921,7 +4103,7 @@ msgstr ""
 "trait Drawable { fn draw(&self); }"
 
 #. type: Plain text
-#: doc/tutorial.md:2379
+#: src/doc/tutorial.md:2366
 msgid ""
 "You can call that on an array of circles, or an array of rectangles "
 "(assuming those have suitable `Drawable` traits defined), but not on an "
@@ -3935,7 +4117,7 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:2391
+#: src/doc/tutorial.md:2378
 msgid ""
 "In this example, there is no type parameter. Instead, the `@Drawable` type "
 "denotes any managed box value that implements the `Drawable` trait. To "
@@ -3947,7 +4129,7 @@ msgstr ""
 "うな値を作成するには、 `as` 演算子を使って値をオブジェクトへキャストします。"
 
 #. type: Plain text
-#: doc/tutorial.md:2398
+#: src/doc/tutorial.md:2385
 msgid ""
 "~~~~ # type Circle = int; type Rectangle = bool; # trait Drawable { fn "
 "draw(&self); } # fn new_circle() -> Circle { 1 } # fn new_rectangle() -> "
@@ -3961,7 +4143,7 @@ msgstr ""
 "# fn draw_all(shapes: &[@Drawable]) {}"
 
 #. type: Plain text
-#: doc/tutorial.md:2401
+#: src/doc/tutorial.md:2388
 msgid ""
 "impl Drawable for Circle { fn draw(&self) { ... } } impl Drawable for "
 "Rectangle { fn draw(&self) { ... } }"
@@ -3970,7 +4152,7 @@ msgstr ""
 "impl Drawable for Rectangle { fn draw(&self) { ... } }"
 
 #. type: Plain text
-#: doc/tutorial.md:2406
+#: src/doc/tutorial.md:2393
 msgid ""
 "let c: @Circle = @new_circle(); let r: @Rectangle = @new_rectangle(); "
 "draw_all([c as @Drawable, r as @Drawable]); ~~~~"
@@ -3981,7 +4163,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2414
+#: src/doc/tutorial.md:2401
 msgid ""
 "We omit the code for `new_circle` and `new_rectangle`; imagine that these "
 "just return `Circle`s and `Rectangle`s with a default size. Note that, like "
@@ -3998,7 +4180,7 @@ msgstr ""
 "`@Cicle` を `~Drawable` にキャストすることはできません。"
 
 #. type: Plain text
-#: doc/tutorial.md:2428
+#: src/doc/tutorial.md:2415
 msgid ""
 "~~~ # type Circle = int; type Rectangle = int; # trait Drawable { fn "
 "draw(&self); } # impl Drawable for int { fn draw(&self) {} } # fn "
@@ -4022,7 +4204,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2433
+#: src/doc/tutorial.md:2420
 msgid ""
 "Method calls to trait types are _dynamically dispatched_. Since the compiler "
 "doesn't know specifically which functions to call at compile time, it uses a "
@@ -4035,17 +4217,17 @@ msgstr ""
 "て、呼び出すメソッドの選択を実行時に行います。"
 
 #. type: Plain text
-#: doc/tutorial.md:2435
+#: src/doc/tutorial.md:2422
 msgid "This usage of traits is similar to Java interfaces."
 msgstr "トレイトのこのような使い方は、Java のインターフェースと似ています。"
 
 #. type: Plain text
-#: doc/tutorial.md:2461
+#: src/doc/tutorial.md:2448
 msgid "## Trait inheritance"
 msgstr "## トレイトの継承"
 
 #. type: Plain text
-#: doc/tutorial.md:2466
+#: src/doc/tutorial.md:2453
 msgid ""
 "We can write a trait declaration that _inherits_ from other traits, called "
 "_supertraits_.  Types that implement a trait must also implement its "
@@ -4058,7 +4240,7 @@ msgstr ""
 "のとして定義できます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2471
+#: src/doc/tutorial.md:2458
 msgid ""
 "~~~~ trait Shape { fn area(&self) -> f64; } trait Circle : Shape { fn "
 "radius(&self) -> f64; } ~~~~"
@@ -4069,13 +4251,13 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2473
+#: src/doc/tutorial.md:2460
 msgid ""
 "Now, we can implement `Circle` on a type only if we also implement `Shape`."
 msgstr "`Circle` トレイトの実装は、 `Shape` を実装した型についてのみ行えます。"
 
 #. type: Plain text
-#: doc/tutorial.md:2488
+#: src/doc/tutorial.md:2475
 #, fuzzy, no-wrap
 #| msgid "~~~ {.ignore} use std::f64::consts::pi; # trait Shape { fn area(&self) -> f64; } # trait Circle : Shape { fn radius(&self) -> f64; } # struct Point { x: f64, y: f64 } # struct CircleStruct { center: Point, radius: f64 } # impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / pi).sqrt() } } # impl Shape for CircleStruct { fn area(&self) -> f64 { pi * square(self.radius) } }"
 msgid ""
@@ -4104,7 +4286,7 @@ msgstr ""
 "# impl Shape for CircleStruct { fn area(&self) -> f64 { pi * square(self.radius) } }"
 
 #. type: Plain text
-#: doc/tutorial.md:2493
+#: src/doc/tutorial.md:2480
 msgid ""
 "Notice that methods of `Circle` can call methods on `Shape`, as our `radius` "
 "implementation calls the `area` method.  This is a silly way to compute the "
@@ -4117,7 +4299,7 @@ msgstr ""
 "ていますが、メソッド呼び出しの考え方は分かったでしょう。"
 
 #. type: Plain text
-#: doc/tutorial.md:2497
+#: src/doc/tutorial.md:2484
 msgid ""
 "In type-parameterized functions, methods of the supertrait may be called on "
 "values of subtrait-bound type parameters.  Refering to the previous example "
@@ -4128,7 +4310,7 @@ msgstr ""
 "を参照してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:2506
+#: src/doc/tutorial.md:2493
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -4150,18 +4332,18 @@ msgstr ""
 "~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:2517
+#: src/doc/tutorial.md:2504
 #, fuzzy
 #| msgid ""
-#| "~~~ {.ignore} use std::f64::consts::pi; # trait Shape { fn "
-#| "area(&self) -> f64; } # trait Circle : Shape { fn radius(&self) -> f64; } "
-#| "# struct Point { x: f64, y: f64 } # struct CircleStruct { center: Point, "
-#| "radius: f64 } # impl Circle for CircleStruct { fn radius(&self) -> f64 "
-#| "{ (self.area() / pi).sqrt() } } # impl Shape for CircleStruct { fn "
-#| "area(&self) -> f64 { pi * square(self.radius) } }"
+#| "~~~ {.ignore} use std::f64::consts::pi; # trait Shape { fn area(&self) -> "
+#| "f64; } # trait Circle : Shape { fn radius(&self) -> f64; } # struct Point "
+#| "{ x: f64, y: f64 } # struct CircleStruct { center: Point, radius: f64 } # "
+#| "impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / "
+#| "pi).sqrt() } } # impl Shape for CircleStruct { fn area(&self) -> f64 { pi "
+#| "* square(self.radius) } }"
 msgid ""
-"~~~ {.ignore} use std::f64::consts::PI; # trait Shape { fn area(&self) -"
-"> f64; } # trait Circle : Shape { fn radius(&self) -> f64; } # struct Point "
+"~~~ {.ignore} use std::f64::consts::PI; # trait Shape { fn area(&self) -> "
+"f64; } # trait Circle : Shape { fn radius(&self) -> f64; } # struct Point "
 "{ x: f64, y: f64 } # struct CircleStruct { center: Point, radius: f64 } # "
 "impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI)."
 "sqrt() } } # impl Shape for CircleStruct { fn area(&self) -> f64 { PI * "
@@ -4179,7 +4361,7 @@ msgstr ""
 "radius) } }"
 
 #. type: Plain text
-#: doc/tutorial.md:2522
+#: src/doc/tutorial.md:2509
 msgid ""
 "let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f}; let "
 "mycircle: @Circle = concrete as @Circle; let nonsense = mycircle.radius() * "
@@ -4191,19 +4373,19 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2524
+#: src/doc/tutorial.md:2511
 msgid "> ***Note:*** Trait inheritance does not actually work with objects yet"
 msgstr ""
 "> ***注意*** トレイトの継承は、実際にはまだオブジェクトに対しては動作しませ"
 "ん。"
 
 #. type: Plain text
-#: doc/tutorial.md:2526
+#: src/doc/tutorial.md:2513
 msgid "## Deriving implementations for traits"
 msgstr "## トレイトの実装の導出"
 
 #. type: Plain text
-#: doc/tutorial.md:2533
+#: src/doc/tutorial.md:2520
 msgid ""
 "A small number of traits in `std` and `extra` can have implementations that "
 "can be automatically derived. These instances are specified by placing the "
@@ -4219,7 +4401,7 @@ msgstr ""
 "に変換することが可能です。"
 
 #. type: Plain text
-#: doc/tutorial.md:2537
+#: src/doc/tutorial.md:2524
 msgid "~~~ #[deriving(Eq)] struct Circle { radius: f64 }"
 msgstr ""
 "~~~\n"
@@ -4227,7 +4409,7 @@ msgstr ""
 "struct Circle { radius: f64 }"
 
 #. type: Plain text
-#: doc/tutorial.md:2541
+#: src/doc/tutorial.md:2528
 msgid "#[deriving(Rand, ToStr)] enum ABC { A, B, C } ~~~"
 msgstr ""
 "#[deriving(Rand, ToStr)]\n"
@@ -4235,7 +4417,7 @@ msgstr ""
 "~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2545
+#: src/doc/tutorial.md:2532
 #, fuzzy
 #| msgid ""
 #| "The full list of derivable traits is `Eq`, `TotalEq`, `Ord`, `TotalOrd`, "
@@ -4251,24 +4433,24 @@ msgstr ""
 "および `ToStr` です。."
 
 #. type: Plain text
-#: doc/tutorial.md:2547
+#: src/doc/tutorial.md:2534
 #, fuzzy
 #| msgid "# Modules and crates"
 msgid "# Crates and the module system"
 msgstr "# モジュールとクレート"
 
 #. type: Plain text
-#: doc/tutorial.md:2552
+#: src/doc/tutorial.md:2539
 msgid "## Crates"
 msgstr "## クレート"
 
 #. type: Plain text
-#: doc/tutorial.md:2567
+#: src/doc/tutorial.md:2554
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "~~~~\n"
-"// main.rs\n"
+"// `main.rs`\n"
 "fn main() {\n"
 "    println!(\"Hello world!\");\n"
 "}\n"
@@ -4281,7 +4463,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2570
+#: src/doc/tutorial.md:2557
 #, fuzzy
 #| msgid ""
 #| "The unit of independent compilation in Rust is the crate: rustc compiles "
@@ -4296,14 +4478,14 @@ msgstr ""
 "イルし、ライブラリか実行可能ファイルを生成します。"
 
 #. type: Plain text
-#: doc/tutorial.md:2574
+#: src/doc/tutorial.md:2561
 #, fuzzy
 #| msgid "## The standard library"
 msgid "## The module hierarchy"
 msgstr "## 標準ライブラリ"
 
 #. type: Plain text
-#: doc/tutorial.md:2600
+#: src/doc/tutorial.md:2587
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -4319,14 +4501,14 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2608
+#: src/doc/tutorial.md:2595
 #, fuzzy
 #| msgid "## Managed closures"
 msgid "## Paths and visibility"
 msgstr "## マネージドクロージャ"
 
 #. type: Plain text
-#: doc/tutorial.md:2620
+#: src/doc/tutorial.md:2607
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -4340,7 +4522,24 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2659
+#: src/doc/tutorial.md:2639
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    println!(\"Hello chicken!\");\n"
+"    ::farm::chicken(); // This compiles now\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2646
 #, fuzzy
 #| msgid ""
 #| "Visibility restrictions in Rust exist only at module boundaries. This is "
@@ -4365,14 +4564,14 @@ msgstr ""
 "してください。"
 
 #. type: Plain text
-#: doc/tutorial.md:2702
+#: src/doc/tutorial.md:2689
 #, fuzzy
 #| msgid "# Modules and crates"
 msgid "## Files and modules"
 msgstr "# モジュールとクレート"
 
 #. type: Plain text
-#: doc/tutorial.md:2732
+#: src/doc/tutorial.md:2719
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -4389,16 +4588,83 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:2791
-#, fuzzy
+#: src/doc/tutorial.md:2755
+#, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} let foo = 10;"
-msgid "~~~ {.ignore} // src/main.rs mod plants; mod animals; ~~~"
+msgid ""
+"~~~ {.ignore}\n"
+"// `src/main.rs`\n"
+"mod plants;\n"
+"mod animals {\n"
+"    mod fish;\n"
+"    mod mammals {\n"
+"        mod humans;\n"
+"    }\n"
+"}\n"
+"~~~\n"
 msgstr ""
 "~~~~ {.ignore}\n"
 "let foo = 10;"
 
 #. type: Plain text
-#: doc/tutorial.md:2929
+#: src/doc/tutorial.md:2761 src/doc/tutorial.md:2793
+#, fuzzy
+#| msgid "~~~~ {.ignore} let foo = 10;"
+msgid "~~~ {.notrust} src/plants.rs src/plants/mod.rs"
+msgstr ""
+"~~~~ {.ignore}\n"
+"let foo = 10;"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2778
+#, fuzzy
+#| msgid "~~~~ {.ignore} let foo = 10;"
+msgid "~~~ {.ignore} // `src/main.rs` mod plants; mod animals; ~~~"
+msgstr ""
+"~~~~ {.ignore}\n"
+"let foo = 10;"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2786
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} let foo = 10;"
+msgid ""
+"~~~ {.ignore}\n"
+"// `src/animals.rs` or `src/animals/mod.rs`\n"
+"mod fish;\n"
+"mod mammals {\n"
+"    mod humans;\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"let foo = 10;"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2820
+#, fuzzy
+#| msgid "~~~~ {.ignore} let foo = 10;"
+msgid "~~~ {.ignore} #[path=\"../../area51/alien.rs\"] mod classified; ~~~"
+msgstr ""
+"~~~~ {.ignore}\n"
+"let foo = 10;"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2897
+#, fuzzy
+#| msgid ""
+#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "\" + world::explore()); } ~~~~"
+msgid "fn main() { cow() } ~~~"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2916
 #, fuzzy, no-wrap
 #| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
@@ -4412,21 +4678,128 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:3004
+#: src/doc/tutorial.md:2923
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"    // Can now refer to those names directly:\n"
+"    chicken();\n"
+"    cow();\n"
+"    barn::hay();\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2932
+#, fuzzy
+#| msgid ""
+#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "\" + world::explore()); } ~~~~"
+msgid ""
+"~~~{.ignore} // `a.rs` - crate root use b::foo; mod b; fn main() { foo(); } "
+"~~~"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2939
+#, fuzzy
+#| msgid ""
+#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "\" + world::explore()); } ~~~~"
+msgid ""
+"~~~{.ignore} // `b.rs` use b::c::bar; pub mod c; pub fn foo() { bar(); } ~~~"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2985
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    egg_layer();\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:2991
 #, fuzzy
 #| msgid "# Dereferencing pointers"
 msgid "## Reexporting names"
 msgstr "# ポインタのデリファレンス"
 
 #. type: Plain text
-#: doc/tutorial.md:3039
+#: src/doc/tutorial.md:3014
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    farm::chicken();\n"
+"    farm::cow();\n"
+"    farm::hay();\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:3026
 #, fuzzy
 #| msgid "## Using other crates"
 msgid "## Using libraries"
 msgstr "## 他のクレートの利用"
 
 #. type: Plain text
-#: doc/tutorial.md:3080
+#: src/doc/tutorial.md:3035
+#, fuzzy
+#| msgid "## Using other crates"
+msgid "For that, Rust offers you the `extern mod` declaration:"
+msgstr "## 他のクレートの利用"
+
+#. type: Plain text
+#: src/doc/tutorial.md:3045
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    // The rational number '1/2':\n"
+"    let one_half = ::extra::rational::Ratio::new(1, 2);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:3068
 #, fuzzy
 #| msgid "~~~~ {.ignore} let foo = 10;"
 msgid "~~~ extern mod extra;"
@@ -4435,15 +4808,39 @@ msgstr ""
 "let foo = 10;"
 
 #. type: Plain text
-#: doc/tutorial.md:3144
+#: src/doc/tutorial.md:3081
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"fn main() {\n"
+"    farm::dog();\n"
+"    let a_third = Ratio::new(1, 3);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.ignore}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: src/doc/tutorial.md:3086
+#, fuzzy
+#| msgid "## Structs"
+msgid "## Package ids"
+msgstr "## 構造体"
+
+#. type: Plain text
+#: src/doc/tutorial.md:3123
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.ignore} extern mod farm; extern mod my_farm (name = \"farm\", "
-#| "vers = \"2.5\"); extern mod my_auxiliary_farm (name = \"farm\", author = "
-#| "\"mjh\"); ~~~~"
+#| "~~~~ {.ignore} extern mod farm; extern mod my_farm (name = \"farm\", vers "
+#| "= \"2.5\"); extern mod my_auxiliary_farm (name = \"farm\", author = \"mjh"
+#| "\"); ~~~~"
 msgid ""
-"~~~~ {.ignore} extern mod farm; extern mod farm = \"farm#2.5\"; extern "
-"mod my_farm = \"farm\"; ~~~~"
+"~~~~ {.ignore} extern mod farm; extern mod farm = \"farm#2.5\"; extern mod "
+"my_farm = \"farm\"; ~~~~"
 msgstr ""
 "~~~~ {.ignore}\n"
 "extern mod farm;\n"
@@ -4452,7 +4849,7 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:3155
+#: src/doc/tutorial.md:3134
 #, fuzzy
 #| msgid "// Make a library (\"bin\" is the default)  #[crate_type = \"lib\"];"
 msgid ""
@@ -4463,7 +4860,7 @@ msgstr ""
 "#[crate_type = \"lib\"];"
 
 #. type: Plain text
-#: doc/tutorial.md:3160
+#: src/doc/tutorial.md:3139
 #, fuzzy
 #| msgid "// Turn on a warning #[warn(non_camel_case_types)]"
 msgid "// Turn on a warning #[warn(non_camel_case_types)] # fn farm() {} ~~~~"
@@ -4472,12 +4869,12 @@ msgstr ""
 "#[warn(non_camel_case_types)]"
 
 #. type: Plain text
-#: doc/tutorial.md:3167
+#: src/doc/tutorial.md:3141
 msgid "## A minimal example"
 msgstr "## 最小限の例"
 
 #. type: Plain text
-#: doc/tutorial.md:3169
+#: src/doc/tutorial.md:3143
 #, fuzzy
 #| msgid ""
 #| "Now for something that you can actually compile yourself, we have these "
@@ -4488,13 +4885,13 @@ msgstr ""
 "す。"
 
 #. type: Plain text
-#: doc/tutorial.md:3179
+#: src/doc/tutorial.md:3153
 #, fuzzy
 #| msgid ""
 #| "~~~~ // world.rs #[link(name = \"world\", vers = \"1.0\")]; pub fn "
 #| "explore() -> &str { \"world\" } ~~~~"
 msgid ""
-"~~~~ // world.rs #[crate_id = \"world#0.42\"]; # extern mod extra; pub fn "
+"~~~~ // `world.rs` #[crate_id = \"world#0.42\"]; # extern mod extra; pub fn "
 "explore() -> &'static str { \"world\" } # fn main() {} ~~~~"
 msgstr ""
 "~~~~\n"
@@ -4504,13 +4901,13 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:3185
+#: src/doc/tutorial.md:3159
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~"
-#| "\"hello \" + world::explore()); } ~~~~"
+#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "\" + world::explore()); } ~~~~"
 msgid ""
-"~~~~ {.ignore} // main.rs extern mod world; fn main() { println!(\"hello "
+"~~~~ {.ignore} // `main.rs` extern mod world; fn main() { println!(\"hello "
 "{}\", world::explore()); } ~~~~"
 msgstr ""
 "~~~~ {.ignore}\n"
@@ -4520,14 +4917,14 @@ msgstr ""
 "~~~~"
 
 #. type: Plain text
-#: doc/tutorial.md:3187
+#: src/doc/tutorial.md:3161
 msgid "Now compile and run like this (adjust to your platform if necessary):"
 msgstr ""
 "以下のようにコンパイルし、実行します (必要であれば、お使いのプラットフォーム"
 "に合わせて修正してください。)"
 
 #. type: Plain text
-#: doc/tutorial.md:3194
+#: src/doc/tutorial.md:3168
 #, fuzzy, no-wrap
 #| msgid ""
 #| "~~~~ {.notrust}\n"
@@ -4552,7 +4949,7 @@ msgstr ""
 "~~~~\n"
 
 #. type: Plain text
-#: doc/tutorial.md:3199
+#: src/doc/tutorial.md:3173
 #, fuzzy
 #| msgid ""
 #| "Notice that the library produced contains the version in the filename as "
@@ -4570,14 +4967,14 @@ msgstr ""
 "キームの一員です。英数字は、クレートのメタデータを表すハッシュ値です。"
 
 #. type: Plain text
-#: doc/tutorial.md:3201
+#: src/doc/tutorial.md:3175
 #, fuzzy
 #| msgid "## The standard library"
 msgid "## The standard library and the prelude"
 msgstr "## 標準ライブラリ"
 
 #. type: Plain text
-#: doc/tutorial.md:3213
+#: src/doc/tutorial.md:3187
 #, fuzzy
 #| msgid "~~~~ {.ignore} let foo = 10;"
 msgid "~~~ {.ignore} extern mod std; ~~~"
@@ -4586,7 +4983,7 @@ msgstr ""
 "let foo = 10;"
 
 #. type: Plain text
-#: doc/tutorial.md:3219
+#: src/doc/tutorial.md:3193
 #, fuzzy
 #| msgid "~~~~ {.ignore} let foo = 10;"
 msgid "~~~ {.ignore} use std::prelude::*; ~~~"
@@ -4595,19 +4992,19 @@ msgstr ""
 "let foo = 10;"
 
 #. type: Plain text
-#: doc/tutorial.md:3260
+#: src/doc/tutorial.md:3234
 #, fuzzy
 #| msgid "## The standard library"
 msgid "## The extra library"
 msgstr "## 標準ライブラリ"
 
 #. type: Plain text
-#: doc/tutorial.md:3271
+#: src/doc/tutorial.md:3246
 msgid "# What next?"
 msgstr "# 次のステップは？"
 
 #. type: Plain text
-#: doc/tutorial.md:3274
+#: src/doc/tutorial.md:3249
 #, fuzzy
 #| msgid ""
 #| "Now that you know the essentials, check out any of the additional "
@@ -4620,29 +5017,50 @@ msgstr ""
 "トリアルもチェックしてみてください。"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:3286
+#: src/doc/tutorial.md:3260
+#, fuzzy
+#| msgid "[Containers and iterators](tutorial-container.html)"
+msgid "[Pointers][pointers]"
+msgstr "[コンテナとイテレータ](tutorial-container.html)"
+
+#. type: Bullet: '* '
+#: src/doc/tutorial.md:3260
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[Lifetimes][lifetimes]"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Bullet: '* '
+#: src/doc/tutorial.md:3260
 msgid "[Tasks and communication][tasks]"
 msgstr "[タスクと通信][tasks]"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:3286
+#: src/doc/tutorial.md:3260
 msgid "[Macros][macros]"
 msgstr "[マクロ][macros]"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:3286
+#: src/doc/tutorial.md:3260
 msgid "[The foreign function interface][ffi]"
 msgstr "[他言語間インターフェース (foreign function inferface)][ffi]"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:3286
+#: src/doc/tutorial.md:3260
 #, fuzzy
 #| msgid "[Containers and iterators](tutorial-container.html)"
 msgid "[Containers and iterators][container]"
 msgstr "[コンテナとイテレータ](tutorial-container.html)"
 
 #. type: Bullet: '* '
-#: doc/tutorial.md:3286
+#: src/doc/tutorial.md:3260
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[Testing Rust code][testing]"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Bullet: '* '
+#: src/doc/tutorial.md:3260
 #, fuzzy
 #| msgid "% The Rust Language Tutorial"
 msgid "[The Rust Runtime][runtime]"

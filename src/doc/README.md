@@ -59,7 +59,7 @@ po4a --copyright-holder="The Rust Project Developers" \
     --package-name="Rust" \
     --package-version="0.10-pre" \
     -M UTF-8 -L UTF-8 \
-    po4a.conf
+    src/doc/po4a.conf
 ~~~~
 
 (the version number must be changed if it is not 0.10-pre now.)
@@ -73,7 +73,7 @@ When you want to make a commit, do the command below before staging your
 change:
 
 ~~~~
-for f in doc/po/**/*.po; do
+for f in src/doc/po/**/*.po; do
     msgattrib --translated $f -o $f.strip
     if [ -e $f.strip ]; then
        mv $f.strip $f

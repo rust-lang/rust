@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.10-pre\n"
-"POT-Creation-Date: 2014-01-14 21:02+0900\n"
+"POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-14 21:02+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,15 +17,92 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
-#: doc/index.md:2
+#: src/doc/index.md:2
 #, fuzzy
 #| msgid "## Using the rust tool"
 msgid "% Rust documentation"
 msgstr "## `rust` コマンドを利用する"
 
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Containers and iterators](tutorial-container.html)"
+msgid "[Pointers](guide-pointers.html)"
+msgstr "[コンテナとイテレータ](tutorial-container.html)"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[References and Lifetimes](guide-lifetimes.html)"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Containers and iterators](tutorial-container.html)"
+msgid "[Containers and Iterators](guide-container.html)"
+msgstr "[コンテナとイテレータ](tutorial-container.html)"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Tasks and communication][tasks]"
+msgid "[Tasks and Communication](guide-tasks.html)"
+msgstr "[タスクと通信][tasks]"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[The foreign function interface][ffi]"
+msgid "[Foreign Function Interface](guide-ffi.html)"
+msgstr "[他言語間インターフェース (foreign function inferface)][ffi]"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Macros][macros]"
+msgid "[Macros](guide-macros.html)"
+msgstr "[マクロ][macros]"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Macros][macros]"
+msgid "[Packaging](guide-rustpkg.html)"
+msgstr "[マクロ][macros]"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[Testing](guide-testing.html)"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "[Containers and iterators](tutorial-container.html)"
+msgid "[Conditions](guide-conditions.html)"
+msgstr "[コンテナとイテレータ](tutorial-container.html)"
+
+#. type: Bullet: '* '
+#: src/doc/index.md:25
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "[Rust's Runtime](guide-runtime.html)"
+msgstr "% Rust 言語チュートリアル"
+
 #. type: Plain text
-#: doc/index.md:26
+#: src/doc/index.md:27
 #, fuzzy
 #| msgid "## Using other crates"
 msgid "# Libraries"
 msgstr "## 他のクレートの利用"
+
+#. type: Plain text
+#: src/doc/index.md:58
+#, fuzzy
+#| msgid "## Conventions"
+msgid "# External resources"
+msgstr "## 本書の表記について"
