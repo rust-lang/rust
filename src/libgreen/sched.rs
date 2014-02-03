@@ -1416,7 +1416,8 @@ mod test {
 
     #[test]
     fn test_spawn_sched_blocking() {
-        use std::unstable::mutex::Mutex;
+        use std::unstable::mutex::{Mutex, MUTEX_INIT};
+        static mut LOCK: Mutex = MUTEX_INIT;
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
@@ -1425,19 +1426,15 @@ mod test {
             let (start_po, start_ch) = Chan::new();
             let (fin_po, fin_ch) = Chan::new();
 
-            let lock = unsafe { Mutex::new() };
-            let lock2 = unsafe { lock.clone() };
-
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
-                let mut lock = lock2;
                 unsafe {
-                    lock.lock();
+                    LOCK.lock();
 
                     start_ch.send(());
-                    lock.wait();   // block the scheduler thread
-                    lock.signal(); // let them know we have the lock
-                    lock.unlock();
+                    LOCK.wait();   // block the scheduler thread
+                    LOCK.signal(); // let them know we have the lock
+                    LOCK.unlock();
                 }
 
                 fin_ch.send(());
@@ -1469,12 +1466,10 @@ mod test {
                 child_ch.send(20);
                 pingpong(&parent_po, &child_ch);
                 unsafe {
-                    let mut lock = lock;
-                    lock.lock();
-                    lock.signal();   // wakeup waiting scheduler
-                    lock.wait();     // wait for them to grab the lock
-                    lock.unlock();
-                    lock.destroy();  // now we're guaranteed they have no locks
+                    LOCK.lock();
+                    LOCK.signal();   // wakeup waiting scheduler
+                    LOCK.wait();     // wait for them to grab the lock
+                    LOCK.unlock();
                 }
             })));
             drop(handle);
@@ -1482,6 +1477,6 @@ mod test {
             fin_po.recv();
             pool.shutdown();
         }
-
+        unsafe { LOCK.destroy(); }
     }
 }
