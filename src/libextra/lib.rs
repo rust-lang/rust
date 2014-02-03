@@ -38,6 +38,8 @@ extern mod sync;
 #[cfg(not(stage0))]
 extern mod serialize;
 
+extern mod collections;
+
 #[cfg(stage0)]
 pub mod serialize {
     #[allow(missing_doc)];
@@ -47,28 +49,9 @@ pub mod serialize {
                                    EncoderHelpers, DecoderHelpers};
 }
 
-#[cfg(stage0)]
-macro_rules! if_ok (
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
-
 // Utility modules
 
 pub mod c_vec;
-
-// Collections
-
-pub mod container;
-pub mod bitv;
-pub mod list;
-pub mod ringbuf;
-pub mod priority_queue;
-pub mod smallintmap;
-
-pub mod dlist;
-pub mod treemap;
-pub mod btree;
-pub mod lru_cache;
 
 // And ... other stuff
 

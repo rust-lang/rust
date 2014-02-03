@@ -38,6 +38,7 @@ extern mod syntax;
 extern mod serialize;
 extern mod sync;
 extern mod getopts;
+extern mod collections;
 
 use back::link;
 use driver::session;

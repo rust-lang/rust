@@ -24,7 +24,7 @@ use serialize::Decodable;
 use stats::Stats;
 use stats;
 use time::precise_time_ns;
-use treemap::TreeMap;
+use collections::TreeMap;
 
 use std::clone::Clone;
 use std::io;

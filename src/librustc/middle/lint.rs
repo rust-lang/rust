@@ -56,7 +56,7 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use extra::smallintmap::SmallIntMap;
+use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::{AttrMetaMethods, AttributeMethods};

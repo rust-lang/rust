@@ -153,7 +153,7 @@ pub fn each<T>(l: @List<T>, f: |&T| -> bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use list::*;
+    use list::{List, Nil, from_vec, head, is_empty, tail};
     use list;
 
     use std::option;

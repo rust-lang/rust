@@ -28,7 +28,7 @@ use std::util;
 use std::iter::Rev;
 use std::iter;
 
-use container::Deque;
+use deque::Deque;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -657,7 +657,7 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
 
 #[cfg(test)]
 mod tests {
-    use container::Deque;
+    use deque::Deque;
     use extra::test;
     use std::rand;
     use super::{DList, Node, ListInsertion};
