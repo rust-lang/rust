@@ -94,6 +94,14 @@ impl<T: Send> UnsafeArc<T> {
             return &(*self.data).data as *T;
         }
     }
+
+    /// checks if this is the only reference to the arc protected data
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        unsafe {
+            (*self.data).count.load(Relaxed) == 1
+        }
+    }
 }
 
 impl<T: Send> Clone for UnsafeArc<T> {

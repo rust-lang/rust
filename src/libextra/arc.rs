@@ -555,6 +555,50 @@ impl<'a, T:Freeze + Send> RWReadMode<'a, T> {
 }
 
 /****************************************************************************
+ * Copy-on-write Arc
+ ****************************************************************************/
+
+pub struct CowArc<T> { priv x: UnsafeArc<T> }
+
+/// A Copy-on-write Arc functions the same way as an `arc` except it allows
+/// mutation of the contents if there is only a single reference to
+/// the data. If there are multiple references the data is automatically
+/// cloned and the task modifies the cloned data in place of the shared data.
+impl<T:Clone+Send+Freeze> CowArc<T> {
+    /// Create a copy-on-write atomically reference counted wrapper
+    #[inline]
+    pub fn new(data: T) -> CowArc<T> {
+        CowArc { x: UnsafeArc::new(data) }
+    }
+
+    #[inline]
+    pub fn get<'a>(&'a self) -> &'a T {
+        unsafe { &*self.x.get_immut() }
+    }
+
+    /// get a mutable reference to the contents. If there are more then one
+    /// reference to the contents of the `CowArc` will be cloned
+    /// and this reference updated to point to the cloned data.
+    #[inline]
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut T {
+        if !self.x.is_owned() {
+            *self = CowArc::new(self.get().clone())
+        }
+        unsafe { &mut *self.x.get() }
+    }
+}
+
+impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
+    /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
+    #[inline]
+    fn clone(&self) -> CowArc<T> {
+        CowArc { x: self.x.clone() }
+    }
+}
+
+
+
+/****************************************************************************
  * Tests
  ****************************************************************************/
 
@@ -962,5 +1006,69 @@ mod tests {
         // deschedules in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
         for _ in range(0, 8) { test_rw_write_cond_downgrade_read_race_helper(); }
+    }
+
+    #[test]
+    fn test_cowarc_clone()
+    {
+        let cow0 = CowArc::new(75u);
+        let cow1 = cow0.clone();
+        let cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        assert!(cow0.get() == cow1.get());
+        assert!(cow0.get() == cow2.get());
+    }
+
+    #[test]
+    fn test_cowarc_clone_get_mut()
+    {
+        let mut cow0 = CowArc::new(75u);
+        let mut cow1 = cow0.clone();
+        let mut cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get_mut());
+        assert!(75 == *cow1.get_mut());
+        assert!(75 == *cow2.get_mut());
+
+        *cow0.get_mut() += 1;
+        *cow1.get_mut() += 2;
+        *cow2.get_mut() += 3;
+
+        assert!(76 == *cow0.get());
+        assert!(77 == *cow1.get());
+        assert!(78 == *cow2.get());
+
+        // none should point to the same backing memory
+        assert!(cow0.get() != cow1.get());
+        assert!(cow0.get() != cow2.get());
+        assert!(cow1.get() != cow2.get());
+    }
+
+    #[test]
+    fn test_cowarc_clone_get_mut2()
+    {
+        let mut cow0 = CowArc::new(75u);
+        let cow1 = cow0.clone();
+        let cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        *cow0.get_mut() += 1;
+
+        assert!(76 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        // cow1 and cow2 should share the same contents
+        // cow0 should have a unique reference
+        assert!(cow0.get() != cow1.get());
+        assert!(cow0.get() != cow2.get());
+        assert!(cow1.get() == cow2.get());
     }
 }
