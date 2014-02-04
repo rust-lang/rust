@@ -29,7 +29,7 @@ This API is completely unstable and subject to change.
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 #[allow(unknown_features)]; // Note: remove it after a snapshot.
-#[feature(quote_item, quote_expr)];
+#[feature(quote)];
 
 extern mod extra;
 extern mod flate;

@@ -49,12 +49,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("trace_macros", Active),
     ("simd", Active),
     ("default_type_params", Active),
-    ("quote_tokens", Active),
-    ("quote_expr", Active),
-    ("quote_ty", Active),
-    ("quote_item", Active),
-    ("quote_pat", Active),
-    ("quote_stmt", Active),
+    ("quote", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -221,7 +216,7 @@ impl Visitor<()> for Context {
         } else {
             for &quote in quotes.iter() {
                 if id == self.sess.ident_of(quote) {
-                  self.gate_feature(quote, path.span, quote + msg);
+                  self.gate_feature("quote", path.span, quote + msg);
                 }
             }
         }
