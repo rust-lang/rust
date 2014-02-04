@@ -130,6 +130,24 @@ pub struct Opt {
     priv aliases: ~[Opt],
 }
 
+/// One group of options, e.g., both -h and --help, along with
+/// their shared description and properties.
+#[deriving(Clone, Eq)]
+pub struct OptGroup {
+    /// Short Name of the `OptGroup`
+    short_name: ~str,
+    /// Long Name of the `OptGroup`
+    long_name: ~str,
+    /// Hint
+    hint: ~str,
+    /// Description
+    desc: ~str,
+    /// Whether it has an argument
+    hasarg: HasArg,
+    /// How often it can occur
+    occur: Occur
+}
+
 /// Describes wether an option is given at all or has a value.
 #[deriving(Clone, Eq)]
 enum Optval {
@@ -189,6 +207,50 @@ impl Name {
         match *self {
             Short(ch) => ch.to_str(),
             Long(ref s) => s.to_owned()
+        }
+    }
+}
+
+impl OptGroup {
+    /// Translate OptGroup into Opt.
+    /// (Both short and long names correspond to different Opts).
+    pub fn long_to_short(&self) -> Opt {
+        let OptGroup {
+            short_name: short_name,
+            long_name: long_name,
+            hasarg: hasarg,
+            occur: occur,
+            ..
+        } = (*self).clone();
+
+        match (short_name.len(), long_name.len()) {
+            (0,0) => fail!("this long-format option was given no name"),
+            (0,_) => Opt {
+                name: Long((long_name)),
+                hasarg: hasarg,
+                occur: occur,
+                aliases: ~[]
+            },
+            (1,0) => Opt {
+                name: Short(short_name.char_at(0)),
+                hasarg: hasarg,
+                occur: occur,
+                aliases: ~[]
+            },
+            (1,_) => Opt {
+                name: Long((long_name)),
+                hasarg: hasarg,
+                occur:  occur,
+                aliases: ~[
+                    Opt {
+                        name: Short(short_name.char_at(0)),
+                        hasarg: hasarg,
+                        occur:  occur,
+                        aliases: ~[]
+                    }
+                ]
+            },
+            (_,_) => fail!("something is wrong with the long-form opt")
         }
     }
 }
@@ -308,65 +370,89 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
     None
 }
 
-/// Create an option that is required and takes an argument.
-pub fn reqopt(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+/// Create a long option that is required and takes an argument.
+pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Req,
-        aliases: ~[]
+        occur: Req
     }
 }
 
-/// Create an option that is optional and takes an argument.
-pub fn optopt(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+/// Create a long option that is optional and takes an argument.
+pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Optional,
-        aliases: ~[]
+        occur: Optional
     }
 }
 
-/// Create an option that is optional and does not take an argument.
-pub fn optflag(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+/// Create a long option that is optional and does not take an argument.
+pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: ~"",
+        desc: desc.to_owned(),
         hasarg: No,
-        occur: Optional,
-        aliases: ~[]
+        occur: Optional
     }
 }
 
-/// Create an option that is optional, does not take an argument,
-/// and may occur multiple times.
-pub fn optflagmulti(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+/// Create a long option that can occur more than once and does not
+/// take an argument.
+pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: ~"",
+        desc: desc.to_owned(),
         hasarg: No,
-        occur: Multi,
-        aliases: ~[]
+        occur: Multi
     }
 }
 
-/// Create an option that is optional and takes an optional argument.
-pub fn optflagopt(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+/// Create a long option that is optional and takes an optional argument.
+pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
         hasarg: Maybe,
-        occur: Optional,
-        aliases: ~[]
+        occur: Optional
     }
 }
 
-/// Create an option that is optional, takes an argument, and may occur
+/// Create a long option that is optional, takes an argument, and may occur
 /// multiple times.
-pub fn optmulti(name: &str) -> Opt {
-    Opt {
-        name: Name::from_str(name),
+pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Multi,
-        aliases: ~[]
+        occur: Multi
     }
 }
 
@@ -398,7 +484,8 @@ impl Fail_ {
 /// On success returns `Ok(Opt)`. Use methods such as `opt_present`
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
 /// Use `to_err_msg` to get an error message.
-pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
+pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
+    let opts = optgrps.map(|x| x.long_to_short());
     let n_opts = opts.len();
 
     fn f(_x: uint) -> ~[Optval] { return ~[]; }
@@ -524,369 +611,228 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
     })
 }
 
-/// A module which provides a way to specify descriptions and
-/// groups of short and long option names, together.
-pub mod groups {
-    use super::{HasArg, Long, Maybe, Multi, No, Occur, Opt, Optional, Req};
-    use super::{Short, Yes};
+/// Derive a usage message from a set of long options.
+pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
-    /// One group of options, e.g., both -h and --help, along with
-    /// their shared description and properties.
-    #[deriving(Clone, Eq)]
-    pub struct OptGroup {
-        /// Short Name of the `OptGroup`
-        short_name: ~str,
-        /// Long Name of the `OptGroup`
-        long_name: ~str,
-        /// Hint
-        hint: ~str,
-        /// Description
-        desc: ~str,
-        /// Whether it has an argument
-        hasarg: HasArg,
-        /// How often it can occur
-        occur: Occur
-    }
+    let desc_sep = "\n" + " ".repeat(24);
 
-    impl OptGroup {
-        /// Translate OptGroup into Opt.
-        /// (Both short and long names correspond to different Opts).
-        pub fn long_to_short(&self) -> Opt {
-            let OptGroup {
-                short_name: short_name,
-                long_name: long_name,
-                hasarg: hasarg,
-                occur: occur,
-                ..
-            } = (*self).clone();
+    let mut rows = opts.iter().map(|optref| {
+        let OptGroup{short_name: short_name,
+                     long_name: long_name,
+                     hint: hint,
+                     desc: desc,
+                     hasarg: hasarg,
+                     ..} = (*optref).clone();
 
-            match (short_name.len(), long_name.len()) {
-                (0,0) => fail!("this long-format option was given no name"),
-                (0,_) => Opt {
-                    name: Long((long_name)),
-                    hasarg: hasarg,
-                    occur: occur,
-                    aliases: ~[]
-                },
-                (1,0) => Opt {
-                    name: Short(short_name.char_at(0)),
-                    hasarg: hasarg,
-                    occur: occur,
-                    aliases: ~[]
-                },
-                (1,_) => Opt {
-                    name: Long((long_name)),
-                    hasarg: hasarg,
-                    occur:  occur,
-                    aliases: ~[
-                        Opt {
-                            name: Short(short_name.char_at(0)),
-                            hasarg: hasarg,
-                            occur:  occur,
-                            aliases: ~[]
-                        }
-                    ]
-                },
-                (_,_) => fail!("something is wrong with the long-form opt")
+        let mut row = " ".repeat(4);
+
+        // short option
+        match short_name.len() {
+            0 => {}
+            1 => {
+                row.push_char('-');
+                row.push_str(short_name);
+                row.push_char(' ');
+            }
+            _ => fail!("the short name should only be 1 ascii char long"),
+        }
+
+        // long option
+        match long_name.len() {
+            0 => {}
+            _ => {
+                row.push_str("--");
+                row.push_str(long_name);
+                row.push_char(' ');
             }
         }
-    }
 
-    /// Create a long option that is required and takes an argument.
-    pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: hint.to_owned(),
-            desc: desc.to_owned(),
-            hasarg: Yes,
-            occur: Req
-        }
-    }
-
-    /// Create a long option that is optional and takes an argument.
-    pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: hint.to_owned(),
-            desc: desc.to_owned(),
-            hasarg: Yes,
-            occur: Optional
-        }
-    }
-
-    /// Create a long option that is optional and does not take an argument.
-    pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: ~"",
-            desc: desc.to_owned(),
-            hasarg: No,
-            occur: Optional
-        }
-    }
-
-    /// Create a long option that can occur more than once and does not
-    /// take an argument.
-    pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: ~"",
-            desc: desc.to_owned(),
-            hasarg: No,
-            occur: Multi
-        }
-    }
-
-    /// Create a long option that is optional and takes an optional argument.
-    pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: hint.to_owned(),
-            desc: desc.to_owned(),
-            hasarg: Maybe,
-            occur: Optional
-        }
-    }
-
-    /// Create a long option that is optional, takes an argument, and may occur
-    /// multiple times.
-    pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptGroup {
-        let len = short_name.len();
-        assert!(len == 1 || len == 0);
-        OptGroup {
-            short_name: short_name.to_owned(),
-            long_name: long_name.to_owned(),
-            hint: hint.to_owned(),
-            desc: desc.to_owned(),
-            hasarg: Yes,
-            occur: Multi
-        }
-    }
-
-    /// Parse command line args with the provided long format options.
-    pub fn getopts(args: &[~str], opts: &[OptGroup]) -> super::Result {
-        super::getopts(args, opts.map(|x| x.long_to_short()))
-    }
-
-    fn format_option(opt: &OptGroup) -> ~str {
-        let mut line = ~"";
-
-        if opt.occur != Req {
-            line.push_char('[');
+        // arg
+        match hasarg {
+            No => {}
+            Yes => row.push_str(hint),
+            Maybe => {
+                row.push_char('[');
+                row.push_str(hint);
+                row.push_char(']');
+            }
         }
 
-        // Use short_name is possible, but fallback to long_name.
-        if opt.short_name.len() > 0 {
-            line.push_char('-');
-            line.push_str(opt.short_name);
+        // FIXME: #5516 should be graphemes not codepoints
+        // here we just need to indent the start of the description
+        let rowlen = row.char_len();
+        if rowlen < 24 {
+            for _ in range(0, 24 - rowlen) {
+                row.push_char(' ');
+            }
         } else {
-            line.push_str("--");
-            line.push_str(opt.long_name);
+            row.push_str(desc_sep)
         }
 
-        if opt.hasarg != No {
-            line.push_char(' ');
-            if opt.hasarg == Maybe {
-                line.push_char('[');
-            }
-            line.push_str(opt.hint);
-            if opt.hasarg == Maybe {
-                line.push_char(']');
-            }
+        // Normalize desc to contain words separated by one space character
+        let mut desc_normalized_whitespace = ~"";
+        for word in desc.words() {
+            desc_normalized_whitespace.push_str(word);
+            desc_normalized_whitespace.push_char(' ');
         }
 
-        if opt.occur != Req {
-            line.push_char(']');
-        }
-        if opt.occur == Multi {
-            line.push_str("..");
-        }
-
-        line
-    }
-
-    /// Derive a short one-line usage summary from a set of long options.
-    pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> ~str {
-        let mut line = ~"Usage: " + program_name + " ";
-        line.push_str(opts.iter().map(format_option).to_owned_vec().connect(" "));
-
-        line
-    }
-
-    /// Derive a usage message from a set of long options.
-    pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
-
-        let desc_sep = "\n" + " ".repeat(24);
-
-        let mut rows = opts.iter().map(|optref| {
-            let OptGroup{short_name: short_name,
-                         long_name: long_name,
-                         hint: hint,
-                         desc: desc,
-                         hasarg: hasarg,
-                         ..} = (*optref).clone();
-
-            let mut row = " ".repeat(4);
-
-            // short option
-            match short_name.len() {
-                0 => {}
-                1 => {
-                    row.push_char('-');
-                    row.push_str(short_name);
-                    row.push_char(' ');
-                }
-                _ => fail!("the short name should only be 1 ascii char long"),
-            }
-
-            // long option
-            match long_name.len() {
-                0 => {}
-                _ => {
-                    row.push_str("--");
-                    row.push_str(long_name);
-                    row.push_char(' ');
-                }
-            }
-
-            // arg
-            match hasarg {
-                No => {}
-                Yes => row.push_str(hint),
-                Maybe => {
-                    row.push_char('[');
-                    row.push_str(hint);
-                    row.push_char(']');
-                }
-            }
-
-            // FIXME: #5516 should be graphemes not codepoints
-            // here we just need to indent the start of the description
-            let rowlen = row.char_len();
-            if rowlen < 24 {
-                for _ in range(0, 24 - rowlen) {
-                    row.push_char(' ');
-                }
-            } else {
-                row.push_str(desc_sep)
-            }
-
-            // Normalize desc to contain words separated by one space character
-            let mut desc_normalized_whitespace = ~"";
-            for word in desc.words() {
-                desc_normalized_whitespace.push_str(word);
-                desc_normalized_whitespace.push_char(' ');
-            }
-
-            // FIXME: #5516 should be graphemes not codepoints
-            let mut desc_rows = ~[];
-            each_split_within(desc_normalized_whitespace, 54, |substr| {
-                desc_rows.push(substr.to_owned());
-                true
-            });
-
-            // FIXME: #5516 should be graphemes not codepoints
-            // wrapped description
-            row.push_str(desc_rows.connect(desc_sep));
-
-            row
+        // FIXME: #5516 should be graphemes not codepoints
+        let mut desc_rows = ~[];
+        each_split_within(desc_normalized_whitespace, 54, |substr| {
+            desc_rows.push(substr.to_owned());
+            true
         });
 
-        format!("{}\n\nOptions:\n{}\n", brief, rows.collect::<~[~str]>().connect("\n"))
+        // FIXME: #5516 should be graphemes not codepoints
+        // wrapped description
+        row.push_str(desc_rows.connect(desc_sep));
+
+        row
+    });
+
+    format!("{}\n\nOptions:\n{}\n", brief, rows.collect::<~[~str]>().connect("\n"))
+}
+
+fn format_option(opt: &OptGroup) -> ~str {
+    let mut line = ~"";
+
+    if opt.occur != Req {
+        line.push_char('[');
     }
 
-    /// Splits a string into substrings with possibly internal whitespace,
-    /// each of them at most `lim` bytes long. The substrings have leading and trailing
-    /// whitespace removed, and are only cut at whitespace boundaries.
-    ///
-    /// Note: Function was moved here from `std::str` because this module is the only place that
-    /// uses it, and because it was to specific for a general string function.
-    ///
-    /// #Failure:
-    ///
-    /// Fails during iteration if the string contains a non-whitespace
-    /// sequence longer than the limit.
-    fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
-                         -> bool {
-        // Just for fun, let's write this as a state machine:
+    // Use short_name is possible, but fallback to long_name.
+    if opt.short_name.len() > 0 {
+        line.push_char('-');
+        line.push_str(opt.short_name);
+    } else {
+        line.push_str("--");
+        line.push_str(opt.long_name);
+    }
 
-        enum SplitWithinState {
-            A,  // leading whitespace, initial state
-            B,  // words
-            C,  // internal and trailing whitespace
+    if opt.hasarg != No {
+        line.push_char(' ');
+        if opt.hasarg == Maybe {
+            line.push_char('[');
         }
-        enum Whitespace {
-            Ws, // current char is whitespace
-            Cr  // current char is not whitespace
+        line.push_str(opt.hint);
+        if opt.hasarg == Maybe {
+            line.push_char(']');
         }
-        enum LengthLimit {
-            UnderLim, // current char makes current substring still fit in limit
-            OverLim   // current char makes current substring no longer fit in limit
-        }
+    }
 
-        let mut slice_start = 0;
-        let mut last_start = 0;
-        let mut last_end = 0;
-        let mut state = A;
-        let mut fake_i = ss.len();
-        let mut lim = lim;
+    if opt.occur != Req {
+        line.push_char(']');
+    }
+    if opt.occur == Multi {
+        line.push_str("..");
+    }
 
-        let mut cont = true;
-        let slice: || = || { cont = it(ss.slice(slice_start, last_end)) };
+    line
+}
 
-        // if the limit is larger than the string, lower it to save cycles
-        if lim >= fake_i {
-            lim = fake_i;
-        }
+/// Derive a short one-line usage summary from a set of long options.
+pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> ~str {
+    let mut line = ~"Usage: " + program_name + " ";
+    line.push_str(opts.iter().map(format_option).to_owned_vec().connect(" "));
 
-        let machine: |(uint, char)| -> bool = |(i, c)| {
-            let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
-            let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
+    line
+}
 
-            state = match (state, whitespace, limit) {
-                (A, Ws, _)        => { A }
-                (A, Cr, _)        => { slice_start = i; last_start = i; B }
 
-                (B, Cr, UnderLim) => { B }
-                (B, Cr, OverLim)  if (i - last_start + 1) > lim
-                                => fail!("word starting with {} longer than limit!",
-                                        ss.slice(last_start, i + 1)),
-                (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
-                (B, Ws, UnderLim) => { last_end = i; C }
-                (B, Ws, OverLim)  => { last_end = i; slice(); A }
+/// Splits a string into substrings with possibly internal whitespace,
+/// each of them at most `lim` bytes long. The substrings have leading and trailing
+/// whitespace removed, and are only cut at whitespace boundaries.
+///
+/// Note: Function was moved here from `std::str` because this module is the only place that
+/// uses it, and because it was to specific for a general string function.
+///
+/// #Failure:
+///
+/// Fails during iteration if the string contains a non-whitespace
+/// sequence longer than the limit.
+fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
+                     -> bool {
+    // Just for fun, let's write this as a state machine:
 
-                (C, Cr, UnderLim) => { last_start = i; B }
-                (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
-                (C, Ws, OverLim)  => { slice(); A }
-                (C, Ws, UnderLim) => { C }
-            };
+    enum SplitWithinState {
+        A,  // leading whitespace, initial state
+        B,  // words
+        C,  // internal and trailing whitespace
+    }
+    enum Whitespace {
+        Ws, // current char is whitespace
+        Cr  // current char is not whitespace
+    }
+    enum LengthLimit {
+        UnderLim, // current char makes current substring still fit in limit
+        OverLim   // current char makes current substring no longer fit in limit
+    }
 
-            cont
+    let mut slice_start = 0;
+    let mut last_start = 0;
+    let mut last_end = 0;
+    let mut state = A;
+    let mut fake_i = ss.len();
+    let mut lim = lim;
+
+    let mut cont = true;
+    let slice: || = || { cont = it(ss.slice(slice_start, last_end)) };
+
+    // if the limit is larger than the string, lower it to save cycles
+    if lim >= fake_i {
+        lim = fake_i;
+    }
+
+    let machine: |(uint, char)| -> bool = |(i, c)| {
+        let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
+        let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
+
+        state = match (state, whitespace, limit) {
+            (A, Ws, _)        => { A }
+            (A, Cr, _)        => { slice_start = i; last_start = i; B }
+
+            (B, Cr, UnderLim) => { B }
+            (B, Cr, OverLim)  if (i - last_start + 1) > lim
+                            => fail!("word starting with {} longer than limit!",
+                                    ss.slice(last_start, i + 1)),
+            (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
+            (B, Ws, UnderLim) => { last_end = i; C }
+            (B, Ws, OverLim)  => { last_end = i; slice(); A }
+
+            (C, Cr, UnderLim) => { last_start = i; B }
+            (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
+            (C, Ws, OverLim)  => { slice(); A }
+            (C, Ws, UnderLim) => { C }
         };
 
-        ss.char_indices().advance(|x| machine(x));
+        cont
+    };
 
-        // Let the automaton 'run out' by supplying trailing whitespace
-        while cont && match state { B | C => true, A => false } {
-            machine((fake_i, ' '));
-            fake_i += 1;
+    ss.char_indices().advance(|x| machine(x));
+
+    // Let the automaton 'run out' by supplying trailing whitespace
+    while cont && match state { B | C => true, A => false } {
+        machine((fake_i, ' '));
+        fake_i += 1;
+    }
+    return cont;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::result::{Err, Ok};
+    use std::result;
+
+    fn check_fail_type(f: Fail_, ft: FailType) {
+        match f {
+          ArgumentMissing(_) => assert!(ft == ArgumentMissing_),
+          UnrecognizedOption(_) => assert!(ft == UnrecognizedOption_),
+          OptionMissing(_) => assert!(ft == OptionMissing_),
+          OptionDuplicated(_) => assert!(ft == OptionDuplicated_),
+          UnexpectedArgument(_) => assert!(ft == UnexpectedArgument_)
         }
-        return cont;
     }
 
     #[test]
@@ -904,33 +850,12 @@ pub mod groups {
         t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX,
             [~"Mary had a little lamb\nLittle lamb"]);
     }
-} // end groups module
-
-#[cfg(test)]
-mod tests {
-
-    use super::groups::OptGroup;
-    use super::*;
-
-    use std::result::{Err, Ok};
-    use std::result;
-
-    fn check_fail_type(f: Fail_, ft: FailType) {
-        match f {
-          ArgumentMissing(_) => assert!(ft == ArgumentMissing_),
-          UnrecognizedOption(_) => assert!(ft == UnrecognizedOption_),
-          OptionMissing(_) => assert!(ft == OptionMissing_),
-          OptionDuplicated(_) => assert!(ft == OptionDuplicated_),
-          UnexpectedArgument(_) => assert!(ft == UnexpectedArgument_)
-        }
-    }
-
 
     // Tests for reqopt
     #[test]
     fn test_reqopt_long() {
         let args = ~[~"--test=20"];
-        let opts = ~[reqopt("test")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -944,7 +869,7 @@ mod tests {
     #[test]
     fn test_reqopt_long_missing() {
         let args = ~[~"blah"];
-        let opts = ~[reqopt("test")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionMissing_),
@@ -955,7 +880,7 @@ mod tests {
     #[test]
     fn test_reqopt_long_no_arg() {
         let args = ~[~"--test"];
-        let opts = ~[reqopt("test")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -966,7 +891,7 @@ mod tests {
     #[test]
     fn test_reqopt_long_multi() {
         let args = ~[~"--test=20", ~"--test=30"];
-        let opts = ~[reqopt("test")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -977,7 +902,7 @@ mod tests {
     #[test]
     fn test_reqopt_short() {
         let args = ~[~"-t", ~"20"];
-        let opts = ~[reqopt("t")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -991,7 +916,7 @@ mod tests {
     #[test]
     fn test_reqopt_short_missing() {
         let args = ~[~"blah"];
-        let opts = ~[reqopt("t")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionMissing_),
@@ -1002,7 +927,7 @@ mod tests {
     #[test]
     fn test_reqopt_short_no_arg() {
         let args = ~[~"-t"];
-        let opts = ~[reqopt("t")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -1013,7 +938,7 @@ mod tests {
     #[test]
     fn test_reqopt_short_multi() {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
-        let opts = ~[reqopt("t")];
+        let opts = ~[reqopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -1026,7 +951,7 @@ mod tests {
     #[test]
     fn test_optopt_long() {
         let args = ~[~"--test=20"];
-        let opts = ~[optopt("test")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1040,7 +965,7 @@ mod tests {
     #[test]
     fn test_optopt_long_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optopt("test")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("test")),
@@ -1051,7 +976,7 @@ mod tests {
     #[test]
     fn test_optopt_long_no_arg() {
         let args = ~[~"--test"];
-        let opts = ~[optopt("test")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -1062,7 +987,7 @@ mod tests {
     #[test]
     fn test_optopt_long_multi() {
         let args = ~[~"--test=20", ~"--test=30"];
-        let opts = ~[optopt("test")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -1073,7 +998,7 @@ mod tests {
     #[test]
     fn test_optopt_short() {
         let args = ~[~"-t", ~"20"];
-        let opts = ~[optopt("t")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1087,7 +1012,7 @@ mod tests {
     #[test]
     fn test_optopt_short_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optopt("t")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("t")),
@@ -1098,7 +1023,7 @@ mod tests {
     #[test]
     fn test_optopt_short_no_arg() {
         let args = ~[~"-t"];
-        let opts = ~[optopt("t")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -1109,7 +1034,7 @@ mod tests {
     #[test]
     fn test_optopt_short_multi() {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
-        let opts = ~[optopt("t")];
+        let opts = ~[optopt("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -1122,7 +1047,7 @@ mod tests {
     #[test]
     fn test_optflag_long() {
         let args = ~[~"--test"];
-        let opts = ~[optflag("test")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(m.opt_present("test")),
@@ -1133,7 +1058,7 @@ mod tests {
     #[test]
     fn test_optflag_long_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optflag("test")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("test")),
@@ -1144,7 +1069,7 @@ mod tests {
     #[test]
     fn test_optflag_long_arg() {
         let args = ~[~"--test=20"];
-        let opts = ~[optflag("test")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => {
@@ -1158,7 +1083,7 @@ mod tests {
     #[test]
     fn test_optflag_long_multi() {
         let args = ~[~"--test", ~"--test"];
-        let opts = ~[optflag("test")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -1169,7 +1094,7 @@ mod tests {
     #[test]
     fn test_optflag_short() {
         let args = ~[~"-t"];
-        let opts = ~[optflag("t")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(m.opt_present("t")),
@@ -1180,7 +1105,7 @@ mod tests {
     #[test]
     fn test_optflag_short_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optflag("t")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("t")),
@@ -1191,7 +1116,7 @@ mod tests {
     #[test]
     fn test_optflag_short_arg() {
         let args = ~[~"-t", ~"20"];
-        let opts = ~[optflag("t")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1206,7 +1131,7 @@ mod tests {
     #[test]
     fn test_optflag_short_multi() {
         let args = ~[~"-t", ~"-t"];
-        let opts = ~[optflag("t")];
+        let opts = ~[optflag("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, OptionDuplicated_),
@@ -1218,7 +1143,7 @@ mod tests {
     #[test]
     fn test_optflagmulti_short1() {
         let args = ~[~"-v"];
-        let opts = ~[optflagmulti("v")];
+        let opts = ~[optflagmulti("v", "verbose", "verbosity", "VERBOSITY")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1231,7 +1156,7 @@ mod tests {
     #[test]
     fn test_optflagmulti_short2a() {
         let args = ~[~"-v", ~"-v"];
-        let opts = ~[optflagmulti("v")];
+        let opts = ~[optflagmulti("v", "verbose", "verbosity", "VERBOSITY")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1244,7 +1169,7 @@ mod tests {
     #[test]
     fn test_optflagmulti_short2b() {
         let args = ~[~"-vv"];
-        let opts = ~[optflagmulti("v")];
+        let opts = ~[optflagmulti("v", "verbose", "verbosity", "VERBOSITY")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1257,7 +1182,7 @@ mod tests {
     #[test]
     fn test_optflagmulti_long1() {
         let args = ~[~"--verbose"];
-        let opts = ~[optflagmulti("verbose")];
+        let opts = ~[optflagmulti("v", "verbose", "verbosity", "VERBOSITY")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1270,7 +1195,7 @@ mod tests {
     #[test]
     fn test_optflagmulti_long2() {
         let args = ~[~"--verbose", ~"--verbose"];
-        let opts = ~[optflagmulti("verbose")];
+        let opts = ~[optflagmulti("v", "verbose", "verbosity", "VERBOSITY")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1284,7 +1209,7 @@ mod tests {
     #[test]
     fn test_optmulti_long() {
         let args = ~[~"--test=20"];
-        let opts = ~[optmulti("test")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1298,7 +1223,7 @@ mod tests {
     #[test]
     fn test_optmulti_long_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optmulti("test")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("test")),
@@ -1309,7 +1234,7 @@ mod tests {
     #[test]
     fn test_optmulti_long_no_arg() {
         let args = ~[~"--test"];
-        let opts = ~[optmulti("test")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -1320,7 +1245,7 @@ mod tests {
     #[test]
     fn test_optmulti_long_multi() {
         let args = ~[~"--test=20", ~"--test=30"];
-        let opts = ~[optmulti("test")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1337,7 +1262,7 @@ mod tests {
     #[test]
     fn test_optmulti_short() {
         let args = ~[~"-t", ~"20"];
-        let opts = ~[optmulti("t")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1351,7 +1276,7 @@ mod tests {
     #[test]
     fn test_optmulti_short_missing() {
         let args = ~[~"blah"];
-        let opts = ~[optmulti("t")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => assert!(!m.opt_present("t")),
@@ -1362,7 +1287,7 @@ mod tests {
     #[test]
     fn test_optmulti_short_no_arg() {
         let args = ~[~"-t"];
-        let opts = ~[optmulti("t")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
@@ -1373,7 +1298,7 @@ mod tests {
     #[test]
     fn test_optmulti_short_multi() {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
-        let opts = ~[optmulti("t")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1390,7 +1315,7 @@ mod tests {
     #[test]
     fn test_unrecognized_option_long() {
         let args = ~[~"--untest"];
-        let opts = ~[optmulti("t")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
@@ -1401,7 +1326,7 @@ mod tests {
     #[test]
     fn test_unrecognized_option_short() {
         let args = ~[~"-t"];
-        let opts = ~[optmulti("test")];
+        let opts = ~[optmulti("t", "test", "testing", "TEST")];
         let rs = getopts(args, opts);
         match rs {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
@@ -1416,9 +1341,13 @@ mod tests {
               ~"--flag", ~"--long=30", ~"-f", ~"-m", ~"40",
               ~"-m", ~"50", ~"-n", ~"-A B", ~"-n", ~"-60 70"];
         let opts =
-            ~[optopt("s"), optflag("flag"), reqopt("long"),
-             optflag("f"), optmulti("m"), optmulti("n"),
-             optopt("notpresent")];
+            ~[optopt("s", "something", "something", "SOMETHING"),
+              optflag("", "flag", "a flag", "FLAG"),
+              reqopt("", "long", "hi", "LONG"),
+              optflag("f", "", "another flag", "FLAG"),
+              optmulti("m", "", "mmmmmm", "YUM"),
+              optmulti("n", "", "nothing", "NOTHING"),
+              optopt("", "notpresent", "nothing to see here", "NOPE")];
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
@@ -1443,7 +1372,9 @@ mod tests {
 
     #[test]
     fn test_multi() {
-        let opts = ~[optopt("e"), optopt("encrypt"), optopt("f")];
+        let opts = ~[optopt("e", "", "encrypt", "ENCRYPT"),
+                     optopt("", "encrypt", "encrypt", "ENCRYPT"),
+                     optopt("f", "", "flag", "FLAG")];
 
         let args_single = ~[~"-e", ~"foo"];
         let matches_single = &match getopts(args_single, opts) {
@@ -1483,7 +1414,8 @@ mod tests {
     #[test]
     fn test_nospace() {
         let args = ~[~"-Lfoo", ~"-M."];
-        let opts = ~[optmulti("L"), optmulti("M")];
+        let opts = ~[optmulti("L", "", "library directory", "LIB"),
+                     optmulti("M", "", "something", "MMMM")];
         let matches = &match getopts(args, opts) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
@@ -1497,7 +1429,7 @@ mod tests {
 
     #[test]
     fn test_groups_reqopt() {
-        let opt = groups::reqopt("b", "banana", "some bananas", "VAL");
+        let opt = reqopt("b", "banana", "some bananas", "VAL");
         assert!(opt == OptGroup { short_name: ~"b",
                         long_name: ~"banana",
                         hint: ~"VAL",
@@ -1508,7 +1440,7 @@ mod tests {
 
     #[test]
     fn test_groups_optopt() {
-        let opt = groups::optopt("a", "apple", "some apples", "VAL");
+        let opt = optopt("a", "apple", "some apples", "VAL");
         assert!(opt == OptGroup { short_name: ~"a",
                         long_name: ~"apple",
                         hint: ~"VAL",
@@ -1519,7 +1451,7 @@ mod tests {
 
     #[test]
     fn test_groups_optflag() {
-        let opt = groups::optflag("k", "kiwi", "some kiwis");
+        let opt = optflag("k", "kiwi", "some kiwis");
         assert!(opt == OptGroup { short_name: ~"k",
                         long_name: ~"kiwi",
                         hint: ~"",
@@ -1530,7 +1462,7 @@ mod tests {
 
     #[test]
     fn test_groups_optflagopt() {
-        let opt = groups::optflagopt("p", "pineapple", "some pineapples", "VAL");
+        let opt = optflagopt("p", "pineapple", "some pineapples", "VAL");
         assert!(opt == OptGroup { short_name: ~"p",
                         long_name: ~"pineapple",
                         hint: ~"VAL",
@@ -1541,7 +1473,7 @@ mod tests {
 
     #[test]
     fn test_groups_optmulti() {
-        let opt = groups::optmulti("l", "lime", "some limes", "VAL");
+        let opt = optmulti("l", "lime", "some limes", "VAL");
         assert!(opt == OptGroup { short_name: ~"l",
                         long_name: ~"lime",
                         hint: ~"VAL",
@@ -1552,56 +1484,86 @@ mod tests {
 
     #[test]
     fn test_groups_long_to_short() {
-        let mut short = reqopt("banana");
-        short.aliases = ~[reqopt("b")];
-        let verbose = groups::reqopt("b", "banana", "some bananas", "VAL");
+        let mut short = Opt { name: ~"banana",
+                              hasarg: Yes,
+                              occur: Req,
+                              aliases: ~[] };
+        short.aliases = ~[Opt { name: ~"b",
+                                hasarg: Yes,
+                                occur: Req,
+                                aliases: ~[] }];
+        let verbose = reqopt("b", "banana", "some bananas", "VAL");
 
         assert_eq!(verbose.long_to_short(), short);
     }
 
     #[test]
     fn test_groups_getopts() {
-        let mut banana = reqopt("banana");
-        banana.aliases = ~[reqopt("b")];
-        let mut apple = optopt("apple");
-        apple.aliases = ~[optopt("a")];
-        let mut kiwi = optflag("kiwi");
-        kiwi.aliases = ~[optflag("k")];
+        let mut banana = Opt { name: ~"banana",
+                               hasarg: Yes,
+                               occur: Req,
+                               aliases: ~[] };
+        banana.aliases = ~[Opt { name: ~"b",
+                                 hasarg: Yes,
+                                 occur: Req,
+                                 aliases: ~[] }];
+        let mut apple = Opt { name: ~"apple",
+                              hasarg: Yes,
+                              occur: Optional,
+                              aliases: ~[] };
+        apple.aliases = ~[Opt { name: ~"a",
+                                hasarg: Yes,
+                                occur: Optional,
+                                aliases: ~[] }];
+        let mut kiwi = Opt { name: ~"kiwi",
+                             hasarg: No,
+                             occur: Optional,
+                             aliases: ~[] };
+        kiwi.aliases = ~[Opt { name: ~"k",
+                               hasarg: No,
+                               occur: Optional,
+                               aliases: ~[] }];
         let short = ~[
             banana,
             apple,
             kiwi,
-            optflagopt("p"),
-            optmulti("l")
+            Opt { name: ~"p",
+                  hasarg: Maybe,
+                  occur: Optional,
+                  aliases: ~[] },
+            Opt { name: ~"l",
+                  hasarg: Yes,
+                  occur: Multi,
+                  aliases: ~[] }
         ];
 
         // short and verbose should always be in the same order. if they
         // aren't the test will fail (and in mysterious ways)
 
         let verbose = ~[
-            groups::reqopt("b", "banana", "Desc", "VAL"),
-            groups::optopt("a", "apple", "Desc", "VAL"),
-            groups::optflag("k", "kiwi", "Desc"),
-            groups::optflagopt("p", "", "Desc", "VAL"),
-            groups::optmulti("l", "", "Desc", "VAL"),
+            reqopt("b", "banana", "Desc", "VAL"),
+            optopt("a", "apple", "Desc", "VAL"),
+            optflag("k", "kiwi", "Desc"),
+            optflagopt("p", "", "Desc", "VAL"),
+            optmulti("l", "", "Desc", "VAL"),
         ];
 
         let sample_args = ~[~"--kiwi", ~"15", ~"--apple", ~"1", ~"k",
                             ~"-p", ~"16", ~"l", ~"35"];
 
         assert!(getopts(sample_args, short)
-            == groups::getopts(sample_args, verbose));
+            == getopts(sample_args, verbose));
     }
 
     #[test]
     fn test_groups_aliases_long_and_short() {
         let opts = ~[
-            groups::optflagmulti("a", "apple", "Desc"),
+            optflagmulti("a", "apple", "Desc"),
         ];
 
         let args = ~[~"-a", ~"--apple", ~"-a"];
 
-        let matches = groups::getopts(args, opts).unwrap();
+        let matches = getopts(args, opts).unwrap();
         assert_eq!(3, matches.opt_count("a"));
         assert_eq!(3, matches.opt_count("apple"));
     }
@@ -1609,12 +1571,12 @@ mod tests {
     #[test]
     fn test_groups_usage() {
         let optgroups = ~[
-            groups::reqopt("b", "banana", "Desc", "VAL"),
-            groups::optopt("a", "012345678901234567890123456789",
+            reqopt("b", "banana", "Desc", "VAL"),
+            optopt("a", "012345678901234567890123456789",
                              "Desc", "VAL"),
-            groups::optflag("k", "kiwi", "Desc"),
-            groups::optflagopt("p", "", "Desc", "VAL"),
-            groups::optmulti("l", "", "Desc", "VAL"),
+            optflag("k", "kiwi", "Desc"),
+            optflagopt("p", "", "Desc", "VAL"),
+            optmulti("l", "", "Desc", "VAL"),
         ];
 
         let expected =
@@ -1629,7 +1591,7 @@ Options:
     -l VAL              Desc
 ";
 
-        let generated_usage = groups::usage("Usage: fruits", optgroups);
+        let generated_usage = usage("Usage: fruits", optgroups);
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", generated_usage);
@@ -1642,9 +1604,9 @@ Options:
         // lines wrap after 78: or rather descriptions wrap after 54
 
         let optgroups = ~[
-            groups::optflag("k", "kiwi",
+            optflag("k", "kiwi",
                 "This is a long description which won't be wrapped..+.."), // 54
-            groups::optflag("a", "apple",
+            optflag("a", "apple",
                 "This is a long description which _will_ be wrapped..+.."), // 55
         ];
 
@@ -1657,7 +1619,7 @@ Options:
                         wrapped..+..
 ";
 
-        let usage = groups::usage("Usage: fruits", optgroups);
+        let usage = usage("Usage: fruits", optgroups);
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", usage);
@@ -1667,9 +1629,9 @@ Options:
     #[test]
     fn test_groups_usage_description_multibyte_handling() {
         let optgroups = ~[
-            groups::optflag("k", "k\u2013w\u2013",
+            optflag("k", "k\u2013w\u2013",
                 "The word kiwi is normally spelled with two i's"),
-            groups::optflag("a", "apple",
+            optflag("a", "apple",
                 "This \u201Cdescription\u201D has some characters that could \
 confuse the line wrapping; an apple costs 0.51€ in some parts of Europe."),
         ];
@@ -1684,7 +1646,7 @@ Options:
                         some parts of Europe.
 ";
 
-        let usage = groups::usage("Usage: fruits", optgroups);
+        let usage = usage("Usage: fruits", optgroups);
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", usage);
@@ -1694,16 +1656,16 @@ Options:
     #[test]
     fn test_short_usage() {
         let optgroups = ~[
-            groups::reqopt("b", "banana", "Desc", "VAL"),
-            groups::optopt("a", "012345678901234567890123456789",
-                             "Desc", "VAL"),
-            groups::optflag("k", "kiwi", "Desc"),
-            groups::optflagopt("p", "", "Desc", "VAL"),
-            groups::optmulti("l", "", "Desc", "VAL"),
+            reqopt("b", "banana", "Desc", "VAL"),
+            optopt("a", "012345678901234567890123456789",
+                     "Desc", "VAL"),
+            optflag("k", "kiwi", "Desc"),
+            optflagopt("p", "", "Desc", "VAL"),
+            optmulti("l", "", "Desc", "VAL"),
         ];
 
         let expected = ~"Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..";
-        let generated_usage = groups::short_usage("fruits", optgroups);
+        let generated_usage = short_usage("fruits", optgroups);
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", generated_usage);

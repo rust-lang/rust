@@ -16,7 +16,7 @@ use getopts::{optopt, getopts};
 
 pub fn main() {
     let args = ~[];
-    let opts = ~[optopt("b")];
+    let opts = ~[optopt("b", "", "something", "SMTHNG")];
 
     match getopts(args, opts) {
         Ok(ref m)  =>

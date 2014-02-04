@@ -51,7 +51,6 @@ use std::os;
 use std::str;
 use std::task;
 use std::vec;
-use getopts::groups;
 use syntax::ast;
 use syntax::attr;
 use syntax::diagnostic::Emitter;
@@ -142,7 +141,7 @@ pub fn usage(argv0: &str) {
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              groups::usage(message, d::optgroups()));
+              getopts::usage(message, d::optgroups()));
 }
 
 pub fn describe_warnings() {
@@ -201,7 +200,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        &match getopts::groups::getopts(args, d::optgroups()) {
+        &match getopts::getopts(args, d::optgroups()) {
           Ok(m) => m,
           Err(f) => {
             d::early_error(demitter, f.to_err_msg());
