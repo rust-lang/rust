@@ -24,8 +24,7 @@ use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
 
 use extra::oldmap::HashMap;
-use getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use getopts::groups;
+use getopts::{optopt, optmulti, optflag, optflagopt, getopts};
 use getopts::opt_present;
 use syntax::codemap::DUMMY_SP;
 use syntax::parse::parse_crate_from_source_str;
