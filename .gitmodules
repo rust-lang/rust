@@ -11,4 +11,4 @@
 	url = https://github.com/rust-lang/gyp.git
 [submodule "src/compiler-rt"]
 	path = src/compiler-rt
-	url = https://github.com/vadimcn/compiler-rt.git
+	url = https://github.com/rust-lang/compiler-rt.git
