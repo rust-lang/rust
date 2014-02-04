@@ -10,7 +10,7 @@
 
 // xfail-fast
 // xfail-android
-#[feature(quote_expr)];
+#[feature(quote)];
 #[deny(unused_variable)];
 
 extern mod syntax;
