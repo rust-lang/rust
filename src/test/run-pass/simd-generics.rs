@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(simd)];
+
 use std::ops;
 
 #[simd] struct f32x4(f32, f32, f32, f32);
@@ -22,7 +24,7 @@ impl ops::Add<f32x4, f32x4> for f32x4 {
     }
 }
 
-fn main() {
+pub fn main() {
     let lr = f32x4(1.0f32, 2.0f32, 3.0f32, 4.0f32);
 
     // lame-o
