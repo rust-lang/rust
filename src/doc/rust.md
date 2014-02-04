@@ -2426,9 +2426,9 @@ before the expression they apply to.
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
-`@` and `~`
+`~`
   :  [Boxing](#pointer-types) operators. Allocate a box to hold the value they are applied to,
-     and store the value in it. `@` creates a managed box, whereas `~` creates an owned box.
+     and store the value in it. `~` creates an owned box.
 `&`
   : Borrow operator. Returns a reference, pointing to its operand.
     The operand of a borrow is statically proven to outlive the resulting pointer.
@@ -3203,16 +3203,6 @@ All pointers in Rust are explicit first-class values.
 They can be copied, stored into data structures, and returned from functions.
 There are four varieties of pointer in Rust:
 
-Managed pointers (`@`)
-  : These point to managed heap allocations (or "boxes") in the task-local, managed heap.
-    Managed pointers are written `@content`,
-    for example `@int` means a managed pointer to a managed box containing an integer.
-    Copying a managed pointer is a "shallow" operation:
-    it involves only copying the pointer itself
-    (as well as any reference-count or GC-barriers required by the managed heap).
-    Dropping a managed pointer does not necessarily release the box it points to;
-    the lifecycles of managed boxes are subject to an unspecified garbage collection algorithm.
-
 Owning pointers (`~`)
   : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
     Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
@@ -3521,63 +3511,28 @@ state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
 
-### Memory boxes
+### Owned boxes
 
-A _box_ is a reference to a heap allocation holding another value. There
-are two kinds of boxes: *managed boxes* and *owned boxes*.
+An  _owned box_ is a reference to a heap allocation holding another value, which is constructed
+by the prefix *tilde* sigil `~`
 
-A _managed box_ type or value is constructed by the prefix *at* sigil `@`.
-
-An _owned box_ type or value is constructed by the prefix *tilde* sigil `~`.
-
-Multiple managed box values can point to the same heap allocation; copying a
-managed box value makes a shallow copy of the pointer (optionally incrementing
-a reference count, if the managed box is implemented through
-reference-counting).
-
-Owned box values exist in 1:1 correspondence with their heap allocation.
-
-An example of constructing one managed box type and value, and one owned box
-type and value:
+An example of an owned box type and value:
 
 ~~~~
-let x: @int = @10;
 let x: ~int = ~10;
 ~~~~
 
-Some operations (such as field selection) implicitly dereference boxes. An
-example of an _implicit dereference_ operation performed on box values:
+Owned box values exist in 1:1 correspondence with their heap allocation
+copying an owned box value makes a shallow copy of the pointer
+Rust will consider a shallow copy of an owned box to move ownership of the value. After a value has been moved, the source location cannot be used unless it is reinitialized.
 
 ~~~~
-struct Foo { y: int }
-let x = @Foo{y: 10};
-assert!(x.y == 10);
+let x: ~int = ~10;
+let y = x;
+// attempting to use `x` will result in an error here
 ~~~~
 
-Other operations act on box values as single-word-sized address values. For
-these operations, to access the value held in the box requires an explicit
-dereference of the box value. Explicitly dereferencing a box is indicated with
-the unary *star* operator `*`. Examples of such _explicit dereference_
-operations are:
 
-* copying box values (`x = y`)
-* passing box values to functions (`f(x,y)`)
-
-An example of an explicit-dereference operation performed on box values:
-
-~~~~
-fn takes_boxed(b: @int) {
-}
-
-fn takes_unboxed(b: int) {
-}
-
-fn main() {
-    let x: @int = @10;
-    takes_boxed(x);
-    takes_unboxed(*x);
-}
-~~~~
 
 ## Tasks
 
