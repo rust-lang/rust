@@ -54,11 +54,6 @@ use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
 
-#[cfg(stage0)]
-macro_rules! if_ok (
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
-
 pub mod middle {
     pub mod trans;
     pub mod ty;

@@ -56,11 +56,6 @@ pub struct TyDesc {
     // alignof(T)
     align: uint,
 
-    // Called on a copy of a value of type `T` *after* memcpy
-    // NOTE remove after next snapshot
-    #[cfg(stage0)]
-    take_glue: GlueFn,
-
     // Called when a value of type `T` is no longer needed
     drop_glue: GlueFn,
 
@@ -166,121 +161,8 @@ pub trait TyVisitor {
     fn visit_param(&mut self, i: uint) -> bool;
     fn visit_self(&mut self) -> bool;
     fn visit_type(&mut self) -> bool;
-
-    // NOTE remove after next snapshot
-    #[cfg(stage0)]
-    fn visit_closure_ptr(&mut self, ck: uint) -> bool;
 }
 
-#[cfg(stage0)]
-extern "rust-intrinsic" {
-    /// Atomic compare and exchange, sequentially consistent.
-    pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
-    /// Atomic compare and exchange, acquire ordering.
-    pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
-    /// Atomic compare and exchange, release ordering.
-    pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
-
-    pub fn atomic_cxchg_acqrel(dst: &mut int, old: int, src: int) -> int;
-    pub fn atomic_cxchg_relaxed(dst: &mut int, old: int, src: int) -> int;
-
-
-    /// Atomic load, sequentially consistent.
-    pub fn atomic_load(src: &int) -> int;
-    /// Atomic load, acquire ordering.
-    pub fn atomic_load_acq(src: &int) -> int;
-
-    pub fn atomic_load_relaxed(src: &int) -> int;
-
-    /// Atomic store, sequentially consistent.
-    pub fn atomic_store(dst: &mut int, val: int);
-    /// Atomic store, release ordering.
-    pub fn atomic_store_rel(dst: &mut int, val: int);
-
-    pub fn atomic_store_relaxed(dst: &mut int, val: int);
-
-    /// Atomic exchange, sequentially consistent.
-    pub fn atomic_xchg(dst: &mut int, src: int) -> int;
-    /// Atomic exchange, acquire ordering.
-    pub fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
-    /// Atomic exchange, release ordering.
-    pub fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xchg_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xchg_relaxed(dst: &mut int, src: int) -> int;
-
-    /// Atomic addition, sequentially consistent.
-    pub fn atomic_xadd(dst: &mut int, src: int) -> int;
-    /// Atomic addition, acquire ordering.
-    pub fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
-    /// Atomic addition, release ordering.
-    pub fn atomic_xadd_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xadd_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xadd_relaxed(dst: &mut int, src: int) -> int;
-
-    /// Atomic subtraction, sequentially consistent.
-    pub fn atomic_xsub(dst: &mut int, src: int) -> int;
-    /// Atomic subtraction, acquire ordering.
-    pub fn atomic_xsub_acq(dst: &mut int, src: int) -> int;
-    /// Atomic subtraction, release ordering.
-    pub fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xsub_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xsub_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_and(dst: &mut int, src: int) -> int;
-    pub fn atomic_and_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_and_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_and_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_and_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_nand(dst: &mut int, src: int) -> int;
-    pub fn atomic_nand_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_nand_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_nand_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_nand_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_or(dst: &mut int, src: int) -> int;
-    pub fn atomic_or_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_or_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_or_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_or_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_xor(dst: &mut int, src: int) -> int;
-    pub fn atomic_xor_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_xor_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xor_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_xor_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_max(dst: &mut int, src: int) -> int;
-    pub fn atomic_max_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_max_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_max_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_max_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_min(dst: &mut int, src: int) -> int;
-    pub fn atomic_min_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_min_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_min_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_min_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_umin(dst: &mut int, src: int) -> int;
-    pub fn atomic_umin_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_umin_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_umin_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_umin_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_umax(dst: &mut int, src: int) -> int;
-    pub fn atomic_umax_acq(dst: &mut int, src: int) -> int;
-    pub fn atomic_umax_rel(dst: &mut int, src: int) -> int;
-    pub fn atomic_umax_acqrel(dst: &mut int, src: int) -> int;
-    pub fn atomic_umax_relaxed(dst: &mut int, src: int) -> int;
-
-    pub fn atomic_fence();
-    pub fn atomic_fence_acq();
-    pub fn atomic_fence_rel();
-    pub fn atomic_fence_acqrel();
-}
-
-#[cfg(not(stage0))]
 extern "rust-intrinsic" {
     pub fn atomic_cxchg<T>(dst: &mut T, old: T, src: T) -> T;
     pub fn atomic_cxchg_acq<T>(dst: &mut T, old: T, src: T) -> T;
@@ -366,9 +248,7 @@ extern "rust-intrinsic" {
     pub fn atomic_fence_acq();
     pub fn atomic_fence_rel();
     pub fn atomic_fence_acqrel();
-}
 
-extern "rust-intrinsic" {
     /// Abort the execution of the process.
     pub fn abort() -> !;
 
