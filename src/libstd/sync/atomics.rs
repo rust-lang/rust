@@ -23,16 +23,16 @@
 
 use unstable::intrinsics;
 use cast;
+use std::kinds::marker;
 use option::{Option,Some,None};
 use ops::Drop;
-use util::NonCopyable;
 
 /**
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
  */
 pub struct AtomicFlag {
     priv v: int,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -40,7 +40,7 @@ pub struct AtomicFlag {
  */
 pub struct AtomicBool {
     priv v: uint,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -48,7 +48,7 @@ pub struct AtomicBool {
  */
 pub struct AtomicInt {
     priv v: int,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -56,7 +56,7 @@ pub struct AtomicInt {
  */
 pub struct AtomicUint {
     priv v: uint,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -66,7 +66,7 @@ pub struct AtomicUint {
 #[cfg(not(stage0))]
 pub struct AtomicU64 {
     priv v: u64,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -75,12 +75,12 @@ pub struct AtomicU64 {
 #[cfg(not(stage0))]
 pub struct AtomicPtr<T> {
     priv p: uint,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 #[cfg(stage0)]
 pub struct AtomicPtr<T> {
     priv p: *mut T,
-    priv nocopy: NonCopyable
+    priv nopod: marker::NoPod
 }
 
 /**
@@ -105,17 +105,17 @@ pub enum Ordering {
     SeqCst
 }
 
-pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nopod: marker::NoPod };
 #[cfg(not(stage0))]
-pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: 0, nopod: marker::NoPod };
 
 impl AtomicFlag {
 
     pub fn new() -> AtomicFlag {
-        AtomicFlag { v: 0, nocopy: NonCopyable }
+        AtomicFlag { v: 0, nopod: marker::NoPod}
     }
 
     /**
@@ -138,7 +138,7 @@ impl AtomicFlag {
 
 impl AtomicBool {
     pub fn new(v: bool) -> AtomicBool {
-        AtomicBool { v: if v { 1 } else { 0 }, nocopy: NonCopyable }
+        AtomicBool { v: if v { 1 } else { 0 }, nopod: marker::NoPod }
     }
 
     #[inline]
@@ -203,7 +203,7 @@ impl AtomicBool {
 
 impl AtomicInt {
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt { v:v, nocopy: NonCopyable }
+        AtomicInt { v:v, nopod: marker::NoPod}
     }
 
     #[inline]
@@ -242,7 +242,7 @@ impl AtomicInt {
 #[cfg(not(stage0))]
 impl AtomicU64 {
     pub fn new(v: u64) -> AtomicU64 {
-        AtomicU64 { v:v, nocopy: NonCopyable }
+        AtomicU64 { v:v, nopod: marker::NoPod }
     }
 
     #[inline]
@@ -278,7 +278,7 @@ impl AtomicU64 {
 
 impl AtomicUint {
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v:v, nocopy: NonCopyable }
+        AtomicUint { v:v, nopod: marker::NoPod }
     }
 
     #[inline]
@@ -317,11 +317,11 @@ impl AtomicUint {
 impl<T> AtomicPtr<T> {
     #[cfg(stage0)]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: p, nocopy: NonCopyable }
+        AtomicPtr { p: p, nopod: marker::NoPod }
     }
     #[cfg(not(stage0))]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: p as uint, nocopy: NonCopyable }
+        AtomicPtr { p: p as uint, nopod: marker::NoPod }
     }
 
     #[inline]

@@ -12,8 +12,7 @@
 
 use prelude::*;
 use cast;
-use util::NonCopyable;
-use kinds::{marker,Pod};
+use kinds::{marker, Pod};
 
 /// A mutable memory location that admits only `Pod` data.
 pub struct Cell<T> {
@@ -57,9 +56,9 @@ impl<T:Pod> Clone for Cell<T> {
 pub struct RefCell<T> {
     priv value: T,
     priv borrow: BorrowFlag,
-    priv nc: NonCopyable,
     priv marker1: marker::InvariantType<T>,
     priv marker2: marker::NoFreeze,
+    priv marker3: marker::NoPod,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -74,9 +73,9 @@ impl<T> RefCell<T> {
         RefCell {
             marker1: marker::InvariantType::<T>,
             marker2: marker::NoFreeze,
+            marker3: marker::NoPod,
             value: value,
             borrow: UNUSED,
-            nc: NonCopyable
         }
     }
 
