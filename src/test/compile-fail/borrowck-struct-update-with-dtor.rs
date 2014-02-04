@@ -11,8 +11,9 @@
 // Issue 4691: Ensure that functional-struct-update can only copy, not
 // move, when the struct implements Drop.
 
-use NC = std::util::NonCopyable;
-struct S { a: int, nc: NC }
+// NoPod
+use NP = std::kinds::marker::NoPod;
+struct S { a: int, np: NP }
 impl Drop for S { fn drop(&mut self) { } }
 
 struct T { a: int, mv: ~int }

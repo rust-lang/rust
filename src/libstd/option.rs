@@ -481,6 +481,7 @@ mod tests {
     use iter::range;
     use str::StrSlice;
     use util;
+    use kinds::marker;
     use vec::ImmutableVector;
 
     #[test]
@@ -551,7 +552,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_option_too_much_dance() {
-        let mut y = Some(util::NonCopyable);
+        let mut y = Some(marker::NoPod);
         let _y2 = y.take_unwrap();
         let _y3 = y.take_unwrap();
     }

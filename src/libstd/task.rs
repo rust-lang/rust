@@ -56,7 +56,7 @@
 use any::Any;
 use comm::{Chan, Port};
 use io::Writer;
-use kinds::Send;
+use kinds::{Send, marker};
 use logging::Logger;
 use option::{None, Some, Option};
 use result::{Result, Ok, Err};
@@ -64,7 +64,6 @@ use rt::local::Local;
 use rt::task::Task;
 use send_str::{SendStr, IntoSendStr};
 use str::Str;
-use util;
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use comm::SharedChan;
@@ -126,7 +125,7 @@ pub struct TaskOpts {
 pub struct TaskBuilder {
     opts: TaskOpts,
     priv gen_body: Option<proc(v: proc()) -> proc()>,
-    priv can_not_copy: Option<util::NonCopyable>,
+    priv nopod: Option<marker::NoPod>,
 }
 
 /**
@@ -138,7 +137,7 @@ pub fn task() -> TaskBuilder {
     TaskBuilder {
         opts: TaskOpts::new(),
         gen_body: None,
-        can_not_copy: None,
+        nopod: None,
     }
 }
 
