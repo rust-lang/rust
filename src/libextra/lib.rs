@@ -84,8 +84,6 @@ pub mod rational;
 pub mod complex;
 pub mod stats;
 pub mod hex;
-pub mod uuid;
-
 
 #[cfg(unicode)]
 mod unicode;
