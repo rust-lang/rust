@@ -42,6 +42,7 @@ li {list-style-type: none; }
 * [The `glob` file path matching library](glob/index.html)
 * [The `semver` version collation library](semver/index.html)
 * [The `term` terminal-handling library](term/index.html)
+* [The UUID library](uuid/index.html)
 
 # Tooling
 

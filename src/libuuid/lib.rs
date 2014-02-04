@@ -29,8 +29,7 @@ unlikely.
 To create a new random (V4) UUID and print it out in hexadecimal form:
 
 ```rust
-extern mod extra;
-use extra::uuid::Uuid;
+use uuid::Uuid;
 
 fn main() {
     let uuid1 = Uuid::new_v4();
@@ -55,6 +54,13 @@ Examples of string representations:
 
 */
 
+#[crate_id = "uuid#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+
+extern mod extra;
+
 use std::str;
 use std::vec;
 use std::num::FromStrRadix;
@@ -67,7 +73,7 @@ use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
 use std::to_bytes::{IterBytes, Cb};
 
-use serialize::{Encoder, Encodable, Decoder, Decodable};
+use extra::serialize::{Encoder, Encodable, Decoder, Decodable};
 
 /// A 128-bit (16 byte) buffer containing the ID
 pub type UuidBytes = [u8, ..16];
@@ -510,7 +516,9 @@ impl rand::Rand for Uuid {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
+                Version1Mac, Version2Dce, Version3Md5, Version4Random,
+                Version5Sha1};
     use std::str;
     use std::rand;
     use std::io::MemWriter;
@@ -575,6 +583,8 @@ mod test {
 
     #[test]
     fn test_parse_uuid_v4() {
+        use super::{ErrorInvalidCharacter, ErrorInvalidGroups,
+                    ErrorInvalidGroupLength, ErrorInvalidLength};
 
         // Invalid
         assert!(Uuid::parse_string("").is_err());
@@ -774,8 +784,8 @@ mod test {
 
     #[test]
     fn test_serialize_round_trip() {
-        use ebml;
-        use serialize::{Encodable, Decodable};
+        use extra::ebml;
+        use extra::serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();
@@ -799,8 +809,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use super::*;
-    use test::BenchHarness;
+    use super::Uuid;
+    use extra::test::BenchHarness;
 
     #[bench]
     pub fn create_uuids(bh: &mut BenchHarness) {
