@@ -11,7 +11,7 @@
 use c_str::CString;
 use cast;
 use comm::{SharedChan, Port};
-use libc::{c_int, ssize_t};
+use libc::{c_int};
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
@@ -151,9 +151,6 @@ impl<'a> LocalIo<'a> {
     }
 }
 
-pub type CommDomain = c_int;
-pub type Protocol = c_int;
-
 pub trait IoFactory {
     // networking
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
@@ -164,7 +161,7 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
-    fn raw_socket_new(&mut self, domain: CommDomain, protocol: Protocol,
+    fn raw_socket_new(&mut self, domain: i32, protocol: i32,
                       includeIpHeader: bool) -> Result<~RtioRawSocket, IoError>;
 
     // filesystem operations
@@ -244,7 +241,7 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioRawSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, IpAddr), IoError>;
-    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<ssize_t, IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Result<int, IoError>;
 }
 
 pub trait RtioTimer {

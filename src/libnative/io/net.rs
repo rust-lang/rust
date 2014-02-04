@@ -605,7 +605,7 @@ pub struct RawSocket {
 }
 
 impl RawSocket {
-    pub fn new(domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
+    pub fn new(domain: i32, protocol: i32, includeIpHeader: bool)
         -> IoResult<RawSocket>
     {
         let sock = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
@@ -661,7 +661,7 @@ impl rtio::RtioRawSocket for RawSocket {
     }
 
     fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
-        -> IoResult<libc::ssize_t>
+        -> IoResult<int>
     {
         let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
@@ -677,7 +677,7 @@ impl rtio::RtioRawSocket for RawSocket {
         return if len < 0 {
             Err(super::last_error())
         } else {
-            Ok(len)
+            Ok(len as int)
         };
     }
 }

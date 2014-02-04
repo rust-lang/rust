@@ -12,14 +12,14 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::net::ip::{IpAddr};
 use io::{io_error, EndOfFile};
-use rt::rtio::{IoFactory, LocalIo, RtioRawSocket, Protocol, CommDomain};
+use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
 
 pub struct RawSocket {
     priv obj: ~RtioRawSocket
 }
 
 impl RawSocket {
-    pub fn new(domain: CommDomain, protocol: Protocol, includeIpHeader: bool) -> Option<RawSocket> {
+    pub fn new(domain: i32, protocol: i32, includeIpHeader: bool) -> Option<RawSocket> {
         LocalIo::maybe_raise(|io| {
             io.raw_socket_new(domain, protocol, includeIpHeader).map(|s| RawSocket { obj: s })
         })

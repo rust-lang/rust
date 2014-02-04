@@ -722,7 +722,7 @@ fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
 // ----------------------------------------------------------------------------
 
 impl RawSocketWatcher {
-    pub fn new(io: &mut UvIoFactory, domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
+    pub fn new(io: &mut UvIoFactory, domain: i32, protocol: i32, includeIpHeader: bool)
         -> Result<RawSocketWatcher, IoError>
     {
         let socket = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
@@ -859,12 +859,12 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
     }
 
     fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
-        -> Result<ssize_t, IoError>
+        -> Result<int, IoError>
     {
         struct Ctx<'b> {
             task: Option<BlockedTask>,
             buf: &'b [u8],
-            result: Option<ssize_t>,
+            result: Option<int>,
             socket: Option<uvll::uv_os_socket_t>,
             addr: ip::IpAddr,
         }
@@ -900,7 +900,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
             if status < 0 {
-                cx.result = Some(status as ssize_t);
+                cx.result = Some(status as int);
                 wakeup(&mut cx.task);
                 return;
             }
@@ -925,9 +925,9 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                       };
 
             cx.result = if len < 0 {
-                            Some(errno() as ssize_t)
+                            Some(errno() as int)
                         } else {
-                            Some(len)
+                            Some(len as int)
                         };
 
             wakeup(&mut cx.task);

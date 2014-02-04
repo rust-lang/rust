@@ -176,7 +176,7 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
 
-    fn raw_socket_new(&mut self, domain: rtio::CommDomain, protocol: rtio::Protocol,
+    fn raw_socket_new(&mut self, domain: i32, protocol: i32,
                       includeIpHeader: bool) -> Result<~rtio::RtioRawSocket, IoError> {
         RawSocketWatcher::new(self, domain, protocol, includeIpHeader)
             .map(|rsw| ~rsw as ~rtio::RtioRawSocket)
