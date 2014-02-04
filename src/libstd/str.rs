@@ -91,7 +91,7 @@ use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
 use libc;
-use num::{Saturating, checked_next_power_of_two};
+use num::Saturating;
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
@@ -163,12 +163,7 @@ pub fn from_char(ch: char) -> ~str {
 
 /// Convert a vector of chars to a string
 pub fn from_chars(chs: &[char]) -> ~str {
-    let mut buf = ~"";
-    buf.reserve(chs.len());
-    for ch in chs.iter() {
-        buf.push_char(*ch)
-    }
-    buf
+    chs.iter().map(|c| *c).collect()
 }
 
 #[doc(hidden)]
@@ -852,8 +847,7 @@ pub fn utf16_chars(v: &[u16], f: |char|) {
 
 /// Allocates a new string from the utf-16 slice provided
 pub fn from_utf16(v: &[u16]) -> ~str {
-    let mut buf = ~"";
-    buf.reserve(v.len());
+    let mut buf = with_capacity(v.len());
     utf16_chars(v, |ch| buf.push_char(ch));
     buf
 }
@@ -2096,8 +2090,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     fn escape_default(&self) -> ~str {
-        let mut out: ~str = ~"";
-        out.reserve_at_least(self.len());
+        let mut out = with_capacity(self.len());
         for c in self.chars() {
             c.escape_default(|c| out.push_char(c));
         }
@@ -2105,8 +2098,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     fn escape_unicode(&self) -> ~str {
-        let mut out: ~str = ~"";
-        out.reserve_at_least(self.len());
+        let mut out = with_capacity(self.len());
         for c in self.chars() {
             c.escape_unicode(|c| out.push_char(c));
         }
@@ -2430,7 +2422,7 @@ pub trait OwnedStr {
     ///
     /// * s - A string
     /// * n - The number of bytes to reserve space for
-    fn reserve(&mut self, n: uint);
+    fn reserve_exact(&mut self, n: uint);
 
     /// Reserves capacity for at least `n` bytes in the given string.
     ///
@@ -2448,7 +2440,7 @@ pub trait OwnedStr {
     ///
     /// * s - A string
     /// * n - The number of bytes to reserve space for
-    fn reserve_at_least(&mut self, n: uint);
+    fn reserve(&mut self, n: uint);
 
     /// Returns the number of single-byte characters the string can hold without
     /// reallocating
@@ -2474,7 +2466,7 @@ impl OwnedStr for ~str {
     #[inline]
     fn push_str_no_overallocate(&mut self, rhs: &str) {
         let new_cap = self.len() + rhs.len();
-        self.reserve(new_cap);
+        self.reserve_exact(new_cap);
         self.push_str(rhs);
     }
 
@@ -2553,15 +2545,17 @@ impl OwnedStr for ~str {
     }
 
     #[inline]
-    fn reserve(&mut self, n: uint) {
+    fn reserve_exact(&mut self, n: uint) {
         unsafe {
-            raw::as_owned_vec(self).reserve(n)
+            raw::as_owned_vec(self).reserve_exact(n)
         }
     }
 
     #[inline]
-    fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(checked_next_power_of_two(n).unwrap_or(n))
+    fn reserve(&mut self, n: uint) {
+        unsafe {
+            raw::as_owned_vec(self).reserve(n)
+        }
     }
 
     #[inline]
@@ -2619,7 +2613,7 @@ impl Extendable<char> for ~str {
     fn extend<T: Iterator<char>>(&mut self, iterator: &mut T) {
         let (lower, _) = iterator.size_hint();
         let reserve = lower + self.len();
-        self.reserve_at_least(reserve);
+        self.reserve(reserve);
         for ch in *iterator {
             self.push_char(ch)
         }
