@@ -33,11 +33,6 @@ This API is completely unstable and subject to change.
 extern mod extra;
 extern mod term;
 
-#[cfg(stage0)]
-macro_rules! if_ok (
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
-
 pub mod util {
     pub mod interner;
     #[cfg(test)]
