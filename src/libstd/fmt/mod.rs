@@ -493,11 +493,6 @@ use util;
 use vec::ImmutableVector;
 use vec;
 
-// NOTE this is just because the `prelude::*` import above includes
-// default::Default, so the reexport doesn't work.
-#[cfg(stage0)]
-pub use Default = fmt::Show; // export required for `format!()` etc.
-
 pub mod parse;
 pub mod rt;
 
