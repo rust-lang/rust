@@ -46,6 +46,7 @@
 use std::container::Map;
 use std::libc::c_ulonglong;
 use std::option::{Option, Some, None};
+use std::num::{Bitwise};
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -424,19 +425,22 @@ fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool
             let align = most_aligned.align;
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty) as u64;
+            let align_units = (size + align - 1) / align - 1;
             let pad_ty = match align {
-                1 => Type::i8(),
-                2 => Type::i16(),
-                4 => Type::i32(),
-                8 if machine::llalign_of_min(cx, Type::i64()) == 8 => Type::i64(),
+                1 => Type::array(&Type::i8(), align_units),
+                2 => Type::array(&Type::i16(), align_units),
+                4 => Type::array(&Type::i32(), align_units),
+                8 if machine::llalign_of_min(cx, Type::i64()) == 8 =>
+                                 Type::array(&Type::i64(), align_units),
+                a if a.population_count() == 1 => Type::array(&Type::vector(&Type::i32(), a / 4),
+                                                              align_units),
                 _ => fail!("Unsupported enum alignment: {:?}", align)
             };
             assert_eq!(machine::llalign_of_min(cx, pad_ty) as u64, align);
-            let align_units = (size + align - 1) / align;
             assert_eq!(align % discr_size, 0);
             let fields = ~[discr_ty,
-              Type::array(&discr_ty, align / discr_size - 1),
-              Type::array(&pad_ty, align_units - 1)];
+                           Type::array(&discr_ty, align / discr_size - 1),
+                           pad_ty];
             match name {
                 None => Type::struct_(fields, false),
                 Some(name) => {
