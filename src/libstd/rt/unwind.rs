@@ -142,6 +142,12 @@ mod libunwind {
     pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
                                                           exception: *_Unwind_Exception);
 
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "win32")]
+    #[link(name = "gcc_s")]
+    extern {}
+
     extern "C" {
         pub fn _Unwind_RaiseException(exception: *_Unwind_Exception) -> _Unwind_Reason_Code;
         pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
