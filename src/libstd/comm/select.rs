@@ -41,6 +41,7 @@
 //!     }
 //! )
 //! ```
+#[macro_escape];
 
 #[allow(dead_code)];
 
@@ -60,6 +61,7 @@ use sync::atomics::{Relaxed, SeqCst};
 use task;
 use uint;
 
+#[macro_export]
 macro_rules! select {
     (
         $name1:pat = $port1:ident.$meth1:ident() => $code1:expr,
