@@ -10,6 +10,7 @@
 
 // xfail-pretty
 // xfail-test
+#[feature(quote)];
 
 extern mod extra;
 extern mod syntax;
