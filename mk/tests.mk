@@ -183,8 +183,8 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-lite: cleantestlibs cleantmptestlogs \
-	check-stage2-std check-stage2-extra check-stage2-rpass \
-	check-stage2-rustuv check-stage2-native check-stage2-green \
+	$(foreach crate,$(TARGET_CRATES),check-stage2-$(crate)) \
+	check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -861,7 +861,8 @@ $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
    $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
 
-check-fast: tidy check-fast-H-$(CFG_BUILD) check-stage2-std check-stage2-extra
+check-fast: tidy check-fast-H-$(CFG_BUILD) \
+	    $(foreach crate,$(TARGET_CRATES),check-stage2-$(crate))
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 define DEF_CHECK_FAST_FOR_H

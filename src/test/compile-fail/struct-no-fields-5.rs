@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Unit-like struct construction is written with no trailing `{ }`
 struct Foo;
 
 fn i5() {
     let _end_of_block = { Foo { } };
+    //~^ ERROR: Unit-like struct construction is written with no trailing `{ }`
 }
 
 fn main() {}
