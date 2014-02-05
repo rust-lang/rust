@@ -30,7 +30,7 @@ use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
 use middle::trans::type_::Type;
-use middle::trans::type_of::type_of;
+use middle::trans::type_of::{type_of, sizing_type_of};
 use middle::ty;
 use util::ppaux::ty_to_short_str;
 use util::ppaux;
@@ -100,23 +100,29 @@ pub fn lazily_emit_all_tydesc_glue(ccx: @CrateContext,
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_visit_glue, static_ti);
 }
 
-fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
+fn get_glue_type(ccx: &CrateContext, field: uint, t: ty::t) -> ty::t {
+    let tcx = ccx.tcx;
     if field == abi::tydesc_field_drop_glue {
         if !ty::type_needs_drop(tcx, t) {
-            return ty::mk_nil();
+            return ty::mk_i8();
         }
         match ty::get(t).sty {
-            ty::ty_box(typ)
-                if !ty::type_needs_drop(tcx, typ) =>
-            return ty::mk_box(tcx, ty::mk_nil()),
+            ty::ty_box(typ) if !ty::type_needs_drop(tcx, typ) =>
+                return ty::mk_box(tcx, ty::mk_i8()),
 
-            ty::ty_uniq(typ)
-                if !ty::type_needs_drop(tcx, typ) =>
-            return ty::mk_uniq(tcx, ty::mk_nil()),
+            ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ) => {
+                let llty = sizing_type_of(ccx, typ);
+                // Unique boxes do not allocate for zero-size types. The standard library may assume
+                // that `free` is never called on the pointer returned for `~ZeroSizeType`.
+                if llsize_of_alloc(ccx, llty) == 0 {
+                    return ty::mk_i8();
+                } else {
+                    return ty::mk_uniq(tcx, ty::mk_i8());
+                }
+            }
 
-            ty::ty_vec(mt, ty::vstore_uniq)
-                if !ty::type_needs_drop(tcx, mt.ty) =>
-            return ty::mk_uniq(tcx, ty::mk_nil()),
+            ty::ty_vec(mt, ty::vstore_uniq) if !ty::type_needs_drop(tcx, mt.ty) =>
+                return ty::mk_uniq(tcx, ty::mk_i8()),
 
             _ => {}
         }
@@ -128,7 +134,7 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 pub fn lazily_emit_tydesc_glue(ccx: @CrateContext, field: uint, ti: @tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
 
-    let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
+    let simpl = get_glue_type(ccx, field, ti.ty);
     if simpl != ti.ty {
         let _icx = push_ctxt("lazily_emit_simplified_tydesc_glue");
         let simpl_ti = get_tydesc(ccx, simpl);
@@ -204,7 +210,7 @@ pub fn call_tydesc_glue_full(bcx: &Block, v: ValueRef, tydesc: ValueRef,
         PointerCast(bcx, v, Type::i8p())
     } else {
         let ty = static_ti.unwrap().ty;
-        let simpl = simplified_glue_type(ccx.tcx, field, ty);
+        let simpl = get_glue_type(ccx, field, ty);
         if simpl != ty {
             PointerCast(bcx, v, type_of(ccx, simpl).ptr_to())
         } else {
