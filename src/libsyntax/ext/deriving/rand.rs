@@ -16,7 +16,7 @@ use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 use opt_vec;
 
-pub fn expand_deriving_rand(cx: &ExtCtxt,
+pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])
@@ -50,7 +50,7 @@ pub fn expand_deriving_rand(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn rand_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let rng = match substr.nonself_args {
         [rng] => ~[ rng ],
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -112,9 +112,8 @@ fn rand_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @
                 let i_expr = cx.expr_uint(v_span, i);
                 let pat = cx.pat_lit(v_span, i_expr);
 
-                cx.arm(v_span,
-                       ~[ pat ],
-                       rand_thing(cx, v_span, ident, summary, |sp| rand_call(sp)))
+                let thing = rand_thing(cx, v_span, ident, summary, |sp| rand_call(sp));
+                cx.arm(v_span, ~[ pat ], thing)
             }).collect::<~[ast::Arm]>();
 
             // _ => {} at the end. Should never occur
@@ -128,7 +127,7 @@ fn rand_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
-    fn rand_thing(cx: &ExtCtxt,
+    fn rand_thing(cx: &mut ExtCtxt,
                   trait_span: Span,
                   ctor_ident: Ident,
                   summary: &StaticFields,

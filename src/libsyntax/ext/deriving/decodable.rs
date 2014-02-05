@@ -21,7 +21,7 @@ use ext::deriving::generic::*;
 use parse::token::InternedString;
 use parse::token;
 
-pub fn expand_deriving_decodable(cx: &ExtCtxt,
+pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@Item]) -> ~[@Item] {
@@ -53,7 +53,7 @@ pub fn expand_deriving_decodable(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
+fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let decoder = substr.nonself_args[0];
     let recurse = ~[cx.ident_of("serialize"),
@@ -77,7 +77,7 @@ fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
                                               trait_span,
                                               substr.type_ident,
                                               summary,
-                                              |span, name, field| {
+                                              |cx, span, name, field| {
                 cx.expr_method_call(span, blkdecoder, read_struct_field,
                                     ~[cx.expr_str(span, name),
                                       cx.expr_uint(span, field),
@@ -108,10 +108,10 @@ fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
                                                    v_span,
                                                    name,
                                                    parts,
-                                                   |span, _, field| {
+                                                   |cx, span, _, field| {
+                    let idx = cx.expr_uint(span, field);
                     cx.expr_method_call(span, blkdecoder, rvariant_arg,
-                                        ~[cx.expr_uint(span, field),
-                                          lambdadecode])
+                                        ~[idx, lambdadecode])
                 });
 
                 arms.push(cx.arm(v_span,
@@ -143,11 +143,11 @@ fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
 /// Create a decoder for a single enum variant/struct:
 /// - `outer_pat_ident` is the name of this enum variant/struct
 /// - `getarg` should retrieve the `uint`-th field with name `@str`.
-fn decode_static_fields(cx: &ExtCtxt,
+fn decode_static_fields(cx: &mut ExtCtxt,
                         trait_span: Span,
                         outer_pat_ident: Ident,
                         fields: &StaticFields,
-                        getarg: |Span, InternedString, uint| -> @Expr)
+                        getarg: |&mut ExtCtxt, Span, InternedString, uint| -> @Expr)
                         -> @Expr {
     match *fields {
         Unnamed(ref fields) => {
@@ -155,7 +155,7 @@ fn decode_static_fields(cx: &ExtCtxt,
                 cx.expr_ident(trait_span, outer_pat_ident)
             } else {
                 let fields = fields.iter().enumerate().map(|(i, &span)| {
-                    getarg(span,
+                    getarg(cx, span,
                            token::intern_and_get_ident(format!("_field{}",
                                                                i)),
                            i)
@@ -167,9 +167,8 @@ fn decode_static_fields(cx: &ExtCtxt,
         Named(ref fields) => {
             // use the field's span to get nicer error messages.
             let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
-                cx.field_imm(span,
-                             name,
-                             getarg(span, token::get_ident(name.name), i))
+                let arg = getarg(cx, span, token::get_ident(name.name), i);
+                cx.field_imm(span, name, arg)
             }).collect();
             cx.expr_struct_ident(trait_span, outer_pat_ident, fields)
         }
