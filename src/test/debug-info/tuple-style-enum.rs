@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-tidy-linelength
 // xfail-android: FIXME(#10381)
 
 // compile-flags:-Z extra-debug-info
@@ -40,7 +41,7 @@ enum Regular {
 }
 
 enum Univariant {
-	TheOnlyCase(i64)
+    TheOnlyCase(i64)
 }
 
 fn main() {

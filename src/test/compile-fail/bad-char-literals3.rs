@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-tidy-cr
 fn main() {
     // note that this is a literal "\r" byte
-    '';
-    //~^ ERROR: character constant must be escaped
+    '
+'; //~^ ERROR: character constant must be escaped
 }

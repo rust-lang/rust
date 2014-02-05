@@ -242,7 +242,6 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
 tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
-		| grep '^$(S)src/test' -v \
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/gyp' -v \

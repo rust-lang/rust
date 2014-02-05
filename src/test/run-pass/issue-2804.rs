@@ -53,7 +53,8 @@ fn add_interface(_store: int, managed_ip: ~str, data: extra::json::Json) -> (~st
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::json::Json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::json::Json>)
+-> ~[(~str, object)]
 {
     match device.get(&~"interfaces")
     {
