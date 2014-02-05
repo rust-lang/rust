@@ -15,7 +15,7 @@
 // each trait in the system to its implementations.
 
 
-use metadata::csearch::{each_impl, get_impl_trait};
+use metadata::csearch::{each_impl, get_impl_trait, each_implementation_for_trait};
 use metadata::csearch;
 use middle::ty::get;
 use middle::ty::{ImplContainer, lookup_item_type, subst};
@@ -434,7 +434,7 @@ impl CoherenceChecker {
 
     pub fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
         // Unify pairs of polytypes.
-        self.iter_impls_of_trait(trait_def_id, |a| {
+        self.iter_impls_of_trait_local(trait_def_id, |a| {
             let implementation_a = a;
             let polytype_a =
                 self.get_self_type_for_implementation(implementation_a);
@@ -452,12 +452,19 @@ impl CoherenceChecker {
                     if self.polytypes_unify(polytype_a.clone(), polytype_b) {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(
-                            self.span_of_impl(implementation_b),
+                            self.span_of_impl(implementation_a),
                             format!("conflicting implementations for trait `{}`",
                                  ty::item_path_str(self.crate_context.tcx,
                                                    trait_def_id)));
-                        session.span_note(self.span_of_impl(implementation_a),
-                                          "note conflicting implementation here");
+                        if implementation_b.did.crate == LOCAL_CRATE {
+                            session.span_note(self.span_of_impl(implementation_b),
+                                              "note conflicting implementation here");
+                        } else {
+                            let crate_store = self.crate_context.tcx.sess.cstore;
+                            let cdata = crate_store.get_crate_data(implementation_b.did.crate);
+                            session.note(
+                                "conflicting implementation in crate `" + cdata.name + "`");
+                        }
                     }
                 }
             })
@@ -465,6 +472,21 @@ impl CoherenceChecker {
     }
 
     pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
+        self.iter_impls_of_trait_local(trait_def_id, |x| f(x));
+
+        if trait_def_id.crate == LOCAL_CRATE {
+            return;
+        }
+
+        let crate_store = self.crate_context.tcx.sess.cstore;
+        csearch::each_implementation_for_trait(crate_store, trait_def_id, |impl_def_id| {
+            let implementation = @csearch::get_impl(self.crate_context.tcx, impl_def_id);
+            let _ = lookup_item_type(self.crate_context.tcx, implementation.did);
+            f(implementation);
+        });
+    }
+
+    pub fn iter_impls_of_trait_local(&self, trait_def_id: DefId, f: |@Impl|) {
         let trait_impls = self.crate_context.tcx.trait_impls.borrow();
         match trait_impls.get().find(&trait_def_id) {
             Some(impls) => {
