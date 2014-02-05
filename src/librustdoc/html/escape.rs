@@ -20,10 +20,10 @@ use std::fmt;
 pub struct Escape<'a>(&'a str);
 
 impl<'a> fmt::Show for Escape<'a> {
-    fn fmt(s: &Escape<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
-        let Escape(s) = *s;
+        let Escape(s) = *self;
         let pile_o_bits = s.as_slice();
         let mut last = 0;
         for (i, ch) in s.bytes().enumerate() {
