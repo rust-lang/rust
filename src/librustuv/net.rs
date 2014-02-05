@@ -659,7 +659,7 @@ pub struct RawSocketWatcher {
     home: HomeHandle,
 }
 
-// TODO This is copied from libnative::io
+// FIXME This is copied from libnative::io
 // ----------------------------------------------------------------------------
 fn translate_error(errno: i32, detail: bool) -> IoError {
     #[cfg(windows)]
@@ -833,7 +833,9 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             }
 
             let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
-            let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
+            let mut caddrlen = unsafe {
+                                   intrinsics::size_of::<libc::sockaddr_storage>()
+                               } as libc::socklen_t;
             let len = match cx.socket {
                         Some(sock) => unsafe {
                             let addr = &mut caddr as *mut libc::sockaddr_storage;
@@ -911,7 +913,9 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
 
             let len = match cx.socket {
                         Some(sock) => {
-                            let (addr, len) = addr_to_sockaddr(ip::SocketAddr{ ip: cx.addr, port: 0 });
+                            let (addr, len) = addr_to_sockaddr(
+                                                ip::SocketAddr{ ip: cx.addr, port: 0 }
+                                              );
                             unsafe {
                                 libc::sendto(sock,
                                     cx.buf.as_ptr() as *c_void,
