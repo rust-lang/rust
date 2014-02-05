@@ -75,23 +75,10 @@ use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
 use str;
-use vec::{CloneableVector, ImmutableVector, MutableVector};
+use vec::{ImmutableVector, MutableVector};
 use vec;
 use unstable::intrinsics;
 use rt::global_heap::malloc_raw;
-
-/// Resolution options for the `null_byte` condition
-pub enum NullByteResolution {
-    /// Truncate at the null byte
-    Truncate,
-    /// Use a replacement byte
-    ReplaceWith(libc::c_char)
-}
-
-condition! {
-    // This should be &[u8] but there's a lifetime issue (#5370).
-    pub null_byte: (~[u8]) -> NullByteResolution;
-}
 
 /// The representation of a C String.
 ///
@@ -252,7 +239,7 @@ pub trait ToCStr {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the receiver has an interior null.
+    /// Fails the task if the receiver has an interior null.
     fn to_c_str(&self) -> CString;
 
     /// Unsafe variant of `to_c_str()` that doesn't check for nulls.
@@ -273,7 +260,7 @@ pub trait ToCStr {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the receiver has an interior null.
+    /// Fails the task if the receiver has an interior null.
     #[inline]
     fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
         self.to_c_str().with_ref(f)
@@ -362,12 +349,7 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
     for i in range(0, v.len()) {
         unsafe {
             let p = buf.offset(i as int);
-            if *p == 0 {
-                match null_byte::cond.raise(v.to_owned()) {
-                    Truncate => break,
-                    ReplaceWith(c) => *p = c
-                }
-            }
+            assert!(*p != 0);
         }
     }
 }
@@ -541,29 +523,9 @@ mod tests {
 
     #[test]
     fn test_to_c_str_fail() {
-        use c_str::null_byte::cond;
-
+        use task;
         let mut error_happened = false;
-        cond.trap(|err| {
-            assert_eq!(err, bytes!("he", 0, "llo").to_owned())
-            error_happened = true;
-            Truncate
-        }).inside(|| "he\x00llo".to_c_str());
-        assert!(error_happened);
-
-        cond.trap(|_| {
-            ReplaceWith('?' as libc::c_char)
-        }).inside(|| "he\x00llo".to_c_str()).with_ref(|buf| {
-            unsafe {
-                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
-                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
-                assert_eq!(*buf.offset(2), '?' as libc::c_char);
-                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(4), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(5), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(6), 0);
-            }
-        })
+        assert!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
     }
 
     #[test]
