@@ -69,7 +69,6 @@ impl Void {
 mod tests {
     use super::*;
     use prelude::*;
-    use mem::size_of;
 
     #[test]
     fn identity_crisis() {

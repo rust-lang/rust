@@ -480,7 +480,6 @@ mod tests {
 
     use iter::range;
     use str::StrSlice;
-    use util;
     use kinds::marker;
     use vec::ImmutableVector;
 
