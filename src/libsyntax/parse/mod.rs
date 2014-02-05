@@ -74,7 +74,7 @@ pub fn parse_crate_from_file(
     cfg: ast::CrateConfig,
     sess: @ParseSess
 ) -> ast::Crate {
-    new_parser_from_file(sess, /*bad*/ cfg.clone(), input).parse_crate_mod()
+    new_parser_from_file(sess, cfg, input).parse_crate_mod()
     // why is there no p.abort_if_errors here?
 }
 
@@ -94,7 +94,7 @@ pub fn parse_crate_from_source_str(name: ~str,
                                    sess: @ParseSess)
                                    -> ast::Crate {
     let mut p = new_parser_from_source_str(sess,
-                                           /*bad*/ cfg.clone(),
+                                           cfg,
                                            name,
                                            source);
     maybe_aborted(p.parse_crate_mod(),p)
@@ -106,7 +106,7 @@ pub fn parse_crate_attrs_from_source_str(name: ~str,
                                          sess: @ParseSess)
                                          -> ~[ast::Attribute] {
     let mut p = new_parser_from_source_str(sess,
-                                           /*bad*/ cfg.clone(),
+                                           cfg,
                                            name,
                                            source);
     let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(),p);
