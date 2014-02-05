@@ -124,50 +124,6 @@ macro_rules! unreachable (() => (
 ))
 
 #[macro_export]
-macro_rules! condition (
-
-    { pub $c:ident: $input:ty -> $out:ty; } => {
-
-        pub mod $c {
-            #[allow(unused_imports)];
-            #[allow(non_uppercase_statics)];
-            #[allow(missing_doc)];
-
-            use super::*;
-
-            local_data_key!(key: @::std::condition::Handler<$input, $out>)
-
-            pub static cond :
-                ::std::condition::Condition<$input,$out> =
-                ::std::condition::Condition {
-                    name: stringify!($c),
-                    key: key
-                };
-        }
-    };
-
-    { $c:ident: $input:ty -> $out:ty; } => {
-
-        mod $c {
-            #[allow(unused_imports)];
-            #[allow(non_uppercase_statics)];
-            #[allow(dead_code)];
-
-            use super::*;
-
-            local_data_key!(key: @::std::condition::Handler<$input, $out>)
-
-            pub static cond :
-                ::std::condition::Condition<$input,$out> =
-                ::std::condition::Condition {
-                    name: stringify!($c),
-                    key: key
-                };
-        }
-    }
-)
-
-#[macro_export]
 macro_rules! format(($($arg:tt)*) => (
     format_args!(::std::fmt::format, $($arg)*)
 ))

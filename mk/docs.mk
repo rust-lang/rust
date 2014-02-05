@@ -205,12 +205,6 @@ doc/guide-tasks.html: $(D)/guide-tasks.md $(HTML_DEPS)
 	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/guide-conditions.html
-doc/guide-conditions.html: $(D)/guide-conditions.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
 DOCS += doc/guide-pointers.html
 doc/guide-pointers.html: $(D)/guide-pointers.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)

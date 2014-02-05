@@ -44,7 +44,6 @@ Several modules in `core` are clients of `rt`:
 * `std::local_data` - The interface to local data.
 * `std::gc` - The garbage collector.
 * `std::unstable::lang` - Miscellaneous lang items, some of which rely on `std::rt`.
-* `std::condition` - Uses local data.
 * `std::cleanup` - Local heap destruction.
 * `std::io` - In the future `std::io` will use an `rt` implementation.
 * `std::logging`
