@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+#[feature(managed_boxes)];
 
-fn g3() {
-    let _mid_tuple    = (Foo { }, 2);
-    //~^ ERROR: Unit-like struct construction is written with no trailing `{ }`
-}
+use std::hashmap::HashMap;
 
-fn main() {}
+pub type map = @HashMap<uint, uint>;

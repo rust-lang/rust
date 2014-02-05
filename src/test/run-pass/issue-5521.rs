@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+// aux-build:issue-5521.rs
+// xfail-fast
 
-fn g3() {
-    let _mid_tuple    = (Foo { }, 2);
-    //~^ ERROR: Unit-like struct construction is written with no trailing `{ }`
+#[feature(managed_boxes)];
+
+extern mod foo = "issue-5521";
+
+fn foo(a: foo::map) {
+    if false {
+        fail!();
+    } else {
+        let _b = a.get(&2);
+    }
 }
 
 fn main() {}

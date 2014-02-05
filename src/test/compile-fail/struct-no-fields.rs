@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Unit-like struct definition should be written as `struct Foo;`
 struct Foo {}
+//~^ ERROR: Unit-like struct definition should be written as `struct Foo;`
 
 fn main() {}
