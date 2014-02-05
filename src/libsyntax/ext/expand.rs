@@ -800,9 +800,8 @@ impl<'a> Folder for MacroExpander<'a> {
 
 pub fn expand_crate(parse_sess: @parse::ParseSess,
                     loader: &mut CrateLoader,
-                    cfg: ast::CrateConfig,
                     c: Crate) -> Crate {
-    let mut cx = ExtCtxt::new(parse_sess, cfg.clone(), loader);
+    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), loader);
     let mut expander = MacroExpander {
         extsbox: syntax_expander_table(),
         cx: &mut cx,
