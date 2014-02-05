@@ -172,7 +172,8 @@ debugging_opts!(
         LTO,
         AST_JSON,
         AST_JSON_NOEXPAND,
-        LS
+        LS,
+        SAVE_ANALYSIS
     ]
     0
 )
@@ -206,7 +207,9 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("lto", "Perform LLVM link-time optimizations", LTO),
      ("ast-json", "Print the AST as JSON and halt", AST_JSON),
      ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
-     ("ls", "List the symbols defined by a library crate", LS))
+     ("ls", "List the symbols defined by a library crate", LS),
+     ("save-analysis", "Write syntax and type analysis information \
+                        in addition to normal output", SAVE_ANALYSIS))
 }
 
 /// Declare a macro that will define all CodegenOptions fields and parsers all

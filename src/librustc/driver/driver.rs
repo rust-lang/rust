@@ -87,6 +87,7 @@ pub fn compile_input(sess: Session,
         if stop_after_phase_2(&sess) { return; }
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
+        phase_save_analysis(&analysis.ty_cx.sess, &expanded_crate, &analysis, outdir);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate,
                                                      analysis, &outputs);
@@ -368,6 +369,17 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         public_items: public_items,
         reachable: reachable_map,
     }
+}
+
+pub fn phase_save_analysis(sess: &Session,
+                           krate: &ast::Crate,
+                           analysis: &CrateAnalysis,
+                           odir: &Option<Path>) {
+    if (sess.opts.debugging_opts & config::SAVE_ANALYSIS) == 0 {
+        return;
+    }
+    time(sess.time_passes(), "save analysis", krate, |krate|
+         middle::save::process_crate(sess, krate, analysis, odir));
 }
 
 pub struct CrateTranslation {
