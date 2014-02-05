@@ -19,5 +19,7 @@ fn bar<T: Send>(_: T) {}
 
 fn main() {
     let x = Foo { a: 5, ns: marker::NoSend };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
+    bar(x);
+    //~^ ERROR instantiating a type parameter with an incompatible type `Foo`,
+    //         which does not fulfill `Send`
 }

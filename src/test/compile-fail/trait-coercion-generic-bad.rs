@@ -23,8 +23,8 @@ impl Trait<&'static str> for Struct {
 }
 
 fn main() {
-    let s: ~Trait<int> = ~Struct { person: "Fred" };    //~ ERROR expected Trait<int>, but found Trait<&'static str>
+    let s: ~Trait<int> = ~Struct { person: "Fred" };
     //~^ ERROR expected Trait<int>, but found Trait<&'static str>
+    //~^^ ERROR expected Trait<int>, but found Trait<&'static str>
     s.f(1);
 }
-
