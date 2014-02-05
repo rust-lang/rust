@@ -153,13 +153,17 @@ mod imp {
         static __SIZEOF_PTHREAD_MUTEX_T: uint = 40 - 8;
         #[cfg(target_arch = "x86")]
         static __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
+        #[cfg(target_arch = "arm")]
+        static __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
         #[cfg(target_arch = "x86_64")]
         static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
         #[cfg(target_arch = "x86")]
         static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
+        #[cfg(target_arch = "arm")]
+        static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
 
         pub struct pthread_mutex_t {
-            __align: libc::c_long,
+            __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
         }
         pub struct pthread_cond_t {
