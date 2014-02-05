@@ -11,7 +11,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra; // {En,De}codable
+extern mod serialize; // {En,De}codable
 mod submod {
     // if any of these are implemented without global calls for any
     // function calls, then being in a submodule will (correctly)

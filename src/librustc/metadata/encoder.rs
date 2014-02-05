@@ -22,7 +22,7 @@ use middle::ty;
 use middle::typeck;
 use middle;
 
-use extra::serialize::Encodable;
+use serialize::Encodable;
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
@@ -45,7 +45,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
-use writer = extra::ebml::writer;
+use writer = serialize::ebml::writer;
 
 // used by astencode:
 type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;

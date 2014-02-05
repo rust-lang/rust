@@ -37,12 +37,12 @@ use std::cast;
 use std::io::Seek;
 use std::rc::Rc;
 
-use extra::ebml::reader;
-use extra::ebml;
-use extra::serialize;
-use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use extra::serialize::{Decoder, Decodable};
-use writer = extra::ebml::writer;
+use serialize::ebml::reader;
+use serialize::ebml;
+use serialize;
+use serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use serialize::{Decoder, Decodable};
+use writer = serialize::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
