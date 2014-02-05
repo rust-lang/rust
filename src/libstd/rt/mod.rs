@@ -119,6 +119,9 @@ mod thread_local_storage;
 /// Stack unwinding
 pub mod unwind;
 
+/// Simple backtrace functionality (to print on failure)
+mod backtrace;
+
 /// Just stuff
 mod util;
 
