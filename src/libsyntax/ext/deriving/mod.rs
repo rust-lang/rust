@@ -44,7 +44,7 @@ pub mod totalord;
 
 pub mod generic;
 
-pub fn expand_meta_deriving(cx: &ExtCtxt,
+pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             _span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])

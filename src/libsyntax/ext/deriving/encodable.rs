@@ -82,7 +82,7 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use parse::token;
 
-pub fn expand_deriving_encodable(cx: &ExtCtxt,
+pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@Item]) -> ~[@Item] {
@@ -114,7 +114,7 @@ pub fn expand_deriving_encodable(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
+fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings
