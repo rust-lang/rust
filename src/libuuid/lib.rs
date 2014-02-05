@@ -59,7 +59,10 @@ Examples of string representations:
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+// test harness access
+#[cfg(test)]
 extern mod extra;
+extern mod serialize;
 
 use std::str;
 use std::vec;
@@ -73,7 +76,7 @@ use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
 use std::to_bytes::{IterBytes, Cb};
 
-use extra::serialize::{Encoder, Encodable, Decoder, Decodable};
+use serialize::{Encoder, Encodable, Decoder, Decodable};
 
 /// A 128-bit (16 byte) buffer containing the ID
 pub type UuidBytes = [u8, ..16];
@@ -784,8 +787,8 @@ mod test {
 
     #[test]
     fn test_serialize_round_trip() {
-        use extra::ebml;
-        use extra::serialize::{Encodable, Decodable};
+        use serialize::ebml;
+        use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();
