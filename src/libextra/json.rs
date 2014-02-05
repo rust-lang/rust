@@ -51,17 +51,18 @@ A simple JSON document encoding a person, his/her age, address and phone numbers
 
 Rust provides a mechanism for low boilerplate encoding & decoding
 of values to and from JSON via the serialization API.
-To be able to encode a piece of data, it must implement the `extra::serialize::Encodable` trait.
-To be able to decode a piece of data, it must implement the `extra::serialize::Decodable` trait.
+To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
+To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
 The Rust compiler provides an annotation to automatically generate
 the code for these traits: `#[deriving(Decodable, Encodable)]`
 
 To encode using Encodable :
 
 ```rust
+extern mod serialize;
 use extra::json;
 use std::io;
-use extra::serialize::Encodable;
+use serialize::Encodable;
 
  #[deriving(Encodable)]
  pub struct TestStruct   {
@@ -125,7 +126,8 @@ fn main() {
 To decode a json string using `Decodable` trait :
 
 ```rust
-use extra::serialize::Decodable;
+extern mod serialize;
+use serialize::Decodable;
 
 #[deriving(Decodable)]
 pub struct MyStruct  {
@@ -150,8 +152,9 @@ Create a struct called TestStruct1 and serialize and deserialize it to and from 
 using the serialization API, using the derived serialization code.
 
 ```rust
+extern mod serialize;
 use extra::json;
-use extra::serialize::{Encodable, Decodable};
+use serialize::{Encodable, Decodable};
 
  #[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
  pub struct TestStruct1  {
@@ -181,9 +184,10 @@ This example use the ToJson impl to unserialize the json string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
+extern mod serialize;
 use extra::json;
 use extra::json::ToJson;
-use extra::serialize::{Encodable, Decodable};
+use serialize::{Encodable, Decodable};
 use extra::treemap::TreeMap;
 
 #[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
@@ -312,7 +316,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T:Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~[u8]  {
+    pub fn buffer_encode<T:serialize::Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~[u8]  {
        //Serialize the object in a string using a writer
         let mut m = MemWriter::new();
         {
@@ -323,7 +327,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json str
-    pub fn str_encode<T:Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~str  {
+    pub fn str_encode<T:serialize::Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~str  {
         let buff:~[u8] = Encoder::buffer_encode(to_encode_object);
         str::from_utf8_owned(buff).unwrap()
     }
@@ -684,7 +688,7 @@ impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
     }
 }
 
-impl Json{
+impl Json {
     /// Encodes a json value into a io::writer.  Uses a single line.
     pub fn to_writer(&self, wr: &mut io::Writer) -> io::IoResult<()> {
         let mut encoder = Encoder::new(wr);
