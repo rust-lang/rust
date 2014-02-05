@@ -59,7 +59,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     fn add(efd: libc::c_int, fd: libc::c_int) {
         let event = imp::epoll_event {
             events: imp::EPOLLIN as u32,
-            data: imp::epoll_data_t { fd: fd, pad: 0, }
+            data: fd as i64,
         };
         let ret = unsafe {
             imp::epoll_ctl(efd, imp::EPOLL_CTL_ADD, fd, &event)
@@ -67,9 +67,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
         assert_eq!(ret, 0);
     }
     fn del(efd: libc::c_int, fd: libc::c_int) {
-        let event = imp::epoll_event {
-            events: 0, data: imp::epoll_data_t { fd: 0, pad: 0, }
-        };
+        let event = imp::epoll_event { events: 0, data: 0 };
         let ret = unsafe {
             imp::epoll_ctl(efd, imp::EPOLL_CTL_DEL, fd, &event)
         };
@@ -93,12 +91,12 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
         let mut incoming = false;
         debug!("{} events to process", n);
         for event in events.slice_to(n as uint).iter() {
-            let fd = event.data.fd;
+            let fd = event.data as libc::c_int;
             debug!("data on fd {} (input = {})", fd, input);
             if fd == input {
                 let mut buf = [0, ..1];
                 // drain the input file descriptor of its input
-                FileDesc::new(fd, false).inner_read(buf).unwrap();
+                let _ = FileDesc::new(fd, false).inner_read(buf).unwrap();
                 incoming = true;
             } else {
                 let mut bits = [0, ..8];
@@ -106,7 +104,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 //
                 // FIXME: should this perform a send() this number of
                 //      times?
-                FileDesc::new(fd, false).inner_read(bits).unwrap();
+                let _ = FileDesc::new(fd, false).inner_read(bits).unwrap();
                 let remove = {
                     match map.find(&fd).expect("fd unregistered") {
                         &(ref c, oneshot) => !c.try_send(()) || oneshot
@@ -168,7 +166,8 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        unsafe { libc::usleep((ms * 1000) as libc::c_uint); }
+        // FIXME: this can fail because of EINTR, what do do?
+        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
     }
 
     fn remove(&mut self) {
@@ -261,14 +260,17 @@ mod imp {
     pub static EPOLLHUP: libc::c_int = 0x010;
     pub static EPOLLONESHOT: libc::c_int = 1 << 30;
 
+    #[cfg(target_arch = "x86_64")]
+    #[packed]
     pub struct epoll_event {
         events: u32,
-        data: epoll_data_t,
+        data: i64,
     }
 
-    pub struct epoll_data_t {
-        fd: i32,
-        pad: u32,
+    #[cfg(not(target_arch = "x86_64"))]
+    pub struct epoll_event {
+        events: u32,
+        data: i64,
     }
 
     pub struct timespec {

@@ -180,9 +180,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_estr_box(&mut self) -> bool {
-        self.align_to::<@str>();
-        if ! self.inner().visit_estr_box() { return false; }
-        self.bump_past::<@str>();
         true
     }
 
@@ -255,9 +252,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<@[u8]>();
-        if ! self.inner().visit_evec_box(mtbl, inner) { return false; }
-        self.bump_past::<@[u8]>();
         true
     }
 

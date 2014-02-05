@@ -185,7 +185,6 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
 	check-stage2-rustuv check-stage2-native check-stage2-green \
-	check-stage2-rustpkg \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -261,6 +260,7 @@ tidy:
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
+		| grep '^$(S)src/doc' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
@@ -422,18 +422,6 @@ $(foreach host,$(CFG_HOST), \
       ), \
       $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
      ))))))
-
-# FIXME (#10104): Raise the stack size to work around rustpkg bypassing
-# the code in rustc that would take care of it.
-define DEF_RUSTPKG_STACK_FIX
-$$(call TEST_OK_FILE,$(1),$(2),$(3),rustpkg): export RUST_MIN_STACK=8000000
-endef
-
-$(foreach host,$(CFG_HOST), \
- $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(eval $(call DEF_RUSTPKG_STACK_FIX,$(stage),$(target),$(host))))))
-
 
 ######################################################################
 # Rules for the compiletest tests (rpass, rfail, etc.)
@@ -728,7 +716,7 @@ define DEF_DOC_TEST_HOST
 doc-$(2)-extract$(1):
 	@$$(call E, extract: $(2) tests)
 	$$(Q)rm -f $(1)/test/doc-$(2)/*.rs
-	$$(Q)$$(EXTRACT_TESTS) $$(S)doc/$(2).md $(1)/test/doc-$(2)
+	$$(Q)$$(EXTRACT_TESTS) $$(D)/$(2).md $(1)/test/doc-$(2)
 
 endef
 

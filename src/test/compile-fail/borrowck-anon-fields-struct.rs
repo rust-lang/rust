@@ -1,5 +1,5 @@
 // Tests that we are able to distinguish when loans borrow different
-// anonymous fields of an tuple vs the same anonymous field.
+// anonymous fields of a tuple vs the same anonymous field.
 
 struct Y(uint, uint);
 

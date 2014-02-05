@@ -159,25 +159,6 @@ impl<A:ToStr> ToStr for ~[A] {
     }
 }
 
-impl<A:ToStr> ToStr for @[A] {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
-        let mut first = true;
-        for elt in self.iter() {
-            if first {
-                first = false;
-            }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(elt.to_str());
-        }
-        acc.push_char(']');
-        acc
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use hashmap::HashMap;
@@ -195,7 +176,6 @@ mod tests {
         assert_eq!(false.to_str(), ~"false");
         assert_eq!(().to_str(), ~"()");
         assert_eq!((~"hi").to_str(), ~"hi");
-        assert_eq!((@"hi").to_str(), ~"hi");
     }
 
     #[test]

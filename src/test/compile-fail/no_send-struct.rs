@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_send]
-struct Foo { a: int }
+use std::kinds::marker;
+
+struct Foo {
+    a: int,
+    ns: marker::NoSend
+}
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5 };
+    let x = Foo { a: 5, ns: marker::NoSend };
     bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
 }

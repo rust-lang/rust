@@ -112,8 +112,8 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
     }
 }
 
-#[cfg(windows)] unsafe fn close(sock: sock_t) { libc::closesocket(sock); }
-#[cfg(unix)]    unsafe fn close(sock: sock_t) { libc::close(sock); }
+#[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
+#[cfg(unix)]    unsafe fn close(sock: sock_t) { let _ = libc::close(sock); }
 
 fn sockname(fd: sock_t,
             f: extern "system" unsafe fn(sock_t, *mut libc::sockaddr,
@@ -201,14 +201,19 @@ pub fn init() {
     }
 
     unsafe {
-        use std::unstable::mutex::{Once, ONCE_INIT};
-        static mut INIT: Once = ONCE_INIT;
-        INIT.doit(|| {
+        use std::unstable::mutex::{Mutex, MUTEX_INIT};
+        static mut INITIALIZED: bool = false;
+        static mut LOCK: Mutex = MUTEX_INIT;
+
+        LOCK.lock();
+        if !INITIALIZED {
             let mut data: WSADATA = intrinsics::init();
             let ret = WSAStartup(0x202,      // version 2.2
                                  &mut data);
             assert_eq!(ret, 0);
-        });
+            INITIALIZED = true;
+        }
+        LOCK.unlock();
     }
 }
 

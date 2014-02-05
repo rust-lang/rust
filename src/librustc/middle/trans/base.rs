@@ -76,16 +76,17 @@ use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
 use syntax::ast_util::{local_def, is_local};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use syntax::{ast, ast_util, ast_map};
-use syntax::attr::AttrMetaMethods;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
-use syntax::visit;
 use syntax::visit::Visitor;
+use syntax::visit;
+use syntax::{ast, ast_util, ast_map};
 
 pub use middle::trans::context::task_llcx;
 
@@ -328,7 +329,7 @@ pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
 pub fn malloc_raw_dyn<'a>(
-                      bcx: &'a Block,
+                      bcx: &'a Block<'a>,
                       t: ty::t,
                       heap: heap,
                       size: ValueRef)
@@ -359,7 +360,7 @@ pub fn malloc_raw_dyn<'a>(
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
-        // we treat ~fn, @fn and @[] as @ here, which isn't ideal
+        // we treat ~fn as @ here, which isn't ideal
         let langcall = match heap {
             heap_managed => {
                 require_alloc_fn(bcx, t, MallocFnLangItem)
@@ -425,7 +426,7 @@ pub fn malloc_general_dyn<'a>(
     }
 }
 
-pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
+pub fn malloc_general<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
                       -> MallocResult<'a> {
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
@@ -509,7 +510,7 @@ pub fn set_no_split_stack(f: ValueRef) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: @str) {
+pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: ~str) {
     let mut all_llvm_symbols = ccx.all_llvm_symbols.borrow_mut();
     if all_llvm_symbols.get().contains(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
@@ -604,7 +605,8 @@ pub fn compare_scalar_types<'a>(
             rslt(
                 controlflow::trans_fail(
                     cx, None,
-                    @"attempt to compare values of type type"),
+                    InternedString::new("attempt to compare values of type \
+                                         type")),
                 C_nil())
         }
         _ => {
@@ -856,9 +858,9 @@ pub fn fail_if_zero<'a>(
                     rhs_t: ty::t)
                     -> &'a Block<'a> {
     let text = if divrem == ast::BiDiv {
-        @"attempted to divide by zero"
+        "attempted to divide by zero"
     } else {
-        @"attempted remainder with a divisor of zero"
+        "attempted remainder with a divisor of zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
@@ -875,7 +877,7 @@ pub fn fail_if_zero<'a>(
       }
     };
     with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, Some(span), text)
+        controlflow::trans_fail(bcx, Some(span), InternedString::new(text))
     })
 }
 
@@ -1230,18 +1232,19 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
 //
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
-pub fn new_fn_ctxt_detailed(ccx: @CrateContext,
-                            path: ast_map::Path,
-                            llfndecl: ValueRef,
-                            id: ast::NodeId,
-                            has_env: bool,
-                            output_type: ty::t,
-                            param_substs: Option<@param_substs>,
-                            sp: Option<Span>)
-                            -> FunctionContext {
+pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
+                       path: ast_map::Path,
+                       llfndecl: ValueRef,
+                       id: ast::NodeId,
+                       has_env: bool,
+                       output_type: ty::t,
+                       param_substs: Option<@param_substs>,
+                       sp: Option<Span>,
+                       block_arena: &'a TypedArena<Block<'a>>)
+                       -> FunctionContext<'a> {
     for p in param_substs.iter() { p.validate(); }
 
-    debug!("new_fn_ctxt_detailed(path={},
+    debug!("new_fn_ctxt(path={},
            id={:?}, \
            param_substs={})",
            path_str(ccx.sess, path),
@@ -1258,25 +1261,25 @@ pub fn new_fn_ctxt_detailed(ccx: @CrateContext,
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
     let mut fcx = FunctionContext {
-        llfn: llfndecl,
-        llenv: None,
-        llretptr: Cell::new(None),
-        entry_bcx: RefCell::new(None),
-        alloca_insert_pt: Cell::new(None),
-        llreturn: Cell::new(None),
-        personality: Cell::new(None),
-        caller_expects_out_pointer: uses_outptr,
-        llargs: RefCell::new(HashMap::new()),
-        lllocals: RefCell::new(HashMap::new()),
-        llupvars: RefCell::new(HashMap::new()),
-        id: id,
-        param_substs: param_substs,
-        span: sp,
-        path: path,
-        block_arena: TypedArena::new(),
-        ccx: ccx,
-        debug_context: debug_context,
-        scopes: RefCell::new(~[])
+          llfn: llfndecl,
+          llenv: None,
+          llretptr: Cell::new(None),
+          entry_bcx: RefCell::new(None),
+          alloca_insert_pt: Cell::new(None),
+          llreturn: Cell::new(None),
+          personality: Cell::new(None),
+          caller_expects_out_pointer: uses_outptr,
+          llargs: RefCell::new(HashMap::new()),
+          lllocals: RefCell::new(HashMap::new()),
+          llupvars: RefCell::new(HashMap::new()),
+          id: id,
+          param_substs: param_substs,
+          span: sp,
+          path: path,
+          block_arena: block_arena,
+          ccx: ccx,
+          debug_context: debug_context,
+          scopes: RefCell::new(~[])
     };
 
     if has_env {
@@ -1326,18 +1329,6 @@ pub fn init_function<'a>(
             fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
         }
     }
-}
-
-pub fn new_fn_ctxt(ccx: @CrateContext,
-                   path: ast_map::Path,
-                   llfndecl: ValueRef,
-                   has_env: bool,
-                   output_type: ty::t,
-                   sp: Option<Span>)
-                   -> FunctionContext {
-    // FIXME(#11385): Do not call `init_function` here; it will typecheck
-    // but segfault.
-    new_fn_ctxt_detailed(ccx, path, llfndecl, -1, has_env, output_type, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1411,7 +1402,8 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: &FunctionContext, last_bcx: &Block) {
+pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
+                     last_bcx: &'a Block<'a>) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
@@ -1469,7 +1461,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
                          id: ast::NodeId,
                          _attributes: &[ast::Attribute],
                          output_type: ty::t,
-                         maybe_load_env: |&'a Block<'a>| -> &'a Block<'a>) {
+                         maybe_load_env: <'b> |&'b Block<'b>| -> &'b Block<'b>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1483,8 +1475,16 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
         _ => false
     };
 
-    let fcx = new_fn_ctxt_detailed(ccx, path, llfndecl, id, has_env, output_type,
-                                   param_substs, Some(body.span));
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx,
+                          path,
+                          llfndecl,
+                          id,
+                          has_env,
+                          output_type,
+                          param_substs,
+                          Some(body.span),
+                          &arena);
     init_function(&fcx, false, output_type, param_substs);
 
     // cleanup scope for the incoming arguments
@@ -1626,8 +1626,16 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
                  ty_to_str(ccx.tcx, ctor_ty)))
     };
 
-    let fcx = new_fn_ctxt_detailed(ccx, ~[], llfndecl, ctor_id, false,
-                                   result_ty, param_substs, None);
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx,
+                          ~[],
+                          llfndecl,
+                          ctor_id,
+                          false,
+                          result_ty,
+                          param_substs,
+                          None,
+                          &arena);
     init_function(&fcx, false, result_ty, param_substs);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
@@ -1945,7 +1953,7 @@ fn exported_name(ccx: &CrateContext, path: ast_map::Path,
                  ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
-        Some(name) => name.to_owned(),
+        Some(name) => name.get().to_owned(),
 
         // Don't mangle
         _ if attr::contains_name(attrs, "no_mangle")
@@ -2093,7 +2101,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
                     match attr::first_attr_value_str_by_name(i.attrs, "link_section") {
                         Some(sect) => unsafe {
-                            sect.with_c_str(|buf| {
+                            sect.get().with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
                             })
                         },
@@ -2155,9 +2163,9 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                     ccx.crate_map
                                 }
                             } else {
-                                let ident = foreign::link_name(ccx, ni);
+                                let ident = foreign::link_name(ni);
                                 unsafe {
-                                    ident.with_c_str(|buf| {
+                                    ident.get().with_c_str(|buf| {
                                         let ty = type_of(ccx, ty);
                                         llvm::LLVMAddGlobal(ccx.llmod,
                                                             ty.to_ref(), buf)
@@ -2470,21 +2478,21 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
         let mut keys = ~[];
         let module_data = ccx.module_data.borrow();
         for (k, _) in module_data.get().iter() {
-            keys.push(k.to_managed());
+            keys.push(k.clone());
         }
         keys
     };
 
     for key in keys.iter() {
-            let llstrval = C_str_slice(ccx, *key);
-            let module_data = ccx.module_data.borrow();
-            let val = *module_data.get().find_equiv(key).unwrap();
-            let v_ptr = p2i(ccx, val);
-            let elt = C_struct([
-                llstrval,
-                v_ptr
-            ], false);
-            elts.push(elt);
+        let llstrval = C_str_slice(ccx, token::intern_and_get_ident(*key));
+        let module_data = ccx.module_data.borrow();
+        let val = *module_data.get().find_equiv(key).unwrap();
+        let v_ptr = p2i(ccx, val);
+        let elt = C_struct([
+            llstrval,
+            v_ptr
+        ], false);
+        elts.push(elt);
     }
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));
@@ -2652,7 +2660,7 @@ pub fn trans_crate(sess: session::Session,
                    output: &Path) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
-        use std::unstable::mutex::{Once, ONCE_INIT};
+        use extra::sync::one::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
         INIT.doit(|| {

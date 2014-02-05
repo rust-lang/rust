@@ -28,6 +28,8 @@ use syntax::ast;
 use syntax::ast::Name;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::visit::Visitor;
 
 pub fn trans_stmt<'a>(cx: &'a Block<'a>,
@@ -332,7 +334,7 @@ pub fn trans_fail_expr<'a>(
                 unpack_datum!(bcx, expr::trans_to_lvalue(bcx, arg_expr, "fail"));
 
             if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _) = arg_datum.get_vec_base_and_len_no_root(bcx);
+                let (lldata, _) = arg_datum.get_vec_base_and_len(bcx);
                 return trans_fail_value(bcx, sp_opt, lldata);
             } else if bcx.unreachable.get() || ty::type_is_bot(arg_datum.ty) {
                 return bcx;
@@ -342,14 +344,14 @@ pub fn trans_fail_expr<'a>(
                     ppaux::ty_to_str(tcx, arg_datum.ty));
             }
         }
-        _ => trans_fail(bcx, sp_opt, @"explicit failure")
+        _ => trans_fail(bcx, sp_opt, InternedString::new("explicit failure"))
     }
 }
 
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
                   sp_opt: Option<Span>,
-                  fail_str: @str)
+                  fail_str: InternedString)
                   -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
@@ -367,11 +369,11 @@ fn trans_fail_value<'a>(
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), loc.file.name),
+        (C_cstr(bcx.ccx(), token::intern_and_get_ident(loc.file.name)),
          loc.line as int)
       }
       None => {
-        (C_cstr(bcx.ccx(), @"<runtime>"), 0)
+        (C_cstr(bcx.ccx(), InternedString::new("<runtime>")), 0)
       }
     };
     let V_str = PointerCast(bcx, V_fail_str, Type::i8p());

@@ -2174,7 +2174,7 @@ pub mod consts {
             pub static EDQUOT: c_int = 1133;
         }
         pub mod posix01 {
-            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static F_DUPFD : c_int = 0;
             pub static F_GETFD : c_int = 1;
@@ -2233,6 +2233,17 @@ pub mod consts {
 
             pub static PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub static PTHREAD_CREATE_DETACHED: c_int = 1;
+
+            #[cfg(target_os = "android")]
+            pub static PTHREAD_STACK_MIN: size_t = 8192;
+
+            #[cfg(target_arch = "arm", target_os = "linux")]
+            #[cfg(target_arch = "x86", target_os = "linux")]
+            #[cfg(target_arch = "x86_64", target_os = "linux")]
+            pub static PTHREAD_STACK_MIN: size_t = 16384;
+
+            #[cfg(target_arch = "mips", target_os = "linux")]
+            pub static PTHREAD_STACK_MIN: size_t = 131072;
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 1;
@@ -2617,7 +2628,7 @@ pub mod consts {
             pub static ELAST : c_int = 99;
         }
         pub mod posix01 {
-            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static SIGTRAP : c_int = 5;
 
@@ -2670,6 +2681,14 @@ pub mod consts {
 
             pub static PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub static PTHREAD_CREATE_DETACHED: c_int = 1;
+
+            #[cfg(target_arch = "arm")]
+            pub static PTHREAD_STACK_MIN: size_t = 4096;
+
+            #[cfg(target_arch = "mips")]
+            #[cfg(target_arch = "x86")]
+            #[cfg(target_arch = "x86_64")]
+            pub static PTHREAD_STACK_MIN: size_t = 2048;
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 4;
@@ -3002,7 +3021,7 @@ pub mod consts {
             pub static ELAST : c_int = 106;
         }
         pub mod posix01 {
-            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static SIGTRAP : c_int = 5;
 
@@ -3055,6 +3074,7 @@ pub mod consts {
 
             pub static PTHREAD_CREATE_JOINABLE: c_int = 1;
             pub static PTHREAD_CREATE_DETACHED: c_int = 2;
+            pub static PTHREAD_STACK_MIN: size_t = 8192;
         }
         pub mod posix08 {
         }

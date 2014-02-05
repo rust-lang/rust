@@ -198,14 +198,14 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Converts the Path into an owned byte vector
     fn into_vec(self) -> ~[u8];
 
-    /// Returns an object that implements `fmt::Default` for printing paths
+    /// Returns an object that implements `Show` for printing paths
     ///
     /// This will print the equivalent of `to_display_str()` when used with a {} format parameter.
     fn display<'a>(&'a self) -> Display<'a, Self> {
         Display{ path: self, filename: false }
     }
 
-    /// Returns an object that implements `fmt::Default` for printing filenames
+    /// Returns an object that implements `Show` for printing filenames
     ///
     /// This will print the equivalent of `to_filename_display_str()` when used with a {}
     /// format parameter. If there is no filename, nothing will be printed.
@@ -532,8 +532,8 @@ pub struct Display<'a, P> {
     priv filename: bool
 }
 
-impl<'a, P: GenericPath> fmt::Default for Display<'a, P> {
-    fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
+impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
+    fn fmt(d: &Display<P>, f: &mut fmt::Formatter) -> fmt::Result {
         d.with_str(|s| f.pad(s))
     }
 }
@@ -604,19 +604,6 @@ impl BytesContainer for ~str {
     fn is_str(_: Option<~str>) -> bool { true }
 }
 
-impl BytesContainer for @str {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.as_slice())
-    }
-    #[inline]
-    fn is_str(_: Option<@str>) -> bool { true }
-}
-
 impl<'a> BytesContainer for &'a [u8] {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
@@ -632,13 +619,6 @@ impl BytesContainer for ~[u8] {
     #[inline]
     fn container_into_owned_bytes(self) -> ~[u8] {
         self
-    }
-}
-
-impl BytesContainer for @[u8] {
-    #[inline]
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_slice()
     }
 }
 

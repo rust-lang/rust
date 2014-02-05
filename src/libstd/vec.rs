@@ -109,7 +109,7 @@ use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use num::{Integer, CheckedAdd, Saturating};
+use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -117,6 +117,7 @@ use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
 use mem;
 use mem::size_of;
+use kinds::marker;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
@@ -645,13 +646,6 @@ pub mod traits {
         fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
 
-    impl<T:Eq> Eq for @[T] {
-        #[inline]
-        fn eq(&self, other: &@[T]) -> bool { self.as_slice() == *other }
-        #[inline]
-        fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
-    }
-
     impl<'a,T:TotalEq> TotalEq for &'a [T] {
         fn equals(&self, other: & &'a [T]) -> bool {
             self.len() == other.len() &&
@@ -664,22 +658,12 @@ pub mod traits {
         fn equals(&self, other: &~[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
     }
 
-    impl<T:TotalEq> TotalEq for @[T] {
-        #[inline]
-        fn equals(&self, other: &@[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
-    }
-
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
-        #[inline]
-        fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-    }
-
-    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for @[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
@@ -693,11 +677,6 @@ pub mod traits {
     impl<T: TotalOrd> TotalOrd for ~[T] {
         #[inline]
         fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-    }
-
-    impl<T: TotalOrd> TotalOrd for @[T] {
-        #[inline]
-        fn cmp(&self, other: &@[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a, T: Eq + Ord> Ord for &'a [T] {
@@ -727,17 +706,6 @@ pub mod traits {
         fn ge(&self, other: &~[T]) -> bool { self.as_slice() >= other.as_slice() }
         #[inline]
         fn gt(&self, other: &~[T]) -> bool { self.as_slice() > other.as_slice() }
-    }
-
-    impl<T: Eq + Ord> Ord for @[T] {
-        #[inline]
-        fn lt(&self, other: &@[T]) -> bool { self.as_slice() < other.as_slice() }
-        #[inline]
-        fn le(&self, other: &@[T]) -> bool { self.as_slice() <= other.as_slice() }
-        #[inline]
-        fn ge(&self, other: &@[T]) -> bool { self.as_slice() >= other.as_slice() }
-        #[inline]
-        fn gt(&self, other: &@[T]) -> bool { self.as_slice() > other.as_slice() }
     }
 
     impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
@@ -777,11 +745,6 @@ impl<T> Vector<T> for ~[T] {
     fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
 }
 
-impl<T> Vector<T> for @[T] {
-    #[inline(always)]
-    fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
-}
-
 impl<'a, T> Container for &'a [T] {
     /// Returns the length of a vector
     #[inline]
@@ -803,7 +766,7 @@ pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
     fn to_owned(&self) -> ~[T];
 
-    /// Convert `self` into a owned vector, not making a copy if possible.
+    /// Convert `self` into an owned vector, not making a copy if possible.
     fn into_owned(self) -> ~[T];
 }
 
@@ -830,15 +793,6 @@ impl<T: Clone> CloneableVector<T> for ~[T] {
 
     #[inline(always)]
     fn into_owned(self) -> ~[T] { self }
-}
-
-/// Extension methods for managed vectors
-impl<T: Clone> CloneableVector<T> for @[T] {
-    #[inline]
-    fn to_owned(&self) -> ~[T] { self.as_slice().to_owned() }
-
-    #[inline(always)]
-    fn into_owned(self) -> ~[T] { self.to_owned() }
 }
 
 /// Extension methods for vectors
@@ -999,14 +953,15 @@ pub trait ImmutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None }
      *     let head = &self[0];
      *     *self = self.slice_from(1);
-     *     head
+     *     Some(head)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if vector is empty
      */
-    fn shift_ref(&mut self) -> &'a T;
+    fn shift_ref(&mut self) -> Option<&'a T>;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -1016,14 +971,15 @@ pub trait ImmutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let tail = &self[self.len() - 1];
      *     *self = self.slice_to(self.len() - 1);
-     *     tail
+     *     Some(tail)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty.
      */
-    fn pop_ref(&mut self) -> &'a T;
+    fn pop_ref(&mut self) -> Option<&'a T>;
 }
 
 impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
@@ -1055,12 +1011,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 Items{ptr: p,
-                            end: (p as uint + self.len()) as *T,
-                            lifetime: None}
+                      end: (p as uint + self.len()) as *T,
+                      marker: marker::ContravariantLifetime::<'a>}
             } else {
                 Items{ptr: p,
-                            end: p.offset(self.len() as int),
-                            lifetime: None}
+                      end: p.offset(self.len() as int),
+                      marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -1182,17 +1138,19 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         self.iter().map(f).collect()
     }
 
-    fn shift_ref(&mut self) -> &'a T {
+    fn shift_ref(&mut self) -> Option<&'a T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            &*raw::shift_ptr(s)
+            Some(&*raw::shift_ptr(s))
         }
     }
 
-    fn pop_ref(&mut self) -> &'a T {
+    fn pop_ref(&mut self) -> Option<&'a T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            &*raw::pop_ptr(s)
+            Some(&*raw::pop_ptr(s))
         }
     }
 }
@@ -1334,7 +1292,7 @@ pub trait OwnedVector<T> {
      * This method always succeeds in reserving space for `n` elements, or it does
      * not return.
      */
-    fn reserve(&mut self, n: uint);
+    fn reserve_exact(&mut self, n: uint);
     /**
      * Reserves capacity for at least `n` elements in the given vector.
      *
@@ -1349,7 +1307,7 @@ pub trait OwnedVector<T> {
      *
      * * n - The number of elements to reserve space for
      */
-    fn reserve_at_least(&mut self, n: uint);
+    fn reserve(&mut self, n: uint);
     /**
      * Reserves capacity for at least `n` additional elements in the given vector.
      *
@@ -1467,7 +1425,7 @@ impl<T> OwnedVector<T> for ~[T] {
         self.move_iter().rev()
     }
 
-    fn reserve(&mut self, n: uint) {
+    fn reserve_exact(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
@@ -1485,8 +1443,8 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn reserve_at_least(&mut self, n: uint) {
-        self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n));
+    fn reserve(&mut self, n: uint) {
+        self.reserve_exact(checked_next_power_of_two(n).unwrap_or(n));
     }
 
     #[inline]
@@ -1494,7 +1452,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if self.capacity() - self.len() < n {
             match self.len().checked_add(&n) {
                 None => fail!("vec::reserve_additional: `uint` overflow"),
-                Some(new_cap) => self.reserve_at_least(new_cap)
+                Some(new_cap) => self.reserve(new_cap)
             }
         }
     }
@@ -1677,7 +1635,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
     fn grow_fn(&mut self, n: uint, op: |uint| -> T) {
         let new_len = self.len() + n;
-        self.reserve_at_least(new_len);
+        self.reserve(new_len);
         let mut i: uint = 0u;
         while i < n {
             self.push(op(i));
@@ -1736,7 +1694,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();
-        self.reserve(new_len);
+        self.reserve_exact(new_len);
 
         for elt in rhs.iter() {
             self.push((*elt).clone())
@@ -1744,7 +1702,7 @@ impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     }
     fn grow(&mut self, n: uint, initval: &T) {
         let new_len = self.len() + n;
-        self.reserve_at_least(new_len);
+        self.reserve(new_len);
         let mut i: uint = 0u;
 
         while i < n {
@@ -2027,7 +1985,7 @@ pub trait MutableVector<'a, T> {
     fn mut_iter(self) -> MutItems<'a, T>;
 
     /// Returns a mutable pointer to the last item in the vector.
-    fn mut_last(self) -> &'a mut T;
+    fn mut_last(self) -> Option<&'a mut T>;
 
     /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> RevMutItems<'a, T>;
@@ -2057,14 +2015,15 @@ pub trait MutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let head = &mut self[0];
      *     *self = self.mut_slice_from(1);
-     *     head
+     *     Some(head)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty
      */
-    fn mut_shift_ref(&mut self) -> &'a mut T;
+    fn mut_shift_ref(&mut self) -> Option<&'a mut T>;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -2074,14 +2033,15 @@ pub trait MutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let tail = &mut self[self.len() - 1];
      *     *self = self.mut_slice_to(self.len() - 1);
-     *     tail
+     *     Some(tail)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty.
      */
-    fn mut_pop_ref(&mut self) -> &'a mut T;
+    fn mut_pop_ref(&mut self) -> Option<&'a mut T>;
 
     /// Swaps two elements in a vector.
     ///
@@ -2281,21 +2241,21 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
-                               end: (p as uint + self.len()) as *mut T,
-                               lifetime: None}
+                         end: (p as uint + self.len()) as *mut T,
+                         marker: marker::ContravariantLifetime::<'a>}
             } else {
                 MutItems{ptr: p,
-                               end: p.offset(self.len() as int),
-                               lifetime: None}
+                         end: p.offset(self.len() as int),
+                         marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
 
     #[inline]
-    fn mut_last(self) -> &'a mut T {
+    fn mut_last(self) -> Option<&'a mut T> {
         let len = self.len();
-        if len == 0 { fail!("mut_last: empty vector") }
-        &mut self[len - 1]
+        if len == 0 { return None; }
+        Some(&mut self[len - 1])
     }
 
     #[inline]
@@ -2314,17 +2274,19 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         MutChunks { v: self, chunk_size: chunk_size }
     }
 
-    fn mut_shift_ref(&mut self) -> &'a mut T {
+    fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            cast::transmute_mut(&*raw::shift_ptr(s))
+            Some(cast::transmute_mut(&*raw::shift_ptr(s)))
         }
     }
 
-    fn mut_pop_ref(&mut self) -> &'a mut T {
+    fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            cast::transmute_mut(&*raw::pop_ptr(s))
+            Some(cast::transmute_mut(&*raw::pop_ptr(s)))
         }
     }
 
@@ -2628,17 +2590,13 @@ impl<A> Default for ~[A] {
     fn default() -> ~[A] { ~[] }
 }
 
-impl<A> Default for @[A] {
-    fn default() -> @[A] { @[] }
-}
-
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
         /// An iterator for iterating over a vector.
         pub struct $name<'a, T> {
             priv ptr: $ptr,
             priv end: $ptr,
-            priv lifetime: Option<$elem> // FIXME: #5922
+            priv marker: marker::ContravariantLifetime<'a>,
         }
 
         impl<'a, T> Iterator<$elem> for $name<'a, T> {
@@ -2899,7 +2857,7 @@ impl<A> Extendable<A> for ~[A] {
     fn extend<T: Iterator<A>>(&mut self, iterator: &mut T) {
         let (lower, _) = iterator.size_hint();
         let len = self.len();
-        self.reserve(len + lower);
+        self.reserve_exact(len + lower);
         for x in *iterator {
             self.push(x);
         }
@@ -3107,14 +3065,6 @@ mod tests {
         assert_eq!(v_b.len(), 2u);
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
-
-        // Test on managed heap.
-        let vec_managed = @[1, 2, 3, 4, 5];
-        let v_c = vec_managed.slice(0u, 3u).to_owned();
-        assert_eq!(v_c.len(), 3u);
-        assert_eq!(v_c[0], 1);
-        assert_eq!(v_c[1], 2);
-        assert_eq!(v_c[2], 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
@@ -3629,10 +3579,10 @@ mod tests {
     #[test]
     fn test_capacity() {
         let mut v = ~[0u64];
-        v.reserve(10u);
+        v.reserve_exact(10u);
         assert_eq!(v.capacity(), 10u);
         let mut v = ~[0u32];
-        v.reserve(10u);
+        v.reserve_exact(10u);
         assert_eq!(v.capacity(), 10u);
     }
 
@@ -4051,7 +4001,6 @@ mod tests {
         );
 
         t!(&[int]);
-        t!(@[int]);
         t!(~[int]);
     }
 
@@ -4069,7 +4018,7 @@ mod tests {
     #[should_fail]
     fn test_overflow_does_not_cause_segfault() {
         let mut v = ~[];
-        v.reserve(-1);
+        v.reserve_exact(-1);
         v.push(1);
         v.push(2);
     }
@@ -4079,7 +4028,7 @@ mod tests {
     fn test_overflow_does_not_cause_segfault_managed() {
         use rc::Rc;
         let mut v = ~[Rc::new(1)];
-        v.reserve(-1);
+        v.reserve_exact(-1);
         v.push(Rc::new(2));
     }
 
@@ -4194,34 +4143,26 @@ mod tests {
     fn test_shift_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.shift_ref();
-        assert_eq!(*h, 1);
+        assert_eq!(*h.unwrap(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_shift_ref_empty() {
-        let mut x: &[int] = [];
-        x.shift_ref();
+        let mut y: &[int] = [];
+        assert_eq!(y.shift_ref(), None);
     }
 
     #[test]
     fn test_pop_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.pop_ref();
-        assert_eq!(*h, 5);
+        assert_eq!(*h.unwrap(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_pop_ref_empty() {
-        let mut x: &[int] = [];
-        x.pop_ref();
+        let mut y: &[int] = [];
+        assert!(y.pop_ref().is_none());
     }
 
     #[test]
@@ -4284,34 +4225,36 @@ mod tests {
     fn test_mut_shift_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_shift_ref();
-        assert_eq!(*h, 1);
+        assert_eq!(*h.unwrap(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_mut_shift_ref_empty() {
-        let mut x: &mut [int] = [];
-        x.mut_shift_ref();
+        let mut y: &mut [int] = [];
+        assert!(y.mut_shift_ref().is_none());
     }
 
     #[test]
     fn test_mut_pop_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_pop_ref();
-        assert_eq!(*h, 5);
+        assert_eq!(*h.unwrap(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
+
+        let mut y: &mut [int] = [];
+        assert!(y.mut_pop_ref().is_none());
     }
 
     #[test]
-    #[should_fail]
-    fn test_mut_pop_ref_empty() {
-        let mut x: &mut [int] = [];
-        x.mut_pop_ref();
+    fn test_mut_last() {
+        let mut x = [1, 2, 3, 4, 5];
+        let h = x.mut_last();
+        assert_eq!(*h.unwrap(), 5);
+
+        let mut y: &mut [int] = [];
+        assert!(y.mut_last().is_none());
     }
 }
 

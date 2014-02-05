@@ -11,16 +11,20 @@
 
 use metadata::csearch;
 use middle::astencode;
+
 use middle::ty;
+use middle::typeck::astconv;
 use middle;
 
-use syntax::{ast, ast_map, ast_util};
-use syntax::visit;
-use syntax::visit::Visitor;
 use syntax::ast::*;
+use syntax::parse::token::InternedString;
+use syntax::visit::Visitor;
+use syntax::visit;
+use syntax::{ast, ast_map, ast_util};
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
+use std::rc::Rc;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -236,7 +240,6 @@ impl ConstEvalVisitor {
                 match vstore {
                     ast::ExprVstoreSlice => self.classify(e),
                     ast::ExprVstoreUniq |
-                    ast::ExprVstoreBox |
                     ast::ExprVstoreMutSlice => non_const
                 }
             }
@@ -317,8 +320,8 @@ pub enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
-    const_str(@str),
-    const_binary(@[u8]),
+    const_str(InternedString),
+    const_binary(Rc<~[u8]>),
     const_bool(bool)
 }
 
@@ -445,8 +448,17 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           _ => Err(~"Bad operands for binary")
         }
       }
-      ExprCast(base, _) => {
-        let ety = tcx.expr_ty(e);
+      ExprCast(base, target_ty) => {
+        // This tends to get called w/o the type actually having been
+        // populated in the ctxt, which was causing things to blow up
+        // (#5900). Fall back to doing a limited lookup to get past it.
+        let ety = ty::expr_ty_opt(tcx.ty_ctxt(), e)
+                .or_else(|| astconv::ast_ty_to_prim_ty(tcx.ty_ctxt(), target_ty))
+                .unwrap_or_else(|| tcx.ty_ctxt().sess.span_fatal(
+                    target_ty.span,
+                    format!("Target type not found for const cast")
+                ));
+
         let base = eval_const_expr_partial(tcx, base);
         match base {
             Err(_) => base,
@@ -497,15 +509,15 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
 
 pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
-        LitStr(s, _) => const_str(s),
-        LitBinary(data) => const_binary(data),
+        LitStr(ref s, _) => const_str((*s).clone()),
+        LitBinary(ref data) => const_binary(data.clone()),
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),
         LitUint(n, _) => const_uint(n),
         LitIntUnsuffixed(n) => const_int(n),
-        LitFloat(n, _) => const_float(from_str::<f64>(n).unwrap() as f64),
-        LitFloatUnsuffixed(n) =>
-            const_float(from_str::<f64>(n).unwrap() as f64),
+        LitFloat(ref n, _) | LitFloatUnsuffixed(ref n) => {
+            const_float(from_str::<f64>(n.get()).unwrap() as f64)
+        }
         LitNil => const_int(0i64),
         LitBool(b) => const_bool(b)
     }
@@ -519,7 +531,7 @@ pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
         (&const_int(a), &const_int(b)) => compare_vals(a, b),
         (&const_uint(a), &const_uint(b)) => compare_vals(a, b),
         (&const_float(a), &const_float(b)) => compare_vals(a, b),
-        (&const_str(a), &const_str(b)) => compare_vals(a, b),
+        (&const_str(ref a), &const_str(ref b)) => compare_vals(a, b),
         (&const_bool(a), &const_bool(b)) => compare_vals(a, b),
         _ => None
     }

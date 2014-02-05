@@ -22,7 +22,6 @@ use codemap::{Span, respan};
 use parse::parser::Parser;
 use parse::token;
 
-use std::str;
 use std::to_bytes;
 
 /// The specific types of unsupported syntax
@@ -36,7 +35,6 @@ pub enum ObsoleteSyntax {
     ObsoleteUnsafeExternFn,
     ObsoleteTraitFuncVisibility,
     ObsoleteConstPointer,
-    ObsoleteEmptyImpl,
     ObsoleteLoopAsContinue,
     ObsoleteEnumWildcard,
     ObsoleteStructWildcard,
@@ -46,6 +44,8 @@ pub enum ObsoleteSyntax {
     ObsoleteMultipleImport,
     ObsoleteExternModAttributesInParens,
     ObsoleteManagedPattern,
+    ObsoleteManagedString,
+    ObsoleteManagedVec,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -110,10 +110,6 @@ impl ParserObsoleteMethods for Parser {
                 "instead of `&const Foo` or `@const Foo`, write `&Foo` or \
                  `@Foo`"
             ),
-            ObsoleteEmptyImpl => (
-                "empty implementation",
-                "instead of `impl A;`, write `impl A {}`"
-            ),
             ObsoleteLoopAsContinue => (
                 "`loop` instead of `continue`",
                 "`loop` is now only used for loops and `continue` is used for \
@@ -155,6 +151,14 @@ impl ParserObsoleteMethods for Parser {
                 "use a nested `match` expression instead of a managed box \
                  pattern"
             ),
+            ObsoleteManagedString => (
+                "managed string",
+                "use `Rc<~str>` instead of a managed string"
+            ),
+            ObsoleteManagedVec => (
+                "managed vector",
+                "use `Rc<~[T]>` instead of a managed vector"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -183,7 +187,8 @@ impl ParserObsoleteMethods for Parser {
     fn is_obsolete_ident(&mut self, ident: &str) -> bool {
         match self.token {
             token::IDENT(sid, _) => {
-                str::eq_slice(self.id_to_str(sid), ident)
+                let interned_string = token::get_ident(sid.name);
+                interned_string.equiv(&ident)
             }
             _ => false
         }

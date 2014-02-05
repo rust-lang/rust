@@ -18,7 +18,7 @@ use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
-use parse::token::{Token, EOF, to_str, Nonterminal, get_ident_interner, ident_to_str};
+use parse::token::{Token, EOF, to_str, Nonterminal, get_ident_interner};
 use parse::token;
 
 use std::hashmap::HashMap;
@@ -183,8 +183,9 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
                 node: MatchNonterminal(ref bind_name, _, idx), span: sp
           } => {
             if ret_val.contains_key(bind_name) {
-                p_s.span_diagnostic.span_fatal(sp,
-                                               "Duplicated bind name: "+ ident_to_str(bind_name))
+                let string = token::get_ident(bind_name.name);
+                p_s.span_diagnostic
+                   .span_fatal(sp, "Duplicated bind name: " + string.get())
             }
             ret_val.insert(*bind_name, res[idx]);
           }
@@ -364,8 +365,11 @@ pub fn parse(sess: @ParseSess,
                 let nts = bb_eis.map(|ei| {
                     match ei.elts[ei.idx].node {
                       MatchNonterminal(ref bind,ref name,_) => {
-                        format!("{} ('{}')", ident_to_str(name),
-                             ident_to_str(bind))
+                        let bind_string = token::get_ident(bind.name);
+                        let name_string = token::get_ident(name.name);
+                        format!("{} ('{}')",
+                                name_string.get(),
+                                bind_string.get())
                       }
                       _ => fail!()
                     } }).connect(" or ");
@@ -388,8 +392,9 @@ pub fn parse(sess: @ParseSess,
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.elts[ei.idx].node {
                   MatchNonterminal(_, ref name, idx) => {
+                    let name_string = token::get_ident(name.name);
                     ei.matches[idx].push(@MatchedNonterminal(
-                        parse_nt(&mut rust_parser, ident_to_str(name))));
+                        parse_nt(&mut rust_parser, name_string.get())));
                     ei.idx += 1u;
                   }
                   _ => fail!()

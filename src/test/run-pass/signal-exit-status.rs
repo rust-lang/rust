@@ -19,8 +19,7 @@ pub fn main() {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }
     } else {
-        let status = run::process_status(args[0], [~"signal"])
-            .expect("failed to exec `signal`");
+        let status = run::process_status(args[0], [~"signal"]).unwrap();
         // Windows does not have signal, so we get exit status 0xC0000028 (STATUS_BAD_STACK).
         match status {
             process::ExitSignal(_) if cfg!(unix) => {},

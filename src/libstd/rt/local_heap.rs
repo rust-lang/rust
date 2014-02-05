@@ -332,6 +332,6 @@ mod bench {
 
     #[bench]
     fn alloc_managed_big(bh: &mut BenchHarness) {
-        bh.iter(|| { @[10, ..1000]; });
+        bh.iter(|| { @([10, ..1000]); });
     }
 }

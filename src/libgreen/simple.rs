@@ -54,7 +54,7 @@ impl Runtime for SimpleTask {
         }
         Local::put(cur_task);
     }
-    fn reawaken(mut ~self, mut to_wake: ~Task, _can_resched: bool) {
+    fn reawaken(mut ~self, mut to_wake: ~Task) {
         let me = &mut *self as *mut SimpleTask;
         to_wake.put_runtime(self as ~Runtime);
         unsafe {
@@ -76,6 +76,7 @@ impl Runtime for SimpleTask {
     }
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
     fn stack_bounds(&self) -> (uint, uint) { fail!() }
+    fn can_block(&self) -> bool { true }
     fn wrap(~self) -> ~Any { fail!() }
 }
 

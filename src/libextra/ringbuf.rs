@@ -168,8 +168,8 @@ impl<T> RingBuf<T> {
     /// # Arguments
     ///
     /// * n - The number of elements to reserve space for
-    pub fn reserve(&mut self, n: uint) {
-        self.elts.reserve(n);
+    pub fn reserve_exact(&mut self, n: uint) {
+        self.elts.reserve_exact(n);
     }
 
     /// Reserve capacity for at least `n` elements in the given RingBuf,
@@ -182,8 +182,8 @@ impl<T> RingBuf<T> {
     /// # Arguments
     ///
     /// * n - The number of elements to reserve space for
-    pub fn reserve_at_least(&mut self, n: uint) {
-        self.elts.reserve_at_least(n);
+    pub fn reserve(&mut self, n: uint) {
+        self.elts.reserve(n);
     }
 
     /// Front-to-back iterator.
@@ -303,7 +303,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining2
         };
         self.nelts -= 1;
-        Some(r.mut_shift_ref().get_mut_ref())
+        Some(r.mut_shift_ref().unwrap().get_mut_ref())
     }
 
     #[inline]
@@ -325,7 +325,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
             &mut self.remaining1
         };
         self.nelts -= 1;
-        Some(r.mut_pop_ref().get_mut_ref())
+        Some(r.mut_pop_ref().unwrap().get_mut_ref())
     }
 }
 
@@ -641,26 +641,26 @@ mod tests {
     }
 
     #[test]
-    fn test_reserve() {
+    fn test_reserve_exact() {
         let mut d = RingBuf::new();
         d.push_back(0u64);
-        d.reserve(50);
+        d.reserve_exact(50);
         assert_eq!(d.elts.capacity(), 50);
         let mut d = RingBuf::new();
         d.push_back(0u32);
-        d.reserve(50);
+        d.reserve_exact(50);
         assert_eq!(d.elts.capacity(), 50);
     }
 
     #[test]
-    fn test_reserve_at_least() {
+    fn test_reserve() {
         let mut d = RingBuf::new();
         d.push_back(0u64);
-        d.reserve_at_least(50);
+        d.reserve(50);
         assert_eq!(d.elts.capacity(), 64);
         let mut d = RingBuf::new();
         d.push_back(0u32);
-        d.reserve_at_least(50);
+        d.reserve(50);
         assert_eq!(d.elts.capacity(), 64);
     }
 

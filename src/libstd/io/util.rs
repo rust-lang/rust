@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use prelude::*;
 use cmp;
+use io;
 use vec::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
@@ -25,9 +27,9 @@ impl<'a, R: Reader> LimitReader<'a, R> {
 }
 
 impl<'a, R: Reader> Reader for LimitReader<'a, R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         if self.limit == 0 {
-            return None;
+            return Err(io::standard_error(io::EndOfFile));
         }
 
         let len = cmp::min(self.limit, buf.len());
@@ -43,7 +45,7 @@ pub struct NullWriter;
 
 impl Writer for NullWriter {
     #[inline]
-    fn write(&mut self, _buf: &[u8]) { }
+    fn write(&mut self, _buf: &[u8]) -> io::IoResult<()> { Ok(()) }
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
@@ -51,9 +53,9 @@ pub struct ZeroReader;
 
 impl Reader for ZeroReader {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         buf.set_memory(0);
-        Some(buf.len())
+        Ok(buf.len())
     }
 }
 
@@ -62,8 +64,8 @@ pub struct NullReader;
 
 impl Reader for NullReader {
     #[inline]
-    fn read(&mut self, _buf: &mut [u8]) -> Option<uint> {
-        None
+    fn read(&mut self, _buf: &mut [u8]) -> io::IoResult<uint> {
+        Err(io::standard_error(io::EndOfFile))
     }
 }
 
@@ -81,17 +83,21 @@ impl MultiWriter {
 
 impl Writer for MultiWriter {
     #[inline]
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
+        let mut ret = Ok(());
         for writer in self.writers.mut_iter() {
-            writer.write(buf);
+            ret = ret.and(writer.write(buf));
         }
+        return ret;
     }
 
     #[inline]
-    fn flush(&mut self) {
+    fn flush(&mut self) -> io::IoResult<()> {
+        let mut ret = Ok(());
         for writer in self.writers.mut_iter() {
-            writer.flush();
+            ret = ret.and(writer.flush());
         }
+        return ret;
     }
 }
 
@@ -111,20 +117,25 @@ impl<R: Reader, I: Iterator<R>> ChainedReader<I, R> {
 }
 
 impl<R: Reader, I: Iterator<R>> Reader for ChainedReader<I, R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         loop {
-            match self.cur_reader {
+            let err = match self.cur_reader {
                 Some(ref mut r) => {
                     match r.read(buf) {
-                        Some(len) => return Some(len),
-                        None => {}
+                        Ok(len) => return Ok(len),
+                        Err(ref e) if e.kind == io::EndOfFile => None,
+                        Err(e) => Some(e),
                     }
                 }
                 None => break
+            };
+            self.cur_reader = self.readers.next();
+            match err {
+                Some(e) => return Err(e),
+                None => {}
             }
-            self.cur_reader = self.readers.next()
         }
-        None
+        Err(io::standard_error(io::EndOfFile))
     }
 }
 
@@ -150,27 +161,29 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        self.reader.read(buf).map(|len| {
-            self.writer.write(buf.slice_to(len));
-            len
+    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        self.reader.read(buf).and_then(|len| {
+            self.writer.write(buf.slice_to(len)).map(|()| len)
         })
     }
 }
 
 /// Copies all data from a `Reader` to a `Writer`.
-pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) {
+pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
     let mut buf = [0, ..super::DEFAULT_BUF_SIZE];
     loop {
-        match r.read(buf) {
-            Some(len) => w.write(buf.slice_to(len)),
-            None => break
-        }
+        let len = match r.read(buf) {
+            Ok(len) => len,
+            Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
+            Err(e) => return Err(e),
+        };
+        if_ok!(w.write(buf.slice_to(len)));
     }
 }
 
 #[cfg(test)]
 mod test {
+    use io;
     use io::{MemReader, MemWriter};
     use super::*;
     use prelude::*;
@@ -180,7 +193,7 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(&mut r, 4);
-            assert_eq!(~[0, 1, 2], r.read_to_end());
+            assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
         }
     }
 
@@ -189,24 +202,24 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(&mut r, 2);
-            assert_eq!(~[0, 1], r.read_to_end());
+            assert_eq!(~[0, 1], r.read_to_end().unwrap());
         }
-        assert_eq!(~[2], r.read_to_end());
+        assert_eq!(~[2], r.read_to_end().unwrap());
     }
 
     #[test]
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = ~[0, 0, 0];
-        s.write(buf);
-        s.flush();
+        s.write(buf).unwrap();
+        s.flush().unwrap();
     }
 
     #[test]
     fn test_zero_reader() {
         let mut s = ZeroReader;
         let mut buf = ~[1, 2, 3];
-        assert_eq!(s.read(buf), Some(3));
+        assert_eq!(s.read(buf), Ok(3));
         assert_eq!(~[0, 0, 0], buf);
     }
 
@@ -214,7 +227,7 @@ mod test {
     fn test_null_reader() {
         let mut r = NullReader;
         let mut buf = ~[0];
-        assert_eq!(r.read(buf), None);
+        assert!(r.read(buf).is_err());
     }
 
     #[test]
@@ -224,21 +237,23 @@ mod test {
 
         struct TestWriter;
         impl Writer for TestWriter {
-            fn write(&mut self, _buf: &[u8]) {
+            fn write(&mut self, _buf: &[u8]) -> io::IoResult<()> {
                 unsafe { writes += 1 }
+                Ok(())
             }
 
-            fn flush(&mut self) {
+            fn flush(&mut self) -> io::IoResult<()> {
                 unsafe { flushes += 1 }
+                Ok(())
             }
         }
 
         let mut multi = MultiWriter::new(~[~TestWriter as ~Writer,
                                            ~TestWriter as ~Writer]);
-        multi.write([1, 2, 3]);
+        multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
-        multi.flush();
+        multi.flush().unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(2, unsafe { flushes });
     }
@@ -248,14 +263,14 @@ mod test {
         let rs = ~[MemReader::new(~[0, 1]), MemReader::new(~[]),
                    MemReader::new(~[2, 3])];
         let mut r = ChainedReader::new(rs.move_iter());
-        assert_eq!(~[0, 1, 2, 3], r.read_to_end());
+        assert_eq!(~[0, 1, 2, 3], r.read_to_end().unwrap());
     }
 
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(~[0, 1, 2]),
                                    MemWriter::new());
-        assert_eq!(~[0, 1, 2], r.read_to_end());
+        assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
         let (_, w) = r.unwrap();
         assert_eq!(~[0, 1, 2], w.unwrap());
     }
@@ -264,7 +279,7 @@ mod test {
     fn test_copy() {
         let mut r = MemReader::new(~[0, 1, 2, 3, 4]);
         let mut w = MemWriter::new();
-        copy(&mut r, &mut w);
+        copy(&mut r, &mut w).unwrap();
         assert_eq!(~[0, 1, 2, 3, 4], w.unwrap());
     }
 }

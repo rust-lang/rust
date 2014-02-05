@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow;
-
 pub fn main() {
     let x = 3;
-    info!("&x={:x}", borrow::to_uint(&x));
+    info!("&x={:x}", (&x as *int as uint));
 }

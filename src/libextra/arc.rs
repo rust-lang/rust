@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -45,9 +45,9 @@ use sync;
 use sync::{Mutex, RWLock};
 
 use std::cast;
+use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
-use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
@@ -151,9 +151,10 @@ impl<T:Freeze + Send> Clone for Arc<T> {
 struct MutexArcInner<T> { lock: Mutex, failed: bool, data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
-#[no_freeze]
-pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
-
+pub struct MutexArc<T> {
+    priv x: UnsafeArc<MutexArcInner<T>>,
+    priv marker: marker::NoFreeze,
+}
 
 impl<T:Send> Clone for MutexArc<T> {
     /// Duplicate a mutex-protected Arc. See arc::clone for more details.
@@ -161,7 +162,8 @@ impl<T:Send> Clone for MutexArc<T> {
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexArc { x: self.x.clone() }
+        MutexArc { x: self.x.clone(),
+                   marker: marker::NoFreeze, }
     }
 }
 
@@ -180,7 +182,8 @@ impl<T:Send> MutexArc<T> {
             lock: Mutex::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        MutexArc { x: UnsafeArc::new(data) }
+        MutexArc { x: UnsafeArc::new(data),
+                   marker: marker::NoFreeze, }
     }
 
     /**
@@ -319,16 +322,17 @@ struct RWArcInner<T> { lock: RWLock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[no_freeze]
 pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
+    priv marker: marker::NoFreeze,
 }
 
 impl<T:Freeze + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> RWArc<T> {
-        RWArc { x: self.x.clone() }
+        RWArc { x: self.x.clone(),
+                marker: marker::NoFreeze, }
     }
 
 }
@@ -348,7 +352,8 @@ impl<T:Freeze + Send> RWArc<T> {
             lock: RWLock::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        RWArc { x: UnsafeArc::new(data), }
+        RWArc { x: UnsafeArc::new(data),
+                marker: marker::NoFreeze, }
     }
 
     /**
@@ -465,7 +470,7 @@ impl<T:Freeze + Send> RWArc<T> {
             // of this cast is removing the mutability.)
             let new_data = data;
             // Downgrade ensured the token belonged to us. Just a sanity check.
-            assert!(borrow::ref_eq(&(*state).data, new_data));
+            assert!((&(*state).data as *T as uint) == (new_data as *mut T as uint));
             // Produce new token
             RWReadMode {
                 data: new_data,
@@ -550,6 +555,50 @@ impl<'a, T:Freeze + Send> RWReadMode<'a, T> {
 }
 
 /****************************************************************************
+ * Copy-on-write Arc
+ ****************************************************************************/
+
+pub struct CowArc<T> { priv x: UnsafeArc<T> }
+
+/// A Copy-on-write Arc functions the same way as an `arc` except it allows
+/// mutation of the contents if there is only a single reference to
+/// the data. If there are multiple references the data is automatically
+/// cloned and the task modifies the cloned data in place of the shared data.
+impl<T:Clone+Send+Freeze> CowArc<T> {
+    /// Create a copy-on-write atomically reference counted wrapper
+    #[inline]
+    pub fn new(data: T) -> CowArc<T> {
+        CowArc { x: UnsafeArc::new(data) }
+    }
+
+    #[inline]
+    pub fn get<'a>(&'a self) -> &'a T {
+        unsafe { &*self.x.get_immut() }
+    }
+
+    /// get a mutable reference to the contents. If there are more then one
+    /// reference to the contents of the `CowArc` will be cloned
+    /// and this reference updated to point to the cloned data.
+    #[inline]
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut T {
+        if !self.x.is_owned() {
+            *self = CowArc::new(self.get().clone())
+        }
+        unsafe { &mut *self.x.get() }
+    }
+}
+
+impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
+    /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
+    #[inline]
+    fn clone(&self) -> CowArc<T> {
+        CowArc { x: self.x.clone() }
+    }
+}
+
+
+
+/****************************************************************************
  * Tests
  ****************************************************************************/
 
@@ -632,7 +681,7 @@ mod tests {
     fn test_mutex_arc_poison() {
         let arc = ~MutexArc::new(1);
         let arc2 = ~arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.access(|one| {
                 assert_eq!(*one, 2);
             })
@@ -663,7 +712,7 @@ mod tests {
     fn test_mutex_arc_access_in_unwind() {
         let arc = MutexArc::new(1i);
         let arc2 = arc.clone();
-        task::try::<()>(proc() {
+        let _ = task::try::<()>(proc() {
             struct Unwinder {
                 i: MutexArc<int>
             }
@@ -682,7 +731,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write(|one| {
                 assert_eq!(*one, 2);
             })
@@ -696,7 +745,7 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write(|one| {
                 assert_eq!(*one, 2);
             })
@@ -709,7 +758,7 @@ mod tests {
     fn test_rw_arc_poison_dw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write_downgrade(|mut write_mode| {
                 write_mode.write(|one| {
                     assert_eq!(*one, 2);
@@ -724,7 +773,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.read(|one| {
                 assert_eq!(*one, 2);
             })
@@ -737,7 +786,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.read(|one| {
                 assert_eq!(*one, 2);
             })
@@ -750,7 +799,7 @@ mod tests {
     fn test_rw_arc_no_poison_dr() {
         let arc = RWArc::new(1);
         let arc2 = arc.clone();
-        task::try(proc() {
+        let _ = task::try(proc() {
             arc2.write_downgrade(|write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
                 read_mode.read(|one| {
@@ -795,7 +844,7 @@ mod tests {
 
         // Wait for children to pass their asserts
         for r in children.mut_iter() {
-            r.recv();
+            let _ = r.recv();
         }
 
         // Wait for writer to finish
@@ -809,7 +858,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = RWArc::new(1i);
         let arc2 = arc.clone();
-        task::try::<()>(proc() {
+        let _ = task::try::<()>(proc() {
             struct Unwinder {
                 i: RWArc<int>
             }
@@ -957,5 +1006,69 @@ mod tests {
         // deschedules in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
         for _ in range(0, 8) { test_rw_write_cond_downgrade_read_race_helper(); }
+    }
+
+    #[test]
+    fn test_cowarc_clone()
+    {
+        let cow0 = CowArc::new(75u);
+        let cow1 = cow0.clone();
+        let cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        assert!(cow0.get() == cow1.get());
+        assert!(cow0.get() == cow2.get());
+    }
+
+    #[test]
+    fn test_cowarc_clone_get_mut()
+    {
+        let mut cow0 = CowArc::new(75u);
+        let mut cow1 = cow0.clone();
+        let mut cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get_mut());
+        assert!(75 == *cow1.get_mut());
+        assert!(75 == *cow2.get_mut());
+
+        *cow0.get_mut() += 1;
+        *cow1.get_mut() += 2;
+        *cow2.get_mut() += 3;
+
+        assert!(76 == *cow0.get());
+        assert!(77 == *cow1.get());
+        assert!(78 == *cow2.get());
+
+        // none should point to the same backing memory
+        assert!(cow0.get() != cow1.get());
+        assert!(cow0.get() != cow2.get());
+        assert!(cow1.get() != cow2.get());
+    }
+
+    #[test]
+    fn test_cowarc_clone_get_mut2()
+    {
+        let mut cow0 = CowArc::new(75u);
+        let cow1 = cow0.clone();
+        let cow2 = cow1.clone();
+
+        assert!(75 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        *cow0.get_mut() += 1;
+
+        assert!(76 == *cow0.get());
+        assert!(75 == *cow1.get());
+        assert!(75 == *cow2.get());
+
+        // cow1 and cow2 should share the same contents
+        // cow0 should have a unique reference
+        assert!(cow0.get() != cow1.get());
+        assert!(cow0.get() != cow2.get());
+        assert!(cow1.get() == cow2.get());
     }
 }

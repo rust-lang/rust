@@ -71,7 +71,7 @@ impl Drop for UvEventLoop {
         // after the loop has been closed because during the closing of the loop
         // the handle is required to be used apparently.
         let handle = self.uvio.handle_pool.get_ref().handle();
-        self.uvio.handle_pool.take();
+        drop(self.uvio.handle_pool.take());
         self.uvio.loop_.close();
         unsafe { uvll::free_handle(handle) }
     }

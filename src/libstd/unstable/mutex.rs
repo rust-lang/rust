@@ -47,180 +47,186 @@
 
 #[allow(non_camel_case_types)];
 
-use int;
-use sync::atomics;
-
 pub struct Mutex {
-    // pointers for the lock/cond handles, atomically updated
-    priv lock: atomics::AtomicUint,
-    priv cond: atomics::AtomicUint,
+    priv inner: imp::Mutex,
 }
 
 pub static MUTEX_INIT: Mutex = Mutex {
-    lock: atomics::INIT_ATOMIC_UINT,
-    cond: atomics::INIT_ATOMIC_UINT,
+    inner: imp::MUTEX_INIT,
 };
 
 impl Mutex {
-    /// Creates a new mutex, with the lock/condition variable pre-initialized
+    /// Creates a new mutex
     pub unsafe fn new() -> Mutex {
-        Mutex {
-            lock: atomics::AtomicUint::new(imp::init_lock()),
-            cond: atomics::AtomicUint::new(imp::init_cond()),
-        }
-    }
-
-    /// Creates a new mutex, with the lock/condition variable not initialized.
-    /// This is the same as initializing from the MUTEX_INIT static.
-    pub unsafe fn empty() -> Mutex {
-        Mutex {
-            lock: atomics::AtomicUint::new(0),
-            cond: atomics::AtomicUint::new(0),
-        }
-    }
-
-    /// Creates a new copy of this mutex. This is an unsafe operation because
-    /// there is no reference counting performed on this type.
-    ///
-    /// This function may only be called on mutexes which have had both the
-    /// internal condition variable and lock initialized. This means that the
-    /// mutex must have been created via `new`, or usage of it has already
-    /// initialized the internal handles.
-    ///
-    /// This is a dangerous function to call as both this mutex and the returned
-    /// mutex will share the same handles to the underlying mutex/condition
-    /// variable. Care must be taken to ensure that deallocation happens
-    /// accordingly.
-    pub unsafe fn clone(&self) -> Mutex {
-        let lock = self.lock.load(atomics::Relaxed);
-        let cond = self.cond.load(atomics::Relaxed);
-        assert!(lock != 0);
-        assert!(cond != 0);
-        Mutex {
-            lock: atomics::AtomicUint::new(lock),
-            cond: atomics::AtomicUint::new(cond),
-        }
+        Mutex { inner: imp::Mutex::new() }
     }
 
     /// Acquires this lock. This assumes that the current thread does not
     /// already hold the lock.
-    pub unsafe fn lock(&mut self) { imp::lock(self.getlock()) }
+    pub unsafe fn lock(&mut self) { self.inner.lock() }
 
     /// Attempts to acquire the lock. The value returned is whether the lock was
     /// acquired or not
-    pub unsafe fn trylock(&mut self) -> bool { imp::trylock(self.getlock()) }
+    pub unsafe fn trylock(&mut self) -> bool { self.inner.trylock() }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
-    pub unsafe fn unlock(&mut self) { imp::unlock(self.getlock()) }
+    pub unsafe fn unlock(&mut self) { self.inner.unlock() }
 
     /// Block on the internal condition variable.
     ///
     /// This function assumes that the lock is already held
-    pub unsafe fn wait(&mut self) { imp::wait(self.getcond(), self.getlock()) }
+    pub unsafe fn wait(&mut self) { self.inner.wait() }
 
     /// Signals a thread in `wait` to wake up
-    pub unsafe fn signal(&mut self) { imp::signal(self.getcond()) }
+    pub unsafe fn signal(&mut self) { self.inner.signal() }
 
     /// This function is especially unsafe because there are no guarantees made
     /// that no other thread is currently holding the lock or waiting on the
     /// condition variable contained inside.
-    pub unsafe fn destroy(&mut self) {
-        let lock = self.lock.swap(0, atomics::Relaxed);
-        let cond = self.cond.swap(0, atomics::Relaxed);
-        if lock != 0 { imp::free_lock(lock) }
-        if cond != 0 { imp::free_cond(cond) }
-    }
-
-    unsafe fn getlock(&mut self) -> uint{
-        match self.lock.load(atomics::Relaxed) {
-            0 => {}
-            n => return n
-        }
-        let lock = imp::init_lock();
-        match self.lock.compare_and_swap(0, lock, atomics::SeqCst) {
-            0 => return lock,
-            _ => {}
-        }
-        imp::free_lock(lock);
-        self.lock.load(atomics::Relaxed)
-    }
-
-    unsafe fn getcond(&mut self) -> uint {
-        match self.cond.load(atomics::Relaxed) {
-            0 => {}
-            n => return n
-        }
-        let cond = imp::init_cond();
-        match self.cond.compare_and_swap(0, cond, atomics::SeqCst) {
-            0 => return cond,
-            _ => {}
-        }
-        imp::free_cond(cond);
-        self.cond.load(atomics::Relaxed)
-    }
+    pub unsafe fn destroy(&mut self) { self.inner.destroy() }
 }
 
 #[cfg(unix)]
 mod imp {
     use libc;
-    use ptr;
-    use rt::global_heap::malloc_raw;
+    use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
+                   pthread_mutex_t, pthread_cond_t};
+    use unstable::intrinsics;
 
-    type pthread_mutex_t = libc::c_void;
     type pthread_mutexattr_t = libc::c_void;
-    type pthread_cond_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
 
-    pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *mut pthread_mutex_t;
-        let n = pthread_mutex_init(block, ptr::null());
-        assert_eq!(n, 0);
-        return block as uint;
+    #[cfg(target_os = "freebsd")]
+    mod os {
+        use libc;
+
+        pub type pthread_mutex_t = *libc::c_void;
+        pub type pthread_cond_t = *libc::c_void;
+
+        pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t =
+            0 as pthread_mutex_t;
+        pub static PTHREAD_COND_INITIALIZER: pthread_cond_t =
+            0 as pthread_cond_t;
     }
 
-    pub unsafe fn init_cond() -> uint {
-        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *mut pthread_cond_t;
-        let n = pthread_cond_init(block, ptr::null());
-        assert_eq!(n, 0);
-        return block as uint;
+    #[cfg(target_os = "macos")]
+    mod os {
+        use libc;
+
+        #[cfg(target_arch = "x86_64")]
+        static __PTHREAD_MUTEX_SIZE__: uint = 56;
+        #[cfg(target_arch = "x86_64")]
+        static __PTHREAD_COND_SIZE__: uint = 40;
+        #[cfg(target_arch = "x86")]
+        static __PTHREAD_MUTEX_SIZE__: uint = 40;
+        #[cfg(target_arch = "x86")]
+        static __PTHREAD_COND_SIZE__: uint = 24;
+        static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;
+        static _PTHREAD_COND_SIG_init: libc::c_long = 0x3CB0B1BB;
+
+        pub struct pthread_mutex_t {
+            __sig: libc::c_long,
+            __opaque: [u8, ..__PTHREAD_MUTEX_SIZE__],
+        }
+        pub struct pthread_cond_t {
+            __sig: libc::c_long,
+            __opaque: [u8, ..__PTHREAD_COND_SIZE__],
+        }
+
+        pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
+            __sig: _PTHREAD_MUTEX_SIG_init,
+            __opaque: [0, ..__PTHREAD_MUTEX_SIZE__],
+        };
+        pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
+            __sig: _PTHREAD_COND_SIG_init,
+            __opaque: [0, ..__PTHREAD_COND_SIZE__],
+        };
     }
 
-    pub unsafe fn free_lock(h: uint) {
-        let block = h as *mut libc::c_void;
-        assert_eq!(pthread_mutex_destroy(block), 0);
-        libc::free(block);
+    #[cfg(target_os = "linux")]
+    mod os {
+        use libc;
+
+        // minus 8 because we have an 'align' field
+        #[cfg(target_arch = "x86_64")]
+        static __SIZEOF_PTHREAD_MUTEX_T: uint = 40 - 8;
+        #[cfg(target_arch = "x86")]
+        static __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
+        #[cfg(target_arch = "x86_64")]
+        static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
+        #[cfg(target_arch = "x86")]
+        static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
+
+        pub struct pthread_mutex_t {
+            __align: libc::c_long,
+            size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
+        }
+        pub struct pthread_cond_t {
+            __align: libc::c_longlong,
+            size: [u8, ..__SIZEOF_PTHREAD_COND_T],
+        }
+
+        pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
+            __align: 0,
+            size: [0, ..__SIZEOF_PTHREAD_MUTEX_T],
+        };
+        pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
+            __align: 0,
+            size: [0, ..__SIZEOF_PTHREAD_COND_T],
+        };
+    }
+    #[cfg(target_os = "android")]
+    mod os {
+        use libc;
+
+        pub struct pthread_mutex_t { value: libc::c_int }
+        pub struct pthread_cond_t { value: libc::c_int }
+
+        pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
+            value: 0,
+        };
+        pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
+            value: 0,
+        };
     }
 
-    pub unsafe fn free_cond(h: uint) {
-        let block = h as *mut pthread_cond_t;
-        assert_eq!(pthread_cond_destroy(block), 0);
-        libc::free(block);
+    pub struct Mutex {
+        priv lock: pthread_mutex_t,
+        priv cond: pthread_cond_t,
     }
 
-    pub unsafe fn lock(l: uint) {
-        assert_eq!(pthread_mutex_lock(l as *mut pthread_mutex_t), 0);
-    }
+    pub static MUTEX_INIT: Mutex = Mutex {
+        lock: PTHREAD_MUTEX_INITIALIZER,
+        cond: PTHREAD_COND_INITIALIZER,
+    };
 
-    pub unsafe fn trylock(l: uint) -> bool {
-        pthread_mutex_trylock(l as *mut pthread_mutex_t) == 0
-    }
+    impl Mutex {
+        pub unsafe fn new() -> Mutex {
+            let mut m = Mutex {
+                lock: intrinsics::init(),
+                cond: intrinsics::init(),
+            };
 
-    pub unsafe fn unlock(l: uint) {
-        assert_eq!(pthread_mutex_unlock(l as *mut pthread_mutex_t), 0);
-    }
+            pthread_mutex_init(&mut m.lock, 0 as *libc::c_void);
+            pthread_cond_init(&mut m.cond, 0 as *libc::c_void);
 
-    pub unsafe fn wait(cond: uint, m: uint) {
-        assert_eq!(pthread_cond_wait(cond as *mut pthread_cond_t, m as *mut pthread_mutex_t), 0);
-    }
+            return m;
+        }
 
-    pub unsafe fn signal(cond: uint) {
-        assert_eq!(pthread_cond_signal(cond as *mut pthread_cond_t), 0);
-    }
-
-    extern {
-        fn rust_pthread_mutex_t_size() -> libc::c_int;
-        fn rust_pthread_cond_t_size() -> libc::c_int;
+        pub unsafe fn lock(&mut self) { pthread_mutex_lock(&mut self.lock); }
+        pub unsafe fn unlock(&mut self) { pthread_mutex_unlock(&mut self.lock); }
+        pub unsafe fn signal(&mut self) { pthread_cond_signal(&mut self.cond); }
+        pub unsafe fn wait(&mut self) {
+            pthread_cond_wait(&mut self.cond, &mut self.lock);
+        }
+        pub unsafe fn trylock(&mut self) -> bool {
+            pthread_mutex_trylock(&mut self.lock) == 0
+        }
+        pub unsafe fn destroy(&mut self) {
+            pthread_mutex_destroy(&mut self.lock);
+            pthread_cond_destroy(&mut self.cond);
+        }
     }
 
     extern {
@@ -242,16 +248,96 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use libc;
-    use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
-    use ptr;
     use rt::global_heap::malloc_raw;
+    use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
+    use libc;
+    use ptr;
+    use sync::atomics;
 
-    type LPCRITICAL_SECTION = *c_void;
+    type LPCRITICAL_SECTION = *mut c_void;
     static SPIN_COUNT: DWORD = 4000;
+    #[cfg(target_arch = "x86")]
+    static CRIT_SECTION_SIZE: uint = 24;
+
+    pub struct Mutex {
+        // pointers for the lock/cond handles, atomically updated
+        priv lock: atomics::AtomicUint,
+        priv cond: atomics::AtomicUint,
+    }
+
+    pub static MUTEX_INIT: Mutex = Mutex {
+        lock: atomics::INIT_ATOMIC_UINT,
+        cond: atomics::INIT_ATOMIC_UINT,
+    };
+
+    impl Mutex {
+        pub unsafe fn new() -> Mutex {
+            Mutex {
+                lock: atomics::AtomicUint::new(init_lock()),
+                cond: atomics::AtomicUint::new(init_cond()),
+            }
+        }
+        pub unsafe fn lock(&mut self) {
+            EnterCriticalSection(self.getlock() as LPCRITICAL_SECTION)
+        }
+        pub unsafe fn trylock(&mut self) -> bool {
+            TryEnterCriticalSection(self.getlock() as LPCRITICAL_SECTION) != 0
+        }
+        pub unsafe fn unlock(&mut self) {
+            LeaveCriticalSection(self.getlock() as LPCRITICAL_SECTION)
+        }
+
+        pub unsafe fn wait(&mut self) {
+            self.unlock();
+            WaitForSingleObject(self.getcond() as HANDLE, libc::INFINITE);
+            self.lock();
+        }
+
+        pub unsafe fn signal(&mut self) {
+            assert!(SetEvent(self.getcond() as HANDLE) != 0);
+        }
+
+        /// This function is especially unsafe because there are no guarantees made
+        /// that no other thread is currently holding the lock or waiting on the
+        /// condition variable contained inside.
+        pub unsafe fn destroy(&mut self) {
+            let lock = self.lock.swap(0, atomics::SeqCst);
+            let cond = self.cond.swap(0, atomics::SeqCst);
+            if lock != 0 { free_lock(lock) }
+            if cond != 0 { free_cond(cond) }
+        }
+
+        unsafe fn getlock(&mut self) -> *mut c_void {
+            match self.lock.load(atomics::SeqCst) {
+                0 => {}
+                n => return n as *mut c_void
+            }
+            let lock = init_lock();
+            match self.lock.compare_and_swap(0, lock, atomics::SeqCst) {
+                0 => return lock as *mut c_void,
+                _ => {}
+            }
+            free_lock(lock);
+            return self.lock.load(atomics::SeqCst) as *mut c_void;
+        }
+
+        unsafe fn getcond(&mut self) -> *mut c_void {
+            match self.cond.load(atomics::SeqCst) {
+                0 => {}
+                n => return n as *mut c_void
+            }
+            let cond = init_cond();
+            match self.cond.compare_and_swap(0, cond, atomics::SeqCst) {
+                0 => return cond as *mut c_void,
+                _ => {}
+            }
+            free_cond(cond);
+            return self.cond.load(atomics::SeqCst) as *mut c_void;
+        }
+    }
 
     pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(rust_crit_section_size() as uint) as *c_void;
+        let block = malloc_raw(CRIT_SECTION_SIZE as uint) as *mut c_void;
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }
@@ -271,32 +357,6 @@ mod imp {
         libc::CloseHandle(block);
     }
 
-    pub unsafe fn lock(l: uint) {
-        EnterCriticalSection(l as LPCRITICAL_SECTION)
-    }
-
-    pub unsafe fn trylock(l: uint) -> bool {
-        TryEnterCriticalSection(l as LPCRITICAL_SECTION) != 0
-    }
-
-    pub unsafe fn unlock(l: uint) {
-        LeaveCriticalSection(l as LPCRITICAL_SECTION)
-    }
-
-    pub unsafe fn wait(cond: uint, m: uint) {
-        unlock(m);
-        WaitForSingleObject(cond as HANDLE, libc::INFINITE);
-        lock(m);
-    }
-
-    pub unsafe fn signal(cond: uint) {
-        assert!(SetEvent(cond as HANDLE) != 0);
-    }
-
-    extern {
-        fn rust_crit_section_size() -> libc::c_int;
-    }
-
     extern "system" {
         fn CreateEventA(lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
                         bManualReset: BOOL,
@@ -314,156 +374,13 @@ mod imp {
     }
 }
 
-/// A type which can be used to run a one-time global initialization. This type
-/// is *unsafe* to use because it is built on top of the `Mutex` in this module.
-/// It does not know whether the currently running task is in a green or native
-/// context, and a blocking mutex should *not* be used under normal
-/// circumstances on a green task.
-///
-/// Despite its unsafety, it is often useful to have a one-time initialization
-/// routine run for FFI bindings or related external functionality. This type
-/// can only be statically constructed with the `ONCE_INIT` value.
-///
-/// # Example
-///
-/// ```rust
-/// use std::unstable::mutex::{Once, ONCE_INIT};
-///
-/// static mut START: Once = ONCE_INIT;
-/// unsafe {
-///     START.doit(|| {
-///         // run initialization here
-///     });
-/// }
-/// ```
-pub struct Once {
-    priv mutex: Mutex,
-    priv cnt: atomics::AtomicInt,
-    priv lock_cnt: atomics::AtomicInt,
-}
-
-/// Initialization value for static `Once` values.
-pub static ONCE_INIT: Once = Once {
-    mutex: MUTEX_INIT,
-    cnt: atomics::INIT_ATOMIC_INT,
-    lock_cnt: atomics::INIT_ATOMIC_INT,
-};
-
-impl Once {
-    /// Perform an initialization routine once and only once. The given closure
-    /// will be executed if this is the first time `doit` has been called, and
-    /// otherwise the routine will *not* be invoked.
-    ///
-    /// This method will block the calling *os thread* if another initialization
-    /// routine is currently running.
-    ///
-    /// When this function returns, it is guaranteed that some initialization
-    /// has run and completed (it may not be the closure specified).
-    pub fn doit(&mut self, f: ||) {
-        // Implementation-wise, this would seem like a fairly trivial primitive.
-        // The stickler part is where our mutexes currently require an
-        // allocation, and usage of a `Once` should't leak this allocation.
-        //
-        // This means that there must be a deterministic destroyer of the mutex
-        // contained within (because it's not needed after the initialization
-        // has run).
-        //
-        // The general scheme here is to gate all future threads once
-        // initialization has completed with a "very negative" count, and to
-        // allow through threads to lock the mutex if they see a non negative
-        // count. For all threads grabbing the mutex, exactly one of them should
-        // be responsible for unlocking the mutex, and this should only be done
-        // once everyone else is done with the mutex.
-        //
-        // This atomicity is achieved by swapping a very negative value into the
-        // shared count when the initialization routine has completed. This will
-        // read the number of threads which will at some point attempt to
-        // acquire the mutex. This count is then squirreled away in a separate
-        // variable, and the last person on the way out of the mutex is then
-        // responsible for destroying the mutex.
-        //
-        // It is crucial that the negative value is swapped in *after* the
-        // initialization routine has completed because otherwise new threads
-        // calling `doit` will return immediately before the initialization has
-        // completed.
-
-        let prev = self.cnt.fetch_add(1, atomics::SeqCst);
-        if prev < 0 {
-            // Make sure we never overflow, we'll never have int::MIN
-            // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::MIN, atomics::SeqCst);
-            return
-        }
-
-        // If the count is negative, then someone else finished the job,
-        // otherwise we run the job and record how many people will try to grab
-        // this lock
-        unsafe { self.mutex.lock() }
-        if self.cnt.load(atomics::SeqCst) > 0 {
-            f();
-            let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
-            self.lock_cnt.store(prev, atomics::SeqCst);
-        }
-        unsafe { self.mutex.unlock() }
-
-        // Last one out cleans up after everyone else, no leaks!
-        if self.lock_cnt.fetch_add(-1, atomics::SeqCst) == 1 {
-            unsafe { self.mutex.destroy() }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use prelude::*;
 
+    use super::{Mutex, MUTEX_INIT};
     use rt::thread::Thread;
-    use super::{ONCE_INIT, Once, Mutex, MUTEX_INIT};
     use task;
-
-    #[test]
-    fn smoke_once() {
-        static mut o: Once = ONCE_INIT;
-        let mut a = 0;
-        unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
-        unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
-    }
-
-    #[test]
-    fn stampede_once() {
-        static mut o: Once = ONCE_INIT;
-        static mut run: bool = false;
-
-        let (p, c) = SharedChan::new();
-        for _ in range(0, 10) {
-            let c = c.clone();
-            spawn(proc() {
-                for _ in range(0, 4) { task::deschedule() }
-                unsafe {
-                    o.doit(|| {
-                        assert!(!run);
-                        run = true;
-                    });
-                    assert!(run);
-                }
-                c.send(());
-            });
-        }
-
-        unsafe {
-            o.doit(|| {
-                assert!(!run);
-                run = true;
-            });
-            assert!(run);
-        }
-
-        for _ in range(0, 10) {
-            p.recv();
-        }
-    }
 
     #[test]
     fn somke_lock() {
@@ -493,7 +410,7 @@ mod test {
     #[test]
     fn destroy_immediately() {
         unsafe {
-            let mut m = Mutex::empty();
+            let mut m = Mutex::new();
             m.destroy();
         }
     }

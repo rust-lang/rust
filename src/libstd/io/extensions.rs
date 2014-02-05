@@ -46,28 +46,21 @@ impl<'r, R: Reader> Bytes<'r, R> {
 impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.reader.read_byte()
+        self.reader.read_byte().ok()
     }
 }
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+    use unstable::intrinsics::{to_le16, to_le32, to_le64};
+    use cast::transmute;
+
+    // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(&[n as u8,
-              (n >> 8) as u8]),
-      4u => f(&[n as u8,
-              (n >> 8) as u8,
-              (n >> 16) as u8,
-              (n >> 24) as u8]),
-      8u => f(&[n as u8,
-              (n >> 8) as u8,
-              (n >> 16) as u8,
-              (n >> 24) as u8,
-              (n >> 32) as u8,
-              (n >> 40) as u8,
-              (n >> 48) as u8,
-              (n >> 56) as u8]),
+      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_le16(n as i16)) }),
+      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_le32(n as i32)) }),
+      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_le64(n as i64)) }),
       _ => {
 
         let mut bytes: ~[u8] = ~[];
@@ -84,23 +77,16 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 }
 
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
+    use unstable::intrinsics::{to_be16, to_be32, to_be64};
+    use cast::transmute;
+
+    // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(&[(n >> 8) as u8,
-              n as u8]),
-      4u => f(&[(n >> 24) as u8,
-              (n >> 16) as u8,
-              (n >> 8) as u8,
-              n as u8]),
-      8u => f(&[(n >> 56) as u8,
-              (n >> 48) as u8,
-              (n >> 40) as u8,
-              (n >> 32) as u8,
-              (n >> 24) as u8,
-              (n >> 16) as u8,
-              (n >> 8) as u8,
-              n as u8]),
+      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_be16(n as i16)) }),
+      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_be32(n as i32)) }),
+      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_be64(n as i64)) }),
       _ => {
         let mut bytes: ~[u8] = ~[];
         let mut i = size;
@@ -139,23 +125,22 @@ pub fn u64_from_be_bytes(data: &[u8],
 
 #[cfg(test)]
 mod test {
-    use unstable::finally::Finally;
     use prelude::*;
+    use io;
     use io::{MemReader, MemWriter};
-    use io::{io_error, placeholder_error};
 
     struct InitialZeroByteReader {
         count: int,
     }
 
     impl Reader for InitialZeroByteReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
-                Some(0)
+                Ok(0)
             } else {
                 buf[0] = 10;
-                Some(1)
+                Ok(1)
             }
         }
     }
@@ -163,17 +148,16 @@ mod test {
     struct EofReader;
 
     impl Reader for EofReader {
-        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            None
+        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+            Err(io::standard_error(io::EndOfFile))
         }
     }
 
     struct ErroringReader;
 
     impl Reader for ErroringReader {
-        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            io_error::cond.raise(placeholder_error());
-            None
+        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+            Err(io::standard_error(io::InvalidInput))
         }
     }
 
@@ -182,16 +166,16 @@ mod test {
     }
 
     impl Reader for PartialReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
                 buf[1] = 11;
-                Some(2)
+                Ok(2)
             } else {
                 buf[0] = 12;
                 buf[1] = 13;
-                Some(2)
+                Ok(2)
             }
         }
     }
@@ -201,14 +185,13 @@ mod test {
     }
 
     impl Reader for ErroringLaterReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
-                Some(1)
+                Ok(1)
             } else {
-                io_error::cond.raise(placeholder_error());
-                None
+                Err(io::standard_error(io::InvalidInput))
             }
         }
     }
@@ -218,19 +201,19 @@ mod test {
     }
 
     impl Reader for ThreeChunkReader {
-        fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
                 buf[1] = 11;
-                Some(2)
+                Ok(2)
             } else if self.count == 1 {
                 self.count = 2;
                 buf[0] = 12;
                 buf[1] = 13;
-                Some(2)
+                Ok(2)
             } else {
-                None
+                Err(io::standard_error(io::EndOfFile))
             }
         }
     }
@@ -239,7 +222,7 @@ mod test {
     fn read_byte() {
         let mut reader = MemReader::new(~[10]);
         let byte = reader.read_byte();
-        assert!(byte == Some(10));
+        assert!(byte == Ok(10));
     }
 
     #[test]
@@ -248,24 +231,21 @@ mod test {
             count: 0,
         };
         let byte = reader.read_byte();
-        assert!(byte == Some(10));
+        assert!(byte == Ok(10));
     }
 
     #[test]
     fn read_byte_eof() {
         let mut reader = EofReader;
         let byte = reader.read_byte();
-        assert!(byte == None);
+        assert!(byte.is_err());
     }
 
     #[test]
     fn read_byte_error() {
         let mut reader = ErroringReader;
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            let byte = reader.read_byte();
-            assert!(byte == None);
-        });
+        let byte = reader.read_byte();
+        assert!(byte.is_err());
     }
 
     #[test]
@@ -281,23 +261,21 @@ mod test {
     fn bytes_eof() {
         let mut reader = EofReader;
         let byte = reader.bytes().next();
-        assert!(byte == None);
+        assert!(byte.is_none());
     }
 
     #[test]
     fn bytes_error() {
         let mut reader = ErroringReader;
         let mut it = reader.bytes();
-        io_error::cond.trap(|_| ()).inside(|| {
-            let byte = it.next();
-            assert!(byte == None);
-        })
+        let byte = it.next();
+        assert!(byte.is_none());
     }
 
     #[test]
     fn read_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
-        let bytes = reader.read_bytes(4);
+        let bytes = reader.read_bytes(4).unwrap();
         assert!(bytes == ~[10, 11, 12, 13]);
     }
 
@@ -306,24 +284,21 @@ mod test {
         let mut reader = PartialReader {
             count: 0,
         };
-        let bytes = reader.read_bytes(4);
+        let bytes = reader.read_bytes(4).unwrap();
         assert!(bytes == ~[10, 11, 12, 13]);
     }
 
     #[test]
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            assert!(reader.read_bytes(4) == ~[10, 11]);
-        })
+        assert!(reader.read_bytes(4).is_err());
     }
 
     #[test]
     fn push_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let mut buf = ~[8, 9];
-        reader.push_bytes(&mut buf, 4);
+        reader.push_bytes(&mut buf, 4).unwrap();
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
@@ -333,7 +308,7 @@ mod test {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        reader.push_bytes(&mut buf, 4);
+        reader.push_bytes(&mut buf, 4).unwrap();
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
@@ -341,11 +316,8 @@ mod test {
     fn push_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        io_error::cond.trap(|_| {
-        }).inside(|| {
-            reader.push_bytes(&mut buf, 4);
-            assert!(buf == ~[8, 9, 10, 11]);
-        })
+        assert!(reader.push_bytes(&mut buf, 4).is_err());
+        assert!(buf == ~[8, 9, 10, 11]);
     }
 
     #[test]
@@ -354,30 +326,8 @@ mod test {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        io_error::cond.trap(|_| { } ).inside(|| {
-            reader.push_bytes(&mut buf, 4);
-        });
+        assert!(reader.push_bytes(&mut buf, 4).is_err());
         assert!(buf == ~[8, 9, 10]);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore] // borrow issues with RefCell
-    fn push_bytes_fail_reset_len() {
-        // push_bytes unsafely sets the vector length. This is testing that
-        // upon failure the length is reset correctly.
-        let reader = ErroringLaterReader {
-            count: 0,
-        };
-        // FIXME (#7049): Figure out some other way to do this.
-        //let buf = RefCell::new(~[8, 9]);
-        (|| {
-            //reader.push_bytes(buf.borrow_mut().get(), 4);
-        }).finally(|| {
-            // NB: Using rtassert here to trigger abort on failure since this is a should_fail test
-            // FIXME: #7049 This fails because buf is still borrowed
-            //rtassert!(buf.borrow().get() == ~[8, 9, 10]);
-        })
     }
 
     #[test]
@@ -385,7 +335,7 @@ mod test {
         let mut reader = ThreeChunkReader {
             count: 0,
         };
-        let buf = reader.read_to_end();
+        let buf = reader.read_to_end().unwrap();
         assert!(buf == ~[10, 11, 12, 13]);
     }
 
@@ -395,7 +345,7 @@ mod test {
         let mut reader = ThreeChunkReader {
             count: 0,
         };
-        let buf = reader.read_to_end();
+        let buf = reader.read_to_end().unwrap();
         assert!(buf == ~[10, 11]);
     }
 
@@ -405,12 +355,12 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
-            writer.write_le_u64(*i);
+            writer.write_le_u64(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_le_u64() == *i);
+            assert!(reader.read_le_u64().unwrap() == *i);
         }
     }
 
@@ -421,12 +371,12 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in uints.iter() {
-            writer.write_be_u64(*i);
+            writer.write_be_u64(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_be_u64() == *i);
+            assert!(reader.read_be_u64().unwrap() == *i);
         }
     }
 
@@ -436,14 +386,14 @@ mod test {
 
         let mut writer = MemWriter::new();
         for i in ints.iter() {
-            writer.write_be_i32(*i);
+            writer.write_be_i32(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
-            assert!(reader.read_be_int_n(4) == *i as i64);
+            assert!(reader.read_be_int_n(4).unwrap() == *i as i64);
         }
     }
 
@@ -453,10 +403,10 @@ mod test {
         let buf = ~[0x41, 0x02, 0x00, 0x00];
 
         let mut writer = MemWriter::new();
-        writer.write(buf);
+        writer.write(buf).unwrap();
 
         let mut reader = MemReader::new(writer.unwrap());
-        let f = reader.read_be_f32();
+        let f = reader.read_be_f32().unwrap();
         assert!(f == 8.1250);
     }
 
@@ -465,12 +415,12 @@ mod test {
         let f:f32 = 8.1250;
 
         let mut writer = MemWriter::new();
-        writer.write_be_f32(f);
-        writer.write_le_f32(f);
+        writer.write_be_f32(f).unwrap();
+        writer.write_le_f32(f).unwrap();
 
         let mut reader = MemReader::new(writer.unwrap());
-        assert!(reader.read_be_f32() == 8.1250);
-        assert!(reader.read_le_f32() == 8.1250);
+        assert!(reader.read_be_f32().unwrap() == 8.1250);
+        assert!(reader.read_le_f32().unwrap() == 8.1250);
     }
 
     #[test]

@@ -315,8 +315,14 @@ mod tests {
     use num;
     use num::CheckedDiv;
     use num::Bitwise;
-    use mem;
     use u16;
+
+    #[test]
+    fn test_overflows() {
+        assert!(MAX > 0);
+        assert!(MIN <= 0);
+        assert_eq!(MIN + MAX + 1, 0);
+    }
 
     #[test]
     fn test_num() {

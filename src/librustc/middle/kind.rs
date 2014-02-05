@@ -277,7 +277,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
               ExprPath(_) => {
                 let did = ast_util::def_id_of_def(def_map.get()
                                                          .get_copy(&e.id));
-                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
+                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs.clone()
               }
               _ => {
                 // Type substitutions should only occur on paths and
@@ -289,6 +289,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                     "non path/method call expr has type substs??")
               }
             };
+            let type_param_defs = type_param_defs.borrow();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \
@@ -362,8 +363,8 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
             for ts in r.iter() {
                 let def_map = cx.tcx.def_map.borrow();
                 let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
-                let type_param_defs =
-                    ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+                let generics = ty::lookup_item_type(cx.tcx, did).generics;
+                let type_param_defs = generics.type_param_defs();
                 for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
                     check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
                 }
@@ -485,7 +486,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     }
 }
 
-/// This is rather subtle.  When we are casting a value to a instantiated
+/// This is rather subtle.  When we are casting a value to an instantiated
 /// trait like `a as trait<'r>`, regionck already ensures that any references
 /// that appear in the type of `a` are bounded by `'r` (ed.: rem
 /// FIXME(#5723)).  However, it is possible that there are *type parameters*
@@ -516,7 +517,7 @@ pub fn check_cast_for_escaping_regions(
     target_ty: ty::t,
     source_span: Span)
 {
-    // Determine what type we are casting to; if it is not an trait, then no
+    // Determine what type we are casting to; if it is not a trait, then no
     // worries.
     match ty::get(target_ty).sty {
         ty::ty_trait(..) => {}

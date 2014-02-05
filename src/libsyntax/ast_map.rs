@@ -62,9 +62,10 @@ pub fn path_to_str_with_sep(p: &[PathElem], sep: &str, itr: @IdentInterner)
 
 pub fn path_ident_to_str(p: &Path, i: Ident, itr: @IdentInterner) -> ~str {
     if p.is_empty() {
-        itr.get(i.name).to_owned()
+        itr.get(i.name).into_owned()
     } else {
-        format!("{}::{}", path_to_str(*p, itr), itr.get(i.name))
+        let string = itr.get(i.name);
+        format!("{}::{}", path_to_str(*p, itr), string.as_slice())
     }
 }
 
@@ -75,7 +76,7 @@ pub fn path_to_str(p: &[PathElem], itr: @IdentInterner) -> ~str {
 pub fn path_elem_to_str(pe: PathElem, itr: @IdentInterner) -> ~str {
     match pe {
         PathMod(s) | PathName(s) | PathPrettyName(s, _) => {
-            itr.get(s.name).to_owned()
+            itr.get(s.name).into_owned()
         }
     }
 }
@@ -105,7 +106,11 @@ fn pretty_ty(ty: &Ty, itr: @IdentInterner, out: &mut ~str) {
         // need custom handling.
         TyNil => { out.push_str("$NIL$"); return }
         TyPath(ref path, _, _) => {
-            out.push_str(itr.get(path.segments.last().unwrap().identifier.name));
+            out.push_str(itr.get(path.segments
+                                     .last()
+                                     .unwrap()
+                                     .identifier
+                                     .name).as_slice());
             return
         }
         TyTup(ref tys) => {
@@ -138,7 +143,8 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> PathElem {
     match *trait_ref {
         None => pretty = ~"",
         Some(ref trait_ref) => {
-            pretty = itr.get(trait_ref.path.segments.last().unwrap().identifier.name).to_owned();
+            pretty = itr.get(trait_ref.path.segments.last().unwrap().identifier.name)
+                        .into_owned();
             pretty.push_char('$');
         }
     };
@@ -489,17 +495,21 @@ pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
              path_ident_to_str(path, item.ident, itr), abi, id)
       }
       Some(NodeMethod(m, _, path)) => {
+        let name = itr.get(m.ident.name);
         format!("method {} in {} (id={})",
-             itr.get(m.ident.name), path_to_str(*path, itr), id)
+             name.as_slice(), path_to_str(*path, itr), id)
       }
       Some(NodeTraitMethod(ref tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(&**tm);
+        let name = itr.get(m.ident.name);
         format!("method {} in {} (id={})",
-             itr.get(m.ident.name), path_to_str(*path, itr), id)
+             name.as_slice(), path_to_str(*path, itr), id)
       }
       Some(NodeVariant(ref variant, _, path)) => {
+        let name = itr.get(variant.node.name.name);
         format!("variant {} in {} (id={})",
-             itr.get(variant.node.name.name), path_to_str(*path, itr), id)
+             name.as_slice(),
+             path_to_str(*path, itr), id)
       }
       Some(NodeExpr(expr)) => {
         format!("expr {} (id={})", pprust::expr_to_str(expr, itr), id)

@@ -11,8 +11,7 @@
 #[feature(managed_boxes)];
 
 pub fn main() {
-    let (&x, &y, &z) = (&3, &'a', &@"No pets!");
+    let (&x, &y) = (&3, &'a');
     assert_eq!(x, 3);
     assert_eq!(y, 'a');
-    assert_eq!(z, @"No pets!");
 }

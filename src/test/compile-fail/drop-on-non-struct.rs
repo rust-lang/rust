@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-type Foo = @[u8];
+type Foo = ~[u8];
 
 impl Drop for Foo {   //~ ERROR the Drop trait may only be implemented
 //~^ ERROR cannot provide an extension implementation

@@ -14,7 +14,6 @@
 //! to implement this.
 
 use any::AnyOwnExt;
-use borrow;
 use cast;
 use cleanup;
 use clone::Clone;
@@ -120,6 +119,7 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             f.finally(|| {
+                #[allow(unused_must_use)]
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);
                     let logger = task.get().logger.take();
@@ -127,8 +127,8 @@ impl Task {
                     let stdout = task.get().stdout.take();
                     drop(task);
                     drop(logger); // loggers are responsible for flushing
-                    match stdout { Some(mut w) => w.flush(), None => {} }
-                    match stderr { Some(mut w) => w.flush(), None => {} }
+                    match stdout { Some(mut w) => { w.flush(); }, None => {} }
+                    match stderr { Some(mut w) => { w.flush(); }, None => {} }
                 }
 
                 // First, flush/destroy the user stdout/logger because these
@@ -250,9 +250,9 @@ impl Task {
     /// Wakes up a previously blocked task, optionally specifiying whether the
     /// current task can accept a change in scheduling. This function can only
     /// be called on tasks that were previously blocked in `deschedule`.
-    pub fn reawaken(mut ~self, can_resched: bool) {
+    pub fn reawaken(mut ~self) {
         let ops = self.imp.take_unwrap();
-        ops.reawaken(self, can_resched);
+        ops.reawaken(self);
     }
 
     /// Yields control of this task to another task. This function will
@@ -283,11 +283,17 @@ impl Task {
     pub fn stack_bounds(&self) -> (uint, uint) {
         self.imp.get_ref().stack_bounds()
     }
+
+    /// Returns whether it is legal for this task to block the OS thread that it
+    /// is running on.
+    pub fn can_block(&self) -> bool {
+        self.imp.get_ref().can_block()
+    }
 }
 
 impl Drop for Task {
     fn drop(&mut self) {
-        rtdebug!("called drop for a task: {}", borrow::to_uint(self));
+        rtdebug!("called drop for a task: {}", self as *mut Task as uint);
         rtassert!(self.destroyed);
     }
 }

@@ -66,6 +66,8 @@ impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     pub fn bump_past<T>(&mut self) {
         self.bump(mem::size_of::<T>());
     }
+
+    pub fn unwrap(self) -> V { self.inner }
 }
 
 /// Abstract type-directed pointer-movement using the MovePtr trait
@@ -183,9 +185,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_estr_box(&mut self) -> bool {
-        self.align_to::<@str>();
-        if ! self.inner.visit_estr_box() { return false; }
-        self.bump_past::<@str>();
         true
     }
 
@@ -253,10 +252,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<@[u8]>();
-        if ! self.inner.visit_evec_box(mtbl, inner) { return false; }
-        self.bump_past::<@[u8]>();
+    fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool {
         true
     }
 
@@ -448,17 +444,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
 
     fn visit_type(&mut self) -> bool {
         if ! self.inner.visit_type() { return false; }
-        true
-    }
-
-    // NOTE remove after next snapshot
-    #[cfg(stage0)]
-    fn visit_closure_ptr(&mut self, ck: uint) -> bool {
-        self.align_to::<proc()>();
-        if ! self.inner.visit_closure_ptr(ck) {
-            return false
-        }
-        self.bump_past::<proc()>();
         true
     }
 }

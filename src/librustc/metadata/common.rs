@@ -35,6 +35,8 @@ pub static tag_items_data_item_variant: uint = 0x0eu;
 
 pub static tag_items_data_parent_item: uint = 0x0fu;
 
+pub static tag_items_data_item_is_tuple_struct_ctor: uint = 0x10u;
+
 pub static tag_index: uint = 0x11u;
 
 pub static tag_index_buckets: uint = 0x12u;
@@ -210,5 +212,5 @@ pub static tag_macro_def: uint = 0x112;
 #[deriving(Clone)]
 pub struct LinkMeta {
     crateid: CrateId,
-    crate_hash: @str,
+    crate_hash: ~str,
 }

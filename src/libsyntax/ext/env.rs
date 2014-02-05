@@ -19,6 +19,7 @@ use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
+use parse::token;
 
 use std::os;
 
@@ -52,7 +53,11 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some((v, _style)) => v
     };
     let msg = match exprs.len() {
-        1 => format!("environment variable `{}` not defined", var).to_managed(),
+        1 => {
+            token::intern_and_get_ident(format!("environment variable `{}` \
+                                                 not defined",
+                                                var))
+        }
         2 => {
             match expr_to_str(cx, exprs[1], "expected string literal") {
                 None => return MacResult::dummy_expr(),
@@ -65,12 +70,12 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     };
 
-    let e = match os::getenv(var) {
+    let e = match os::getenv(var.get()) {
         None => {
-            cx.span_err(sp, msg);
+            cx.span_err(sp, msg.get());
             cx.expr_uint(sp, 0)
         }
-        Some(s) => cx.expr_str(sp, s.to_managed())
+        Some(s) => cx.expr_str(sp, token::intern_and_get_ident(s))
     };
     MRExpr(e)
 }

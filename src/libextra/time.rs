@@ -766,14 +766,14 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut buf = [0];
         let c = match rdr.read(buf) {
-            Some(..) => buf[0] as char,
-            None => break
+            Ok(..) => buf[0] as char,
+            Err(..) => break
         };
         match c {
             '%' => {
                 let ch = match rdr.read(buf) {
-                    Some(..) => buf[0] as char,
-                    None => break
+                    Ok(..) => buf[0] as char,
+                    Err(..) => break
                 };
                 match parse_type(s, pos, ch, &mut tm) {
                     Ok(next) => pos = next,
@@ -787,7 +787,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    if pos == len && rdr.tell() as uint == format.len() {
+    if pos == len && rdr.tell().unwrap() == format.len() as u64 {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,
@@ -1017,12 +1017,12 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
     loop {
         let mut b = [0];
         let ch = match rdr.read(b) {
-            Some(..) => b[0],
-            None => break,
+            Ok(..) => b[0],
+            Err(..) => break,
         };
         match ch as char {
             '%' => {
-                rdr.read(b);
+                rdr.read(b).unwrap();
                 let s = parse_type(b[0] as char, tm);
                 buf.push_all(s.as_bytes());
             }

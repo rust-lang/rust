@@ -25,7 +25,10 @@ use std::num;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    idents.map(|i| token::interner_get(i.name)).connect("::")
+    idents.map(|i| {
+        let string = token::get_ident(i.name);
+        string.get().to_str()
+    }).connect("::")
 }
 
 // totally scary function: ignores all but the last element, should have

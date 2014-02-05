@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,7 +42,7 @@ arguments:
   the same variant (e.g. `None`, `Some(1)` and `None`). If
   `const_nonmatching` is true, this will contain an empty list.
 - `StaticEnum` and `StaticStruct` for static methods, where the type
-  being derived upon is either a enum or struct respectively. (Any
+  being derived upon is either an enum or struct respectively. (Any
   argument with type Self is just grouped among the non-self
   arguments.)
 
@@ -184,6 +184,8 @@ use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
 use opt_vec;
+use parse::token::InternedString;
+use parse::token;
 
 use std::vec;
 
@@ -396,8 +398,10 @@ impl<'a> TraitDef<'a> {
         let doc_attr = cx.attribute(
             self.span,
             cx.meta_name_value(self.span,
-                               @"doc",
-                               ast::LitStr(@"Automatically derived.", ast::CookedStr)));
+                               InternedString::new("doc"),
+                               ast::LitStr(token::intern_and_get_ident(
+                                       "Automatically derived."),
+                                       ast::CookedStr)));
         cx.item(
             self.span,
             ::parse::token::special_idents::clownshoes_extensions,
@@ -567,7 +571,14 @@ impl<'a> MethodDef<'a> {
         let body_block = trait_.cx.block_expr(body);
 
         let attrs = if self.inline {
-            ~[trait_.cx.attribute(trait_.span, trait_.cx.meta_word(trait_.span, @"inline"))]
+            ~[
+                trait_.cx
+                      .attribute(trait_.span,
+                                 trait_.cx
+                                       .meta_word(trait_.span,
+                                                  InternedString::new(
+                                                      "inline")))
+            ]
         } else {
             ~[]
         };
@@ -933,7 +944,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_info = Some(@codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("deriving({})", trait_name).to_managed(),
+                name: format!("deriving({})", trait_name),
                 format: codemap::MacroAttribute,
                 span: Some(self.span)
             }

@@ -1215,9 +1215,7 @@ pub mod guarantor {
             }
             ty::ty_box(..) |
             ty::ty_ptr(..) |
-            ty::ty_vec(_, ty::vstore_box) |
-            ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
-            ty::ty_str(ty::vstore_box) => {
+            ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
                 OtherPointer
             }
             ty::ty_closure(ref closure_ty) => {
@@ -1301,7 +1299,6 @@ pub mod guarantor {
                 let guarantor1 = match vstore {
                     ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,
                     ty::vstore_slice(r) => Some(r),
-                    ty::vstore_box => None
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);

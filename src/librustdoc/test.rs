@@ -127,8 +127,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let exe = outdir.path().join("rust_out");
     let out = run::process_output(exe.as_str().unwrap(), []);
     match out {
-        None => fail!("couldn't run the test"),
-        Some(out) => {
+        Err(e) => fail!("couldn't run the test: {}", e),
+        Ok(out) => {
             if !out.status.success() {
                 fail!("test executable failed:\n{}",
                       str::from_utf8(out.error));
@@ -137,7 +137,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     }
 }
 
-fn maketest(s: &str, cratename: &str) -> @str {
+fn maketest(s: &str, cratename: &str) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
@@ -156,7 +156,7 @@ fn maketest(s: &str, cratename: &str) -> @str {
         prog.push_str("\n}");
     }
 
-    return prog.to_managed();
+    return prog;
 }
 
 pub struct Collector {

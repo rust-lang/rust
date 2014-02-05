@@ -38,7 +38,7 @@ impl TempDir {
         let mut r = rand::rng();
         for _ in range(0u, 1000) {
             let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
-            match io::result(|| fs::mkdir(&p, io::UserRWX)) {
+            match fs::mkdir(&p, io::UserRWX) {
                 Err(..) => {}
                 Ok(()) => return Some(TempDir { path: Some(p) })
             }
@@ -73,7 +73,8 @@ impl Drop for TempDir {
     fn drop(&mut self) {
         for path in self.path.iter() {
             if path.exists() {
-                fs::rmdir_recursive(path);
+                // FIXME: is failing the right thing to do?
+                fs::rmdir_recursive(path).unwrap();
             }
         }
     }

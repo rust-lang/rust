@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,7 +60,7 @@ pub trait FromHex {
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),
-    /// The input had a invalid length
+    /// The input had an invalid length
     InvalidHexLength,
 }
 
@@ -201,7 +201,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let b = s.as_bytes().to_hex();
         bh.iter(|| {
-            b.from_hex();
+            b.from_hex().unwrap();
         });
         bh.bytes = b.len() as u64;
     }

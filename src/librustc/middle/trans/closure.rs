@@ -25,6 +25,7 @@ use middle::ty;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_str;
 
+use arena::TypedArena;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map::PathName;
@@ -402,11 +403,11 @@ pub fn trans_expr_fn<'a>(
         let capture_map = ccx.maps.capture_map.borrow();
         capture_map.get().get_copy(&user_id)
     };
-    let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, sigil);
+    let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, *cap_vars.borrow(), sigil);
     trans_closure(ccx, sub_path, decl, body, llfn,
-                    bcx.fcx.param_substs, user_id,
-                    [], ty::ty_fn_ret(fty),
-                    |bcx| load_environment(bcx, cdata_ty, cap_vars, sigil));
+                  bcx.fcx.param_substs, user_id,
+                  [], ty::ty_fn_ret(fty),
+                  |bcx| load_environment(bcx, cdata_ty, *cap_vars.borrow(), sigil));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
 
     bcx
@@ -470,7 +471,9 @@ pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
 
     let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
 
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, true, f.sig.output, None);
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, -1, true, f.sig.output, None, None,
+                          &arena);
     init_function(&fcx, true, f.sig.output, None);
     let bcx = fcx.entry_bcx.get().unwrap();
 

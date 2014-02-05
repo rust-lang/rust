@@ -120,6 +120,7 @@ use std::vec;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
@@ -332,13 +333,14 @@ impl IrMaps {
         }
     }
 
-    pub fn variable_name(&self, var: Variable) -> @str {
+    pub fn variable_name(&self, var: Variable) -> ~str {
         let var_kinds = self.var_kinds.borrow();
         match var_kinds.get()[var.get()] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
-                self.tcx.sess.str_of(nm)
+                let string = token::get_ident(nm.name);
+                string.get().to_str()
             },
-            ImplicitRet => @"<implicit-ret>"
+            ImplicitRet => ~"<implicit-ret>"
         }
     }
 
@@ -500,7 +502,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
         let capture_map = this.capture_map.borrow();
         let cvs = capture_map.get().get(&expr.id);
         let mut call_caps = ~[];
-        for cv in cvs.iter() {
+        for cv in cvs.borrow().iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = this.add_live_node(FreeVarNode(cv.span));
@@ -734,14 +736,15 @@ impl Liveness {
     pub fn write_vars(&self,
                       wr: &mut io::Writer,
                       ln: LiveNode,
-                      test: |uint| -> LiveNode) {
+                      test: |uint| -> LiveNode) -> io::IoResult<()> {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars.get()) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                write!(wr, " {}", Variable(var_idx).to_str());
+                if_ok!(write!(wr, " {}", Variable(var_idx).to_str()));
             }
         }
+        Ok(())
     }
 
     pub fn find_loop_scope(&self,
@@ -779,6 +782,7 @@ impl Liveness {
         *loop_scope.get().last().unwrap()
     }
 
+    #[allow(unused_must_use)]
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
         let mut wr = io::MemWriter::new();
         {
@@ -1669,7 +1673,7 @@ impl Liveness {
         }
     }
 
-    pub fn should_warn(&self, var: Variable) -> Option<@str> {
+    pub fn should_warn(&self, var: Variable) -> Option<~str> {
         let name = self.ir.variable_name(var);
         if name.len() == 0 || name[0] == ('_' as u8) { None } else { Some(name) }
     }

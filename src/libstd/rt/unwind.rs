@@ -77,7 +77,7 @@ mod libunwind {
     //! Unwind library interface
 
     #[allow(non_camel_case_types)];
-    #[allow(dead_code)] // these are just bindings
+    #[allow(dead_code)]; // these are just bindings
 
     use libc::{uintptr_t};
 
@@ -122,7 +122,10 @@ mod libunwind {
 
     pub type _Unwind_Word = uintptr_t;
 
-    #[cfg(not(target_arch = "arm"))]
+    #[cfg(target_arch = "x86")]
+    pub static unwinder_private_data_size: int = 5;
+
+    #[cfg(target_arch = "x86_64")]
     pub static unwinder_private_data_size: int = 2;
 
     #[cfg(target_arch = "arm")]
@@ -461,9 +464,10 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
             match task.stderr.take() {
                 Some(mut stderr) => {
                     Local::put(task);
-                    format_args!(|args| ::fmt::writeln(stderr, args),
-                                 "task '{}' failed at '{}', {}:{}",
-                                 n, msg_s, file, line);
+                    // FIXME: what to do when the task printing fails?
+                    let _err = format_args!(|args| ::fmt::writeln(stderr, args),
+                                            "task '{}' failed at '{}', {}:{}",
+                                            n, msg_s, file, line);
                     task = Local::take();
 
                     match util::replace(&mut task.stderr, Some(stderr)) {

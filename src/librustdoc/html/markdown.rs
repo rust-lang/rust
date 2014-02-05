@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::Default`. Example usage:
+//! of `fmt::Show`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -32,7 +32,7 @@ use std::str;
 use std::unstable::intrinsics;
 use std::vec;
 
-/// A unit struct which has the `fmt::Default` trait implemented. When
+/// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(&'a str);
@@ -109,7 +109,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-pub fn render(w: &mut io::Writer, s: &str) {
+pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
     extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
             let my_opaque: &my_opaque = cast::transmute(opaque);
@@ -159,11 +159,12 @@ pub fn render(w: &mut io::Writer, s: &str) {
         sd_markdown_render(ob, s.as_ptr(), s.len() as libc::size_t, markdown);
         sd_markdown_free(markdown);
 
-        vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
-            w.write(buf);
+        let ret = vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
+            w.write(buf)
         });
 
         bufrelease(ob);
+        ret
     }
 }
 
@@ -209,11 +210,11 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-impl<'a> fmt::Default for Markdown<'a> {
-    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Show for Markdown<'a> {
+    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *md;
         // This is actually common enough to special-case
-        if md.len() == 0 { return; }
-        render(fmt.buf, md.as_slice());
+        if md.len() == 0 { return Ok(()) }
+        render(fmt.buf, md.as_slice())
     }
 }

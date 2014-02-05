@@ -397,6 +397,15 @@ impl<'a> Visitor<()> for TermsContext<'a> {
 struct ConstraintContext<'a> {
     terms_cx: TermsContext<'a>,
 
+    // These are the def-id of the std::kinds::marker::InvariantType,
+    // std::kinds::marker::InvariantLifetime, and so on. The arrays
+    // are indexed by the `ParamKind` (type, lifetime, self). Note
+    // that there are no marker types for self, so the entries for
+    // self are always None.
+    invariant_lang_items: [Option<ast::DefId>, ..3],
+    covariant_lang_items: [Option<ast::DefId>, ..3],
+    contravariant_lang_items: [Option<ast::DefId>, ..3],
+
     // These are pointers to common `ConstantTerm` instances
     covariant: VarianceTermPtr<'a>,
     contravariant: VarianceTermPtr<'a>,
@@ -416,12 +425,36 @@ struct Constraint<'a> {
 fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
                                   crate: &ast::Crate)
                                   -> ConstraintContext<'a> {
+    let mut invariant_lang_items = [None, ..3];
+    let mut covariant_lang_items = [None, ..3];
+    let mut contravariant_lang_items = [None, ..3];
+
+    covariant_lang_items[TypeParam as uint] =
+        terms_cx.tcx.lang_items.covariant_type();
+    covariant_lang_items[RegionParam as uint] =
+        terms_cx.tcx.lang_items.covariant_lifetime();
+
+    contravariant_lang_items[TypeParam as uint] =
+        terms_cx.tcx.lang_items.contravariant_type();
+    contravariant_lang_items[RegionParam as uint] =
+        terms_cx.tcx.lang_items.contravariant_lifetime();
+
+    invariant_lang_items[TypeParam as uint] =
+        terms_cx.tcx.lang_items.invariant_type();
+    invariant_lang_items[RegionParam as uint] =
+        terms_cx.tcx.lang_items.invariant_lifetime();
+
     let covariant = terms_cx.arena.alloc(|| ConstantTerm(ty::Covariant));
     let contravariant = terms_cx.arena.alloc(|| ConstantTerm(ty::Contravariant));
     let invariant = terms_cx.arena.alloc(|| ConstantTerm(ty::Invariant));
     let bivariant = terms_cx.arena.alloc(|| ConstantTerm(ty::Bivariant));
     let mut constraint_cx = ConstraintContext {
         terms_cx: terms_cx,
+
+        invariant_lang_items: invariant_lang_items,
+        covariant_lang_items: covariant_lang_items,
+        contravariant_lang_items: contravariant_lang_items,
+
         covariant: covariant,
         contravariant: contravariant,
         invariant: invariant,
@@ -520,7 +553,14 @@ impl<'a> ConstraintContext<'a> {
          */
 
         assert_eq!(param_def_id.crate, item_def_id.crate);
-        if param_def_id.crate == ast::LOCAL_CRATE {
+
+        if self.invariant_lang_items[kind as uint] == Some(item_def_id) {
+            self.invariant
+        } else if self.covariant_lang_items[kind as uint] == Some(item_def_id) {
+            self.covariant
+        } else if self.contravariant_lang_items[kind as uint] == Some(item_def_id) {
+            self.contravariant
+        } else if param_def_id.crate == ast::LOCAL_CRATE {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
@@ -696,7 +736,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_region(r, contra);
             }
 
-            ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box => {
+            ty::vstore_fixed(_) | ty::vstore_uniq => {
             }
         }
     }
@@ -710,7 +750,7 @@ impl<'a> ConstraintContext<'a> {
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
-        for (i, p) in generics.type_param_defs.iter().enumerate() {
+        for (i, p) in generics.type_param_defs().iter().enumerate() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam, i);
             let variance_i = self.xform(variance, variance_decl);
@@ -720,7 +760,7 @@ impl<'a> ConstraintContext<'a> {
         match substs.regions {
             ty::ErasedRegions => {}
             ty::NonerasedRegions(ref rps) => {
-                for (i, p) in generics.region_param_defs.iter().enumerate() {
+                for (i, p) in generics.region_param_defs().iter().enumerate() {
                     let variance_decl =
                         self.declared_variance(p.def_id, def_id, RegionParam, i);
                     let variance_i = self.xform(variance, variance_decl);

@@ -44,6 +44,7 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::ext::base::CrateLoader;
 use syntax::parse;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
 use syntax;
@@ -60,12 +61,14 @@ pub enum PpMode {
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-pub fn anon_src() -> @str { @"<anon>" }
+pub fn anon_src() -> ~str {
+    "<anon>".to_str()
+}
 
-pub fn source_name(input: &Input) -> @str {
+pub fn source_name(input: &Input) -> ~str {
     match *input {
       // FIXME (#9639): This needs to handle non-utf8 paths
-      FileInput(ref ifile) => ifile.as_str().unwrap().to_managed(),
+      FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
       StrInput(_) => anon_src()
     }
 }
@@ -73,39 +76,41 @@ pub fn source_name(input: &Input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        abi::OsWin32 =>   @"win32",
-        abi::OsMacos =>   @"macos",
-        abi::OsLinux =>   @"linux",
-        abi::OsAndroid => @"android",
-        abi::OsFreebsd => @"freebsd"
+        abi::OsWin32 =>   InternedString::new("win32"),
+        abi::OsMacos =>   InternedString::new("macos"),
+        abi::OsLinux =>   InternedString::new("linux"),
+        abi::OsAndroid => InternedString::new("android"),
+        abi::OsFreebsd => InternedString::new("freebsd"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
     let (end,arch,wordsz) = match sess.targ_cfg.arch {
-        abi::X86 =>    (@"little", @"x86",    @"32"),
-        abi::X86_64 => (@"little", @"x86_64", @"64"),
-        abi::Arm =>    (@"little", @"arm",    @"32"),
-        abi::Mips =>   (@"big",    @"mips",   @"32")
+        abi::X86 =>    ("little", "x86",    "32"),
+        abi::X86_64 => ("little", "x86_64", "64"),
+        abi::Arm =>    ("little", "arm",    "32"),
+        abi::Mips =>   ("big",    "mips",   "32")
     };
 
     let fam = match sess.targ_cfg.os {
-        abi::OsWin32 => @"windows",
-        _ => @"unix"
+        abi::OsWin32 => InternedString::new("windows"),
+        _ => InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
-         attr::mk_word_item(fam),
-         mk(@"target_os", tos),
-         mk(@"target_family", fam),
-         mk(@"target_arch", arch),
-         mk(@"target_endian", end),
-         mk(@"target_word_size", wordsz),
+         attr::mk_word_item(fam.clone()),
+         mk(InternedString::new("target_os"), tos),
+         mk(InternedString::new("target_family"), fam),
+         mk(InternedString::new("target_arch"), InternedString::new(arch)),
+         mk(InternedString::new("target_endian"), InternedString::new(end)),
+         mk(InternedString::new("target_word_size"),
+            InternedString::new(wordsz)),
     ];
 }
 
-pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
+pub fn append_configuration(cfg: &mut ast::CrateConfig,
+                            name: InternedString) {
     if !cfg.iter().any(|mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
@@ -118,9 +123,15 @@ pub fn build_configuration(sess: Session) ->
     let default_cfg = default_configuration(sess);
     let mut user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
-    if sess.opts.test { append_configuration(&mut user_cfg, @"test") }
+    if sess.opts.test {
+        append_configuration(&mut user_cfg, InternedString::new("test"))
+    }
     // If the user requested GC, then add the GC cfg
-    append_configuration(&mut user_cfg, if sess.opts.gc { @"gc" } else { @"nogc" });
+    append_configuration(&mut user_cfg, if sess.opts.gc {
+        InternedString::new("gc")
+    } else {
+        InternedString::new("nogc")
+    });
     return vec::append(user_cfg, default_cfg);
 }
 
@@ -129,7 +140,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
-        parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -137,8 +148,7 @@ pub enum Input {
     /// Load source from file
     FileInput(Path),
     /// The string is the source
-    // FIXME (#2319): Don't really want to box the source string
-    StrInput(@str)
+    StrInput(~str)
 }
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
@@ -148,9 +158,11 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
             }
-            StrInput(src) => {
-                parse::parse_crate_from_source_str(
-                    anon_src(), src, cfg.clone(), sess.parse_sess)
+            StrInput(ref src) => {
+                parse::parse_crate_from_source_str(anon_src(),
+                                                   (*src).clone(),
+                                                   cfg.clone(),
+                                                   sess.parse_sess)
             }
         }
     })
@@ -387,7 +399,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.save_temps {
-            fs::unlink(&asm_filename);
+            fs::unlink(&asm_filename).unwrap();
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -443,55 +455,62 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
     return false;
 }
 
-fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames, crate: &ast::Crate)
+fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames,
+                  crate: &ast::Crate) -> io::IoResult<()>
 {
     let lm = link::build_link_meta(sess, crate.attrs, &outputs.obj_filename,
-                                       &mut ::util::sha2::Sha256::new());
+                                   &mut ::util::sha2::Sha256::new());
 
     let sess_outputs = sess.outputs.borrow();
     let out_filenames = sess_outputs.get().iter()
-        .map(|&output| link::filename_for_input(&sess, output, &lm, &outputs.out_filename))
+        .map(|&output| link::filename_for_input(&sess, output, &lm,
+                                                &outputs.out_filename))
         .to_owned_vec();
 
-    // Write out dependency rules to the dep-info file if requested with --dep-info
+    // Write out dependency rules to the dep-info file if requested with
+    // --dep-info
     let deps_filename = match sess.opts.write_dependency_info {
         // Use filename from --dep-file argument if given
         (true, Some(ref filename)) => filename.clone(),
-        // Use default filename: crate source filename with extension replaced by ".d"
+        // Use default filename: crate source filename with extension replaced
+        // by ".d"
         (true, None) => match *input {
             FileInput(ref input_path) => {
-                let filestem = input_path.filestem().expect("input file must have stem");
-                let filename = out_filenames[0].dir_path().join(filestem).with_extension("d");
-                filename
+                let filestem = input_path.filestem().expect("input file must \
+                                                             have stem");
+                let filename = out_filenames[0].dir_path().join(filestem);
+                filename.with_extension("d")
             },
             StrInput(..) => {
-                sess.warn("can not write --dep-info without a filename when compiling stdin.");
-                return;
+                sess.warn("can not write --dep-info without a filename \
+                           when compiling stdin.");
+                return Ok(());
             },
         },
-        _ => return,
+        _ => return Ok(()),
     };
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[@str] = {
+    let files: ~[~str] = {
         let files = sess.codemap.files.borrow();
         files.get()
              .iter()
              .filter_map(|fmap| {
                  if fmap.is_real_file() {
-                     Some(fmap.name)
+                     Some(fmap.name.clone())
                  } else {
                      None
                  }
              })
              .collect()
     };
-    let mut file = io::File::create(&deps_filename);
+    let mut file = if_ok!(io::File::create(&deps_filename));
     for path in out_filenames.iter() {
-        write!(&mut file as &mut Writer,
-               "{}: {}\n\n", path.display(), files.connect(" "));
+        if_ok!(write!(&mut file as &mut Writer,
+                      "{}: {}\n\n", path.display(), files.connect(" ")));
     }
+    Ok(())
 }
 
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
@@ -509,7 +528,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
 
-        write_out_deps(sess, input, outputs, &expanded_crate);
+        write_out_deps(sess, input, outputs, &expanded_crate).unwrap();
 
         if stop_after_phase_2(sess) { return; }
 
@@ -529,32 +548,33 @@ struct IdentifiedAnnotation {
 }
 
 impl pprust::PpAnn for IdentifiedAnnotation {
-    fn pre(&self, node: pprust::AnnNode) {
+    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(s, _) => pprust::popen(s),
-            _ => ()
+            _ => Ok(())
         }
     }
-    fn post(&self, node: pprust::AnnNode) {
+    fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(s, item) => {
-                pp::space(&mut s.s);
-                pprust::synth_comment(s, item.id.to_str());
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pprust::synth_comment(s, item.id.to_str()));
             }
             pprust::NodeBlock(s, blk) => {
-                pp::space(&mut s.s);
-                pprust::synth_comment(s, ~"block " + blk.id.to_str());
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
             }
             pprust::NodeExpr(s, expr) => {
-                pp::space(&mut s.s);
-                pprust::synth_comment(s, expr.id.to_str());
-                pprust::pclose(s);
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pprust::synth_comment(s, expr.id.to_str()));
+                if_ok!(pprust::pclose(s));
             }
             pprust::NodePat(s, pat) => {
-                pp::space(&mut s.s);
-                pprust::synth_comment(s, ~"pat " + pat.id.to_str());
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
             }
         }
+        Ok(())
     }
 }
 
@@ -563,24 +583,26 @@ struct TypedAnnotation {
 }
 
 impl pprust::PpAnn for TypedAnnotation {
-    fn pre(&self, node: pprust::AnnNode) {
+    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(s, _) => pprust::popen(s),
-            _ => ()
+            _ => Ok(())
         }
     }
-    fn post(&self, node: pprust::AnnNode) {
+    fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(s, expr) => {
-                pp::space(&mut s.s);
-                pp::word(&mut s.s, "as");
-                pp::space(&mut s.s);
-                pp::word(&mut s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
-                pprust::pclose(s);
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pp::word(&mut s.s, "as"));
+                if_ok!(pp::space(&mut s.s));
+                if_ok!(pp::word(&mut s.s,
+                                ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
+                if_ok!(pprust::pclose(s));
             }
             _ => ()
         }
+        Ok(())
     }
 }
 
@@ -615,7 +637,7 @@ pub fn pretty_print_input(sess: Session,
         _ => @pprust::NoAnn as @pprust::PpAnn,
     };
 
-    let src = sess.codemap.get_filemap(source_name(input)).src;
+    let src = &sess.codemap.get_filemap(source_name(input)).src;
     let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
@@ -626,7 +648,7 @@ pub fn pretty_print_input(sess: Session,
                         &mut rdr,
                         ~stdout as ~io::Writer,
                         annotation,
-                        is_expanded);
+                        is_expanded).unwrap();
 }
 
 pub fn get_os(triple: &str) -> Option<abi::Os> {
@@ -1100,17 +1122,17 @@ pub fn build_output_filenames(input: &Input,
 
           let mut stem = match *input {
               // FIXME (#9639): This needs to handle non-utf8 paths
-              FileInput(ref ifile) => (*ifile).filestem_str().unwrap().to_managed(),
-              StrInput(_) => @"rust_out"
+              FileInput(ref ifile) => {
+                  (*ifile).filestem_str().unwrap().to_str()
+              }
+              StrInput(_) => ~"rust_out"
           };
 
           // If a crateid is present, we use it as the link name
           let crateid = attr::find_crateid(attrs);
           match crateid {
               None => {}
-              Some(crateid) => {
-                  stem = crateid.name.to_managed()
-              }
+              Some(crateid) => stem = crateid.name.to_str(),
           }
 
           if sess.building_library.get() {
@@ -1155,10 +1177,11 @@ pub fn early_error(emitter: &diagnostic::Emitter, msg: &str) -> ! {
     fail!(diagnostic::FatalError);
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: &mut io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path,
+                     out: &mut io::Writer) -> io::IoResult<()> {
     metadata::loader::list_file_metadata(
         token::get_ident_interner(),
-        session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
+        session::sess_os_to_meta_os(sess.targ_cfg.os), path, out)
 }
 
 #[cfg(test)]
@@ -1201,7 +1224,7 @@ mod test {
         let sessopts = build_session_options(~"rustc", matches, @diagnostic::DefaultEmitter);
         let sess = build_session(sessopts, None, @diagnostic::DefaultEmitter);
         let cfg = build_configuration(sess);
-        let mut test_items = cfg.iter().filter(|m| "test" == m.name());
+        let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());
     }
