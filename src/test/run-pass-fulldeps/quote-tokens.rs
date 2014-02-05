@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-
+#[feature(quote)];
 #[feature(managed_boxes)];
 
 extern mod syntax;

@@ -49,6 +49,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("trace_macros", Active),
     ("simd", Active),
     ("default_type_params", Active),
+    ("quote", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -189,24 +190,35 @@ impl Visitor<()> for Context {
 
     fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
+        let id = path.segments.last().unwrap().identifier;
+        let quotes = ["quote_tokens", "quote_expr", "quote_ty",
+                      "quote_item", "quote_pat", "quote_stmt"];
+        let msg = " is not stable enough for use and are subject to change";
 
-        if path.segments.last().unwrap().identifier == self.sess.ident_of("macro_rules") {
+
+        if id == self.sess.ident_of("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
                 not stable enough for use and are subject to change");
         }
 
-        else if path.segments.last().unwrap().identifier == self.sess.ident_of("asm") {
+        else if id == self.sess.ident_of("asm") {
             self.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }
 
-        else if path.segments.last().unwrap().identifier == self.sess.ident_of("log_syntax") {
+        else if id == self.sess.ident_of("log_syntax") {
             self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }
-        else if path.segments.last().unwrap().identifier == self.sess.ident_of("trace_macros") {
+        else if id == self.sess.ident_of("trace_macros") {
             self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
                 stable enough for use and is subject to change");
+        } else {
+            for &quote in quotes.iter() {
+                if id == self.sess.ident_of(quote) {
+                  self.gate_feature("quote", path.span, quote + msg);
+                }
+            }
         }
     }
 
