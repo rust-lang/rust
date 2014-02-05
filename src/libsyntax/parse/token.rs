@@ -15,7 +15,7 @@ use parse::token;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
 
-use extra::serialize::{Decodable, Decoder, Encodable, Encoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cast;
 use std::char;
 use std::fmt;

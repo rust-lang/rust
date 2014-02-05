@@ -18,6 +18,7 @@
 extern mod syntax;
 extern mod rustc;
 extern mod extra;
+extern mod serialize;
 extern mod sync;
 
 use std::local_data;
@@ -27,7 +28,7 @@ use std::str;
 use extra::getopts;
 use extra::getopts::groups;
 use extra::json;
-use extra::serialize::{Decodable, Encodable};
+use serialize::{Decodable, Encodable};
 use extra::time;
 
 pub mod clean;
