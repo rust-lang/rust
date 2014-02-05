@@ -18,8 +18,7 @@ library.
 
 */
 
-use ast::{EnumDef, Ident, Item, Generics, StructDef};
-use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
+use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use codemap::Span;
 
@@ -44,19 +43,6 @@ pub mod totalord;
 
 
 pub mod generic;
-
-pub type ExpandDerivingStructDefFn<'a> = 'a |&ExtCtxt,
-                                                   Span,
-                                                   x: &StructDef,
-                                                   Ident,
-                                                   y: &Generics|
-                                                   -> @Item;
-pub type ExpandDerivingEnumDefFn<'a> = 'a |&ExtCtxt,
-                                                 Span,
-                                                 x: &EnumDef,
-                                                 Ident,
-                                                 y: &Generics|
-                                                 -> @Item;
 
 pub fn expand_meta_deriving(cx: &ExtCtxt,
                             _span: Span,
