@@ -83,14 +83,18 @@ pub enum EbmlEncoderTag {
 
 pub mod reader {
     use std::char;
-    use super::*;
-
-    use serialize;
 
     use std::cast::transmute;
     use std::int;
     use std::option::{None, Option, Some};
     use std::io::extensions::u64_from_be_bytes;
+
+    use serialize;
+
+    use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
+        EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
+        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsEnumBody, EsUint,
+        EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc };
 
     // ebml reading
 
@@ -588,14 +592,19 @@ pub mod reader {
 }
 
 pub mod writer {
-    use super::*;
-
     use std::cast;
     use std::clone::Clone;
     use std::io;
     use std::io::{Writer, Seek};
     use std::io::MemWriter;
     use std::io::extensions::u64_to_be_bytes;
+
+    use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
+        EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
+        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsEnumBody, EsUint,
+        EsOpaque, EsLabel, EbmlEncoderTag };
+
+    use serialize;
 
     // ebml writing
     pub struct Encoder<'a> {
@@ -775,7 +784,7 @@ pub mod writer {
         }
     }
 
-    impl<'a> ::serialize::Encoder for Encoder<'a> {
+    impl<'a> serialize::Encoder for Encoder<'a> {
         fn emit_nil(&mut self) {}
 
         fn emit_uint(&mut self, v: uint) {
@@ -952,8 +961,7 @@ pub mod writer {
 mod tests {
     use ebml::reader;
     use ebml::writer;
-    use serialize::Encodable;
-    use serialize;
+    use {Encodable, Decodable};
 
     use std::io::MemWriter;
     use std::option::{None, Option, Some};
@@ -1017,7 +1025,7 @@ mod tests {
             }
             let ebml_doc = reader::Doc(wr.get_ref());
             let mut deser = reader::Decoder(ebml_doc);
-            let v1 = serialize::Decodable::decode(&mut deser);
+            let v1 = Decodable::decode(&mut deser);
             debug!("v1 == {:?}", v1);
             assert_eq!(v, v1);
         }
@@ -1031,7 +1039,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use ebml::reader;
-    use test::BenchHarness;
+    use extra::test::BenchHarness;
 
     #[bench]
     pub fn vuint_at_A_aligned(bh: &mut BenchHarness) {

@@ -41,9 +41,10 @@ li {list-style-type: none; }
 * [The `flate` compression library](flate/index.html)
 * [The `glob` file path matching library](glob/index.html)
 * [The `semver` version collation library](semver/index.html)
-* [The `term` terminal-handling library](term/index.html)
-* [The UUID library](uuid/index.html)
+* [The `serialize` value encoding/decoding library](serialize/index.html)
 * [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
+* [The `term` terminal-handling library](term/index.html)
+* [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 
 # Tooling
 

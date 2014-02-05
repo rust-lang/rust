@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,18 +14,10 @@
 Core encoding and decoding interfaces.
 */
 
-#[allow(missing_doc)];
-#[forbid(non_camel_case_types)];
-
-
 use std::hashmap::{HashMap, HashSet};
 use std::rc::Rc;
 use std::trie::{TrieMap, TrieSet};
 use std::vec;
-use ringbuf::RingBuf;
-use container::Deque;
-use dlist::DList;
-use treemap::{TreeMap, TreeSet};
 
 pub trait Encoder {
     // Primitive types:
@@ -615,56 +607,6 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for DList<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-            }
-        })
-    }
-}
-
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
-    fn decode(d: &mut D) -> DList<T> {
-        let mut list = DList::new();
-        d.read_seq(|d, len| {
-            for i in range(0u, len) {
-                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-        });
-        list
-    }
-}
-
-impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for RingBuf<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-            }
-        })
-    }
-}
-
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
-    fn decode(d: &mut D) -> RingBuf<T> {
-        let mut deque = RingBuf::new();
-        d.read_seq(|d, len| {
-            for i in range(0u, len) {
-                deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-        });
-        deque
-    }
-}
-
-impl<
     E: Encoder,
     K: Encodable<E> + Hash + IterBytes + Eq,
     V: Encodable<E>
@@ -774,71 +716,6 @@ impl<D: Decoder> Decodable<D> for TrieSet {
     fn decode(d: &mut D) -> TrieSet {
         d.read_seq(|d, len| {
             let mut set = TrieSet::new();
-            for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-            set
-        })
-    }
-}
-
-impl<
-    E: Encoder,
-    K: Encodable<E> + Eq + TotalOrd,
-    V: Encodable<E> + Eq
-> Encodable<E> for TreeMap<K, V> {
-    fn encode(&self, e: &mut E) {
-        e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self.iter() {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
-                i += 1;
-            }
-        })
-    }
-}
-
-impl<
-    D: Decoder,
-    K: Decodable<D> + Eq + TotalOrd,
-    V: Decodable<D> + Eq
-> Decodable<D> for TreeMap<K, V> {
-    fn decode(d: &mut D) -> TreeMap<K, V> {
-        d.read_map(|d, len| {
-            let mut map = TreeMap::new();
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
-    }
-}
-
-impl<
-    S: Encoder,
-    T: Encodable<S> + Eq + TotalOrd
-> Encodable<S> for TreeSet<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self.iter() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-                i += 1;
-            }
-        })
-    }
-}
-
-impl<
-    D: Decoder,
-    T: Decodable<D> + Eq + TotalOrd
-> Decodable<D> for TreeSet<T> {
-    fn decode(d: &mut D) -> TreeSet<T> {
-        d.read_seq(|d, len| {
-            let mut set = TreeSet::new();
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
