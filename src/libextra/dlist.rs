@@ -30,6 +30,8 @@ use std::iter;
 
 use container::Deque;
 
+use serialize::{Encodable, Decodable, Encoder, Decoder};
+
 /// A doubly-linked list.
 pub struct DList<T> {
     priv length: uint,
@@ -625,6 +627,31 @@ impl<A: Eq + Ord> Ord for DList<A> {
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
         self.iter().map(|x| x.clone()).collect()
+    }
+}
+
+impl<
+    S: Encoder,
+    T: Encodable<S>
+> Encodable<S> for DList<T> {
+    fn encode(&self, s: &mut S) {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                s.emit_seq_elt(i, |s| e.encode(s));
+            }
+        })
+    }
+}
+
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
+    fn decode(d: &mut D) -> DList<T> {
+        let mut list = DList::new();
+        d.read_seq(|d, len| {
+            for i in range(0u, len) {
+                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
+            }
+        });
+        list
     }
 }
 

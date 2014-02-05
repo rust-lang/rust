@@ -22,7 +22,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-impl<S:extra::serialize::Encoder> Encodable<S> for Node {
+impl<S:serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         s.emit_struct("Node", 1, || {
             s.emit_field("id", 0, || s.emit_uint(self.id))
@@ -89,12 +89,12 @@ pub fn expand_deriving_encodable(cx: &ExtCtxt,
     let trait_def = TraitDef {
         cx: cx, span: span,
 
-        path: Path::new_(~["extra", "serialize", "Encodable"], None,
+        path: Path::new_(~["serialize", "Encodable"], None,
                          ~[~Literal(Path::new_local("__E"))], true),
         additional_bounds: ~[],
         generics: LifetimeBounds {
             lifetimes: ~[],
-            bounds: ~[("__E", ~[Path::new(~["extra", "serialize", "Encoder"])])],
+            bounds: ~[("__E", ~[Path::new(~["serialize", "Encoder"])])],
         },
         methods: ~[
             MethodDef {

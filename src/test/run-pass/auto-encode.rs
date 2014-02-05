@@ -26,7 +26,7 @@ use EBWriter = extra::ebml::writer;
 use std::cmp::Eq;
 use std::cmp;
 use std::io;
-use extra::serialize::{Decodable, Encodable};
+use serialize::{Decodable, Encodable};
 use extra::time;
 
 fn test_ebml<'a, A:

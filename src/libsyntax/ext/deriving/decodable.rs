@@ -28,12 +28,12 @@ pub fn expand_deriving_decodable(cx: &ExtCtxt,
     let trait_def = TraitDef {
         cx: cx, span: span,
 
-        path: Path::new_(~["extra", "serialize", "Decodable"], None,
+        path: Path::new_(~["serialize", "Decodable"], None,
                          ~[~Literal(Path::new_local("__D"))], true),
         additional_bounds: ~[],
         generics: LifetimeBounds {
             lifetimes: ~[],
-            bounds: ~[("__D", ~[Path::new(~["extra", "serialize", "Decoder"])])],
+            bounds: ~[("__D", ~[Path::new(~["serialize", "Decoder"])])],
         },
         methods: ~[
             MethodDef {
@@ -56,8 +56,7 @@ pub fn expand_deriving_decodable(cx: &ExtCtxt,
 fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let decoder = substr.nonself_args[0];
-    let recurse = ~[cx.ident_of("extra"),
-                    cx.ident_of("serialize"),
+    let recurse = ~[cx.ident_of("serialize"),
                     cx.ident_of("Decodable"),
                     cx.ident_of("decode")];
     // throw an underscore in front to suppress unused variable warnings

@@ -284,7 +284,7 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
 #[cfg(test)]
 mod test {
     use super::*;
-    use extra::serialize::Encodable;
+    use serialize::Encodable;
     use extra;
     use std::io;
     use std::io::MemWriter;

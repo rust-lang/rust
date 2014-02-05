@@ -23,7 +23,7 @@ source code snippets, etc.
 
 use std::cell::RefCell;
 use std::cmp;
-use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;
