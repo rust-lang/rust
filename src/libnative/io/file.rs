@@ -10,6 +10,7 @@
 
 //! Blocking posix-based file I/O
 
+use std::sync::arc::UnsafeArc;
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
@@ -55,9 +56,13 @@ pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
 
 pub type fd_t = libc::c_int;
 
+struct Inner {
+    fd: fd_t,
+    close_on_drop: bool,
+}
+
 pub struct FileDesc {
-    priv fd: fd_t,
-    priv close_on_drop: bool,
+    priv inner: UnsafeArc<Inner>
 }
 
 impl FileDesc {
@@ -70,7 +75,10 @@ impl FileDesc {
     /// Note that all I/O operations done on this object will be *blocking*, but
     /// they do not require the runtime to be active.
     pub fn new(fd: fd_t, close_on_drop: bool) -> FileDesc {
-        FileDesc { fd: fd, close_on_drop: close_on_drop }
+        FileDesc { inner: UnsafeArc::new(Inner {
+            fd: fd,
+            close_on_drop: close_on_drop
+        }) }
     }
 
     // FIXME(#10465) these functions should not be public, but anything in
@@ -80,7 +88,7 @@ impl FileDesc {
         #[cfg(windows)] type rlen = libc::c_uint;
         #[cfg(not(windows))] type rlen = libc::size_t;
         let ret = retry(|| unsafe {
-            libc::read(self.fd,
+            libc::read(self.fd(),
                        buf.as_ptr() as *mut libc::c_void,
                        buf.len() as rlen) as libc::c_int
         });
@@ -97,7 +105,7 @@ impl FileDesc {
         #[cfg(not(windows))] type wlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::write(self.fd, buf as *libc::c_void, len as wlen) as i64
+                libc::write(self.fd(), buf as *libc::c_void, len as wlen) as i64
             }
         });
         if ret < 0 {
@@ -107,7 +115,11 @@ impl FileDesc {
         }
     }
 
-    pub fn fd(&self) -> fd_t { self.fd }
+    pub fn fd(&self) -> fd_t {
+        // This unsafety is fine because we're just reading off the file
+        // descriptor, no one is modifying this.
+        unsafe { (*self.inner.get()).fd }
+    }
 }
 
 impl io::Reader for FileDesc {
@@ -130,7 +142,7 @@ impl rtio::RtioFileStream for FileDesc {
         self.inner_write(buf)
     }
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        return os_pread(self.fd, buf.as_ptr(), buf.len(), offset);
+        return os_pread(self.fd(), buf.as_ptr(), buf.len(), offset);
 
         #[cfg(windows)]
         fn os_pread(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<int> {
@@ -162,7 +174,7 @@ impl rtio::RtioFileStream for FileDesc {
         }
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
-        return os_pwrite(self.fd, buf.as_ptr(), buf.len(), offset);
+        return os_pwrite(self.fd(), buf.as_ptr(), buf.len(), offset);
 
         #[cfg(windows)]
         fn os_pwrite(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<()> {
@@ -197,7 +209,7 @@ impl rtio::RtioFileStream for FileDesc {
             io::SeekCur => libc::FILE_CURRENT,
         };
         unsafe {
-            let handle = libc::get_osfhandle(self.fd) as libc::HANDLE;
+            let handle = libc::get_osfhandle(self.fd()) as libc::HANDLE;
             let mut newpos = 0;
             match libc::SetFilePointerEx(handle, pos, &mut newpos, whence) {
                 0 => Err(super::last_error()),
@@ -212,7 +224,7 @@ impl rtio::RtioFileStream for FileDesc {
             io::SeekEnd => libc::SEEK_END,
             io::SeekCur => libc::SEEK_CUR,
         };
-        let n = unsafe { libc::lseek(self.fd, pos as libc::off_t, whence) };
+        let n = unsafe { libc::lseek(self.fd(), pos as libc::off_t, whence) };
         if n < 0 {
             Err(super::last_error())
         } else {
@@ -220,7 +232,7 @@ impl rtio::RtioFileStream for FileDesc {
         }
     }
     fn tell(&self) -> Result<u64, IoError> {
-        let n = unsafe { libc::lseek(self.fd, 0, libc::SEEK_CUR) };
+        let n = unsafe { libc::lseek(self.fd(), 0, libc::SEEK_CUR) };
         if n < 0 {
             Err(super::last_error())
         } else {
@@ -228,7 +240,7 @@ impl rtio::RtioFileStream for FileDesc {
         }
     }
     fn fsync(&mut self) -> Result<(), IoError> {
-        return os_fsync(self.fd);
+        return os_fsync(self.fd());
 
         #[cfg(windows)]
         fn os_fsync(fd: c_int) -> IoResult<()> {
@@ -247,7 +259,7 @@ impl rtio::RtioFileStream for FileDesc {
 
     #[cfg(not(windows))]
     fn datasync(&mut self) -> Result<(), IoError> {
-        return super::mkerr_libc(os_datasync(self.fd));
+        return super::mkerr_libc(os_datasync(self.fd()));
 
         #[cfg(target_os = "macos")]
         fn os_datasync(fd: c_int) -> c_int {
@@ -270,7 +282,7 @@ impl rtio::RtioFileStream for FileDesc {
             Ok(_) => {}, Err(e) => return Err(e),
         };
         let ret = unsafe {
-            let handle = libc::get_osfhandle(self.fd) as libc::HANDLE;
+            let handle = libc::get_osfhandle(self.fd()) as libc::HANDLE;
             match libc::SetEndOfFile(handle) {
                 0 => Err(super::last_error()),
                 _ => Ok(())
@@ -282,7 +294,7 @@ impl rtio::RtioFileStream for FileDesc {
     #[cfg(unix)]
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
         super::mkerr_libc(retry(|| unsafe {
-            libc::ftruncate(self.fd, offset as libc::off_t)
+            libc::ftruncate(self.fd(), offset as libc::off_t)
         }))
     }
 }
@@ -293,6 +305,9 @@ impl rtio::RtioPipe for FileDesc {
     }
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         self.inner_write(buf)
+    }
+    fn clone(&self) -> ~rtio::RtioPipe {
+        ~FileDesc { inner: self.inner.clone() } as ~rtio::RtioPipe
     }
 }
 
@@ -312,7 +327,7 @@ impl rtio::RtioTTY for FileDesc {
     fn isatty(&self) -> bool { false }
 }
 
-impl Drop for FileDesc {
+impl Drop for Inner {
     fn drop(&mut self) {
         // closing stdio file handles makes no sense, so never do it. Also, note
         // that errors are ignored when closing a file descriptor. The reason
