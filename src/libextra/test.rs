@@ -15,9 +15,9 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+extern mod getopts;
 extern mod term;
 
-use getopts;
 use json::ToJson;
 use json;
 use serialize::Decodable;
