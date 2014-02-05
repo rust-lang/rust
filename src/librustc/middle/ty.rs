@@ -4375,6 +4375,27 @@ pub fn trait_id_of_impl(tcx: &ctxt,
     }
 }
 
+/// If the given def ID describes a method belonging to an impl, return the
+/// ID of the impl that the method belongs to. Otherwise, return `None`.
+pub fn impl_of_method(tcx: &ctxt, def_id: ast::DefId)
+                       -> Option<ast::DefId> {
+    if def_id.krate != LOCAL_CRATE {
+        return match csearch::get_method(tcx, def_id).container {
+            TraitContainer(_) => None,
+            ImplContainer(def_id) => Some(def_id),
+        };
+    }
+    match tcx.methods.borrow().find_copy(&def_id) {
+        Some(method) => {
+            match method.container {
+                TraitContainer(_) => None,
+                ImplContainer(def_id) => Some(def_id),
+            }
+        }
+        None => None
+    }
+}
+
 /// If the given def ID describes a method belonging to a trait (either a
 /// default method or an implementation of a trait method), return the ID of
 /// the trait that the method belongs to. Otherwise, return `None`.

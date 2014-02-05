@@ -421,6 +421,41 @@ impl CodeMap {
         fail!("asking for {} which we don't know about", filename);
     }
 
+    pub fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
+        let idx = self.lookup_filemap_idx(bpos);
+        let fm = self.files.borrow().get(idx).clone();
+        let offset = bpos - fm.start_pos;
+        FileMapAndBytePos {fm: fm, pos: offset}
+    }
+
+    // Converts an absolute BytePos to a CharPos relative to the filemap and above.
+    pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
+        debug!("codemap: converting {:?} to char pos", bpos);
+        let idx = self.lookup_filemap_idx(bpos);
+        let files = self.files.borrow();
+        let map = files.get(idx);
+
+        // The number of extra bytes due to multibyte chars in the FileMap
+        let mut total_extra_bytes = 0;
+
+        for mbc in map.multibyte_chars.borrow().iter() {
+            debug!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
+            if mbc.pos < bpos {
+                // every character is at least one byte, so we only
+                // count the actual extra bytes.
+                total_extra_bytes += mbc.bytes - 1;
+                // We should never see a byte position in the middle of a
+                // character
+                assert!(bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
+            } else {
+                break;
+            }
+        }
+
+        assert!(map.start_pos.to_uint() + total_extra_bytes <= bpos.to_uint());
+        CharPos(bpos.to_uint() - map.start_pos.to_uint() - total_extra_bytes)
+    }
+
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
         let files = self.files.borrow();
         let files = files;
@@ -490,41 +525,6 @@ impl CodeMap {
             line: line,
             col: chpos - linechpos
         }
-    }
-
-    fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
-        let idx = self.lookup_filemap_idx(bpos);
-        let fm = self.files.borrow().get(idx).clone();
-        let offset = bpos - fm.start_pos;
-        FileMapAndBytePos {fm: fm, pos: offset}
-    }
-
-    // Converts an absolute BytePos to a CharPos relative to the filemap.
-    fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
-        debug!("codemap: converting {:?} to char pos", bpos);
-        let idx = self.lookup_filemap_idx(bpos);
-        let files = self.files.borrow();
-        let map = files.get(idx);
-
-        // The number of extra bytes due to multibyte chars in the FileMap
-        let mut total_extra_bytes = 0;
-
-        for mbc in map.multibyte_chars.borrow().iter() {
-            debug!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
-            if mbc.pos < bpos {
-                // every character is at least one byte, so we only
-                // count the actual extra bytes.
-                total_extra_bytes += mbc.bytes - 1;
-                // We should never see a byte position in the middle of a
-                // character
-                assert!(bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
-            } else {
-                break;
-            }
-        }
-
-        assert!(map.start_pos.to_uint() + total_extra_bytes <= bpos.to_uint());
-        CharPos(bpos.to_uint() - map.start_pos.to_uint() - total_extra_bytes)
     }
 }
 
