@@ -36,6 +36,7 @@
 use std::char;
 use std::cmp;
 use std::fmt;
+use std::fmt::Show;
 use std::option::{Option, Some, None};
 use std::to_str::ToStr;
 
@@ -62,10 +63,10 @@ impl cmp::Ord for Identifier {
 
 impl fmt::Show for Identifier {
     #[inline]
-    fn fmt(version: &Identifier, f: &mut fmt::Formatter) -> fmt::Result {
-        match *version {
-            Numeric(ref n) => fmt::Show::fmt(n, f),
-            AlphaNumeric(ref s) => fmt::Show::fmt(s, f)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Numeric(ref n) => n.fmt(f),
+            AlphaNumeric(ref s) => s.fmt(f)
         }
     }
 }
@@ -97,20 +98,20 @@ pub struct Version {
 
 impl fmt::Show for Version {
     #[inline]
-    fn fmt(version: &Version, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "{}.{}.{}", version.major, version.minor, version.patch))
-        if !version.pre.is_empty() {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, "{}.{}.{}", self.major, self.minor, self.patch))
+        if !self.pre.is_empty() {
             if_ok!(write!(f.buf, "-"));
-            for (i, x) in version.pre.iter().enumerate() {
+            for (i, x) in self.pre.iter().enumerate() {
                 if i != 0 { if_ok!(write!(f.buf, ".")) };
-                if_ok!(fmt::Show::fmt(x, f));
+                if_ok!(x.fmt(f));
             }
         }
-        if !version.build.is_empty() {
+        if !self.build.is_empty() {
             if_ok!(write!(f.buf, "+"));
-            for (i, x) in version.build.iter().enumerate() {
+            for (i, x) in self.build.iter().enumerate() {
                 if i != 0 { if_ok!(write!(f.buf, ".")) };
-                if_ok!(fmt::Show::fmt(x, f));
+                if_ok!(x.fmt(f));
             }
         }
         Ok(())
