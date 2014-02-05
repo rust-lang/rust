@@ -50,7 +50,12 @@ impl<T> Rc<T> {
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
-                ptr: transmute(~RcBox { value: value, strong: 1, weak: 0 }),
+                // there is an implicit weak pointer owned by all the
+                // strong pointers, which ensures that the weak
+                // destructor never frees the allocation while the
+                // strong destructor is running, even if the weak
+                // pointer is stored inside the strong one.
+                ptr: transmute(~RcBox { value: value, strong: 1, weak: 1 }),
                 marker: marker::NoSend,
             }
         }
@@ -81,6 +86,11 @@ impl<T> Drop for Rc<T> {
                 (*self.ptr).strong -= 1;
                 if (*self.ptr).strong == 0 {
                     read_ptr(self.borrow()); // destroy the contained object
+
+                    // remove the implicit "strong weak" pointer now
+                    // that we've destroyed the contents.
+                    (*self.ptr).weak -= 1;
+
                     if (*self.ptr).weak == 0 {
                         exchange_free(self.ptr as *u8)
                     }
@@ -156,7 +166,9 @@ impl<T> Drop for Weak<T> {
         unsafe {
             if self.ptr != 0 as *mut RcBox<T> {
                 (*self.ptr).weak -= 1;
-                if (*self.ptr).weak == 0 && (*self.ptr).strong == 0 {
+                // the weak count starts at 1, and will only go to
+                // zero if all the strong pointers have disappeared.
+                if (*self.ptr).weak == 0 {
                     exchange_free(self.ptr as *u8)
                 }
             }
@@ -241,5 +253,18 @@ mod tests {
         use gc::Gc;
         let a = Rc::new(RefCell::new(Gc::new(1)));
         assert!(a.borrow().try_borrow_mut().is_some());
+    }
+
+    #[test]
+    fn weak_self_cyclic() {
+        struct Cycle {
+            x: RefCell<Option<Weak<Cycle>>>
+        }
+
+        let a = Rc::new(Cycle { x: RefCell::new(None) });
+        let b = a.clone().downgrade();
+        *a.borrow().x.borrow_mut().get() = Some(b);
+
+        // hopefully we don't double-free (or leak)...
     }
 }
