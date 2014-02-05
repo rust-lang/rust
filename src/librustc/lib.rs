@@ -35,6 +35,7 @@ extern mod extra;
 extern mod flate;
 extern mod arena;
 extern mod syntax;
+extern mod sync;
 
 use back::link;
 use driver::session;

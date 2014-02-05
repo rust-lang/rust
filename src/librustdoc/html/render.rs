@@ -41,7 +41,7 @@ use std::io::{fs, File, BufferedWriter};
 use std::str;
 use std::vec;
 
-use extra::arc::Arc;
+use sync::Arc;
 use extra::json::ToJson;
 use syntax::ast;
 use syntax::attr;

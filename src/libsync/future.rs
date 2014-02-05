@@ -15,7 +15,7 @@
  * # Example
  *
  * ```rust
- * use extra::future::Future;
+ * use sync::Future;
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
  * let mut delayed_fib = Future::spawn(proc() { fib(5000) });

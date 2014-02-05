@@ -10,15 +10,15 @@
 
 // xfail-test arcs no longer unwrap
 
-extern mod extra;
+extern mod sync;
 
 use std::from_str::FromStr;
 use std::iter::count;
 use std::num::min;
 use std::os;
 use std::vec::from_elem;
-use extra::arc::Arc;
-use extra::arc::RWArc;
+use sync::Arc;
+use sync::RWArc;
 
 fn A(i: uint, j: uint) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64
