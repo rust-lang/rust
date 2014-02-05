@@ -53,16 +53,16 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: session::Session,
-                          crate: ast::Crate) -> ast::Crate {
+                          krate: ast::Crate) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(crate.config, "test");
+    let should_test = attr::contains_name(krate.config, "test");
 
     if should_test {
-        generate_test_harness(sess, crate)
+        generate_test_harness(sess, krate)
     } else {
-        strip_test_functions(crate)
+        strip_test_functions(krate)
     }
 }
 
@@ -156,7 +156,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 }
 
-fn generate_test_harness(sess: session::Session, crate: ast::Crate)
+fn generate_test_harness(sess: session::Session, krate: ast::Crate)
                          -> ast::Crate {
     let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
@@ -164,8 +164,8 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: RefCell::new(~[]),
         testfns: RefCell::new(~[]),
-        is_extra: is_extra(&crate),
-        config: crate.config.clone(),
+        is_extra: is_extra(&krate),
+        config: krate.config.clone(),
     };
 
     cx.ext_cx.bt_push(ExpnInfo {
@@ -180,15 +180,15 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
     let mut fold = TestHarnessGenerator {
         cx: cx
     };
-    let res = fold.fold_crate(crate);
+    let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
     return res;
 }
 
-fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
+fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
-    config::strip_items(crate, |attrs| {
+    config::strip_items(krate, |attrs| {
         !attr::contains_name(attrs, "test") &&
         !attr::contains_name(attrs, "bench")
     })
@@ -390,8 +390,8 @@ fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     )).unwrap()
 }
 
-fn is_extra(crate: &ast::Crate) -> bool {
-    match attr::find_crateid(crate.attrs) {
+fn is_extra(krate: &ast::Crate) -> bool {
+    match attr::find_crateid(krate.attrs) {
         Some(ref s) if "extra" == s.name => true,
         _ => false
     }

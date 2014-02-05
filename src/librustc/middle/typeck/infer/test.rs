@@ -31,7 +31,7 @@ use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
 
 struct Env {
-    crate: @ast::Crate,
+    krate: @ast::Crate,
     tcx: ty::ctxt,
     infcx: infer::infer_ctxt,
     err_messages: @DVec<~str>
@@ -59,7 +59,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
     let lang_items = LanguageItems::new();
 
     let parse_sess = parse::new_parse_sess(None);
-    let crate = parse_crate_from_source_str(
+    let krate = parse_crate_from_source_str(
         test_name.to_str(), @source_string.to_str(),
         cfg, parse_sess);
 
@@ -68,7 +68,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
 
     let infcx = infer::new_infer_ctxt(tcx);
 
-    return Env {crate: crate,
+    return Env {krate: krate,
                 tcx: tcx,
                 infcx: infcx,
                 err_messages: messages};
@@ -94,7 +94,7 @@ impl Env {
     }
 
     pub fn lookup_item(&self, names: &[~str]) -> ast::node_id {
-        return match search_mod(self, &self.crate.node.module, 0, names) {
+        return match search_mod(self, &self.krate.node.module, 0, names) {
             Some(id) => id,
             None => {
                 fail!("no item found: `%s`", names.connect("::"));

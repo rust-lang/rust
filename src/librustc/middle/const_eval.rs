@@ -302,13 +302,13 @@ impl Visitor<()> for ConstEvalVisitor {
     }
 }
 
-pub fn process_crate(crate: &ast::Crate,
+pub fn process_crate(krate: &ast::Crate,
                      tcx: ty::ctxt) {
     let mut v = ConstEvalVisitor {
         tcx: tcx,
         ccache: HashMap::new(),
     };
-    visit::walk_crate(&mut v, crate, ());
+    visit::walk_crate(&mut v, krate, ());
     tcx.sess.abort_if_errors();
 }
 

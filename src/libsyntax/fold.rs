@@ -859,8 +859,8 @@ mod test {
 
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State,
-                        crate: &ast::Crate) -> io::IoResult<()> {
-        pprust::print_mod(s, &crate.module, crate.attrs)
+                        krate: &ast::Crate) -> io::IoResult<()> {
+        pprust::print_mod(s, &krate.module, krate.attrs)
     }
 
     // change every identifier to "zz"

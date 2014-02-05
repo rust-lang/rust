@@ -184,7 +184,7 @@ pub fn trans_static_method_callee(bcx: &Block,
     let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
         generics.type_param_defs().len();
 
-    let mname = if method_id.crate == ast::LOCAL_CRATE {
+    let mname = if method_id.krate == ast::LOCAL_CRATE {
         {
             match bcx.tcx().items.get(method_id.node) {
                 ast_map::NodeTraitMethod(trait_method, _, _) => {

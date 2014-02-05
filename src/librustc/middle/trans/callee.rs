@@ -346,7 +346,7 @@ pub fn trans_fn_ref_with_vtables(
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
     let def_id = {
-        if def_id.crate != ast::LOCAL_CRATE {
+        if def_id.krate != ast::LOCAL_CRATE {
             inline::maybe_instantiate_inline(ccx, def_id)
         } else {
             def_id
@@ -360,7 +360,7 @@ pub fn trans_fn_ref_with_vtables(
     let must_monomorphise;
     if type_params.len() > 0 || is_default {
         must_monomorphise = true;
-    } else if def_id.crate == ast::LOCAL_CRATE {
+    } else if def_id.krate == ast::LOCAL_CRATE {
         {
             let map_node = session::expect(
                 ccx.sess,
@@ -383,7 +383,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert_eq!(def_id.crate, ast::LOCAL_CRATE);
+        assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
@@ -403,7 +403,7 @@ pub fn trans_fn_ref_with_vtables(
 
     // Find the actual function pointer.
     let mut val = {
-        if def_id.crate == ast::LOCAL_CRATE {
+        if def_id.krate == ast::LOCAL_CRATE {
             // Internal reference.
             get_item_val(ccx, def_id.node)
         } else {
@@ -512,7 +512,7 @@ pub fn trans_lang_call<'a>(
                        args: &[ValueRef],
                        dest: Option<expr::Dest>)
                        -> Result<'a> {
-    let fty = if did.crate == ast::LOCAL_CRATE {
+    let fty = if did.krate == ast::LOCAL_CRATE {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
         csearch::get_type(bcx.ccx().tcx, did).ty
@@ -541,7 +541,7 @@ pub fn trans_lang_call_with_type_params<'a>(
                                         dest: expr::Dest)
                                         -> &'a Block<'a> {
     let fty;
-    if did.crate == ast::LOCAL_CRATE {
+    if did.krate == ast::LOCAL_CRATE {
         fty = ty::node_id_to_type(bcx.tcx(), did.node);
     } else {
         fty = csearch::get_type(bcx.tcx(), did).ty;

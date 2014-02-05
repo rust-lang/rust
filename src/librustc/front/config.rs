@@ -19,9 +19,9 @@ struct Context<'a> {
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-pub fn strip_unconfigured_items(crate: ast::Crate) -> ast::Crate {
-    let config = crate.config.clone();
-    strip_items(crate, |attrs| in_cfg(config, attrs))
+pub fn strip_unconfigured_items(krate: ast::Crate) -> ast::Crate {
+    let config = krate.config.clone();
+    strip_items(krate, |attrs| in_cfg(config, attrs))
 }
 
 impl<'a> fold::Folder for Context<'a> {
@@ -39,13 +39,13 @@ impl<'a> fold::Folder for Context<'a> {
     }
 }
 
-pub fn strip_items(crate: ast::Crate,
+pub fn strip_items(krate: ast::Crate,
                    in_cfg: |attrs: &[ast::Attribute]| -> bool)
                    -> ast::Crate {
     let mut ctxt = Context {
         in_cfg: in_cfg,
     };
-    ctxt.fold_crate(crate)
+    ctxt.fold_crate(krate)
 }
 
 fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)

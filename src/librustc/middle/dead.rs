@@ -254,7 +254,7 @@ impl Visitor<()> for LifeSeeder {
 fn create_and_seed_worklist(tcx: ty::ctxt,
                             exported_items: &privacy::ExportedItems,
                             reachable_symbols: &HashSet<ast::NodeId>,
-                            crate: &ast::Crate) -> ~[ast::NodeId] {
+                            krate: &ast::Crate) -> ~[ast::NodeId] {
     let mut worklist = ~[];
 
     // Preferably, we would only need to seed the worklist with reachable
@@ -279,7 +279,7 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
-    visit::walk_crate(&mut life_seeder, crate, ());
+    visit::walk_crate(&mut life_seeder, krate, ());
 
     return life_seeder.worklist;
 }
@@ -288,10 +288,10 @@ fn find_live(tcx: ty::ctxt,
              method_map: typeck::method_map,
              exported_items: &privacy::ExportedItems,
              reachable_symbols: &HashSet<ast::NodeId>,
-             crate: &ast::Crate)
+             krate: &ast::Crate)
              -> ~HashSet<ast::NodeId> {
     let worklist = create_and_seed_worklist(tcx, exported_items,
-                                            reachable_symbols, crate);
+                                            reachable_symbols, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, method_map, worklist);
     symbol_visitor.mark_live_symbols();
     symbol_visitor.live_symbols
@@ -412,9 +412,9 @@ pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    exported_items: &privacy::ExportedItems,
                    reachable_symbols: &HashSet<ast::NodeId>,
-                   crate: &ast::Crate) {
+                   krate: &ast::Crate) {
     let live_symbols = find_live(tcx, method_map, exported_items,
-                                 reachable_symbols, crate);
+                                 reachable_symbols, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
-    visit::walk_crate(&mut visitor, crate, ());
+    visit::walk_crate(&mut visitor, krate, ());
 }

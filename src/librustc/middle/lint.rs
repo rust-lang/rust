@@ -1341,7 +1341,7 @@ fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
 
 fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
     let did = ast::DefId {
-        crate: ast::LOCAL_CRATE,
+        krate: ast::LOCAL_CRATE,
         node: m.id
     };
 
@@ -1643,7 +1643,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    exported_items: &privacy::ExportedItems,
-                   crate: &ast::Crate) {
+                   krate: &ast::Crate) {
     let mut cx = Context {
         dict: @get_lint_dict(),
         cur: SmallIntMap::new(),
@@ -1664,19 +1664,19 @@ pub fn check_crate(tcx: ty::ctxt,
     for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
         cx.set_level(lint, level, CommandLine);
     }
-    cx.with_lint_attrs(crate.attrs, |cx| {
+    cx.with_lint_attrs(krate.attrs, |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;
-            visit::walk_crate(v, crate, ());
+            visit::walk_crate(v, krate, ());
         });
 
-        check_crate_attrs_usage(cx, crate.attrs);
+        check_crate_attrs_usage(cx, krate.attrs);
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
-        check_missing_doc_attrs(cx, None, crate.attrs, crate.span, "crate");
+        check_missing_doc_attrs(cx, None, krate.attrs, krate.span, "crate");
 
-        visit::walk_crate(cx, crate, ());
+        visit::walk_crate(cx, krate, ());
     });
 
     // If we missed any lints added to the session, then there's a bug somewhere
