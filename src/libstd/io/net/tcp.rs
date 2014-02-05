@@ -8,11 +8,42 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! TCP network connections
+//!
+//! This module contains the ability to open a TCP stream to a socket address,
+//! as well as creating a socket server to accept incoming connections. The
+//! destination and binding addresses can either be an IPv4 or IPv6 address.
+//!
+//! A TCP connection implements the `Reader` and `Writer` traits, while the TCP
+//! listener (socket server) implements the `Listener` and `Acceptor` traits.
+
+#[deny(missing_doc)];
+
+use clone::Clone;
 use io::net::ip::SocketAddr;
-use io::{Reader, Writer, Listener, Acceptor, IoResult};
+use io::{Reader, Writer, Listener, Acceptor};
+use io::IoResult;
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 
+/// A structure which represents a TCP stream between a local socket and a
+/// remote socket.
+///
+/// # Example
+///
+/// ```rust
+/// # #[allow(unused_must_use)];
+/// use std::io::net::tcp::TcpStream;
+/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+///
+/// let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 34254 };
+/// let mut stream = TcpStream::connect(addr);
+///
+/// stream.write([1]);
+/// let mut buf = [0];
+/// stream.read(buf);
+/// drop(stream); // close the connection
+/// ```
 pub struct TcpStream {
     priv obj: ~RtioTcpStream
 }
@@ -22,18 +53,37 @@ impl TcpStream {
         TcpStream { obj: s }
     }
 
+    /// Creates a TCP connection to a remote socket address.
+    ///
+    /// If no error is encountered, then `Ok(stream)` is returned.
     pub fn connect(addr: SocketAddr) -> IoResult<TcpStream> {
         LocalIo::maybe_raise(|io| {
             io.tcp_connect(addr).map(TcpStream::new)
         })
     }
 
+    /// Returns the socket address of the remote peer of this TCP connection.
     pub fn peer_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.peer_name()
     }
 
+    /// Returns the socket address of the local half of this TCP connection.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
+    }
+}
+
+impl Clone for TcpStream {
+    /// Creates a new handle to this TCP stream, allowing for simultaneous reads
+    /// and writes of this connection.
+    ///
+    /// The underlying TCP stream will not be closed until all handles to the
+    /// stream have been deallocated. All handles will also follow the same
+    /// stream, but two concurrent reads will not receive the same data.
+    /// Instead, the first read will receive the first packet received, and the
+    /// second read will receive the second packet.
+    fn clone(&self) -> TcpStream {
+        TcpStream { obj: self.obj.clone() }
     }
 }
 
@@ -45,17 +95,56 @@ impl Writer for TcpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
+/// A structure representing a socket server. This listener is used to create a
+/// `TcpAcceptor` which can be used to accept sockets on a local port.
+///
+/// # Example
+///
+/// ```rust
+/// # fn main() {}
+/// # fn foo() {
+/// # #[allow(unused_must_use, dead_code)];
+/// use std::io::net::tcp::TcpListener;
+/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+/// use std::io::{Acceptor, Listener};
+///
+/// let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 80 };
+/// let listener = TcpListener::bind(addr);
+///
+/// // bind the listener to the specified address
+/// let mut acceptor = listener.listen();
+///
+/// // accept connections and process them
+/// # fn handle_client<T>(_: T) {}
+/// for stream in acceptor.incoming() {
+///     spawn(proc() {
+///         handle_client(stream);
+///     });
+/// }
+///
+/// // close the socket server
+/// drop(acceptor);
+/// # }
+/// ```
 pub struct TcpListener {
     priv obj: ~RtioTcpListener
 }
 
 impl TcpListener {
+    /// Creates a new `TcpListener` which will be bound to the specified local
+    /// socket address. This listener is not ready for accepting connections,
+    /// `listen` must be called on it before that's possible.
+    ///
+    /// Binding with a port number of 0 will request that the OS assigns a port
+    /// to this listener. The port allocated can be queried via the
+    /// `socket_name` function.
     pub fn bind(addr: SocketAddr) -> IoResult<TcpListener> {
         LocalIo::maybe_raise(|io| {
             io.tcp_bind(addr).map(|l| TcpListener { obj: l })
         })
     }
 
+    /// Returns the local socket address of this listener.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
     }
@@ -67,6 +156,9 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
     }
 }
 
+/// The accepting half of a TCP socket server. This structure is created through
+/// a `TcpListener`'s `listen` method, and this object can be used to accept new
+/// `TcpStream` instances.
 pub struct TcpAcceptor {
     priv obj: ~RtioTcpAcceptor
 }
@@ -573,4 +665,91 @@ mod test {
         }
         let _listener = TcpListener::bind(addr);
     })
+
+    iotest!(fn tcp_clone_smoke() {
+        let addr = next_test_ip4();
+        let mut acceptor = TcpListener::bind(addr).listen();
+
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr);
+            let mut buf = [0, 0];
+            assert_eq!(s.read(buf), Ok(1));
+            assert_eq!(buf[0], 1);
+            s.write([2]).unwrap();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p1, c1) = Chan::new();
+        let (p2, c2) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            p1.recv();
+            s2.write([1]).unwrap();
+            c2.send(());
+        });
+        c1.send(());
+        let mut buf = [0, 0];
+        assert_eq!(s1.read(buf), Ok(1));
+        p2.recv();
+    })
+
+    iotest!(fn tcp_clone_two_read() {
+        let addr = next_test_ip6();
+        let mut acceptor = TcpListener::bind(addr).listen();
+        let (p, c) = SharedChan::new();
+        let c2 = c.clone();
+
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr);
+            s.write([1]).unwrap();
+            p.recv();
+            s.write([2]).unwrap();
+            p.recv();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p, done) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            let mut buf = [0, 0];
+            s2.read(buf).unwrap();
+            c2.send(());
+            done.send(());
+        });
+        let mut buf = [0, 0];
+        s1.read(buf).unwrap();
+        c.send(());
+
+        p.recv();
+    })
+
+    iotest!(fn tcp_clone_two_write() {
+        let addr = next_test_ip4();
+        let mut acceptor = TcpListener::bind(addr).listen();
+
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr);
+            let mut buf = [0, 1];
+            s.read(buf).unwrap();
+            s.read(buf).unwrap();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p, done) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            s2.write([1]).unwrap();
+            done.send(());
+        });
+        s1.write([2]).unwrap();
+
+        p.recv();
+    })
 }
+

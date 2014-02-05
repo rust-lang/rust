@@ -203,6 +203,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn nodelay(&mut self) -> Result<(), IoError>;
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
     fn letdie(&mut self) -> Result<(), IoError>;
+    fn clone(&self) -> ~RtioTcpStream;
 }
 
 pub trait RtioSocket {
@@ -224,6 +225,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
     fn hear_broadcasts(&mut self) -> Result<(), IoError>;
     fn ignore_broadcasts(&mut self) -> Result<(), IoError>;
+
+    fn clone(&self) -> ~RtioUdpSocket;
 }
 
 pub trait RtioTimer {
@@ -253,6 +256,7 @@ pub trait RtioProcess {
 pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+    fn clone(&self) -> ~RtioPipe;
 }
 
 pub trait RtioUnixListener {

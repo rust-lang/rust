@@ -19,7 +19,9 @@ use std::rt::rtio;
 use std::rt::task::BlockedTask;
 use std::unstable::intrinsics;
 
+use access::Access;
 use homing::{HomingIO, HomeHandle};
+use rc::Refcount;
 use stream::StreamWatcher;
 use super::{Loop, Request, UvError, Buf, status_to_io_result,
             uv_error_to_io_error, UvHandle, slice_to_uv_buf,
@@ -152,6 +154,14 @@ pub struct TcpWatcher {
     handle: *uvll::uv_tcp_t,
     stream: StreamWatcher,
     home: HomeHandle,
+    priv refcount: Refcount,
+
+    // libuv can't support concurrent reads and concurrent writes of the same
+    // stream object, so we use these access guards in order to arbitrate among
+    // multiple concurrent reads and writes. Note that libuv *can* read and
+    // write simultaneously, it just can't read and read simultaneously.
+    priv read_access: Access,
+    priv write_access: Access,
 }
 
 pub struct TcpListener {
@@ -183,6 +193,9 @@ impl TcpWatcher {
             home: home,
             handle: handle,
             stream: StreamWatcher::new(handle),
+            refcount: Refcount::new(),
+            read_access: Access::new(),
+            write_access: Access::new(),
         }
     }
 
@@ -238,12 +251,14 @@ impl rtio::RtioSocket for TcpWatcher {
 
 impl rtio::RtioTcpStream for TcpWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.read_access.grant(m);
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.write_access.grant(m);
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
@@ -280,6 +295,17 @@ impl rtio::RtioTcpStream for TcpWatcher {
             uvll::uv_tcp_keepalive(self.handle, 0 as c_int, 0 as c_uint)
         })
     }
+
+    fn clone(&self) -> ~rtio::RtioTcpStream {
+        ~TcpWatcher {
+            handle: self.handle,
+            stream: StreamWatcher::new(self.handle),
+            home: self.home.clone(),
+            refcount: self.refcount.clone(),
+            write_access: self.write_access.clone(),
+            read_access: self.read_access.clone(),
+        } as ~rtio::RtioTcpStream
+    }
 }
 
 impl UvHandle<uvll::uv_tcp_t> for TcpWatcher {
@@ -289,7 +315,9 @@ impl UvHandle<uvll::uv_tcp_t> for TcpWatcher {
 impl Drop for TcpWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        self.close();
+        if self.refcount.decrement() {
+            self.close();
+        }
     }
 }
 
@@ -415,6 +443,11 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 pub struct UdpWatcher {
     handle: *uvll::uv_udp_t,
     home: HomeHandle,
+
+    // See above for what these fields are
+    priv refcount: Refcount,
+    priv read_access: Access,
+    priv write_access: Access,
 }
 
 impl UdpWatcher {
@@ -423,6 +456,9 @@ impl UdpWatcher {
         let udp = UdpWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
             home: io.make_handle(),
+            refcount: Refcount::new(),
+            read_access: Access::new(),
+            write_access: Access::new(),
         };
         assert_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
@@ -463,7 +499,8 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             buf: Option<Buf>,
             result: Option<(ssize_t, Option<ip::SocketAddr>)>,
         }
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.read_access.grant(m);
 
         let a = match unsafe {
             uvll::uv_udp_recv_start(self.handle, alloc_cb, recv_cb)
@@ -533,7 +570,8 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     fn sendto(&mut self, buf: &[u8], dst: ip::SocketAddr) -> Result<(), IoError> {
         struct Ctx { task: Option<BlockedTask>, result: c_int }
 
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.write_access.grant(m);
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
         let buf = slice_to_uv_buf(buf);
@@ -636,13 +674,25 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                                        0 as c_int)
         })
     }
+
+    fn clone(&self) -> ~rtio::RtioUdpSocket {
+        ~UdpWatcher {
+            handle: self.handle,
+            home: self.home.clone(),
+            refcount: self.refcount.clone(),
+            write_access: self.write_access.clone(),
+            read_access: self.read_access.clone(),
+        } as ~rtio::RtioUdpSocket
+    }
 }
 
 impl Drop for UdpWatcher {
     fn drop(&mut self) {
         // Send ourselves home to close this handle (blocking while doing so).
         let _m = self.fire_homing_missile();
-        self.close();
+        if self.refcount.decrement() {
+            self.close();
+        }
     }
 }
 

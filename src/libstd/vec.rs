@@ -4253,7 +4253,7 @@ mod tests {
         let h = x.mut_last();
         assert_eq!(*h.unwrap(), 5);
 
-        let mut y: &mut [int] = [];
+        let y: &mut [int] = [];
         assert!(y.mut_last().is_none());
     }
 }

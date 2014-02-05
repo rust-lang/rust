@@ -51,6 +51,12 @@ impl PipeStream {
     }
 }
 
+impl Clone for PipeStream {
+    fn clone(&self) -> PipeStream {
+        PipeStream { obj: self.obj.clone() }
+    }
+}
+
 impl Reader for PipeStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
 }
