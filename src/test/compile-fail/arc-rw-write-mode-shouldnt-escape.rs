@@ -9,10 +9,10 @@
 // except according to those terms.
 
 // error-pattern: lifetime of variable does not enclose its declaration
-extern mod extra;
-use extra::arc;
+extern mod sync;
+use sync::RWArc;
 fn main() {
-    let x = ~arc::RWArc::new(1);
+    let x = ~RWArc::new(1);
     let mut y = None;
     x.write_downgrade(|write_mode| y = Some(write_mode));
     y.unwrap();
