@@ -509,7 +509,7 @@ fn angle(vector: (f64, f64)) -> f64 {
     let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
-      (0.0, y) => 0.5 * pi,
+      (0.0, _) => 0.5 * pi,
       (x, y) => atan(y / x)
     }
 }
@@ -519,7 +519,9 @@ A variable name in a pattern matches any value, *and* binds that name
 to the value of the matched value inside of the arm's action. Thus, `(0.0,
 y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any two-element tuple, and binds both
-elements to variables.
+elements to variables. `(0.0,_)` matches any tuple whose first element is zero
+and does not bind anything to the second element.
+
 A subpattern can also be bound to a variable, using `variable @ pattern`. For
 example:
 
