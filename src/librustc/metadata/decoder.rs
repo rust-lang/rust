@@ -191,7 +191,7 @@ fn item_parent_item(d: ebml::Doc) -> Option<ast::DefId> {
 fn item_reqd_and_translated_parent_item(cnum: ast::CrateNum,
                                         d: ebml::Doc) -> ast::DefId {
     let trait_did = item_parent_item(d).expect("item without parent");
-    ast::DefId { crate: cnum, node: trait_did.node }
+    ast::DefId { krate: cnum, node: trait_did.node }
 }
 
 fn item_def_id(d: ebml::Doc, cdata: Cmd) -> ast::DefId {
@@ -290,7 +290,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> ~[ast::DefId] {
     let v = tag_items_data_item_variant;
     reader::tagged_docs(item, v, |p| {
         let ext = reader::with_doc_data(p, parse_def_id);
-        ids.push(ast::DefId { crate: cdata.cnum, node: ext.node });
+        ids.push(ast::DefId { krate: cdata.cnum, node: ext.node });
         true
     });
     return ids;
@@ -386,7 +386,7 @@ pub fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
 pub fn lookup_def(cnum: ast::CrateNum, data: &[u8], did_: ast::DefId) ->
    ast::Def {
     let item = lookup_item(did_.node, data);
-    let did = ast::DefId { crate: cnum, node: did_.node };
+    let did = ast::DefId { krate: cnum, node: did_.node };
     // We treat references to enums as references to types.
     return def_like_to_def(item_to_def_like(item, did, cnum));
 }
@@ -423,7 +423,7 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
 
     let item = lookup_item(id, cdata.data());
 
-    let t = item_type(ast::DefId { crate: cdata.cnum, node: id }, item, tcx,
+    let t = item_type(ast::DefId { krate: cdata.cnum, node: id }, item, tcx,
                       cdata);
 
     let tp_defs = item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds);
@@ -529,10 +529,10 @@ fn each_child_of_item_or_crate(intr: @IdentInterner,
 
         // This item may be in yet another crate if it was the child of a
         // reexport.
-        let other_crates_items = if child_def_id.crate == cdata.cnum {
+        let other_crates_items = if child_def_id.krate == cdata.cnum {
             reader::get_doc(reader::Doc(cdata.data()), tag_items)
         } else {
-            let crate_data = get_crate_data(child_def_id.crate);
+            let crate_data = get_crate_data(child_def_id.krate);
             reader::get_doc(reader::Doc(crate_data.data()), tag_items)
         };
 
@@ -617,10 +617,10 @@ fn each_child_of_item_or_crate(intr: @IdentInterner,
         let name = name_doc.as_str_slice();
 
         // This reexport may be in yet another crate.
-        let other_crates_items = if child_def_id.crate == cdata.cnum {
+        let other_crates_items = if child_def_id.krate == cdata.cnum {
             reader::get_doc(reader::Doc(cdata.data()), tag_items)
         } else {
-            let crate_data = get_crate_data(child_def_id.crate);
+            let crate_data = get_crate_data(child_def_id.krate);
             reader::get_doc(reader::Doc(crate_data.data()), tag_items)
         };
 
@@ -730,7 +730,7 @@ pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
     let mut disr_val = 0;
     for did in variant_ids.iter() {
         let item = find_item(did.node, items);
-        let ctor_ty = item_type(ast::DefId { crate: cdata.cnum, node: id},
+        let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
@@ -799,7 +799,7 @@ pub fn get_impl(intr: @IdentInterner, cdata: Cmd, impl_id: ast::NodeId,
     let impl_item = lookup_item(impl_id, data);
     ty::Impl {
         did: ast::DefId {
-            crate: cdata.cnum,
+            krate: cdata.cnum,
             node: impl_id,
         },
         ident: item_name(intr, impl_item),
@@ -1199,15 +1199,15 @@ pub fn list_crate_metadata(intr: @IdentInterner, bytes: &[u8],
 // then we must translate the crate number from that encoded in the external
 // crate to the correct local crate number.
 pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
-    if did.crate == ast::LOCAL_CRATE {
-        return ast::DefId { crate: cdata.cnum, node: did.node };
+    if did.krate == ast::LOCAL_CRATE {
+        return ast::DefId { krate: cdata.cnum, node: did.node };
     }
 
     let cnum_map = cdata.cnum_map.borrow();
-    match cnum_map.get().find(&did.crate) {
+    match cnum_map.get().find(&did.krate) {
         Some(&n) => {
             ast::DefId {
-                crate: n,
+                krate: n,
                 node: did.node,
             }
         }

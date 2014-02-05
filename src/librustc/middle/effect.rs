@@ -175,12 +175,12 @@ impl Visitor<()> for EffectCheckVisitor {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: method_map,
-                   crate: &ast::Crate) {
+                   krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         method_map: method_map,
         unsafe_context: SafeContext,
     };
 
-    visit::walk_crate(&mut visitor, crate, ());
+    visit::walk_crate(&mut visitor, krate, ());
 }

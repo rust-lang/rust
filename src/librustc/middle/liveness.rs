@@ -176,11 +176,11 @@ impl Visitor<@IrMaps> for LivenessVisitor {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    capture_map: moves::CaptureMap,
-                   crate: &Crate) {
+                   krate: &Crate) {
     let mut visitor = LivenessVisitor;
 
     let initial_maps = @IrMaps(tcx, method_map, capture_map);
-    visit::walk_crate(&mut visitor, crate, initial_maps);
+    visit::walk_crate(&mut visitor, krate, initial_maps);
     tcx.sess.abort_if_errors();
 }
 

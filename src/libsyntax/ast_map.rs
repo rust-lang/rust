@@ -406,7 +406,7 @@ pub fn map_crate<F: 'static + FoldOps>(diag: @SpanHandler, c: Crate,
         diag: diag,
         fold_ops: fold_ops
     };
-    let crate = cx.fold_crate(c);
+    let krate = cx.fold_crate(c);
 
     if log_enabled!(logging::DEBUG) {
         let map = cx.map.map.borrow();
@@ -421,7 +421,7 @@ pub fn map_crate<F: 'static + FoldOps>(diag: @SpanHandler, c: Crate,
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
-    (crate, cx.map)
+    (krate, cx.map)
 }
 
 // Used for items loaded from external crate that are being inlined into this

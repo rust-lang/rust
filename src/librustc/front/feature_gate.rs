@@ -266,13 +266,13 @@ impl Visitor<()> for Context {
     }
 }
 
-pub fn check_crate(sess: Session, crate: &ast::Crate) {
+pub fn check_crate(sess: Session, krate: &ast::Crate) {
     let mut cx = Context {
         features: ~[],
         sess: sess,
     };
 
-    for attr in crate.attrs.iter() {
+    for attr in krate.attrs.iter() {
         if !attr.name().equiv(&("feature")) {
             continue
         }
@@ -315,7 +315,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
         }
     }
 
-    visit::walk_crate(&mut cx, crate, ());
+    visit::walk_crate(&mut cx, krate, ());
 
     sess.abort_if_errors();
 }

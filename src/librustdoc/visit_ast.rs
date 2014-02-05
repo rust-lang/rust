@@ -38,12 +38,12 @@ impl<'a> RustdocVisitor<'a> {
         }
     }
 
-    pub fn visit(&mut self, crate: &ast::Crate) {
-        self.attrs = crate.attrs.clone();
+    pub fn visit(&mut self, krate: &ast::Crate) {
+        self.attrs = krate.attrs.clone();
 
-        self.module = self.visit_mod_contents(crate.span, crate.attrs.clone(),
+        self.module = self.visit_mod_contents(krate.span, krate.attrs.clone(),
                                               ast::Public, ast::CRATE_NODE_ID,
-                                              &crate.module, None);
+                                              &krate.module, None);
     }
 
     pub fn visit_struct_def(&mut self, item: &ast::Item, sd: @ast::StructDef,

@@ -781,7 +781,7 @@ impl Repr for ast::DefId {
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
         // and otherwise fallback to just printing the crate/node pair
-        if self.crate == ast::LOCAL_CRATE {
+        if self.krate == ast::LOCAL_CRATE {
             {
                 match tcx.items.find(self.node) {
                     Some(ast_map::NodeItem(..)) |

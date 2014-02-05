@@ -73,7 +73,7 @@ impl visit::Visitor<()> for CollectItemTypesVisitor {
     }
 }
 
-pub fn collect_item_types(ccx: @CrateCtxt, crate: &ast::Crate) {
+pub fn collect_item_types(ccx: @CrateCtxt, krate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, .. } =
@@ -90,7 +90,7 @@ pub fn collect_item_types(ccx: @CrateCtxt, crate: &ast::Crate) {
     }
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
-    visit::walk_crate(&mut visitor, crate, ());
+    visit::walk_crate(&mut visitor, krate, ());
 }
 
 pub trait ToTy {
@@ -107,7 +107,7 @@ impl AstConv for CrateCtxt {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
-        if id.crate != ast::LOCAL_CRATE {
+        if id.krate != ast::LOCAL_CRATE {
             return csearch::get_type(self.tcx, id)
         }
 
@@ -283,7 +283,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
 
         let tcx = ccx.tcx;
 
-        let dummy_defid = ast::DefId {crate: 0, node: 0};
+        let dummy_defid = ast::DefId {krate: 0, node: 0};
 
         // Represents [A',B',C']
         let num_trait_bounds = trait_ty_generics.type_param_defs().len();
@@ -765,7 +765,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
 }
 
 fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
-    if trait_id.crate != ast::LOCAL_CRATE {
+    if trait_id.krate != ast::LOCAL_CRATE {
         return ty::lookup_trait_def(ccx.tcx, trait_id)
     }
 

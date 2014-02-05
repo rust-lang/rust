@@ -181,7 +181,7 @@ pub type NodeId = u32;
 
 #[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct DefId {
-    crate: CrateNum,
+    krate: CrateNum,
     node: NodeId,
 }
 

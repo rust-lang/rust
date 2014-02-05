@@ -631,7 +631,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // Identify the variable being closed over and its node-id.
             let def = freevar.def;
             let def_id = ast_util::def_id_of_def(def);
-            assert!(def_id.crate == ast::LOCAL_CRATE);
+            assert!(def_id.krate == ast::LOCAL_CRATE);
             let upvar_id = ty::UpvarId { var_id: def_id.node,
                                          closure_expr_id: expr.id };
 
