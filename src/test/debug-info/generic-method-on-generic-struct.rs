@@ -64,38 +64,6 @@
 // check:$15 = -10.5
 // debugger:continue
 
-// MANAGED BY REF
-// debugger:finish
-// debugger:print *self
-// check:$16 = {x = -1}
-// debugger:print arg1
-// check:$17 = -11
-// debugger:print arg2
-// check:$18 = -12.5
-// debugger:continue
-
-// MANAGED BY VAL
-// debugger:finish
-// debugger:print self
-// check:$19 = {x = -1}
-// debugger:print arg1
-// check:$20 = -13
-// debugger:print *arg2
-// check:$21 = {-14, 14}
-// debugger:continue
-
-// MANAGED SELF
-// debugger:finish
-// debugger:print self->val
-// check:$22 = {x = -1}
-// debugger:print arg1
-// check:$23 = -15
-// debugger:print *arg2
-// check:$24 = {-16, 16.5}
-// debugger:continue
-
-#[feature(managed_boxes)];
-
 struct Struct<T> {
     x: T
 }
@@ -116,11 +84,6 @@ impl<T1> Struct<T1> {
         zzz();
         arg1
     }
-
-    fn self_managed<T2>(@self, arg1: int, arg2: T2) -> int {
-        zzz();
-        arg1
-    }
 }
 
 fn main() {
@@ -132,11 +95,6 @@ fn main() {
     let _ = owned.self_by_ref(-5, -6_i32);
     let _ = owned.self_by_val(-7, -8_i64);
     let _ = owned.self_owned(-9, -10.5_f32);
-
-    let managed = @Struct { x: -1_i16 };
-    let _ = managed.self_by_ref(-11, -12.5_f64);
-    let _ = managed.self_by_val(-13, &(-14, 14));
-    let _ = managed.self_managed(-15, &(-16, 16.5));
 }
 
 fn zzz() {()}

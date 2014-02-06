@@ -69,14 +69,14 @@ use syntax::opt_vec;
 use syntax::abi::AbiSet;
 
 pub trait Combine {
-    fn infcx(&self) -> @InferCtxt;
+    fn infcx<'a>(&'a self) -> &'a InferCtxt;
     fn tag(&self) -> ~str;
     fn a_is_expected(&self) -> bool;
     fn trace(&self) -> TypeTrace;
 
-    fn sub(&self) -> Sub;
-    fn lub(&self) -> Lub;
-    fn glb(&self) -> Glb;
+    fn sub<'a>(&'a self) -> Sub<'a>;
+    fn lub<'a>(&'a self) -> Lub<'a>;
+    fn glb<'a>(&'a self) -> Glb<'a>;
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt>;
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
@@ -329,8 +329,8 @@ pub trait Combine {
     }
 }
 
-pub struct CombineFields {
-    infcx: @InferCtxt,
+pub struct CombineFields<'a> {
+    infcx: &'a InferCtxt,
     a_is_expected: bool,
     trace: TypeTrace,
 }

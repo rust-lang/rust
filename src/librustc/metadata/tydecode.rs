@@ -164,7 +164,6 @@ fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
 fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
-        '@' => ty::BoxTraitStore,
         '&' => ty::RegionTraitStore(parse_region(st, conv)),
         c => st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'", c))
     }

@@ -1,5 +1,3 @@
-#[feature(managed_boxes)];
-
 // xfail-fast
 // aux-build:trait_default_method_xc_aux.rs
 
@@ -66,7 +64,7 @@ pub fn main () {
     assert_eq!(g(0i, 3.14, 1), (3.14, 1));
     assert_eq!(g(false, 3.14, 1), (3.14, 1));
 
-    let obj = @0i as @A;
+    let obj = ~0i as ~A;
     assert_eq!(obj.h(), 11);
 
 

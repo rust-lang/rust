@@ -14,7 +14,7 @@
 use ast;
 use codemap::{Span, CodeMap, FileMap};
 use codemap;
-use diagnostic::{SpanHandler, mk_span_handler, mk_handler, Emitter};
+use diagnostic::{SpanHandler, mk_span_handler, mk_handler};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
@@ -45,11 +45,11 @@ pub struct ParseSess {
     included_mod_stack: RefCell<~[Path]>,
 }
 
-pub fn new_parse_sess(demitter: Option<@Emitter>) -> @ParseSess {
+pub fn new_parse_sess() -> @ParseSess {
     let cm = @CodeMap::new();
     @ParseSess {
         cm: cm,
-        span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+        span_diagnostic: mk_span_handler(mk_handler(), cm),
         included_mod_stack: RefCell::new(~[]),
     }
 }
@@ -261,7 +261,7 @@ pub fn filemap_to_tts(sess: @ParseSess, filemap: @FileMap)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
-    let mut p1 = Parser(sess, cfg, srdr as @lexer::Reader);
+    let mut p1 = Parser(sess, cfg, ~srdr);
     p1.parse_all_token_trees()
 }
 
@@ -270,7 +270,7 @@ pub fn tts_to_parser(sess: @ParseSess,
                      tts: ~[ast::TokenTree],
                      cfg: ast::CrateConfig) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
-    Parser(sess, cfg, trdr as @lexer::Reader)
+    Parser(sess, cfg, ~trdr)
 }
 
 // abort if necessary

@@ -1857,7 +1857,7 @@ like any other function, except for the name `self`.
 
 The type of `self` is the type on which the method is implemented,
 or a pointer thereof. As an argument it is written either `self`,
-`&self`, `@self`, or `~self`.
+`&self`, or `~self`.
 A caller must in turn have a compatible pointer type to call the method.
 
 ~~~
@@ -1870,14 +1870,12 @@ A caller must in turn have a compatible pointer type to call the method.
 # }
 impl Shape {
     fn draw_reference(&self) { ... }
-    fn draw_managed(@self) { ... }
     fn draw_owned(~self) { ... }
     fn draw_value(self) { ... }
 }
 
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
-(@s).draw_managed();
 (~s).draw_owned();
 (&s).draw_reference();
 s.draw_value();
@@ -1897,7 +1895,6 @@ to a reference.
 # }
 # impl Shape {
 #    fn draw_reference(&self) { ... }
-#    fn draw_managed(@self) { ... }
 #    fn draw_owned(~self) { ... }
 #    fn draw_value(self) { ... }
 # }
@@ -2368,29 +2365,29 @@ an _object_.
 
 ~~~~
 # trait Drawable { fn draw(&self); }
-fn draw_all(shapes: &[@Drawable]) {
+fn draw_all(shapes: &[~Drawable]) {
     for shape in shapes.iter() { shape.draw(); }
 }
 ~~~~
 
-In this example, there is no type parameter. Instead, the `@Drawable`
-type denotes any managed box value that implements the `Drawable`
-trait. To construct such a value, you use the `as` operator to cast a
-value to an object:
+In this example, there is no type parameter. Instead, the `~Drawable`
+type denotes any owned box value that implements the `Drawable` trait.
+To construct such a value, you use the `as` operator to cast a value
+to an object:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
 # trait Drawable { fn draw(&self); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
-# fn draw_all(shapes: &[@Drawable]) {}
+# fn draw_all(shapes: &[~Drawable]) {}
 
 impl Drawable for Circle { fn draw(&self) { ... } }
 impl Drawable for Rectangle { fn draw(&self) { ... } }
 
-let c: @Circle = @new_circle();
-let r: @Rectangle = @new_rectangle();
-draw_all([c as @Drawable, r as @Drawable]);
+let c: ~Circle = ~new_circle();
+let r: ~Rectangle = ~new_rectangle();
+draw_all([c as ~Drawable, r as ~Drawable]);
 ~~~~
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
@@ -2407,8 +2404,6 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 # impl Drawable for int { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-// A managed object
-let boxy: @Drawable = @new_circle() as @Drawable;
 // An owned object
 let owny: ~Drawable = ~new_circle() as ~Drawable;
 // A borrowed object
@@ -2427,7 +2422,6 @@ particular set of built-in kinds that their contents must fulfill in
 order to be packaged up in a trait object of that storage class.
 
 * The contents of owned traits (`~Trait`) must fulfill the `Send` bound.
-* The contents of managed traits (`@Trait`) must fulfill the `'static` bound.
 * The contents of reference traits (`&Trait`) are not constrained by any bound.
 
 Consequently, the trait objects themselves automatically fulfill their
@@ -2439,7 +2433,6 @@ to fulfilling `Send`, contents must also fulfill `Freeze`, and as a consequence,
 the trait itself fulfills `Freeze`.
 
 * `~Trait:Send` is equivalent to `~Trait`.
-* `@Trait:'static` is equivalent to `@Trait`.
 * `&Trait:` is equivalent to `&Trait`.
 
 Builtin kind bounds can also be specified on closure types in the same way (for

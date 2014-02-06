@@ -28,21 +28,21 @@ use std::hashmap::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
 
-pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
+pub struct Glb<'f>(CombineFields<'f>);  // "greatest lower bound" (common subtype)
 
-impl Glb {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields { let Glb(ref v) = *self; v }
+impl<'f> Glb<'f> {
+    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Glb(ref v) = *self; v }
 }
 
-impl Combine for Glb {
-    fn infcx(&self) -> @InferCtxt { self.get_ref().infcx }
+impl<'f> Combine for Glb<'f> {
+    fn infcx<'a>(&'a self) -> &'a InferCtxt { self.get_ref().infcx }
     fn tag(&self) -> ~str { ~"glb" }
     fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
     fn trace(&self) -> TypeTrace { self.get_ref().trace }
 
-    fn sub(&self) -> Sub { Sub(*self.get_ref()) }
-    fn lub(&self) -> Lub { Lub(*self.get_ref()) }
-    fn glb(&self) -> Glb { Glb(*self.get_ref()) }
+    fn sub<'a>(&'a self) -> Sub<'a> { Sub(*self.get_ref()) }
+    fn lub<'a>(&'a self) -> Lub<'a> { Lub(*self.get_ref()) }
+    fn glb<'a>(&'a self) -> Glb<'a> { Glb(*self.get_ref()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.get_ref().infcx.tcx;

@@ -193,7 +193,7 @@ pub fn describe_debug_flags() {
     }
 }
 
-pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
+pub fn run_compiler(args: &[~str]) {
     let mut args = args.to_owned();
     let binary = args.shift().unwrap();
 
@@ -203,7 +203,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         &match getopts::getopts(args, d::optgroups()) {
           Ok(m) => m,
           Err(f) => {
-            d::early_error(demitter, f.to_err_msg());
+            d::early_error(f.to_err_msg());
           }
         };
 
@@ -235,7 +235,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
     let (input, input_file_path) = match matches.free.len() {
-      0u => d::early_error(demitter, "no input filename given"),
+      0u => d::early_error("no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
         if ifile == "-" {
@@ -246,11 +246,11 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
             (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
         }
       }
-      _ => d::early_error(demitter, "multiple input filenames provided")
+      _ => d::early_error("multiple input filenames provided")
     };
 
-    let sopts = d::build_session_options(binary, matches, demitter);
-    let sess = d::build_session(sopts, input_file_path, demitter);
+    let sopts = d::build_session_options(binary, matches);
+    let sess = d::build_session(sopts, input_file_path);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = d::build_configuration(sess);
@@ -273,7 +273,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
                              &mut stdout as &mut io::Writer).unwrap();
           }
           d::StrInput(_) => {
-            d::early_error(demitter, "can not list metadata for stdin");
+            d::early_error("can not list metadata for stdin");
           }
         }
         return;
@@ -337,7 +337,7 @@ fn parse_crate_attrs(sess: session::Session,
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor(f: proc(@diagnostic::Emitter)) {
+pub fn monitor(f: proc()) {
     // FIXME: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
@@ -361,7 +361,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
 
     match task_builder.try(proc() {
         io::stdio::set_stderr(~w as ~io::Writer);
-        f(@diagnostic::DefaultEmitter)
+        f()
     }) {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
@@ -400,6 +400,6 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
-    monitor(proc(demitter) run_compiler(owned_args, demitter));
+    monitor(proc() run_compiler(owned_args));
     0
 }

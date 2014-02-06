@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 trait repeat<A> { fn get(&self) -> A; }
 
-impl<A:Clone + 'static> repeat<A> for @A {
+impl<A:Clone + 'static> repeat<A> for ~A {
     fn get(&self) -> A {
         (**self).clone()
     }
 }
 
-fn repeater<A:Clone + 'static>(v: @A) -> @repeat:<A> {
+fn repeater<A:Clone + 'static>(v: ~A) -> ~repeat:<A> {
     // Note: owned kind is not necessary as A appears in the trait type
-    @v as @repeat:<A> // No
+    ~v as ~repeat:<A> // No
 }
 
 pub fn main() {
     let x = 3;
-    let y = repeater(@x);
+    let y = repeater(~x);
     assert_eq!(x, y.get());
 }

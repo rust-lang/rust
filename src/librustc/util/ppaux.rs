@@ -267,7 +267,6 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
 pub fn trait_store_to_str(cx: ctxt, s: ty::TraitStore) -> ~str {
     match s {
       ty::UniqTraitStore => ~"~",
-      ty::BoxTraitStore => ~"@",
       ty::RegionTraitStore(r) => region_ptr_to_str(cx, r)
     }
 }
@@ -918,7 +917,6 @@ impl Repr for ty::RegionVid {
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
-            &ty::BoxTraitStore => ~"@Trait",
             &ty::UniqTraitStore => ~"~Trait",
             &ty::RegionTraitStore(r) => format!("&{} Trait", r.repr(tcx))
         }

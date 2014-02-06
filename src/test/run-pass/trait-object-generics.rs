@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 // test for #8664
 
 pub trait Trait2<A> {
@@ -42,7 +40,7 @@ impl<V> Trait<u8,V> for () {
     fn method(&self, _x: Type<(u8,V)>) -> int { 0 }
 }
 
-pub fn main () {
-    let a = @() as @Trait<u8, u8>;
+pub fn main() {
+    let a = ~() as ~Trait<u8, u8>;
     assert_eq!(a.method(Constant), 0);
 }

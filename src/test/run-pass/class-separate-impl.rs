@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 // xfail-fast
 struct cat {
     meows : uint,
@@ -58,13 +56,13 @@ impl ToStr for cat {
     }
 }
 
-fn print_out(thing: @ToStr, expected: ~str) {
+fn print_out(thing: ~ToStr, expected: ~str) {
   let actual = thing.to_str();
   info!("{}", actual);
   assert_eq!(actual, expected);
 }
 
 pub fn main() {
-  let nyan : @ToStr = @cat(0u, 2, ~"nyan") as @ToStr;
+  let nyan: ~ToStr = ~cat(0u, 2, ~"nyan") as ~ToStr;
   print_out(nyan, ~"nyan");
 }
