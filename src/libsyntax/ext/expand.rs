@@ -1032,7 +1032,7 @@ mod test {
             ~[],sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
+        expand_crate(sess,&mut loader,crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -1047,7 +1047,7 @@ mod test {
             ~[],sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
+        expand_crate(sess,&mut loader,crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -1061,7 +1061,7 @@ mod test {
             ~[], sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess, &mut loader, ~[], crate_ast);
+        expand_crate(sess, &mut loader, crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1134,7 +1134,7 @@ mod test {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
-        expand_crate(ps,&mut loader,~[],crate_ast)
+        expand_crate(ps,&mut loader,crate_ast)
     }
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
