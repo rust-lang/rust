@@ -1969,13 +1969,14 @@ impl<T: Eq> Eq for Foo<T> {
 Supported traits for `deriving` are:
 
 * Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
-* Serialization: `Encodable`, `Decodable`. These require `extra`.
+* Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.
 * `Zero`, to create an zero instance of a numeric data type.
-* `FromPrimitive`, to create an instance from a numeric primitve.
+* `FromPrimitive`, to create an instance from a numeric primitive.
+* `Show`, to format a value using the `{}` formatter.
 
 ### Stability
 One can indicate the stability of an API using the following attributes:
