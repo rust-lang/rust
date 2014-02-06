@@ -18,8 +18,8 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
+use std::cmp;
 use std::iter;
-use std::num;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
@@ -286,7 +286,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
-                      num::max(before.len() + after.len(), max_len)
+                      cmp::max(before.len() + after.len(), max_len)
                     }
                     _ => max_len
                   }

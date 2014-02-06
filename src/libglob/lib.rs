@@ -29,7 +29,7 @@
 #[license = "MIT/ASL2"];
 
 use std::cell::Cell;
-use std::{os, path};
+use std::{cmp, os, path};
 use std::io::fs;
 use std::path::is_sep;
 
@@ -106,7 +106,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     }
 
     let root_len = pat_root.map_or(0u, |p| p.as_vec().len());
-    let dir_patterns = pattern.slice_from(root_len.min(&pattern.len()))
+    let dir_patterns = pattern.slice_from(cmp::min(root_len, pattern.len()))
                        .split_terminator(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
 
     let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();

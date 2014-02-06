@@ -14,7 +14,7 @@ extern mod sync;
 
 use std::from_str::FromStr;
 use std::iter::count;
-use std::num::min;
+use std::cmp::min;
 use std::os;
 use std::vec::from_elem;
 use sync::Arc;

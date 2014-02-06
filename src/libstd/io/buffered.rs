@@ -10,10 +10,10 @@
 
 //! Buffering wrappers for I/O traits
 
+use cmp;
 use container::Container;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
-use num;
 use option::{Some, None};
 use result::{Ok, Err};
 use vec::{OwnedVector, ImmutableVector, MutableVector};
@@ -104,7 +104,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let nread = {
             let available = if_ok!(self.fill());
-            let nread = num::min(available.len(), buf.len());
+            let nread = cmp::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };

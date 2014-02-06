@@ -13,7 +13,7 @@
 //! RingBuf implements the trait Deque. It should be imported with `use
 //! extra::container::Deque`.
 
-use std::num;
+use std::cmp;
 use std::vec;
 use std::iter::{Rev, RandomAccessIterator};
 
@@ -120,7 +120,7 @@ impl<T> RingBuf<T> {
     /// Create an empty RingBuf with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         RingBuf{nelts: 0, lo: 0,
-              elts: vec::from_fn(num::max(MINIMUM_CAPACITY, n), |_| None)}
+              elts: vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Retrieve an element in the RingBuf by index

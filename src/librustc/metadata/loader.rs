@@ -26,8 +26,8 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
+use std::cmp;
 use std::io;
-use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
@@ -331,7 +331,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
-                let minsz = num::min(vlen, csz);
+                let minsz = cmp::min(vlen, csz);
                 let mut version_ok = false;
                 vec::raw::buf_as_slice(cvbuf, minsz, |buf0| {
                     version_ok = (buf0 ==

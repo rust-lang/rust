@@ -18,10 +18,10 @@ use visit::Visitor;
 use visit;
 
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
-use std::num;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -343,8 +343,8 @@ impl IdRange {
     }
 
     pub fn add(&mut self, id: NodeId) {
-        self.min = num::min(self.min, id);
-        self.max = num::max(self.max, id + 1);
+        self.min = cmp::min(self.min, id);
+        self.max = cmp::max(self.max, id + 1);
     }
 }
 

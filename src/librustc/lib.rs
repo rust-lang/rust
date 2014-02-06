@@ -46,8 +46,8 @@ use middle::lint;
 
 use d = driver::driver;
 
+use std::cmp;
 use std::io;
-use std::num;
 use std::os;
 use std::str;
 use std::task;
@@ -164,7 +164,7 @@ Available lint options:
 
     let mut max_key = 0;
     for &(_, name) in lint_dict.iter() {
-        max_key = num::max(name.len(), max_key);
+        max_key = cmp::max(name.len(), max_key);
     }
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
