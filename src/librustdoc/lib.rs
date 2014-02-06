@@ -20,13 +20,12 @@ extern mod rustc;
 extern mod extra;
 extern mod serialize;
 extern mod sync;
+extern mod getopts;
 
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
-use extra::getopts;
-use extra::getopts::groups;
 use extra::json;
 use serialize::{Decodable, Encodable};
 use extra::time;
@@ -80,8 +79,8 @@ pub fn main() {
     std::os::set_exit_status(main_args(std::os::args()));
 }
 
-pub fn opts() -> ~[groups::OptGroup] {
-    use extra::getopts::groups::*;
+pub fn opts() -> ~[getopts::OptGroup] {
+    use getopts::*;
     ~[
         optflag("h", "help", "show this help message"),
         optflag("", "version", "print rustdoc's version"),
@@ -107,11 +106,11 @@ pub fn opts() -> ~[groups::OptGroup] {
 }
 
 pub fn usage(argv0: &str) {
-    println!("{}", groups::usage(format!("{} [options] <input>", argv0), opts()));
+    println!("{}", getopts::usage(format!("{} [options] <input>", argv0), opts()));
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let matches = match groups::getopts(args.tail(), opts()) {
+    let matches = match getopts::getopts(args.tail(), opts()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err.to_err_msg());
