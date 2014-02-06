@@ -335,17 +335,18 @@ mod test {
         let sock2 = UdpSocket::bind(addr2).unwrap();
 
         let (p, c) = SharedChan::new();
+        let (serv_port, serv_chan) = Chan::new();
 
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 1];
 
-            for _ in p.iter() {
-                match sock2.recvfrom(buf) {
-                    Ok(..) => {}
-                    Err(e) => fail!("failed receive: {}", e),
-                }
+            p.recv();
+            match sock2.recvfrom(buf) {
+                Ok(..) => {}
+                Err(e) => fail!("failed receive: {}", e),
             }
+            serv_chan.send(());
         });
 
         let sock3 = sock1.clone();
@@ -355,16 +356,18 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             match sock3.sendto([1], addr2) {
-                Ok(..) => c2.send(()),
+                Ok(..) => { let _ = c2.try_send(()); }
                 Err(..) => {}
             }
             done.send(());
         });
         match sock1.sendto([2], addr2) {
-            Ok(..) => c.send(()),
+            Ok(..) => { let _ = c.try_send(()); }
             Err(..) => {}
         }
+        drop(c);
 
         p.recv();
+        serv_port.recv();
     })
 }
