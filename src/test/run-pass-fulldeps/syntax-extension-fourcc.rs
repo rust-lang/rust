@@ -40,4 +40,6 @@ fn main() {
     assert_eq!(static_val_le, 0x206f6f66u32);
     let exp = if cfg!(target_endian = "big") { 0x666f6f20u32 } else { 0x206f6f66u32 };
     assert_eq!(static_val_target, exp);
+
+    assert_eq!(fourcc!("\xC0\xFF\xEE!"), 0xC0FFEE21);
 }
