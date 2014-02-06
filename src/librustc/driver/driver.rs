@@ -176,7 +176,6 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
 /// harness if one is to be provided and injection of a dependency on the
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: Session,
-                                    cfg: ast::CrateConfig,
                                     loader: &mut CrateLoader,
                                     mut crate: ast::Crate)
                                     -> (ast::Crate, syntax::ast_map::Map) {
@@ -205,7 +204,6 @@ pub fn phase_2_configure_and_expand(sess: Session,
     crate = time(time_passes, "expansion", crate, |crate| {
         syntax::ext::expand::expand_crate(sess.parse_sess,
                                           loader,
-                                          cfg.clone(),
                                           crate)
     });
     // dump the syntax-time crates
@@ -520,10 +518,10 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
         let (expanded_crate, ast_map) = {
-            let crate = phase_1_parse_input(sess, cfg.clone(), input);
+            let crate = phase_1_parse_input(sess, cfg, input);
             if stop_after_phase_1(sess) { return; }
             let loader = &mut Loader::new(sess);
-            phase_2_configure_and_expand(sess, cfg, loader, crate)
+            phase_2_configure_and_expand(sess, loader, crate)
         };
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
@@ -610,12 +608,12 @@ pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &Input,
                           ppm: PpMode) {
-    let crate = phase_1_parse_input(sess, cfg.clone(), input);
+    let crate = phase_1_parse_input(sess, cfg, input);
 
     let (crate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
             let loader = &mut Loader::new(sess);
-            let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, loader, crate);
+            let (crate, ast_map) = phase_2_configure_and_expand(sess, loader, crate);
             (crate, Some(ast_map), true)
         }
         _ => (crate, None, false)

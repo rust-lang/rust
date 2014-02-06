@@ -59,9 +59,9 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(sess);
-    let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+    let crate = driver::phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (crate, _) = driver::phase_2_configure_and_expand(sess, cfg, loader, crate);
+    let (crate, _) = driver::phase_2_configure_and_expand(sess, loader, crate);
 
     let ctx = @core::DocContext {
         crate: crate,
