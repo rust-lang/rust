@@ -49,19 +49,20 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate arena glob term semver uuid serialize sync
+TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
+                 uuid serialize sync getopts
 HOST_CRATES := syntax rustc rustdoc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_std := native:rustrt
-DEPS_extra := std serialize sync term
+DEPS_extra := std term sync serialize getopts
 DEPS_green := std
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
 DEPS_syntax := std extra term serialize
-DEPS_rustc := syntax native:rustllvm flate arena serialize sync
-DEPS_rustdoc := rustc native:sundown serialize sync
+DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts
+DEPS_rustdoc := rustc native:sundown serialize sync getopts
 DEPS_flate := std native:miniz
 DEPS_arena := std extra
 DEPS_glob := std
@@ -70,8 +71,9 @@ DEPS_term := std
 DEPS_semver := std
 DEPS_uuid := std serialize
 DEPS_sync := std
+DEPS_getopts := std
 
-TOOL_DEPS_compiletest := extra green rustuv
+TOOL_DEPS_compiletest := extra green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc green rustuv
 TOOL_DEPS_rustc := rustc green rustuv
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs

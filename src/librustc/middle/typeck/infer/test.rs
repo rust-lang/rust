@@ -23,12 +23,9 @@ use middle::lang_items::{LanguageItems, language_items};
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
 
-use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use extra::getopts::groups;
-use extra::getopts::{opt_present};
-use extra::getopts;
-use extra::getopts;
 use extra::oldmap::HashMap;
+use getopts::{optopt, optmulti, optflag, optflagopt, getopts};
+use getopts::opt_present;
 use syntax::codemap::DUMMY_SP;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};

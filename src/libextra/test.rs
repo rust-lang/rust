@@ -15,10 +15,9 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+extern mod getopts;
 extern mod term;
 
-use getopts;
-use getopts::groups;
 use json::ToJson;
 use json;
 use serialize::Decodable;
@@ -209,29 +208,29 @@ pub struct TestOpts {
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, ~str>;
 
-fn optgroups() -> ~[getopts::groups::OptGroup] {
-    ~[groups::optflag("", "ignored", "Run ignored tests"),
-      groups::optflag("", "test", "Run tests and not benchmarks"),
-      groups::optflag("", "bench", "Run benchmarks instead of tests"),
-      groups::optflag("h", "help", "Display this message (longer with --help)"),
-      groups::optopt("", "save-metrics", "Location to save bench metrics",
+fn optgroups() -> ~[getopts::OptGroup] {
+    ~[getopts::optflag("", "ignored", "Run ignored tests"),
+      getopts::optflag("", "test", "Run tests and not benchmarks"),
+      getopts::optflag("", "bench", "Run benchmarks instead of tests"),
+      getopts::optflag("h", "help", "Display this message (longer with --help)"),
+      getopts::optopt("", "save-metrics", "Location to save bench metrics",
                      "PATH"),
-      groups::optopt("", "ratchet-metrics",
+      getopts::optopt("", "ratchet-metrics",
                      "Location to load and save metrics from. The metrics \
                       loaded are cause benchmarks to fail if they run too \
                       slowly", "PATH"),
-      groups::optopt("", "ratchet-noise-percent",
+      getopts::optopt("", "ratchet-noise-percent",
                      "Tests within N% of the recorded metrics will be \
                       considered as passing", "PERCENTAGE"),
-      groups::optopt("", "logfile", "Write logs to the specified file instead \
+      getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
-      groups::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
+      getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
                      "A.B")]
 }
 
 fn usage(binary: &str, helpstr: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
-    println!("{}", groups::usage(message, optgroups()));
+    println!("{}", getopts::usage(message, optgroups()));
     println!("");
     if helpstr == "help" {
         println!("{}", "\
@@ -261,7 +260,7 @@ Test Attributes:
 pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
-        match groups::getopts(args_, optgroups()) {
+        match getopts::getopts(args_, optgroups()) {
           Ok(m) => m,
           Err(f) => return Some(Err(f.to_err_msg()))
         };

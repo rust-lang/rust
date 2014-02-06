@@ -34,8 +34,8 @@ use std::io::fs;
 use std::io::MemReader;
 use std::os;
 use std::vec;
-use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
-use extra::getopts;
+use getopts::{optopt, optmulti, optflag, optflagopt};
+use getopts;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -992,7 +992,7 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
 }
 
 // rustc command line options
-pub fn optgroups() -> ~[getopts::groups::OptGroup] {
+pub fn optgroups() -> ~[getopts::OptGroup] {
  ~[
   optflag("c", "",    "Compile and assemble, but do not link"),
   optmulti("", "cfg", "Configure the compilation
@@ -1188,7 +1188,7 @@ mod test {
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups};
 
-    use extra::getopts::groups::getopts;
+    use getopts::getopts;
     use syntax::attr;
     use syntax::attr::AttrMetaMethods;
     use syntax::diagnostic;
