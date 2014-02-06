@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
-// error-pattern: type `@Foo:'static` does not implement any method in scope named `foo`
+// error-pattern: type `&Foo<no-bounds>` does not implement any method in scope named `foo`
 
 trait Foo {
     fn foo(~self);
@@ -21,5 +19,5 @@ impl Foo for int {
 }
 
 fn main() {
-    (@5 as @Foo).foo();
+    (&5 as &Foo).foo();
 }

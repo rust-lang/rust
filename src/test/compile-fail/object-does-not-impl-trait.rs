@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
-// Test that an object type `@Foo` is not considered to implement the
+// Test that an object type `~Foo` is not considered to implement the
 // trait `Foo`. Issue #5087.
 
 trait Foo {}
 fn take_foo<F:Foo>(f: F) {}
-fn take_object(f: @Foo) { take_foo(f); } //~ ERROR failed to find an implementation of trait
+fn take_object(f: ~Foo) { take_foo(f); } //~ ERROR failed to find an implementation of trait
 fn main() {}

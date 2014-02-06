@@ -236,7 +236,6 @@ pub fn enc_trait_ref(w: &mut MemWriter, cx: @ctxt, s: &ty::TraitRef) {
 pub fn enc_trait_store(w: &mut MemWriter, cx: @ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => mywrite!(w, "~"),
-        ty::BoxTraitStore => mywrite!(w, "@"),
         ty::RegionTraitStore(re) => {
             mywrite!(w, "&");
             enc_region(w, cx, re);

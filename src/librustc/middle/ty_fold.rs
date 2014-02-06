@@ -211,7 +211,6 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
                                             -> ty::TraitStore {
     match trait_store {
         ty::UniqTraitStore      => ty::UniqTraitStore,
-        ty::BoxTraitStore       => ty::BoxTraitStore,
         ty::RegionTraitStore(r) => ty::RegionTraitStore(this.fold_region(r)),
     }
 }

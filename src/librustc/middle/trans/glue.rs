@@ -65,9 +65,6 @@ pub fn take_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     let _icx = push_ctxt("take_ty");
     match ty::get(t).sty {
         ty::ty_box(_) => incr_refcnt_of_boxed(bcx, v),
-        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
-            incr_refcnt_of_boxed(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]))
-        }
         _ if ty::type_is_structural(t)
           && ty::type_needs_drop(bcx.tcx(), t) => {
             iter_structural_ty(bcx, v, t, take_ty)
@@ -323,7 +320,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
     let ccx = bcx.ccx();
     match ty::get(t).sty {
         ty::ty_box(body_ty) => {
-            decr_refcnt_maybe_free(bcx, v0, Some(body_ty))
+            decr_refcnt_maybe_free(bcx, v0, body_ty)
         }
         ty::ty_uniq(content_ty) => {
             let llbox = Load(bcx, v0);
@@ -353,10 +350,6 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                     iter_structural_ty(bcx, v0, t, drop_ty)
                 }
             }
-        }
-        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
-            let llbox_ptr = GEPi(bcx, v0, [0u, abi::trt_field_box]);
-            decr_refcnt_maybe_free(bcx, llbox_ptr, None)
         }
         ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
             let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
@@ -400,8 +393,9 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
     }
 }
 
-fn decr_refcnt_maybe_free<'a>(bcx: &'a Block<'a>, box_ptr_ptr: ValueRef,
-                              t: Option<ty::t>) -> &'a Block<'a> {
+fn decr_refcnt_maybe_free<'a>(bcx: &'a Block<'a>,
+                              box_ptr_ptr: ValueRef,
+                              t: ty::t) -> &'a Block<'a> {
     let _icx = push_ctxt("decr_refcnt_maybe_free");
     let fcx = bcx.fcx;
     let ccx = bcx.ccx();
@@ -421,16 +415,7 @@ fn decr_refcnt_maybe_free<'a>(bcx: &'a Block<'a>, box_ptr_ptr: ValueRef,
 
     let v = Load(free_bcx, box_ptr_ptr);
     let body = GEPi(free_bcx, v, [0u, abi::box_field_body]);
-    let free_bcx = match t {
-        Some(t) => drop_ty(free_bcx, body, t),
-        None => {
-            // Generate code that, dynamically, indexes into the
-            // tydesc and calls the drop glue that got set dynamically
-            let td = Load(free_bcx, GEPi(free_bcx, v, [0u, abi::box_field_tydesc]));
-            call_tydesc_glue_full(free_bcx, body, td, abi::tydesc_field_drop_glue, None);
-            free_bcx
-        }
-    };
+    let free_bcx = drop_ty(free_bcx, body, t);
     let free_bcx = trans_free(free_bcx, v);
     Br(free_bcx, next_bcx.llbb);
 

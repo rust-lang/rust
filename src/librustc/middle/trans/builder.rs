@@ -23,9 +23,9 @@ use std::libc::{c_uint, c_ulonglong, c_char};
 use syntax::codemap::Span;
 use std::ptr::is_not_null;
 
-pub struct Builder {
+pub struct Builder<'a> {
     llbuilder: BuilderRef,
-    ccx: @CrateContext,
+    ccx: &'a CrateContext,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -37,8 +37,8 @@ pub fn noname() -> *c_char {
     }
 }
 
-impl Builder {
-    pub fn new(ccx: @CrateContext) -> Builder {
+impl<'a> Builder<'a> {
+    pub fn new(ccx: &'a CrateContext) -> Builder<'a> {
         Builder {
             llbuilder: ccx.builder.B,
             ccx: ccx,
