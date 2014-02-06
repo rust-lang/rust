@@ -473,7 +473,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         _ => {
             tcx.sess.span_bug(
                 expr.span,
-                "Expected expr_fn_block");
+                "expected expr_fn_block");
         }
     }
 }
@@ -1189,7 +1189,7 @@ pub mod guarantor {
                 None => {
                     tcx.sess.span_bug(
                         expr.span,
-                        format!("Autoderef but type not derefable: {}",
+                        format!("autoderef but type not derefable: {}",
                              ty_to_str(tcx, ct.ty)));
                 }
             }

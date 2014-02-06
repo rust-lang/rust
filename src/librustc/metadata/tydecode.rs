@@ -527,7 +527,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     let variadic = match next(st) {
         'V' => true,
         'N' => false,
-        r => fail!(format!("Bad variadic: {}", r)),
+        r => fail!(format!("bad variadic: {}", r)),
     };
     let ret_ty = parse_ty(st, |x,y| conv(x,y));
     ty::FnSig {binder_id: id,

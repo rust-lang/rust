@@ -9,6 +9,6 @@
 // except according to those terms.
 
 struct Foo {}
-//~^ ERROR: Unit-like struct definition should be written as `struct Foo;`
+//~^ ERROR: unit-like struct definition should be written as `struct Foo;`
 
 fn main() {}

@@ -233,7 +233,7 @@ impl RegionVarBindings {
         self.bound_count.set(sc + 1);
 
         if sc >= self.bound_count.get() {
-            self.tcx.sess.bug("Rollover in RegionInference new_bound()");
+            self.tcx.sess.bug("rollover in RegionInference new_bound()");
         }
 
         ReLateBound(binder_id, BrFresh(sc))
@@ -278,7 +278,7 @@ impl RegionVarBindings {
           (_, ReLateBound(..)) => {
             self.tcx.sess.span_bug(
                 origin.span(),
-                format!("Cannot relate bound region: {} <= {}",
+                format!("cannot relate bound region: {} <= {}",
                         sub.repr(self.tcx),
                         sup.repr(self.tcx)));
           }
@@ -351,7 +351,7 @@ impl RegionVarBindings {
                 let var_origins = self.var_origins.borrow();
                 self.tcx.sess.span_bug(
                     var_origins.get()[rid.to_uint()].span(),
-                    format!("Attempt to resolve region variable before \
+                    format!("attempt to resolve region variable before \
                              values have been computed!"))
             }
             Some(ref values) => values[rid.to_uint()]
@@ -544,7 +544,7 @@ impl RegionVarBindings {
           (ReEarlyBound(..), _) |
           (_, ReEarlyBound(..)) => {
             self.tcx.sess.bug(
-                format!("Cannot relate bound region: LUB({}, {})",
+                format!("cannot relate bound region: LUB({}, {})",
                         a.repr(self.tcx),
                         b.repr(self.tcx)));
           }
@@ -646,7 +646,7 @@ impl RegionVarBindings {
             (ReEarlyBound(..), _) |
             (_, ReEarlyBound(..)) => {
               self.tcx.sess.bug(
-                  format!("Cannot relate bound region: GLB({}, {})",
+                  format!("cannot relate bound region: GLB({}, {})",
                           a.repr(self.tcx),
                           b.repr(self.tcx)));
             }

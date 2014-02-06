@@ -75,7 +75,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
             */
             let other_f = match other_fs {
                 [o_f] => o_f,
-                _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             };
 
             let cmp = cx.expr_binary(span, op, self_f, other_f);
@@ -99,7 +99,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
                                  } else {
                                      self_var > other_var
                                  }),
-                _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             }
         },
         cx, span, substr)

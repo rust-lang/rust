@@ -202,7 +202,7 @@ impl<'f> Coerce<'f> {
             Err(e) => {
                 self.get_ref().infcx.tcx.sess.span_bug(
                     self.get_ref().trace.origin.span(),
-                    format!("Failed to resolve even without \
+                    format!("failed to resolve even without \
                           any force options: {:?}", e));
             }
         }
