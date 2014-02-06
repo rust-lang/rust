@@ -3678,43 +3678,43 @@ found in the [ffi tutorial][ffi].
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of command line flags and the `crate_type` attribute.
 
-* `--bin`, `#[crate_type = "bin"]` - A runnable executable will be produced.
-  This requires that there is a `main` function in the crate which will be run
-  when the program begins executing. This will link in all Rust and native
-  dependencies, producing a distributable binary.
+* `--crate-type=bin`, `#[crate_type = "bin"]` - A runnable executable will be
+  produced.  This requires that there is a `main` function in the crate which
+  will be run when the program begins executing. This will link in all Rust and
+  native dependencies, producing a distributable binary.
 
-* `--lib`, `#[crate_type = "lib"]` - A Rust library will be produced. This is
-  an ambiguous concept as to what exactly is produced because a library can
-  manifest itself in several forms. The purpose of this generic `lib` option is
-  to generate the "compiler recommended" style of library. The output library
-  will always be usable by rustc, but the actual type of library may change
-  from time-to-time. The remaining output types are all different flavors of
-  libraries, and the `lib` type can be seen as an alias for one of them (but
-  the actual one is compiler-defined).
+* `--crate-type=lib`, `#[crate_type = "lib"]` - A Rust library will be produced.
+  This is an ambiguous concept as to what exactly is produced because a library
+  can manifest itself in several forms. The purpose of this generic `lib` option
+  is to generate the "compiler recommended" style of library. The output library
+  will always be usable by rustc, but the actual type of library may change from
+  time-to-time. The remaining output types are all different flavors of
+  libraries, and the `lib` type can be seen as an alias for one of them (but the
+  actual one is compiler-defined).
 
-* `--dylib`, `#[crate_type = "dylib"]` - A dynamic Rust library will be
-  produced. This is different from the `lib` output type in that this forces
+* `--crate-type=dylib`, `#[crate_type = "dylib"]` - A dynamic Rust library will
+  be produced. This is different from the `lib` output type in that this forces
   dynamic library generation. The resulting dynamic library can be used as a
   dependency for other libraries and/or executables.  This output type will
   create `*.so` files on linux, `*.dylib` files on osx, and `*.dll` files on
   windows.
 
-* `--staticlib`, `#[crate_type = "staticlib"]` - A static system library will
-  be produced. This is different from other library outputs in that the Rust
-  compiler will never attempt to link to `staticlib` outputs. The purpose of
-  this output type is to create a static library containing all of the local
-  crate's code along with all upstream dependencies. The static library is
-  actually a `*.a` archive on linux and osx and a `*.lib` file on windows. This
-  format is recommended for use in situtations such as linking Rust code into an
-  existing non-Rust application because it will not have dynamic dependencies on
-  other Rust code.
+* `--crate-type=staticlib`, `#[crate_type = "staticlib"]` - A static system
+  library will be produced. This is different from other library outputs in that
+  the Rust compiler will never attempt to link to `staticlib` outputs. The
+  purpose of this output type is to create a static library containing all of
+  the local crate's code along with all upstream dependencies. The static
+  library is actually a `*.a` archive on linux and osx and a `*.lib` file on
+  windows. This format is recommended for use in situtations such as linking
+  Rust code into an existing non-Rust application because it will not have
+  dynamic dependencies on other Rust code.
 
-* `--rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be produced.
-  This is used as an intermediate artifact and can be thought of as a "static
-  Rust library". These `rlib` files, unlike `staticlib` files, are interpreted
-  by the Rust compiler in future linkage. This essentially means that `rustc`
-  will look for metadata in `rlib` files like it looks for metadata in dynamic
-  libraries. This form of output is used to produce statically linked
+* `--crate-type=rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be
+  produced.  This is used as an intermediate artifact and can be thought of as a
+  "static Rust library". These `rlib` files, unlike `staticlib` files, are
+  interpreted by the Rust compiler in future linkage. This essentially means
+  that `rustc` will look for metadata in `rlib` files like it looks for metadata
+  in dynamic libraries. This form of output is used to produce statically linked
   executables as well as `staticlib` outputs.
 
 Note that these outputs are stackable in the sense that if multiple are
@@ -3769,9 +3769,9 @@ dependencies will be used:
    then the compiler will force all dependencies to be dynamic and will generate
    errors if dynamic versions could not be found.
 
-In general, `--bin` or `--lib` should be sufficient for all compilation needs,
-and the other options are just available if more fine-grained control is desired
-over the output format of a Rust crate.
+In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
+all compilation needs, and the other options are just available if more
+fine-grained control is desired over the output format of a Rust crate.
 
 ### Logging system
 

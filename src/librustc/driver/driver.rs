@@ -11,7 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive, OutputExecutable};
+use driver::session::{Aggressive, CrateTypeExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -182,7 +182,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &crate));
-    sess.outputs.set(session::collect_outputs(&sess, crate.attrs));
+    sess.crate_types.set(session::collect_crate_types(&sess, crate.attrs));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -373,8 +373,7 @@ pub fn phase_4_translate_to_llvm(sess: Session,
                                  analysis: &CrateAnalysis,
                                  outputs: &OutputFilenames) -> CrateTranslation {
     time(sess.time_passes(), "translation", crate, |crate|
-         trans::base::trans_crate(sess, crate, analysis,
-                                  &outputs.obj_filename))
+         trans::base::trans_crate(sess, crate, analysis, outputs))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
@@ -382,29 +381,24 @@ pub fn phase_4_translate_to_llvm(sess: Session,
 pub fn phase_5_run_llvm_passes(sess: Session,
                                trans: &CrateTranslation,
                                outputs: &OutputFilenames) {
-
     if sess.no_integrated_as() {
         let output_type = link::OutputTypeAssembly;
-        let asm_filename = outputs.obj_filename.with_extension("s");
 
         time(sess.time_passes(), "LLVM passes", (), |_|
-            link::write::run_passes(sess,
-                                    trans,
-                                    output_type,
-                                    &asm_filename));
+            link::write::run_passes(sess, trans, [output_type], outputs));
 
-        link::write::run_assembler(sess, &asm_filename, &outputs.obj_filename);
+        link::write::run_assembler(sess, outputs);
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.save_temps {
-            fs::unlink(&asm_filename).unwrap();
+            fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).unwrap();
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
                                     trans,
-                                    sess.opts.output_type,
-                                    &outputs.obj_filename));
+                                    sess.opts.output_types,
+                                    outputs));
     }
 }
 
@@ -416,8 +410,7 @@ pub fn phase_6_link_output(sess: Session,
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
-                           &outputs.obj_filename,
-                           &outputs.out_filename,
+                           outputs,
                            &trans.link));
 }
 
@@ -446,24 +439,34 @@ pub fn stop_after_phase_2(sess: Session) -> bool {
 }
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
-    if sess.opts.output_type != link::OutputTypeExe {
+    if !sess.opts.output_types.iter().any(|&i| i == link::OutputTypeExe) {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
     return false;
 }
 
-fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames,
-                  crate: &ast::Crate) -> io::IoResult<()>
-{
-    let lm = link::build_link_meta(sess, crate.attrs, &outputs.obj_filename,
+fn write_out_deps(sess: Session,
+                  input: &Input,
+                  outputs: &OutputFilenames,
+                  crate: &ast::Crate) -> io::IoResult<()> {
+    let lm = link::build_link_meta(crate.attrs, outputs,
                                    &mut ::util::sha2::Sha256::new());
 
-    let sess_outputs = sess.outputs.borrow();
-    let out_filenames = sess_outputs.get().iter()
-        .map(|&output| link::filename_for_input(&sess, output, &lm,
-                                                &outputs.out_filename))
-        .to_owned_vec();
+    let mut out_filenames = ~[];
+    for output_type in sess.opts.output_types.iter() {
+        let file = outputs.path(*output_type);
+        match *output_type {
+            link::OutputTypeExe => {
+                let crate_types = sess.crate_types.borrow();
+                for output in crate_types.get().iter() {
+                    let p = link::filename_for_input(&sess, *output, &lm, &file);
+                    out_filenames.push(p);
+                }
+            }
+            _ => { out_filenames.push(file); }
+        }
+    }
 
     // Write out dependency rules to the dep-info file if requested with
     // --dep-info
@@ -473,12 +476,7 @@ fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames,
         // Use default filename: crate source filename with extension replaced
         // by ".d"
         (true, None) => match *input {
-            FileInput(ref input_path) => {
-                let filestem = input_path.filestem().expect("input file must \
-                                                             have stem");
-                let filename = out_filenames[0].dir_path().join(filestem);
-                filename.with_extension("d")
-            },
+            FileInput(..) => outputs.with_extension("d"),
             StrInput(..) => {
                 sess.warn("can not write --dep-info without a filename \
                            when compiling stdin.");
@@ -526,19 +524,19 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
 
-        write_out_deps(sess, input, outputs, &expanded_crate).unwrap();
+        write_out_deps(sess, input, &outputs, &expanded_crate).unwrap();
 
         if stop_after_phase_2(sess) { return; }
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
         if stop_after_phase_3(sess) { return; }
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
-                                              &analysis, outputs);
+                                              &analysis, &outputs);
         (outputs, trans)
     };
-    phase_5_run_llvm_passes(sess, &trans, outputs);
+    phase_5_run_llvm_passes(sess, &trans, &outputs);
     if stop_after_phase_5(sess) { return; }
-    phase_6_link_output(sess, &trans, outputs);
+    phase_6_link_output(sess, &trans, &outputs);
 }
 
 struct IdentifiedAnnotation {
@@ -735,22 +733,19 @@ pub fn build_session_options(binary: ~str,
                              matches: &getopts::Matches,
                              demitter: @diagnostic::Emitter)
                              -> @session::Options {
-    let mut outputs = ~[];
-    if matches.opt_present("lib") {
-        outputs.push(session::default_lib_output());
-    }
-    if matches.opt_present("rlib") {
-        outputs.push(session::OutputRlib)
-    }
-    if matches.opt_present("staticlib") {
-        outputs.push(session::OutputStaticlib)
-    }
-    if matches.opt_present("dylib") {
-        outputs.push(session::OutputDylib)
-    }
-    if matches.opt_present("bin") {
-        outputs.push(session::OutputExecutable)
-    }
+    let crate_types = matches.opt_strs("crate-type").flat_map(|s| {
+        s.split(',').map(|part| {
+            match part {
+                "lib"       => session::default_lib_output(),
+                "rlib"      => session::CrateTypeRlib,
+                "staticlib" => session::CrateTypeStaticlib,
+                "dylib"     => session::CrateTypeDylib,
+                "bin"       => session::CrateTypeExecutable,
+                _ => early_error(demitter,
+                                 format!("unknown crate type: `{}`", part))
+            }
+        }).collect()
+    });
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
@@ -801,19 +796,30 @@ pub fn build_session_options(binary: ~str,
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
-    let output_type =
-        if parse_only || no_trans {
-            link::OutputTypeNone
-        } else if matches.opt_present("S") &&
-                  matches.opt_present("emit-llvm") {
-            link::OutputTypeLlvmAssembly
-        } else if matches.opt_present("S") {
-            link::OutputTypeAssembly
-        } else if matches.opt_present("c") {
-            link::OutputTypeObject
-        } else if matches.opt_present("emit-llvm") {
-            link::OutputTypeBitcode
-        } else { link::OutputTypeExe };
+    let mut output_types = if parse_only || no_trans {
+        ~[]
+    } else {
+        matches.opt_strs("emit").flat_map(|s| {
+            s.split(',').map(|part| {
+                match part.as_slice() {
+                    "asm"  => link::OutputTypeAssembly,
+                    "ir"   => link::OutputTypeLlvmAssembly,
+                    "bc"   => link::OutputTypeBitcode,
+                    "obj"  => link::OutputTypeObject,
+                    "link" => link::OutputTypeExe,
+                    _ => early_error(demitter,
+                                     format!("unknown emission type: `{}`",
+                                             part))
+                }
+            }).collect()
+        })
+    };
+    output_types.sort();
+    output_types.dedup();
+    if output_types.len() == 0 {
+        output_types.push(link::OutputTypeExe);
+    }
+
     let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
@@ -886,7 +892,7 @@ pub fn build_session_options(binary: ~str,
                        matches.opt_present("crate-file-name"));
 
     let sopts = @session::Options {
-        outputs: outputs,
+        crate_types: crate_types,
         gc: gc,
         optimize: opt_level,
         custom_passes: custom_passes,
@@ -895,7 +901,7 @@ pub fn build_session_options(binary: ~str,
         extra_debuginfo: extra_debuginfo,
         lint_opts: lint_opts,
         save_temps: save_temps,
-        output_type: output_type,
+        output_types: output_types,
         addl_lib_search_paths: @RefCell::new(addl_lib_search_paths),
         ar: ar,
         linker: linker,
@@ -972,7 +978,7 @@ pub fn build_session_(sopts: @session::Options,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
-        outputs: @RefCell::new(~[]),
+        crate_types: @RefCell::new(~[]),
     }
 }
 
@@ -994,20 +1000,15 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
 // rustc command line options
 pub fn optgroups() -> ~[getopts::OptGroup] {
  ~[
-  optflag("c", "",    "Compile and assemble, but do not link"),
-  optmulti("", "cfg", "Configure the compilation
-                          environment", "SPEC"),
-  optflag("",  "emit-llvm",
-                        "Produce an LLVM assembly file if used with -S option;
-                         produce an LLVM bitcode file otherwise"),
-  optflag("h", "help","Display this message"),
-  optmulti("L", "",   "Add a directory to the library search path",
-                              "PATH"),
-  optflag("",  "bin", "Compile an executable crate (default)"),
-  optflag("",  "lib", "Compile a rust library crate using the compiler's default"),
-  optflag("",  "rlib", "Compile a rust library crate as an rlib file"),
-  optflag("",  "staticlib", "Compile a static library crate"),
-  optflag("",  "dylib", "Compile a dynamic library crate"),
+  optflag("h", "help", "Display this message"),
+  optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
+  optmulti("L", "",   "Add a directory to the library search path", "PATH"),
+  optmulti("", "crate-type", "Comma separated list of types of crates for the \
+                              compiler to emit",
+           "[bin|lib|rlib|dylib|staticlib]"),
+  optmulti("", "emit", "Comma separated list of types of output for the compiler
+                        to emit",
+           "[asm|bc|ir|obj|link]"),
   optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
   optopt("", "ar", "Program to use for managing archives instead of the default.", "AR"),
   optflag("", "crate-id", "Output the crate id and exit"),
@@ -1045,7 +1046,6 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                           typed (crates expanded, with type annotations),
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", "TYPE"),
-  optflag("S", "",    "Compile only; do not assemble or link"),
   optflagopt("", "dep-info",
                         "Output dependency info to <filename> after compiling", "FILENAME"),
   optflag("", "save-temps",
@@ -1081,8 +1081,35 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
 }
 
 pub struct OutputFilenames {
-    out_filename: Path,
-    obj_filename: Path
+    out_directory: Path,
+    out_filestem: ~str,
+    single_output_file: Option<Path>,
+}
+
+impl OutputFilenames {
+    pub fn path(&self, flavor: link::OutputType) -> Path {
+        match self.single_output_file {
+            Some(ref path) => return path.clone(),
+            None => {}
+        }
+        self.temp_path(flavor)
+    }
+
+    pub fn temp_path(&self, flavor: link::OutputType) -> Path {
+        let base = self.out_directory.join(self.out_filestem.as_slice());
+        match flavor {
+            link::OutputTypeBitcode => base.with_extension("bc"),
+            link::OutputTypeAssembly => base.with_extension("s"),
+            link::OutputTypeLlvmAssembly => base.with_extension("ll"),
+            link::OutputTypeObject => base.with_extension("o"),
+            link::OutputTypeExe => base,
+        }
+    }
+
+    pub fn with_extension(&self, extension: &str) -> Path {
+        let stem = self.out_filestem.as_slice();
+        self.out_directory.join(stem).with_extension(extension)
+    }
 }
 
 pub fn build_output_filenames(input: &Input,
@@ -1090,83 +1117,53 @@ pub fn build_output_filenames(input: &Input,
                               ofile: &Option<Path>,
                               attrs: &[ast::Attribute],
                               sess: Session)
-                           -> ~OutputFilenames {
-    let obj_path;
-    let out_path;
-    let sopts = sess.opts;
-    let stop_after_codegen = sopts.output_type != link::OutputTypeExe;
-
-    let obj_suffix = match sopts.output_type {
-        link::OutputTypeNone => ~"none",
-        link::OutputTypeBitcode => ~"bc",
-        link::OutputTypeAssembly => ~"s",
-        link::OutputTypeLlvmAssembly => ~"ll",
-        // Object and exe output both use the '.o' extension here
-        link::OutputTypeObject | link::OutputTypeExe => ~"o"
-    };
-
+                           -> OutputFilenames {
     match *ofile {
-      None => {
-          // "-" as input file will cause the parser to read from stdin so we
-          // have to make up a name
-          // We want to toss everything after the final '.'
-          let dirpath = match *odir {
-              Some(ref d) => (*d).clone(),
-              None => match *input {
-                  StrInput(_) => os::getcwd(),
-                  FileInput(ref ifile) => (*ifile).dir_path()
-              }
-          };
+        None => {
+            // "-" as input file will cause the parser to read from stdin so we
+            // have to make up a name
+            // We want to toss everything after the final '.'
+            let dirpath = match *odir {
+                Some(ref d) => d.clone(),
+                None => os::getcwd(),
+            };
 
-          let mut stem = match *input {
-              // FIXME (#9639): This needs to handle non-utf8 paths
-              FileInput(ref ifile) => {
-                  (*ifile).filestem_str().unwrap().to_str()
-              }
-              StrInput(_) => ~"rust_out"
-          };
+            let mut stem = match *input {
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                FileInput(ref ifile) => ifile.filestem_str().unwrap().to_str(),
+                StrInput(_) => ~"rust_out"
+            };
 
-          // If a crateid is present, we use it as the link name
-          let crateid = attr::find_crateid(attrs);
-          match crateid {
-              None => {}
-              Some(crateid) => stem = crateid.name.to_str(),
-          }
-
-          if sess.building_library.get() {
-              out_path = dirpath.join(os::dll_filename(stem));
-              obj_path = {
-                  let mut p = dirpath.join(stem);
-                  p.set_extension(obj_suffix);
-                  p
-              };
-          } else {
-              out_path = dirpath.join(stem);
-              obj_path = out_path.with_extension(obj_suffix);
-          }
-      }
-
-      Some(ref out_file) => {
-        out_path = out_file.clone();
-        obj_path = if stop_after_codegen {
-            out_file.clone()
-        } else {
-            out_file.with_extension(obj_suffix)
-        };
-
-        if sess.building_library.get() {
-            sess.warn("ignoring specified output filename for library.");
+            // If a crateid is present, we use it as the link name
+            let crateid = attr::find_crateid(attrs);
+            match crateid {
+                None => {}
+                Some(crateid) => stem = crateid.name.to_str(),
+            }
+            OutputFilenames {
+                out_directory: dirpath,
+                out_filestem: stem,
+                single_output_file: None,
+            }
         }
 
-        if *odir != None {
-            sess.warn("ignoring --out-dir flag due to -o flag.");
+        Some(ref out_file) => {
+            let ofile = if sess.opts.output_types.len() > 1 {
+                sess.warn("ignoring specified output filename because multiple \
+                           outputs were requested");
+                None
+            } else {
+                Some(out_file.clone())
+            };
+            if *odir != None {
+                sess.warn("ignoring --out-dir flag due to -o flag.");
+            }
+            OutputFilenames {
+                out_directory: out_file.dir_path(),
+                out_filestem: out_file.filestem_str().unwrap().to_str(),
+                single_output_file: ofile,
+            }
         }
-      }
-    }
-
-    ~OutputFilenames {
-        out_filename: out_path,
-        obj_filename: obj_path
     }
 }
 
