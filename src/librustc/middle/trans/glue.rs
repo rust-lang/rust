@@ -355,9 +355,9 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
             // Only drop the value when it is non-null
             with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {
-                let lldtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
-                let lldtor = Load(bcx, lldtor_ptr);
-                Call(bcx, lldtor, [PointerCast(bcx, lluniquevalue, Type::i8p())], []);
+                let dtor_ptr = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+                let dtor = Load(bcx, dtor_ptr);
+                Call(bcx, dtor, [PointerCast(bcx, lluniquevalue, Type::i8p())], []);
                 bcx
             })
         }
@@ -367,18 +367,12 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             let env_ptr_ty = Type::at_box(ccx, Type::i8()).ptr_to();
             let env = PointerCast(bcx, env, env_ptr_ty);
             with_cond(bcx, IsNotNull(bcx, env), |bcx| {
-                // Load the type descr found in the env
-                let lltydescty = ccx.tydesc_type.ptr_to();
-                let tydescptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
-                let tydesc = Load(bcx, tydescptr);
-                let tydesc = PointerCast(bcx, tydesc, lltydescty);
-
-                // Drop the tuple data then free the descriptor
+                let dtor_ptr = GEPi(bcx, env, [0u, abi::box_field_tydesc]);
+                let dtor = Load(bcx, dtor_ptr);
                 let cdata = GEPi(bcx, env, [0u, abi::box_field_body]);
-                call_tydesc_glue_full(bcx, cdata, tydesc,
-                                      abi::tydesc_field_drop_glue, None);
+                Call(bcx, dtor, [PointerCast(bcx, cdata, Type::i8p())], []);
 
-                // Free the ty descr (if necc) and the env itself
+                // Free the environment itself
                 trans_exchange_free(bcx, env)
             })
         }
