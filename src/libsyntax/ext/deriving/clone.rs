@@ -92,10 +92,10 @@ fn cs_clone(
             all_fields = af;
         },
         EnumNonMatching(..) => cx.span_bug(trait_span,
-                                           format!("Non-matching enum variants in `deriving({})`",
+                                           format!("non-matching enum variants in `deriving({})`",
                                                   name)),
         StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span,
-                                                         format!("Static method in `deriving({})`",
+                                                         format!("static method in `deriving({})`",
                                                                  name))
     }
 

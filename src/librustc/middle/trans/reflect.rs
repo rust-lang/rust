@@ -95,7 +95,7 @@ impl<'a> Reflector<'a> {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
-            *self.visitor_methods).expect(format!("Couldn't find visit method \
+            *self.visitor_methods).expect(format!("couldn't find visit method \
                                                 for {}", ty_name));
         let mth_ty =
             ty::mk_bare_fn(tcx, self.visitor_methods[mth_idx].fty.clone());

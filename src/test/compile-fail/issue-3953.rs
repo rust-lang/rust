@@ -10,7 +10,7 @@
 
 use std::cmp::Eq;
 
-trait Hahaha: Eq + Eq + Eq + Eq + Eq + //~ ERROR Duplicate supertrait
+trait Hahaha: Eq + Eq + Eq + Eq + Eq + //~ ERROR duplicate supertrait
               Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
               Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
               Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +

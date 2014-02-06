@@ -404,7 +404,7 @@ pub fn write_content<'a>(
                 }
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
-                                            "Unexpected evec content");
+                                            "unexpected evec content");
                 }
             }
         }
@@ -465,7 +465,7 @@ pub fn write_content<'a>(
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    "Unexpected vec content");
+                                    "unexpected vec content");
         }
     }
 }
@@ -498,7 +498,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
                 ast::LitStr(ref s, _) => s.get().len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
-                                            "Unexpected evec content")
+                                            "unexpected evec content")
                 }
             }
         },
@@ -507,7 +507,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
             ty::eval_repeat_count(&bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     "Unexpected vec content")
+                                     "unexpected vec content")
     }
 }
 

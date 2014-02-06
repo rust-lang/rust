@@ -507,13 +507,13 @@ impl CFGBuilder {
                         }
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("No loop scope for id {:?}", loop_id));
+                            format!("no loop scope for id {:?}", loop_id));
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("Bad entry `{:?}` in def_map for label", r));
+                            format!("bad entry `{:?}` in def_map for label", r));
                     }
                 }
             }

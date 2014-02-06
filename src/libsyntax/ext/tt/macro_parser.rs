@@ -185,7 +185,7 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
             if ret_val.contains_key(bind_name) {
                 let string = token::get_ident(bind_name.name);
                 p_s.span_diagnostic
-                   .span_fatal(sp, "Duplicated bind name: " + string.get())
+                   .span_fatal(sp, "duplicated bind name: " + string.get())
             }
             ret_val.insert(*bind_name, res[idx]);
           }
@@ -441,6 +441,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         res
       }
       "matchers" => token::NtMatchers(p.parse_matchers()),
-      _ => p.fatal(~"Unsupported builtin nonterminal parser: " + name)
+      _ => p.fatal(~"unsupported builtin nonterminal parser: " + name)
     }
 }

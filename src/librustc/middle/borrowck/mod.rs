@@ -769,14 +769,14 @@ impl BorrowckCtxt {
                             }
                             _ => {
                                 self.tcx.sess.bug(
-                                    format!("Loan path LpVar({:?}) maps to {:?}, not local",
+                                    format!("loan path LpVar({:?}) maps to {:?}, not local",
                                         id, pat));
                             }
                         }
                     }
                     r => {
                         self.tcx.sess.bug(
-                            format!("Loan path LpVar({:?}) maps to {:?}, not local",
+                            format!("loan path LpVar({:?}) maps to {:?}, not local",
                                  id, r));
                     }
                 }

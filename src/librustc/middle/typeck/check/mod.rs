@@ -517,9 +517,9 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         let orig_sp = field_names.find(&id).map(|x| *x);
         match orig_sp {
             Some(orig_sp) => {
-                tcx.sess.span_err(sp, format!("Duplicate field name {} in record type declaration",
+                tcx.sess.span_err(sp, format!("duplicate field name {} in record type declaration",
                                               tcx.sess.str_of(id)));
-                tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
+                tcx.sess.span_note(orig_sp, "first declaration of this field occurred here");
                 break;
             }
             None => {
@@ -1006,7 +1006,7 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.span_bug(
                     span,
-                    format!("No type for local variable {:?}", nid));
+                    format!("no type for local variable {:?}", nid));
             }
         }
     }
@@ -1619,7 +1619,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 _ => {
                     fcx.tcx().sess.span_bug(
                         sp,
-                        format!("Method without bare fn type"));
+                        format!("method without bare fn type"));
                 }
             }
         }
