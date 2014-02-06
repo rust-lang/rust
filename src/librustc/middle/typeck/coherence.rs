@@ -50,16 +50,16 @@ use std::hashmap::HashSet;
 use std::rc::Rc;
 use std::vec;
 
-pub struct UniversalQuantificationResult {
+struct UniversalQuantificationResult {
     monotype: t,
     type_variables: ~[ty::t],
     type_param_defs: Rc<~[ty::TypeParameterDef]>
 }
 
-pub fn get_base_type(inference_context: @InferCtxt,
-                     span: Span,
-                     original_type: t)
-                  -> Option<t> {
+fn get_base_type(inference_context: &InferCtxt,
+                 span: Span,
+                 original_type: t)
+                 -> Option<t> {
     let resolved_type;
     match resolve_type(inference_context,
                        original_type,
@@ -92,7 +92,7 @@ pub fn get_base_type(inference_context: @InferCtxt,
     }
 }
 
-pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
+fn type_is_defined_in_local_crate(original_type: t) -> bool {
     /*!
      *
      * For coherence, when we have `impl Trait for Type`, we need to
@@ -119,10 +119,10 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 }
 
 // Returns the def ID of the base type, if there is one.
-pub fn get_base_type_def_id(inference_context: @InferCtxt,
-                            span: Span,
-                            original_type: t)
-                         -> Option<DefId> {
+fn get_base_type_def_id(inference_context: &InferCtxt,
+                        span: Span,
+                        original_type: t)
+                        -> Option<DefId> {
     match get_base_type(inference_context, span, original_type) {
         None => {
             return None;
@@ -143,21 +143,16 @@ pub fn get_base_type_def_id(inference_context: @InferCtxt,
     }
 }
 
-pub fn CoherenceChecker(crate_context: @CrateCtxt) -> CoherenceChecker {
-    CoherenceChecker {
-        crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx),
-    }
-}
-
-pub struct CoherenceChecker {
+struct CoherenceChecker {
     crate_context: @CrateCtxt,
-    inference_context: @InferCtxt,
+    inference_context: InferCtxt,
 }
 
-struct CoherenceCheckVisitor { cc: CoherenceChecker }
+struct CoherenceCheckVisitor<'a> {
+    cc: &'a CoherenceChecker
+}
 
-impl visit::Visitor<()> for CoherenceCheckVisitor {
+impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
 //      debug!("(checking coherence) item '{}'",
@@ -181,9 +176,9 @@ impl visit::Visitor<()> for CoherenceCheckVisitor {
     }
 }
 
-struct PrivilegedScopeVisitor { cc: CoherenceChecker }
+struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker }
 
-impl visit::Visitor<()> for PrivilegedScopeVisitor {
+impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
         match item.node {
@@ -232,11 +227,17 @@ impl visit::Visitor<()> for PrivilegedScopeVisitor {
 }
 
 impl CoherenceChecker {
-    pub fn check_coherence(self, crate: &Crate) {
+    fn new(crate_context: @CrateCtxt) -> CoherenceChecker {
+        CoherenceChecker {
+            crate_context: crate_context,
+            inference_context: new_infer_ctxt(crate_context.tcx),
+        }
+    }
+
+    fn check(&self, crate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-
         let mut visitor = CoherenceCheckVisitor { cc: self };
         visit::walk_crate(&mut visitor, crate, ());
 
@@ -257,9 +258,8 @@ impl CoherenceChecker {
         self.populate_destructor_table();
     }
 
-    pub fn check_implementation(&self,
-                                item: &Item,
-                                associated_traits: &[TraitRef]) {
+    fn check_implementation(&self, item: &Item,
+                            associated_traits: &[TraitRef]) {
         let tcx = self.crate_context.tcx;
         let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
@@ -271,7 +271,7 @@ impl CoherenceChecker {
                     '{}'",
                    self.crate_context.tcx.sess.str_of(item.ident));
 
-            match get_base_type_def_id(self.inference_context,
+            match get_base_type_def_id(&self.inference_context,
                                        item.span,
                                        self_type.ty) {
                 None => {
@@ -301,7 +301,7 @@ impl CoherenceChecker {
         // Add the implementation to the mapping from implementation to base
         // type def ID, if there is a base type for this implementation and
         // the implementation does not have any associated traits.
-        match get_base_type_def_id(self.inference_context,
+        match get_base_type_def_id(&self.inference_context,
                                    item.span,
                                    self_type.ty) {
             None => {
@@ -322,10 +322,9 @@ impl CoherenceChecker {
     // Creates default method IDs and performs type substitutions for an impl
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
-    pub fn instantiate_default_methods(&self,
-                                       impl_id: ast::DefId,
-                                       trait_ref: &ty::TraitRef,
-                                       all_methods: &mut ~[@Method]) {
+    fn instantiate_default_methods(&self, impl_id: ast::DefId,
+                                   trait_ref: &ty::TraitRef,
+                                   all_methods: &mut ~[@Method]) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
@@ -385,9 +384,8 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn add_inherent_impl(&self,
-                             base_def_id: DefId,
-                             implementation: @Impl) {
+    fn add_inherent_impl(&self, base_def_id: DefId,
+                         implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
         let mut inherent_impls = tcx.inherent_impls.borrow_mut();
@@ -405,9 +403,8 @@ impl CoherenceChecker {
         implementation_list.get().push(implementation);
     }
 
-    pub fn add_trait_impl(&self,
-                          base_def_id: DefId,
-                          implementation: @Impl) {
+    fn add_trait_impl(&self, base_def_id: DefId,
+                      implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
         let mut trait_impls = tcx.trait_impls.borrow_mut();
@@ -425,14 +422,14 @@ impl CoherenceChecker {
         implementation_list.get().push(implementation);
     }
 
-    pub fn check_implementation_coherence(&self) {
+    fn check_implementation_coherence(&self) {
         let trait_impls = self.crate_context.tcx.trait_impls.borrow();
         for &trait_id in trait_impls.get().keys() {
             self.check_implementation_coherence_of(trait_id);
         }
     }
 
-    pub fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
+    fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
         // Unify pairs of polytypes.
         self.iter_impls_of_trait_local(trait_def_id, |a| {
             let implementation_a = a;
@@ -471,7 +468,7 @@ impl CoherenceChecker {
         })
     }
 
-    pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
+    fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
         self.iter_impls_of_trait_local(trait_def_id, |x| f(x));
 
         if trait_def_id.crate == LOCAL_CRATE {
@@ -486,7 +483,7 @@ impl CoherenceChecker {
         });
     }
 
-    pub fn iter_impls_of_trait_local(&self, trait_def_id: DefId, f: |@Impl|) {
+    fn iter_impls_of_trait_local(&self, trait_def_id: DefId, f: |@Impl|) {
         let trait_impls = self.crate_context.tcx.trait_impls.borrow();
         match trait_impls.get().find(&trait_def_id) {
             Some(impls) => {
@@ -499,10 +496,10 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn polytypes_unify(&self,
-                           polytype_a: ty_param_bounds_and_ty,
-                           polytype_b: ty_param_bounds_and_ty)
-                           -> bool {
+    fn polytypes_unify(&self,
+                       polytype_a: ty_param_bounds_and_ty,
+                       polytype_b: ty_param_bounds_and_ty)
+                       -> bool {
         let universally_quantified_a =
             self.universally_quantify_polytype(polytype_a);
         let universally_quantified_b =
@@ -516,9 +513,8 @@ impl CoherenceChecker {
 
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables. Returns the monotype and the type variables created.
-    pub fn universally_quantify_polytype(&self,
-                                         polytype: ty_param_bounds_and_ty)
-                                         -> UniversalQuantificationResult {
+    fn universally_quantify_polytype(&self, polytype: ty_param_bounds_and_ty)
+                                     -> UniversalQuantificationResult {
         let region_parameter_count = polytype.generics.region_param_defs().len();
         let region_parameters =
             self.inference_context.next_region_vars(
@@ -544,30 +540,28 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn can_unify_universally_quantified<'a>(&self,
-                                                a: &'a
-                                                UniversalQuantificationResult,
-                                                b: &'a
-                                                UniversalQuantificationResult)
-                                                -> bool {
-        infer::can_mk_subty(self.inference_context,
+    fn can_unify_universally_quantified<'a>(&self,
+                                            a: &'a UniversalQuantificationResult,
+                                            b: &'a UniversalQuantificationResult)
+                                            -> bool {
+        infer::can_mk_subty(&self.inference_context,
                             a.monotype,
                             b.monotype).is_ok()
     }
 
-    pub fn get_self_type_for_implementation(&self, implementation: @Impl)
-                                            -> ty_param_bounds_and_ty {
+    fn get_self_type_for_implementation(&self, implementation: @Impl)
+                                        -> ty_param_bounds_and_ty {
         let tcache = self.crate_context.tcx.tcache.borrow();
         return tcache.get().get_copy(&implementation.did);
     }
 
     // Privileged scope checking
-    pub fn check_privileged_scopes(self, crate: &Crate) {
-        let mut visitor = PrivilegedScopeVisitor{ cc: self };
+    fn check_privileged_scopes(&self, crate: &Crate) {
+        let mut visitor = PrivilegedScopeVisitor { cc: self };
         visit::walk_crate(&mut visitor, crate, ());
     }
 
-    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
+    fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
         let def_map = self.crate_context.tcx.def_map;
         let def_map = def_map.borrow();
         let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
@@ -578,8 +572,7 @@ impl CoherenceChecker {
     /// For coherence, when we have `impl Type`, we need to guarantee that
     /// `Type` is "local" to the crate. For our purposes, this means that it
     /// must precisely name some nominal type defined in this crate.
-    pub fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty)
-                                              -> bool {
+    fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty) -> bool {
         match original_type.node {
             TyPath(_, _, path_id) => {
                 let def_map = self.crate_context.tcx.def_map.borrow();
@@ -614,7 +607,7 @@ impl CoherenceChecker {
     }
 
     // Converts an implementation in the AST to an Impl structure.
-    pub fn create_impl_from_item(&self, item: &Item) -> @Impl {
+    fn create_impl_from_item(&self, item: &Item) -> @Impl {
         let tcx = self.crate_context.tcx;
         match item.node {
             ItemImpl(_, ref trait_refs, _, ref ast_methods) => {
@@ -646,7 +639,7 @@ impl CoherenceChecker {
         }
     }
 
-    pub fn span_of_impl(&self, implementation: @Impl) -> Span {
+    fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.crate, LOCAL_CRATE);
         match self.crate_context.tcx.items.find(implementation.did.node) {
             Some(NodeItem(item, _)) => {
@@ -661,9 +654,9 @@ impl CoherenceChecker {
 
     // External crate handling
 
-    pub fn add_external_impl(&self,
-                             impls_seen: &mut HashSet<DefId>,
-                             impl_def_id: DefId) {
+    fn add_external_impl(&self,
+                         impls_seen: &mut HashSet<DefId>,
+                         impl_def_id: DefId) {
         let tcx = self.crate_context.tcx;
         let implementation = @csearch::get_impl(tcx, impl_def_id);
 
@@ -701,7 +694,7 @@ impl CoherenceChecker {
 
     // Adds implementations and traits from external crates to the coherence
     // info.
-    pub fn add_external_crates(&self) {
+    fn add_external_crates(&self) {
         let mut impls_seen = HashSet::new();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
@@ -717,7 +710,7 @@ impl CoherenceChecker {
     // Destructors
     //
 
-    pub fn populate_destructor_table(&self) {
+    fn populate_destructor_table(&self) {
         let tcx = self.crate_context.tcx;
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
@@ -853,6 +846,5 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
 }
 
 pub fn check_coherence(crate_context: @CrateCtxt, crate: &Crate) {
-    let coherence_checker = CoherenceChecker(crate_context);
-    coherence_checker.check_coherence(crate);
+    CoherenceChecker::new(crate_context).check(crate);
 }

@@ -72,9 +72,9 @@ Both the inherent candidate collection and the candidate selection
 proceed by progressively deref'ing the receiver type, after all.  The
 answer is that two phases are needed to elegantly deal with explicit
 self.  After all, if there is an impl for the type `Foo`, it can
-define a method with the type `@self`, which means that it expects a
-receiver of type `@Foo`.  If we have a receiver of type `@Foo`, but we
-waited to search for that impl until we have deref'd the `@` away and
+define a method with the type `~self`, which means that it expects a
+receiver of type `~Foo`.  If we have a receiver of type `~Foo`, but we
+waited to search for that impl until we have deref'd the `~` away and
 obtained the type `Foo`, we would never match this method.
 
 */
@@ -101,7 +101,7 @@ use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use std::vec;
-use syntax::ast::{DefId, SelfValue, SelfRegion, SelfBox};
+use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic, NodeId};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
@@ -201,8 +201,8 @@ pub struct Candidate {
 /// considered to "match" a given method candidate. Typically the test
 /// is whether the receiver is of a particular type. However, this
 /// type is the type of the receiver *after accounting for the
-/// method's self type* (e.g., if the method is an `@self` method, we
-/// have *already verified* that the receiver is of some type `@T` and
+/// method's self type* (e.g., if the method is an `~self` method, we
+/// have *already verified* that the receiver is of some type `~T` and
 /// now we must check that the type `T` is correct).  Unfortunately,
 /// because traits are not types, this is a pain to do.
 #[deriving(Clone)]
@@ -1081,17 +1081,12 @@ impl<'a> LookupContext<'a> {
             ast::SelfValue => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
-            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq => {
+            ast::SelfRegion(..) | ast::SelfUniq => {
                 let transformed_self_ty = method_ty.fty.sig.inputs[0];
                 match ty::get(transformed_self_ty).sty {
                     ty::ty_rptr(r, mt) => { // must be SelfRegion
                         ty::mk_trait(self.tcx(), trait_def_id,
                                      substs, RegionTraitStore(r), mt.mutbl,
-                                     ty::EmptyBuiltinBounds())
-                    }
-                    ty::ty_box(_) => { // must be SelfBox
-                        ty::mk_trait(self.tcx(), trait_def_id,
-                                     substs, BoxTraitStore, ast::MutImmutable,
                                      ty::EmptyBuiltinBounds())
                     }
                     ty::ty_uniq(_) => { // must be SelfUniq
@@ -1140,7 +1135,7 @@ impl<'a> LookupContext<'a> {
                      through an object");
             }
 
-            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq => {}
+            ast::SelfRegion(..) | ast::SelfUniq => {}
         }
 
         // reason (a) above
@@ -1225,21 +1220,6 @@ impl<'a> LookupContext<'a> {
 
                     ty::ty_trait(self_did, _, RegionTraitStore(_), self_m, _) => {
                         mutability_matches(self_m, m) &&
-                        rcvr_matches_object(self_did, candidate)
-                    }
-
-                    _ => false
-                }
-            }
-
-            SelfBox => {
-                debug!("(is relevant?) explicit self is a box");
-                match ty::get(rcvr_ty).sty {
-                    ty::ty_box(typ) => {
-                        rcvr_matches_ty(self.fcx, typ, candidate)
-                    }
-
-                    ty::ty_trait(self_did, _, BoxTraitStore, ast::MutImmutable, _) => {
                         rcvr_matches_object(self_did, candidate)
                     }
 
@@ -1360,8 +1340,8 @@ impl<'a> LookupContext<'a> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&self) -> @infer::InferCtxt {
-        self.fcx.inh.infcx
+    fn infcx(&'a self) -> &'a infer::InferCtxt {
+        &self.fcx.inh.infcx
     }
 
     fn tcx(&self) -> ty::ctxt {

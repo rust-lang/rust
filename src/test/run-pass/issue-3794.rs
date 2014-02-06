@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 trait T {
     fn print(&self);
 }
@@ -33,9 +31,9 @@ fn print_s(s: &S) {
 }
 
 pub fn main() {
-    let s: @S = @S { s: 5 };
+    let s: ~S = ~S { s: 5 };
     print_s(s);
-    let t: @T = s as @T;
+    let t: ~T = s as ~T;
     print_t(t);
 
 }

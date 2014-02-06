@@ -64,38 +64,6 @@
 // check:$15 = -10
 // debugger:continue
 
-// MANAGED BY REF
-// debugger:finish
-// debugger:print *self
-// check:$16 = {300, -300.5}
-// debugger:print arg1
-// check:$17 = -11
-// debugger:print arg2
-// check:$18 = -12
-// debugger:continue
-
-// MANAGED BY VAL
-// debugger:finish
-// debugger:print self
-// check:$19 = {300, -300.5}
-// debugger:print arg1
-// check:$20 = -13
-// debugger:print arg2
-// check:$21 = -14
-// debugger:continue
-
-// MANAGED SELF
-// debugger:finish
-// debugger:print self->val
-// check:$22 = {300, -300.5}
-// debugger:print arg1
-// check:$23 = -15
-// debugger:print arg2
-// check:$24 = -16
-// debugger:continue
-
-#[feature(managed_boxes)];
-
 struct TupleStruct(int, f64);
 
 impl TupleStruct {
@@ -114,11 +82,6 @@ impl TupleStruct {
         zzz();
         arg1 + arg2
     }
-
-    fn self_managed(@self, arg1: int, arg2: int) -> int {
-        zzz();
-        arg1 + arg2
-    }
 }
 
 fn main() {
@@ -130,11 +93,6 @@ fn main() {
     let _ = owned.self_by_ref(-5, -6);
     let _ = owned.self_by_val(-7, -8);
     let _ = owned.self_owned(-9, -10);
-
-    let managed = @TupleStruct(300, -300.5);
-    let _ = managed.self_by_ref(-11, -12);
-    let _ = managed.self_by_val(-13, -14);
-    let _ = managed.self_managed(-15, -16);
 }
 
 fn zzz() {()}

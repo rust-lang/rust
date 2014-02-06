@@ -1213,9 +1213,7 @@ pub mod guarantor {
             ty::ty_vec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
-            ty::ty_box(..) |
-            ty::ty_ptr(..) |
-            ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
+            ty::ty_box(..) | ty::ty_ptr(..) => {
                 OtherPointer
             }
             ty::ty_closure(ref closure_ty) => {

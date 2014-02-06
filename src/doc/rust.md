@@ -1335,7 +1335,7 @@ to pointers to the trait name, used as a type.
 # impl Shape for int { }
 # let mycircle = 0;
 
-let myshape: @Shape = @mycircle as @Shape;
+let myshape: ~Shape = ~mycircle as ~Shape;
 ~~~~
 
 The resulting value is a managed box containing the value that was cast,
@@ -1396,7 +1396,7 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
 
-let mycircle: Circle = @mycircle as @Circle;
+let mycircle: Circle = ~mycircle as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~~
 
@@ -3290,8 +3290,8 @@ Whereas most calls to trait methods are "early bound" (statically resolved) to s
 a call to a method on an object type is only resolved to a vtable entry at compile time.
 The actual implementation for each vtable entry can vary on an object-by-object basis.
 
-Given a pointer-typed expression `E` of type `&T`, `~T` or `@T`, where `T` implements trait `R`,
-casting `E` to the corresponding pointer type `&R`, `~R` or `@R` results in a value of the _object type_ `R`.
+Given a pointer-typed expression `E` of type `&T` or `~T`, where `T` implements trait `R`,
+casting `E` to the corresponding pointer type `&R` or `~R` results in a value of the _object type_ `R`.
 This result is represented as a pair of pointers:
 the vtable pointer for the `T` implementation of `R`, and the pointer value of `E`.
 
@@ -3306,12 +3306,12 @@ impl Printable for int {
   fn to_string(&self) -> ~str { self.to_str() }
 }
 
-fn print(a: @Printable) {
+fn print(a: ~Printable) {
    println!("{}", a.to_string());
 }
 
 fn main() {
-   print(@10 as @Printable);
+   print(~10 as ~Printable);
 }
 ~~~~
 

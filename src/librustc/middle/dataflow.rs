@@ -347,16 +347,15 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
 
         debug!("Dataflow result:");
         debug!("{}", {
-            let this = @(*self).clone();
-            this.pretty_print_to(~io::stderr() as ~io::Writer, blk).unwrap();
+            self.pretty_print_to(~io::stderr(), blk).unwrap();
             ""
         });
     }
 
-    fn pretty_print_to(@self, wr: ~io::Writer,
+    fn pretty_print_to(&self, wr: ~io::Writer,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self.tcx.sess.intr(),
-                                                    self as @pprust::PpAnn);
+                                                    self as &pprust::PpAnn);
         if_ok!(pprust::cbox(&mut ps, pprust::indent_unit));
         if_ok!(pprust::ibox(&mut ps, 0u));
         if_ok!(pprust::print_block(&mut ps, blk));

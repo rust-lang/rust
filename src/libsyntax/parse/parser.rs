@@ -48,7 +48,7 @@ use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
-use ast::{SelfBox, SelfRegion, SelfStatic, SelfUniq, SelfValue};
+use ast::{SelfRegion, SelfStatic, SelfUniq, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn, TyTypeof};
@@ -285,7 +285,7 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: @Reader)
+pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
               -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
@@ -339,7 +339,7 @@ pub struct Parser {
     tokens_consumed: uint,
     restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
-    reader: @Reader,
+    reader: ~Reader:,
     interner: @token::IdentInterner,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -3580,19 +3580,6 @@ impl Parser {
     // that may have a self type.
     fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
                                -> (ExplicitSelf, P<FnDecl>) {
-        fn maybe_parse_explicit_self(explicit_self: ast::ExplicitSelf_,
-                                     p: &mut Parser)
-                                     -> ast::ExplicitSelf_ {
-            // We need to make sure it isn't a type
-            if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
-                p.bump();
-                p.expect_self_ident();
-                explicit_self
-            } else {
-                SelfStatic
-            }
-        }
-
         fn maybe_parse_borrowed_explicit_self(this: &mut Parser)
                                               -> ast::ExplicitSelf_ {
             // The following things are possible to see here:
@@ -3650,11 +3637,15 @@ impl Parser {
             token::BINOP(token::AND) => {
                 maybe_parse_borrowed_explicit_self(self)
             }
-            token::AT => {
-                maybe_parse_explicit_self(SelfBox, self)
-            }
             token::TILDE => {
-                maybe_parse_explicit_self(SelfUniq, self)
+                // We need to make sure it isn't a type
+                if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
+                    self.bump();
+                    self.expect_self_ident();
+                    SelfUniq
+                } else {
+                    SelfStatic
+                }
             }
             token::IDENT(..) if self.is_self_ident() => {
                 self.bump();
