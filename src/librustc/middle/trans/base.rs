@@ -376,12 +376,8 @@ pub fn malloc_raw_dyn<'a>(
         let llty = type_of(ccx, box_ptr_ty);
         let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
 
-        // Get the tydesc for the body:
-        let static_ti = get_tydesc(ccx, t);
-        glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
-
         // Allocate space:
-        let drop_glue = static_ti.drop_glue.get().unwrap();
+        let drop_glue = glue::get_drop_glue(ccx, t);
         let r = callee::trans_lang_call(
             bcx,
             langcall,

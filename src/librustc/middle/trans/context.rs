@@ -36,83 +36,84 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 
 pub struct CrateContext {
-     sess: session::Session,
-     llmod: ModuleRef,
-     llcx: ContextRef,
-     metadata_llmod: ModuleRef,
-     td: TargetData,
-     tn: TypeNames,
-     externs: RefCell<ExternMap>,
-     intrinsics: HashMap<&'static str, ValueRef>,
-     item_vals: RefCell<HashMap<ast::NodeId, ValueRef>>,
-     exp_map2: resolve::ExportMap2,
-     reachable: @RefCell<HashSet<ast::NodeId>>,
-     item_symbols: RefCell<HashMap<ast::NodeId, ~str>>,
-     link_meta: LinkMeta,
-     tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
-     // Set when running emit_tydescs to enforce that no more tydescs are
-     // created.
-     finished_tydescs: Cell<bool>,
-     // Track mapping of external ids to local items imported for inlining
-     external: RefCell<HashMap<ast::DefId, Option<ast::NodeId>>>,
-     // Backwards version of the `external` map (inlined items to where they
-     // came from)
-     external_srcs: RefCell<HashMap<ast::NodeId, ast::DefId>>,
-     // A set of static items which cannot be inlined into other crates. This
-     // will pevent in IIItem() structures from being encoded into the metadata
-     // that is generated
-     non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
-     // Cache instances of monomorphized functions
-     monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
-     monomorphizing: RefCell<HashMap<ast::DefId, uint>>,
-     // Cache generated vtables
-     vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
-     // Cache of constant strings,
-     const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
+    sess: session::Session,
+    llmod: ModuleRef,
+    llcx: ContextRef,
+    metadata_llmod: ModuleRef,
+    td: TargetData,
+    tn: TypeNames,
+    externs: RefCell<ExternMap>,
+    intrinsics: HashMap<&'static str, ValueRef>,
+    item_vals: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    exp_map2: resolve::ExportMap2,
+    reachable: @RefCell<HashSet<ast::NodeId>>,
+    item_symbols: RefCell<HashMap<ast::NodeId, ~str>>,
+    link_meta: LinkMeta,
+    drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
+    tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
+    // Set when running emit_tydescs to enforce that no more tydescs are
+    // created.
+    finished_tydescs: Cell<bool>,
+    // Track mapping of external ids to local items imported for inlining
+    external: RefCell<HashMap<ast::DefId, Option<ast::NodeId>>>,
+    // Backwards version of the `external` map (inlined items to where they
+    // came from)
+    external_srcs: RefCell<HashMap<ast::NodeId, ast::DefId>>,
+    // A set of static items which cannot be inlined into other crates. This
+    // will pevent in IIItem() structures from being encoded into the metadata
+    // that is generated
+    non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
+    // Cache instances of monomorphized functions
+    monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
+    monomorphizing: RefCell<HashMap<ast::DefId, uint>>,
+    // Cache generated vtables
+    vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
+    // Cache of constant strings,
+    const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
-     // Reverse-direction for const ptrs cast from globals.
-     // Key is an int, cast from a ValueRef holding a *T,
-     // Val is a ValueRef holding a *[T].
-     //
-     // Needed because LLVM loses pointer->pointee association
-     // when we ptrcast, and we have to ptrcast during translation
-     // of a [T] const because we form a slice, a [*T,int] pair, not
-     // a pointer to an LLVM array type.
-     const_globals: RefCell<HashMap<int, ValueRef>>,
+    // Reverse-direction for const ptrs cast from globals.
+    // Key is an int, cast from a ValueRef holding a *T,
+    // Val is a ValueRef holding a *[T].
+    //
+    // Needed because LLVM loses pointer->pointee association
+    // when we ptrcast, and we have to ptrcast during translation
+    // of a [T] const because we form a slice, a [*T,int] pair, not
+    // a pointer to an LLVM array type.
+    const_globals: RefCell<HashMap<int, ValueRef>>,
 
-     // Cache of emitted const values
-     const_values: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    // Cache of emitted const values
+    const_values: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
-     // Cache of external const values
-     extern_const_values: RefCell<HashMap<ast::DefId, ValueRef>>,
+    // Cache of external const values
+    extern_const_values: RefCell<HashMap<ast::DefId, ValueRef>>,
 
-     impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
+    impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
-     // Cache of closure wrappers for bare fn's.
-     closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
+    // Cache of closure wrappers for bare fn's.
+    closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
-     module_data: RefCell<HashMap<~str, ValueRef>>,
-     lltypes: RefCell<HashMap<ty::t, Type>>,
-     llsizingtypes: RefCell<HashMap<ty::t, Type>>,
-     adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
-     symbol_hasher: RefCell<Sha256>,
-     type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
-     all_llvm_symbols: RefCell<HashSet<~str>>,
-     tcx: ty::ctxt,
-     maps: astencode::Maps,
-     stats: @Stats,
-     tydesc_type: Type,
-     int_type: Type,
-     opaque_vec_type: Type,
-     builder: BuilderRef_res,
-     crate_map: ValueRef,
-     crate_map_name: ~str,
-     // Set when at least one function uses GC. Needed so that
-     // decl_gc_metadata knows whether to link to the module metadata, which
-     // is not emitted by LLVM's GC pass when no functions use GC.
-     uses_gc: bool,
-     dbg_cx: Option<debuginfo::CrateDebugContext>,
-     do_not_commit_warning_issued: Cell<bool>,
+    module_data: RefCell<HashMap<~str, ValueRef>>,
+    lltypes: RefCell<HashMap<ty::t, Type>>,
+    llsizingtypes: RefCell<HashMap<ty::t, Type>>,
+    adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
+    symbol_hasher: RefCell<Sha256>,
+    type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
+    all_llvm_symbols: RefCell<HashSet<~str>>,
+    tcx: ty::ctxt,
+    maps: astencode::Maps,
+    stats: @Stats,
+    tydesc_type: Type,
+    int_type: Type,
+    opaque_vec_type: Type,
+    builder: BuilderRef_res,
+    crate_map: ValueRef,
+    crate_map_name: ~str,
+    // Set when at least one function uses GC. Needed so that
+    // decl_gc_metadata knows whether to link to the module metadata, which
+    // is not emitted by LLVM's GC pass when no functions use GC.
+    uses_gc: bool,
+    dbg_cx: Option<debuginfo::CrateDebugContext>,
+    do_not_commit_warning_issued: Cell<bool>,
 }
 
 impl CrateContext {
@@ -175,64 +176,65 @@ impl CrateContext {
             }
 
             CrateContext {
-                  sess: sess,
-                  llmod: llmod,
-                  llcx: llcx,
-                  metadata_llmod: metadata_llmod,
-                  td: td,
-                  tn: tn,
-                  externs: RefCell::new(HashMap::new()),
-                  intrinsics: intrinsics,
-                  item_vals: RefCell::new(HashMap::new()),
-                  exp_map2: emap2,
-                  reachable: reachable,
-                  item_symbols: RefCell::new(HashMap::new()),
-                  link_meta: link_meta,
-                  tydescs: RefCell::new(HashMap::new()),
-                  finished_tydescs: Cell::new(false),
-                  external: RefCell::new(HashMap::new()),
-                  external_srcs: RefCell::new(HashMap::new()),
-                  non_inlineable_statics: RefCell::new(HashSet::new()),
-                  monomorphized: RefCell::new(HashMap::new()),
-                  monomorphizing: RefCell::new(HashMap::new()),
-                  vtables: RefCell::new(HashMap::new()),
-                  const_cstr_cache: RefCell::new(HashMap::new()),
-                  const_globals: RefCell::new(HashMap::new()),
-                  const_values: RefCell::new(HashMap::new()),
-                  extern_const_values: RefCell::new(HashMap::new()),
-                  impl_method_cache: RefCell::new(HashMap::new()),
-                  closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
-                  module_data: RefCell::new(HashMap::new()),
-                  lltypes: RefCell::new(HashMap::new()),
-                  llsizingtypes: RefCell::new(HashMap::new()),
-                  adt_reprs: RefCell::new(HashMap::new()),
-                  symbol_hasher: RefCell::new(symbol_hasher),
-                  type_hashcodes: RefCell::new(HashMap::new()),
-                  all_llvm_symbols: RefCell::new(HashSet::new()),
-                  tcx: tcx,
-                  maps: maps,
-                  stats: @Stats {
-                    n_static_tydescs: Cell::new(0u),
-                    n_glues_created: Cell::new(0u),
-                    n_null_glues: Cell::new(0u),
-                    n_real_glues: Cell::new(0u),
-                    n_fns: Cell::new(0u),
-                    n_monos: Cell::new(0u),
-                    n_inlines: Cell::new(0u),
-                    n_closures: Cell::new(0u),
-                    n_llvm_insns: Cell::new(0u),
-                    llvm_insns: RefCell::new(HashMap::new()),
-                    fn_stats: RefCell::new(~[]),
-                  },
-                  tydesc_type: tydesc_type,
-                  int_type: int_type,
-                  opaque_vec_type: opaque_vec_type,
-                  builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                  crate_map: crate_map,
-                  crate_map_name: crate_map_name,
-                  uses_gc: false,
-                  dbg_cx: dbg_cx,
-                  do_not_commit_warning_issued: Cell::new(false),
+                 sess: sess,
+                 llmod: llmod,
+                 llcx: llcx,
+                 metadata_llmod: metadata_llmod,
+                 td: td,
+                 tn: tn,
+                 externs: RefCell::new(HashMap::new()),
+                 intrinsics: intrinsics,
+                 item_vals: RefCell::new(HashMap::new()),
+                 exp_map2: emap2,
+                 reachable: reachable,
+                 item_symbols: RefCell::new(HashMap::new()),
+                 link_meta: link_meta,
+                 drop_glues: RefCell::new(HashMap::new()),
+                 tydescs: RefCell::new(HashMap::new()),
+                 finished_tydescs: Cell::new(false),
+                 external: RefCell::new(HashMap::new()),
+                 external_srcs: RefCell::new(HashMap::new()),
+                 non_inlineable_statics: RefCell::new(HashSet::new()),
+                 monomorphized: RefCell::new(HashMap::new()),
+                 monomorphizing: RefCell::new(HashMap::new()),
+                 vtables: RefCell::new(HashMap::new()),
+                 const_cstr_cache: RefCell::new(HashMap::new()),
+                 const_globals: RefCell::new(HashMap::new()),
+                 const_values: RefCell::new(HashMap::new()),
+                 extern_const_values: RefCell::new(HashMap::new()),
+                 impl_method_cache: RefCell::new(HashMap::new()),
+                 closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
+                 module_data: RefCell::new(HashMap::new()),
+                 lltypes: RefCell::new(HashMap::new()),
+                 llsizingtypes: RefCell::new(HashMap::new()),
+                 adt_reprs: RefCell::new(HashMap::new()),
+                 symbol_hasher: RefCell::new(symbol_hasher),
+                 type_hashcodes: RefCell::new(HashMap::new()),
+                 all_llvm_symbols: RefCell::new(HashSet::new()),
+                 tcx: tcx,
+                 maps: maps,
+                 stats: @Stats {
+                   n_static_tydescs: Cell::new(0u),
+                   n_glues_created: Cell::new(0u),
+                   n_null_glues: Cell::new(0u),
+                   n_real_glues: Cell::new(0u),
+                   n_fns: Cell::new(0u),
+                   n_monos: Cell::new(0u),
+                   n_inlines: Cell::new(0u),
+                   n_closures: Cell::new(0u),
+                   n_llvm_insns: Cell::new(0u),
+                   llvm_insns: RefCell::new(HashMap::new()),
+                   fn_stats: RefCell::new(~[]),
+                 },
+                 tydesc_type: tydesc_type,
+                 int_type: int_type,
+                 opaque_vec_type: opaque_vec_type,
+                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
+                 crate_map: crate_map,
+                 crate_map_name: crate_map_name,
+                 uses_gc: false,
+                 dbg_cx: dbg_cx,
+                 do_not_commit_warning_issued: Cell::new(false),
             }
         }
     }
