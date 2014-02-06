@@ -31,7 +31,7 @@
 //!
 //! ~~~{.rust}
 //! extern mod getopts;
-//! use getopts::{optopt,optflag,getopts,Opt};
+//! use getopts::{optopt,optflag,getopts,OptGroup};
 //! use std::os;
 //!
 //! fn do_work(inp: &str, out: Option<~str>) {
@@ -42,7 +42,7 @@
 //!     }
 //! }
 //!
-//! fn print_usage(program: &str, _opts: &[Opt]) {
+//! fn print_usage(program: &str, _opts: &[OptGroup]) {
 //!     println!("Usage: {} [options]", program);
 //!     println!("-o\t\tOutput");
 //!     println!("-h --help\tUsage");
@@ -54,15 +54,14 @@
 //!     let program = args[0].clone();
 //!
 //!     let opts = ~[
-//!         optopt("o"),
-//!         optflag("h"),
-//!         optflag("help")
+//!         optopt("o", "", "set output file name", "NAME"),
+//!         optflag("h", "help", "print this help menu")
 //!     ];
 //!     let matches = match getopts(args.tail(), opts) {
 //!         Ok(m) => { m }
 //!         Err(f) => { fail!(f.to_err_msg()) }
 //!     };
-//!     if matches.opt_present("h") || matches.opt_present("help") {
+//!     if matches.opt_present("h") {
 //!         print_usage(program, opts);
 //!         return;
 //!     }
