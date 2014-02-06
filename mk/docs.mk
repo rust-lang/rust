@@ -281,8 +281,7 @@ endif
 
 # The rustdoc executable, rpath included in case --disable-rpath was provided to
 # ./configure
-RUSTDOC = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
-	  $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
+RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
 #
@@ -297,7 +296,9 @@ doc/$(1)/index.html:							    \
 	    $$(foreach dep,$$(RUST_DEPS_$(1)),				    \
 		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep))
 	@$$(call E, rustdoc: $$@)
-	$$(Q)$$(RUSTDOC) --cfg stage2 $$<
+	$$(Q)$$(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $$(RUSTDOC) \
+	    --cfg stage2 $$<
+
 endef
 
 $(foreach crate,$(CRATES),$(eval $(call libdoc,$(crate))))
