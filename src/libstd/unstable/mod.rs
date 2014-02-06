@@ -24,6 +24,7 @@ pub mod sync;
 pub mod mutex;
 pub mod raw;
 pub mod stack;
+pub mod volatile;
 
 /**
 
