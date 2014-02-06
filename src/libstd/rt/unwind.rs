@@ -64,6 +64,7 @@ use option::{Some, None, Option};
 use prelude::drop;
 use ptr::RawPtr;
 use result::{Err, Ok};
+use rt::backtrace;
 use rt::local::Local;
 use rt::task::Task;
 use str::Str;
@@ -468,6 +469,9 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                     let _err = format_args!(|args| ::fmt::writeln(stderr, args),
                                             "task '{}' failed at '{}', {}:{}",
                                             n, msg_s, file, line);
+                    if backtrace::log_enabled() {
+                        let _err = backtrace::write(stderr);
+                    }
                     task = Local::take();
 
                     match util::replace(&mut task.stderr, Some(stderr)) {
@@ -482,6 +486,10 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                 None => {
                     rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s,
                              file, line);
+                    if backtrace::log_enabled() {
+                        let mut err = ::rt::util::Stderr;
+                        let _err = backtrace::write(&mut err);
+                    }
                 }
             }
         }
