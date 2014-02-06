@@ -76,10 +76,11 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
     let (expr, endian) = parse_tts(cx, tts);
 
     let little = match endian {
-        None => target_endian_little(cx, sp),
+        None => false,
         Some(Ident{ident, span}) => match token::get_ident(ident.name).get() {
             "little" => true,
             "big" => false,
+            "target" => target_endian_little(cx, sp),
             _ => {
                 cx.span_err(span, "invalid endian directive in fourcc!");
                 target_endian_little(cx, sp)
