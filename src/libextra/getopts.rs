@@ -675,6 +675,51 @@ pub mod groups {
         ::getopts::getopts(args, opts.map(|x| x.long_to_short()))
     }
 
+    fn format_option(opt: &OptGroup) -> ~str {
+        let mut line = ~"";
+
+        if opt.occur != Req {
+            line.push_char('[');
+        }
+
+        // Use short_name is possible, but fallback to long_name.
+        if opt.short_name.len() > 0 {
+            line.push_char('-');
+            line.push_str(opt.short_name);
+        } else {
+            line.push_str("--");
+            line.push_str(opt.long_name);
+        }
+
+        if opt.hasarg != No {
+            line.push_char(' ');
+            if opt.hasarg == Maybe {
+                line.push_char('[');
+            }
+            line.push_str(opt.hint);
+            if opt.hasarg == Maybe {
+                line.push_char(']');
+            }
+        }
+
+        if opt.occur != Req {
+            line.push_char(']');
+        }
+        if opt.occur == Multi {
+            line.push_str("..");
+        }
+
+        line
+    }
+
+    /// Derive a short one-line usage summary from a set of long options.
+    pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> ~str {
+        let mut line = ~"Usage: " + program_name + " ";
+        line.push_str(opts.iter().map(format_option).to_owned_vec().connect(" "));
+
+        line
+    }
+
     /// Derive a usage message from a set of long options.
     pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
@@ -1636,5 +1681,24 @@ Options:
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", usage);
         assert!(usage == expected)
+    }
+
+    #[test]
+    fn test_short_usage() {
+        let optgroups = ~[
+            groups::reqopt("b", "banana", "Desc", "VAL"),
+            groups::optopt("a", "012345678901234567890123456789",
+                             "Desc", "VAL"),
+            groups::optflag("k", "kiwi", "Desc"),
+            groups::optflagopt("p", "", "Desc", "VAL"),
+            groups::optmulti("l", "", "Desc", "VAL"),
+        ];
+
+        let expected = ~"Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..";
+        let generated_usage = groups::short_usage("fruits", optgroups);
+
+        debug!("expected: <<{}>>", expected);
+        debug!("generated: <<{}>>", generated_usage);
+        assert_eq!(generated_usage, expected);
     }
 }
