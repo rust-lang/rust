@@ -24,7 +24,6 @@ use opt_vec::OptVec;
 /// The types of pointers
 pub enum PtrTy<'a> {
     Send, // ~
-    Managed, // @
     Borrowed(Option<&'a str>, ast::Mutability), // &['lifetime] [mut]
 }
 
@@ -138,9 +137,6 @@ impl<'a> Ty<'a> {
                     Send => {
                         cx.ty_uniq(span, raw_ty)
                     }
-                    Managed => {
-                        cx.ty_box(span, raw_ty)
-                    }
                     Borrowed(ref lt, mutbl) => {
                         let lt = mk_lifetime(cx, span, lt);
                         cx.ty_rptr(span, raw_ty, lt, mutbl)
@@ -251,7 +247,6 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 span,
                 match *ptr {
                     Send => ast::SelfUniq,
-                    Managed => ast::SelfBox,
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
                         ast::SelfRegion(lt, mutbl)

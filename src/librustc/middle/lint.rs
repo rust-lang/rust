@@ -660,8 +660,7 @@ impl<'a> AstConv for Context<'a>{
     }
 
     fn ty_infer(&self, _span: Span) -> ty::t {
-        let infcx: @infer::InferCtxt = infer::new_infer_ctxt(self.tcx);
-        infcx.next_ty_var()
+        infer::new_infer_ctxt(self.tcx).next_ty_var()
     }
 }
 
@@ -669,8 +668,7 @@ impl<'a> AstConv for Context<'a>{
 fn check_unused_casts(cx: &Context, e: &ast::Expr) {
     return match e.node {
         ast::ExprCast(expr, ty) => {
-            let infcx: @infer::InferCtxt = infer::new_infer_ctxt(cx.tcx);
-            let t_t = ast_ty_to_ty(cx, &infcx, ty);
+            let t_t = ast_ty_to_ty(cx, &infer::new_infer_ctxt(cx.tcx), ty);
             if  ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
                 cx.span_lint(UnnecessaryTypecast, ty.span,
                              "unnecessary type cast");
@@ -887,8 +885,7 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
         let mut n_uniq = 0;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
-                ty::ty_box(_) |
-                ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
+                ty::ty_box(_) => {
                     n_box += 1;
                 }
                 ty::ty_uniq(_) | ty::ty_str(ty::vstore_uniq) |

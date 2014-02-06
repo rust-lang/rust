@@ -34,7 +34,7 @@ use passes;
 use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
-    let parsesess = parse::new_parse_sess(None);
+    let parsesess = parse::new_parse_sess();
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
@@ -49,14 +49,13 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     };
 
 
-    let diagnostic_handler = diagnostic::mk_handler(None);
+    let diagnostic_handler = diagnostic::mk_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::build_session_(sessopts,
                                       Some(input_path),
                                       parsesess.cm,
-                                      @diagnostic::DefaultEmitter,
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(sess);
@@ -98,7 +97,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let test = maketest(test, cratename);
-    let parsesess = parse::new_parse_sess(None);
+    let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
     let sessopts = @session::Options {
@@ -111,14 +110,13 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
         .. (*session::basic_options()).clone()
     };
 
-    let diagnostic_handler = diagnostic::mk_handler(None);
+    let diagnostic_handler = diagnostic::mk_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::build_session_(sessopts,
                                       None,
                                       parsesess.cm,
-                                      @diagnostic::DefaultEmitter,
                                       span_diagnostic_handler);
 
     let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");

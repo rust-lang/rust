@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 trait hax { }
 impl<A> hax for A { }
 
-fn perform_hax<T:'static>(x: @T) -> @hax {
-    @x as @hax
+fn perform_hax<T: 'static>(x: ~T) -> ~hax: {
+    ~x as ~hax:
 }
 
 fn deadcode() {
-    perform_hax(@~"deadcode");
+    perform_hax(~~"deadcode");
 }
 
 pub fn main() {
-    let _ = perform_hax(@42);
+    let _ = perform_hax(~42);
 }

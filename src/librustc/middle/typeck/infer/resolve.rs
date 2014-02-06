@@ -79,15 +79,15 @@ pub static try_resolve_tvar_shallow: uint = 0;
 pub static resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
-pub struct ResolveState {
-    infcx: @InferCtxt,
+pub struct ResolveState<'a> {
+    infcx: &'a InferCtxt,
     modes: uint,
     err: Option<fixup_err>,
     v_seen: ~[TyVid],
     type_depth: uint
 }
 
-pub fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
+pub fn resolver<'a>(infcx: &'a InferCtxt, modes: uint) -> ResolveState<'a> {
     ResolveState {
         infcx: infcx,
         modes: modes,
@@ -97,7 +97,7 @@ pub fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
     }
 }
 
-impl ty_fold::TypeFolder for ResolveState {
+impl<'a> ty_fold::TypeFolder for ResolveState<'a> {
     fn tcx(&self) -> ty::ctxt {
         self.infcx.tcx
     }
@@ -111,7 +111,7 @@ impl ty_fold::TypeFolder for ResolveState {
     }
 }
 
-impl ResolveState {
+impl<'a> ResolveState<'a> {
     pub fn should(&mut self, mode: uint) -> bool {
         (self.modes & mode) == mode
     }

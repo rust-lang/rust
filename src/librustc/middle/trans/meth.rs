@@ -350,7 +350,7 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
                           -> Callee<'a> {
     /*!
      * Create a method callee where the method is coming from a trait
-     * object (e.g., @Trait type).  In this case, we must pull the fn
+     * object (e.g., ~Trait type).  In this case, we must pull the fn
      * pointer out of the vtable that is packaged up with the object.
      * Objects are represented as a pair, so we first evaluate the self
      * expression and then extract the self data and vtable out of the

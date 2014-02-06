@@ -13,8 +13,6 @@
 use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
 use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
-use middle::ty;
-
 use middle::trans::context::CrateContext;
 use middle::trans::base;
 
@@ -245,14 +243,9 @@ impl Type {
         ], false)
     }
 
-    pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
+    pub fn opaque_trait() -> Type {
         let vtable = Type::glue_fn(Type::i8p()).ptr_to().ptr_to();
-        let box_ty = match store {
-            ty::BoxTraitStore => Type::at_box(ctx, Type::i8()),
-            ty::UniqTraitStore => Type::i8(),
-            ty::RegionTraitStore(..) => Type::i8()
-        };
-        Type::struct_([vtable, box_ty.ptr_to()], false)
+        Type::struct_([vtable, Type::i8p()], false)
     }
 
     pub fn kind(&self) -> TypeKind {

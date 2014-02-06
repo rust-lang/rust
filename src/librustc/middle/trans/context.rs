@@ -237,7 +237,7 @@ impl CrateContext {
         }
     }
 
-    pub fn builder(@self) -> Builder {
+    pub fn builder<'a>(&'a self) -> Builder<'a> {
         Builder::new(self)
     }
 
