@@ -104,7 +104,7 @@ $(foreach crate,$(CRATES),$(eval $(call RUST_CRATE,$(crate))))
 #
 # $(1) is the crate to generate variables for
 define RUST_TOOL
-TOOL_INPUTS_$(1) := $$(wildcard $$(addprefix $(S)$$(dir $$(TOOL_SOURCE_$(1))), \
+TOOL_INPUTS_$(1) := $$(wildcard $$(addprefix $$(dir $$(TOOL_SOURCE_$(1))), \
 				*.rs */*.rs */*/*.rs */*/*/*.rs))
 endef
 

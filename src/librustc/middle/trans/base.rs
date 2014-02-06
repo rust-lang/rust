@@ -28,6 +28,7 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
 use driver::session::Session;
+use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, True, Vector};
@@ -2657,7 +2658,7 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
 pub fn trans_crate(sess: session::Session,
                    crate: ast::Crate,
                    analysis: &CrateAnalysis,
-                   output: &Path) -> CrateTranslation {
+                   output: &OutputFilenames) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
         use sync::one::{Once, ONCE_INIT};
@@ -2677,7 +2678,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     let mut symbol_hasher = Sha256::new();
-    let link_meta = link::build_link_meta(sess, crate.attrs, output,
+    let link_meta = link::build_link_meta(crate.attrs, output,
                                           &mut symbol_hasher);
 
     // Append ".rs" to crate name as LLVM module identifier.
