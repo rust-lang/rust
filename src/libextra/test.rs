@@ -27,6 +27,7 @@ use time::precise_time_ns;
 use collections::TreeMap;
 
 use std::clone::Clone;
+use std::cmp;
 use std::io;
 use std::io::File;
 use std::io::Writer;
@@ -1003,7 +1004,7 @@ impl MetricMap {
                     if delta.abs() <= noise {
                         LikelyNoise
                     } else {
-                        let pct = delta.abs() / (vold.value).max(&f64::EPSILON) * 100.0;
+                        let pct = delta.abs() / cmp::max(vold.value, f64::EPSILON) * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can
@@ -1126,7 +1127,7 @@ impl BenchHarness {
         if self.iterations == 0 {
             0
         } else {
-            self.ns_elapsed() / self.iterations.max(&1)
+            self.ns_elapsed() / cmp::max(self.iterations, 1)
         }
     }
 
@@ -1149,7 +1150,7 @@ impl BenchHarness {
         if self.ns_per_iter() == 0 {
             n = 1_000_000;
         } else {
-            n = 1_000_000 / self.ns_per_iter().max(&1);
+            n = 1_000_000 / cmp::max(self.ns_per_iter(), 1);
         }
         // if the first run took more than 1ms we don't want to just
         // be left doing 0 iterations on every loop. The unfortunate
@@ -1215,6 +1216,7 @@ impl BenchHarness {
 }
 
 pub mod bench {
+    use std::cmp;
     use test::{BenchHarness, BenchSamples};
 
     pub fn benchmark(f: |&mut BenchHarness|) -> BenchSamples {
@@ -1227,7 +1229,7 @@ pub mod bench {
 
         let ns_iter_summ = bs.auto_bench(f);
 
-        let ns_iter = (ns_iter_summ.median as u64).max(&1);
+        let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
         let iter_s = 1_000_000_000 / ns_iter;
         let mb_s = (bs.bytes * iter_s) / 1_000_000;
 

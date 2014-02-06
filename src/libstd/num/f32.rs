@@ -189,42 +189,6 @@ impl Ord for f32 {
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl Orderable for f32 {
-    /// Returns `NAN` if either of the numbers are `NAN`.
-    #[inline]
-    fn min(&self, other: &f32) -> f32 {
-        match () {
-            _ if self.is_nan()  => *self,
-            _ if other.is_nan() => *other,
-            _ if *self < *other => *self,
-            _                   => *other,
-        }
-    }
-
-    /// Returns `NAN` if either of the numbers are `NAN`.
-    #[inline]
-    fn max(&self, other: &f32) -> f32 {
-        match () {
-            _ if self.is_nan()  => *self,
-            _ if other.is_nan() => *other,
-            _ if *self > *other => *self,
-            _                   => *other,
-        }
-    }
-
-    /// Returns the number constrained within the range `mn <= self <= mx`.
-    /// If any of the numbers are `NAN` then `NAN` is returned.
-    #[inline]
-    fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
-        match () {
-            _ if self.is_nan()   => *self,
-            _ if !(*self <= *mx) => *mx,
-            _ if !(*self >= *mn) => *mn,
-            _                    => *self,
-        }
-    }
-}
-
 impl Default for f32 {
     #[inline]
     fn default() -> f32 { 0.0 }
@@ -911,30 +875,6 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f32, 2f32);
-    }
-
-    #[test]
-    fn test_min() {
-        assert_eq!(1f32.min(&2f32), 1f32);
-        assert_eq!(2f32.min(&1f32), 1f32);
-    }
-
-    #[test]
-    fn test_max() {
-        assert_eq!(1f32.max(&2f32), 2f32);
-        assert_eq!(2f32.max(&1f32), 2f32);
-    }
-
-    #[test]
-    fn test_clamp() {
-        assert_eq!(1f32.clamp(&2f32, &4f32), 2f32);
-        assert_eq!(8f32.clamp(&2f32, &4f32), 4f32);
-        assert_eq!(3f32.clamp(&2f32, &4f32), 3f32);
-
-        let nan: f32 = Float::nan();
-        assert!(3f32.clamp(&nan, &4f32).is_nan());
-        assert!(3f32.clamp(&2f32, &nan).is_nan());
-        assert!(nan.clamp(&2f32, &4f32).is_nan());
     }
 
     #[test]
