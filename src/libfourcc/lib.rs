@@ -70,8 +70,6 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
         None));
 }
 
-use std::ascii::AsciiCast;
-
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     let (expr, endian) = parse_tts(cx, tts);
 
@@ -93,9 +91,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
         ast::ExprLit(lit) => match lit.node {
             // string literal
             ast::LitStr(ref s, _) => {
-                if !s.get().is_ascii() {
-                    cx.span_err(expr.span, "non-ascii string literal in fourcc!");
-                } else if s.get().len() != 4 {
+                if s.get().char_len() != 4 {
                     cx.span_err(expr.span, "string literal with len != 4 in fourcc!");
                 }
                 s
@@ -112,14 +108,19 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
     };
 
     let mut val = 0u32;
-    if little {
-        for byte in s.get().bytes_rev().take(4) {
-            val = (val << 8) | (byte as u32);
-        }
-    } else {
-        for byte in s.get().bytes().take(4) {
-            val = (val << 8) | (byte as u32);
-        }
+    for codepoint in s.get().chars().take(4) {
+        let byte = if codepoint as u32 > 0xFF {
+            cx.span_err(expr.span, "fourcc! literal character out of range 0-255");
+            0u8
+        } else {
+            codepoint as u8
+        };
+
+        val = if little {
+            (val >> 8) | ((byte as u32) << 24)
+        } else {
+            (val << 8) | (byte as u32)
+        };
     }
     let e = cx.expr_lit(sp, ast::LitUint(val as u64, ast::TyU32));
     MRExpr(e)
