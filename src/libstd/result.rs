@@ -20,6 +20,7 @@ use to_str::ToStr;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
+#[deny(unused_must_use)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value
