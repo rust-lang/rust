@@ -1,5 +1,12 @@
-#!/usr/bin/env python
-# xfail-license
+# Copyright 2010-2014 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
+#
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
 
 import sys, fileinput, subprocess, re
 from licenseck import *
@@ -57,12 +64,13 @@ try:
             match = re.match(r'^.*//\s*SNAP\s+(\w+)', line)
             if match:
                 hsh = match.group(1)
-                a, b, c, phash = snapshot.determine_curr_snapshot_info()
-                if not phash.startswith(hsh):
-                    report_err("Snapshot out of date: " + line)
+                date, rev = snapshot.curr_snapshot_rev()
+                if not hsh.startswith(rev):
+                    report_err("snapshot out of date (" + date
+                      + "): " + line)
             else:
                 if "SNAP" in line:
-                    report_warn("Unmatched SNAP line: " + line)
+                    report_warn("unmatched SNAP line: " + line)
 
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
