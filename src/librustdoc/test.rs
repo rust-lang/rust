@@ -17,6 +17,7 @@ use std::str;
 
 use extra::tempfile::TempDir;
 use extra::test;
+use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
@@ -43,7 +44,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
         binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
-        outputs: ~[session::OutputDylib],
+        crate_types: ~[session::CrateTypeDylib],
         .. (*session::basic_options()).clone()
     };
 
@@ -104,8 +105,9 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
         binary: ~"rustdoctest",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
-        outputs: ~[session::OutputExecutable],
+        crate_types: ~[session::CrateTypeExecutable],
         debugging_opts: session::PREFER_DYNAMIC,
+        output_types: ~[link::OutputTypeExe],
         .. (*session::basic_options()).clone()
     };
 

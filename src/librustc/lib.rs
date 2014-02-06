@@ -301,12 +301,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         }
 
         if crate_file_name {
-            let lm = link::build_link_meta(sess, attrs, &t_outputs.obj_filename,
+            let lm = link::build_link_meta(attrs, &t_outputs,
                                            &mut ::util::sha2::Sha256::new());
-            let outputs = session::collect_outputs(&sess, attrs);
-            for &style in outputs.iter() {
+            let crate_types = session::collect_crate_types(&sess, attrs);
+            for &style in crate_types.iter() {
                 let fname = link::filename_for_input(&sess, style, &lm,
-                                                     &t_outputs.out_filename);
+                                                     &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }
         }
