@@ -73,7 +73,9 @@ along with comparing and contrasting it with other error handling strategies.
 */
 
 use local_data;
-use prelude::*;
+use clone::Clone;
+use ops::Drop;
+use option::{None, Option, Some};
 use unstable::raw::Closure;
 
 #[doc(hidden)]
