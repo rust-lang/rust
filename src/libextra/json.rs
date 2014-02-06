@@ -229,7 +229,6 @@ fn main() {
 */
 
 use std::char;
-use std::cast::transmute;
 use std::f64;
 use std::hashmap::HashMap;
 use std::io;
@@ -718,7 +717,7 @@ impl Json {
 
 pub struct Parser<T> {
     priv rdr: T,
-    priv ch: char,
+    priv ch: Option<char>,
     priv line: uint,
     priv col: uint,
 }
@@ -728,7 +727,7 @@ impl<T: Iterator<char>> Parser<T> {
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
             rdr: rdr,
-            ch: '\x00',
+            ch: Some('\x00'),
             line: 1,
             col: 0,
         };
@@ -756,16 +755,12 @@ impl<T: Iterator<char>> Parser<T> {
 }
 
 impl<T : Iterator<char>> Parser<T> {
-    // FIXME: #8971: unsound
-    fn eof(&self) -> bool { self.ch == unsafe { transmute(-1u32) } }
-
+    fn eof(&self) -> bool { self.ch.is_none() }
+    fn ch_or_null(&self) -> char { self.ch.unwrap_or('\x00') }
     fn bump(&mut self) {
-        match self.rdr.next() {
-            Some(ch) => self.ch = ch,
-            None() => self.ch = unsafe { transmute(-1u32) }, // FIXME: #8971: unsound
-        }
+        self.ch = self.rdr.next();
 
-        if self.ch == '\n' {
+        if self.ch_is('\n') {
             self.line += 1u;
             self.col = 1u;
         } else {
@@ -773,9 +768,12 @@ impl<T : Iterator<char>> Parser<T> {
         }
     }
 
-    fn next_char(&mut self) -> char {
+    fn next_char(&mut self) -> Option<char> {
         self.bump();
         self.ch
+    }
+    fn ch_is(&self, c: char) -> bool {
+        self.ch == Some(c)
     }
 
     fn error<T>(&self, msg: ~str) -> Result<T, Error> {
@@ -787,31 +785,32 @@ impl<T : Iterator<char>> Parser<T> {
 
         if self.eof() { return self.error(~"EOF while parsing value"); }
 
-        match self.ch {
-          'n' => self.parse_ident("ull", Null),
-          't' => self.parse_ident("rue", Boolean(true)),
-          'f' => self.parse_ident("alse", Boolean(false)),
-          '0' .. '9' | '-' => self.parse_number(),
-          '"' =>
-            match self.parse_str() {
-              Ok(s) => Ok(String(s)),
-              Err(e) => Err(e),
+        match self.ch_or_null() {
+            'n' => self.parse_ident("ull", Null),
+            't' => self.parse_ident("rue", Boolean(true)),
+            'f' => self.parse_ident("alse", Boolean(false)),
+            '0' .. '9' | '-' => self.parse_number(),
+            '"' => {
+                match self.parse_str() {
+                    Ok(s) => Ok(String(s)),
+                    Err(e) => Err(e),
+                }
             },
-          '[' => self.parse_list(),
-          '{' => self.parse_object(),
-          _ => self.error(~"invalid syntax")
+            '[' => self.parse_list(),
+            '{' => self.parse_object(),
+            _ => self.error(~"invalid syntax"),
         }
     }
 
     fn parse_whitespace(&mut self) {
-        while self.ch == ' ' ||
-              self.ch == '\n' ||
-              self.ch == '\t' ||
-              self.ch == '\r' { self.bump(); }
+        while self.ch_is(' ') ||
+              self.ch_is('\n') ||
+              self.ch_is('\t') ||
+              self.ch_is('\r') { self.bump(); }
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
-        if ident.chars().all(|c| c == self.next_char()) {
+        if ident.chars().all(|c| Some(c) == self.next_char()) {
             self.bump();
             Ok(value)
         } else {
@@ -822,7 +821,7 @@ impl<T : Iterator<char>> Parser<T> {
     fn parse_number(&mut self) -> Result<Json, Error> {
         let mut neg = 1.0;
 
-        if self.ch == '-' {
+        if self.ch_is('-') {
             self.bump();
             neg = -1.0;
         }
@@ -832,14 +831,14 @@ impl<T : Iterator<char>> Parser<T> {
           Err(e) => return Err(e)
         };
 
-        if self.ch == '.' {
+        if self.ch_is('.') {
             match self.parse_decimal(res) {
               Ok(r) => res = r,
               Err(e) => return Err(e)
             }
         }
 
-        if self.ch == 'e' || self.ch == 'E' {
+        if self.ch_is('e') || self.ch_is('E') {
             match self.parse_exponent(res) {
               Ok(r) => res = r,
               Err(e) => return Err(e)
@@ -852,32 +851,31 @@ impl<T : Iterator<char>> Parser<T> {
     fn parse_integer(&mut self) -> Result<f64, Error> {
         let mut res = 0.0;
 
-        match self.ch {
-          '0' => {
-            self.bump();
+        match self.ch_or_null() {
+            '0' => {
+                self.bump();
 
-            // There can be only one leading '0'.
-            match self.ch {
-              '0' .. '9' => return self.error(~"invalid number"),
-              _ => ()
-            }
-          }
-          '1' .. '9' => {
-            while !self.eof() {
-                match self.ch {
-                  '0' .. '9' => {
-                    res *= 10.0;
-                    res += ((self.ch as int) - ('0' as int)) as f64;
+                // There can be only one leading '0'.
+                match self.ch_or_null() {
+                    '0' .. '9' => return self.error(~"invalid number"),
+                    _ => ()
+                }
+            },
+            '1' .. '9' => {
+                while !self.eof() {
+                    match self.ch_or_null() {
+                        c @ '0' .. '9' => {
+                            res *= 10.0;
+                            res += ((c as int) - ('0' as int)) as f64;
 
-                    self.bump();
-                  }
-                  _ => break
+                            self.bump();
+                        }
+                        _ => break,
+                    }
                 }
             }
-          }
-          _ => return self.error(~"invalid number")
+            _ => return self.error(~"invalid number"),
         }
-
         Ok(res)
     }
 
@@ -885,22 +883,22 @@ impl<T : Iterator<char>> Parser<T> {
         self.bump();
 
         // Make sure a digit follows the decimal place.
-        match self.ch {
-          '0' .. '9' => (),
-          _ => return self.error(~"invalid number")
+        match self.ch_or_null() {
+            '0' .. '9' => (),
+             _ => return self.error(~"invalid number")
         }
 
         let mut res = res;
         let mut dec = 1.0;
         while !self.eof() {
-            match self.ch {
-              '0' .. '9' => {
-                dec /= 10.0;
-                res += (((self.ch as int) - ('0' as int)) as f64) * dec;
+            match self.ch_or_null() {
+                c @ '0' .. '9' => {
+                    dec /= 10.0;
+                    res += (((c as int) - ('0' as int)) as f64) * dec;
 
-                self.bump();
-              }
-              _ => break
+                    self.bump();
+                }
+                _ => break,
             }
         }
 
@@ -913,27 +911,27 @@ impl<T : Iterator<char>> Parser<T> {
         let mut exp = 0u;
         let mut neg_exp = false;
 
-        match self.ch {
-          '+' => self.bump(),
-          '-' => { self.bump(); neg_exp = true; }
-          _ => ()
+        if self.ch_is('+') {
+            self.bump();
+        } else if self.ch_is('-') {
+            self.bump();
+            neg_exp = true;
         }
 
         // Make sure a digit follows the exponent place.
-        match self.ch {
-          '0' .. '9' => (),
-          _ => return self.error(~"invalid number")
+        match self.ch_or_null() {
+            '0' .. '9' => (),
+            _ => return self.error(~"invalid number")
         }
-
         while !self.eof() {
-            match self.ch {
-              '0' .. '9' => {
-                exp *= 10u;
-                exp += (self.ch as uint) - ('0' as uint);
+            match self.ch_or_null() {
+                c @ '0' .. '9' => {
+                    exp *= 10;
+                    exp += (c as uint) - ('0' as uint);
 
-                self.bump();
-              }
-              _ => break
+                    self.bump();
+                }
+                _ => break
             }
         }
 
@@ -958,56 +956,55 @@ impl<T : Iterator<char>> Parser<T> {
             }
 
             if escape {
-                match self.ch {
-                  '"' => res.push_char('"'),
-                  '\\' => res.push_char('\\'),
-                  '/' => res.push_char('/'),
-                  'b' => res.push_char('\x08'),
-                  'f' => res.push_char('\x0c'),
-                  'n' => res.push_char('\n'),
-                  'r' => res.push_char('\r'),
-                  't' => res.push_char('\t'),
-                  'u' => {
-                      // Parse \u1234.
-                      let mut i = 0u;
-                      let mut n = 0u;
-                      while i < 4u {
-                          match self.next_char() {
-                            '0' .. '9' => {
-                              n = n * 16u + (self.ch as uint)
-                                          - ('0'     as uint);
-                            },
-                            'a' | 'A' => n = n * 16u + 10u,
-                            'b' | 'B' => n = n * 16u + 11u,
-                            'c' | 'C' => n = n * 16u + 12u,
-                            'd' | 'D' => n = n * 16u + 13u,
-                            'e' | 'E' => n = n * 16u + 14u,
-                            'f' | 'F' => n = n * 16u + 15u,
-                            _ => return self.error(
-                                   ~"invalid \\u escape (unrecognized hex)")
-                          }
-                          i += 1u;
-                      }
+                match self.ch_or_null() {
+                    '"' => res.push_char('"'),
+                    '\\' => res.push_char('\\'),
+                    '/' => res.push_char('/'),
+                    'b' => res.push_char('\x08'),
+                    'f' => res.push_char('\x0c'),
+                    'n' => res.push_char('\n'),
+                    'r' => res.push_char('\r'),
+                    't' => res.push_char('\t'),
+                    'u' => {
+                        // Parse \u1234.
+                        let mut i = 0u;
+                        let mut n = 0u;
+                        while i < 4u && !self.eof() {
+                            self.bump();
+                            n = match self.ch_or_null() {
+                                c @ '0' .. '9' => n * 16u + (c as uint) - ('0' as uint),
+                                'a' | 'A' => n * 16u + 10u,
+                                'b' | 'B' => n * 16u + 11u,
+                                'c' | 'C' => n * 16u + 12u,
+                                'd' | 'D' => n * 16u + 13u,
+                                'e' | 'E' => n * 16u + 14u,
+                                'f' | 'F' => n * 16u + 15u,
+                                _ => return self.error(
+                                    ~"invalid \\u escape (unrecognized hex)")
+                            };
 
-                      // Error out if we didn't parse 4 digits.
-                      if i != 4u {
-                          return self.error(
-                            ~"invalid \\u escape (not four digits)");
-                      }
+                            i += 1u;
+                        }
 
-                      res.push_char(char::from_u32(n as u32).unwrap());
-                  }
-                  _ => return self.error(~"invalid escape")
+                        // Error out if we didn't parse 4 digits.
+                        if i != 4u {
+                            return self.error(
+                                ~"invalid \\u escape (not four digits)");
+                        }
+
+                        res.push_char(char::from_u32(n as u32).unwrap());
+                    }
+                    _ => return self.error(~"invalid escape"),
                 }
                 escape = false;
-            } else if self.ch == '\\' {
+            } else if self.ch_is('\\') {
                 escape = true;
             } else {
-                if self.ch == '"' {
-                    self.bump();
-                    return Ok(res);
+                match self.ch {
+                    Some('"') => { self.bump(); return Ok(res); },
+                    Some(c) => res.push_char(c),
+                    None => unreachable!()
                 }
-                res.push_char(self.ch);
             }
         }
     }
@@ -1018,7 +1015,7 @@ impl<T : Iterator<char>> Parser<T> {
 
         let mut values = ~[];
 
-        if self.ch == ']' {
+        if self.ch_is(']') {
             self.bump();
             return Ok(List(values));
         }
@@ -1034,10 +1031,13 @@ impl<T : Iterator<char>> Parser<T> {
                 return self.error(~"EOF while parsing list");
             }
 
-            match self.ch {
-              ',' => self.bump(),
-              ']' => { self.bump(); return Ok(List(values)); }
-              _ => return self.error(~"expected `,` or `]`")
+            if self.ch_is(',') {
+                self.bump();
+            } else if self.ch_is(']') {
+                self.bump();
+                return Ok(List(values));
+            } else {
+                return self.error(~"expected `,` or `]`")
             }
         };
     }
@@ -1048,7 +1048,7 @@ impl<T : Iterator<char>> Parser<T> {
 
         let mut values = ~TreeMap::new();
 
-        if self.ch == '}' {
+        if self.ch_is('}') {
           self.bump();
           return Ok(Object(values));
         }
@@ -1056,7 +1056,7 @@ impl<T : Iterator<char>> Parser<T> {
         while !self.eof() {
             self.parse_whitespace();
 
-            if self.ch != '"' {
+            if !self.ch_is('"') {
                 return self.error(~"key must be a string");
             }
 
@@ -1067,7 +1067,7 @@ impl<T : Iterator<char>> Parser<T> {
 
             self.parse_whitespace();
 
-            if self.ch != ':' {
+            if !self.ch_is(':') {
                 if self.eof() { break; }
                 return self.error(~"expected `:`");
             }
@@ -1079,13 +1079,13 @@ impl<T : Iterator<char>> Parser<T> {
             }
             self.parse_whitespace();
 
-            match self.ch {
-              ',' => self.bump(),
-              '}' => { self.bump(); return Ok(Object(values)); }
-              _ => {
-                  if self.eof() { break; }
-                  return self.error(~"expected `,` or `}`");
-              }
+            match self.ch_or_null() {
+                ',' => self.bump(),
+                '}' => { self.bump(); return Ok(Object(values)); },
+                _ => {
+                    if self.eof() { break; }
+                    return self.error(~"expected `,` or `}`");
+                }
             }
         }
 
