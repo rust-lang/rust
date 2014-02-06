@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
-use std::io::println;
-
 trait Trait<T> {
     fn f(&self, x: T);
 }
@@ -27,18 +23,11 @@ impl Trait<&'static str> for Struct {
     }
 }
 
-fn f(x: @Trait<&'static str>) {
-    x.f("Sue");
-}
-
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: @Trait<&'static str> = @a;
-    b.f("Fred");
-    let c: ~Trait<&'static str> = ~a;
-    c.f("Mary");
-    let d: &Trait<&'static str> = &a;
-    d.f("Joe");
-    f(@a);
+    let b: ~Trait<&'static str> = ~a;
+    b.f("Mary");
+    let c: &Trait<&'static str> = &a;
+    c.f("Joe");
 }
 

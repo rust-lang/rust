@@ -177,8 +177,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(region_ptr(ast::MutImmutable, r)))
         }
 
-        ty::ty_box(_) |
-        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
+        ty::ty_box(_) => {
             Some(deref_ptr(gc_ptr))
         }
 
@@ -1105,7 +1104,7 @@ pub enum AliasableReason {
 }
 
 impl cmt_ {
-    pub fn guarantor(@self) -> cmt {
+    pub fn guarantor(self) -> cmt {
         //! Returns `self` after stripping away any owned pointer derefs or
         //! interior content. The return value is basically the `cmt` which
         //! determines how long the value in `self` remains live.
@@ -1119,7 +1118,7 @@ impl cmt_ {
             cat_deref(_, _, unsafe_ptr(..)) |
             cat_deref(_, _, gc_ptr) |
             cat_deref(_, _, region_ptr(..)) => {
-                self
+                @self
             }
             cat_downcast(b) |
             cat_stack_upvar(b) |

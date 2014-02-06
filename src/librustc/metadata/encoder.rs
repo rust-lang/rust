@@ -671,7 +671,6 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
     match explicit_self {
         SelfStatic => { ebml_w.writer.write(&[ 's' as u8 ]); }
         SelfValue  => { ebml_w.writer.write(&[ 'v' as u8 ]); }
-        SelfBox    => { ebml_w.writer.write(&[ '@' as u8 ]); }
         SelfUniq   => { ebml_w.writer.write(&[ '~' as u8 ]); }
         SelfRegion(_, m) => {
             // FIXME(#4846) encode custom lifetime

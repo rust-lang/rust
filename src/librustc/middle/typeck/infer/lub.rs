@@ -27,25 +27,25 @@ use syntax::ast::{ExternFn, ImpureFn, UnsafeFn};
 use syntax::ast::{Onceness, Purity};
 use util::ppaux::mt_to_str;
 
-pub struct Lub(CombineFields);  // least-upper-bound: common supertype
+pub struct Lub<'f>(CombineFields<'f>);  // least-upper-bound: common supertype
 
-impl Lub {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields { let Lub(ref v) = *self; v }
+impl<'f> Lub<'f> {
+    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Lub(ref v) = *self; v }
     pub fn bot_ty(&self, b: ty::t) -> cres<ty::t> { Ok(b) }
     pub fn ty_bot(&self, b: ty::t) -> cres<ty::t> {
         self.bot_ty(b) // commutative
     }
 }
 
-impl Combine for Lub {
-    fn infcx(&self) -> @InferCtxt { self.get_ref().infcx }
+impl<'f> Combine for Lub<'f> {
+    fn infcx<'a>(&'a self) -> &'a InferCtxt { self.get_ref().infcx }
     fn tag(&self) -> ~str { ~"lub" }
     fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
     fn trace(&self) -> TypeTrace { self.get_ref().trace }
 
-    fn sub(&self) -> Sub { Sub(*self.get_ref()) }
-    fn lub(&self) -> Lub { Lub(*self.get_ref()) }
-    fn glb(&self) -> Glb { Glb(*self.get_ref()) }
+    fn sub<'a>(&'a self) -> Sub<'a> { Sub(*self.get_ref()) }
+    fn lub<'a>(&'a self) -> Lub<'a> { Lub(*self.get_ref()) }
+    fn glb<'a>(&'a self) -> Glb<'a> { Glb(*self.get_ref()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.get_ref().infcx.tcx;

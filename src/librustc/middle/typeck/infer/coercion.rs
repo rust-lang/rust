@@ -83,10 +83,10 @@ use syntax::ast;
 // Note: Coerce is not actually a combiner, in that it does not
 // conform to the same interface, though it performs a similar
 // function.
-pub struct Coerce(CombineFields);
+pub struct Coerce<'f>(CombineFields<'f>);
 
-impl Coerce {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields {
+impl<'f> Coerce<'f> {
+    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> {
         let Coerce(ref v) = *self; v
     }
 
@@ -129,23 +129,6 @@ impl Coerce {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_unsafe_ptr(a, sty_a, b, mt_b)
                 });
-            }
-
-            ty::ty_trait(def_id, ref substs, ty::BoxTraitStore, m, bounds) => {
-                let result = self.unpack_actual_value(a, |sty_a| {
-                    match *sty_a {
-                        ty::ty_box(..) => {
-                            self.coerce_object(a, sty_a, b, def_id, substs,
-                                               ty::BoxTraitStore, m, bounds)
-                        }
-                        _ => Err(ty::terr_mismatch)
-                    }
-                });
-
-                match result {
-                    Ok(t) => return Ok(t),
-                    Err(..) => {}
-                }
             }
 
             ty::ty_trait(def_id, ref substs, ty::UniqTraitStore, m, bounds) => {
@@ -462,7 +445,6 @@ impl Coerce {
                b.inf_str(self.get_ref().infcx));
 
         let (sigil, region) = match trait_store {
-            ty::BoxTraitStore => (ast::ManagedSigil, None),
             ty::UniqTraitStore => (ast::OwnedSigil, None),
             ty::RegionTraitStore(region) => (ast::BorrowedSigil, Some(region))
         };

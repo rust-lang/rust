@@ -177,15 +177,6 @@ mod tests {
         assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
         assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
 
-        let (a, b, c) = (@5u as @Any, @TEST as @Any, @Test as @Any);
-        let a_r: &Any = a;
-        let b_r: &Any = b;
-        let c_r: &Any = c;
-
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
-
         let (a, b, c) = (&5u as &Any, &TEST as &Any, &Test as &Any);
         let a_r: &Any = a;
         let b_r: &Any = b;
@@ -289,23 +280,6 @@ mod tests {
     #[test]
     fn any_owning() {
         let (a, b, c) = (~5u as ~Any, ~TEST as ~Any, ~Test as ~Any);
-
-        assert!(a.is::<uint>());
-        assert!(!b.is::<uint>());
-        assert!(!c.is::<uint>());
-
-        assert!(!a.is::<&'static str>());
-        assert!(b.is::<&'static str>());
-        assert!(!c.is::<&'static str>());
-
-        assert!(!a.is::<Test>());
-        assert!(!b.is::<Test>());
-        assert!(c.is::<Test>());
-    }
-
-    #[test]
-    fn any_managed() {
-        let (a, b, c) = (@5u as @Any, @TEST as @Any, @Test as @Any);
 
         assert!(a.is::<uint>());
         assert!(!b.is::<uint>());

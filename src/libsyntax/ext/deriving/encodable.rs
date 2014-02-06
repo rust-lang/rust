@@ -75,7 +75,7 @@ would yield functions like:
     }
 */
 
-use ast::{MetaItem, Item, Expr, MutImmutable, MutMutable};
+use ast::{MetaItem, Item, Expr, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -100,7 +100,7 @@ pub fn expand_deriving_encodable(cx: &ExtCtxt,
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds::empty(),
-                explicit_self: Some(Some(Borrowed(None, MutImmutable))),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[Ptr(~Literal(Path::new_local("__E")),
                             Borrowed(None, MutMutable))],
                 ret_ty: nil_ty(),

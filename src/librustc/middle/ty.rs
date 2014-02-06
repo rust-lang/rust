@@ -135,7 +135,6 @@ pub enum vstore {
 
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum TraitStore {
-    BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
 }
@@ -238,7 +237,7 @@ pub enum AutoRef {
     /// Convert from T to *T
     AutoUnsafe(ast::Mutability),
 
-    /// Convert from @Trait/~Trait/&Trait to &Trait
+    /// Convert from ~Trait/&Trait to &Trait
     AutoBorrowObj(Region, ast::Mutability),
 }
 
@@ -2156,10 +2155,9 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let st = match cty.sigil {
             ast::BorrowedSigil =>
                 object_contents(cx, RegionTraitStore(cty.region), MutMutable, cty.bounds),
-            ast::ManagedSigil =>
-                object_contents(cx, BoxTraitStore, MutImmutable, cty.bounds),
             ast::OwnedSigil =>
                 object_contents(cx, UniqTraitStore, MutImmutable, cty.bounds),
+            ast::ManagedSigil => unreachable!()
         };
 
         // FIXME(#3569): This borrowed_contents call should be taken care of in
@@ -2189,9 +2187,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         match store {
             UniqTraitStore => {
                 contents.owned_pointer()
-            }
-            BoxTraitStore => {
-                contents.managed_pointer()
             }
             RegionTraitStore(r) => {
                 contents.reference(borrowed_contents(r, mutbl))
@@ -3060,7 +3055,7 @@ pub fn trait_adjustment_to_ty(cx: ctxt, sigil: &ast::Sigil, region: &Option<Regi
     let trait_store = match *sigil {
         BorrowedSigil => RegionTraitStore(region.expect("expected valid region")),
         OwnedSigil => UniqTraitStore,
-        ManagedSigil => BoxTraitStore
+        ManagedSigil => unreachable!()
     };
 
     mk_trait(cx, def_id, substs.clone(), trait_store, m, bounds)
@@ -4935,10 +4930,9 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
                 hash.input([17]);
                 did(&mut hash, d);
                 match store {
-                    BoxTraitStore => hash.input([0]),
-                    UniqTraitStore => hash.input([1]),
+                    UniqTraitStore => hash.input([0]),
                     RegionTraitStore(r) => {
-                        hash.input([2]);
+                        hash.input([1]);
                         region(&mut hash, r);
                     }
                 }

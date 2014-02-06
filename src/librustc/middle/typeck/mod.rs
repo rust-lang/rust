@@ -71,7 +71,6 @@ use util::ppaux;
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::rc::Rc;
-use std::result;
 use extra::list::List;
 use extra::list;
 use syntax::codemap::Span;
@@ -279,32 +278,29 @@ pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 }
 
 pub fn require_same_types(tcx: ty::ctxt,
-                          maybe_infcx: Option<@infer::InferCtxt>,
+                          maybe_infcx: Option<&infer::InferCtxt>,
                           t1_is_expected: bool,
                           span: Span,
                           t1: ty::t,
                           t2: ty::t,
                           msg: || -> ~str)
                           -> bool {
-    let l_tcx;
-    let l_infcx;
-    match maybe_infcx {
-      None => {
-        l_tcx = tcx;
-        l_infcx = infer::new_infer_ctxt(tcx);
-      }
-      Some(i) => {
-        l_tcx = i.tcx;
-        l_infcx = i;
-      }
-    }
+    let result = match maybe_infcx {
+        None => {
+            let infcx = infer::new_infer_ctxt(tcx);
+            infer::mk_eqty(&infcx, t1_is_expected, infer::Misc(span), t1, t2)
+        }
+        Some(infcx) => {
+            infer::mk_eqty(infcx, t1_is_expected, infer::Misc(span), t1, t2)
+        }
+    };
 
-    match infer::mk_eqty(l_infcx, t1_is_expected, infer::Misc(span), t1, t2) {
-        result::Ok(()) => true,
-        result::Err(ref terr) => {
-            l_tcx.sess.span_err(span, msg() + ": " +
-                                ty::type_err_to_str(l_tcx, terr));
-            ty::note_and_explain_type_err(l_tcx, terr);
+    match result {
+        Ok(_) => true,
+        Err(ref terr) => {
+            tcx.sess.span_err(span, msg() + ": " +
+                              ty::type_err_to_str(tcx, terr));
+            ty::note_and_explain_type_err(tcx, terr);
             false
         }
     }

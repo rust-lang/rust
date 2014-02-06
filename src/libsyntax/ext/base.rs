@@ -105,7 +105,7 @@ pub trait AnyMacro {
 pub enum MacResult {
     MRExpr(@ast::Expr),
     MRItem(@ast::Item),
-    MRAny(@AnyMacro),
+    MRAny(~AnyMacro:),
     MRDef(MacroDef),
 }
 impl MacResult {
