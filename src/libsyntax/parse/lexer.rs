@@ -16,7 +16,6 @@ use ext::tt::transcribe::{dup_tt_reader, tt_next_token};
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::cast::transmute;
 use std::cell::{Cell, RefCell};
 use std::char;
 use std::num::from_str_radix;
@@ -48,11 +47,17 @@ pub struct StringReader {
     // The column of the next character to read
     col: Cell<CharPos>,
     // The last character to be read
-    curr: Cell<char>,
+    curr: Cell<Option<char>>,
     filemap: @codemap::FileMap,
     /* cached: */
     peek_tok: RefCell<token::Token>,
     peek_span: RefCell<Span>,
+}
+
+impl StringReader {
+    pub fn curr_is(&self, c: char) -> bool {
+        self.curr.get() == Some(c)
+    }
 }
 
 pub fn new_string_reader(span_diagnostic: @SpanHandler,
@@ -74,7 +79,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @SpanHandler,
         pos: Cell::new(filemap.start_pos),
         last_pos: Cell::new(filemap.start_pos),
         col: Cell::new(CharPos(0)),
-        curr: Cell::new(initial_char),
+        curr: Cell::new(Some(initial_char)),
         filemap: filemap,
         /* dummy values; not read */
         peek_tok: RefCell::new(token::EOF),
@@ -246,14 +251,12 @@ pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if current_byte_offset < (rdr.filemap.src).len() {
-        assert!(rdr.curr.get() != unsafe {
-            transmute(-1u32)
-        }); // FIXME: #8971: unsound
-        let last_char = rdr.curr.get();
+        assert!(rdr.curr.get().is_some());
+        let last_char = rdr.curr.get().unwrap();
         let next = rdr.filemap.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
-        rdr.curr.set(next.ch);
+        rdr.curr.set(Some(next.ch));
         rdr.col.set(rdr.col.get() + CharPos(1u));
         if last_char == '\n' {
             rdr.filemap.next_line(rdr.last_pos.get());
@@ -265,37 +268,50 @@ pub fn bump(rdr: &StringReader) {
                 Pos::from_uint(current_byte_offset), byte_offset_diff);
         }
     } else {
-        rdr.curr.set(unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
+        rdr.curr.set(None);
     }
 }
 pub fn is_eof(rdr: &StringReader) -> bool {
-    rdr.curr.get() == unsafe { transmute(-1u32) } // FIXME: #8971: unsound
+    rdr.curr.get().is_none()
 }
-pub fn nextch(rdr: &StringReader) -> char {
+pub fn nextch(rdr: &StringReader) -> Option<char> {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if offset < (rdr.filemap.src).len() {
-        return rdr.filemap.src.char_at(offset);
-    } else { return unsafe { transmute(-1u32) }; } // FIXME: #8971: unsound
+        Some(rdr.filemap.src.char_at(offset))
+    } else {
+        None
+    }
+}
+pub fn nextch_is(rdr: &StringReader, c: char) -> bool {
+    nextch(rdr) == Some(c)
 }
 
-fn hex_digit_val(c: char) -> int {
-    if in_range(c, '0', '9') { return (c as int) - ('0' as int); }
-    if in_range(c, 'a', 'f') { return (c as int) - ('a' as int) + 10; }
-    if in_range(c, 'A', 'F') { return (c as int) - ('A' as int) + 10; }
+fn hex_digit_val(c: Option<char>) -> int {
+    let d = c.unwrap_or('\x00');
+
+    if in_range(c, '0', '9') { return (d as int) - ('0' as int); }
+    if in_range(c, 'a', 'f') { return (d as int) - ('a' as int) + 10; }
+    if in_range(c, 'A', 'F') { return (d as int) - ('A' as int) + 10; }
     fail!();
 }
 
-pub fn is_whitespace(c: char) -> bool {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+pub fn is_whitespace(c: Option<char>) -> bool {
+    match c.unwrap_or('\x00') { // None can be null for now... it's not whitespace
+        ' ' | '\n' | '\t' | '\r' => true,
+        _ => false
+    }
 }
 
-fn in_range(c: char, lo: char, hi: char) -> bool {
-    return lo <= c && c <= hi
+fn in_range(c: Option<char>, lo: char, hi: char) -> bool {
+    match c {
+        Some(c) => lo <= c && c <= hi,
+        _ => false
+    }
 }
 
-fn is_dec_digit(c: char) -> bool { return in_range(c, '0', '9'); }
+fn is_dec_digit(c: Option<char>) -> bool { return in_range(c, '0', '9'); }
 
-fn is_hex_digit(c: char) -> bool {
+fn is_hex_digit(c: Option<char>) -> bool {
     return in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
             in_range(c, 'A', 'F');
 }
@@ -317,15 +333,15 @@ pub fn is_line_non_doc_comment(s: &str) -> bool {
 // returns a Some(sugared-doc-attr) if one exists, None otherwise
 fn consume_any_line_comment(rdr: &StringReader)
                          -> Option<TokenAndSpan> {
-    if rdr.curr.get() == '/' {
+    if rdr.curr_is('/') {
         match nextch(rdr) {
-          '/' => {
+          Some('/') => {
             bump(rdr);
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
-            if rdr.curr.get() == '/' || rdr.curr.get() == '!' {
+            if rdr.curr_is('/') || rdr.curr_is('!') {
                 let start_bpos = rdr.pos.get() - BytePos(3);
-                while rdr.curr.get() != '\n' && !is_eof(rdr) {
+                while !rdr.curr_is('\n') && !is_eof(rdr) {
                     bump(rdr);
                 }
                 let ret = with_str_from(rdr, start_bpos, |string| {
@@ -344,16 +360,16 @@ fn consume_any_line_comment(rdr: &StringReader)
                     return ret;
                 }
             } else {
-                while rdr.curr.get() != '\n' && !is_eof(rdr) { bump(rdr); }
+                while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
             }
             // Restart whitespace munch.
             return consume_whitespace_and_comments(rdr);
           }
-          '*' => { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
+          Some('*') => { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
           _ => ()
         }
-    } else if rdr.curr.get() == '#' {
-        if nextch(rdr) == '!' {
+    } else if rdr.curr_is('#') {
+        if nextch_is(rdr, '!') {
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
             let cmap = @CodeMap::new();
@@ -363,7 +379,7 @@ fn consume_any_line_comment(rdr: &StringReader)
             }
             let loc = cmap.lookup_char_pos_adj(rdr.last_pos.get());
             if loc.line == 1u && loc.col == CharPos(0u) {
-                while rdr.curr.get() != '\n' && !is_eof(rdr) { bump(rdr); }
+                while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
             }
         }
@@ -378,7 +394,7 @@ pub fn is_block_non_doc_comment(s: &str) -> bool {
 // might return a sugared-doc-attr
 fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
-    let is_doc_comment = rdr.curr.get() == '*' || rdr.curr.get() == '!';
+    let is_doc_comment = rdr.curr_is('*') || rdr.curr_is('!');
     let start_bpos = rdr.pos.get() - BytePos(if is_doc_comment {3} else {2});
 
     let mut level: int = 1;
@@ -390,11 +406,11 @@ fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
                 ~"unterminated block comment"
             };
             fatal_span(rdr, start_bpos, rdr.last_pos.get(), msg);
-        } else if rdr.curr.get() == '/' && nextch(rdr) == '*' {
+        } else if rdr.curr_is('/') && nextch_is(rdr, '*') {
             level += 1;
             bump(rdr);
             bump(rdr);
-        } else if rdr.curr.get() == '*' && nextch(rdr) == '/' {
+        } else if rdr.curr_is('*') && nextch_is(rdr, '/') {
             level -= 1;
             bump(rdr);
             bump(rdr);
@@ -424,12 +440,13 @@ fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
 }
 
 fn scan_exponent(rdr: &StringReader, start_bpos: BytePos) -> Option<~str> {
-    let mut c = rdr.curr.get();
+    // \x00 hits the `return None` case immediately, so this is fine.
+    let mut c = rdr.curr.get().unwrap_or('\x00');
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
         rslt.push_char(c);
         bump(rdr);
-        c = rdr.curr.get();
+        c = rdr.curr.get().unwrap_or('\x00');
         if c == '-' || c == '+' {
             rslt.push_char(c);
             bump(rdr);
@@ -448,10 +465,10 @@ fn scan_digits(rdr: &StringReader, radix: uint) -> ~str {
     let mut rslt = ~"";
     loop {
         let c = rdr.curr.get();
-        if c == '_' { bump(rdr); continue; }
-        match char::to_digit(c, radix) {
+        if c == Some('_') { bump(rdr); continue; }
+        match c.and_then(|cc| char::to_digit(cc, radix)) {
           Some(_) => {
-            rslt.push_char(c);
+            rslt.push_char(c.unwrap());
             bump(rdr);
           }
           _ => return rslt
@@ -476,7 +493,7 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
     let mut num_str;
     let mut base = 10u;
     let mut c = c;
-    let mut n = nextch(rdr);
+    let mut n = nextch(rdr).unwrap_or('\x00');
     let start_bpos = rdr.last_pos.get();
     if c == '0' && n == 'x' {
         bump(rdr);
@@ -492,7 +509,7 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         base = 2u;
     }
     num_str = scan_digits(rdr, base);
-    c = rdr.curr.get();
+    c = rdr.curr.get().unwrap_or('\x00');
     nextch(rdr);
     if c == 'u' || c == 'i' {
         enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
@@ -502,13 +519,13 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
             else { Unsigned(ast::TyU) }
         };
         bump(rdr);
-        c = rdr.curr.get();
+        c = rdr.curr.get().unwrap_or('\x00');
         if c == '8' {
             bump(rdr);
             tp = if signed { Signed(ast::TyI8) }
                       else { Unsigned(ast::TyU8) };
         }
-        n = nextch(rdr);
+        n = nextch(rdr).unwrap_or('\x00');
         if c == '1' && n == '6' {
             bump(rdr);
             bump(rdr);
@@ -541,8 +558,7 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         }
     }
     let mut is_float = false;
-    if rdr.curr.get() == '.' && !(ident_start(nextch(rdr)) || nextch(rdr) ==
-                                  '.') {
+    if rdr.curr_is('.') && !(ident_start(nextch(rdr)) || nextch_is(rdr, '.')) {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
@@ -557,10 +573,10 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
       None => ()
     }
 
-    if rdr.curr.get() == 'f' {
+    if rdr.curr_is('f') {
         bump(rdr);
-        c = rdr.curr.get();
-        n = nextch(rdr);
+        c = rdr.curr.get().unwrap_or('\x00');
+        n = nextch(rdr).unwrap_or('\x00');
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
@@ -602,18 +618,23 @@ fn scan_numeric_escape(rdr: &StringReader, n_hex_digits: uint) -> char {
     let mut accum_int = 0;
     let mut i = n_hex_digits;
     let start_bpos = rdr.last_pos.get();
-    while i != 0u {
+    while i != 0u && !is_eof(rdr) {
         let n = rdr.curr.get();
         if !is_hex_digit(n) {
             fatal_span_char(rdr, rdr.last_pos.get(), rdr.pos.get(),
                             ~"illegal character in numeric character escape",
-                            n);
+                            n.unwrap());
         }
         bump(rdr);
         accum_int *= 16;
         accum_int += hex_digit_val(n);
         i -= 1u;
     }
+    if i != 0 && is_eof(rdr) {
+        fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                   ~"unterminated numeric character escape");
+    }
+
     match char::from_u32(accum_int as u32) {
         Some(x) => x,
         None => fatal_span(rdr, start_bpos, rdr.last_pos.get(),
@@ -621,14 +642,18 @@ fn scan_numeric_escape(rdr: &StringReader, n_hex_digits: uint) -> char {
     }
 }
 
-fn ident_start(c: char) -> bool {
+fn ident_start(c: Option<char>) -> bool {
+    let c = match c { Some(c) => c, None => return false };
+
     (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z')
         || c == '_'
         || (c > '\x7f' && char::is_XID_start(c))
 }
 
-fn ident_continue(c: char) -> bool {
+fn ident_continue(c: Option<char>) -> bool {
+    let c = match c { Some(c) => c, None => return false };
+
     (c >= 'a' && c <= 'z')
         || (c >= 'A' && c <= 'Z')
         || (c >= '0' && c <= '9')
@@ -641,7 +666,7 @@ fn ident_continue(c: char) -> bool {
 // EFFECT: updates the interner
 fn next_token_inner(rdr: &StringReader) -> token::Token {
     let c = rdr.curr.get();
-    if ident_start(c) && nextch(rdr) != '"' && nextch(rdr) != '#' {
+    if ident_start(c) && !nextch_is(rdr, '"') && !nextch_is(rdr, '#') {
         // Note: r as in r" or r#" is part of a raw string literal,
         // not an identifier, and is handled further down.
 
@@ -654,7 +679,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
             if string == "_" {
                 token::UNDERSCORE
             } else {
-                let is_mod_name = rdr.curr.get() == ':' && nextch(rdr) == ':';
+                let is_mod_name = rdr.curr_is(':') && nextch_is(rdr, ':');
 
                 // FIXME: perform NFKC normalization here. (Issue #2253)
                 token::IDENT(str_to_ident(string), is_mod_name)
@@ -662,16 +687,16 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         })
     }
     if is_dec_digit(c) {
-        return scan_number(c, rdr);
+        return scan_number(c.unwrap(), rdr);
     }
     fn binop(rdr: &StringReader, op: token::BinOp) -> token::Token {
         bump(rdr);
-        if rdr.curr.get() == '=' {
+        if rdr.curr_is('=') {
             bump(rdr);
             return token::BINOPEQ(op);
         } else { return token::BINOP(op); }
     }
-    match c {
+    match c.expect("next_token_inner called at EOF") {
 
 
 
@@ -682,9 +707,9 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       ',' => { bump(rdr); return token::COMMA; }
       '.' => {
           bump(rdr);
-          return if rdr.curr.get() == '.' {
+          return if rdr.curr_is('.') {
               bump(rdr);
-              if rdr.curr.get() == '.' {
+              if rdr.curr_is('.') {
                   bump(rdr);
                   token::DOTDOTDOT
               } else {
@@ -705,7 +730,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       '~' => { bump(rdr); return token::TILDE; }
       ':' => {
         bump(rdr);
-        if rdr.curr.get() == ':' {
+        if rdr.curr_is(':') {
             bump(rdr);
             return token::MOD_SEP;
         } else { return token::COLON; }
@@ -720,10 +745,10 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       // Multi-byte tokens.
       '=' => {
         bump(rdr);
-        if rdr.curr.get() == '=' {
+        if rdr.curr_is('=') {
             bump(rdr);
             return token::EQEQ;
-        } else if rdr.curr.get() == '>' {
+        } else if rdr.curr_is('>') {
             bump(rdr);
             return token::FAT_ARROW;
         } else {
@@ -732,19 +757,19 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '!' => {
         bump(rdr);
-        if rdr.curr.get() == '=' {
+        if rdr.curr_is('=') {
             bump(rdr);
             return token::NE;
         } else { return token::NOT; }
       }
       '<' => {
         bump(rdr);
-        match rdr.curr.get() {
+        match rdr.curr.get().unwrap_or('\x00') {
           '=' => { bump(rdr); return token::LE; }
           '<' => { return binop(rdr, token::SHL); }
           '-' => {
             bump(rdr);
-            match rdr.curr.get() {
+            match rdr.curr.get().unwrap_or('\x00') {
               '>' => { bump(rdr); return token::DARROW; }
               _ => { return token::LARROW; }
             }
@@ -754,7 +779,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '>' => {
         bump(rdr);
-        match rdr.curr.get() {
+        match rdr.curr.get().unwrap_or('\x00') {
           '=' => { bump(rdr); return token::GE; }
           '>' => { return binop(rdr, token::SHR); }
           _ => { return token::GT; }
@@ -764,12 +789,14 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         // Either a character constant 'a' OR a lifetime name 'abc
         bump(rdr);
         let start = rdr.last_pos.get();
-        let mut c2 = rdr.curr.get();
+
+        // the eof will be picked up by the final `'` check below
+        let mut c2 = rdr.curr.get().unwrap_or('\x00');
         bump(rdr);
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
-        if ident_start(c2) && rdr.curr.get() != '\'' {
+        if ident_start(Some(c2)) && !rdr.curr_is('\'') {
             while ident_continue(rdr.curr.get()) {
                 bump(rdr);
             }
@@ -798,19 +825,24 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                 let escaped_pos = rdr.last_pos.get();
                 bump(rdr);
                 match escaped {
-                    'n' => { c2 = '\n'; }
-                    'r' => { c2 = '\r'; }
-                    't' => { c2 = '\t'; }
-                    '\\' => { c2 = '\\'; }
-                    '\'' => { c2 = '\''; }
-                    '"' => { c2 = '"'; }
-                    '0' => { c2 = '\x00'; }
-                    'x' => { c2 = scan_numeric_escape(rdr, 2u); }
-                    'u' => { c2 = scan_numeric_escape(rdr, 4u); }
-                    'U' => { c2 = scan_numeric_escape(rdr, 8u); }
-                    c2 => {
-                        fatal_span_char(rdr, escaped_pos, rdr.last_pos.get(),
-                                        ~"unknown character escape", c2);
+                    None => {}
+                    Some(e) => {
+                        c2 = match e {
+                            'n' => '\n',
+                            'r' => '\r',
+                            't' => '\t',
+                            '\\' => '\\',
+                            '\'' => '\'',
+                            '"' => '"',
+                            '0' => '\x00',
+                            'x' => scan_numeric_escape(rdr, 2u),
+                            'u' => scan_numeric_escape(rdr, 4u),
+                            'U' => scan_numeric_escape(rdr, 8u),
+                            c2 => {
+                                fatal_span_char(rdr, escaped_pos, rdr.last_pos.get(),
+                                                ~"unknown character escape", c2)
+                            }
+                        }
                     }
                 }
             }
@@ -820,7 +852,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
             }
             _ => {}
         }
-        if rdr.curr.get() != '\'' {
+        if !rdr.curr_is('\'') {
             fatal_span_verbose(rdr,
                                // Byte offsetting here is okay because the
                                // character before position `start` is an
@@ -836,17 +868,22 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         let mut accum_str = ~"";
         let start_bpos = rdr.last_pos.get();
         bump(rdr);
-        while rdr.curr.get() != '"' {
+        while !rdr.curr_is('"') {
             if is_eof(rdr) {
                 fatal_span(rdr, start_bpos, rdr.last_pos.get(),
                            ~"unterminated double quote string");
             }
 
-            let ch = rdr.curr.get();
+            let ch = rdr.curr.get().unwrap();
             bump(rdr);
             match ch {
               '\\' => {
-                let escaped = rdr.curr.get();
+                if is_eof(rdr) {
+                    fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                           ~"unterminated double quote string");
+                }
+
+                let escaped = rdr.curr.get().unwrap();
                 let escaped_pos = rdr.last_pos.get();
                 bump(rdr);
                 match escaped {
@@ -883,15 +920,19 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         let start_bpos = rdr.last_pos.get();
         bump(rdr);
         let mut hash_count = 0u;
-        while rdr.curr.get() == '#' {
+        while rdr.curr_is('#') {
             bump(rdr);
             hash_count += 1;
         }
-        if rdr.curr.get() != '"' {
+
+        if is_eof(rdr) {
+            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                       ~"unterminated raw string");
+        } else if !rdr.curr_is('"') {
             fatal_span_char(rdr, start_bpos, rdr.last_pos.get(),
                             ~"only `#` is allowed in raw string delimitation; \
                               found illegal character",
-                            rdr.curr.get());
+                            rdr.curr.get().unwrap());
         }
         bump(rdr);
         let content_start_bpos = rdr.last_pos.get();
@@ -901,11 +942,11 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                 fatal_span(rdr, start_bpos, rdr.last_pos.get(),
                            ~"unterminated raw string");
             }
-            if rdr.curr.get() == '"' {
+            if rdr.curr_is('"') {
                 content_end_bpos = rdr.last_pos.get();
                 for _ in range(0, hash_count) {
                     bump(rdr);
-                    if rdr.curr.get() != '#' {
+                    if !rdr.curr_is('#') {
                         continue 'outer;
                     }
                 }
@@ -921,14 +962,14 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         return token::LIT_STR_RAW(str_content, hash_count);
       }
       '-' => {
-        if nextch(rdr) == '>' {
+        if nextch_is(rdr, '>') {
             bump(rdr);
             bump(rdr);
             return token::RARROW;
         } else { return binop(rdr, token::MINUS); }
       }
       '&' => {
-        if nextch(rdr) == '&' {
+        if nextch_is(rdr, '&') {
             bump(rdr);
             bump(rdr);
             return token::ANDAND;
@@ -936,7 +977,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '|' => {
         match nextch(rdr) {
-          '|' => { bump(rdr); bump(rdr); return token::OROR; }
+          Some('|') => { bump(rdr); bump(rdr); return token::OROR; }
           _ => { return binop(rdr, token::OR); }
         }
       }
