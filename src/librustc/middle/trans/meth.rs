@@ -479,11 +479,9 @@ pub fn get_vtable(bcx: &Block,
         }
     });
 
-    // Generate a type descriptor for the vtable.
-    let tydesc = get_tydesc(ccx, self_ty);
-    glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, tydesc);
-
-    let vtable = make_vtable(ccx, tydesc, methods);
+    // Generate a destructor for the vtable.
+    let drop_glue = glue::get_drop_glue(ccx, self_ty);
+    let vtable = make_vtable(ccx, drop_glue, methods);
 
     let mut vtables = ccx.vtables.borrow_mut();
     vtables.get().insert(hash_id, vtable);
@@ -492,13 +490,13 @@ pub fn get_vtable(bcx: &Block,
 
 /// Helper function to declare and initialize the vtable.
 pub fn make_vtable(ccx: &CrateContext,
-                   tydesc: &tydesc_info,
+                   drop_glue: ValueRef,
                    ptrs: &[ValueRef])
                    -> ValueRef {
     unsafe {
         let _icx = push_ctxt("meth::make_vtable");
 
-        let mut components = ~[tydesc.drop_glue.get().unwrap()];
+        let mut components = ~[drop_glue];
         for &ptr in ptrs.iter() {
             components.push(ptr)
         }
