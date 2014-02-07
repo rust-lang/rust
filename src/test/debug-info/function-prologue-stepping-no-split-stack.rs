@@ -16,7 +16,7 @@
 // consequence, and as opposed to regular Rust functions, we can set the breakpoints via the
 // function name (and don't have to fall back on using line numbers).
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:set print pretty off
 // debugger:rbreak immediate_args
 // debugger:rbreak binding

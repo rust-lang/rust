@@ -332,8 +332,8 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             let args = split_maybe_args(&config.rustcflags);
             let mut tool_path:~str = ~"";
             for arg in args.iter() {
-                if arg.contains("--android-cross-path=") {
-                    tool_path = arg.replace("--android-cross-path=","");
+                if arg.contains("android-cross-path=") {
+                    tool_path = arg.replace("android-cross-path=","");
                     break;
                 }
             }
@@ -1054,7 +1054,7 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = ~[~"-L", aux_dir.as_str().unwrap().to_owned()];
-    let llvm_args = ~[~"--emit=obj", ~"--crate-type=lib", ~"--save-temps"];
+    let llvm_args = ~[~"--emit=obj", ~"--crate-type=lib", ~"-C", ~"save-temps"];
     let args = make_compile_args(config, props,
                                  link_args + llvm_args,
                                  |a, b| ThisFile(make_o_name(a, b)), testfile);

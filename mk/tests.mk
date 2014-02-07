@@ -530,7 +530,7 @@ CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
 
 # There's no need our entire test suite to take up gigabytes of space on disk
 # including copies of libstd/libextra all over the place
-CTEST_RUSTC_FLAGS := $$(CTEST_RUSTC_FLAGS) -Z prefer-dynamic
+CTEST_RUSTC_FLAGS := $$(CTEST_RUSTC_FLAGS) -C prefer-dynamic
 
 # The tests can not be optimized while the rest of the compiler is optimized, so
 # filter out the optimization (if any) from rustc and then figure out if we need

@@ -151,7 +151,7 @@ impl CrateContext {
             let tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
-            if sess.opts.extra_debuginfo {
+            if sess.opts.debuginfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
