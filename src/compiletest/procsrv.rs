@@ -51,10 +51,7 @@ pub fn run(lib_path: &str,
     let env = env + target_env(lib_path, prog);
     let mut opt_process = run::Process::new(prog, args, run::ProcessOptions {
         env: Some(env),
-        dir: None,
-        in_fd: None,
-        out_fd: None,
-        err_fd: None
+        .. run::ProcessOptions::new()
     });
 
     match opt_process {
@@ -83,10 +80,7 @@ pub fn run_background(lib_path: &str,
     let env = env + target_env(lib_path, prog);
     let opt_process = run::Process::new(prog, args, run::ProcessOptions {
         env: Some(env),
-        dir: None,
-        in_fd: None,
-        out_fd: None,
-        err_fd: None
+        .. run::ProcessOptions::new()
     });
 
     match opt_process {

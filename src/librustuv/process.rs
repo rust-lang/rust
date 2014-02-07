@@ -58,6 +58,16 @@ impl Process {
 
         let ret = with_argv(config.program, config.args, |argv| {
             with_env(config.env, |envp| {
+                let mut flags = 0;
+                if config.uid.is_some() {
+                    flags |= uvll::PROCESS_SETUID;
+                }
+                if config.gid.is_some() {
+                    flags |= uvll::PROCESS_SETGID;
+                }
+                if config.detach {
+                    flags |= uvll::PROCESS_DETACHED;
+                }
                 let options = uvll::uv_process_options_t {
                     exit_cb: on_exit,
                     file: unsafe { *argv },
@@ -67,11 +77,11 @@ impl Process {
                         Some(ref cwd) => cwd.with_ref(|p| p),
                         None => ptr::null(),
                     },
-                    flags: 0,
+                    flags: flags as libc::c_uint,
                     stdio_count: stdio.len() as libc::c_int,
                     stdio: stdio.as_ptr(),
-                    uid: 0,
-                    gid: 0,
+                    uid: config.uid.unwrap_or(0) as uvll::uv_uid_t,
+                    gid: config.gid.unwrap_or(0) as uvll::uv_gid_t,
                 };
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
