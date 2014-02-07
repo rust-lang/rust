@@ -508,10 +508,10 @@ impl<'a, P: GenericPath> ToStr for Display<'a, P> {
         if self.filename {
             match self.path.filename() {
                 None => ~"",
-                Some(v) => str::from_utf8_lossy(v)
+                Some(v) => str::from_utf8_lossy(v).into_owned()
             }
         } else {
-            str::from_utf8_lossy(self.path.as_vec())
+            str::from_utf8_lossy(self.path.as_vec()).into_owned()
         }
     }
 }
