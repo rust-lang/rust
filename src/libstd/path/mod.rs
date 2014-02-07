@@ -591,6 +591,23 @@ impl BytesContainer for CString {
     }
 }
 
+impl<'a> BytesContainer for str::MaybeOwned<'a> {
+    #[inline]
+    fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
+        self.as_slice().as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_owned().into_bytes()
+    }
+    #[inline]
+    fn container_as_str<'b>(&'b self) -> Option<&'b str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<str::MaybeOwned>) -> bool { true }
+}
+
 #[inline(always)]
 fn contains_nul(v: &[u8]) -> bool {
     v.iter().any(|&x| x == 0)
