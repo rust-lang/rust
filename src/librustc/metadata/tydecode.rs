@@ -96,8 +96,9 @@ pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
 }
 
 fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
+    let tcx = st.tcx;
     scan(st, is_last, |bytes| {
-            st.tcx.sess.ident_of(str::from_utf8(bytes).unwrap())
+            tcx.sess.ident_of(str::from_utf8(bytes).unwrap())
         })
 }
 
