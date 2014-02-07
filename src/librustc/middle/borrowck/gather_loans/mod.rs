@@ -568,11 +568,6 @@ impl<'a> GatherLoanCtxt<'a> {
             //! Implements the M-* rules in doc.rs.
 
             match req_mutbl {
-                ConstMutability => {
-                    // Data of any mutability can be lent as const.
-                    Ok(())
-                }
-
                 ImmutableMutability => {
                     // both imm and mut data can be lent as imm;
                     // for mutable data, this is a freeze
@@ -596,7 +591,6 @@ impl<'a> GatherLoanCtxt<'a> {
     pub fn restriction_set(&self, req_mutbl: LoanMutability)
                            -> RestrictionSet {
         match req_mutbl {
-            ConstMutability => RESTR_EMPTY,
             ImmutableMutability => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
             MutableMutability => {
                 RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
