@@ -41,8 +41,8 @@ local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
 // magic.
 
 use cast;
-use option::{None,Option,Some};
-use vec::{ImmutableVector,MutableVector,OwnedVector};
+use option::{None, Option, Some};
+use vec::{ImmutableVector, MutableVector, OwnedVector};
 use iter::{Iterator};
 use rt::task::{Task, LocalStorage};
 use util::replace;

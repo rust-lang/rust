@@ -12,7 +12,7 @@
 
 #[cfg(not(test))]
 use default::Default;
-use cmp::{Eq,Equal,Ord,Ordering,TotalEq,TotalOrd};
+use cmp::{Eq, Equal, Ord, Ordering, TotalEq, TotalOrd};
 
 #[cfg(not(test))]
 impl Eq for () {
