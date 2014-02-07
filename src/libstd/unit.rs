@@ -11,7 +11,8 @@
 //! Functions for the unit type.
 
 #[cfg(not(test))]
-use prelude::*;
+use default::Default;
+use cmp::{Eq, Equal, Ord, Ordering, TotalEq, TotalOrd};
 
 #[cfg(not(test))]
 impl Eq for () {
