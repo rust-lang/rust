@@ -729,6 +729,11 @@ Section: Misc
 
 /// Determines if a vector of bytes contains valid UTF-8
 pub fn is_utf8(v: &[u8]) -> bool {
+    first_non_utf8_index(v).is_none()
+}
+
+#[inline(always)]
+fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
     let mut i = 0u;
     let total = v.len();
     fn unsafe_get(xs: &[u8], i: uint) -> u8 {
@@ -740,10 +745,10 @@ pub fn is_utf8(v: &[u8]) -> bool {
             i += 1u;
         } else {
             let w = utf8_char_width(v_i);
-            if w == 0u { return false; }
+            if w == 0u { return Some(i); }
 
             let nexti = i + w;
-            if nexti > total { return false; }
+            if nexti > total { return Some(i); }
 
             // 2-byte encoding is for codepoints  \u0080 to  \u07ff
             //        first  C2 80        last DF BF
@@ -766,7 +771,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
             // UTF8-tail   = %x80-BF
             match w {
                 2 => if unsafe_get(v, i + 1) & 192u8 != TAG_CONT_U8 {
-                    return false
+                    return Some(i)
                 },
                 3 => match (v_i,
                             unsafe_get(v, i + 1),
@@ -775,7 +780,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
                     (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) => (),
                     (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) => (),
                     (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    _ => return false,
+                    _ => return Some(i),
                 },
                 _ => match (v_i,
                             unsafe_get(v, i + 1),
@@ -784,14 +789,14 @@ pub fn is_utf8(v: &[u8]) -> bool {
                     (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
                     (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
                     (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    _ => return false,
+                    _ => return Some(i)
                 },
             }
 
             i = nexti;
         }
     }
-    true
+    None
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -910,6 +915,53 @@ macro_rules! utf8_acc_cont_byte(
 
 static TAG_CONT_U8: u8 = 128u8;
 
+/// Enum that represents either a borrowed or an owned string.
+#[deriving(Eq,Clone)]
+pub enum MaybeOwned<'a> {
+    /// A borrowed string
+    Slice(&'a str),
+    /// An owned string
+    Owned(~str)
+}
+
+impl<'a> Str for MaybeOwned<'a> {
+    #[inline]
+    fn as_slice<'b>(&'b self) -> &'b str {
+        match *self {
+            Slice(s) => s,
+            Owned(ref s) => s.as_slice()
+        }
+    }
+
+    #[inline]
+    fn into_owned(self) -> ~str {
+        match self {
+            Slice(s) => s.to_owned(),
+            Owned(s) => s
+        }
+    }
+}
+
+impl<'a> ToStr for MaybeOwned<'a> {
+    #[inline]
+    fn to_str(&self) -> ~str {
+        match *self {
+            Slice(s) => s.to_str(),
+            Owned(ref s) => s.clone()
+        }
+    }
+}
+
+impl<'a> ::fmt::Show for MaybeOwned<'a> {
+    #[inline]
+    fn fmt(mo: &MaybeOwned, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+        match *mo {
+            Slice(ref s) => ::fmt::Show::fmt(s, f),
+            Owned(ref s) => ::fmt::Show::fmt(&s.as_slice(), f)
+        }
+    }
+}
+
 /// Converts a vector of bytes to a new utf-8 string.
 /// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
 ///
@@ -918,12 +970,16 @@ static TAG_CONT_U8: u8 = 128u8;
 /// ```rust
 /// let input = bytes!("Hello ", 0xF0, 0x90, 0x80, "World");
 /// let output = std::str::from_utf8_lossy(input);
-/// assert_eq!(output, ~"Hello \uFFFDWorld");
+/// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
 /// ```
-pub fn from_utf8_lossy(v: &[u8]) -> ~str {
+pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
+    let firstbad = match first_non_utf8_index(v) {
+        None => return Slice(unsafe { cast::transmute(v) }),
+        Some(i) => i
+    };
+
     static REPLACEMENT: &'static [u8] = bytes!(0xEF, 0xBF, 0xBD); // U+FFFD in UTF-8
-    let mut i = 0u;
-    let mut lastgood = 0u;
+    let mut i = firstbad;
     let total = v.len();
     fn unsafe_get(xs: &[u8], i: uint) -> u8 {
         unsafe { *xs.unsafe_ref(i) }
@@ -937,23 +993,32 @@ pub fn from_utf8_lossy(v: &[u8]) -> ~str {
     }
     let mut res = with_capacity(total);
 
+    if i > 0 {
+        unsafe { raw::push_bytes(&mut res, v.slice_to(i)) };
+    }
+
+    // subseqidx is the index of the first byte of the subsequence we're looking at.
+    // It's used to copy a bunch of contiguous good codepoints at once instead of copying
+    // them one by one.
+    let mut subseqidx = firstbad;
+
     while i < total {
         let i_ = i;
         let byte = unsafe_get(v, i);
         i += 1;
 
-        macro_rules! error(() => {
+        macro_rules! error(() => ({
             unsafe {
-                if lastgood != i_ {
-                    raw::push_bytes(&mut res, v.slice(lastgood, i_));
+                if subseqidx != i_ {
+                    raw::push_bytes(&mut res, v.slice(subseqidx, i_));
                 }
-                lastgood = i;
+                subseqidx = i;
                 raw::push_bytes(&mut res, REPLACEMENT);
             }
-        })
+        }))
 
         if byte < 128u8 {
-            // lastgood handles this
+            // subseqidx handles this
         } else {
             let w = utf8_char_width(byte);
 
@@ -1012,8 +1077,10 @@ pub fn from_utf8_lossy(v: &[u8]) -> ~str {
             }
         }
     }
-    unsafe { raw::push_bytes(&mut res, v.slice(lastgood, total)) };
-    res
+    if subseqidx < total {
+        unsafe { raw::push_bytes(&mut res, v.slice(subseqidx, total)) };
+    }
+    Owned(res)
 }
 
 /// Unsafe operations
@@ -3943,32 +4010,32 @@ mod tests {
     #[test]
     fn test_str_from_utf8_lossy() {
         let xs = bytes!("hello");
-        assert_eq!(from_utf8_lossy(xs), ~"hello");
+        assert_eq!(from_utf8_lossy(xs), Slice("hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam");
-        assert_eq!(from_utf8_lossy(xs), ~"ศไทย中华Việt Nam");
+        assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
         let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), ~"Hello\uFFFD There\uFFFD Goodbye");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD There\uFFFD Goodbye"));
 
         let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), ~"Hello\uFFFD\uFFFD There\uFFFD Goodbye");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD\uFFFD There\uFFFD Goodbye"));
 
         let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFD\uFFFDbar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFD\uFFFDbar"));
 
         let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
-        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFDbar\uFFFDbaz");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFDbaz"));
 
         let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
-        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz"));
 
         let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), ~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar"));
 
         // surrogates
         let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
-        assert_eq!(from_utf8_lossy(xs), ~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar"));
     }
 
     #[test]
