@@ -9,8 +9,9 @@
 // except according to those terms.
 
 enum foo { foo(bar) }
-struct bar { x: bar } //~ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
-//~^ ERROR this type cannot be instantiated without an instance of itself
+struct bar { x: bar }
+//~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
+//~^^ ERROR this type cannot be instantiated without an instance of itself
 
 fn main() {
 }

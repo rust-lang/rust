@@ -17,5 +17,6 @@ fn main() {
     let x: ~HashMap<~str, ~str> = ~HashMap::new();
     let x: ~Map<~str, ~str> = x;
     let y: ~Map<uint, ~str> = ~x;
-    //~^ ERROR failed to find an implementation of trait std::container::Map<uint,~str> for ~std::container::Map<~str,~str>:Send
+    //~^ ERROR failed to find an implementation of trait std::container::Map<uint,~str>
+    //         for ~std::container::Map<~str,~str>:Send
 }

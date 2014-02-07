@@ -11,7 +11,8 @@
 // This is meant as a test case for Issue 3961.
 //
 // Test via: rustc --pretty normal src/test/pretty/block-comment-wchar.rs
-//
+// xfail-tidy-cr
+// xfail-tidy-tab
 // pp-exact:block-comment-wchar.pp
 fn f() {
     fn nested() {

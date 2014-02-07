@@ -35,7 +35,8 @@ fn main() {
       (_, a) => {}
       (b, b) => {}
     }
-    match ~[Some(42), None, Some(21)] { //~ ERROR non-exhaustive patterns: vectors of length 0 not covered
+    match ~[Some(42), None, Some(21)] {
+        //~^ ERROR non-exhaustive patterns: vectors of length 0 not covered
         [Some(..), None, ..tail] => {}
         [Some(..), Some(..), ..tail] => {}
         [None] => {}

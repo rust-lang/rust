@@ -11,5 +11,6 @@
 // Regression test for issue #5239
 
 fn main() {
-    let x: |int| -> int = |ref x| { x += 1; }; //~ ERROR binary assignment operation `+=` cannot be applied to type `&int`
+    let x: |int| -> int = |ref x| { x += 1; };
+    //~^ ERROR binary assignment operation `+=` cannot be applied to type `&int`
 }
