@@ -181,19 +181,25 @@ never call its underlying iterator again once `None` has been returned:
 ~~~
 let xs = [1,2,3,4,5];
 let mut calls = 0;
-let it = xs.iter().scan((), |_, x| {
-    calls += 1;
-    if *x < 3 { Some(x) } else { None }});
-// the iterator will only yield 1 and 2 before returning None
-// If we were to call it 5 times, calls would end up as 5, despite only 2 values
-// being yielded (and therefore 3 unique calls being made). The fuse() adaptor
-// can fix this.
-let mut it = it.fuse();
-it.next();
-it.next();
-it.next();
-it.next();
-it.next();
+
+{
+    let it = xs.iter().scan((), |_, x| {
+        calls += 1;
+        if *x < 3 { Some(x) } else { None }});
+        
+    // the iterator will only yield 1 and 2 before returning None
+    // If we were to call it 5 times, calls would end up as 5, despite
+    // only 2 values being yielded (and therefore 3 unique calls being
+    // made). The fuse() adaptor can fix this.
+    
+    let mut it = it.fuse();
+    it.next();
+    it.next();
+    it.next();
+    it.next();
+    it.next();
+}
+
 assert_eq!(calls, 3);
 ~~~
 
