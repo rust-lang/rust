@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:macro_crate_def_only.rs
-// xfail-fast
+// ignore-fast
 
 #[feature(phase)];
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Regression test for issue #762
-// xfail-fast
+// ignore-fast
 
 pub fn f() { }
 pub fn main() { return ::f(); }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:logging_right_crate.rs
-// xfail-fast
+// ignore-fast
 // exec-env:RUST_LOG=logging-right-crate=debug
 
 // This is a test for issue #3046 to make sure that when we monomorphize a

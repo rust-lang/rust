@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:cci_capture_clause.rs
-// xfail-fast
+// ignore-fast
 
 // This test makes sure we can do cross-crate inlining on functions
 // that use capture clauses.

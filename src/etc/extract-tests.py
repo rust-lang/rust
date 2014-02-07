@@ -99,7 +99,7 @@ def extract_code_fragments(dest_dir, lines):
         block.appendleft(OUTPUT_BLOCK_HEADER)
 
         if "ignore" in tags:
-            block.appendleft("//xfail-test\n")
+            block.appendleft("//ignore-test\n")
         elif "should_fail" in tags:
             block.appendleft("//should-fail\n")
 

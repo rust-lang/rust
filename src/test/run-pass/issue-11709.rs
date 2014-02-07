@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty
+// ignore-pretty
 
 // Don't fail on blocks without results
 // There are several tests in this run-pass that raised

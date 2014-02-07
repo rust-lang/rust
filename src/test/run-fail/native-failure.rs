@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-android (FIXME #11419)
+// ignore-android (FIXME #11419)
 // error-pattern:explicit failure
 
 #[no_uv];

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
 // aux-build:private_variant_xc.rs
-// xfail-test
 
 extern mod private_variant_xc;
 
