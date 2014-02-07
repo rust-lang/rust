@@ -18,11 +18,4 @@ use other = xcrate_static_addresses;
 pub fn main() {
     other::verify_same(&other::global);
     other::verify_same2(other::global2);
-
-    // Previously this fail'd because there were two addresses that were being
-    // used when declaring constants.
-    other::test::cond.trap(|_| {
-    }).inside(|| {
-        other::raise();
-    })
 }

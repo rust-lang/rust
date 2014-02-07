@@ -147,12 +147,6 @@ pub use is_sep_byte = self::windows::is_sep_byte;
 pub mod posix;
 pub mod windows;
 
-// Condition that is raised when a NUL is found in a byte vector given to a Path function
-condition! {
-    // this should be a &[u8] but there's a lifetime issue
-    null_byte: ~[u8] -> ~[u8];
-}
-
 /// A trait that represents the generic operations available on paths
 pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Creates a new Path from a byte vector or string.
@@ -160,18 +154,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
     fn new<T: BytesContainer>(path: T) -> Self {
-        if contains_nul(path.container_as_bytes()) {
-            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
-            assert!(!contains_nul(path));
-            unsafe { GenericPathUnsafe::new_unchecked(path) }
-        } else {
-            unsafe { GenericPathUnsafe::new_unchecked(path) }
-        }
+        assert!(!contains_nul(path.container_as_bytes()));
+        unsafe { GenericPathUnsafe::new_unchecked(path) }
     }
 
     /// Creates a new Path from a byte vector or string, if possible.
@@ -283,16 +272,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the filename contains a NUL.
+    /// Fails the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
-        if contains_nul(filename.container_as_bytes()) {
-            let filename = self::null_byte::cond.raise(filename.container_into_owned_bytes());
-            assert!(!contains_nul(filename));
-            unsafe { self.set_filename_unchecked(filename) }
-        } else {
-            unsafe { self.set_filename_unchecked(filename) }
-        }
+        assert!(!contains_nul(filename.container_as_bytes()));
+        unsafe { self.set_filename_unchecked(filename) }
     }
     /// Replaces the extension with the given byte vector or string.
     /// If there is no extension in `self`, this adds one.
@@ -301,8 +285,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the extension contains a NUL.
+    /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
+        assert!(!contains_nul(extension.container_as_bytes()));
         // borrowck causes problems here too
         let val = {
             match self.filename() {
@@ -315,21 +300,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                 None
                             } else {
                                 let mut v;
-                                if contains_nul(extension.container_as_bytes()) {
-                                    let ext = extension.container_into_owned_bytes();
-                                    let extension = self::null_byte::cond.raise(ext);
-                                    assert!(!contains_nul(extension));
-                                    v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
-                                    v.push(dot);
-                                    v.push_all(extension);
-                                } else {
-                                    let extension = extension.container_as_bytes();
-                                    v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
-                                    v.push(dot);
-                                    v.push_all(extension);
-                                }
+                                let extension = extension.container_as_bytes();
+                                v = vec::with_capacity(name.len() + extension.len() + 1);
+                                v.push_all(name);
+                                v.push(dot);
+                                v.push_all(extension);
                                 Some(v)
                             }
                         }
@@ -338,19 +313,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                 Some(name.slice_to(idx).to_owned())
                             } else {
                                 let mut v;
-                                if contains_nul(extension.container_as_bytes()) {
-                                    let ext = extension.container_into_owned_bytes();
-                                    let extension = self::null_byte::cond.raise(ext);
-                                    assert!(!contains_nul(extension));
-                                    v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
-                                } else {
-                                    let extension = extension.container_as_bytes();
-                                    v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
-                                }
+                                let extension = extension.container_as_bytes();
+                                v = vec::with_capacity(idx + extension.len() + 1);
+                                v.push_all(name.slice_to(idx+1));
+                                v.push_all(extension);
                                 Some(v)
                             }
                         }
@@ -370,7 +336,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the filename contains a NUL.
+    /// Fails the task if the filename contains a NUL.
     #[inline]
     fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
@@ -383,7 +349,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the extension contains a NUL.
+    /// Fails the task if the extension contains a NUL.
     #[inline]
     fn with_extension<T: BytesContainer>(&self, extension: T) -> Self {
         let mut p = self.clone();
@@ -408,16 +374,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
-        if contains_nul(path.container_as_bytes()) {
-            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
-            assert!(!contains_nul(path));
-            unsafe { self.push_unchecked(path) }
-        } else {
-            unsafe { self.push_unchecked(path) }
-        }
+        assert!(!contains_nul(path.container_as_bytes()));
+        unsafe { self.push_unchecked(path) }
     }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
     /// See `push` for details.
@@ -445,7 +406,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     #[inline]
     fn join<T: BytesContainer>(&self, path: T) -> Self {
         let mut p = self.clone();
