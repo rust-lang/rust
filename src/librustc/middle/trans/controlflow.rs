@@ -74,7 +74,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
 
 pub fn trans_block<'a>(bcx: &'a Block<'a>,
                        b: &ast::Block,
-                       dest: expr::Dest)
+                       mut dest: expr::Dest)
                        -> &'a Block<'a> {
     let _icx = push_ctxt("trans_block");
     let fcx = bcx.fcx;
@@ -85,6 +85,14 @@ pub fn trans_block<'a>(bcx: &'a Block<'a>,
     for s in b.stmts.iter() {
         bcx = trans_stmt(bcx, *s);
     }
+
+    if dest != expr::Ignore {
+        let block_ty = node_id_type(bcx, b.id);
+        if b.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
+            dest = expr::Ignore;
+        }
+    }
+
     match b.expr {
         Some(e) => {
             bcx = expr::trans_into(bcx, e, dest);
