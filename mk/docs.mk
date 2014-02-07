@@ -19,8 +19,10 @@ HTML_DEPS := doc/
 
 BASE_DOC_OPTS := --standalone --toc --number-sections
 HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
-    --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
-TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md --to=latex
+    --include-before-body=doc/version_info.html \
+    --include-in-header=doc/favicon.inc --include-after-body=doc/footer.inc
+TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md \
+    --from=markdown --include-before-body=doc/footer.tex --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
 D := $(S)src/doc
@@ -55,12 +57,21 @@ doc/rust.css: $(D)/rust.css | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
+HTML_DEPS += doc/favicon.inc
+doc/favicon.inc: $(D)/favicon.inc | doc/
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
 doc/full-toc.inc: $(D)/full-toc.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-HTML_DEPS += doc/favicon.inc
-doc/favicon.inc: $(D)/favicon.inc | doc/
+HTML_DEPS += doc/footer.inc
+doc/footer.inc: $(D)/footer.inc | doc/
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
+doc/footer.tex: $(D)/footer.tex | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
@@ -83,7 +94,7 @@ doc/rust.html: $(D)/rust.md doc/full-toc.inc $(HTML_DEPS) | doc/
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
 
 DOCS += doc/rust.tex
-doc/rust.tex: $(D)/rust.md doc/version.md | doc/
+doc/rust.tex: $(D)/rust.md doc/footer.tex doc/version.md | doc/
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
@@ -107,7 +118,7 @@ doc/tutorial.html: $(D)/tutorial.md $(HTML_DEPS)
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/tutorial.tex
-doc/tutorial.tex: $(D)/tutorial.md doc/version.md
+doc/tutorial.tex: $(D)/tutorial.md doc/footer.tex doc/version.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
