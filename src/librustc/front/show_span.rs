@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Span debugger
+//!
+//! This module shows spans for all expressions in the crate
+//! to help with compiler debugging.
+
 use syntax::ast;
 use syntax::visit;
 use syntax::visit::Visitor;
