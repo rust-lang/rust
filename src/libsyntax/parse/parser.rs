@@ -1771,7 +1771,7 @@ impl Parser {
             self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
             return if es.len() == 1 && !trailing_comma {
-                self.mk_expr(lo, self.span.hi, ExprParen(es[0]))
+                self.mk_expr(lo, hi, ExprParen(es[0]))
             }
             else {
                 self.mk_expr(lo, hi, ExprTup(es))
@@ -1994,7 +1994,7 @@ impl Parser {
                                 seq_sep_trailing_disallowed(token::COMMA),
                                 |p| p.parse_expr()
                             );
-                            hi = self.span.hi;
+                            hi = self.last_span.hi;
 
                             es.unshift(e);
                             let nd = self.mk_method_call(i, tys, es, NoSugar);
@@ -2510,7 +2510,7 @@ impl Parser {
                               parse_decl: |&mut Parser| -> P<FnDecl>,
                               parse_body: |&mut Parser| -> @Expr)
                               -> @Expr {
-        let lo = self.last_span.lo;
+        let lo = self.span.lo;
         let decl = parse_decl(self);
         let body = parse_body(self);
         let fakeblock = P(ast::Block {
