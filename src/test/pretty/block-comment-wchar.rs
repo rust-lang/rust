@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,8 @@
 // This is meant as a test case for Issue 3961.
 //
 // Test via: rustc --pretty normal src/test/pretty/block-comment-wchar.rs
-// xfail-tidy-cr
-// xfail-tidy-tab
+// ignore-tidy-cr
+// ignore-tidy-tab
 // pp-exact:block-comment-wchar.pp
 fn f() {
     fn nested() {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// copyright 2013 the rust project developers. see the copyright
+// copyright 2013-2014 the rust project developers. see the copyright
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/copyright.
 //
@@ -18,7 +18,7 @@
 // option. this file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast calling itself doesn't work on check-fast
+// ignore-fast calling itself doesn't work on check-fast
 
 use std::{os, run};
 use std::io::process;

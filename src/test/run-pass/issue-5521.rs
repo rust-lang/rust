@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-5521.rs
-// xfail-fast
+// ignore-fast
 
 #[feature(managed_boxes)];
 

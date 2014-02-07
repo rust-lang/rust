@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// xfail-stage1
-// xfail-fast
-// xfail-android
+// ignore-stage1
+// ignore-fast
+// ignore-android
 
 #[feature(phase)];
 

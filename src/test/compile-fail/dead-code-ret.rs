@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// ignore-test
 
-// xfail'd because the lint pass doesn't know to ignore standard library
+// ignored because the lint pass doesn't know to ignore standard library
 // stuff.
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
