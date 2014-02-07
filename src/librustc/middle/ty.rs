@@ -45,6 +45,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -2668,8 +2669,13 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
     }
 }
 
+pub fn try_node_id_to_type(cx: ctxt, id: ast::NodeId) -> Option<t> {
+    let node_types = cx.node_types.borrow();
+    node_types.get().find_copy(&(id as uint))
+}
+
 pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
-    match node_id_to_type_opt(cx, id) {
+    match try_node_id_to_type(cx, id) {
        Some(t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
@@ -2881,6 +2887,45 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
         adjustments.get().find_copy(&expr.id)
     };
     adjust_ty(cx, expr.span, unadjusted_ty, adjustment)
+}
+
+pub fn expr_span(cx: ctxt, id: NodeId) -> Span {
+    match cx.items.find(id) {
+        Some(ast_map::NodeExpr(e)) => {
+            e.span
+        }
+        Some(f) => {
+            cx.sess.bug(format!("Node id {} is not an expr: {:?}",
+                                id, f));
+        }
+        None => {
+            cx.sess.bug(format!("Node id {} is not present \
+                                in the node map", id));
+        }
+    }
+}
+
+pub fn local_var_name_str(cx: ctxt, id: NodeId) -> InternedString {
+    match cx.items.find(id) {
+        Some(ast_map::NodeLocal(pat)) => {
+            match pat.node {
+                ast::PatIdent(_, ref path, _) => {
+                    let ident = ast_util::path_to_ident(path);
+                    token::get_ident(ident.name)
+                }
+                _ => {
+                    cx.sess.bug(
+                        format!("Variable id {} maps to {:?}, not local",
+                                id, pat));
+                }
+            }
+        }
+        r => {
+            cx.sess.bug(
+                format!("Variable id {} maps to {:?}, not local",
+                        id, r));
+        }
+    }
 }
 
 pub fn adjust_ty(cx: ctxt,
