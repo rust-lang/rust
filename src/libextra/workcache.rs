@@ -14,7 +14,7 @@ use json;
 use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sync::{Arc,RWArc};
-use treemap::TreeMap;
+use collections::TreeMap;
 use std::str;
 use std::io;
 use std::io::{File, MemWriter};

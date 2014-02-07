@@ -44,7 +44,7 @@ pub mod bench {
     use std::container::MutableMap;
     use std::{vec, rand};
     use std::rand::Rng;
-    use test::BenchHarness;
+    use extra::test::BenchHarness;
 
     pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
                                                   map: &mut M,
