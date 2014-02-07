@@ -518,6 +518,10 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
     let (outputs, trans) = {
         let (expanded_crate, ast_map) = {
             let crate = phase_1_parse_input(sess, cfg, input);
+            if sess.show_span() {
+                front::show_span::run(sess, &crate);
+                return;
+            }
             if stop_after_phase_1(sess) { return; }
             let loader = &mut Loader::new(sess);
             phase_2_configure_and_expand(sess, loader, crate)
