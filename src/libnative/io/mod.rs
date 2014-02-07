@@ -60,6 +60,14 @@ pub mod timer;
 #[path = "timer_win32.rs"]
 pub mod timer;
 
+#[cfg(unix)]
+#[path = "path_unix.rs"]
+pub mod pipe;
+
+#[cfg(windows)]
+#[path = "path_win32.rs"]
+pub mod pipe;
+
 mod timer_helper;
 
 pub type IoResult<T> = Result<T, IoError>;
@@ -196,11 +204,11 @@ impl rtio::IoFactory for IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
         net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
     }
-    fn unix_bind(&mut self, _path: &CString) -> IoResult<~RtioUnixListener> {
-        net::UnixListener::bind(_path).map(|s| ~s as ~RtioUnixListener)
+    fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener> {
+        pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener)
     }
-    fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
-        net::UnixStream::connect(_path, libc::SOCK_STREAM).map(|s| ~s as ~RtioPipe)
+    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe> {
+        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe)
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
