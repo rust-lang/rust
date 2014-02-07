@@ -123,6 +123,13 @@ macro_rules! unreachable (() => (
     fail!("internal error: entered unreachable code");
 ))
 
+/// A standardised placeholder for marking unfinished code. It fails with the
+/// message `"not yet implemented"` when executed.
+#[macro_export]
+macro_rules! unimplemented(
+    () => (fail!("not yet implemented"))
+)
+
 #[macro_export]
 macro_rules! format(($($arg:tt)*) => (
     format_args!(::std::fmt::format, $($arg)*)
