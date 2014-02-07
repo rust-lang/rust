@@ -11,9 +11,10 @@
 // except according to those terms.
 
 extern mod extra;
+extern mod collections;
 
-use extra::bitv::BitvSet;
-use extra::treemap::TreeSet;
+use collections::bitv::BitvSet;
+use collections::TreeSet;
 use std::hashmap::HashSet;
 use std::os;
 use std::rand;

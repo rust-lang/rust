@@ -22,10 +22,12 @@
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern mod collections;
 
-use extra::list::{List, Cons, Nil};
-use extra::list;
+#[cfg(test)] extern mod extra;
+
+use collections::list::{List, Cons, Nil};
+use collections::list;
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
