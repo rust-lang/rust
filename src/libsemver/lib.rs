@@ -74,17 +74,17 @@ impl ToStr for Identifier {
 #[deriving(Clone, Eq)]
 pub struct Version {
     /// The major version, to be incremented on incompatible changes.
-    priv major: uint,
+    major: uint,
     /// The minor version, to be incremented when functionality is added in a
     /// backwards-compatible manner.
-    priv minor: uint,
+    minor: uint,
     /// The patch version, to be incremented when backwards-compatible bug
     /// fixes are made.
-    priv patch: uint,
+    patch: uint,
     /// The pre-release version identifier, if one exists.
-    priv pre: ~[Identifier],
+    pre: ~[Identifier],
     /// The build metadata, ignored when determining version precedence.
-    priv build: ~[Identifier],
+    build: ~[Identifier],
 }
 
 impl ToStr for Version {
