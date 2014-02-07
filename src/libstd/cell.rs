@@ -10,7 +10,10 @@
 
 //! Types dealing with dynamic mutability
 
-use prelude::*;
+use clone::{Clone, DeepClone};
+use cmp::Eq;
+use ops::Drop;
+use option::{None, Option, Some};
 use cast;
 use kinds::{marker, Pod};
 
