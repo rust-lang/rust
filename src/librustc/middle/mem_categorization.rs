@@ -1100,7 +1100,9 @@ pub fn field_mutbl(tcx: ty::ctxt,
 pub enum AliasableReason {
     AliasableManaged,
     AliasableBorrowed(ast::Mutability),
-    AliasableOther
+    AliasableOther,
+    AliasableStatic,
+    AliasableStaticMut,
 }
 
 impl cmt_ {
@@ -1130,10 +1132,6 @@ impl cmt_ {
         }
     }
 
-    pub fn is_freely_aliasable(&self) -> bool {
-        self.freely_aliasable().is_some()
-    }
-
     pub fn freely_aliasable(&self) -> Option<AliasableReason> {
         /*!
          * Returns `Some(_)` if this lvalue represents a freely aliasable
@@ -1145,18 +1143,34 @@ impl cmt_ {
         // aliased and eventually recused.
 
         match self.cat {
+            cat_deref(b, _, region_ptr(MutMutable, _)) |
+            cat_downcast(b) |
+            cat_stack_upvar(b) |
+            cat_deref(b, _, uniq_ptr) |
+            cat_interior(b, _) |
+            cat_discr(b, _) => {
+                // Aliasability depends on base cmt
+                b.freely_aliasable()
+            }
+
             cat_copied_upvar(CopiedUpvar {onceness: ast::Once, ..}) |
             cat_rvalue(..) |
             cat_local(..) |
             cat_arg(_) |
-            cat_deref(_, _, unsafe_ptr(..)) | // of course it is aliasable, but...
-            cat_deref(_, _, region_ptr(MutMutable, _)) => {
+            cat_deref(_, _, unsafe_ptr(..)) => { // yes, it's aliasable, but...
                 None
             }
 
-            cat_copied_upvar(CopiedUpvar {onceness: ast::Many, ..}) |
-            cat_static_item(..) => {
+            cat_copied_upvar(CopiedUpvar {onceness: ast::Many, ..}) => {
                 Some(AliasableOther)
+            }
+
+            cat_static_item(..) => {
+                if self.mutbl.is_mutable() {
+                    Some(AliasableStaticMut)
+                } else {
+                    Some(AliasableStatic)
+                }
             }
 
             cat_deref(_, _, gc_ptr) => {
@@ -1165,14 +1179,6 @@ impl cmt_ {
 
             cat_deref(_, _, region_ptr(m @ MutImmutable, _)) => {
                 Some(AliasableBorrowed(m))
-            }
-
-            cat_downcast(..) |
-            cat_stack_upvar(..) |
-            cat_deref(_, _, uniq_ptr) |
-            cat_interior(..) |
-            cat_discr(..) => {
-                None
             }
         }
     }
