@@ -378,10 +378,45 @@ impl Visitor<()> for WbCtxt {
     fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
 }
 
+fn resolve_upvar_borrow_map(wbcx: &mut WbCtxt) {
+    if !wbcx.success {
+        return;
+    }
+
+    let fcx = wbcx.fcx;
+    let tcx = fcx.tcx();
+    let upvar_borrow_map = fcx.inh.upvar_borrow_map.borrow();
+    for (upvar_id, upvar_borrow) in upvar_borrow_map.get().iter() {
+        let r = upvar_borrow.region;
+        match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
+            Ok(r) => {
+                let new_upvar_borrow = ty::UpvarBorrow {
+                    kind: upvar_borrow.kind,
+                    region: r
+                };
+                debug!("Upvar borrow for {} resolved to {}",
+                       upvar_id.repr(tcx), new_upvar_borrow.repr(tcx));
+                let mut tcx_upvar_borrow_map = tcx.upvar_borrow_map.borrow_mut();
+                tcx_upvar_borrow_map.get().insert(*upvar_id, new_upvar_borrow);
+            }
+            Err(e) => {
+                let span = ty::expr_span(tcx, upvar_id.closure_expr_id);
+                fcx.ccx.tcx.sess.span_err(
+                    span, format!("cannot resolve lifetime for \
+                                  captured variable `{}`: {}",
+                                  ty::local_var_name_str(tcx, upvar_id.var_id).get().to_str(),
+                                  infer::fixup_err_to_str(e)));
+                wbcx.success = false;
+            }
+        };
+    }
+}
+
 pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: &ast::Expr) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;
     wbcx.visit_expr(e, ());
+    resolve_upvar_borrow_map(wbcx);
     return wbcx.success;
 }
 
@@ -397,5 +432,6 @@ pub fn resolve_type_vars_in_fn(fcx: @FnCtxt, decl: &ast::FnDecl,
             resolve_type_vars_for_node(wbcx, arg.pat.span, arg.pat.id);
         }
     }
+    resolve_upvar_borrow_map(wbcx);
     return wbcx.success;
 }

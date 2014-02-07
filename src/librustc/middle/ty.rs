@@ -351,6 +351,9 @@ pub struct ctxt_ {
     // is used for lazy resolution of traits.
     populated_external_traits: RefCell<HashSet<ast::DefId>>,
 
+    // Borrows
+    upvar_borrow_map: RefCell<UpvarBorrowMap>,
+
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
     extern_const_statics: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
@@ -493,6 +496,120 @@ pub enum Region {
     /// variable with no constraints.
     ReEmpty,
 }
+
+/**
+ * Upvars do not get their own node-id. Instead, we use the pair of
+ * the original var id (that is, the root variable that is referenced
+ * by the upvar) and the id of the closure expression.
+ */
+#[deriving(Clone, Eq, IterBytes)]
+pub struct UpvarId {
+    var_id: ast::NodeId,
+    closure_expr_id: ast::NodeId,
+}
+
+#[deriving(Clone, Eq, IterBytes)]
+pub enum BorrowKind {
+    /// Data must be immutable and is aliasable.
+    ImmBorrow,
+
+    /// Data must be immutable but not aliasable.  This kind of borrow
+    /// cannot currently be expressed by the user and is used only in
+    /// implicit closure bindings. It is needed when you the closure
+    /// is borrowing or mutating a mutable referent, e.g.:
+    ///
+    ///    let x: &mut int = ...;
+    ///    let y = || *x += 5;
+    ///
+    /// If we were to try to translate this closure into a more explicit
+    /// form, we'd encounter an error with the code as written:
+    ///
+    ///    struct Env { x: & &mut int }
+    ///    let x: &mut int = ...;
+    ///    let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
+    ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    ///
+    /// This is then illegal because you cannot mutate a `&mut` found
+    /// in an aliasable location. To solve, you'd have to translate with
+    /// an `&mut` borrow:
+    ///
+    ///    struct Env { x: & &mut int }
+    ///    let x: &mut int = ...;
+    ///    let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
+    ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
+    ///
+    /// Now the assignment to `**env.x` is legal, but creating a
+    /// mutable pointer to `x` is not because `x` is not mutable. We
+    /// could fix this by declaring `x` as `let mut x`. This is ok in
+    /// user code, if awkward, but extra weird for closures, since the
+    /// borrow is hidden.
+    ///
+    /// So we introduce a "unique imm" borrow -- the referent is
+    /// immutable, but not aliasable. This solves the problem. For
+    /// simplicity, we don't give users the way to express this
+    /// borrow, it's just used when translating closures.
+    UniqueImmBorrow,
+
+    /// Data is mutable and not aliasable.
+    MutBorrow
+}
+
+/**
+ * Information describing the borrowing of an upvar. This is computed
+ * during `typeck`, specifically by `regionck`. The general idea is
+ * that the compiler analyses treat closures like:
+ *
+ *     let closure: &'e fn() = || {
+ *        x = 1;   // upvar x is assigned to
+ *        use(y);  // upvar y is read
+ *        foo(&z); // upvar z is borrowed immutably
+ *     };
+ *
+ * as if they were "desugared" to something loosely like:
+ *
+ *     struct Vars<'x,'y,'z> { x: &'x mut int,
+ *                             y: &'y const int,
+ *                             z: &'z int }
+ *     let closure: &'e fn() = {
+ *         fn f(env: &Vars) {
+ *             *env.x = 1;
+ *             use(*env.y);
+ *             foo(env.z);
+ *         }
+ *         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
+ *                                                       y: &'y const y,
+ *                                                       z: &'z z };
+ *         (env, f)
+ *     };
+ *
+ * This is basically what happens at runtime. The closure is basically
+ * an existentially quantified version of the `(env, f)` pair.
+ *
+ * This data structure indicates the region and mutability of a single
+ * one of the `x...z` borrows.
+ *
+ * It may not be obvious why each borrowed variable gets its own
+ * lifetime (in the desugared version of the example, these are indicated
+ * by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
+ * Each such lifetime must encompass the lifetime `'e` of the closure itself,
+ * but need not be identical to it. The reason that this makes sense:
+ *
+ * - Callers are only permitted to invoke the closure, and hence to
+ *   use the pointers, within the lifetime `'e`, so clearly `'e` must
+ *   be a sublifetime of `'x...'z`.
+ * - The closure creator knows which upvars were borrowed by the closure
+ *   and thus `x...z` will be reserved for `'x...'z` respectively.
+ * - Through mutation, the borrowed upvars can actually escape the
+ *   the closure, so sometimes it is necessary for them to be larger
+ *   than the closure lifetime itself.
+ */
+#[deriving(Eq, Clone)]
+pub struct UpvarBorrow {
+    kind: BorrowKind,
+    region: ty::Region,
+}
+
+pub type UpvarBorrowMap = HashMap<UpvarId, UpvarBorrow>;
 
 impl Region {
     pub fn is_bound(&self) -> bool {
@@ -999,7 +1116,7 @@ pub fn mk_ctxt(s: session::Session,
         impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: RefCell::new(HashSet::new()),
         populated_external_traits: RefCell::new(HashSet::new()),
-
+        upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(HashMap::new()),
         extern_const_variants: RefCell::new(HashMap::new()),
      }
@@ -5097,6 +5214,31 @@ impl substs {
             self_ty: None,
             tps: ~[],
             regions: NonerasedRegions(opt_vec::Empty)
+        }
+    }
+}
+
+impl BorrowKind {
+    pub fn from_mutbl(m: ast::Mutability) -> BorrowKind {
+        match m {
+            ast::MutMutable => MutBorrow,
+            ast::MutImmutable => ImmBorrow,
+        }
+    }
+
+    pub fn to_user_str(&self) -> &'static str {
+        match *self {
+            MutBorrow => "mutable",
+            ImmBorrow => "immutable",
+            UniqueImmBorrow => "uniquely immutable",
+        }
+    }
+
+    pub fn to_short_str(&self) -> &'static str {
+        match *self {
+            MutBorrow => "mut",
+            ImmBorrow => "imm",
+            UniqueImmBorrow => "own",
         }
     }
 }
