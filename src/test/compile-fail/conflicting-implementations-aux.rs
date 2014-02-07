@@ -17,7 +17,8 @@ use trait_impl_conflict::Foo;
 
 impl<A> Foo for A {
 //~^ ERROR conflicting implementations for trait `trait_impl_conflict::Foo`
-//~^^ ERROR cannot provide an extension implementation where both trait and type are not defined in this crate
+//~^^ ERROR cannot provide an extension implementation where both trait and type
+//          are not defined in this crate
 }
 
 fn main() {

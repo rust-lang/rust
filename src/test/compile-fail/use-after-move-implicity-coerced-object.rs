@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-tidy-linelength
+
 struct Number {
     n: i64
 }
@@ -32,6 +34,6 @@ fn main() {
     let n = ~Number { n: 42 };
     let mut l = ~List { list: ~[] };
     l.push(n);
-    //^~ NOTE: `n` moved here because it has type `~Number`, which is non-copyable (perhaps you meant to use clone()?)
-    let x = n.to_str(); //~ ERROR: use of moved value: `n`
+    let x = n.to_str();
+    //~^ ERROR: use of moved value: `n`
 }

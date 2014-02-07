@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-tidy-linelength
 // xfail-android: FIXME(#10381)
 
 // compile-flags:-Z extra-debug-info
@@ -28,9 +29,9 @@
 #[allow(unused_variable)];
 
 struct Struct {
-	x: u32,
-	y: i32,
-	z: i16
+    x: u32,
+    y: i32,
+    z: i16
 }
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
@@ -42,7 +43,7 @@ enum Regular {
 }
 
 enum Univariant {
-	TheOnlyCase(Struct)
+    TheOnlyCase(Struct)
 }
 
 fn main() {

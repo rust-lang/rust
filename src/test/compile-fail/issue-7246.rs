@@ -13,7 +13,7 @@
 
 use std::ptr;
 pub unsafe fn g() {
-    return; 
+    return;
     if *ptr::null() {}; //~ ERROR unreachable
 }
 

@@ -114,7 +114,8 @@ impl TyVisitor for MyVisitor {
                                 _disr_val: Disr,
                                 _n_fields: uint,
                                 _name: &str) -> bool { true }
-    fn visit_enum_variant_field(&mut self, _i: uint, _offset: uint, _inner: *TyDesc) -> bool { true }
+    fn visit_enum_variant_field(&mut self, _i: uint, _offset: uint, _inner: *TyDesc)
+        -> bool { true }
     fn visit_leave_enum_variant(&mut self,
                                 _variant: uint,
                                 _disr_val: Disr,
@@ -128,7 +129,8 @@ impl TyVisitor for MyVisitor {
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
     fn visit_fn_input(&mut self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_fn_output(&mut self, _retstyle: uint, _variadic: bool, _inner: *TyDesc) -> bool { true }
+    fn visit_fn_output(&mut self, _retstyle: uint, _variadic: bool, _inner: *TyDesc)
+        -> bool { true }
     fn visit_leave_fn(&mut self, _purity: uint, _proto: uint,
                       _n_inputs: uint, _retstyle: uint) -> bool { true }
 
