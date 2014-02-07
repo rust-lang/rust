@@ -31,8 +31,8 @@
 // the size of the discriminant value is machine dependent, this has be taken into account when
 // datatype layout should be predictable as in this case.
 enum ABC {
-	TheA { x: i64, y: i64 },
-	TheB (i64, i32, i32),
+    TheA { x: i64, y: i64 },
+    TheB (i64, i32, i32),
 }
 
 // This is a special case since it does not have the implicit discriminant field.
@@ -46,10 +46,10 @@ fn main() {
     // repeated byte. This way each interpretation of the union should look the same, no matter if
     // this is a big or little endian machine.
 
-	// 0b0111110001111100011111000111110001111100011111000111110001111100 = 8970181431921507452
-	// 0b01111100011111000111110001111100 = 2088533116
-	// 0b0111110001111100 = 31868
-	// 0b01111100 = 124
+    // 0b0111110001111100011111000111110001111100011111000111110001111100 = 8970181431921507452
+    // 0b01111100011111000111110001111100 = 2088533116
+    // 0b0111110001111100 = 31868
+    // 0b01111100 = 124
     let the_a = @TheA { x: 0, y: 8970181431921507452 };
 
     // 0b0001000100010001000100010001000100010001000100010001000100010001 = 1229782938247303441

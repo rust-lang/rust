@@ -31,26 +31,26 @@
 #[allow(unused_variable)];
 
 fn function_one() {
-	let abc = 10101;
-	zzz();
+    let abc = 10101;
+    zzz();
 }
 
 fn function_two() {
-	let abc = 20202;
-	zzz();
+    let abc = 20202;
+    zzz();
 }
 
 
 fn function_three() {
-	let abc = 30303;
-	zzz();
+    let abc = 30303;
+    zzz();
 }
 
 
 fn main() {
-	function_one();
-	function_two();
-	function_three();
+    function_one();
+    function_two();
+    function_three();
 }
 
 fn zzz() {()}

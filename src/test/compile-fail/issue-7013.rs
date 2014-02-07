@@ -36,7 +36,8 @@ struct A
 
 fn main()
 {
-    let a = A {v: ~B{v: None} as ~Foo}; //~ ERROR cannot pack type `~B`, which does not fulfill `Send`
+    let a = A {v: ~B{v: None} as ~Foo};
+    //~^ ERROR cannot pack type `~B`, which does not fulfill `Send`
     let v = Rc::new(RefCell::new(a));
     let w = v.clone();
     let b = v.borrow();
