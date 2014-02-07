@@ -20,7 +20,13 @@ use io::process;
 use io;
 use libc::{pid_t, c_int};
 use libc;
-use prelude::*;
+use option::{None, Option, Some};
+use task::spawn;
+use path::{Path, GenericPath};
+use result::Ok;
+use str::Str;
+use vec::Vector;
+use clone::Clone;
 
 /**
  * A value representing a child process.

@@ -10,7 +10,7 @@
 
 //! Operations on ASCII strings and characters
 
-use to_str::{ToStr,IntoStr};
+use to_str::{ToStr, IntoStr};
 use str;
 use str::Str;
 use str::StrSlice;

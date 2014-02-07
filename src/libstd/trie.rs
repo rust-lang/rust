@@ -10,12 +10,16 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use prelude::*;
+use option::{None, Option, Some};
+use container::{Container, Map, Mutable, MutableMap};
+use iter::{Extendable, FromIterator, Iterator};
 use mem;
 use uint;
 use util::replace;
 use unstable::intrinsics::init;
 use vec;
+use ptr::RawPtr;
+use vec::{ImmutableVector, Items, MutableVector, MutItems, OwnedVector};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
