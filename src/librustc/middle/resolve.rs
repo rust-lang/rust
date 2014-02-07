@@ -2567,52 +2567,15 @@ impl Resolver {
             }
         }
 
-        let merge_import_resolution = |name, name_bindings: @NameBindings| {
-            let dest_import_resolution;
-            let mut import_resolutions = module_.import_resolutions
-                                                .borrow_mut();
-            match import_resolutions.get().find(&name) {
-                None => {
-                    // Create a new import resolution from this child.
-                    dest_import_resolution =
-                        @ImportResolution::new(id, is_public);
-                    import_resolutions.get().insert(name,
-                                                    dest_import_resolution);
-                }
-                Some(&existing_import_resolution) => {
-                    dest_import_resolution = existing_import_resolution;
-                }
-            }
-
-            debug!("(resolving glob import) writing resolution `{}` in `{}` \
-                    to `{}`",
-                   token::get_ident(name).get().to_str(),
-                   self.module_to_str(containing_module),
-                   self.module_to_str(module_));
-
-            // Merge the child item into the import resolution.
-            if name_bindings.defined_in_public_namespace(ValueNS) {
-                debug!("(resolving glob import) ... for value target");
-                dest_import_resolution.value_target.set(
-                    Some(Target::new(containing_module, name_bindings)));
-                dest_import_resolution.value_id.set(id);
-            }
-            if name_bindings.defined_in_public_namespace(TypeNS) {
-                debug!("(resolving glob import) ... for type target");
-                dest_import_resolution.type_target.set(
-                    Some(Target::new(containing_module, name_bindings)));
-                dest_import_resolution.type_id.set(id);
-            }
-            dest_import_resolution.is_public.set(is_public);
-        };
-
         // Add all children from the containing module.
         self.populate_module_if_necessary(containing_module);
 
         {
             let children = containing_module.children.borrow();
             for (&name, name_bindings) in children.get().iter() {
-                merge_import_resolution(name, *name_bindings);
+                self.merge_import_resolution(module_, containing_module,
+                                             id, is_public,
+                                             name, *name_bindings);
             }
         }
 
@@ -2623,7 +2586,9 @@ impl Resolver {
             for (&name, module) in external_module_children.get().iter() {
                 let name_bindings =
                     @Resolver::create_name_bindings_from_module(*module);
-                merge_import_resolution(name, name_bindings);
+                self.merge_import_resolution(module_, containing_module,
+                                             id, is_public,
+                                             name, name_bindings);
             }
         }
 
@@ -2639,6 +2604,50 @@ impl Resolver {
 
         debug!("(resolving glob import) successfully resolved import");
         return Success(());
+    }
+
+    fn merge_import_resolution(&mut self,
+                               module_: @Module,
+                               containing_module: @Module,
+                               id: NodeId,
+                               is_public: bool,
+                               name: Name,
+                               name_bindings: @NameBindings) {
+        let dest_import_resolution;
+        let mut import_resolutions = module_.import_resolutions.borrow_mut();
+        match import_resolutions.get().find(&name) {
+            None => {
+                // Create a new import resolution from this child.
+                dest_import_resolution =
+                    @ImportResolution::new(id, is_public);
+                import_resolutions.get().insert(name,
+                                                dest_import_resolution);
+            }
+            Some(&existing_import_resolution) => {
+                dest_import_resolution = existing_import_resolution;
+            }
+        }
+
+        debug!("(resolving glob import) writing resolution `{}` in `{}` \
+               to `{}`",
+               token::get_ident(name).get().to_str(),
+               self.module_to_str(containing_module),
+               self.module_to_str(module_));
+
+        // Merge the child item into the import resolution.
+        if name_bindings.defined_in_public_namespace(ValueNS) {
+            debug!("(resolving glob import) ... for value target");
+            dest_import_resolution.value_target.set(
+                Some(Target::new(containing_module, name_bindings)));
+            dest_import_resolution.value_id.set(id);
+        }
+        if name_bindings.defined_in_public_namespace(TypeNS) {
+            debug!("(resolving glob import) ... for type target");
+            dest_import_resolution.type_target.set(
+                Some(Target::new(containing_module, name_bindings)));
+            dest_import_resolution.type_id.set(id);
+        }
+        dest_import_resolution.is_public.set(is_public);
     }
 
     /// Resolves the given module path from the given root `module_`.
