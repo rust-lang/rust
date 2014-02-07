@@ -707,7 +707,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               fn_decl: &ast::FnDecl,
                               param_substs: Option<@param_substs>,
                               error_span: Span) -> DIArray {
-        if !cx.sess.opts.extra_debuginfo {
+        if !cx.sess.opts.debuginfo {
             return create_DIArray(DIB(cx), []);
         }
 
@@ -784,8 +784,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Only create type information if extra_debuginfo is enabled
-            if cx.sess.opts.extra_debuginfo {
+            // Only create type information if debuginfo is enabled
+            if cx.sess.opts.debuginfo {
                 let actual_self_type_metadata = type_metadata(cx,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
@@ -829,8 +829,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Again, only create type information if extra_debuginfo is enabled
-            if cx.sess.opts.extra_debuginfo {
+            // Again, only create type information if debuginfo is enabled
+            if cx.sess.opts.debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let param_metadata_string = token::get_ident(ident.name);
                 let param_metadata = param_metadata_string.get()

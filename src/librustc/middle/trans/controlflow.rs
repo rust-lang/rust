@@ -56,7 +56,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, *local);
-                    if cx.sess().opts.extra_debuginfo {
+                    if cx.sess().opts.debuginfo {
                         debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }

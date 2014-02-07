@@ -17,7 +17,7 @@
 // before the arguments have been properly loaded when setting the breakpoint via the function name.
 // Therefore the setup here sets them using line numbers (so be careful when changing this file).
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:set print pretty off
 // debugger:break function-arg-initialization.rs:139
 // debugger:break function-arg-initialization.rs:154

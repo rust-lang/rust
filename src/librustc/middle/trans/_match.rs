@@ -1371,7 +1371,7 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
             llmap.get().insert(binding_info.id, datum);
         }
 
-        if bcx.sess().opts.extra_debuginfo {
+        if bcx.sess().opts.debuginfo {
             debuginfo::create_match_binding_metadata(bcx,
                                                      ident,
                                                      binding_info.id,
@@ -2030,7 +2030,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
             // like `x: T`
             let arg_ty = node_id_type(bcx, pat.id);
             if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && !bcx.ccx().sess.opts.extra_debuginfo {
+                && !bcx.ccx().sess.opts.debuginfo {
                 // Don't copy an indirect argument to an alloca, the caller
                 // already put it in a temporary alloca and gave it up, unless
                 // we emit extra-debug-info, which requires local allocas :(.
