@@ -11,7 +11,7 @@
 //! Utilities for references
 
 #[cfg(not(test))]
-use cmp::{Eq,Ord,Ordering,TotalEq,TotalOrd};
+use cmp::{Eq, Ord, Ordering, TotalEq, TotalOrd};
 
 // Equality for region pointers
 #[cfg(not(test))]
