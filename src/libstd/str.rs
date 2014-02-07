@@ -900,15 +900,121 @@ pub struct CharRange {
 // The first byte is special, only want bottom 5 bits for width 2, 4 bits
 // for width 3, and 3 bits for width 4
 macro_rules! utf8_first_byte(
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as uint)
+    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
 )
 
 // return the value of $ch updated with continuation byte $byte
 macro_rules! utf8_acc_cont_byte(
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as uint)
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 )
 
 static TAG_CONT_U8: u8 = 128u8;
+
+/// Converts a vector of bytes to a new utf-8 string.
+/// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+///
+/// # Example
+///
+/// ```rust
+/// let input = bytes!("Hello ", 0xF0, 0x90, 0x80, "World");
+/// let output = std::str::from_utf8_lossy(input);
+/// assert_eq!(output, ~"Hello \uFFFDWorld");
+/// ```
+pub fn from_utf8_lossy(v: &[u8]) -> ~str {
+    static REPLACEMENT: &'static [u8] = bytes!(0xEF, 0xBF, 0xBD); // U+FFFD in UTF-8
+    let mut i = 0u;
+    let mut lastgood = 0u;
+    let total = v.len();
+    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
+        unsafe { *xs.unsafe_ref(i) }
+    }
+    fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
+        if i >= total {
+            0
+        } else {
+            unsafe_get(xs, i)
+        }
+    }
+    let mut res = with_capacity(total);
+
+    while i < total {
+        let i_ = i;
+        let byte = unsafe_get(v, i);
+        i += 1;
+
+        macro_rules! error(() => {
+            unsafe {
+                if lastgood != i_ {
+                    raw::push_bytes(&mut res, v.slice(lastgood, i_));
+                }
+                lastgood = i;
+                raw::push_bytes(&mut res, REPLACEMENT);
+            }
+        })
+
+        if byte < 128u8 {
+            // lastgood handles this
+        } else {
+            let w = utf8_char_width(byte);
+
+            match w {
+                2 => {
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                3 => {
+                    match (byte, safe_get(v, i, total)) {
+                        (0xE0        , 0xA0 .. 0xBF) => (),
+                        (0xE1 .. 0xEC, 0x80 .. 0xBF) => (),
+                        (0xED        , 0x80 .. 0x9F) => (),
+                        (0xEE .. 0xEF, 0x80 .. 0xBF) => (),
+                        _ => {
+                            error!();
+                            continue;
+                        }
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                4 => {
+                    match (byte, safe_get(v, i, total)) {
+                        (0xF0        , 0x90 .. 0xBF) => (),
+                        (0xF1 .. 0xF3, 0x80 .. 0xBF) => (),
+                        (0xF4        , 0x80 .. 0x8F) => (),
+                        _ => {
+                            error!();
+                            continue;
+                        }
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                _ => {
+                    error!();
+                    continue;
+                }
+            }
+        }
+    }
+    unsafe { raw::push_bytes(&mut res, v.slice(lastgood, total)) };
+    res
+}
 
 /// Unsafe operations
 pub mod raw {
@@ -2211,7 +2317,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
         // Multibyte case is a fn to allow char_range_at to inline cleanly
         fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
-            let mut val = s[i] as uint;
+            let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
             assert!((w != 0));
 
@@ -2220,7 +2326,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val as u32) }, next: i + w};
+            return CharRange {ch: unsafe { transmute(val) }, next: i + w};
         }
 
         return multibyte_char_range_at(*self, i);
@@ -2243,7 +2349,7 @@ impl<'a> StrSlice<'a> for &'a str {
                 i -= 1u;
             }
 
-            let mut val = s[i] as uint;
+            let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
             assert!((w != 0));
 
@@ -2252,7 +2358,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val as u32) }, next: i};
+            return CharRange {ch: unsafe { transmute(val) }, next: i};
         }
 
         return multibyte_char_range_at_reverse(*self, prev);
@@ -3835,6 +3941,37 @@ mod tests {
     }
 
     #[test]
+    fn test_str_from_utf8_lossy() {
+        let xs = bytes!("hello");
+        assert_eq!(from_utf8_lossy(xs), ~"hello");
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_utf8_lossy(xs), ~"ศไทย中华Việt Nam");
+
+        let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
+        assert_eq!(from_utf8_lossy(xs), ~"Hello\uFFFD There\uFFFD Goodbye");
+
+        let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        assert_eq!(from_utf8_lossy(xs), ~"Hello\uFFFD\uFFFD There\uFFFD Goodbye");
+
+        let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
+        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFD\uFFFDbar");
+
+        let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
+        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFDbar\uFFFDbaz");
+
+        let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
+        assert_eq!(from_utf8_lossy(xs), ~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz");
+
+        let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
+        assert_eq!(from_utf8_lossy(xs), ~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar");
+
+        // surrogates
+        let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
+        assert_eq!(from_utf8_lossy(xs), ~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar");
+    }
+
+    #[test]
     fn test_to_send_str() {
         assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
         assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
@@ -3989,6 +4126,42 @@ mod bench {
         assert_eq!(100, s.len());
         bh.iter(|| {
             let _ = is_utf8(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_ascii(bh: &mut BenchHarness) {
+        let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
+                        Lorem ipsum dolor sit amet, consectetur. ");
+
+        assert_eq!(100, s.len());
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_multibyte(bh: &mut BenchHarness) {
+        let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
+        assert_eq!(100, s.len());
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_invalid(bh: &mut BenchHarness) {
+        let s = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_invalid(bh: &mut BenchHarness) {
+        let s = ::vec::from_elem(100, 0xF5u8);
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
         });
     }
 
