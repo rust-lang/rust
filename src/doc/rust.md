@@ -3906,4 +3906,4 @@ Additional specific influences can be seen from the following languages:
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
 
-[ffi]: tutorial-ffi.html
+[ffi]: guide-ffi.html
