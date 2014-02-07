@@ -508,10 +508,10 @@ impl<'a, P: GenericPath> ToStr for Display<'a, P> {
         if self.filename {
             match self.path.filename() {
                 None => ~"",
-                Some(v) => from_utf8_with_replacement(v)
+                Some(v) => str::from_utf8_lossy(v)
             }
         } else {
-            from_utf8_with_replacement(self.path.as_vec())
+            str::from_utf8_lossy(self.path.as_vec())
         }
     }
 }
@@ -596,29 +596,6 @@ fn contains_nul(v: &[u8]) -> bool {
     v.iter().any(|&x| x == 0)
 }
 
-#[inline(always)]
-fn from_utf8_with_replacement(mut v: &[u8]) -> ~str {
-    // FIXME (#9516): Don't decode utf-8 manually here once we have a good way to do it in str
-    // This is a truly horrifically bad implementation, done as a functionality stopgap until
-    // we have a proper utf-8 decoder. I don't really want to write one here.
-    static REPLACEMENT_CHAR: char = '\uFFFD';
-
-    let mut s = str::with_capacity(v.len());
-    while !v.is_empty() {
-        let w = str::utf8_char_width(v[0]);
-        if w == 0u {
-            s.push_char(REPLACEMENT_CHAR);
-            v = v.slice_from(1);
-        } else if v.len() < w || !str::is_utf8(v.slice_to(w)) {
-            s.push_char(REPLACEMENT_CHAR);
-            v = v.slice_from(1);
-        } else {
-            s.push_str(unsafe { ::cast::transmute(v.slice_to(w)) });
-            v = v.slice_from(w);
-        }
-    }
-    s
-}
 #[cfg(test)]
 mod tests {
     use prelude::*;
