@@ -310,9 +310,6 @@ extern "rust-intrinsic" {
 
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
 
-    /// Get the address of the `__morestack` stack growth function.
-    pub fn morestack_addr() -> *();
-
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end. An arithmetic overflow is also
     /// undefined behaviour.
