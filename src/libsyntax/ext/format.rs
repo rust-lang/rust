@@ -786,22 +786,25 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
         None => return MacResult::dummy_expr()
     };
 
-    let mut err = false;
-    parse::parse_error::cond.trap(|m| {
-        if !err {
-            err = true;
-            cx.ecx.span_err(efmt.span, m);
-        }
-    }).inside(|| {
-        for piece in parse::Parser::new(fmt.get()) {
-            if !err {
+    let mut parser = parse::Parser::new(fmt.get());
+    loop {
+        match parser.next() {
+            Some(piece) => {
+                if parser.errors.len() > 0 { break }
                 cx.verify_piece(&piece);
                 let piece = cx.trans_piece(&piece);
                 cx.pieces.push(piece);
             }
+            None => break
         }
-    });
-    if err { return MRExpr(efmt) }
+    }
+    match parser.errors.shift() {
+        Some(error) => {
+            cx.ecx.span_err(efmt.span, "invalid format string: " + error);
+            return MRExpr(efmt);
+        }
+        None => {}
+    }
 
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {
