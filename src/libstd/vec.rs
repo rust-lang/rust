@@ -120,7 +120,6 @@ use mem::size_of;
 use kinds::marker;
 use uint;
 use unstable::finally::try_finally;
-use unstable::intrinsics;
 use unstable::raw::{Repr, Slice, Vec};
 
 /**
@@ -297,7 +296,8 @@ impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
             return Some(self.v);
         }
 
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
+        let pred = &mut self.pred;
+        match self.v.iter().rposition(|x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
