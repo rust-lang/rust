@@ -178,8 +178,6 @@ pub mod run;
 pub mod cast;
 pub mod fmt;
 pub mod cleanup;
-#[deprecated]
-pub mod condition;
 pub mod logging;
 pub mod util;
 pub mod mem;
@@ -216,7 +214,6 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use comm;
-    pub use condition;
     pub use fmt;
     pub use io;
     pub use kinds;
