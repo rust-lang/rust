@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::c_str::CString;
 use std::cast;
 use std::io::net::ip;
 use std::io;
@@ -16,7 +15,6 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
 
 use super::{IoResult, retry};
 use super::file::keep_going;
@@ -90,30 +88,6 @@ fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     }
 }
 
-fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint)> {
-    // the sun_path length is limited to SUN_LEN (with null)
-    if addr.len() > libc::sun_len -1 {
-        return Err(io::IoError {
-            kind: io::OtherIoError,
-            desc: "path must be smaller than SUN_LEN",
-            detail: None,
-        })
-    }
-    unsafe {
-        let storage: libc::sockaddr_storage = intrinsics::init();
-        let s: *mut libc::sockaddr_un = cast::transmute(&storage);
-        (*s).sun_family = libc::AF_UNIX as libc::sa_family_t;
-        let mut i = 0;
-        for c in addr.iter() {
-          (*s).sun_path[i] = c;
-          i += 1;
-        }
-
-        let len = mem::size_of::<libc::sa_family_t>() + i + 1; //count the null terminator
-        return Ok((storage, len));
-    }
-}
-
 fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
     unsafe {
         let fam = match addr.ip {
@@ -123,15 +97,6 @@ fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
         match libc::socket(fam, ty, 0) {
             -1 => Err(super::last_error()),
             fd => Ok(fd),
-        }
-    }
-}
-
-fn unix_socket(ty: libc::c_int) -> IoResult<sock_t> {
-    unsafe {
-        match libc::socket(libc::AF_UNIX, ty, 0) {
-            -1 => Err(super::last_error()),
-            fd => Ok(fd)
         }
     }
 }
@@ -221,24 +186,6 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                 ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
                 port: ntohs(storage.sin6_port),
             })
-        }
-        _ => {
-            Err(io::standard_error(io::OtherIoError))
-        }
-    }
-}
-
-fn sockaddr_to_unix(storage: &libc::sockaddr_storage,
-                    len: uint) -> IoResult<CString> {
-    match storage.ss_family as libc::c_int {
-        libc::AF_UNIX => {
-            assert!(len as uint <= mem::size_of::<libc::sockaddr_un>());
-            let storage: &libc::sockaddr_un = unsafe {
-                cast::transmute(storage)
-            };
-            unsafe {
-                Ok(CString::new(storage.sun_path.to_owned().as_ptr(), false))
-            }
         }
         _ => {
             Err(io::standard_error(io::OtherIoError))

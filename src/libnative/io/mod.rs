@@ -61,11 +61,11 @@ pub mod timer;
 pub mod timer;
 
 #[cfg(unix)]
-#[path = "path_unix.rs"]
+#[path = "pipe_unix.rs"]
 pub mod pipe;
 
 #[cfg(windows)]
-#[path = "path_win32.rs"]
+#[path = "pipe_win32.rs"]
 pub mod pipe;
 
 mod timer_helper;
@@ -85,6 +85,9 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
+            libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
+            libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
             libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
             libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
             libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
@@ -94,6 +97,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ERROR_BROKEN_PIPE => (io::BrokenPipe, "the pipe has ended"),
 
             x => {
                 debug!("ignoring {}: {}", x, os::last_os_error());
@@ -116,6 +120,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ENOENT => (io::FileNotFound, "no such file or directory"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause
