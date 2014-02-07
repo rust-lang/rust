@@ -11,8 +11,9 @@
 #[feature(managed_boxes)];
 
 extern mod extra;
+extern mod collections;
 
-use extra::list::{List, Cons, Nil};
+use collections::list::{List, Cons, Nil};
 use extra::time::precise_time_s;
 use std::os;
 use std::task;

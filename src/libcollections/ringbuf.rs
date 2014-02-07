@@ -17,7 +17,7 @@ use std::num;
 use std::vec;
 use std::iter::{Rev, RandomAccessIterator};
 
-use container::Deque;
+use deque::Deque;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -431,7 +431,7 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
-    use container::Deque;
+    use deque::Deque;
     use extra::test;
     use std::clone::Clone;
     use std::cmp::Eq;

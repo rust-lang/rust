@@ -1495,9 +1495,9 @@ mod test_treemap {
 #[cfg(test)]
 mod bench {
 
-    use super::*;
-    use test::BenchHarness;
-    use container::bench::*;
+    use super::TreeMap;
+    use extra::test::BenchHarness;
+    use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     // Find seq
     #[bench]
@@ -1555,7 +1555,7 @@ mod bench {
 #[cfg(test)]
 mod test_set {
 
-    use super::*;
+    use super::{TreeMap, TreeSet};
 
     #[test]
     fn test_clear() {
