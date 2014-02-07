@@ -12,10 +12,156 @@
 //!
 //! This library provides M:N threading for rust programs. Internally this has
 //! the implementation of a green scheduler along with context switching and a
-//! stack-allocation strategy.
+//! stack-allocation strategy. This can be optionally linked in to rust
+//! programs in order to provide M:N functionality inside of 1:1 programs.
 //!
-//! This can be optionally linked in to rust programs in order to provide M:N
-//! functionality inside of 1:1 programs.
+//! # Architecture
+//!
+//! An M:N scheduling library implies that there are N OS thread upon which M
+//! "green threads" are multiplexed. In other words, a set of green threads are
+//! all run inside a pool of OS threads.
+//!
+//! With this design, you can achieve _concurrency_ by spawning many green
+//! threads, and you can achieve _parallelism_ by running the green threads
+//! simultaneously on multiple OS threads. Each OS thread is a candidate for
+//! being scheduled on a different core (the source of parallelism), and then
+//! all of the green threads cooperatively schedule amongst one another (the
+//! source of concurrency).
+//!
+//! ## Schedulers
+//!
+//! In order to coordinate among green threads, each OS thread is primarily
+//! running something which we call a Scheduler. Whenever a reference to a
+//! Scheduler is made, it is synonymous to referencing one OS thread. Each
+//! scheduler is bound to one and exactly one OS thread, and the thread that it
+//! is bound to never changes.
+//!
+//! Each scheduler is connected to a pool of other schedulers (a `SchedPool`)
+//! which is the thread pool term from above. A pool of schedulers all share the
+//! work that they create. Furthermore, whenever a green thread is created (also
+//! synonymously referred to as a green task), it is associated with a
+//! `SchedPool` forevermore. A green thread cannot leave its scheduler pool.
+//!
+//! Schedulers can have at most one green thread running on them at a time. When
+//! a scheduler is asleep on its event loop, there are no green tasks running on
+//! the OS thread or the scheduler. The term "context switch" is used for when
+//! the running green thread is swapped out, but this simply changes the one
+//! green thread which is running on the scheduler.
+//!
+//! ## Green Threads
+//!
+//! A green thread can largely be summarized by a stack and a register context.
+//! Whenever a green thread is spawned, it allocates a stack, and then prepares
+//! a register context for execution. The green task may be executed across
+//! multiple OS threads, but it will always use the same stack and it will carry
+//! its register context across OS threads.
+//!
+//! Each green thread is cooperatively scheduled with other green threads.
+//! Primarily, this means that there is no pre-emption of a green thread. The
+//! major consequence of this design is that a green thread stuck in an infinite
+//! loop will prevent all other green threads from running on that particular
+//! scheduler.
+//!
+//! Scheduling events for green threads occur on communication and I/O
+//! boundaries. For example, if a green task blocks waiting for a message on a
+//! channel some other green thread can now run on the scheduler. This also has
+//! the consequence that until a green thread performs any form of scheduling
+//! event, it will be running on the same OS thread (unconditionally).
+//!
+//! ## Work Stealing
+//!
+//! With a pool of schedulers, a new green task has a number of options when
+//! deciding where to run initially. The current implementation uses a concept
+//! called work stealing in order to spread out work among schedulers.
+//!
+//! In a work-stealing model, each scheduler maintains a local queue of tasks to
+//! run, and this queue is stolen from by other schedulers. Implementation-wise,
+//! work stealing has some hairy parts, but from a user-perspective, work
+//! stealing simply implies what with M green threads and N schedulers where
+//! M > N it is very likely that all schedulers will be busy executing work.
+//!
+//! # Considerations when using libgreen
+//!
+//! An M:N runtime has both pros and cons, and there is no one answer as to
+//! whether M:N or 1:1 is appropriate to use. As always, there are many
+//! advantages and disadvantages between the two. Regardless of the workload,
+//! however, there are some aspects of using green thread which you should be
+//! aware of:
+//!
+//! * The largest concern when using libgreen is interoperating with native
+//!   code. Care should be taken when calling native code that will block the OS
+//!   thread as it will prevent further green tasks from being scheduled on the
+//!   OS thread.
+//!
+//! * Native code using thread-local-storage should be approached
+//!   with care. Green threads may migrate among OS threads at any time, so
+//!   native libraries using thread-local state may not always work.
+//!
+//! * Native synchronization primitives (e.g. pthread mutexes) will also not
+//!   work for green threads. The reason for this is because native primitives
+//!   often operate on a _os thread_ granularity whereas green threads are
+//!   operating on a more granular unit of work.
+//!
+//! * A green threading runtime is not fork-safe. If the process forks(), it
+//!   cannot expect to make reasonable progress by continuing to use green
+//!   threads.
+//!
+//! Note that these concerns do not mean that operating with native code is a
+//! lost cause. These are simply just concerns which should be considered when
+//! invoking native code.
+//!
+//! # Starting with libgreen
+//!
+//! ```rust
+//! extern mod green;
+//!
+//! #[start]
+//! fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
+//!
+//! fn main() {
+//!     // this code is running in a pool of schedulers
+//! }
+//! ```
+//!
+//! # Using a scheduler pool
+//!
+//! ```rust
+//! use std::task::TaskOpts;
+//! use green::{SchedPool, PoolConfig};
+//! use green::sched::{PinnedTask, TaskFromFriend};
+//!
+//! let config = PoolConfig::new();
+//! let mut pool = SchedPool::new(config);
+//!
+//! // Spawn tasks into the pool of schedulers
+//! pool.spawn(TaskOpts::new(), proc() {
+//!     // this code is running inside the pool of schedulers
+//!
+//!     spawn(proc() {
+//!         // this code is also running inside the same scheduler pool
+//!     });
+//! });
+//!
+//! // Dynamically add a new scheduler to the scheduler pool. This adds another
+//! // OS thread that green threads can be multiplexed on to.
+//! let mut handle = pool.spawn_sched();
+//!
+//! // Pin a task to the spawned scheduler
+//! let task = pool.task(TaskOpts::new(), proc() { /* ... */ });
+//! handle.send(PinnedTask(task));
+//!
+//! // Schedule a task on this new scheduler
+//! let task = pool.task(TaskOpts::new(), proc() { /* ... */ });
+//! handle.send(TaskFromFriend(task));
+//!
+//! // Handles keep schedulers alive, so be sure to drop all handles before
+//! // destroying the sched pool
+//! drop(handle);
+//!
+//! // Required to shut down this scheduler pool.
+//! // The task will fail if `shutdown` is not called.
+//! pool.shutdown();
+//! ```
 
 #[crate_id = "green#0.10-pre"];
 #[license = "MIT/ASL2"];
