@@ -1812,11 +1812,69 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     }
 }
 
+fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
+    let len = v.len() as int;
+    let buf_v = v.as_mut_ptr();
+
+    // 1 <= i < len;
+    for i in range(1, len) {
+        // j satisfies: 0 <= j <= i;
+        let mut j = i;
+        unsafe {
+            // `i` is in bounds.
+            let read_ptr = buf_v.offset(i) as *T;
+
+            // find where to insert, we need to do strict <,
+            // rather than <=, to maintain stability.
+
+            // 0 <= j - 1 < len, so .offset(j - 1) is in bounds.
+            while j > 0 &&
+                    compare(&*read_ptr, &*buf_v.offset(j - 1)) == Less {
+                j -= 1;
+            }
+
+            // shift everything to the right, to make space to
+            // insert this value.
+
+            // j + 1 could be `len` (for the last `i`), but in
+            // that case, `i == j` so we don't copy. The
+            // `.offset(j)` is always in bounds.
+
+            if i != j {
+                let tmp = ptr::read_ptr(read_ptr);
+                ptr::copy_memory(buf_v.offset(j + 1),
+                                 buf_v.offset(j),
+                                 (i - j) as uint);
+                ptr::copy_nonoverlapping_memory(buf_v.offset(j),
+                                                &tmp as *T,
+                                                1);
+                cast::forget(tmp);
+            }
+        }
+    }
+}
+
 fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // warning: this wildly uses unsafe.
-    static INSERTION: uint = 8;
+    static BASE_INSERTION: uint = 32;
+    static LARGE_INSERTION: uint = 16;
+
+    // FIXME #12092: smaller insertion runs seems to make sorting
+    // vectors of large elements a little faster on some platforms,
+    // but hasn't been tested/tuned extensively
+    let insertion = if size_of::<T>() <= 16 {
+        BASE_INSERTION
+    } else {
+        LARGE_INSERTION
+    };
 
     let len = v.len();
+
+    // short vectors get sorted in-place via insertion sort to avoid allocations
+    if len <= insertion {
+        insertion_sort(v, compare);
+        return;
+    }
 
     // allocate some memory to use as scratch memory, we keep the
     // length 0 so we can keep shallow copies of the contents of `v`
@@ -1837,9 +1895,9 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // We could hardcode the sorting comparisons here, and we could
     // manipulate/step the pointers themselves, rather than repeatedly
     // .offset-ing.
-    for start in range_step(0, len, INSERTION) {
-        // start <= i <= len;
-        for i in range(start, cmp::min(start + INSERTION, len)) {
+    for start in range_step(0, len, insertion) {
+        // start <= i < len;
+        for i in range(start, cmp::min(start + insertion, len)) {
             // j satisfies: start <= j <= i;
             let mut j = i as int;
             unsafe {
@@ -1871,7 +1929,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     }
 
     // step 2. merge the sorted runs.
-    let mut width = INSERTION;
+    let mut width = insertion;
     while width < len {
         // merge the sorted runs of length `width` in `buf_dat` two at
         // a time, placing the result in `buf_tmp`.
@@ -4500,6 +4558,47 @@ mod bench {
     #[bench]
     fn sort_sorted(bh: &mut BenchHarness) {
         let mut v = vec::from_fn(10000, |i| i);
+        bh.iter(|| {
+            v.sort();
+        });
+        bh.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+    }
+
+    type BigSortable = (u64,u64,u64,u64);
+
+    #[bench]
+    fn sort_big_random_small(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(5);
+            v.sort();
+        });
+        bh.bytes = 5 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_random_medium(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(100);
+            v.sort();
+        });
+        bh.bytes = 100 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_random_large(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(10000);
+            v.sort();
+        });
+        bh.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_sorted(bh: &mut BenchHarness) {
+        let mut v = vec::from_fn(10000u, |i| (i, i, i, i));
         bh.iter(|| {
             v.sort();
         });
