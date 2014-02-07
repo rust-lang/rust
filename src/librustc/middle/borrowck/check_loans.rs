@@ -222,7 +222,6 @@ impl<'a> CheckLoanCtxt<'a> {
         let illegal_if = match loan2.mutbl {
             MutableMutability   => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
             ImmutableMutability => RESTR_ALIAS | RESTR_FREEZE,
-            ConstMutability     => RESTR_ALIAS,
         };
         debug!("illegal_if={:?}", illegal_if);
 
@@ -598,8 +597,7 @@ impl<'a> CheckLoanCtxt<'a> {
 
                 // Check for a non-const loan of `loan_path`
                 let cont = this.each_in_scope_loan(expr.id, |loan| {
-                    if loan.loan_path == loan_path &&
-                            loan.mutbl != ConstMutability {
+                    if loan.loan_path == loan_path {
                         this.report_illegal_mutation(expr,
                                                      full_loan_path,
                                                      loan);

@@ -214,7 +214,6 @@ pub enum PartialTotal {
 #[deriving(Clone, Eq)]
 pub enum LoanMutability {
     ImmutableMutability,
-    ConstMutability,
     MutableMutability,
 }
 
@@ -232,7 +231,6 @@ impl ToStr for LoanMutability {
     fn to_str(&self) -> ~str {
         match *self {
             ImmutableMutability => ~"immutable",
-            ConstMutability => ~"read-only",
             MutableMutability => ~"mutable",
         }
     }
