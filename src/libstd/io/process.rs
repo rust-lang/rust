@@ -58,7 +58,21 @@ pub struct ProcessConfig<'a> {
     ///     0 - stdin
     ///     1 - stdout
     ///     2 - stderr
-    io: &'a [StdioContainer]
+    io: &'a [StdioContainer],
+
+    /// Sets the child process's user id. This translates to a `setuid` call in
+    /// the child process. Setting this value on windows will cause the spawn to
+    /// fail. Failure in the `setuid` call on unix will also cause the spawn to
+    /// fail.
+    uid: Option<uint>,
+
+    /// Similar to `uid`, but sets the group id of the child process. This has
+    /// the same semantics as the `uid` field.
+    gid: Option<uint>,
+
+    /// If true, the child process is spawned in a detached state. On unix, this
+    /// means that the child is the leader of a new process group.
+    detach: bool,
 }
 
 /// Describes what to do with a standard io stream for a child process.
@@ -112,6 +126,36 @@ impl ProcessExit {
     /// Termination by signal will never match an exit code.
     pub fn matches_exit_status(&self, wanted: int) -> bool {
         *self == ExitStatus(wanted)
+    }
+}
+
+impl<'a> ProcessConfig<'a> {
+    /// Creates a new configuration with blanks as all of the defaults. This is
+    /// useful when using functional struct updates:
+    ///
+    /// ```rust
+    /// use std::io::process::{ProcessConfig, Process};
+    ///
+    /// let config = ProcessConfig {
+    ///     program: "/bin/sh",
+    ///     args: &'static [~"-c", ~"echo hello"],
+    ///     .. ProcessConfig::new()
+    /// };
+    ///
+    /// let p = Process::new(config);
+    /// ```
+    ///
+    pub fn new() -> ProcessConfig<'static> {
+        ProcessConfig {
+            program: "",
+            args: &'static [],
+            env: None,
+            cwd: None,
+            io: &'static [],
+            uid: None,
+            gid: None,
+            detach: false,
+        }
     }
 }
 
@@ -175,13 +219,10 @@ mod tests {
     // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn smoke() {
-        let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"true"],
-            env: None,
-            cwd: None,
-            io: io,
+            .. ProcessConfig::new()
         };
         let p = Process::new(args);
         assert!(p.is_ok());
@@ -192,13 +233,9 @@ mod tests {
     // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn smoke_failure() {
-        let io = ~[];
         let args = ProcessConfig {
             program: "if-this-is-a-binary-then-the-world-has-ended",
-            args: &[],
-            env: None,
-            cwd: None,
-            io: io,
+            .. ProcessConfig::new()
         };
         match Process::new(args) {
             Ok(..) => fail!(),
@@ -209,13 +246,10 @@ mod tests {
     // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn exit_reported_right() {
-        let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"exit 1"],
-            env: None,
-            cwd: None,
-            io: io,
+            .. ProcessConfig::new()
         };
         let p = Process::new(args);
         assert!(p.is_ok());
@@ -225,13 +259,10 @@ mod tests {
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn signal_reported_right() {
-        let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"kill -1 $$"],
-            env: None,
-            cwd: None,
-            io: io,
+            .. ProcessConfig::new()
         };
         let p = Process::new(args);
         assert!(p.is_ok());
@@ -264,9 +295,8 @@ mod tests {
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"echo foobar"],
-            env: None,
-            cwd: None,
             io: io,
+            .. ProcessConfig::new()
         };
         assert_eq!(run_output(args), ~"foobar\n");
     })
@@ -279,9 +309,9 @@ mod tests {
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"pwd"],
-            env: None,
             cwd: cwd,
             io: io,
+            .. ProcessConfig::new()
         };
         assert_eq!(run_output(args), ~"/\n");
     })
@@ -294,9 +324,8 @@ mod tests {
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"read line; echo $line"],
-            env: None,
-            cwd: None,
             io: io,
+            .. ProcessConfig::new()
         };
         let mut p = Process::new(args).unwrap();
         p.io[0].get_mut_ref().write("foobar".as_bytes()).unwrap();
@@ -306,4 +335,58 @@ mod tests {
         assert_eq!(out, ~"foobar\n");
     })
 
+    // FIXME(#10380)
+    #[cfg(unix, not(target_os="android"))]
+    iotest!(fn detach_works() {
+        let args = ProcessConfig {
+            program: "/bin/sh",
+            args: &[~"-c", ~"true"],
+            detach: true,
+            .. ProcessConfig::new()
+        };
+        let mut p = Process::new(args).unwrap();
+        assert!(p.wait().success());
+    })
+
+    #[cfg(windows)]
+    iotest!(fn uid_fails_on_windows() {
+        let args = ProcessConfig {
+            program: "test",
+            uid: Some(10),
+            .. ProcessConfig::new()
+        };
+        assert!(Process::new(args).is_err());
+    })
+
+    // FIXME(#10380)
+    #[cfg(unix, not(target_os="android"))]
+    iotest!(fn uid_works() {
+        use libc;
+        let args = ProcessConfig {
+            program: "/bin/sh",
+            args: &[~"-c", ~"true"],
+            uid: Some(unsafe { libc::getuid() as uint }),
+            gid: Some(unsafe { libc::getgid() as uint }),
+            .. ProcessConfig::new()
+        };
+        let mut p = Process::new(args).unwrap();
+        assert!(p.wait().success());
+    })
+
+    // FIXME(#10380)
+    #[cfg(unix, not(target_os="android"))]
+    iotest!(fn uid_to_root_fails() {
+        use libc;
+
+        // if we're already root, this isn't a valid test. Most of the bots run
+        // as non-root though (android is an exception).
+        if unsafe { libc::getuid() == 0 } { return }
+        let args = ProcessConfig {
+            program: "/bin/ls",
+            uid: Some(0),
+            gid: Some(0),
+            .. ProcessConfig::new()
+        };
+        assert!(Process::new(args).is_err());
+    })
 }

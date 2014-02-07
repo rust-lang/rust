@@ -33,7 +33,10 @@ pub fn main () {
         args : &[~"child"],
         env : None,
         cwd : None,
-        io : &[]
+        io : &[],
+        uid: None,
+        gid: None,
+        detach: false,
     };
 
     let mut p = process::Process::new(config).unwrap();
