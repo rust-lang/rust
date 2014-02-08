@@ -23,12 +23,12 @@ struct A;
 struct B;
 
 impl fmt::Signed for A {
-    fn fmt(_: &A, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.buf.write("aloha".as_bytes())
     }
 }
 impl fmt::Signed for B {
-    fn fmt(_: &B, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.buf.write("adios".as_bytes())
     }
 }

@@ -364,9 +364,9 @@ pub struct IoError {
 }
 
 impl fmt::Show for IoError {
-    fn fmt(err: &IoError, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(fmt.buf.write_str(err.desc));
-        match err.detail {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(fmt.buf.write_str(self.desc));
+        match self.detail {
             Some(ref s) => write!(fmt.buf, " ({})", *s),
             None => Ok(())
         }

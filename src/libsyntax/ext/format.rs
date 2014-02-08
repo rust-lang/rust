@@ -56,78 +56,83 @@ struct Context<'a> {
     next_arg: uint,
 }
 
-impl<'a> Context<'a> {
-    /// Parses the arguments from the given list of tokens, returning None if
-    /// there's a parse error so we can continue parsing other format! expressions.
-    fn parse_args(&mut self, sp: Span, tts: &[ast::TokenTree])
-                  -> (@ast::Expr, Option<@ast::Expr>) {
-        let mut p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
-                                                 self.ecx.cfg(),
-                                                 tts.to_owned());
-        // Parse the leading function expression (maybe a block, maybe a path)
-        let extra = p.parse_expr();
-        if !p.eat(&token::COMMA) {
-            self.ecx.span_err(sp, "expected token: `,`");
-            return (extra, None);
-        }
+/// Parses the arguments from the given list of tokens, returning None
+/// if there's a parse error so we can continue parsing other format!
+/// expressions.
+///
+/// If parsing succeeds, the second return value is:
+///
+///     Some((fmtstr, unnamed arguments, named arguments))
+fn parse_args(ecx: &mut ExtCtxt, sp: Span,
+              tts: &[ast::TokenTree]) -> (@ast::Expr, Option<(@ast::Expr, ~[@ast::Expr],
+                                                              HashMap<~str, @ast::Expr>)>) {
+    let mut args = ~[];
+    let mut names = HashMap::<~str, @ast::Expr>::new();
 
-        if p.token == token::EOF {
-            self.ecx.span_err(sp, "requires at least a format string argument");
-            return (extra, None);
-        }
-        let fmtstr = p.parse_expr();
-        let mut named = false;
-        while p.token != token::EOF {
-            if !p.eat(&token::COMMA) {
-                self.ecx.span_err(sp, "expected token: `,`");
-                return (extra, None);
-            }
-            if p.token == token::EOF { break } // accept trailing commas
-            if named || (token::is_ident(&p.token) &&
-                         p.look_ahead(1, |t| *t == token::EQ)) {
-                named = true;
-                let ident = match p.token {
-                    token::IDENT(i, _) => {
-                        p.bump();
-                        i
-                    }
-                    _ if named => {
-                        self.ecx.span_err(p.span,
-                                          "expected ident, positional arguments \
-                                           cannot follow named arguments");
-                        return (extra, None);
-                    }
-                    _ => {
-                        self.ecx.span_err(p.span,
-                                          format!("expected ident for named \
-                                                argument, but found `{}`",
-                                               p.this_token_to_str()));
-                        return (extra, None);
-                    }
-                };
-                let interned_name = token::get_ident(ident.name);
-                let name = interned_name.get();
-                p.expect(&token::EQ);
-                let e = p.parse_expr();
-                match self.names.find_equiv(&name) {
-                    None => {}
-                    Some(prev) => {
-                        self.ecx.span_err(e.span, format!("duplicate argument \
-                                                        named `{}`", name));
-                        self.ecx.parse_sess.span_diagnostic.span_note(
-                            prev.span, "previously here");
-                        continue
-                    }
-                }
-                self.names.insert(name.to_str(), e);
-            } else {
-                self.args.push(p.parse_expr());
-                self.arg_types.push(None);
-            }
-        }
-        return (extra, Some(fmtstr));
+    let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
+                                             ecx.cfg(),
+                                             tts.to_owned());
+    // Parse the leading function expression (maybe a block, maybe a path)
+    let extra = p.parse_expr();
+    if !p.eat(&token::COMMA) {
+        ecx.span_err(sp, "expected token: `,`");
+        return (extra, None);
     }
 
+    if p.token == token::EOF {
+        ecx.span_err(sp, "requires at least a format string argument");
+        return (extra, None);
+    }
+    let fmtstr = p.parse_expr();
+    let mut named = false;
+    while p.token != token::EOF {
+        if !p.eat(&token::COMMA) {
+            ecx.span_err(sp, "expected token: `,`");
+            return (extra, None);
+        }
+        if p.token == token::EOF { break } // accept trailing commas
+        if named || (token::is_ident(&p.token) &&
+                     p.look_ahead(1, |t| *t == token::EQ)) {
+            named = true;
+            let ident = match p.token {
+                token::IDENT(i, _) => {
+                    p.bump();
+                    i
+                }
+                _ if named => {
+                    ecx.span_err(p.span,
+                                 "expected ident, positional arguments \
+                                 cannot follow named arguments");
+                    return (extra, None);
+                }
+                _ => {
+                    ecx.span_err(p.span,
+                                 format!("expected ident for named argument, but found `{}`",
+                                         p.this_token_to_str()));
+                    return (extra, None);
+                }
+            };
+            let interned_name = token::get_ident(ident.name);
+            let name = interned_name.get();
+            p.expect(&token::EQ);
+            let e = p.parse_expr();
+            match names.find_equiv(&name) {
+                None => {}
+                Some(prev) => {
+                    ecx.span_err(e.span, format!("duplicate argument named `{}`", name));
+                    ecx.parse_sess.span_diagnostic.span_note(prev.span, "previously here");
+                    continue
+                }
+            }
+            names.insert(name.to_str(), e);
+        } else {
+            args.push(p.parse_expr());
+        }
+    }
+    return (extra, Some((fmtstr, args, names)));
+}
+
+impl<'a> Context<'a> {
     /// Verifies one piece of a parse string. All errors are not emitted as
     /// fatal so we can continue giving errors about this and possibly other
     /// format strings.
@@ -758,11 +763,28 @@ impl<'a> Context<'a> {
 
 pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
                    tts: &[ast::TokenTree]) -> base::MacResult {
+
+    match parse_args(ecx, sp, tts) {
+        (extra, Some((efmt, args, names))) => {
+            MRExpr(expand_preparsed_format_args(ecx, sp, extra, efmt, args, names))
+        }
+        (_, None) => MRExpr(ecx.expr_uint(sp, 2))
+    }
+}
+
+/// Take the various parts of `format_args!(extra, efmt, args...,
+/// name=names...)` and construct the appropriate formatting
+/// expression.
+pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
+                                    extra: @ast::Expr,
+                                    efmt: @ast::Expr, args: ~[@ast::Expr],
+                                    names: HashMap<~str, @ast::Expr>) -> @ast::Expr {
+    let arg_types = vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
         ecx: ecx,
-        args: ~[],
-        arg_types: ~[],
-        names: HashMap::new(),
+        args: args,
+        arg_types: arg_types,
+        names: names,
         name_positions: HashMap::new(),
         name_types: HashMap::new(),
         nest_level: 0,
@@ -770,10 +792,6 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
         pieces: ~[],
         method_statics: ~[],
         fmtsp: sp,
-    };
-    let (extra, efmt) = match cx.parse_args(sp, tts) {
-        (extra, Some(e)) => (extra, e),
-        (_, None) => { return MRExpr(cx.ecx.expr_uint(sp, 2)); }
     };
     cx.fmtsp = efmt.span;
     // Be sure to recursively expand macros just in case the format string uses
@@ -783,7 +801,7 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
                                 expr,
                                 "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
-        None => return MacResult::dummy_expr()
+        None => return efmt
     };
 
     let mut parser = parse::Parser::new(fmt.get());
@@ -801,7 +819,7 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
     match parser.errors.shift() {
         Some(error) => {
             cx.ecx.span_err(efmt.span, "invalid format string: " + error);
-            return MRExpr(efmt);
+            return efmt;
         }
         None => {}
     }
@@ -818,5 +836,5 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
         }
     }
 
-    MRExpr(cx.to_expr(extra))
+    cx.to_expr(extra)
 }

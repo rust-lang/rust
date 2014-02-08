@@ -211,8 +211,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 }
 
 impl<'a> fmt::Show for Markdown<'a> {
-    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md) = *md;
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.len() == 0 { return Ok(()) }
         render(fmt.buf, md.as_slice())

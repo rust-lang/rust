@@ -17,7 +17,7 @@ use ext::deriving::generic::*;
 use parse::token::InternedString;
 use parse::token;
 
-pub fn expand_deriving_to_str(cx: &ExtCtxt,
+pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
                               span: Span,
                               mitem: @MetaItem,
                               in_items: ~[@Item])
@@ -49,7 +49,7 @@ pub fn expand_deriving_to_str(cx: &ExtCtxt,
 // doesn't invoke the to_str() method on each field. Hence we mirror
 // the logic of the repr_to_str() method, but with tweaks to call to_str()
 // on sub-fields.
-fn to_str_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure)
+fn to_str_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure)
                        -> @Expr {
     let to_str = cx.ident_of("to_str");
 

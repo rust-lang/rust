@@ -16,7 +16,7 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use parse::token::InternedString;
 
-pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
+pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       span: Span,
                                       mitem: @MetaItem,
                                       in_items: ~[@Item]) -> ~[@Item] {
@@ -65,7 +65,7 @@ pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn cs_from(name: &str, cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let n = match substr.nonself_args {
         [n] => n,
         _ => cx.span_bug(trait_span, "Incorrect number of arguments in `deriving(FromPrimitive)`")
