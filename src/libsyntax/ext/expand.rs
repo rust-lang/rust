@@ -1225,7 +1225,7 @@ foo_module!()
                 "xx" == string.get()
             }
         }).enumerate() {
-            if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
+            if mtwt_resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
