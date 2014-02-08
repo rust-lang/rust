@@ -70,6 +70,7 @@ use kinds::marker;
 use ops::Drop;
 use cmp::Eq;
 use clone::Clone;
+use mem;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
@@ -77,7 +78,6 @@ use str::StrSlice;
 use str;
 use vec::{ImmutableVector, MutableVector};
 use vec;
-use unstable::intrinsics;
 use rt::global_heap::malloc_raw;
 
 /// The representation of a C String.
@@ -327,7 +327,7 @@ impl<'a> ToCStr for &'a [u8] {
 // Unsafe function that handles possibly copying the &[u8] into a stack array.
 unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
-        let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
+        let mut buf: [u8, .. BUF_LEN] = mem::uninit();
         vec::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 

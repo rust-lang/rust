@@ -92,7 +92,7 @@ mod imp {
     use libc;
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
-    use unstable::intrinsics;
+    use mem;
 
     type pthread_mutexattr_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
@@ -208,8 +208,8 @@ mod imp {
     impl Mutex {
         pub unsafe fn new() -> Mutex {
             let mut m = Mutex {
-                lock: intrinsics::init(),
-                cond: intrinsics::init(),
+                lock: mem::init(),
+                cond: mem::init(),
             };
 
             pthread_mutex_init(&mut m.lock, 0 as *libc::c_void);

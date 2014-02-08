@@ -49,11 +49,11 @@
 use std::comm::Data;
 use std::hashmap::HashMap;
 use std::libc;
+use std::mem;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
 use std::sync::atomics;
-use std::unstable::intrinsics;
 
 use io::file::FileDesc;
 use io::IoResult;
@@ -87,17 +87,17 @@ pub enum Req {
 // returns the current time (in milliseconds)
 fn now() -> u64 {
     unsafe {
-        let mut now: libc::timeval = intrinsics::init();
+        let mut now: libc::timeval = mem::init();
         assert_eq!(imp::gettimeofday(&mut now, ptr::null()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
 
 fn helper(input: libc::c_int, messages: Port<Req>) {
-    let mut set: imp::fd_set = unsafe { intrinsics::init() };
+    let mut set: imp::fd_set = unsafe { mem::init() };
 
     let mut fd = FileDesc::new(input, true);
-    let mut timeout: libc::timeval = unsafe { intrinsics::init() };
+    let mut timeout: libc::timeval = unsafe { mem::init() };
 
     // active timers are those which are able to be selected upon (and it's a
     // sorted list, and dead timers are those which have expired, but ownership

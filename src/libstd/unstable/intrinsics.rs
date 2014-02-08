@@ -288,8 +288,7 @@ extern "rust-intrinsic" {
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is POD. We don't have a POD
-    /// kind yet. (See #4074).
+    /// which is unsafe unless T is Pod.
     pub fn init<T>() -> T;
 
     /// Create an uninitialized value.

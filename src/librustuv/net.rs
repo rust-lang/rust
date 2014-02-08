@@ -80,7 +80,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
 
 fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     unsafe {
-        let mut storage: libc::sockaddr_storage = intrinsics::init();
+        let mut storage: libc::sockaddr_storage = mem::init();
         let len = match addr.ip {
             ip::Ipv4Addr(a, b, c, d) => {
                 let storage: &mut libc::sockaddr_in =
@@ -134,7 +134,7 @@ fn socket_name(sk: SocketNameKind,
     };
 
     // Allocate a sockaddr_storage since we don't know if it's ipv4 or ipv6
-    let mut sockaddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
+    let mut sockaddr: libc::sockaddr_storage = unsafe { mem::init() };
     let mut namelen = mem::size_of::<libc::sockaddr_storage>() as c_int;
 
     let sockaddr_p = &mut sockaddr as *mut libc::sockaddr_storage;

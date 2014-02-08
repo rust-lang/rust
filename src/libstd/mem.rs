@@ -68,6 +68,21 @@ pub fn pref_align_of_val<T>(_val: &T) -> uint {
     pref_align_of::<T>()
 }
 
+/// Create a value initialized to zero.
+///
+/// `init` is unsafe because it returns a zeroed-out datum,
+/// which is unsafe unless T is Pod.
+#[inline]
+pub unsafe fn init<T>() -> T {
+    intrinsics::init()
+}
+
+/// Create an uninitialized value.
+#[inline]
+pub unsafe fn uninit<T>() -> T {
+    intrinsics::uninit()
+}
+
 #[cfg(test)]
 mod tests {
     use mem::*;
