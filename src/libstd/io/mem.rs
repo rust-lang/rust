@@ -177,7 +177,11 @@ impl Seek for MemReader {
 
 impl Buffer for MemReader {
     fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
-        Ok(self.buf.slice_from(self.pos))
+        if self.pos < self.buf.len() {
+            Ok(self.buf.slice_from(self.pos))
+        } else {
+            Err(io::standard_error(io::EndOfFile))
+        }
     }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
@@ -420,6 +424,10 @@ mod test {
         assert_eq!(buf, [1, 2, 3, 4]);
         assert_eq!(reader.read(buf), Ok(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
+        assert!(reader.read(buf).is_err());
+        let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
+        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
         assert!(reader.read(buf).is_err());
     }
 
