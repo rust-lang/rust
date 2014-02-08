@@ -461,17 +461,6 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             glue::call_visit_glue(bcx, visitor, td, None);
             RetVoid(bcx);
         }
-        "morestack_addr" => {
-            // FIXME This is a hack to grab the address of this particular
-            // native function. There should be a general in-language
-            // way to do this
-            let llfty = type_of_rust_fn(bcx.ccx(), false, [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(bcx.ccx().llmod, "__morestack",
-                                               llfty, ty::mk_nil());
-            let morestack_addr = PointerCast(bcx, morestack_addr,
-                                             Type::nil().ptr_to());
-            Ret(bcx, morestack_addr);
-        }
         "offset" => {
             let ptr = get_param(decl, first_real_arg);
             let offset = get_param(decl, first_real_arg + 1);
