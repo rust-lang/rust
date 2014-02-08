@@ -227,7 +227,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("Unknown ordering in atomic intrinsic")
+                _ => ccx.sess.fatal("unknown ordering in atomic intrinsic")
             }
         };
 
@@ -268,7 +268,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("Unknown atomic operation")
+                    _ => ccx.sess.fatal("unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),

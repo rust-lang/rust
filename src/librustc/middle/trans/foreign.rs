@@ -81,17 +81,17 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
-                ccx.sess.bug(format!("Asked to register intrinsic fn"));
+                ccx.sess.bug(format!("asked to register intrinsic fn"));
             }
 
             Rust => {
                 // FIXME(#3678) Implement linking to foreign fns with Rust ABI
                 ccx.sess.unimpl(
-                    format!("Foreign functions with Rust ABI"));
+                    format!("foreign functions with Rust ABI"));
             }
 
             // It's the ABI's job to select this, not us.
-            System => ccx.sess.bug("System abi should be selected elsewhere"),
+            System => ccx.sess.bug("system abi should be selected elsewhere"),
 
             Stdcall => lib::llvm::X86StdcallCallConv,
             Fastcall => lib::llvm::X86FastcallCallConv,
@@ -365,7 +365,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                             (abis, (*path).clone())
                         }
                         _ => {
-                            fail!("Unable to find foreign item in tcx.items \
+                            fail!("unable to find foreign item in tcx.items \
                                    table.")
                         }
                     };

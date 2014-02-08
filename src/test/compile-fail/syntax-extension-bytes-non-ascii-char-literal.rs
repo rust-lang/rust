@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let vec = bytes!('λ'); //~ ERROR Non-ascii char literal in bytes!
+    let vec = bytes!('λ'); //~ ERROR non-ascii char literal in bytes!
 }

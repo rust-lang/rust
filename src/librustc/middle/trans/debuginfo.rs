@@ -298,7 +298,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
                 Some(datum) => datum,
                 None => {
                     bcx.tcx().sess.span_bug(span,
-                        format!("No entry in lllocals table for {:?}",
+                        format!("no entry in lllocals table for {:?}",
                                 node_id));
                 }
             }
@@ -440,7 +440,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
                 Some(v) => v,
                 None => {
                     bcx.tcx().sess.span_bug(span,
-                        format!("No entry in llargs table for {:?}",
+                        format!("no entry in llargs table for {:?}",
                                 node_id));
                 }
             }

@@ -76,7 +76,7 @@ pub fn WriteOutputFile(
             let result = llvm::LLVMRustWriteOutputFile(
                     Target, PM, M, Output, FileType);
             if !result {
-                llvm_err(sess, ~"Could not write output");
+                llvm_err(sess, ~"could not write output");
             }
         })
     }
@@ -189,7 +189,7 @@ pub mod write {
             for pass in sess.opts.custom_passes.iter() {
                 pass.with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
-                        sess.warn(format!("Unknown pass {}, ignoring", *pass));
+                        sess.warn(format!("unknown pass {}, ignoring", *pass));
                     }
                 })
             }
@@ -876,11 +876,11 @@ fn link_binary_output(sess: Session,
     let obj_is_writeable = is_writeable(&obj_filename);
     let out_is_writeable = is_writeable(&out_filename);
     if !out_is_writeable {
-        sess.fatal(format!("Output file {} is not writeable -- check its permissions.",
+        sess.fatal(format!("output file {} is not writeable -- check its permissions.",
                            out_filename.display()));
     }
     else if !obj_is_writeable {
-        sess.fatal(format!("Object file {} is not writeable -- check its permissions.",
+        sess.fatal(format!("object file {} is not writeable -- check its permissions.",
                            obj_filename.display()));
     }
 

@@ -142,7 +142,7 @@ impl RegionMaps {
         let scope_map = self.scope_map.borrow();
         match scope_map.get().find(&id) {
             Some(&r) => r,
-            None => { fail!("No enclosing scope for id {}", id); }
+            None => { fail!("no enclosing scope for id {}", id); }
         }
     }
 
@@ -154,7 +154,7 @@ impl RegionMaps {
         let var_map = self.var_map.borrow();
         match var_map.get().find(&var_id) {
             Some(&r) => r,
-            None => { fail!("No enclosing scope for id {}", var_id); }
+            None => { fail!("no enclosing scope for id {}", var_id); }
         }
     }
 
@@ -554,7 +554,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
         None => {
             visitor.sess.span_bug(
                 local.span,
-                "Local without enclosing block");
+                "local without enclosing block");
         }
     };
 

@@ -548,7 +548,7 @@ impl mem_categorization_ctxt {
                   _ => {
                       self.tcx.sess.span_bug(
                           span,
-                          format!("Upvar of non-closure {:?} - {}",
+                          format!("upvar of non-closure {:?} - {}",
                                fn_node_id, ty.repr(self.tcx)));
                   }
               }
@@ -652,7 +652,7 @@ impl mem_categorization_ctxt {
             None => {
                 self.tcx.sess.span_bug(
                     node.span(),
-                    format!("Explicit deref of non-derefable type: {}",
+                    format!("explicit deref of non-derefable type: {}",
                          ty_to_str(self.tcx, base_cmt.ty)));
             }
         };
@@ -745,7 +745,7 @@ impl mem_categorization_ctxt {
           None => {
             self.tcx.sess.span_bug(
                 elt.span(),
-                format!("Explicit index of non-index type `{}`",
+                format!("explicit index of non-index type `{}`",
                      ty_to_str(self.tcx, base_cmt.ty)));
           }
         };

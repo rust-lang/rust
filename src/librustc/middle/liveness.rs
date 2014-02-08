@@ -328,7 +328,7 @@ impl IrMaps {
           Some(&var) => var,
           None => {
             self.tcx.sess.span_bug(
-                span, format!("No variable registered for id {}", node_id));
+                span, format!("no variable registered for id {}", node_id));
           }
         }
     }
@@ -627,7 +627,7 @@ impl Liveness {
             // code have to agree about which AST nodes are worth
             // creating liveness nodes for.
             self.tcx.sess.span_bug(
-                span, format!("No live node registered for node {}",
+                span, format!("no live node registered for node {}",
                            node_id));
           }
         }
@@ -759,7 +759,7 @@ impl Liveness {
                 let def_map = self.tcx.def_map.borrow();
                 match def_map.get().find(&id) {
                     Some(&DefLabel(loop_id)) => loop_id,
-                    _ => self.tcx.sess.span_bug(sp, "Label on break/loop \
+                    _ => self.tcx.sess.span_bug(sp, "label on break/loop \
                                                      doesn't refer to a loop")
                 }
             }
@@ -1152,7 +1152,7 @@ impl Liveness {
               match break_ln.get().find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                                 "Break to unknown label")
+                                                 "break to unknown label")
               }
           }
 
@@ -1167,7 +1167,7 @@ impl Liveness {
               match cont_ln.get().find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
-                                                 "Loop to unknown label")
+                                                 "loop to unknown label")
               }
           }
 
