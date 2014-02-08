@@ -893,8 +893,8 @@ pub fn run_test(force_ignore: bool,
         spawn(proc() {
             let mut task = task::task();
             task.name(match desc.name {
-                DynTestName(ref name) => SendStrOwned(name.clone()),
-                StaticTestName(name) => SendStrStatic(name),
+                DynTestName(ref name) => name.to_owned().into_maybe_owned(),
+                StaticTestName(name) => name.into_maybe_owned()
             });
             let result_future = task.future_result();
             task.spawn(testfn);

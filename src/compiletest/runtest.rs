@@ -442,9 +442,7 @@ fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
     if props.error_patterns.is_empty() {
-        testfile.display().with_str(|s| {
-            fatal(~"no error pattern specified in " + s);
-        })
+        fatal(~"no error pattern specified in " + testfile.display().as_maybe_owned().as_slice());
     }
 
     if ProcRes.status.success() {

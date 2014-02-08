@@ -70,7 +70,7 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{OwnedStr, Str, StrSlice};
+use str::{MaybeOwned, OwnedStr, Str, StrSlice, from_utf8_lossy};
 use to_str::ToStr;
 use vec;
 use vec::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
@@ -495,7 +495,7 @@ pub struct Display<'a, P> {
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.with_str(|s| f.pad(s))
+        self.as_maybe_owned().as_slice().fmt(f)
     }
 }
 
@@ -505,33 +505,25 @@ impl<'a, P: GenericPath> ToStr for Display<'a, P> {
     /// If the path is not UTF-8, invalid sequences with be replaced with the
     /// unicode replacement char. This involves allocation.
     fn to_str(&self) -> ~str {
-        if self.filename {
-            match self.path.filename() {
-                None => ~"",
-                Some(v) => str::from_utf8_lossy(v)
-            }
-        } else {
-            str::from_utf8_lossy(self.path.as_vec())
-        }
+        self.as_maybe_owned().into_owned()
     }
 }
 
 impl<'a, P: GenericPath> Display<'a, P> {
-    /// Provides the path as a string to a closure
+    /// Returns the path as a possibly-owned string.
     ///
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// unicode replacement char. This involves allocation.
     #[inline]
-    pub fn with_str<T>(&self, f: |&str| -> T) -> T {
-        let opt = if self.filename { self.path.filename_str() }
-                  else { self.path.as_str() };
-        match opt {
-            Some(s) => f(s),
-            None => {
-                let s = self.to_str();
-                f(s.as_slice())
+    pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
+        from_utf8_lossy(if self.filename {
+            match self.path.filename() {
+                None => &[],
+                Some(v) => v
             }
-        }
+        } else {
+            self.path.as_vec()
+        })
     }
 }
 
@@ -589,6 +581,23 @@ impl BytesContainer for CString {
         let s = self.as_bytes();
         s.slice_to(s.len()-1)
     }
+}
+
+impl<'a> BytesContainer for str::MaybeOwned<'a> {
+    #[inline]
+    fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
+        self.as_slice().as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_owned().into_bytes()
+    }
+    #[inline]
+    fn container_as_str<'b>(&'b self) -> Option<&'b str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<str::MaybeOwned>) -> bool { true }
 }
 
 #[inline(always)]

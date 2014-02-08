@@ -436,7 +436,7 @@ impl<'a> SourceCollector<'a> {
         cur.push(p.filename().expect("source has no filename") + bytes!(".html"));
         let mut w = BufferedWriter::new(if_ok!(File::create(&cur)));
 
-        let title = cur.filename_display().with_str(|s| format!("{} -- source", s));
+        let title = format!("{} -- source", cur.filename_display());
         let page = layout::Page {
             title: title,
             ty: "source",
