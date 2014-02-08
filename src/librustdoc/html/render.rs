@@ -801,8 +801,8 @@ impl<'a> Item<'a> {
 }
 
 impl<'a> fmt::Show for Item<'a> {
-    fn fmt(it: &Item<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match attr::find_stability(it.item.attrs.iter()) {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match attr::find_stability(self.item.attrs.iter()) {
             Some(ref stability) => {
                 if_ok!(write!(fmt.buf,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
@@ -815,29 +815,29 @@ impl<'a> fmt::Show for Item<'a> {
             None => {}
         }
 
-        if it.cx.include_sources {
+        if self.cx.include_sources {
             let mut path = ~[];
-            clean_srcpath(it.item.source.filename.as_bytes(), |component| {
+            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
                 path.push(component.to_owned());
             });
-            let href = if it.item.source.loline == it.item.source.hiline {
-                format!("{}", it.item.source.loline)
+            let href = if self.item.source.loline == self.item.source.hiline {
+                format!("{}", self.item.source.loline)
             } else {
-                format!("{}-{}", it.item.source.loline, it.item.source.hiline)
+                format!("{}-{}", self.item.source.loline, self.item.source.hiline)
             };
             if_ok!(write!(fmt.buf,
                           "<a class='source'
                               href='{root}src/{crate}/{path}.html\\#{href}'>\
                               [src]</a>",
-                          root = it.cx.root_path,
-                          crate = it.cx.layout.crate,
+                          root = self.cx.root_path,
+                          crate = self.cx.layout.crate,
                           path = path.connect("/"),
                           href = href));
         }
 
         // Write the breadcrumb trail header for the top
         if_ok!(write!(fmt.buf, "<h1 class='fqn'>"));
-        match it.item.inner {
+        match self.item.inner {
             clean::ModuleItem(..) => if_ok!(write!(fmt.buf, "Module ")),
             clean::FunctionItem(..) => if_ok!(write!(fmt.buf, "Function ")),
             clean::TraitItem(..) => if_ok!(write!(fmt.buf, "Trait ")),
@@ -845,8 +845,8 @@ impl<'a> fmt::Show for Item<'a> {
             clean::EnumItem(..) => if_ok!(write!(fmt.buf, "Enum ")),
             _ => {}
         }
-        let cur = it.cx.current.as_slice();
-        let amt = if it.ismodule() { cur.len() - 1 } else { cur.len() };
+        let cur = self.cx.current.as_slice();
+        let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
         for (i, component) in cur.iter().enumerate().take(amt) {
             let mut trail = ~"";
             for _ in range(0, cur.len() - i - 1) {
@@ -856,17 +856,17 @@ impl<'a> fmt::Show for Item<'a> {
                           trail, component.as_slice()));
         }
         if_ok!(write!(fmt.buf, "<a class='{}' href=''>{}</a></h1>",
-                      shortty(it.item), it.item.name.get_ref().as_slice()));
+                      shortty(self.item), self.item.name.get_ref().as_slice()));
 
-        match it.item.inner {
-            clean::ModuleItem(ref m) => item_module(fmt.buf, it.cx,
-                                                    it.item, m.items),
+        match self.item.inner {
+            clean::ModuleItem(ref m) => item_module(fmt.buf, self.cx,
+                                                    self.item, m.items),
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
-                item_function(fmt.buf, it.item, f),
-            clean::TraitItem(ref t) => item_trait(fmt.buf, it.item, t),
-            clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
-            clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
-            clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
+                item_function(fmt.buf, self.item, f),
+            clean::TraitItem(ref t) => item_trait(fmt.buf, self.item, t),
+            clean::StructItem(ref s) => item_struct(fmt.buf, self.item, s),
+            clean::EnumItem(ref e) => item_enum(fmt.buf, self.item, e),
+            clean::TypedefItem(ref t) => item_typedef(fmt.buf, self.item, t),
             _ => Ok(())
         }
     }
@@ -992,9 +992,8 @@ fn item_module(w: &mut Writer, cx: &Context,
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
                 struct Initializer<'a>(&'a str);
                 impl<'a> fmt::Show for Initializer<'a> {
-                    fn fmt(s: &Initializer<'a>,
-                           f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s) = *s;
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        let Initializer(s) = *self;
                         if s.len() == 0 { return Ok(()); }
                         if_ok!(write!(f.buf, "<code> = </code>"));
                         let tag = if s.contains("\n") { "pre" } else { "code" };
@@ -1518,9 +1517,9 @@ fn item_typedef(w: &mut Writer, it: &clean::Item,
 }
 
 impl<'a> fmt::Show for Sidebar<'a> {
-    fn fmt(s: &Sidebar<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let cx = s.cx;
-        let it = s.item;
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let cx = self.cx;
+        let it = self.item;
         if_ok!(write!(fmt.buf, "<p class='location'>"));
         let len = cx.current.len() - if it.is_mod() {1} else {0};
         for (i, name) in cx.current.iter().take(len).enumerate() {
@@ -1588,8 +1587,8 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
 }
 
 impl<'a> fmt::Show for Source<'a> {
-    fn fmt(s: &Source<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Source(s) = *s;
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let Source(s) = *self;
         let lines = s.lines().len();
         let mut cols = 0;
         let mut tmp = lines;

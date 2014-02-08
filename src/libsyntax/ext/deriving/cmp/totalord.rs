@@ -16,7 +16,7 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use std::cmp::{Ordering, Equal, Less, Greater};
 
-pub fn expand_deriving_totalord(cx: &ExtCtxt,
+pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 span: Span,
                                 mitem: @MetaItem,
                                 in_items: ~[@Item]) -> ~[@Item] {
@@ -44,7 +44,7 @@ pub fn expand_deriving_totalord(cx: &ExtCtxt,
 }
 
 
-pub fn ordering_const(cx: &ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
+pub fn ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
     let cnst = match cnst {
         Less => "Less",
         Equal => "Equal",
@@ -56,7 +56,7 @@ pub fn ordering_const(cx: &ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
                      cx.ident_of(cnst)])
 }
 
-pub fn cs_cmp(cx: &ExtCtxt, span: Span,
+pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> @Expr {
     let test_id = cx.ident_of("__test");
     let equals_path = ordering_const(cx, span, Equal);
@@ -106,8 +106,10 @@ pub fn cs_cmp(cx: &ExtCtxt, span: Span,
                 // an earlier nonmatching variant is Less than a
                 // later one.
                 [(self_var, _, _),
-                 (other_var, _, _)] => cx.expr_path(ordering_const(cx, span,
-                                                                   self_var.cmp(&other_var))),
+                 (other_var, _, _)] => {
+                    let order = ordering_const(cx, span, self_var.cmp(&other_var));
+                    cx.expr_path(order)
+                }
                 _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(TotalOrd)`")
             }
         },

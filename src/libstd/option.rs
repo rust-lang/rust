@@ -382,8 +382,8 @@ impl<T: Default> Option<T> {
 
 impl<T: fmt::Show> fmt::Show for Option<T> {
     #[inline]
-    fn fmt(s: &Option<T>, f: &mut fmt::Formatter) -> fmt::Result {
-        match *s {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
             Some(ref t) => write!(f.buf, "Some({})", *t),
             None        => write!(f.buf, "None")
         }

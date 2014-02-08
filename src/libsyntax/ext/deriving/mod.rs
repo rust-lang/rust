@@ -18,8 +18,7 @@ library.
 
 */
 
-use ast::{EnumDef, Ident, Item, Generics, StructDef};
-use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
+use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use codemap::Span;
 
@@ -29,6 +28,7 @@ pub mod encodable;
 pub mod decodable;
 pub mod rand;
 pub mod to_str;
+pub mod show;
 pub mod zero;
 pub mod default;
 pub mod primitive;
@@ -45,20 +45,7 @@ pub mod totalord;
 
 pub mod generic;
 
-pub type ExpandDerivingStructDefFn<'a> = 'a |&ExtCtxt,
-                                                   Span,
-                                                   x: &StructDef,
-                                                   Ident,
-                                                   y: &Generics|
-                                                   -> @Item;
-pub type ExpandDerivingEnumDefFn<'a> = 'a |&ExtCtxt,
-                                                 Span,
-                                                 x: &EnumDef,
-                                                 Ident,
-                                                 y: &Generics|
-                                                 -> @Item;
-
-pub fn expand_meta_deriving(cx: &ExtCtxt,
+pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             _span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])
@@ -97,6 +84,7 @@ pub fn expand_meta_deriving(cx: &ExtCtxt,
                             "Rand" => expand!(rand::expand_deriving_rand),
 
                             "ToStr" => expand!(to_str::expand_deriving_to_str),
+                            "Show" => expand!(show::expand_deriving_show),
 
                             "Zero" => expand!(zero::expand_deriving_zero),
                             "Default" => expand!(default::expand_deriving_default),
