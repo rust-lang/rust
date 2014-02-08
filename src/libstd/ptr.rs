@@ -15,6 +15,7 @@ use clone::Clone;
 #[cfg(not(test))]
 use cmp::Equiv;
 use iter::{range, Iterator};
+use mem;
 use option::{Option, Some, None};
 use unstable::intrinsics;
 use util::swap;
@@ -132,7 +133,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
 #[inline]
 pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
-    let mut tmp: T = intrinsics::uninit();
+    let mut tmp: T = mem::uninit();
     let t: *mut T = &mut tmp;
 
     // Perform the swap
@@ -160,7 +161,7 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
  */
 #[inline(always)]
 pub unsafe fn read_ptr<T>(src: *T) -> T {
-    let mut tmp: T = intrinsics::uninit();
+    let mut tmp: T = mem::uninit();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
 }

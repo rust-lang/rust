@@ -16,8 +16,8 @@ use std::cast::transmute;
 use std::i32::range;
 use std::libc::{STDIN_FILENO, c_int, fdopen, fgets, fileno, fopen, fstat};
 use std::libc::{stat, strlen};
+use std::mem::init;
 use std::ptr::null;
-use std::unstable::intrinsics::init;
 use std::vec::{reverse};
 
 static LINE_LEN: uint = 80;

@@ -176,6 +176,7 @@ and `free`:
 ~~~~
 use std::cast;
 use std::libc::{c_void, size_t, malloc, free};
+use std::mem;
 use std::ptr;
 use std::unstable::intrinsics;
 
@@ -226,7 +227,7 @@ impl<T: Send> Unique<T> {
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {
         unsafe {
-            let x = intrinsics::uninit(); // dummy value to swap in
+            let x = mem::uninit(); // dummy value to swap in
             // We need to move the object out of the box, so that
             // the destructor is called (at the end of this scope.)
             ptr::replace_ptr(self.ptr, x);
