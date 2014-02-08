@@ -117,7 +117,6 @@ pub mod vec_ng;
 pub mod str;
 
 pub mod ascii;
-pub mod send_str;
 
 pub mod ptr;
 pub mod owned;
