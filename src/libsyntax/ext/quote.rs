@@ -257,7 +257,7 @@ pub mod rt {
             match res {
                 Some(ast) => ast,
                 None => {
-                    error!("Parse error");
+                    error!("parse error");
                     fail!()
                 }
             }
@@ -589,7 +589,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::COMMA) {
-        p.fatal("Expected token `,`");
+        p.fatal("expected token `,`");
     }
 
     let tts = p.parse_all_token_trees();

@@ -19,4 +19,4 @@ fn bar() {
     while (i < 1000) {}
 }
 
-fn main() {} //~ ERROR This file contains an un-closed delimiter
+fn main() {} //~ ERROR this file contains an un-closed delimiter

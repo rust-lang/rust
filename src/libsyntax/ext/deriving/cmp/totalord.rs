@@ -110,7 +110,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                     let order = ordering_const(cx, span, self_var.cmp(&other_var));
                     cx.expr_path(order)
                 }
-                _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(TotalOrd)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(TotalOrd)`")
             }
         },
         cx, span, substr)

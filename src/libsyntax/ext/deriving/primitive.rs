@@ -68,7 +68,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
 fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let n = match substr.nonself_args {
         [n] => n,
-        _ => cx.span_bug(trait_span, "Incorrect number of arguments in `deriving(FromPrimitive)`")
+        _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(FromPrimitive)`")
     };
 
     match *substr.fields {

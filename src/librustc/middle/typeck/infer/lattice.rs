@@ -528,7 +528,7 @@ pub fn var_ids<T:Combine>(this: &T,
             r => {
                 this.infcx().tcx.sess.span_bug(
                     this.trace().origin.span(),
-                    format!("Found non-region-vid: {:?}", r));
+                    format!("found non-region-vid: {:?}", r));
             }
         }).collect()
 }

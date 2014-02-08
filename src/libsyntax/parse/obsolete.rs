@@ -76,7 +76,7 @@ impl ParserObsoleteMethods for Parser {
         let (kind_str, desc) = match kind {
             ObsoleteSwap => (
                 "swap",
-                "Use std::util::{swap, replace} instead"
+                "use std::util::{swap, replace} instead"
             ),
             ObsoleteUnsafeBlock => (
                 "non-standalone unsafe block",

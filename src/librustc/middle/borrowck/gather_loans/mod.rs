@@ -496,7 +496,7 @@ impl<'a> GatherLoanCtxt<'a> {
                     ty::ReInfer(..) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
-                            format!("Invalid borrow lifetime: {:?}", loan_region));
+                            format!("invalid borrow lifetime: {:?}", loan_region));
                     }
                 };
                 debug!("loan_scope = {:?}", loan_scope);
@@ -820,7 +820,7 @@ impl<'a> GatherLoanCtxt<'a> {
             _ => {
                 self.tcx().sess.span_bug(
                     pat.span,
-                    format!("Type of slice pattern is not a slice"));
+                    format!("type of slice pattern is not a slice"));
             }
         }
     }

@@ -64,12 +64,12 @@ fn add_bytes_to_bits<T: Int + CheckedAdd + ToBits>(bits: T, bytes: T) -> T {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
     if new_high_bits > Zero::zero() {
-        fail!("Numeric overflow occured.")
+        fail!("numeric overflow occured.")
     }
 
     match bits.checked_add(&new_low_bits) {
         Some(x) => return x,
-        None => fail!("Numeric overflow occured.")
+        None => fail!("numeric overflow occured.")
     }
 }
 

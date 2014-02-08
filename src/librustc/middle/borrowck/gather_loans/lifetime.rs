@@ -215,7 +215,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 // the check above should fail for anything is not ReScope
                 self.bccx.tcx.sess.span_bug(
                     cmt_base.span,
-                    format!("Cannot issue root for scope region: {:?}",
+                    format!("cannot issue root for scope region: {:?}",
                          self.loan_region));
             }
         };

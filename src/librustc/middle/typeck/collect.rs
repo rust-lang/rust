@@ -430,7 +430,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
             if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
                 // This means a trait inherited from the same supertrait more
                 // than once.
-                tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
+                tcx.sess.span_err(sp, "duplicate supertrait in trait declaration");
                 break;
             } else {
                 ty_trait_refs.push(trait_ref);
@@ -891,7 +891,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
         ast::ItemTrait(..) => {
             tcx.sess.span_bug(
                 it.span,
-                format!("Invoked ty_of_item on trait"));
+                format!("invoked ty_of_item on trait"));
         }
         ast::ItemStruct(_, ref generics) => {
             let ty_generics = ty_generics(ccx, generics, 0);

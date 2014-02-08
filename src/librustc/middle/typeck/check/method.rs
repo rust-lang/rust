@@ -789,7 +789,7 @@ impl<'a> LookupContext<'a> {
             ty_err => None,
 
             ty_unboxed_vec(_) | ty_type | ty_infer(TyVar(_)) => {
-                self.bug(format!("Unexpected type: {}",
+                self.bug(format!("unexpected type: {}",
                               self.ty_to_str(self_ty)));
             }
         }

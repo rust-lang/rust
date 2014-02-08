@@ -656,7 +656,7 @@ impl<'a> MethodDef<'a> {
                 }).collect()
             }
             [] => { trait_.cx.span_bug(trait_.span,
-                                       "No self arguments to non-static method \
+                                       "no self arguments to non-static method \
                                        in generic `deriving`") }
         };
 
@@ -840,7 +840,7 @@ impl<'a> MethodDef<'a> {
                 let index = match matching {
                     Some(i) => i,
                     None => cx.span_bug(trait_.span,
-                                        "Non-matching variants when required to \
+                                        "non-matching variants when required to \
                                         be matching in generic `deriving`")
                 };
 
@@ -965,7 +965,7 @@ impl<'a> TraitDef<'a> {
 
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => self.cx.span_bug(self.span,
-                                               "A struct with named and unnamed \
+                                               "a struct with named and unnamed \
                                                fields in generic `deriving`"),
             // named fields
             (_, false) => Named(named_idents),
@@ -1019,7 +1019,7 @@ impl<'a> TraitDef<'a> {
                     None
                 }
                 _ => {
-                    cx.span_bug(sp, "A struct with named and unnamed fields in `deriving`");
+                    cx.span_bug(sp, "a struct with named and unnamed fields in `deriving`");
                 }
             };
             let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
@@ -1116,7 +1116,7 @@ pub fn cs_fold(use_foldl: bool,
                                                           *all_enums,
                                                           substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, "Static function in `deriving`")
+            cx.span_bug(trait_span, "static function in `deriving`")
         }
     }
 }
@@ -1154,7 +1154,7 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, ~[@Expr]| -> @Expr,
                                                           *all_enums,
                                                           substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, "Static function in `deriving`")
+            cx.span_bug(trait_span, "static function in `deriving`")
         }
     }
 }

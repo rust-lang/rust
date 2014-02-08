@@ -13,6 +13,6 @@
 fn main() {
     fn bar(n: int) {
         let _x: [int, ..n];
-        //~^ ERROR expected constant expr for vector length: Non-constant path in constant expr
+        //~^ ERROR expected constant expr for vector length: non-constant path in constant expr
     }
 }
