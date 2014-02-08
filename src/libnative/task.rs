@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn smoke_opts() {
         let mut opts = TaskOpts::new();
-        opts.name = Some(SendStrStatic("test"));
+        opts.name = Some("test".into_maybe_owned());
         opts.stack_size = Some(20 * 4096);
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
