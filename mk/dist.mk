@@ -26,7 +26,7 @@ PKG_FILES := \
     $(S)man                                    \
     $(S)doc                                    \
     $(addprefix $(S)src/,                      \
-      README.txt                               \
+      README.md                                \
       driver                                   \
       librustc                                 \
       compiletest                              \
