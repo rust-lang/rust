@@ -214,8 +214,7 @@ impl Arena {
     #[inline]
     fn alloc_pod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
-            let tydesc = get_tydesc::<T>();
-            let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
+            let ptr = self.alloc_pod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ptr: *mut T = transmute(ptr);
             intrinsics::move_val_init(&mut (*ptr), op());
             return transmute(ptr);
@@ -272,7 +271,7 @@ impl Arena {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
-                self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
+                self.alloc_nonpod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ty_ptr: *mut uint = transmute(ty_ptr);
             let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it

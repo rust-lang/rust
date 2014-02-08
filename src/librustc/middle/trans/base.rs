@@ -352,7 +352,6 @@ pub fn malloc_raw_dyn<'a>(
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
 
-
         // Allocate space:
         let r = callee::trans_lang_call(
             bcx,
@@ -375,17 +374,14 @@ pub fn malloc_raw_dyn<'a>(
         // Grab the TypeRef type of box_ptr_ty.
         let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
-
-        // Get the tydesc for the body:
-        let static_ti = get_tydesc(ccx, t);
-        glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
+        let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
 
         // Allocate space:
-        let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+        let drop_glue = glue::get_drop_glue(ccx, t);
         let r = callee::trans_lang_call(
             bcx,
             langcall,
-            [tydesc, size],
+            [PointerCast(bcx, drop_glue, Type::glue_fn(Type::i8p()).ptr_to()), size, llalign],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     }
