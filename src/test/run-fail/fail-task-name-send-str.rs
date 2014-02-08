@@ -12,7 +12,7 @@
 
 fn main() {
     let mut t = ::std::task::task();
-    t.name("send name".to_send_str());
+    t.name("send name".into_maybe_owned());
     t.try(proc() {
         fail!("test");
         3

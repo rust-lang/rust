@@ -15,57 +15,56 @@ use std::cmp::{TotalEq, Ord, TotalOrd, Equiv};
 use std::cmp::Equal;
 use std::container::{Container, Map, MutableMap};
 use std::default::Default;
-use std::send_str::{SendStr, SendStrOwned, SendStrStatic};
-use std::str::Str;
+use std::str::{Str, SendStr, Owned, Slice};
 use std::to_str::ToStr;
 use self::collections::TreeMap;
 use std::option::Some;
 
 pub fn main() {
     let mut map: TreeMap<SendStr, uint> = TreeMap::new();
-    assert!(map.insert(SendStrStatic("foo"), 42));
-    assert!(!map.insert(SendStrOwned(~"foo"), 42));
-    assert!(!map.insert(SendStrStatic("foo"), 42));
-    assert!(!map.insert(SendStrOwned(~"foo"), 42));
+    assert!(map.insert(Slice("foo"), 42));
+    assert!(!map.insert(Owned(~"foo"), 42));
+    assert!(!map.insert(Slice("foo"), 42));
+    assert!(!map.insert(Owned(~"foo"), 42));
 
-    assert!(!map.insert(SendStrStatic("foo"), 43));
-    assert!(!map.insert(SendStrOwned(~"foo"), 44));
-    assert!(!map.insert(SendStrStatic("foo"), 45));
-    assert!(!map.insert(SendStrOwned(~"foo"), 46));
+    assert!(!map.insert(Slice("foo"), 43));
+    assert!(!map.insert(Owned(~"foo"), 44));
+    assert!(!map.insert(Slice("foo"), 45));
+    assert!(!map.insert(Owned(~"foo"), 46));
 
     let v = 46;
 
-    assert_eq!(map.find(&SendStrOwned(~"foo")), Some(&v));
-    assert_eq!(map.find(&SendStrStatic("foo")), Some(&v));
+    assert_eq!(map.find(&Owned(~"foo")), Some(&v));
+    assert_eq!(map.find(&Slice("foo")), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
-    assert!(map.insert(SendStrStatic("abc"), a));
-    assert!(map.insert(SendStrOwned(~"bcd"), b));
-    assert!(map.insert(SendStrStatic("cde"), c));
-    assert!(map.insert(SendStrOwned(~"def"), d));
+    assert!(map.insert(Slice("abc"), a));
+    assert!(map.insert(Owned(~"bcd"), b));
+    assert!(map.insert(Slice("cde"), c));
+    assert!(map.insert(Owned(~"def"), d));
 
-    assert!(!map.insert(SendStrStatic("abc"), a));
-    assert!(!map.insert(SendStrOwned(~"bcd"), b));
-    assert!(!map.insert(SendStrStatic("cde"), c));
-    assert!(!map.insert(SendStrOwned(~"def"), d));
+    assert!(!map.insert(Slice("abc"), a));
+    assert!(!map.insert(Owned(~"bcd"), b));
+    assert!(!map.insert(Slice("cde"), c));
+    assert!(!map.insert(Owned(~"def"), d));
 
-    assert!(!map.insert(SendStrOwned(~"abc"), a));
-    assert!(!map.insert(SendStrStatic("bcd"), b));
-    assert!(!map.insert(SendStrOwned(~"cde"), c));
-    assert!(!map.insert(SendStrStatic("def"), d));
+    assert!(!map.insert(Owned(~"abc"), a));
+    assert!(!map.insert(Slice("bcd"), b));
+    assert!(!map.insert(Owned(~"cde"), c));
+    assert!(!map.insert(Slice("def"), d));
 
-    assert_eq!(map.find(&SendStrStatic("abc")), Some(&a));
-    assert_eq!(map.find(&SendStrStatic("bcd")), Some(&b));
-    assert_eq!(map.find(&SendStrStatic("cde")), Some(&c));
-    assert_eq!(map.find(&SendStrStatic("def")), Some(&d));
+    assert_eq!(map.find(&Slice("abc")), Some(&a));
+    assert_eq!(map.find(&Slice("bcd")), Some(&b));
+    assert_eq!(map.find(&Slice("cde")), Some(&c));
+    assert_eq!(map.find(&Slice("def")), Some(&d));
 
-    assert_eq!(map.find(&SendStrOwned(~"abc")), Some(&a));
-    assert_eq!(map.find(&SendStrOwned(~"bcd")), Some(&b));
-    assert_eq!(map.find(&SendStrOwned(~"cde")), Some(&c));
-    assert_eq!(map.find(&SendStrOwned(~"def")), Some(&d));
+    assert_eq!(map.find(&Owned(~"abc")), Some(&a));
+    assert_eq!(map.find(&Owned(~"bcd")), Some(&b));
+    assert_eq!(map.find(&Owned(~"cde")), Some(&c));
+    assert_eq!(map.find(&Owned(~"def")), Some(&d));
 
-    assert!(map.pop(&SendStrStatic("foo")).is_some());
+    assert!(map.pop(&Slice("foo")).is_some());
     assert_eq!(map.move_iter().map(|(k, v)| k.to_str() + v.to_str())
                               .to_owned_vec()
                               .concat(),
