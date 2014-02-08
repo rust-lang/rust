@@ -890,17 +890,15 @@ fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
 mod test {
     use super::*;
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord, EMPTY_CTXT};
-    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve, new_rename};
+    use ast::{Attribute_, AttrOuter, MetaWord};
+    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve};
     use ast_util;
     use codemap;
     use codemap::Spanned;
-    use fold::*;
     use ext::base::{CrateLoader, MacroCrate};
     use parse;
-    use parse::token::{fresh_mark, gensym, intern};
     use parse::token;
-    use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
+    use util::parser_testing::{string_to_crate_and_sess};
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
@@ -1227,7 +1225,7 @@ foo_module!()
                 "xx" == string.get()
             }
         }).enumerate() {
-            if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
+            if mtwt_resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);

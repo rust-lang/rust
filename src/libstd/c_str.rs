@@ -524,7 +524,6 @@ mod tests {
     #[test]
     fn test_to_c_str_fail() {
         use task;
-        let mut error_happened = false;
         assert!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
     }
 
