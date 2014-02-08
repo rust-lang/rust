@@ -1810,10 +1810,11 @@ impl Parser {
             let lifetime = self.get_lifetime();
             self.bump();
             self.expect(&token::COLON);
+            let name = Some(lifetime.name);
             if self.eat_keyword(keywords::For) {
-                return self.parse_for_expr(Some(lifetime))
+                return self.parse_for_expr(name)
             } else if self.eat_keyword(keywords::Loop) {
-                return self.parse_loop_expr(Some(lifetime))
+                return self.parse_loop_expr(name)
             } else {
                 self.fatal("expected `for` or `loop` after a label")
             }
@@ -2535,7 +2536,7 @@ impl Parser {
     }
 
     // parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>) -> @Expr {
+    pub fn parse_for_expr(&mut self, opt_name: Option<ast::Name>) -> @Expr {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
         let lo = self.last_span.lo;
@@ -2545,7 +2546,7 @@ impl Parser {
         let loop_block = self.parse_block();
         let hi = self.span.hi;
 
-        self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident))
+        self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_name))
     }
 
     pub fn parse_while_expr(&mut self) -> @Expr {
@@ -2556,7 +2557,7 @@ impl Parser {
         return self.mk_expr(lo, hi, ExprWhile(cond, body));
     }
 
-    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> @Expr {
+    pub fn parse_loop_expr(&mut self, opt_name: Option<ast::Name>) -> @Expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             self.token == token::LBRACE
@@ -2568,10 +2569,10 @@ impl Parser {
             let lo = self.last_span.lo;
             let body = self.parse_block();
             let hi = body.span.hi;
-            return self.mk_expr(lo, hi, ExprLoop(body, opt_ident));
+            return self.mk_expr(lo, hi, ExprLoop(body, opt_name));
         } else {
             // This is an obsolete 'continue' expression
-            if opt_ident.is_some() {
+            if opt_name.is_some() {
                 self.span_err(self.last_span,
                               "a label may not be used with a `loop` expression");
             }

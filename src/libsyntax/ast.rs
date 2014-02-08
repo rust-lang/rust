@@ -33,7 +33,7 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 }
 
 // FIXME #6993: in librustc, uses of "ident" should be replaced
-// by just "Name".
+// with just "Name".
 
 // an identifier contains a Name (index into the interner
 // table) and a SyntaxContext to track renaming and
@@ -551,11 +551,8 @@ pub enum Expr_ {
     ExprCast(@Expr, P<Ty>),
     ExprIf(@Expr, P<Block>, Option<@Expr>),
     ExprWhile(@Expr, P<Block>),
-    // FIXME #6993: change to Option<Name>
-    ExprForLoop(@Pat, @Expr, P<Block>, Option<Ident>),
-    // Conditionless loop (can be exited with break, cont, or ret)
-    // FIXME #6993: change to Option<Name>
-    ExprLoop(P<Block>, Option<Ident>),
+    ExprForLoop(@Pat, @Expr, P<Block>, Option<Name>),
+    ExprLoop(P<Block>, Option<Name>),
     ExprMatch(@Expr, ~[Arm]),
     ExprFnBlock(P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
