@@ -257,7 +257,7 @@ pub fn run(main: proc()) -> int {
     let (port, chan) = Chan::new();
     let mut opts = TaskOpts::new();
     opts.notify_chan = Some(chan);
-    opts.name = Some(SendStrStatic("<main>"));
+    opts.name = Some("<main>".into_maybe_owned());
     pool.spawn(opts, main);
 
     // Wait for the main task to return, and set the process error code

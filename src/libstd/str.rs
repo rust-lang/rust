@@ -86,7 +86,9 @@ use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
+use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
+use fmt;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -100,7 +102,7 @@ use from_str::FromStr;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;
-use send_str::{SendStr, SendStrOwned};
+use to_bytes::{IterBytes, Cb};
 use unstable::raw::Repr;
 
 /*
@@ -915,53 +917,6 @@ macro_rules! utf8_acc_cont_byte(
 
 static TAG_CONT_U8: u8 = 128u8;
 
-/// Enum that represents either a borrowed or an owned string.
-#[deriving(Eq,Clone)]
-pub enum MaybeOwned<'a> {
-    /// A borrowed string
-    Slice(&'a str),
-    /// An owned string
-    Owned(~str)
-}
-
-impl<'a> Str for MaybeOwned<'a> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        match *self {
-            Slice(s) => s,
-            Owned(ref s) => s.as_slice()
-        }
-    }
-
-    #[inline]
-    fn into_owned(self) -> ~str {
-        match self {
-            Slice(s) => s.to_owned(),
-            Owned(s) => s
-        }
-    }
-}
-
-impl<'a> ToStr for MaybeOwned<'a> {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        match *self {
-            Slice(s) => s.to_str(),
-            Owned(ref s) => s.clone()
-        }
-    }
-}
-
-impl<'a> ::fmt::Show for MaybeOwned<'a> {
-    #[inline]
-    fn fmt(mo: &MaybeOwned, f: &mut ::fmt::Formatter) -> ::fmt::Result {
-        match *mo {
-            Slice(ref s) => ::fmt::Show::fmt(s, f),
-            Owned(ref s) => ::fmt::Show::fmt(&s.as_slice(), f)
-        }
-    }
-}
-
 /// Converts a vector of bytes to a new utf-8 string.
 /// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
 ///
@@ -1081,6 +1036,172 @@ pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
         unsafe { raw::push_bytes(&mut res, v.slice(subseqidx, total)) };
     }
     Owned(res)
+}
+
+/*
+Section: MaybeOwned
+*/
+
+/// A MaybeOwned is a string that can hold either a ~str or a &str.
+/// This can be useful as an optimization when an allocation is sometimes
+/// needed but not always.
+pub enum MaybeOwned<'a> {
+    /// A borrowed string
+    Slice(&'a str),
+    /// An owned string
+    Owned(~str)
+}
+
+/// SendStr is a specialization of `MaybeOwned` to be sendable
+pub type SendStr = MaybeOwned<'static>;
+
+impl<'a> MaybeOwned<'a> {
+    /// Returns `true` if this `MaybeOwned` wraps an owned string
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        match *self {
+            Slice(_) => false,
+            Owned(_) => true
+        }
+    }
+
+    /// Returns `true` if this `MaybeOwned` wraps a borrowed string
+    #[inline]
+    pub fn is_slice(&self) -> bool {
+        match *self {
+            Slice(_) => true,
+            Owned(_) => false
+        }
+    }
+}
+
+/// Trait for moving into a `MaybeOwned`
+pub trait IntoMaybeOwned<'a> {
+    /// Moves self into a `MaybeOwned`
+    fn into_maybe_owned(self) -> MaybeOwned<'a>;
+}
+
+impl<'a> IntoMaybeOwned<'a> for ~str {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self) }
+}
+
+impl<'a> IntoMaybeOwned<'a> for &'a str {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
+}
+
+impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
+}
+
+impl<'a> ToStr for MaybeOwned<'a> {
+    #[inline]
+    fn to_str(&self) -> ~str { self.as_slice().to_owned() }
+}
+
+impl<'a> Eq for MaybeOwned<'a> {
+    #[inline]
+    fn eq(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> TotalEq for MaybeOwned<'a> {
+    #[inline]
+    fn equals(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> Ord for MaybeOwned<'a> {
+    #[inline]
+    fn lt(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().lt(&other.as_slice())
+    }
+}
+
+impl<'a> TotalOrd for MaybeOwned<'a> {
+    #[inline]
+    fn cmp(&self, other: &MaybeOwned) -> Ordering {
+        self.as_slice().cmp(&other.as_slice())
+    }
+}
+
+impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
+    #[inline]
+    fn equiv(&self, other: &S) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> Str for MaybeOwned<'a> {
+    #[inline]
+    fn as_slice<'b>(&'b self) -> &'b str {
+        match *self {
+            Slice(s) => s,
+            Owned(ref s) => s.as_slice()
+        }
+    }
+
+    #[inline]
+    fn into_owned(self) -> ~str {
+        match self {
+            Slice(s) => s.to_owned(),
+            Owned(s) => s
+        }
+    }
+}
+
+impl<'a> Container for MaybeOwned<'a> {
+    #[inline]
+    fn len(&self) -> uint { self.as_slice().len() }
+}
+
+impl<'a> Clone for MaybeOwned<'a> {
+    #[inline]
+    fn clone(&self) -> MaybeOwned<'a> {
+        match *self {
+            Slice(s) => Slice(s),
+            Owned(ref s) => Owned(s.to_owned())
+        }
+    }
+}
+
+impl<'a> DeepClone for MaybeOwned<'a> {
+    #[inline]
+    fn deep_clone(&self) -> MaybeOwned<'a> {
+        match *self {
+            Slice(s) => Slice(s),
+            Owned(ref s) => Owned(s.to_owned())
+        }
+    }
+}
+
+impl<'a> Default for MaybeOwned<'a> {
+    #[inline]
+    fn default() -> MaybeOwned<'a> { Slice("") }
+}
+
+impl<'a> IterBytes for MaybeOwned<'a> {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        match *self {
+            Slice(s) => s.iter_bytes(lsb0, f),
+            Owned(ref s) => s.iter_bytes(lsb0, f)
+        }
+    }
+}
+
+impl<'a> fmt::Show for MaybeOwned<'a> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Slice(ref s) => s.fmt(f),
+            Owned(ref s) => s.fmt(f)
+        }
+    }
 }
 
 /// Unsafe operations
@@ -1837,9 +1958,6 @@ pub trait StrSlice<'a> {
     /// Converts to a vector of `u16` encoded as UTF-16.
     fn to_utf16(&self) -> ~[u16];
 
-    /// Copy a slice into a new `SendStr`.
-    fn to_send_str(&self) -> SendStr;
-
     /// Check that `index`-th byte lies at the start and/or end of a
     /// UTF-8 code point sequence.
     ///
@@ -2365,11 +2483,6 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn to_send_str(&self) -> SendStr {
-        SendStrOwned(self.to_owned())
-    }
-
-    #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
         let b = self[index];
@@ -2808,7 +2921,6 @@ mod tests {
     use prelude::*;
     use ptr;
     use str::*;
-    use send_str::{SendStrOwned, SendStrStatic};
 
     #[test]
     fn test_eq() {
@@ -4039,15 +4151,74 @@ mod tests {
     }
 
     #[test]
-    fn test_to_send_str() {
-        assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
-        assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
-    }
-
-    #[test]
     fn test_from_str() {
       let owned: Option<~str> = from_str(&"string");
       assert_eq!(owned, Some(~"string"));
+    }
+
+    #[test]
+    fn test_maybe_owned_traits() {
+        let s = Slice("abcde");
+        assert_eq!(s.len(), 5);
+        assert_eq!(s.as_slice(), "abcde");
+        assert_eq!(s.to_str(), ~"abcde");
+        assert!(s.lt(&Owned(~"bcdef")));
+        assert_eq!(Slice(""), Default::default());
+
+        let o = Owned(~"abcde");
+        assert_eq!(o.len(), 5);
+        assert_eq!(o.as_slice(), "abcde");
+        assert_eq!(o.to_str(), ~"abcde");
+        assert!(o.lt(&Slice("bcdef")));
+        assert_eq!(Owned(~""), Default::default());
+
+        assert_eq!(s.cmp(&o), Equal);
+        assert!(s.equals(&o));
+        assert!(s.equiv(&o));
+
+        assert_eq!(o.cmp(&s), Equal);
+        assert!(o.equals(&s));
+        assert!(o.equiv(&s));
+    }
+
+    #[test]
+    fn test_maybe_owned_methods() {
+        let s = Slice("abcde");
+        assert!(s.is_slice());
+        assert!(!s.is_owned());
+
+        let o = Owned(~"abcde");
+        assert!(!o.is_slice());
+        assert!(o.is_owned());
+    }
+
+    #[test]
+    fn test_maybe_owned_clone() {
+        assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
+        assert_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
+
+        assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
+        assert_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
+
+        assert_eq!(Slice("abcde"), Slice("abcde").clone());
+        assert_eq!(Slice("abcde"), Slice("abcde").deep_clone());
+
+        assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
+        assert_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
+    }
+
+    #[test]
+    fn test_maybe_owned_into_owned() {
+        assert_eq!(Slice("abcde").into_owned(), ~"abcde");
+        assert_eq!(Owned(~"abcde").into_owned(), ~"abcde");
+    }
+
+    #[test]
+    fn test_into_maybe_owned() {
+        assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
+        assert_eq!((~"abcde").into_maybe_owned(), Slice("abcde"));
+        assert_eq!("abcde".into_maybe_owned(), Owned(~"abcde"));
+        assert_eq!((~"abcde").into_maybe_owned(), Owned(~"abcde"));
     }
 }
 
