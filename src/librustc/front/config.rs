@@ -58,8 +58,10 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)
 }
 
 fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
-    let filtered_items = m.items.iter()
+    let filtered_items: ~[&@ast::Item] = m.items.iter()
             .filter(|&a| item_in_cfg(cx, *a))
+            .collect();
+    let flattened_items = filtered_items.move_iter()
             .flat_map(|&x| cx.fold_item(x).move_iter())
             .collect();
     let filtered_view_items = m.view_items.iter().filter_map(|a| {
@@ -67,7 +69,7 @@ fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
     }).collect();
     ast::Mod {
         view_items: filtered_view_items,
-        items: filtered_items
+        items: flattened_items
     }
 }
 
@@ -113,23 +115,26 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
             ast::ItemStruct(fold_struct(cx, def), generics.clone())
         }
         ast::ItemEnum(ref def, ref generics) => {
-            let mut variants = def.variants.iter().map(|c| c.clone()).filter(|m| {
-                (cx.in_cfg)(m.node.attrs)
-            }).map(|v| {
-                match v.node.kind {
-                    ast::TupleVariantKind(..) => v,
-                    ast::StructVariantKind(def) => {
-                        let def = fold_struct(cx, def);
-                        @codemap::Spanned {
-                            node: ast::Variant_ {
-                                kind: ast::StructVariantKind(def),
-                                ..v.node.clone()
-                            },
-                            ..*v
-                        }
+            let mut variants = def.variants.iter().map(|c| c.clone()).
+            filter_map(|v| {
+                if !(cx.in_cfg)(v.node.attrs) {
+                    None
+                } else {
+                    Some(match v.node.kind {
+                                ast::TupleVariantKind(..) => v,
+                                ast::StructVariantKind(def) => {
+                                    let def = fold_struct(cx, def);
+                                    @codemap::Spanned {
+                                        node: ast::Variant_ {
+                                            kind: ast::StructVariantKind(def),
+                                            ..v.node.clone()
+                                        },
+                                        ..*v
+                                    }
+                                }
+                            })
                     }
-                }
-            });
+                });
             ast::ItemEnum(ast::EnumDef {
                 variants: variants.collect(),
             }, generics.clone())
@@ -165,10 +170,11 @@ fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
 }
 
 fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
-    let resulting_stmts = b.stmts.iter()
-            .filter(|&a| retain_stmt(cx, *a))
-            .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
-            .collect();
+    let resulting_stmts: ~[&@ast::Stmt] =
+        b.stmts.iter().filter(|&a| retain_stmt(cx, *a)).collect();
+    let resulting_stmts = resulting_stmts.move_iter()
+        .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
+        .collect();
     let filtered_view_items = b.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
