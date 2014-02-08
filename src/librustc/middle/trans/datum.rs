@@ -545,7 +545,11 @@ fn load<'a>(bcx: &'a Block<'a>, llptr: ValueRef, ty: ty::t) -> ValueRef {
     if type_is_zero_size(bcx.ccx(), ty) {
         C_undef(type_of::type_of(bcx.ccx(), ty))
     } else if ty::type_is_bool(ty) {
-        LoadRangeAssert(bcx, llptr, 0, 2, lib::llvm::True)
+        LoadRangeAssert(bcx, llptr, 0, 2, lib::llvm::False)
+    } else if ty::type_is_char(ty) {
+        // a char is a unicode codepoint, and so takes values from 0
+        // to 0x10FFFF inclusive only.
+        LoadRangeAssert(bcx, llptr, 0, 0x10FFFF + 1, lib::llvm::False)
     } else {
         Load(bcx, llptr)
     }
