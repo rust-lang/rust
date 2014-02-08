@@ -167,26 +167,21 @@ macro_rules! fail(
 /// ```
 /// // the failure message for these assertions is the stringified value of the
 /// // expression given.
-/// assert!(true);
+/// fail_unless!(true);
 /// # fn some_computation() -> bool { true }
-/// assert!(some_computation());
+/// fail_unless!(some_computation());
 ///
 /// // assert with a custom message
 /// # let x = true;
-/// assert!(x, "x wasn't true!");
+/// fail_unless!(x, "x wasn't true!");
 /// # let a = 3; let b = 27;
-/// assert!(a + b == 30, "a = {}, b = {}", a, b);
+/// fail_unless!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
-macro_rules! assert(
+macro_rules! fail_unless(
     ($cond:expr) => (
         if !$cond {
             fail!("assertion failed: {:s}", stringify!($cond))
-        }
-    );
-    ($cond:expr, $msg:expr) => (
-        if !$cond {
-            fail!($msg)
         }
     );
     ($cond:expr, $($arg:expr),+) => (
@@ -199,17 +194,18 @@ macro_rules! assert(
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
 ///
-/// On failure, this macro will print the values of the expressions.
+/// If the expressions are not equal, `fail!` is invoked, with a
+/// message containing the two values.
 ///
 /// # Example
 ///
 /// ```
 /// let a = 3;
 /// let b = 1 + 2;
-/// assert_eq!(a, b);
+/// fail_unless_eq!(a, b);
 /// ```
 #[macro_export]
-macro_rules! assert_eq(
+macro_rules! fail_unless_eq (
     ($given:expr , $expected:expr) => ({
         let given_val = &($given);
         let expected_val = &($expected);
@@ -367,4 +363,3 @@ macro_rules! vec(
         temp
     })
 )
-
