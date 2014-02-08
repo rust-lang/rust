@@ -152,19 +152,6 @@ impl cmp::Ord for Version {
                  (_, _) => self.pre < other.pre
              }))
     }
-
-    #[inline]
-    fn le(&self, other: &Version) -> bool {
-        ! (other < self)
-    }
-    #[inline]
-    fn gt(&self, other: &Version) -> bool {
-        other < self
-    }
-    #[inline]
-    fn ge(&self, other: &Version) -> bool {
-        ! (self < other)
-    }
 }
 
 fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
