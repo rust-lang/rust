@@ -4127,9 +4127,6 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
               });
               (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
             }
-            "morestack_addr" => {
-              (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
-            }
             "offset" => {
               (1,
                ~[
