@@ -12,6 +12,7 @@
 
 #[cfg(not(test))]
 use default::Default;
+#[cfg(not(test))]
 use cmp::{Eq, Equal, Ord, Ordering, TotalEq, TotalOrd};
 
 #[cfg(not(test))]
