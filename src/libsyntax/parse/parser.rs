@@ -4200,10 +4200,10 @@ impl Parser {
                     let mut err = ~"circular modules: ";
                     let len = included_mod_stack.get().len();
                     for p in included_mod_stack.get().slice(i, len).iter() {
-                        p.display().with_str(|s| err.push_str(s));
+                        err.push_str(p.display().as_maybe_owned().as_slice());
                         err.push_str(" -> ");
                     }
-                    path.display().with_str(|s| err.push_str(s));
+                    err.push_str(path.display().as_maybe_owned().as_slice());
                     self.span_fatal(id_sp, err);
                 }
                 None => ()

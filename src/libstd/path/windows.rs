@@ -1278,20 +1278,12 @@ mod tests {
         let path = Path::new(b!("\\"));
         assert_eq!(path.filename_display().to_str(), ~"");
 
-        let mut called = false;
         let path = Path::new("foo");
-        path.display().with_str(|s| {
-            assert_eq!(s, "foo");
-            called = true;
-        });
-        assert!(called);
-        called = false;
+        let mo = path.display().as_maybe_owned();
+        assert_eq!(mo.as_slice(), "foo");
         let path = Path::new(b!("\\"));
-        path.filename_display().with_str(|s| {
-            assert_eq!(s, "");
-            called = true;
-        });
-        assert!(called);
+        let mo = path.filename_display().as_maybe_owned();
+        assert_eq!(mo.as_slice(), "");
     }
 
     #[test]

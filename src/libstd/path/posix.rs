@@ -564,24 +564,16 @@ mod tests {
         macro_rules! t(
             ($path:expr, $exp:expr) => (
                 {
-                    let mut called = false;
                     let path = Path::new($path);
-                    path.display().with_str(|s| {
-                        assert_eq!(s, $exp);
-                        called = true;
-                    });
-                    assert!(called);
+                    let mo = path.display().as_maybe_owned();
+                    assert_eq!(mo.as_slice(), $exp);
                 }
             );
             ($path:expr, $exp:expr, filename) => (
                 {
-                    let mut called = false;
                     let path = Path::new($path);
-                    path.filename_display().with_str(|s| {
-                        assert_eq!(s, $exp);
-                        called = true;
-                    });
-                    assert!(called);
+                    let mo = path.filename_display().as_maybe_owned();
+                    assert_eq!(mo.as_slice(), $exp);
                 }
             )
         )
