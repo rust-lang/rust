@@ -51,7 +51,6 @@ li {list-style-type: none; }
 # Tooling
 
 * [The `rustdoc` manual](rustdoc.html)
-* [The `rustpkg` manual](rustpkg.html)
 
 # FAQs
 
