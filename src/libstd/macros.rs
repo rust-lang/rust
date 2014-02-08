@@ -218,6 +218,37 @@ macro_rules! fail_unless_eq (
     })
 )
 
+#[macro_export]
+macro_rules! debug_assert {
+    ($cond:expr) => {
+        if cfg!(not(ndebug)) && !$cond {
+            fail!("assertion failed: {:s}", stringify!($cond))
+        }
+    };
+    ($cond:expr, $( $arg:expr ),+) => {
+        if cfg!(not(ndebug)) && !$cond {
+            fail!( $($arg),+ )
+        }
+    }
+
+}
+
+#[macro_export]
+macro_rules! debug_assert_eq {
+    ($given:expr , $expected:expr) => (
+        if cfg!(not(ndebug)) {
+            let given_val = &($given);
+            let expected_val = &($expected);
+            // check both directions of equality....
+            if !((*given_val == *expected_val) &&
+                 (*expected_val == *given_val)) {
+                fail!("assertion failed: `(left == right) && (right == left)` \
+                       (left: `{:?}`, right: `{:?}`)", *given_val, *expected_val)
+            }
+        }
+    )
+}
+
 /// A utility macro for indicating unreachable code. It will fail if
 /// executed. This is occasionally useful to put after loops that never
 /// terminate normally, but instead directly return from a function.
