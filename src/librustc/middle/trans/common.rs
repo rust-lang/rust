@@ -114,7 +114,6 @@ pub struct tydesc_info {
     size: ValueRef,
     align: ValueRef,
     name: ValueRef,
-    drop_glue: Cell<Option<ValueRef>>,
     visit_glue: Cell<Option<ValueRef>>,
 }
 

@@ -11,10 +11,7 @@
 #[doc(hidden)];
 
 use ptr;
-use unstable::intrinsics::TyDesc;
 use unstable::raw;
-
-type DropGlue<'a> = 'a |**TyDesc, *u8|;
 
 static RC_IMMORTAL : uint = 0x77777777;
 
@@ -23,11 +20,6 @@ static RC_IMMORTAL : uint = 0x77777777;
  *
  * This runs at task death to free all boxes.
  */
-
-struct AnnihilateStats {
-    n_total_boxes: uint,
-    n_bytes_freed: uint
-}
 
 unsafe fn each_live_alloc(read_next_before: bool,
                           f: |alloc: *mut raw::Box<()>| -> bool)
@@ -65,21 +57,18 @@ fn debug_mem() -> bool {
 }
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
+#[cfg(stage0)]
 pub unsafe fn annihilate() {
     use rt::local_heap::local_free;
-    use mem;
 
-    let mut stats = AnnihilateStats {
-        n_total_boxes: 0,
-        n_bytes_freed: 0
-    };
+    let mut n_total_boxes = 0u;
 
     // Pass 1: Make all boxes immortal.
     //
     // In this pass, nothing gets freed, so it does not matter whether
     // we read the next field before or after the callback.
     each_live_alloc(true, |alloc| {
-        stats.n_total_boxes += 1;
+        n_total_boxes += 1;
         (*alloc).ref_count = RC_IMMORTAL;
         true
     });
@@ -103,18 +92,58 @@ pub unsafe fn annihilate() {
     // left), so we must read the `next` field before, since it will
     // not be valid after.
     each_live_alloc(true, |alloc| {
-        stats.n_bytes_freed +=
-            (*((*alloc).type_desc)).size
-            + mem::size_of::<raw::Box<()>>();
         local_free(alloc as *u8);
         true
     });
 
     if debug_mem() {
         // We do logging here w/o allocation.
-        debug!("annihilator stats:\n  \
-                       total boxes: {}\n  \
-                       bytes freed: {}",
-                stats.n_total_boxes, stats.n_bytes_freed);
+        debug!("total boxes annihilated: {}", n_total_boxes);
+    }
+}
+
+/// Destroys all managed memory (i.e. @ boxes) held by the current task.
+#[cfg(not(stage0))]
+pub unsafe fn annihilate() {
+    use rt::local_heap::local_free;
+
+    let mut n_total_boxes = 0u;
+
+    // Pass 1: Make all boxes immortal.
+    //
+    // In this pass, nothing gets freed, so it does not matter whether
+    // we read the next field before or after the callback.
+    each_live_alloc(true, |alloc| {
+        n_total_boxes += 1;
+        (*alloc).ref_count = RC_IMMORTAL;
+        true
+    });
+
+    // Pass 2: Drop all boxes.
+    //
+    // In this pass, unique-managed boxes may get freed, but not
+    // managed boxes, so we must read the `next` field *after* the
+    // callback, as the original value may have been freed.
+    each_live_alloc(false, |alloc| {
+        let drop_glue = (*alloc).drop_glue;
+        let data = &mut (*alloc).data as *mut ();
+        drop_glue(data as *mut u8);
+        true
+    });
+
+    // Pass 3: Free all boxes.
+    //
+    // In this pass, managed boxes may get freed (but not
+    // unique-managed boxes, though I think that none of those are
+    // left), so we must read the `next` field before, since it will
+    // not be valid after.
+    each_live_alloc(true, |alloc| {
+        local_free(alloc as *u8);
+        true
+    });
+
+    if debug_mem() {
+        // We do logging here w/o allocation.
+        debug!("total boxes annihilated: {}", n_total_boxes);
     }
 }

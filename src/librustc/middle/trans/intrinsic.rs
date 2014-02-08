@@ -11,7 +11,6 @@
 #[allow(non_uppercase_pattern_statics)];
 
 use arena::TypedArena;
-use back::abi;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{ValueRef, Pointer, Array, Struct};
 use lib;
@@ -326,7 +325,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "get_tydesc" => {
             let tp_ty = substs.tys[0];
             let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+            glue::lazily_emit_visit_glue(ccx, static_ti);
 
             // FIXME (#3730): ideally this shouldn't need a cast,
             // but there's a circularity between translating rust types to llvm
@@ -459,8 +458,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
             let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
-            glue::call_tydesc_glue_full(bcx, visitor, td,
-                                        abi::tydesc_field_visit_glue, None);
+            glue::call_visit_glue(bcx, visitor, td, None);
             RetVoid(bcx);
         }
         "morestack_addr" => {
