@@ -484,7 +484,7 @@ fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
-            format!("Expected an identifier pattern but found p: {}",
+            format!("expected an identifier pattern but found p: {}",
                  p.repr(bcx.tcx())));
     }
 }

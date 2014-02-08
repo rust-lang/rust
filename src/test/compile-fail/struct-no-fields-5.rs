@@ -12,7 +12,7 @@ struct Foo;
 
 fn i5() {
     let _end_of_block = { Foo { } };
-    //~^ ERROR: Unit-like struct construction is written with no trailing `{ }`
+    //~^ ERROR: unit-like struct construction is written with no trailing `{ }`
 }
 
 fn main() {}

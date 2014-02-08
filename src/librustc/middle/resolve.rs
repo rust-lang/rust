@@ -1378,7 +1378,7 @@ impl Resolver {
                     }
                     match method_map.get().find_mut(name) {
                         Some(s) => { s.insert(def_id); },
-                        _ => fail!("Can't happen"),
+                        _ => fail!("can't happen"),
                     }
                 }
 
@@ -1696,7 +1696,7 @@ impl Resolver {
                   }
                   match method_map.get().find_mut(name) {
                       Some(s) => { s.insert(def_id); },
-                      _ => fail!("Can't happen"),
+                      _ => fail!("can't happen"),
                   }
               }
 
@@ -3992,7 +3992,7 @@ impl Resolver {
                             self.resolve_error(field.span,
                                 format!("field `{}` is already declared", ident_str));
                             self.session.span_note(prev_field.span,
-                                "Previously declared here");
+                                "previously declared here");
                         },
                         None => {
                             ident_map.insert(ident, field);
@@ -4476,7 +4476,7 @@ impl Resolver {
                                       // in the same disjunct, which is an
                                       // error
                                      self.resolve_error(pattern.span,
-                                       format!("Identifier `{}` is bound more \
+                                       format!("identifier `{}` is bound more \
                                              than once in the same pattern",
                                             path_to_str(path, self.session
                                                         .intr())));

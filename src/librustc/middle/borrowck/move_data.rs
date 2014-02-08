@@ -494,7 +494,7 @@ impl MoveData {
                         dfcx_assign.add_kill(kill_id, assignment_index);
                     }
                     LpExtend(..) => {
-                        tcx.sess.bug("Var assignment for non var path");
+                        tcx.sess.bug("var assignment for non var path");
                     }
                 }
             }

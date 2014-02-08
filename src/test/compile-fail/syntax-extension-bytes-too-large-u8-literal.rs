@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let vec = bytes!(1024u8); //~ ERROR Too large u8 literal in bytes!
+    let vec = bytes!(1024u8); //~ ERROR too large u8 literal in bytes!
 }

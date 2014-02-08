@@ -85,7 +85,7 @@ impl<T> OptVec<T> {
 
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
-            Empty => fail!("Invalid index {}", i),
+            Empty => fail!("invalid index {}", i),
             Vec(ref v) => &v[i]
         }
     }
@@ -103,7 +103,7 @@ impl<T> OptVec<T> {
 
     pub fn swap_remove(&mut self, index: uint) {
         match *self {
-            Empty => { fail!("Index out of bounds"); }
+            Empty => { fail!("index out of bounds"); }
             Vec(ref mut v) => {
                 assert!(index < v.len());
                 v.swap_remove(index);

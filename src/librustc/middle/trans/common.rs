@@ -472,7 +472,7 @@ impl<'a> Block<'a> {
             Some(&v) => v,
             None => {
                 self.tcx().sess.bug(format!(
-                    "No def associated with node id {:?}", nid));
+                    "no def associated with node id {:?}", nid));
             }
         }
     }
@@ -852,7 +852,7 @@ pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
-            format!("Type parameters for node {} include inference types: {}",
+            format!("type parameters for node {} include inference types: {}",
                  id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 

@@ -48,7 +48,7 @@ pub fn expand_deriving_iter_bytes(cx: &mut ExtCtxt,
 fn iter_bytes_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let (lsb0, f)= match substr.nonself_args {
         [l, f] => (l, f),
-        _ => cx.span_bug(trait_span, "Incorrect number of arguments in `deriving(IterBytes)`")
+        _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(IterBytes)`")
     };
     // Build the "explicitly borrowed" stack closure, "|_buf| f(_buf)".
     let blk_arg = cx.ident_of("_buf");
@@ -82,7 +82,7 @@ fn iter_bytes_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substruc
 
             fields = fs;
         }
-        _ => cx.span_bug(trait_span, "Impossible substructure in `deriving(IterBytes)`")
+        _ => cx.span_bug(trait_span, "impossible substructure in `deriving(IterBytes)`")
     }
 
     for &FieldInfo { self_, span, .. } in fields.iter() {

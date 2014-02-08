@@ -431,7 +431,7 @@ impl Parser {
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
             self.span_err(self.span,
-                          "Unit-like struct construction is written with no trailing `{ }`");
+                          "unit-like struct construction is written with no trailing `{ }`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
             true
@@ -1601,7 +1601,7 @@ impl Parser {
                 };
             }
             _ => {
-                self.fatal(format!("Expected a lifetime name"));
+                self.fatal(format!("expected a lifetime name"));
             }
         }
     }
@@ -2137,7 +2137,7 @@ impl Parser {
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
-                self.fatal("This file contains an un-closed delimiter ");
+                self.fatal("this file contains an un-closed delimiter ");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&self.token);
@@ -3957,7 +3957,7 @@ impl Parser {
             }
             if fields.len() == 0 {
                 let string = get_ident_interner().get(class_name.name);
-                self.fatal(format!("Unit-like struct definition should be written as `struct {};`",
+                self.fatal(format!("unit-like struct definition should be written as `struct {};`",
                                    string.as_slice()));
             }
             self.bump();

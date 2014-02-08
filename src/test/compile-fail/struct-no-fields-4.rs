@@ -12,7 +12,7 @@ struct Foo;
 
 fn h4() {
     let _end_of_tuple = (3, Foo { });
-    //~^ ERROR: Unit-like struct construction is written with no trailing `{ }`
+    //~^ ERROR: unit-like struct construction is written with no trailing `{ }`
 }
 
 fn main() {}

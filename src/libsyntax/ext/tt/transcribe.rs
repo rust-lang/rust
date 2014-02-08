@@ -148,7 +148,7 @@ fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
             LisConstraint(r_len, ref r_id) => {
                 let l_n = token::get_ident(l_id.name);
                 let r_n = token::get_ident(r_id.name);
-                LisContradiction(format!("Inconsistent lockstep iteration: \
+                LisContradiction(format!("inconsistent lockstep iteration: \
                                           '{}' has {} items, but '{}' has {}",
                                           l_n.get(), l_len, r_n.get(), r_len))
             }
