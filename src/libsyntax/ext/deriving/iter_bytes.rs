@@ -15,7 +15,7 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 
-pub fn expand_deriving_iter_bytes(cx: &ExtCtxt,
+pub fn expand_deriving_iter_bytes(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: @MetaItem,
                                   in_items: ~[@Item]) -> ~[@Item] {
@@ -45,7 +45,7 @@ pub fn expand_deriving_iter_bytes(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn iter_bytes_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn iter_bytes_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let (lsb0, f)= match substr.nonself_args {
         [l, f] => (l, f),
         _ => cx.span_bug(trait_span, "Incorrect number of arguments in `deriving(IterBytes)`")

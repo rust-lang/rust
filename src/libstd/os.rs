@@ -942,8 +942,8 @@ pub enum MapError {
 }
 
 impl fmt::Show for MapError {
-    fn fmt(val: &MapError, out: &mut fmt::Formatter) -> fmt::Result {
-        let str = match *val {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        let str = match *self {
             ErrFdNotAvail => "fd not available for reading or writing",
             ErrInvalidFd => "Invalid fd",
             ErrUnaligned => {

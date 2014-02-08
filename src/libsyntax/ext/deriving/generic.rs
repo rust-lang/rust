@@ -194,7 +194,7 @@ mod ty;
 
 pub struct TraitDef<'a> {
     /// The extension context
-    cx: &'a ExtCtxt<'a>,
+    cx: &'a mut ExtCtxt<'a>,
     /// The span for the current #[deriving(Foo)] header.
     span: Span,
 
@@ -304,7 +304,7 @@ Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
 pub type CombineSubstructureFunc<'a> =
-    'a |&ExtCtxt, Span, &Substructure| -> @Expr;
+    'a |&mut ExtCtxt, Span, &Substructure| -> @Expr;
 
 /**
 Deal with non-matching enum variants, the arguments are a list
@@ -312,7 +312,7 @@ representing each variant: (variant index, ast::Variant instance,
 [variant fields]), and a list of the nonself args of the type
 */
 pub type EnumNonMatchFunc<'a> =
-    'a |&ExtCtxt,
+    'a |&mut ExtCtxt,
            Span,
            &[(uint, P<ast::Variant>, ~[(Span, Option<Ident>, @Expr)])],
            &[@Expr]|
@@ -356,7 +356,7 @@ impl<'a> TraitDef<'a> {
     fn create_derived_impl(&self,
                            type_ident: Ident, generics: &Generics,
                            methods: ~[@ast::Method]) -> @ast::Item {
-        let cx = self.cx;
+        let cx = &*self.cx;
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         let mut trait_generics = self.generics.to_generics(cx, self.span,
@@ -764,7 +764,7 @@ impl<'a> MethodDef<'a> {
                         matches_so_far: &mut ~[(uint, P<ast::Variant>,
                                               ~[(Span, Option<Ident>, @Expr)])],
                         match_count: uint) -> @Expr {
-        let cx = trait_.cx;
+        let cx = &trait_.cx;
         if match_count == self_args.len() {
             // we've matched against all arguments, so make the final
             // expression at the bottom of the match tree
@@ -990,7 +990,7 @@ impl<'a> TraitDef<'a> {
                              prefix: &str,
                              mutbl: ast::Mutability)
         -> (@ast::Pat, ~[(Span, Option<Ident>, @Expr)]) {
-        let cx = self.cx;
+        let cx = &self.cx;
 
         if struct_def.fields.is_empty() {
             return (
@@ -1050,7 +1050,7 @@ impl<'a> TraitDef<'a> {
                                    prefix: &str,
                                    mutbl: ast::Mutability)
         -> (@ast::Pat, ~[(Span, Option<Ident>, @Expr)]) {
-        let cx = self.cx;
+        let cx = &*self.cx;
         let variant_ident = variant.node.name;
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
@@ -1093,10 +1093,10 @@ Fold the fields. `use_foldl` controls whether this is done
 left-to-right (`true`) or right-to-left (`false`).
 */
 pub fn cs_fold(use_foldl: bool,
-               f: |&ExtCtxt, Span, @Expr, @Expr, &[@Expr]| -> @Expr,
+               f: |&mut ExtCtxt, Span, @Expr, @Expr, &[@Expr]| -> @Expr,
                base: @Expr,
                enum_nonmatch_f: EnumNonMatchFunc,
-               cx: &ExtCtxt,
+               cx: &mut ExtCtxt,
                trait_span: Span,
                substructure: &Substructure)
                -> @Expr {
@@ -1132,9 +1132,9 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
 ~~~
 */
 #[inline]
-pub fn cs_same_method(f: |&ExtCtxt, Span, ~[@Expr]| -> @Expr,
+pub fn cs_same_method(f: |&mut ExtCtxt, Span, ~[@Expr]| -> @Expr,
                       enum_nonmatch_f: EnumNonMatchFunc,
-                      cx: &ExtCtxt,
+                      cx: &mut ExtCtxt,
                       trait_span: Span,
                       substructure: &Substructure)
                       -> @Expr {
@@ -1166,10 +1166,10 @@ fields. `use_foldl` controls whether this is done left-to-right
 */
 #[inline]
 pub fn cs_same_method_fold(use_foldl: bool,
-                           f: |&ExtCtxt, Span, @Expr, @Expr| -> @Expr,
+                           f: |&mut ExtCtxt, Span, @Expr, @Expr| -> @Expr,
                            base: @Expr,
                            enum_nonmatch_f: EnumNonMatchFunc,
-                           cx: &ExtCtxt,
+                           cx: &mut ExtCtxt,
                            trait_span: Span,
                            substructure: &Substructure)
                            -> @Expr {
@@ -1196,7 +1196,7 @@ on all the fields.
 #[inline]
 pub fn cs_binop(binop: ast::BinOp, base: @Expr,
                 enum_nonmatch_f: EnumNonMatchFunc,
-                cx: &ExtCtxt, trait_span: Span,
+                cx: &mut ExtCtxt, trait_span: Span,
                 substructure: &Substructure) -> @Expr {
     cs_same_method_fold(
         true, // foldl is good enough
@@ -1214,7 +1214,7 @@ pub fn cs_binop(binop: ast::BinOp, base: @Expr,
 /// cs_binop with binop == or
 #[inline]
 pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
-             cx: &ExtCtxt, span: Span,
+             cx: &mut ExtCtxt, span: Span,
              substructure: &Substructure) -> @Expr {
     cs_binop(ast::BiOr, cx.expr_bool(span, false),
              enum_nonmatch_f,
@@ -1224,7 +1224,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
 /// cs_binop with binop == and
 #[inline]
 pub fn cs_and(enum_nonmatch_f: EnumNonMatchFunc,
-              cx: &ExtCtxt, span: Span,
+              cx: &mut ExtCtxt, span: Span,
               substructure: &Substructure) -> @Expr {
     cs_binop(ast::BiAnd, cx.expr_bool(span, true),
              enum_nonmatch_f,

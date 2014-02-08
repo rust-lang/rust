@@ -36,7 +36,7 @@ pub struct MacroDef {
 }
 
 pub type ItemDecorator =
-    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
+    fn(&mut ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
 
 pub struct BasicMacroExpander {
     expander: MacroExpanderFn,
