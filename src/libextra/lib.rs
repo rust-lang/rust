@@ -29,7 +29,7 @@ Rust extras are part of the standard Rust distribution.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, managed_boxes)];
+#[feature(macro_rules, globs, managed_boxes, asm)];
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
