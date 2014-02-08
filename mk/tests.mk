@@ -116,9 +116,11 @@ endif
 
 # Run the compiletest runner itself under valgrind
 ifdef CTEST_VALGRIND
-CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(2),$$(3))
+CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
+      $$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(2),$$(3))
 else
-CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_$$(CFG_BUILD),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
+CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
+      $$(call CFG_RUN_$$(CFG_BUILD),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
 endif
 
 endef
