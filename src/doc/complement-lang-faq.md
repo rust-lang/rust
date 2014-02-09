@@ -1,77 +1,5 @@
 % Language FAQ
 
-# General language issues
-
-## Safety oriented
-
-* Memory safe: no null pointers, dangling pointers, use-before-initialize or use-after-move
-* Expressive mutability control. Immutable by default, statically verified freezing for Owned types
-* No shared mutable state across tasks
-* Dynamic execution safety: task failure / unwinding, trapping, RAII / dtors
-* Safe interior pointer types with lifetime analysis
-
-## Concurrency and efficiency oriented
-
-* Lightweight tasks (coroutines) with expanding stacks
-* Fast asynchronous, copyless message passing
-* Optional garbage collected pointers
-* All types may be explicitly allocated on the stack or interior to other types
-* Static, native compilation using LLVM
-* Direct and simple interface to C code
-
-## Practicality oriented
-
-* Multi-paradigm: pure-functional, concurrent-actor, imperative-procedural, OO
- * First-class functions, cheap non-escaping closures
- * Algebraic data types (called enums) with pattern matching
- * Method implementations on any type
- * Traits, which share aspects of type classes and interfaces
-* Multi-platform. Developed on Windows, Linux, OS X
-* UTF-8 strings, assortment of machine-level types
-* Works with existing native toolchains, GDB, Valgrind, Instruments, etc
-* Rule-breaking is allowed if explicit about where and how
-
-## What does it look like?
-
-The syntax is still evolving, but here's a snippet from the hash map in core::hashmap.
-
-~~~
-struct LinearMap<K,V> {
-    k0: u64,
-    k1: u64,
-    resize_at: uint,
-    size: uint,
-    buckets: ~[Option<Bucket<K,V>>],
-}
-
-enum SearchResult {
-    FoundEntry(uint), FoundHole(uint), TableFull
-}
-
-fn linear_map_with_capacity<K:Eq + Hash,V>(capacity: uint) -> LinearMap<K,V> {
-    let r = rand::Rng();
-    linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(), capacity)
-}
-
-impl<K:Hash + IterBytes + Eq, V> LinearMap<K,V> {
-
-    fn contains_key(&self, k: &K) -> bool {
-        match self.bucket_for_key(self.buckets, k) {
-            FoundEntry(_) => true,
-            TableFull | FoundHole(_) => false
-        }
-    }
-
-    fn clear(&mut self) {
-        for bkt in self.buckets.mut_iter() {
-            *bkt = None;
-        }
-        self.size = 0;
-    }
-
-...
-}
-~~~
 
 ## Are there any big programs written in it yet? I want to read big samples.
 
@@ -107,27 +35,6 @@ Yes. All development happens in lock-step on all 3 target platforms. Using MinGW
 
 [unwind]: https://github.com/mozilla/rust/issues/908
 [libgcc]: https://github.com/mozilla/rust/issues/1603
-
-## Have you seen this Google language, Go? How does Rust compare?
-
-Rust and Go have similar syntax and task models, but they have very different type systems. Rust is distinguished by greater type safety and memory safety guarantees, more control over memory layout, and robust generics.
-
-Rust has several key features that aren't shared by Go:
-
-* No shared mutable state - Shared mutable state allows data races, a large class of bad bugs. In Rust there is no sharing of mutable data, but ownership of data can be efficiently transferred between tasks.
-* Minimal GC impact - By not having shared mutable data, Rust can avoid global GC, hence Rust never stops the world to collect garbage. With multiple allocation options, individual tasks can completely avoid GC.
-* No null pointers - Accidentally dereferencing null pointers is a big bummer, so Rust doesn't have them.
-* Type parametric code - Generics prove useful time and again, though they are inevitably complex to greater or lesser degrees.
-
-Some of Rust's advantages come at the cost of a more intricate type system than Go's.
-
-Go has its own strengths and in particular has a great user experience that Rust still lacks.
-
-## I like the language but it really needs _$somefeature_.
-
-At this point we are focusing on removing and stabilizing features rather than adding them. File a bug if you think it's important in terms of meeting the existing goals or making the language passably usable. Reductions are more interesting than additions, though.
-
-# Specific language issues
 
 ## Is it OO? How do I do this thing I normally do in an OO language?
 
@@ -199,38 +106,16 @@ In each case there is one or more operator, literal constructor, overloaded use 
 
 ## Can Rust code call C code?
 
-Yes. Since C code typically expects a larger stack than Rust code does, the stack may grow before the call. The Rust domain owning the task that makes the call will block for the duration of the call, so if the call is likely to be long-lasting, you should consider putting the task in its own domain (thread or process).
+Yes. Calling C code from Rust is simple and exactly as efficient as calling C code from C.
 
 ## Can C code call Rust code?
 
-Yes. The Rust code has to be exposed via an `extern` declaration, which makes it C-ABI compatible. Its address can then be taken and passed to C code. When C calls Rust back, the callback occurs in very restricted circumstances.
-
-## How do Rust's task stacks work?
-
-They start small (ideally in the hundreds of bytes) and expand dynamically by calling through special frames that allocate new stack segments. This is known as the "spaghetti stack" approach.
-
-## What is the difference between a managed box pointer (`@`) and an owned box pointer (`~`)?
-
-* Managed boxes live in the garbage collected task-local heap
-* Owned boxes live in the global exchange heap
-* Managed boxes may be referred to by multiple managed box references
-* Owned boxes have unique ownership and there may only be a single unique pointer to a unique box at a time
-* Managed boxes may not be shared between tasks
-* Owned boxes may be transferred (moved) between tasks
-
-## What is the difference between a reference (`&`) and managed and owned boxes?
-
-* References point to the interior of a stack _or_ heap allocation
-* References can only be formed when it will provably be outlived by the referent
-* References to managed box pointers keep the managed boxes alive
-* References to owned boxes prevent their ownership from being transferred
-* References employ region-based alias analysis to ensure correctness
+Yes. The Rust code has to be exposed via an `extern` declaration, which makes it C-ABI compatible. Such a function can be passed to C code as a function pointer or, if given the `#[no_mangle]` attribute to disable symbol mangling, can be called directly from C code.
 
 ## Why aren't function signatures inferred? Why only local slots?
 
 * Mechanically, it simplifies the inference algorithm; inference only requires looking at one function at a time.
 * The same simplification goes double for human readers. A reader does not need an IDE running an inference algorithm across an entire crate to be able to guess at a function's argument types; it's always explicit and nearby.
-* Parameters in Rust can be passed by reference or by value. We can't automatically infer which one the programmer means.
 
 ## Why does a type parameter need explicit trait bounds to invoke methods on it, when C++ templates do not?
 
@@ -245,3 +130,19 @@ They start small (ideally in the hundreds of bytes) and expand dynamically by ca
 ## Will Rust implement automatic semicolon insertion, like in Go?
 
 For simplicity, we do not plan to do so. Implementing automatic semicolon insertion for Rust would be tricky because the absence of a trailing semicolon means "return a value".
+
+## How do I get my program to display the output of logging macros?
+
+**Short answer** set the RUST_LOG environment variable to the name of your source file, sans extension.
+
+```sh
+rustc hello.rs
+export RUST_LOG=hello
+./hello
+```
+
+**Long answer** RUST_LOG takes a 'logging spec' that consists of a comma-separated list of paths, where a path consists of the crate name and sequence of module names, each separated by double-colons. For standalone .rs files the crate is implicitly named after the source file, so in the above example we were setting RUST_LOG to the name of the hello crate. Multiple paths can be combined to control the exact logging you want to see. For example, when debugging linking in the compiler you might set `RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
+
+If you aren't sure which paths you need, try setting RUST_LOG to `::help` and running your program. This will print a list of paths available for logging. For a full description see [the language reference][1].
+
+[1]:http://doc.rust-lang.org/doc/master/rust.html#logging-system

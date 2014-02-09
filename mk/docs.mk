@@ -160,12 +160,6 @@ doc/complement-project-faq.html: $(D)/complement-project-faq.md $(HTML_DEPS)
 	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/complement-usage-faq.html
-doc/complement-usage-faq.html: $(D)/complement-usage-faq.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
 DOCS += doc/complement-cheatsheet.html
 doc/complement-cheatsheet.html: $(D)/complement-cheatsheet.md doc/full-toc.inc $(HTML_DEPS)
 	@$(call E, pandoc: $@)
