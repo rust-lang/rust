@@ -970,6 +970,7 @@ pub mod types {
 
                 pub type BOOL = c_int;
                 pub type BYTE = u8;
+                pub type BOOLEAN = BYTE;
                 pub type CCHAR = c_char;
                 pub type CHAR = c_char;
 
@@ -3984,15 +3985,16 @@ pub mod funcs {
 
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
-            use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCSTR, LPSTR, LPCH,
-                                               LPDWORD, LPVOID,
-                                               LPCVOID, LPOVERLAPPED};
-            use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
+            use libc::types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE,
+                                               LPCWSTR, LPWSTR, LPCSTR, LPSTR,
+                                               LPCH, LPDWORD, LPVOID,
+                                               LPCVOID, LPOVERLAPPED,
+                                               LPSECURITY_ATTRIBUTES,
+                                               LPSTARTUPINFO,
                                                LPPROCESS_INFORMATION,
                                                LPMEMORY_BASIC_INFORMATION,
-                                               LPSYSTEM_INFO};
-            use libc::types::os::arch::extra::{HANDLE, LPHANDLE, LARGE_INTEGER,
+                                               LPSYSTEM_INFO, BOOLEAN,
+                                               HANDLE, LPHANDLE, LARGE_INTEGER,
                                                PLARGE_INTEGER, LPFILETIME};
 
             extern "system" {
@@ -4105,7 +4107,7 @@ pub mod funcs {
                                    dwFlags: DWORD) -> BOOL;
                 pub fn CreateSymbolicLinkW(lpSymlinkFileName: LPCWSTR,
                                            lpTargetFileName: LPCWSTR,
-                                           dwFlags: DWORD) -> BOOL;
+                                           dwFlags: DWORD) -> BOOLEAN;
                 pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
                                        lpTargetFileName: LPCWSTR,
                                        lpSecurityAttributes: LPSECURITY_ATTRIBUTES)

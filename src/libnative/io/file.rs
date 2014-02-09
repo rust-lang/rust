@@ -746,7 +746,7 @@ pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
         super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
             as_utf16_p(dst.as_str().unwrap(), |dst| {
                 unsafe { libc::CreateSymbolicLinkW(dst, src, 0) }
-            })
+            }) as libc::BOOL
         }))
     }
 
