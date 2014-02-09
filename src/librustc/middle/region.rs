@@ -501,12 +501,17 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             visitor.region_maps.mark_as_terminating_scope(otherwise.id);
         }
 
-        ast::ExprIf(_, then, None) => {
+        ast::ExprIf(expr, then, None) => {
+            visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(then.id);
         }
 
-        ast::ExprLoop(body, _) |
-        ast::ExprWhile(_, body) => {
+        ast::ExprLoop(body, _) => {
+            visitor.region_maps.mark_as_terminating_scope(body.id);
+        }
+
+        ast::ExprWhile(expr, body) => {
+            visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }
 
