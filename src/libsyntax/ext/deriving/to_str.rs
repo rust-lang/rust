@@ -67,31 +67,32 @@ fn to_str_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure)
             let mut stmts = ~[cx.stmt_let(span, true, buf, init)];
             let push_str = cx.ident_of("push_str");
 
-            let push = |s: @Expr| {
-                let ebuf = cx.expr_ident(span, buf);
-                let call = cx.expr_method_call(span, ebuf, push_str, ~[s]);
-                stmts.push(cx.stmt_expr(call));
-            };
+            {
+                let push = |s: @Expr| {
+                    let ebuf = cx.expr_ident(span, buf);
+                    let call = cx.expr_method_call(span, ebuf, push_str, ~[s]);
+                    stmts.push(cx.stmt_expr(call));
+                };
 
-            for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
-                if i > 0 {
-                    push(cx.expr_str(span, InternedString::new(", ")));
-                }
-                match name {
-                    None => {}
-                    Some(id) => {
-                        let interned_id = token::get_ident(id.name);
-                        let name = interned_id.get() + ": ";
-                        push(cx.expr_str(span,
-                                         token::intern_and_get_ident(name)));
+                for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
+                    if i > 0 {
+                        push(cx.expr_str(span, InternedString::new(", ")));
                     }
+                    match name {
+                        None => {}
+                        Some(id) => {
+                            let interned_id = token::get_ident(id.name);
+                            let name = interned_id.get() + ": ";
+                            push(cx.expr_str(span,
+                                             token::intern_and_get_ident(name)));
+                        }
+                    }
+                    push(cx.expr_method_call(span, self_, to_str, ~[]));
                 }
-                push(cx.expr_method_call(span, self_, to_str, ~[]));
+                push(cx.expr_str(span, end));
             }
-            push(cx.expr_str(span, end));
 
-            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span,
-                                                                   buf))))
+            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span, buf))))
         }
     };
 
