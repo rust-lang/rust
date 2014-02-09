@@ -203,7 +203,7 @@ impl Uuid {
     /// * `d3` A 16-bit word
     /// * `d4` Array of 8 octets
     pub fn from_fields(d1: u32, d2: u16, d3: u16, d4: &[u8]) -> Uuid {
-        use std::unstable::intrinsics::{to_be16, to_be32};
+        use std::mem::{to_be16, to_be32};
 
         // First construct a temporary field-based struct
         let mut fields = UuidFields {
@@ -329,7 +329,7 @@ impl Uuid {
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
     pub fn to_hyphenated_str(&self) -> ~str {
-        use std::unstable::intrinsics::{to_be16, to_be32};
+        use std::mem::{to_be16, to_be32};
         // Convert to field-based struct as it matches groups in output.
         // Ensure fields are in network byte order, as per RFC.
         let mut uf: UuidFields;

@@ -17,7 +17,6 @@ use std::mem;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
-use std::unstable::intrinsics;
 
 use access::Access;
 use homing::{HomingIO, HomeHandle};
@@ -33,8 +32,8 @@ use uvll;
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn htons(u: u16) -> u16 { intrinsics::to_be16(u as i16) as u16 }
-pub fn ntohs(u: u16) -> u16 { intrinsics::from_be16(u as i16) as u16 }
+pub fn htons(u: u16) -> u16 { mem::to_be16(u as i16) as u16 }
+pub fn ntohs(u: u16) -> u16 { mem::from_be16(u as i16) as u16 }
 
 pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                         len: uint) -> ip::SocketAddr {
