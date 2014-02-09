@@ -15,7 +15,6 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
 
 use super::{IoResult, retry};
 use super::file::keep_going;
@@ -28,10 +27,10 @@ use super::file::keep_going;
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
 pub fn htons(u: u16) -> u16 {
-    intrinsics::to_be16(u as i16) as u16
+    mem::to_be16(u as i16) as u16
 }
 pub fn ntohs(u: u16) -> u16 {
-    intrinsics::from_be16(u as i16) as u16
+    mem::from_be16(u as i16) as u16
 }
 
 enum InAddr {
