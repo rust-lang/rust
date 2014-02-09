@@ -214,7 +214,6 @@ pub enum PartialTotal {
 #[deriving(Clone, Eq)]
 pub enum LoanMutability {
     ImmutableMutability,
-    ConstMutability,
     MutableMutability,
 }
 
@@ -232,7 +231,6 @@ impl ToStr for LoanMutability {
     fn to_str(&self) -> ~str {
         match *self {
             ImmutableMutability => ~"immutable",
-            ConstMutability => ~"read-only",
             MutableMutability => ~"mutable",
         }
     }
@@ -318,7 +316,6 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
 // - `RESTR_MUTATE`: The lvalue may not be modified.
 // - `RESTR_CLAIM`: `&mut` borrows of the lvalue are forbidden.
 // - `RESTR_FREEZE`: `&` borrows of the lvalue are forbidden.
-// - `RESTR_ALIAS`: All borrows of the lvalue are forbidden.
 //
 // In addition, no value which is restricted may be moved. Therefore,
 // restrictions are meaningful even if the RestrictionSet is empty,
@@ -338,7 +335,6 @@ pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
 pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
 pub static RESTR_CLAIM: RestrictionSet  = RestrictionSet {bits: 0b0010};
 pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0100};
-pub static RESTR_ALIAS: RestrictionSet  = RestrictionSet {bits: 0b1000};
 
 impl RestrictionSet {
     pub fn intersects(&self, restr: RestrictionSet) -> bool {
@@ -663,8 +659,8 @@ impl BorrowckCtxt {
                                          kind: AliasableViolationKind,
                                          cause: mc::AliasableReason) {
         let prefix = match kind {
-            MutabilityViolation => "cannot assign to an `&mut`",
-            BorrowViolation => "cannot borrow an `&mut`"
+            MutabilityViolation => "cannot assign to data",
+            BorrowViolation => "cannot borrow data mutably"
         };
 
         match cause {
@@ -673,17 +669,21 @@ impl BorrowckCtxt {
                     span,
                     format!("{} in an aliasable location", prefix));
             }
-            mc::AliasableManaged => {
-                self.tcx.sess.span_err(span, format!("{} in a `@` pointer",
-                                                     prefix))
-            }
-            mc::AliasableBorrowed(m) => {
+            mc::AliasableStatic |
+            mc::AliasableStaticMut => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("{} in a `&{}` pointer; \
-                          try an `&mut` instead",
-                         prefix,
-                         self.mut_to_keyword(m)));
+                    format!("{} in a static location", prefix));
+            }
+            mc::AliasableManaged => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("{} in a `@` pointer", prefix));
+            }
+            mc::AliasableBorrowed(_) => {
+                self.tcx.sess.span_err(
+                    span,
+                    format!("{} in a `&` reference", prefix));
             }
         }
     }
