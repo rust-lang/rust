@@ -205,17 +205,17 @@ mod imp {
     use cmp;
     use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
     use libc;
+    use mem;
     use os;
     use ptr;
-    use unstable::intrinsics;
     use unstable::stack::RED_ZONE;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *u8;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
-        let mut native: libc::pthread_t = intrinsics::uninit();
-        let mut attr: libc::pthread_attr_t = intrinsics::uninit();
+        let mut native: libc::pthread_t = mem::uninit();
+        let mut attr: libc::pthread_attr_t = mem::uninit();
         assert_eq!(pthread_attr_init(&mut attr), 0);
         assert_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);

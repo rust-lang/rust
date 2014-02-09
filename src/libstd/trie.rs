@@ -16,7 +16,7 @@ use iter::{Extendable, FromIterator, Iterator};
 use mem;
 use uint;
 use util::replace;
-use unstable::intrinsics::init;
+use mem::init;
 use vec;
 use ptr::RawPtr;
 use vec::{ImmutableVector, Items, MutableVector, MutItems, OwnedVector};
