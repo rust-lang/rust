@@ -722,11 +722,6 @@ impl DataFlowOperator for MoveDataFlowOperator {
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // moves from both preds are in scope
     }
-
-    #[inline]
-    fn walk_closures(&self) -> bool {
-        true
-    }
 }
 
 impl DataFlowOperator for AssignDataFlowOperator {
@@ -738,10 +733,5 @@ impl DataFlowOperator for AssignDataFlowOperator {
     #[inline]
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // moves from both preds are in scope
-    }
-
-    #[inline]
-    fn walk_closures(&self) -> bool {
-        true
     }
 }
