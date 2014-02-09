@@ -18,7 +18,7 @@ use ptr::copy_nonoverlapping_memory;
 /// Casts the value at `src` to U. The two types must have the same length.
 #[inline]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = intrinsics::uninit();
+    let mut dest: U = mem::uninit();
     let dest_ptr: *mut u8 = transmute(&mut dest);
     let src_ptr: *u8 = transmute(src);
     copy_nonoverlapping_memory(dest_ptr, src_ptr, mem::size_of::<U>());

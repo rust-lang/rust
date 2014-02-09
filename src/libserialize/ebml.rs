@@ -132,7 +132,7 @@ pub mod reader {
 
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
         use std::ptr::offset;
-        use std::unstable::intrinsics::from_be32;
+        use std::mem::from_be32;
 
         if data.len() - start < 4 {
             return vuint_at_slow(data, start);

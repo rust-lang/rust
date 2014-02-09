@@ -15,7 +15,6 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
 
 use super::{IoResult, retry};
 use super::file::keep_going;
@@ -28,10 +27,10 @@ use super::file::keep_going;
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
 pub fn htons(u: u16) -> u16 {
-    intrinsics::to_be16(u as i16) as u16
+    mem::to_be16(u as i16) as u16
 }
 pub fn ntohs(u: u16) -> u16 {
-    intrinsics::from_be16(u as i16) as u16
+    mem::from_be16(u as i16) as u16
 }
 
 enum InAddr {
@@ -68,7 +67,7 @@ fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
 
 fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     unsafe {
-        let storage: libc::sockaddr_storage = intrinsics::init();
+        let storage: libc::sockaddr_storage = mem::init();
         let len = match ip_to_inaddr(addr.ip) {
             InAddr(inaddr) => {
                 let storage: *mut libc::sockaddr_in = cast::transmute(&storage);
@@ -138,7 +137,7 @@ fn sockname(fd: sock_t,
                                          *mut libc::socklen_t) -> libc::c_int)
     -> IoResult<ip::SocketAddr>
 {
-    let mut storage: libc::sockaddr_storage = unsafe { intrinsics::init() };
+    let mut storage: libc::sockaddr_storage = unsafe { mem::init() };
     let mut len = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
     unsafe {
         let storage = &mut storage as *mut libc::sockaddr_storage;
@@ -225,7 +224,7 @@ pub fn init() {
 
         LOCK.lock();
         if !INITIALIZED {
-            let mut data: WSADATA = intrinsics::init();
+            let mut data: WSADATA = mem::init();
             let ret = WSAStartup(0x202,      // version 2.2
                                  &mut data);
             assert_eq!(ret, 0);
@@ -438,7 +437,7 @@ impl TcpAcceptor {
 
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
         unsafe {
-            let mut storage: libc::sockaddr_storage = intrinsics::init();
+            let mut storage: libc::sockaddr_storage = mem::init();
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let size = mem::size_of::<libc::sockaddr_storage>();
             let mut size = size as libc::socklen_t;
@@ -543,7 +542,7 @@ impl rtio::RtioSocket for UdpSocket {
 impl rtio::RtioUdpSocket for UdpSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, ip::SocketAddr)> {
         unsafe {
-            let mut storage: libc::sockaddr_storage = intrinsics::init();
+            let mut storage: libc::sockaddr_storage = mem::init();
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let mut addrlen: libc::socklen_t =
                     mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
