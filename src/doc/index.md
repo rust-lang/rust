@@ -56,7 +56,6 @@ li {list-style-type: none; }
 
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
-* [Usage FAQ](complement-usage-faq.html)
 * [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
 * [How to submit a bug report](complement-bugreport.html)
 
