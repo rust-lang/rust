@@ -24,14 +24,13 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])
-    -> ~[@Item] {
+                            -> ~[@Item] {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(~Literal(Path::new(~["std", "fmt", "Formatter"])),
                    Borrowed(None, ast::MutMutable));
 
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "fmt", "Show"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -48,7 +47,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 // we construct a format string and then defer to std::fmt, since that

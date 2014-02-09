@@ -87,8 +87,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  mitem: @MetaItem,
                                  in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new_(~["serialize", "Encodable"], None,
                          ~[~Literal(Path::new_local("__E"))], true),
         additional_bounds: ~[],
@@ -111,7 +110,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
