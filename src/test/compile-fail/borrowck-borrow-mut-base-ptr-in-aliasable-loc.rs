@@ -27,5 +27,10 @@ fn foo3(t0: &mut &mut int) {
     **t1 = 22;
 }
 
+fn foo4(t0: & &mut int) {
+    let x:  &mut int = &mut **t0; //~ ERROR cannot borrow
+    *x += 1;
+}
+
 fn main() {
 }

@@ -45,8 +45,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     );
 
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "cmp", "Eq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -55,5 +54,5 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
             md!("ne", cs_ne)
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }

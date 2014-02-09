@@ -20,10 +20,9 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])
-    -> ~[@Item] {
+                            -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "rand", "Rand"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -47,7 +46,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {

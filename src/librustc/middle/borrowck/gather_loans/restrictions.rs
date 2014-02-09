@@ -53,16 +53,6 @@ impl<'a> RestrictionsContext<'a> {
     fn restrict(&self,
                 cmt: mc::cmt,
                 restrictions: RestrictionSet) -> RestrictionResult {
-
-        // Check for those cases where we cannot control the aliasing
-        // and make sure that we are not being asked to.
-        match cmt.freely_aliasable() {
-            None => {}
-            Some(cause) => {
-                self.check_aliasing_permitted(cause, restrictions);
-            }
-        }
-
         match cmt.cat {
             mc::cat_rvalue(..) => {
                 // Effectively, rvalues are stored into a
@@ -177,30 +167,6 @@ impl<'a> RestrictionsContext<'a> {
                                            Restriction {loan_path: lp,
                                                         set: restrictions}))
             }
-        }
-    }
-
-    fn check_aliasing_permitted(&self,
-                                cause: mc::AliasableReason,
-                                restrictions: RestrictionSet) {
-        //! This method is invoked when the current `cmt` is something
-        //! where aliasing cannot be controlled. It reports an error if
-        //! the restrictions required that it not be aliased; currently
-        //! this only occurs when re-borrowing an `&mut` pointer.
-        //!
-        //! NB: To be 100% consistent, we should report an error if
-        //! RESTR_FREEZE is found, because we cannot prevent freezing,
-        //! nor would we want to. However, we do not report such an
-        //! error, because this restriction only occurs when the user
-        //! is creating an `&mut` pointer to immutable or read-only
-        //! data, and there is already another piece of code that
-        //! checks for this condition.
-
-        if restrictions.intersects(RESTR_ALIAS) {
-            self.bccx.report_aliasability_violation(
-                self.span,
-                BorrowViolation,
-                cause);
         }
     }
 }

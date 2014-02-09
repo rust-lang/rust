@@ -460,6 +460,11 @@ impl<'a> GatherLoanCtxt<'a> {
             return; // reported an error, no sense in reporting more.
         }
 
+        // Check that we don't allow mutable borrows of aliasable data.
+        if check_aliasability(self.bccx, borrow_span, cmt, req_mutbl).is_err() {
+            return; // reported an error, no sense in reporting more.
+        }
+
         // Compute the restrictions that are required to enforce the
         // loan is safe.
         let restr = restrictions::compute_restrictions(
@@ -568,11 +573,6 @@ impl<'a> GatherLoanCtxt<'a> {
             //! Implements the M-* rules in doc.rs.
 
             match req_mutbl {
-                ConstMutability => {
-                    // Data of any mutability can be lent as const.
-                    Ok(())
-                }
-
                 ImmutableMutability => {
                     // both imm and mut data can be lent as imm;
                     // for mutable data, this is a freeze
@@ -591,16 +591,53 @@ impl<'a> GatherLoanCtxt<'a> {
                 }
             }
         }
+
+        fn check_aliasability(bccx: &BorrowckCtxt,
+                              borrow_span: Span,
+                              cmt: mc::cmt,
+                              req_mutbl: LoanMutability) -> Result<(),()> {
+            //! Implements the A-* rules in doc.rs.
+
+            match req_mutbl {
+                ImmutableMutability => {
+                    // both imm and mut data can be lent as imm;
+                    // for mutable data, this is a freeze
+                    Ok(())
+                }
+
+                MutableMutability => {
+                    // Check for those cases where we cannot control
+                    // the aliasing and make sure that we are not
+                    // being asked to.
+                    match cmt.freely_aliasable() {
+                        None => {
+                            Ok(())
+                        }
+                        Some(mc::AliasableStaticMut) => {
+                            // This is nasty, but we ignore the
+                            // aliasing rules if the data is based in
+                            // a `static mut`, since those are always
+                            // unsafe. At your own peril and all that.
+                            Ok(())
+                        }
+                        Some(cause) => {
+                            bccx.report_aliasability_violation(
+                                borrow_span,
+                                BorrowViolation,
+                                cause);
+                            Err(())
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn restriction_set(&self, req_mutbl: LoanMutability)
                            -> RestrictionSet {
         match req_mutbl {
-            ConstMutability => RESTR_EMPTY,
-            ImmutableMutability => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
-            MutableMutability => {
-                RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
-            }
+            ImmutableMutability => RESTR_MUTATE | RESTR_CLAIM,
+            MutableMutability => RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE,
         }
     }
 
