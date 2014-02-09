@@ -13,7 +13,7 @@
 #[allow(missing_doc)];
 
 use std::clone::Clone;
-use std::unstable::intrinsics::{move_val_init, init};
+use std::mem::{move_val_init, init};
 use std::util::{replace, swap};
 use std::vec;
 

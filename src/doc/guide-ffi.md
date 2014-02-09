@@ -176,8 +176,8 @@ and `free`:
 ~~~~
 use std::cast;
 use std::libc::{c_void, size_t, malloc, free};
+use std::mem;
 use std::ptr;
-use std::unstable::intrinsics;
 
 // Define a wrapper around the handle returned by the foreign code.
 // Unique<T> has the same semantics as ~T
@@ -199,7 +199,7 @@ impl<T: Send> Unique<T> {
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             // move_val_init moves a value into this memory without
             // attempting to drop the original value.
-            intrinsics::move_val_init(&mut *ptr, value);
+            mem::move_val_init(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
@@ -226,7 +226,7 @@ impl<T: Send> Unique<T> {
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {
         unsafe {
-            let x = intrinsics::uninit(); // dummy value to swap in
+            let x = mem::uninit(); // dummy value to swap in
             // We need to move the object out of the box, so that
             // the destructor is called (at the end of this scope.)
             ptr::replace_ptr(self.ptr, x);

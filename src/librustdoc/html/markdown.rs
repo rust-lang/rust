@@ -28,6 +28,7 @@ use std::cast;
 use std::fmt;
 use std::io;
 use std::libc;
+use std::mem;
 use std::str;
 use std::unstable::intrinsics;
 use std::vec;
@@ -144,7 +145,7 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
             flags: 0,
             link_attributes: None,
         };
-        let mut callbacks: sd_callbacks = intrinsics::init();
+        let mut callbacks: sd_callbacks = mem::init();
 
         sdhtml_renderer(&callbacks, &options, 0);
         let opaque = my_opaque {
@@ -197,7 +198,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                          MKDEXT_STRIKETHROUGH;
         let callbacks = sd_callbacks {
             blockcode: block,
-            other: intrinsics::init()
+            other: mem::init()
         };
 
         let tests = tests as *mut ::test::Collector as *libc::c_void;

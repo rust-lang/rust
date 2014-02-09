@@ -11,8 +11,8 @@
 //! Miscellaneous helpers for common patterns
 
 use cast;
+use mem;
 use ptr;
-use unstable::intrinsics;
 
 /// The identity function.
 #[inline]
@@ -26,7 +26,7 @@ pub fn id<T>(x: T) -> T { x }
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
         // Give ourselves some scratch space to work with
-        let mut tmp: T = intrinsics::uninit();
+        let mut tmp: T = mem::uninit();
         let t: *mut T = &mut tmp;
 
         // Perform the swap, `&mut` pointers never alias
