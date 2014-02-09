@@ -775,14 +775,13 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
     let mut lim = lim;
 
     let mut cont = true;
-    let slice: || = || { cont = it(ss.slice(slice_start, last_end)) };
 
     // if the limit is larger than the string, lower it to save cycles
     if lim >= fake_i {
         lim = fake_i;
     }
 
-    let machine: |(uint, char)| -> bool = |(i, c)| {
+    let machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
         let whitespace = if ::std::char::is_whitespace(c) { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 
@@ -794,24 +793,49 @@ fn each_split_within<'a>(ss: &'a str, lim: uint, it: |&'a str| -> bool)
             (B, Cr, OverLim)  if (i - last_start + 1) > lim
                             => fail!("word starting with {} longer than limit!",
                                     ss.slice(last_start, i + 1)),
-            (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
-            (B, Ws, UnderLim) => { last_end = i; C }
-            (B, Ws, OverLim)  => { last_end = i; slice(); A }
+            (B, Cr, OverLim)  => {
+                *cont = it(ss.slice(slice_start, last_end));
+                slice_start = last_start;
+                B
+            }
+            (B, Ws, UnderLim) => {
+                last_end = i;
+                C
+            }
+            (B, Ws, OverLim)  => {
+                last_end = i;
+                *cont = it(ss.slice(slice_start, last_end));
+                A
+            }
 
-            (C, Cr, UnderLim) => { last_start = i; B }
-            (C, Cr, OverLim)  => { slice(); slice_start = i; last_start = i; last_end = i; B }
-            (C, Ws, OverLim)  => { slice(); A }
-            (C, Ws, UnderLim) => { C }
+            (C, Cr, UnderLim) => {
+                last_start = i;
+                B
+            }
+            (C, Cr, OverLim)  => {
+                *cont = it(ss.slice(slice_start, last_end));
+                slice_start = i;
+                last_start = i;
+                last_end = i;
+                B
+            }
+            (C, Ws, OverLim)  => {
+                *cont = it(ss.slice(slice_start, last_end));
+                A
+            }
+            (C, Ws, UnderLim) => {
+                C
+            }
         };
 
-        cont
+        *cont
     };
 
-    ss.char_indices().advance(|x| machine(x));
+    ss.char_indices().advance(|x| machine(&mut cont, x));
 
     // Let the automaton 'run out' by supplying trailing whitespace
     while cont && match state { B | C => true, A => false } {
-        machine((fake_i, ' '));
+        machine(&mut cont, (fake_i, ' '));
         fake_i += 1;
     }
     return cont;
