@@ -21,8 +21,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 mitem: @MetaItem,
                                 in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "cmp", "TotalOrd"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -40,7 +39,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 

@@ -151,14 +151,13 @@ that the value `(*x).f` may be mutated via the newly created reference
 restrictions `RS` that accompany the loan.
 
 The first restriction `((*x).f, [MUTATE, CLAIM, FREEZE])` states that
-the lender may not mutate nor freeze `(*x).f`. Mutation is illegal
-because `(*x).f` is only supposed to be mutated via the new reference,
-not by mutating the original path `(*x).f`. Freezing is
+the lender may not mutate, freeze, nor alias `(*x).f`. Mutation is
+illegal because `(*x).f` is only supposed to be mutated via the new
+reference, not by mutating the original path `(*x).f`. Freezing is
 illegal because the path now has an `&mut` alias; so even if we the
 lender were to consider `(*x).f` to be immutable, it might be mutated
-via this alias. Both of these restrictions are temporary. They will be
-enforced for the lifetime `'a` of the loan. After the loan expires,
-the restrictions no longer apply.
+via this alias. They will be enforced for the lifetime `'a` of the
+loan. After the loan expires, the restrictions no longer apply.
 
 The second restriction on `*x` is interesting because it does not
 apply to the path that was lent (`(*x).f`) but rather to a prefix of
@@ -188,11 +187,9 @@ The kinds of expressions which in-scope loans can render illegal are:
   against mutating `lv`;
 - *moves*: illegal if there is any in-scope restriction on `lv` at all;
 - *mutable borrows* (`&mut lv`): illegal there is an in-scope restriction
-  against mutating `lv` or aliasing `lv`;
+  against claiming `lv`;
 - *immutable borrows* (`&lv`): illegal there is an in-scope restriction
-  against freezing `lv` or aliasing `lv`;
-- *read-only borrows* (`&const lv`): illegal there is an in-scope restriction
-  against aliasing `lv`.
+  against freezing `lv`.
 
 ## Formal rules
 
@@ -238,19 +235,23 @@ live. (This is done via restrictions, read on.)
 We start with the `gather_loans` pass, which walks the AST looking for
 borrows.  For each borrow, there are three bits of information: the
 lvalue `LV` being borrowed and the mutability `MQ` and lifetime `LT`
-of the resulting pointer. Given those, `gather_loans` applies three
+of the resulting pointer. Given those, `gather_loans` applies four
 validity tests:
 
 1. `MUTABILITY(LV, MQ)`: The mutability of the reference is
 compatible with the mutability of `LV` (i.e., not borrowing immutable
 data as mutable).
 
-2. `LIFETIME(LV, LT, MQ)`: The lifetime of the borrow does not exceed
+2. `ALIASABLE(LV, MQ)`: The aliasability of the reference is
+compatible with the aliasability of `LV`. The goal is to prevent
+`&mut` borrows of aliasability data.
+
+3. `LIFETIME(LV, LT, MQ)`: The lifetime of the borrow does not exceed
 the lifetime of the value being borrowed. This pass is also
 responsible for inserting root annotations to keep managed values
 alive.
 
-3. `RESTRICTIONS(LV, LT, ACTIONS) = RS`: This pass checks and computes the
+4. `RESTRICTIONS(LV, LT, ACTIONS) = RS`: This pass checks and computes the
 restrictions to maintain memory safety. These are the restrictions
 that will go into the final loan. We'll discuss in more detail below.
 
@@ -311,6 +312,47 @@ be borrowed if MQ is immutable or const:
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
     MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
+      TYPE(LV) = &mut Ty
+
+## Checking aliasability
+
+The goal of the aliasability check is to ensure that we never permit
+`&mut` borrows of aliasable data. Formally we define a predicate
+`ALIASABLE(LV, MQ)` which if defined means that
+"borrowing `LV` with mutability `MQ` is ok". The
+Rust code corresponding to this predicate is the function
+`check_aliasability()` in `middle::borrowck::gather_loans`.
+
+### Checking aliasability of variables
+
+Local variables are never aliasable as they are accessible only within
+the stack frame.
+
+    ALIASABLE(X, MQ)                   // M-Var-Mut
+
+### Checking aliasable of owned content
+
+Owned content is aliasable if it is found in an aliasable location:
+
+    ALIASABLE(LV.f, MQ)                // M-Field
+      ALIASABLE(LV, MQ)
+
+    ALIASABLE(*LV, MQ)                 // M-Deref-Unique
+      ALIASABLE(LV, MQ)
+
+### Checking mutability of immutable pointer types
+
+Immutable pointer types like `&T` are aliasable, and hence can only be
+borrowed immutably:
+
+    ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
+      TYPE(LV) = &Ty
+
+### Checking mutability of mutable pointer types
+
+`&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
+
+    ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
       TYPE(LV) = &mut Ty
 
 ## Checking lifetime

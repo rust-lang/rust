@@ -21,10 +21,9 @@ pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
                               span: Span,
                               mitem: @MetaItem,
                               in_items: ~[@Item])
-    -> ~[@Item] {
+                              -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "to_str", "ToStr"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -41,7 +40,7 @@ pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 // It used to be the case that this deriving implementation invoked

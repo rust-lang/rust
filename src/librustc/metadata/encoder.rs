@@ -681,7 +681,7 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
 
     ebml_w.end_tag();
 
-    fn encode_mutability(ebml_w: &writer::Encoder,
+    fn encode_mutability(ebml_w: &mut writer::Encoder,
                          m: ast::Mutability) {
         match m {
             MutImmutable => { ebml_w.writer.write(&[ 'i' as u8 ]); }
