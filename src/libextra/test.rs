@@ -1091,13 +1091,25 @@ impl MetricMap {
 
 // Benchmarking
 
+/// A function that is opaque to the optimiser, to allow benchmarks to
+/// pretend to use outputs to assist in avoiding dead-code
+/// elimination.
+///
+/// This function is a no-op, and does not even read from `dummy`.
+pub fn black_box<T>(dummy: T) {
+    // we need to "use" the argument in some way LLVM can't
+    // introspect.
+    unsafe {asm!("" : : "r"(&dummy))}
+}
+
+
 impl BenchHarness {
     /// Callback for benchmark functions to run in their body.
-    pub fn iter(&mut self, inner: ||) {
+    pub fn iter<T>(&mut self, inner: || -> T) {
         self.ns_start = precise_time_ns();
         let k = self.iterations;
         for _ in range(0u64, k) {
-            inner();
+            black_box(inner());
         }
         self.ns_end = precise_time_ns();
     }
