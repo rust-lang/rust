@@ -17,14 +17,13 @@ use clone::Clone;
 use iter::{DoubleEndedIterator, Iterator};
 use num::CheckedMul;
 use container::Container;
-use mem::size_of;
+use mem::{size_of, move_val_init};
 use cast::{forget, transmute};
 use rt::global_heap::{malloc_raw, realloc_raw};
 use vec::{ImmutableVector, Items, MutableVector};
 use unstable::raw::Slice;
 use ptr::{offset, read_ptr};
 use libc::{free, c_void};
-use unstable::intrinsics::move_val_init;
 
 pub struct Vec<T> {
     priv len: uint,
