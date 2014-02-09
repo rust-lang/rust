@@ -23,7 +23,7 @@ pub fn load() -> DiagnosticDb {
 }
 
 pub fn load_raw() -> ~[RawInfo] {
-    ~[include!("diag_db.md")]
+    include!("diag_db_data.rs")
 }
 
 pub type RawInfo = (&'static str, &'static str, &'static str);

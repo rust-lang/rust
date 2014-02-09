@@ -175,3 +175,9 @@ macro_rules! desc_diag (
         (stringify!($name), "unknown", $desc)
     }
 )
+
+macro_rules! diag_db (
+    ($(($name: tt, $desc: expr)),*) => {~[
+        $(desc_diag!($name, $desc)),*
+    ]}
+)

@@ -22,6 +22,6 @@ pub fn load() -> DiagnosticDb {
 }
 
 pub fn load_raw() -> ~[(&'static str, &'static str, &'static str)] {
-    ~[include!("diag_db.md")]
+    include!("diag_db_data.rs")
 }
 
