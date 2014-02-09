@@ -1001,6 +1001,30 @@ impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
     }
 }
 
+/// An iterator that reads a utf8-encoded character on each iteration,
+/// until `.read_char()` returns `None`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `Chars` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
+///
+/// # Error
+///
+/// This iterator will swallow all I/O errors, transforming `Err` values to
+/// `None`. If errors need to be handled, it is recommended to use the
+/// `read_char` method directly.
+pub struct Chars<'r, T> {
+    priv buffer: &'r mut T
+}
+
+impl<'r, T: Buffer> Iterator<char> for Chars<'r, T> {
+    fn next(&mut self) -> Option<char> {
+        self.buffer.read_char().ok()
+    }
+}
+
 /// A Buffer is a type of reader which has some form of internal buffering to
 /// allow certain kinds of reading operations to be more optimized than others.
 /// This type extends the `Reader` trait with a few methods that are not
@@ -1145,6 +1169,17 @@ pub trait Buffer: Reader {
             Some(s) => Ok(s.char_at(0)),
             None => Err(standard_error(InvalidInput))
         }
+    }
+
+    /// Create an iterator that reads a utf8-encoded character on each iteration until EOF.
+    ///
+    /// # Error
+    ///
+    /// This iterator will transform all error values to `None`, discarding the
+    /// cause of the error. If this is undesirable, it is recommended to call
+    /// `read_char` directly.
+    fn chars<'r>(&'r mut self) -> Chars<'r, Self> {
+        Chars { buffer: self }
     }
 }
 
