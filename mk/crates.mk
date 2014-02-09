@@ -50,7 +50,7 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections fourcc
+                 uuid serialize sync getopts collections fourcc bigint rational
 HOST_CRATES := syntax rustc rustdoc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -75,6 +75,8 @@ DEPS_sync := std
 DEPS_getopts := std
 DEPS_collections := std serialize
 DEPS_fourcc := syntax std
+DEPS_bigint := std extra
+DEPS_rational := std bigint
 
 TOOL_DEPS_compiletest := extra green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc green rustuv

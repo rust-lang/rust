@@ -3029,12 +3029,12 @@ In Rust terminology, we need a way to refer to other crates.
 For that, Rust offers you the `extern mod` declaration:
 
 ~~~
-extern mod extra;
-// extra ships with Rust, you'll find more details further down.
+extern mod rational;
+// rational ships with Rust, you'll find more details further down.
 
 fn main() {
     // The rational number '1/2':
-    let one_half = ::extra::rational::Ratio::new(1, 2);
+    let one_half = ::rational::Ratio::new(1, 2);
 }
 ~~~
 
@@ -3059,10 +3059,10 @@ of both `use` and local declarations.
 Which can result in something like this:
 
 ~~~
-extern mod extra;
+extern mod rational;
 
 use farm::dog;
-use extra::rational::Ratio;
+use rational::Ratio;
 
 mod farm {
     pub fn dog() { println!("woof"); }

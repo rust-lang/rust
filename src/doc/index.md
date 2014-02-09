@@ -38,6 +38,8 @@ li {list-style-type: none; }
 * [The Rust compiler, `librustc`](rustc/index.html)
 
 * [The `arena` allocation library](arena/index.html)
+* [The `bigint` arbitrary precision integer library](bigint/index.html)
+* {The `rational` numeric library](rational/index.html)
 * [The `collections` library](collections/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `getopts` argument parsing library](getopts/index.html)
