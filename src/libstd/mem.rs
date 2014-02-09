@@ -83,6 +83,15 @@ pub unsafe fn uninit<T>() -> T {
     intrinsics::uninit()
 }
 
+/// Move a value to an uninitialized memory location.
+///
+/// Drop glue is not run on the destination.
+#[inline]
+pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
+    intrinsics::move_val_init(dst, src)
+}
+
+
 #[cfg(test)]
 mod tests {
     use mem::*;

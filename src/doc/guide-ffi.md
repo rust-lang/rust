@@ -178,7 +178,6 @@ use std::cast;
 use std::libc::{c_void, size_t, malloc, free};
 use std::mem;
 use std::ptr;
-use std::unstable::intrinsics;
 
 // Define a wrapper around the handle returned by the foreign code.
 // Unique<T> has the same semantics as ~T
@@ -200,7 +199,7 @@ impl<T: Send> Unique<T> {
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             // move_val_init moves a value into this memory without
             // attempting to drop the original value.
-            intrinsics::move_val_init(&mut *ptr, value);
+            mem::move_val_init(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }

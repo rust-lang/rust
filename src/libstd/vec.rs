@@ -120,7 +120,6 @@ use mem::size_of;
 use kinds::marker;
 use uint;
 use unstable::finally::Finally;
-use unstable::intrinsics;
 use unstable::raw::{Repr, Slice, Vec};
 use util;
 
@@ -137,7 +136,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
         let mut i: uint = 0u;
         (|| {
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
+                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
                 i += 1u;
             }
         }).finally(|| {
@@ -164,7 +163,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut i = 0u;
         (|| {
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
+                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
                 i += 1u;
             }
         }).finally(|| {
@@ -1495,7 +1494,7 @@ impl<T> OwnedVector<T> for ~[T] {
             (**repr).fill += mem::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data));
             let p = ptr::offset(p, fill as int) as *mut T;
-            intrinsics::move_val_init(&mut(*p), t);
+            mem::move_val_init(&mut(*p), t);
         }
     }
 
@@ -1552,7 +1551,7 @@ impl<T> OwnedVector<T> for ~[T] {
             ptr::copy_memory(p.offset(1), p, len - i);
             // Write it in, overwriting the first copy of the `i`th
             // element.
-            intrinsics::move_val_init(&mut *p, x);
+            mem::move_val_init(&mut *p, x);
             self.set_len(len + 1);
         }
     }
@@ -2397,7 +2396,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn init_elem(self, i: uint, val: T) {
-        intrinsics::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
+        mem::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
     }
 
     #[inline]
