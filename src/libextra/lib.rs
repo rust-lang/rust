@@ -62,12 +62,6 @@ pub mod time;
 pub mod base64;
 pub mod workcache;
 pub mod enum_set;
-#[path="num/bigint.rs"]
-pub mod bigint;
-#[path="num/rational.rs"]
-pub mod rational;
-#[path="num/complex.rs"]
-pub mod complex;
 pub mod stats;
 pub mod hex;
 
