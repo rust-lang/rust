@@ -552,6 +552,16 @@ mod test {
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
+    #[test]
+    fn test_chars() {
+        let buf = [195u8, 159u8, 'a' as u8];
+        let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
+        let mut it = reader.chars();
+        assert_eq!(it.next(), Some('ß'));
+        assert_eq!(it.next(), Some('a'));
+        assert_eq!(it.next(), None);
+    }
+
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {
         bh.iter(|| {
