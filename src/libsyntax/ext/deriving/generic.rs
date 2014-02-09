@@ -580,10 +580,12 @@ impl<'a> MethodDef<'a> {
             ast::SelfStatic => None,
             _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable))
         };
-        let args = arg_types.move_iter().map(|(name, ty)| {
-            cx.arg(trait_.span, name, ty)
-        });
-        let args = self_arg.move_iter().chain(args).collect();
+        let args = {
+            let args = arg_types.move_iter().map(|(name, ty)| {
+                    cx.arg(trait_.span, name, ty)
+                });
+            self_arg.move_iter().chain(args).collect()
+        };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
