@@ -1,4 +1,5 @@
-# Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
+#!/usr/bin/env python
+#
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
