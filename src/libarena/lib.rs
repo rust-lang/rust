@@ -536,18 +536,18 @@ mod test {
                 x: 1,
                 y: 2,
                 z: 3,
-            });
+            })
         })
     }
 
     #[bench]
     pub fn bench_pod_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = ~Point {
+            ~Point {
                 x: 1,
                 y: 2,
                 z: 3,
-            };
+            }
         })
     }
 
@@ -561,7 +561,7 @@ mod test {
                     y: 2,
                     z: 3,
                 }
-            });
+            })
         })
     }
 
@@ -588,17 +588,17 @@ mod test {
             arena.alloc(Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            });
+            })
         })
     }
 
     #[bench]
     pub fn bench_nonpod_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = ~Nonpod {
+            ~Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            };
+            }
         })
     }
 
@@ -606,10 +606,10 @@ mod test {
     pub fn bench_nonpod_old_arena(bh: &mut BenchHarness) {
         let arena = Arena::new();
         bh.iter(|| {
-            let _ = arena.alloc(|| Nonpod {
+            arena.alloc(|| Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            });
+            })
         })
     }
 }
