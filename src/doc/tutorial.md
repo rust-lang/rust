@@ -3026,12 +3026,12 @@ In Rust terminology, we need a way to refer to other crates.
 For that, Rust offers you the `extern mod` declaration:
 
 ~~~
-extern mod extra;
-// extra ships with Rust, you'll find more details further down.
+extern mod num;
+// `num` ships with Rust (much like `extra`; more details further down).
 
 fn main() {
     // The rational number '1/2':
-    let one_half = ::extra::rational::Ratio::new(1, 2);
+    let one_half = ::num::rational::Ratio::new(1, 2);
 }
 ~~~
 
@@ -3056,10 +3056,10 @@ of both `use` and local declarations.
 Which can result in something like this:
 
 ~~~
-extern mod extra;
+extern mod num;
 
 use farm::dog;
-use extra::rational::Ratio;
+use num::rational::Ratio;
 
 mod farm {
     pub fn dog() { println!("woof"); }
@@ -3224,9 +3224,9 @@ See the [API documentation][stddoc] for details.
 
 ## The extra library
 
-Rust also ships with the [extra library], an accumulation of useful things,
+Rust ships with crates such as the [extra library], an accumulation of useful things,
 that are however not important enough to deserve a place in the standard
-library.  You can use them by linking to `extra` with an `extern mod extra;`.
+library.  You can link to a library such as `extra` with an `extern mod extra;`.
 
 [extra library]: extra/index.html
 

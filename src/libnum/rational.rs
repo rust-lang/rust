@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,11 +10,10 @@
 
 //! Rational numbers
 
-
 use std::cmp;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
-use super::bigint::{BigInt, BigUint, Sign, Plus, Minus};
+use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
 #[deriving(Clone)]
@@ -349,7 +348,7 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 #[cfg(test)]
 mod test {
 
-    use super::*;
+    use super::{Ratio, Rational, BigRational};
     use std::num::{Zero,One,FromStrRadix,FromPrimitive};
     use std::from_str::FromStr;
 
@@ -449,8 +448,8 @@ mod test {
 
 
     mod arith {
-        use super::*;
-        use super::super::*;
+        use super::{_0, _1, _2, _1_2, _3_2, _neg1_2, to_big};
+        use super::super::{Ratio, Rational, BigRational};
 
 
         #[test]
