@@ -426,7 +426,7 @@ mod test {
         unsafe {
             let base = transmute::<*u8, *mut u8>(buf.base);
             (*base) = 1;
-            (*ptr::mut_offset(base, 1)) = 2;
+            (*base.offset(1)) = 2;
         }
 
         assert!(slice[0] == 1);

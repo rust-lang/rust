@@ -34,7 +34,6 @@ use std::cast;
 use std::cell::{Cell, RefCell};
 use std::mem;
 use std::num;
-use std::ptr;
 use std::kinds::marker;
 use std::rc::Rc;
 use std::rt::global_heap;
@@ -144,7 +143,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
     let fill = chunk.fill.get();
 
     while idx < fill {
-        let tydesc_data: *uint = transmute(ptr::offset(buf, idx as int));
+        let tydesc_data: *uint = transmute(buf.offset(idx as int));
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
         let (size, align) = ((*tydesc).size, (*tydesc).align);
 
@@ -155,7 +154,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         //debug!("freeing object: idx = {}, size = {}, align = {}, done = {}",
         //       start, size, align, is_done);
         if is_done {
-            ((*tydesc).drop_glue)(ptr::offset(buf, start as int) as *i8);
+            ((*tydesc).drop_glue)(buf.offset(start as int) as *i8);
         }
 
         // Find where the next tydesc lives
@@ -261,7 +260,7 @@ impl Arena {
             //       start, n_bytes, align, head.fill);
 
             let buf = self.head.as_ptr();
-            return (ptr::offset(buf, tydesc_start as int), ptr::offset(buf, start as int));
+            return (buf.offset(tydesc_start as int), buf.offset(start as int));
         }
     }
 
