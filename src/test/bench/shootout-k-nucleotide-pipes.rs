@@ -18,12 +18,12 @@ extern mod extra;
 use std::cmp::Ord;
 use std::comm;
 use std::hashmap::HashMap;
+use std::mem::replace;
 use std::option;
 use std::os;
 use std::io;
 use std::str;
 use std::task;
-use std::util;
 use std::vec;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
@@ -161,7 +161,7 @@ fn main() {
     let mut from_child = ~[];
     let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
-        let stream = util::replace(stream_ref, None);
+        let stream = replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);

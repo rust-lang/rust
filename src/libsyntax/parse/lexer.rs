@@ -18,8 +18,8 @@ use parse::token::{str_to_ident};
 
 use std::cell::{Cell, RefCell};
 use std::char;
+use std::mem::replace;
 use std::num::from_str_radix;
-use std::util;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -112,7 +112,7 @@ impl Reader for StringReader {
         let ret_val = {
             let mut peek_tok = self.peek_tok.borrow_mut();
             TokenAndSpan {
-                tok: util::replace(peek_tok.get(), token::UNDERSCORE),
+                tok: replace(peek_tok.get(), token::UNDERSCORE),
                 sp: self.peek_span.get(),
             }
         };

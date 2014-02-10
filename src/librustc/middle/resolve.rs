@@ -31,7 +31,7 @@ use syntax::visit::Visitor;
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::hashmap::{HashMap, HashSet};
-use std::util;
+use std::mem::replace;
 
 // Definition mapping
 pub type DefMap = @RefCell<HashMap<NodeId,Def>>;
@@ -4067,7 +4067,7 @@ impl Resolver {
                             new_trait_refs.push(def_id_of_def(*def));
                         }
                     }
-                    original_trait_refs = Some(util::replace(
+                    original_trait_refs = Some(replace(
                         &mut this.current_trait_refs,
                         Some(new_trait_refs)));
                 }

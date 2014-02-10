@@ -178,7 +178,6 @@ pub mod cast;
 pub mod fmt;
 pub mod cleanup;
 pub mod logging;
-pub mod util;
 pub mod mem;
 
 

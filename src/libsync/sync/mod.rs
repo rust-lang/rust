@@ -20,10 +20,10 @@
 use std::cast;
 use std::comm;
 use std::kinds::marker;
+use std::mem::replace;
 use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
 use std::unstable::finally::Finally;
-use std::util;
 
 use arc::MutexArc;
 
@@ -290,7 +290,7 @@ impl<'a> Condvar<'a> {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = Some(util::replace(&mut state.blocked[condvar_id],
+                    queue = Some(replace(&mut state.blocked[condvar_id],
                                                WaitQueue::new()));
                 } else {
                     out_of_bounds = Some(state.blocked.len());

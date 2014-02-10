@@ -477,6 +477,7 @@ will look like `"\\{"`.
 
 */
 
+use any;
 use cast;
 use char::Char;
 use container::Container;
@@ -489,7 +490,6 @@ use repr;
 use result::{Ok, Err};
 use str::StrSlice;
 use str;
-use util;
 use vec::ImmutableVector;
 use vec;
 
@@ -524,8 +524,8 @@ pub struct Formatter<'a> {
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 pub struct Argument<'a> {
-    priv formatter: extern "Rust" fn(&util::Void, &mut Formatter) -> Result,
-    priv value: &'a util::Void,
+    priv formatter: extern "Rust" fn(&any::Void, &mut Formatter) -> Result,
+    priv value: &'a any::Void,
 }
 
 impl<'a> Arguments<'a> {
@@ -794,11 +794,11 @@ impl<'a> Formatter<'a> {
             rt::CountImplied => { None }
             rt::CountIsParam(i) => {
                 let v = self.args[i].value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
+                unsafe { Some(*(v as *any::Void as *uint)) }
             }
             rt::CountIsNextParam => {
                 let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
+                unsafe { Some(*(v as *any::Void as *uint)) }
             }
         }
     }
