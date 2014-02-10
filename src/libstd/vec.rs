@@ -139,7 +139,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
             &mut i, (),
             |i, ()| while *i < n_elts {
                 mem::move_val_init(
-                    &mut(*ptr::mut_offset(p, *i as int)),
+                    &mut(*p.offset(*i as int)),
                     op(*i));
                 *i += 1u;
             },
@@ -167,7 +167,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
             &mut i, (),
             |i, ()| while *i < n_elts {
                 mem::move_val_init(
-                    &mut(*ptr::mut_offset(p, *i as int)),
+                    &mut(*p.offset(*i as int)),
                     t.clone());
                 *i += 1u;
             },
@@ -1497,7 +1497,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let fill = (**repr).fill;
             (**repr).fill += mem::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data));
-            let p = ptr::offset(p, fill as int) as *mut T;
+            let p = p.offset(fill as int) as *mut T;
             mem::move_val_init(&mut(*p), t);
         }
     }
@@ -1511,7 +1511,7 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { // Note: infallible.
             let self_p = self.as_mut_ptr();
             let rhs_p = rhs.as_ptr();
-            ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
+            ptr::copy_memory(self_p.offset(self_len as int), rhs_p, rhs_len);
             self.set_len(new_len);
             rhs.set_len(0);
         }
@@ -1798,11 +1798,11 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             let mut w = 1;
 
             while r < ln {
-                let p_r = ptr::mut_offset(p, r as int);
-                let p_wm1 = ptr::mut_offset(p, (w - 1) as int);
+                let p_r = p.offset(r as int);
+                let p_wm1 = p.offset((w - 1) as int);
                 if *p_r != *p_wm1 {
                     if r != w {
-                        let p_w = ptr::mut_offset(p_wm1, 1);
+                        let p_w = p_wm1.offset(1);
                         mem::swap(&mut *p_r, &mut *p_w);
                     }
                     w += 1;
@@ -2385,7 +2385,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
-        cast::transmute(ptr::mut_offset(self.repr().data as *mut T, index as int))
+        cast::transmute((self.repr().data as *mut T).offset(index as int))
     }
 
     #[inline]
@@ -2486,6 +2486,7 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 pub mod raw {
     use cast;
     use ptr;
+    use ptr::RawPtr;
     use vec::{with_capacity, MutableVector, OwnedVector};
     use unstable::raw::Slice;
 
@@ -2544,7 +2545,7 @@ pub mod raw {
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> *T {
         if slice.len == 0 { fail!("shift on empty slice"); }
         let head: *T = slice.data;
-        slice.data = ptr::offset(slice.data, 1);
+        slice.data = slice.data.offset(1);
         slice.len -= 1;
         head
     }
@@ -2556,7 +2557,7 @@ pub mod raw {
      */
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> *T {
         if slice.len == 0 { fail!("pop on empty slice"); }
-        let tail: *T = ptr::offset(slice.data, (slice.len - 1) as int);
+        let tail: *T = slice.data.offset((slice.len - 1) as int);
         slice.len -= 1;
         tail
     }

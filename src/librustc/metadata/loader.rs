@@ -30,7 +30,6 @@ use std::io;
 use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
-use std::ptr;
 use std::str;
 use std::vec;
 use flate;
@@ -340,7 +339,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 });
                 if !version_ok { return None; }
 
-                let cvbuf1 = ptr::offset(cvbuf, vlen as int);
+                let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
                 vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {

@@ -195,7 +195,7 @@ impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
             let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
-            assert!(!ptr::is_null(ptr));
+            assert!(!ptr.is_null());
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             // move_val_init moves a value into this memory without
             // attempting to drop the original value.
