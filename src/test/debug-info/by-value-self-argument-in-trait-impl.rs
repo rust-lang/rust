@@ -12,7 +12,7 @@
 
 #[feature(managed_boxes)];
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:rbreak zzz
 // debugger:run
 

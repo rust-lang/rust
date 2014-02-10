@@ -382,7 +382,7 @@ pub fn phase_4_translate_to_llvm(sess: Session,
 pub fn phase_5_run_llvm_passes(sess: Session,
                                trans: &CrateTranslation,
                                outputs: &OutputFilenames) {
-    if sess.no_integrated_as() {
+    if sess.opts.cg.no_integrated_as {
         let output_type = link::OutputTypeAssembly;
 
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -391,7 +391,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
         link::write::run_assembler(sess, outputs);
 
         // Remove assembly source, unless --save-temps was specified
-        if !sess.opts.save_temps {
+        if !sess.opts.cg.save_temps {
             fs::unlink(&outputs.temp_path(link::OutputTypeAssembly)).unwrap();
         }
     } else {
@@ -747,7 +747,6 @@ pub fn build_session_options(binary: ~str,
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
     let no_analysis = matches.opt_present("no-analysis");
-    let no_rpath = matches.opt_present("no-rpath");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -817,9 +816,6 @@ pub fn build_session_options(binary: ~str,
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
-    let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
-    let target_feature = matches.opt_str("target-feature").unwrap_or(~"");
-    let save_temps = matches.opt_present("save-temps");
     let opt_level = {
         if (debugging_opts & session::NO_OPT) != 0 {
             No
@@ -841,83 +837,75 @@ pub fn build_session_options(binary: ~str,
         } else { No }
     };
     let gc = debugging_opts & session::GC != 0;
-    let extra_debuginfo = debugging_opts & session::EXTRA_DEBUG_INFO != 0;
-    let debuginfo = debugging_opts & session::DEBUG_INFO != 0 ||
-        extra_debuginfo;
+    let debuginfo = matches.opt_present("g") || matches.opt_present("debuginfo");
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
         Path::new(s.as_slice())
     }).move_iter().collect();
-    let ar = matches.opt_str("ar");
-    let linker = matches.opt_str("linker");
-    let linker_args = matches.opt_strs("link-args").flat_map( |a| {
-        a.split(' ').filter_map(|arg| {
-            if arg.is_empty() {
-                None
-            } else {
-                Some(arg.to_owned())
-            }
-        }).collect()
-    });
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
-    let android_cross_path = matches.opt_str("android-cross-path");
     let write_dependency_info = (matches.opt_present("dep-info"),
                                  matches.opt_str("dep-info").map(|p| Path::new(p)));
 
-    let custom_passes = match matches.opt_str("passes") {
-        None => ~[],
-        Some(s) => {
-            s.split(|c: char| c == ' ' || c == ',').map(|s| {
-                s.trim().to_owned()
-            }).collect()
-        }
-    };
-    let llvm_args = match matches.opt_str("llvm-args") {
-        None => ~[],
-        Some(s) => {
-            s.split(|c: char| c == ' ' || c == ',').map(|s| {
-                s.trim().to_owned()
-            }).collect()
-        }
-    };
     let print_metas = (matches.opt_present("crate-id"),
                        matches.opt_present("crate-name"),
                        matches.opt_present("crate-file-name"));
+    let cg = build_codegen_options(matches);
 
     let sopts = @session::Options {
         crate_types: crate_types,
         gc: gc,
         optimize: opt_level,
-        custom_passes: custom_passes,
-        llvm_args: llvm_args,
         debuginfo: debuginfo,
-        extra_debuginfo: extra_debuginfo,
         lint_opts: lint_opts,
-        save_temps: save_temps,
         output_types: output_types,
         addl_lib_search_paths: @RefCell::new(addl_lib_search_paths),
-        ar: ar,
-        linker: linker,
-        linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
-        target_cpu: target_cpu,
-        target_feature: target_feature,
         cfg: cfg,
         binary: binary,
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
         no_analysis: no_analysis,
-        no_rpath: no_rpath,
         debugging_opts: debugging_opts,
-        android_cross_path: android_cross_path,
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
+        cg: cg,
     };
     return sopts;
+}
+
+pub fn build_codegen_options(matches: &getopts::Matches)
+        -> session::CodegenOptions
+{
+    let mut cg = session::basic_codegen_options();
+    for option in matches.opt_strs("C").move_iter() {
+        let mut iter = option.splitn('=', 1);
+        let key = iter.next().unwrap();
+        let value = iter.next();
+        let option_to_lookup = key.replace("-", "_");
+        let mut found = false;
+        for &(candidate, setter, _) in session::CG_OPTIONS.iter() {
+            if option_to_lookup.as_slice() != candidate { continue }
+            if !setter(&mut cg, value) {
+                match value {
+                    Some(..) => early_error(format!("codegen option `{}` takes \
+                                                     no value", key)),
+                    None => early_error(format!("codegen option `{0}` requires \
+                                                 a value (-C {0}=<value>)",
+                                                key))
+                }
+            }
+            found = true;
+            break;
+        }
+        if !found {
+            early_error(format!("unknown codegen option: `{}`", key));
+        }
+    }
+    return cg;
 }
 
 pub fn build_session(sopts: @session::Options,
@@ -1002,15 +990,12 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
   optmulti("", "emit", "Comma separated list of types of output for the compiler
                         to emit",
            "[asm|bc|ir|obj|link]"),
-  optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
-  optopt("", "ar", "Program to use for managing archives instead of the default.", "AR"),
   optflag("", "crate-id", "Output the crate id and exit"),
   optflag("", "crate-name", "Output the crate name and exit"),
   optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
           continued and exit"),
-  optmulti("",  "link-args", "FLAGS is a space-separated list of flags
-                            passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
+  optflag("g",  "debuginfo",  "Emit DWARF debug info to the objects created"),
   optflag("", "no-trans",
                         "Run all passes except translation; no output"),
   optflag("", "no-analysis",
@@ -1020,13 +1005,6 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
   optopt("o", "",     "Write output to <filename>", "FILENAME"),
   optopt("", "opt-level",
                         "Optimize with possible levels 0-3", "LEVEL"),
-  optopt("", "passes", "Comma or space separated list of pass names to use. \
-                        Appends to the default list of passes to run for the \
-                        specified current optimization level. A value of \
-                        \"list\" will list all of the available passes", "NAMES"),
-  optopt("", "llvm-args", "A list of arguments to pass to llvm, comma \
-                           separated", "ARGS"),
-  optflag("", "no-rpath", "Disables setting the rpath in libs/exes"),
   optopt( "",  "out-dir",
                         "Write output to compiler-chosen filename
                           in <dir>", "DIR"),
@@ -1041,9 +1019,6 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                           AST nodes and blocks with IDs)", "TYPE"),
   optflagopt("", "dep-info",
                         "Output dependency info to <filename> after compiling", "FILENAME"),
-  optflag("", "save-temps",
-                        "Write intermediate files (.bc, .opt.bc, .o)
-                          in addition to normal output"),
   optopt("", "sysroot",
                         "Override the system root", "PATH"),
   optflag("", "test", "Build a test harness"),
@@ -1051,14 +1026,6 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                         "Target triple cpu-manufacturer-kernel[-os]
                           to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
                           for details)", "TRIPLE"),
-  optopt("", "target-cpu",
-                        "Select target processor (llc -mcpu=help
-                          for details)", "CPU"),
-  optopt("", "target-feature",
-                        "Target specific attributes (llc -mattr=help
-                          for details)", "FEATURE"),
-  optopt("", "android-cross-path",
-         "The path to the Android NDK", "PATH"),
   optmulti("W", "warn",
                         "Set lint warnings", "OPT"),
   optmulti("A", "allow",
@@ -1067,6 +1034,8 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                         "Set lint denied", "OPT"),
   optmulti("F", "forbid",
                         "Set lint forbidden", "OPT"),
+  optmulti("C", "codegen",
+                        "Set a codegen option", "OPT[=VALUE]"),
   optmulti("Z", "",   "Set internal debugging options", "FLAG"),
   optflag( "v", "version",
                         "Print version info and exit"),

@@ -141,7 +141,7 @@ endif
 # worry about the distribution of one file (with its native dynamic
 # dependencies)
 RUSTFLAGS_STAGE0 += -Z prefer-dynamic
-RUSTFLAGS_STAGE1 += -Z prefer-dynamic
+RUSTFLAGS_STAGE1 += -C prefer-dynamic
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk

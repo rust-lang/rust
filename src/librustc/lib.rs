@@ -168,7 +168,7 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
     }
-    println!("{}", "\nAvailable lint checks:\n"); // FIXME: #9970
+    println!("\nAvailable lint checks:\n");
     println!("    {}  {:7.7s}  {}",
              padded(max_key, "name"), "default", "meaning");
     println!("    {}  {:7.7s}  {}\n",
@@ -184,7 +184,7 @@ Available lint options:
 }
 
 pub fn describe_debug_flags() {
-    println!("{}", "\nAvailable debug options:\n"); // FIXME: #9970
+    println!("\nAvailable debug options:\n");
     let r = session::debugging_opts_map();
     for tuple in r.iter() {
         match *tuple {
@@ -192,6 +192,22 @@ pub fn describe_debug_flags() {
                 println!("    -Z {:>20s} -- {}", *name, *desc);
             }
         }
+    }
+}
+
+pub fn describe_codegen_flags() {
+    println!("\nAvailable codegen options:\n");
+    let mut cg = session::basic_codegen_options();
+    for &(name, parser, desc) in session::CG_OPTIONS.iter() {
+        // we invoke the parser function on `None` to see if this option needs
+        // an argument or not.
+        let (width, extra) = if parser(&mut cg, None) {
+            (25, "")
+        } else {
+            (21, "=val")
+        };
+        println!("    -C {:>width$s}{} -- {}", name.replace("_", "-"),
+                 extra, desc, width=width);
     }
 }
 
@@ -227,7 +243,13 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
-    if matches.opt_str("passes") == Some(~"list") {
+    let cg_flags = matches.opt_strs("C");
+    if cg_flags.iter().any(|x| x == &~"help") {
+        describe_codegen_flags();
+        return;
+    }
+
+    if cg_flags.contains(&~"passes=list") {
         unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
