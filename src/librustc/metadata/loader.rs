@@ -26,6 +26,7 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
+use std::hashmap::{HashMap, HashSet};
 use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
@@ -69,6 +70,7 @@ impl Context {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
+                self.sess.abort_if_errors();
                 let message = match root_ident {
                     None => format!("can't find crate for `{}`", self.ident),
                     Some(c) => format!("can't find crate for `{}` which `{}` depends on",
@@ -82,78 +84,107 @@ impl Context {
 
     fn find_library_crate(&self) -> Option<Library> {
         let filesearch = self.sess.filesearch;
-        let crate_name = self.name.clone();
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}-", dyprefix, crate_name);
-        let rlib_prefix = format!("lib{}-", crate_name);
+        let dylib_prefix = format!("{}{}-", dyprefix, self.name);
+        let rlib_prefix = format!("lib{}-", self.name);
 
-        let mut matches = ~[];
+        let mut candidates = HashMap::new();
+
+        // First, find all possible candidate rlibs and dylibs purely based on
+        // the name of the files themselves. We're trying to match against an
+        // exact crate_id and a possibly an exact hash.
+        //
+        // During this step, we can filter all found libraries based on the
+        // name and id found in the crate id (we ignore the path portion for
+        // filename matching), as well as the exact hash (if specified). If we
+        // end up having many candidates, we must look at the metadata to
+        // perform exact matches against hashes/crate ids. Note that opening up
+        // the metadata is where we do an exact match against the full contents
+        // of the crate id (path/name/id).
+        //
+        // The goal of this step is to look at as little metadata as possible.
         filesearch.search(|path| {
-            match path.filename_str() {
-                None => FileDoesntMatch,
-                Some(file) => {
-                    let (candidate, existing) = if file.starts_with(rlib_prefix) &&
-                                                   file.ends_with(".rlib") {
-                        debug!("{} is an rlib candidate", path.display());
-                        (true, self.add_existing_rlib(matches, path, file))
-                    } else if file.starts_with(dylib_prefix) &&
-                              file.ends_with(dysuffix) {
-                        debug!("{} is a dylib candidate", path.display());
-                        (true, self.add_existing_dylib(matches, path, file))
-                    } else {
-                        (false, false)
-                    };
-
-                    if candidate && existing {
+            let file = match path.filename_str() {
+                None => return FileDoesntMatch,
+                Some(file) => file,
+            };
+            if file.starts_with(rlib_prefix) && file.ends_with(".rlib") {
+                info!("rlib candidate: {}", path.display());
+                match self.try_match(file, rlib_prefix, ".rlib") {
+                    Some(hash) => {
+                        info!("rlib accepted, hash: {}", hash);
+                        let slot = candidates.find_or_insert_with(hash, |_| {
+                            (HashSet::new(), HashSet::new())
+                        });
+                        let (ref mut rlibs, _) = *slot;
+                        rlibs.insert(path.clone());
                         FileMatches
-                    } else if candidate {
-                        match get_metadata_section(self.os, path) {
-                            Some(cvec) =>
-                                if crate_matches(cvec.as_slice(),
-                                                 self.name.clone(),
-                                                 self.version.clone(),
-                                                 self.hash.clone()) {
-                                    debug!("found {} with matching crate_id",
-                                           path.display());
-                                    let (rlib, dylib) = if file.ends_with(".rlib") {
-                                        (Some(path.clone()), None)
-                                    } else {
-                                        (None, Some(path.clone()))
-                                    };
-                                    matches.push(Library {
-                                        rlib: rlib,
-                                        dylib: dylib,
-                                        metadata: cvec,
-                                    });
-                                    FileMatches
-                                } else {
-                                    debug!("skipping {}, crate_id doesn't match",
-                                           path.display());
-                                    FileDoesntMatch
-                                },
-                                _ => {
-                                    debug!("could not load metadata for {}",
-                                           path.display());
-                                    FileDoesntMatch
-                                }
-                        }
-                    } else {
+                    }
+                    None => {
+                        info!("rlib rejected");
                         FileDoesntMatch
                     }
                 }
+            } else if file.starts_with(dylib_prefix) && file.ends_with(dysuffix){
+                info!("dylib candidate: {}", path.display());
+                match self.try_match(file, dylib_prefix, dysuffix) {
+                    Some(hash) => {
+                        info!("dylib accepted, hash: {}", hash);
+                        let slot = candidates.find_or_insert_with(hash, |_| {
+                            (HashSet::new(), HashSet::new())
+                        });
+                        let (_, ref mut dylibs) = *slot;
+                        dylibs.insert(path.clone());
+                        FileMatches
+                    }
+                    None => {
+                        info!("dylib rejected");
+                        FileDoesntMatch
+                    }
+                }
+            } else {
+                FileDoesntMatch
             }
         });
 
-        match matches.len() {
+        // We have now collected all known libraries into a set of candidates
+        // keyed of the filename hash listed. For each filename, we also have a
+        // list of rlibs/dylibs that apply. Here, we map each of these lists
+        // (per hash), to a Library candidate for returning.
+        //
+        // A Library candidate is created if the metadata for the set of
+        // libraries corresponds to the crate id and hash criteria that this
+        // serach is being performed for.
+        let mut libraries = ~[];
+        for (_hash, (rlibs, dylibs)) in candidates.move_iter() {
+            let mut metadata = None;
+            let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
+            let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+            match metadata {
+                Some(metadata) => {
+                    libraries.push(Library {
+                        dylib: dylib,
+                        rlib: rlib,
+                        metadata: metadata,
+                    })
+                }
+                None => {}
+            }
+        }
+
+        // Having now translated all relevant found hashes into libraries, see
+        // what we've got and figure out if we found multiple candidates for
+        // libraries or not.
+        match libraries.len() {
             0 => None,
-            1 => Some(matches[0]),
+            1 => Some(libraries[0]),
             _ => {
                 self.sess.span_err(self.span,
-                    format!("multiple matching crates for `{}`", crate_name));
+                    format!("multiple matching crates for `{}`", self.name));
                 self.sess.note("candidates:");
-                for lib in matches.iter() {
+                for lib in libraries.iter() {
                     match lib.dylib {
                         Some(ref p) => {
                             self.sess.note(format!("path: {}", p.display()));
@@ -175,50 +206,90 @@ impl Context {
                         }
                     }
                 }
-                self.sess.abort_if_errors();
                 None
             }
         }
     }
 
-    fn add_existing_rlib(&self, libs: &mut [Library],
-                         path: &Path, file: &str) -> bool {
-        let (prefix, suffix) = self.dylibname();
-        let file = file.slice_from(3); // chop off 'lib'
-        let file = file.slice_to(file.len() - 5); // chop off '.rlib'
-        let file = format!("{}{}{}", prefix, file, suffix);
-
-        for lib in libs.mut_iter() {
-            match lib.dylib {
-                Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.rlib.is_none()); // FIXME: legit compiler error
-                    lib.rlib = Some(path.clone());
-                    return true;
-                }
-                Some(..) | None => {}
-            }
+    // Attempts to match the requested version of a library against the file
+    // specified. The prefix/suffix are specified (disambiguates between
+    // rlib/dylib).
+    //
+    // The return value is `None` if `file` doesn't look like a rust-generated
+    // library, or if a specific version was requested and it doens't match the
+    // apparent file's version.
+    //
+    // If everything checks out, then `Some(hash)` is returned where `hash` is
+    // the listed hash in the filename itself.
+    fn try_match(&self, file: &str, prefix: &str, suffix: &str) -> Option<~str>{
+        let middle = file.slice(prefix.len(), file.len() - suffix.len());
+        debug!("matching -- {}, middle: {}", file, middle);
+        let mut parts = middle.splitn('-', 1);
+        let hash = match parts.next() { Some(h) => h, None => return None };
+        debug!("matching -- {}, hash: {}", file, hash);
+        let vers = match parts.next() { Some(v) => v, None => return None };
+        debug!("matching -- {}, vers: {}", file, vers);
+        if !self.version.is_empty() && self.version.as_slice() != vers {
+            return None
         }
-        return false;
+        debug!("matching -- {}, vers ok (requested {})", file,
+               self.version);
+        // hashes in filenames are prefixes of the "true hash"
+        if self.hash.is_empty() || self.hash.starts_with(hash) {
+            debug!("matching -- {}, hash ok (requested {})", file, self.hash);
+            Some(hash.to_owned())
+        } else {
+            None
+        }
     }
 
-    fn add_existing_dylib(&self, libs: &mut [Library],
-                          path: &Path, file: &str) -> bool {
-        let (prefix, suffix) = self.dylibname();
-        let file = file.slice_from(prefix.len());
-        let file = file.slice_to(file.len() - suffix.len());
-        let file = format!("lib{}.rlib", file);
+    // Attempts to extract *one* library from the set `m`. If the set has no
+    // elements, `None` is returned. If the set has more than one element, then
+    // the errors and notes are emitted about the set of libraries.
+    //
+    // With only one library in the set, this function will extract it, and then
+    // read the metadata from it if `*slot` is `None`. If the metadata couldn't
+    // be read, it is assumed that the file isn't a valid rust library (no
+    // errors are emitted).
+    //
+    // FIXME(#10786): for an optimization, we only read one of the library's
+    //                metadata sections. In theory we should read both, but
+    //                reading dylib metadata is quite slow.
+    fn extract_one(&self, m: HashSet<Path>, flavor: &str,
+                   slot: &mut Option<MetadataBlob>) -> Option<Path> {
+        if m.len() == 0 { return None }
+        if m.len() > 1 {
+            self.sess.span_err(self.span,
+                               format!("multiple {} candidates for `{}` \
+                                        found", flavor, self.name));
+            for (i, path) in m.iter().enumerate() {
+                self.sess.span_note(self.span,
+                                    format!(r"candidate \#{}: {}", i + 1,
+                                            path.display()));
+            }
+            return None
+        }
 
-        for lib in libs.mut_iter() {
-            match lib.rlib {
-                Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.dylib.is_none()); // FIXME: legit compiler error
-                    lib.dylib = Some(path.clone());
-                    return true;
+        let lib = m.move_iter().next().unwrap();
+        if slot.is_none() {
+            info!("{} reading meatadata from: {}", flavor, lib.display());
+            match get_metadata_section(self.os, &lib) {
+                Some(blob) => {
+                    if crate_matches(blob.as_slice(), self.name,
+                                     self.version, self.hash) {
+                        *slot = Some(blob);
+                    } else {
+                        info!("metadata mismatch");
+                        return None;
+                    }
                 }
-                Some(..) | None => {}
+                None => {
+                    info!("no metadata found");
+                    return None
+                }
             }
         }
-        return false;
+        return Some(lib);
     }
 
     // Returns the corresponding (prefix, suffix) that files need to have for
@@ -239,16 +310,16 @@ pub fn note_crateid_attr(diag: @SpanHandler, crateid: &CrateId) {
 }
 
 fn crate_matches(crate_data: &[u8],
-                 name: ~str,
-                 version: ~str,
-                 hash: ~str) -> bool {
+                 name: &str,
+                 version: &str,
+                 hash: &str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     match attr::find_crateid(attrs) {
         None => false,
         Some(crateid) => {
             if !hash.is_empty() {
                 let chash = decoder::get_crate_hash(crate_data);
-                if chash != hash { return false; }
+                if chash.as_slice() != hash { return false; }
             }
             name == crateid.name &&
                 (version.is_empty() ||
@@ -383,7 +454,9 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 pub fn list_file_metadata(os: Os, path: &Path,
                           out: &mut io::Writer) -> io::IoResult<()> {
     match get_metadata_section(os, path) {
-      Some(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
-      None => write!(out, "could not find metadata in {}.\n", path.display())
+        Some(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
+        None => {
+            write!(out, "could not find metadata in {}.\n", path.display())
+        }
     }
 }
