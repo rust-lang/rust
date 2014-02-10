@@ -8,27 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test #4276
+use std::hashmap::HashMap;
 
-// rustc --test map_to_str.rs && ./map_to_str
-extern mod extra;
-
-fn check_strs(actual: &str, expected: &str) -> bool
-{
-    if actual != expected
-    {
-        println!("Found %s, but expected %s", actual, expected);
+fn check_strs(actual: &str, expected: &str) -> bool {
+    if actual != expected {
+        println!("Found {}, but expected {}", actual, expected);
         return false;
     }
     return true;
 }
 
-fn tester()
-{
-    let mut table = std::hashmap::HashMap::new();
-    table.insert(@~"one", 1);
-    table.insert(@~"two", 2);
-    assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be
+pub fn main() {
+    let mut table = HashMap::new();
+    table.insert(~"one", 1);
+    table.insert(~"two", 2);
+    assert!(check_strs(table.to_str(), "{one: 1, two: 2}") ||
+            check_strs(table.to_str(), "{two: 2, one: 1}"));
 }
-
-pub fn main() {}

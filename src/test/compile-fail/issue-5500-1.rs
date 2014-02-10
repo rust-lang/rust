@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 struct TrieMapIterator<'a> {
-    priv node: &'a uint
+    node: &'a uint
 }
 
 fn main() {
     let a = 5;
-    let _iter = TrieMapIterator{node: &a};  //~ ERROR bad
-    _iter.node = &
+    let _iter = TrieMapIterator{node: &a};
+    _iter.node = & //~ ERROR cannot assign to immutable field
     fail!()
 }
