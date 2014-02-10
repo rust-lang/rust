@@ -131,7 +131,6 @@ pub mod reader {
     }
 
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
-        use std::ptr::offset;
         use std::mem::from_be32;
 
         if data.len() - start < 4 {
@@ -163,7 +162,7 @@ pub mod reader {
 
         unsafe {
             let (ptr, _): (*u8, uint) = transmute(data);
-            let ptr = offset(ptr, start as int);
+            let ptr = ptr.offset(start as int);
             let ptr: *i32 = transmute(ptr);
             let val = from_be32(*ptr) as u32;
 

@@ -119,7 +119,7 @@ impl <T> CVec<T> {
     pub fn get<'a>(&'a self, ofs: uint) -> &'a T {
         assert!(ofs < self.len);
         unsafe {
-            &*ptr::mut_offset(self.base, ofs as int)
+            &*self.base.offset(ofs as int)
         }
     }
 
@@ -131,7 +131,7 @@ impl <T> CVec<T> {
     pub fn get_mut<'a>(&'a mut self, ofs: uint) -> &'a mut T {
         assert!(ofs < self.len);
         unsafe {
-            &mut *ptr::mut_offset(self.base, ofs as int)
+            &mut *self.base.offset(ofs as int)
         }
     }
 
