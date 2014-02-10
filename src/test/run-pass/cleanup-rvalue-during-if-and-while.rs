@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
-// This test verifies that temporaries created for `while`'s
-// and `if` conditions are correctly cleaned up.
+// This test verifies that temporaries created for `while`'s and `if`
+// conditions are dropped after the condition is evaluated.
 
 struct Temporary;
 
@@ -37,6 +37,7 @@ pub fn main() {
     // `drop` 6 times.
     while borrow().do_stuff() {
         i += 1;
+        unsafe { assert_eq!(DROPPED, i) }
         if i > 5 {
             break;
         }
@@ -45,6 +46,6 @@ pub fn main() {
     // This if condition should
     // call it 1 time
     if borrow().do_stuff() {
-        unsafe { assert_eq!(DROPPED, 7) }
+        unsafe { assert_eq!(DROPPED, i + 1) }
     }
 }
