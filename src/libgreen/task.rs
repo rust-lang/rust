@@ -22,7 +22,7 @@ use std::cast;
 use std::rt::Runtime;
 use std::rt::rtio;
 use std::rt::local::Local;
-use std::rt::task::{Task, BlockedTask};
+use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
 use std::unstable::mutex::Mutex;
 
@@ -131,8 +131,7 @@ impl GreenTask {
             task.stdout = stdout;
             match notify_chan {
                 Some(chan) => {
-                    let on_exit = proc(task_result) { chan.send(task_result) };
-                    task.death.on_exit = Some(on_exit);
+                    task.death.on_exit = Some(SendMessage(chan));
                 }
                 None => {}
             }
