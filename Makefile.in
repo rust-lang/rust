@@ -126,9 +126,9 @@ ifdef TRACE
 endif
 ifdef CFG_DISABLE_RPATH
 # NOTE: make this CFG_RUSTC_FLAGS after stage0 snapshot
-RUSTFLAGS_STAGE1 += --no-rpath
-RUSTFLAGS_STAGE2 += --no-rpath
-RUSTFLAGS_STAGE3 += --no-rpath
+RUSTFLAGS_STAGE1 += -C no-rpath
+RUSTFLAGS_STAGE2 += -C no-rpath
+RUSTFLAGS_STAGE3 += -C no-rpath
 endif
 
 # The executables crated during this compilation process have no need to include
