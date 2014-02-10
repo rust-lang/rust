@@ -26,7 +26,9 @@ use result::{Result, Ok, Err};
 use to_str::ToStr;
 use unstable::intrinsics::TypeId;
 use unstable::intrinsics;
-use util::Void;
+
+/// A type with no inhabitants
+pub enum Void { }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait

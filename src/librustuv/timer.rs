@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use std::libc::c_int;
+use std::mem::replace;
 use std::rt::local::Local;
 use std::rt::rtio::RtioTimer;
 use std::rt::task::{BlockedTask, Task};
-use std::util;
 
 use homing::{HomeHandle, HomingIO};
 use super::{UvHandle, ForbidUnwind, ForbidSwitch};
@@ -76,7 +76,7 @@ impl RtioTimer for TimerWatcher {
         let missile = self.fire_homing_missile();
         self.id += 1;
         self.stop();
-        let _missile = match util::replace(&mut self.action, None) {
+        let _missile = match replace(&mut self.action, None) {
             None => missile, // no need to do a homing dance
             Some(action) => {
                 drop(missile);      // un-home ourself
@@ -108,7 +108,7 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, 0);
-            util::replace(&mut self.action, Some(SendOnce(chan)))
+            replace(&mut self.action, Some(SendOnce(chan)))
         };
 
         return port;
@@ -124,7 +124,7 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, msecs);
-            util::replace(&mut self.action, Some(SendMany(chan, self.id)))
+            replace(&mut self.action, Some(SendMany(chan, self.id)))
         };
 
         return port;

@@ -60,6 +60,7 @@ use c_str::CString;
 use cast;
 use fmt;
 use kinds::Send;
+use mem;
 use option::{Some, None, Option};
 use prelude::drop;
 use ptr::RawPtr;
@@ -69,7 +70,6 @@ use rt::task::Task;
 use str::Str;
 use task::TaskResult;
 use unstable::intrinsics;
-use util;
 
 use uw = self::libunwind;
 
@@ -470,7 +470,7 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                                             n, msg_s, file, line);
                     task = Local::take();
 
-                    match util::replace(&mut task.stderr, Some(stderr)) {
+                    match mem::replace(&mut task.stderr, Some(stderr)) {
                         Some(prev) => {
                             Local::put(task);
                             drop(prev);

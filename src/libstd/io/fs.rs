@@ -659,7 +659,6 @@ mod test {
     use io::fs::{File, rmdir, mkdir, readdir, rmdir_recursive,
                  mkdir_recursive, copy, unlink, stat, symlink, link,
                  readlink, chmod, lstat, change_file_times};
-    use util;
     use path::Path;
     use io;
     use ops::Drop;

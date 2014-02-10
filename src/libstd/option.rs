@@ -45,9 +45,9 @@ use default::Default;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
+use mem;
 use str::OwnedStr;
 use to_str::ToStr;
-use util;
 use vec;
 
 /// The option type
@@ -285,7 +285,7 @@ impl<T> Option<T> {
     /// Take the value out of the option, leaving a `None` in its place.
     #[inline]
     pub fn take(&mut self) -> Option<T> {
-        util::replace(self, None)
+        mem::replace(self, None)
     }
 
     /// Filters an optional value using a given function.

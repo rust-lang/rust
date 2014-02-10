@@ -13,7 +13,7 @@
 //! which are available for use externally when compiled as a library.
 
 use std::hashmap::{HashSet, HashMap};
-use std::util;
+use std::mem::replace;
 
 use metadata::csearch;
 use middle::resolve;
@@ -679,7 +679,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             return;
         }
 
-        let orig_curitem = util::replace(&mut self.curitem, item.id);
+        let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item, ());
         self.curitem = orig_curitem;
     }
@@ -861,7 +861,7 @@ impl Visitor<()> for SanePrivacyVisitor {
             self.check_sane_privacy(item);
         }
 
-        let orig_in_fn = util::replace(&mut self.in_fn, match item.node {
+        let orig_in_fn = replace(&mut self.in_fn, match item.node {
             ast::ItemMod(..) => false, // modules turn privacy back on
             _ => self.in_fn,           // otherwise we inherit
         });
@@ -872,7 +872,7 @@ impl Visitor<()> for SanePrivacyVisitor {
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
         // This catches both functions and methods
-        let orig_in_fn = util::replace(&mut self.in_fn, true);
+        let orig_in_fn = replace(&mut self.in_fn, true);
         visit::walk_fn(self, fk, fd, b, s, n, ());
         self.in_fn = orig_in_fn;
     }

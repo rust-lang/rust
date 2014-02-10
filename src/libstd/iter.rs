@@ -71,7 +71,7 @@ use ops::{Add, Mul, Sub};
 use cmp::{Eq, Ord};
 use clone::Clone;
 use uint;
-use util;
+use mem;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -701,7 +701,7 @@ impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T 
     fn reverse_(&mut self) {
         loop {
             match (self.next(), self.next_back()) {
-                (Some(x), Some(y)) => util::swap(x, y),
+                (Some(x), Some(y)) => mem::swap(x, y),
                 _ => break
             }
         }

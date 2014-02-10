@@ -26,7 +26,7 @@
 
 #[allow(missing_doc)];
 
-use std::util::replace;
+use std::mem::replace;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {

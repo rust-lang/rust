@@ -13,8 +13,6 @@
 //
 // Example from src/middle/borrowck/doc.rs
 
-use std::util::swap;
-
 fn foo(t0: & &mut int) {
     let t1 = t0;
     let p: &int = &**t0;

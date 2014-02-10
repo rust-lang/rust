@@ -12,9 +12,9 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
-use std::util::{swap, replace};
 use std::iter::{Peekable};
 use std::cmp::Ordering;
+use std::mem::{replace, swap};
 use std::ptr;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
