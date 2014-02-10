@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
-use result::{Ok, Err};
 use io::net::ip::{IpAddr};
-use io::{io_error, EndOfFile};
+use io::{IoResult};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
 
 pub struct RawSocket {
@@ -19,32 +17,17 @@ pub struct RawSocket {
 }
 
 impl RawSocket {
-    pub fn new(domain: i32, protocol: i32, includeIpHeader: bool) -> Option<RawSocket> {
+    pub fn new(domain: i32, protocol: i32, includeIpHeader: bool) -> IoResult<RawSocket> {
         LocalIo::maybe_raise(|io| {
             io.raw_socket_new(domain, protocol, includeIpHeader).map(|s| RawSocket { obj: s })
         })
     }
 
-    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, IpAddr)> {
-        match self.obj.recvfrom(buf) {
-            Ok((nread, src)) => Some((nread, src)),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                None
-            }
-        }
+    pub fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, IpAddr)> {
+        self.obj.recvfrom(buf)
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> Option<uint> {
-        match self.obj.sendto(buf, dst) {
-            Ok(len) => Some(len as uint),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            },
-        }
+    pub fn sendto(&mut self, buf: &[u8], dst: IpAddr) -> IoResult<int> {
+        self.obj.sendto(buf, dst)
     }
 }
