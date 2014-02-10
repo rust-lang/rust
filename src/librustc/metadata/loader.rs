@@ -65,13 +65,17 @@ pub struct ArchiveMetadata {
 }
 
 impl Context {
-    pub fn load_library_crate(&self) -> Library {
+    pub fn load_library_crate(&self, root_ident: Option<~str>) -> Library {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
-                self.sess.span_fatal(self.span,
-                                     format!("can't find crate for `{}`",
-                                             self.ident));
+                let message = match root_ident {
+                    None => format!("can't find crate for `{}`", self.ident),
+                    Some(c) => format!("can't find crate for `{}` which `{}` depends on",
+                                       self.ident,
+                                       c)
+                };
+                self.sess.span_fatal(self.span, message);
             }
         }
     }
