@@ -1506,16 +1506,19 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&fcx);
 
+    let dest = match fcx.llretptr.get() {
+        Some(e) => {expr::SaveIn(e)}
+        None => {
+            assert!(type_is_zero_size(bcx.ccx(), block_ty))
+            expr::Ignore
+        }
+    };
+
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
-        bcx = controlflow::trans_block(bcx, body, expr::Ignore);
-    } else {
-        let dest = expr::SaveIn(fcx.llretptr.get().unwrap());
-        bcx = controlflow::trans_block(bcx, body, dest);
-    }
+    bcx = controlflow::trans_block(bcx, body, dest);
 
     match fcx.llreturn.get() {
         Some(_) => {
