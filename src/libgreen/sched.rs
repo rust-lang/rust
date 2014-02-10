@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use std::cast;
+use std::libc::funcs::posix88::unistd;
+use std::num;
 use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
@@ -25,6 +27,11 @@ use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::{TypeSched, GreenTask, HomeSched, AnySched};
 use msgq = message_queue;
+
+/// By default, a scheduler tries to back off three times before it
+/// goes to sleep.
+/// TODO: Make this value configurable.
+static EXPONENTIAL_BACKOFF_FACTOR: uint = 3;
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified
@@ -63,6 +70,8 @@ pub struct Scheduler {
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
+    /// We only go to sleep when backoff_counter hits 0.
+    backoff_counter: uint,
     stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
@@ -151,6 +160,7 @@ impl Scheduler {
             message_producer: producer,
             sleepy: false,
             no_sleep: false,
+            backoff_counter: 0,
             event_loop: event_loop,
             work_queue: work_queue,
             work_queues: work_queues,
@@ -325,12 +335,17 @@ impl Scheduler {
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
         if !sched.sleepy && !sched.no_sleep {
-            rtdebug!("scheduler has no work to do, going to sleep");
-            sched.sleepy = true;
-            let handle = sched.make_handle();
-            sched.sleeper_list.push(handle);
-            // Since we are sleeping, deactivate the idle callback.
-            sched.idle_callback.get_mut_ref().pause();
+            if sched.backoff_counter == EXPONENTIAL_BACKOFF_FACTOR {
+                sched.backoff_counter = 0;
+                rtdebug!("scheduler has no work to do, going to sleep");
+                sched.sleepy = true;
+                let handle = sched.make_handle();
+                sched.sleeper_list.push(handle);
+                // Since we are sleeping, deactivate the idle callback.
+                sched.idle_callback.get_mut_ref().pause();
+            }
+            unsafe { unistd::usleep(num::pow(2, sched.backoff_counter) as u32); }
+            sched.backoff_counter += 1;
         } else {
             rtdebug!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
