@@ -10,10 +10,12 @@
 
 //! Signaling success or failure states (`Result` type)
 
+use any::Any;
 use clone::Clone;
 use cmp::Eq;
 use fmt;
 use iter::{Iterator, FromIterator};
+use kinds::Send;
 use option::{None, Option, Some};
 use str::OwnedStr;
 use to_str::ToStr;
@@ -197,6 +199,26 @@ impl<T, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
+            Err(e) => e
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is an `Err`, with a custom failure message determined by func.
+    #[inline]
+    pub fn expect<M: Any + Send>(self, func : |E| -> M) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) => fail!(func(e))
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Err`.
+    /// Fails if the value is an `Ok`, with a custom failure message determined by func.
+    #[inline]
+    pub fn expect_err<M: Any + Send>(self, func : |T| -> M) -> E {
+        match self {
+            Ok(t) => fail!(func(t)),
             Err(e) => e
         }
     }
