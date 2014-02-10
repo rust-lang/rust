@@ -13,15 +13,15 @@
 // xfail-fast
 
 #[feature(once_fns)];
-extern mod extra;
-use extra::arc;
+extern mod sync;
+use sync::Arc;
 
 fn foo(blk: once ||) {
     blk();
 }
 
 pub fn main() {
-    let x = arc::Arc::new(true);
+    let x = Arc::new(true);
     foo(|| {
         assert!(*x.get());
         drop(x);

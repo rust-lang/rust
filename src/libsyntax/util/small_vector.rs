@@ -68,7 +68,7 @@ impl<T> SmallVector<T> {
         match *self {
             One(ref v) if idx == 0 => v,
             Many(ref vs) => &vs[idx],
-            _ => fail!("Out of bounds access")
+            _ => fail!("out of bounds access")
         }
     }
 

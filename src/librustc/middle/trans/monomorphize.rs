@@ -98,7 +98,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         session::expect(
             ccx.sess,
             ccx.tcx.items.find(fn_id.node),
-            || format!("While monomorphizing {:?}, couldn't find it in the \
+            || format!("while monomorphizing {:?}, couldn't find it in the \
                         item map (may have attempted to monomorphize an item \
                         defined in a different crate?)", fn_id))
     };
@@ -286,7 +286,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                     d
                 }
                 _ => {
-                    ccx.tcx.sess.bug(format!("Can't monomorphize a {:?}",
+                    ccx.tcx.sess.bug(format!("can't monomorphize a {:?}",
                                              map_node))
                 }
             }
@@ -310,7 +310,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         ast_map::NodeBlock(..) |
         ast_map::NodeCalleeScope(..) |
         ast_map::NodeLocal(..) => {
-            ccx.tcx.sess.bug(format!("Can't monomorphize a {:?}", map_node))
+            ccx.tcx.sess.bug(format!("can't monomorphize a {:?}", map_node))
         }
     };
 

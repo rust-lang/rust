@@ -51,7 +51,7 @@ impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
 }
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
-    use unstable::intrinsics::{to_le16, to_le32, to_le64};
+    use mem::{to_le16, to_le32, to_le64};
     use cast::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
@@ -77,7 +77,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 }
 
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
-    use unstable::intrinsics::{to_be16, to_be32, to_be64};
+    use mem::{to_be16, to_be32, to_be64};
     use cast::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
@@ -105,7 +105,7 @@ pub fn u64_from_be_bytes(data: &[u8],
                          size: uint)
                       -> u64 {
     use ptr::{copy_nonoverlapping_memory, offset, mut_offset};
-    use unstable::intrinsics::from_be64;
+    use mem::from_be64;
     use vec::MutableVector;
 
     assert!(size <= 8u);

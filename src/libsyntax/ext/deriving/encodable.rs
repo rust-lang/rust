@@ -22,7 +22,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-impl<S:extra::serialize::Encoder> Encodable<S> for Node {
+impl<S:serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         s.emit_struct("Node", 1, || {
             s.emit_field("id", 0, || s.emit_uint(self.id))
@@ -75,32 +75,31 @@ would yield functions like:
     }
 */
 
-use ast::{MetaItem, Item, Expr, MutImmutable, MutMutable};
+use ast::{MetaItem, Item, Expr, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use parse::token;
 
-pub fn expand_deriving_encodable(cx: &ExtCtxt,
+pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
-        path: Path::new_(~["extra", "serialize", "Encodable"], None,
+        span: span,
+        path: Path::new_(~["serialize", "Encodable"], None,
                          ~[~Literal(Path::new_local("__E"))], true),
         additional_bounds: ~[],
         generics: LifetimeBounds {
             lifetimes: ~[],
-            bounds: ~[("__E", ~[Path::new(~["extra", "serialize", "Encoder"])])],
+            bounds: ~[("__E", ~[Path::new(~["serialize", "Encoder"])])],
         },
         methods: ~[
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds::empty(),
-                explicit_self: Some(Some(Borrowed(None, MutImmutable))),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[Ptr(~Literal(Path::new_local("__E")),
                             Borrowed(None, MutMutable))],
                 ret_ty: nil_ty(),
@@ -111,10 +110,10 @@ pub fn expand_deriving_encodable(cx: &ExtCtxt,
         ]
     };
 
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
-fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
+fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings

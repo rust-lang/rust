@@ -22,7 +22,7 @@ use middle::ty;
 use middle::typeck;
 use middle;
 
-use extra::serialize::Encodable;
+use serialize::Encodable;
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
@@ -45,7 +45,7 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
-use writer = extra::ebml::writer;
+use writer = serialize::ebml::writer;
 
 // used by astencode:
 type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
@@ -671,7 +671,6 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
     match explicit_self {
         SelfStatic => { ebml_w.writer.write(&[ 's' as u8 ]); }
         SelfValue  => { ebml_w.writer.write(&[ 'v' as u8 ]); }
-        SelfBox    => { ebml_w.writer.write(&[ '@' as u8 ]); }
         SelfUniq   => { ebml_w.writer.write(&[ '~' as u8 ]); }
         SelfRegion(_, m) => {
             // FIXME(#4846) encode custom lifetime
@@ -682,7 +681,7 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
 
     ebml_w.end_tag();
 
-    fn encode_mutability(ebml_w: &writer::Encoder,
+    fn encode_mutability(ebml_w: &mut writer::Encoder,
                          m: ast::Mutability) {
         match m {
             MutImmutable => { ebml_w.writer.write(&[ 'i' as u8 ]); }

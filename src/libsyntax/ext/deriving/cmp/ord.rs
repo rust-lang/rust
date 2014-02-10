@@ -15,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_ord(cx: &ExtCtxt,
+pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
                            mitem: @MetaItem,
                            in_items: ~[@Item]) -> ~[@Item] {
@@ -35,8 +35,7 @@ pub fn expand_deriving_ord(cx: &ExtCtxt,
     );
 
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "cmp", "Ord"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -47,11 +46,11 @@ pub fn expand_deriving_ord(cx: &ExtCtxt,
             md!("ge", false, true)
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let op = if less {ast::BiLt} else {ast::BiGt};
     cs_fold(
         false, // need foldr,
@@ -75,7 +74,7 @@ fn cs_op(less: bool, equal: bool, cx: &ExtCtxt, span: Span, substr: &Substructur
             */
             let other_f = match other_fs {
                 [o_f] => o_f,
-                _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             };
 
             let cmp = cx.expr_binary(span, op, self_f, other_f);
@@ -99,7 +98,7 @@ fn cs_op(less: bool, equal: bool, cx: &ExtCtxt, span: Span, substr: &Substructur
                                  } else {
                                      self_var > other_var
                                  }),
-                _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             }
         },
         cx, span, substr)

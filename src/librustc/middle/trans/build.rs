@@ -34,7 +34,7 @@ pub fn check_not_terminated(cx: &Block) {
     }
 }
 
-pub fn B(cx: &Block) -> Builder {
+pub fn B<'a>(cx: &'a Block) -> Builder<'a> {
     let b = cx.fcx.ccx.builder();
     b.position_at_end(cx.llbb);
     b

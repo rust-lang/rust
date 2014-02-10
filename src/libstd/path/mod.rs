@@ -70,7 +70,7 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{OwnedStr, Str, StrSlice};
+use str::{MaybeOwned, OwnedStr, Str, StrSlice, from_utf8_lossy};
 use to_str::ToStr;
 use vec;
 use vec::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
@@ -147,12 +147,6 @@ pub use is_sep_byte = self::windows::is_sep_byte;
 pub mod posix;
 pub mod windows;
 
-// Condition that is raised when a NUL is found in a byte vector given to a Path function
-condition! {
-    // this should be a &[u8] but there's a lifetime issue
-    null_byte: ~[u8] -> ~[u8];
-}
-
 /// A trait that represents the generic operations available on paths
 pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Creates a new Path from a byte vector or string.
@@ -160,18 +154,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     ///
     /// See individual Path impls for additional restrictions.
     #[inline]
     fn new<T: BytesContainer>(path: T) -> Self {
-        if contains_nul(path.container_as_bytes()) {
-            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
-            assert!(!contains_nul(path));
-            unsafe { GenericPathUnsafe::new_unchecked(path) }
-        } else {
-            unsafe { GenericPathUnsafe::new_unchecked(path) }
-        }
+        assert!(!contains_nul(path.container_as_bytes()));
+        unsafe { GenericPathUnsafe::new_unchecked(path) }
     }
 
     /// Creates a new Path from a byte vector or string, if possible.
@@ -283,16 +272,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the filename contains a NUL.
+    /// Fails the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
-        if contains_nul(filename.container_as_bytes()) {
-            let filename = self::null_byte::cond.raise(filename.container_into_owned_bytes());
-            assert!(!contains_nul(filename));
-            unsafe { self.set_filename_unchecked(filename) }
-        } else {
-            unsafe { self.set_filename_unchecked(filename) }
-        }
+        assert!(!contains_nul(filename.container_as_bytes()));
+        unsafe { self.set_filename_unchecked(filename) }
     }
     /// Replaces the extension with the given byte vector or string.
     /// If there is no extension in `self`, this adds one.
@@ -301,8 +285,9 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the extension contains a NUL.
+    /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
+        assert!(!contains_nul(extension.container_as_bytes()));
         // borrowck causes problems here too
         let val = {
             match self.filename() {
@@ -315,21 +300,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                 None
                             } else {
                                 let mut v;
-                                if contains_nul(extension.container_as_bytes()) {
-                                    let ext = extension.container_into_owned_bytes();
-                                    let extension = self::null_byte::cond.raise(ext);
-                                    assert!(!contains_nul(extension));
-                                    v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
-                                    v.push(dot);
-                                    v.push_all(extension);
-                                } else {
-                                    let extension = extension.container_as_bytes();
-                                    v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
-                                    v.push(dot);
-                                    v.push_all(extension);
-                                }
+                                let extension = extension.container_as_bytes();
+                                v = vec::with_capacity(name.len() + extension.len() + 1);
+                                v.push_all(name);
+                                v.push(dot);
+                                v.push_all(extension);
                                 Some(v)
                             }
                         }
@@ -338,19 +313,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                 Some(name.slice_to(idx).to_owned())
                             } else {
                                 let mut v;
-                                if contains_nul(extension.container_as_bytes()) {
-                                    let ext = extension.container_into_owned_bytes();
-                                    let extension = self::null_byte::cond.raise(ext);
-                                    assert!(!contains_nul(extension));
-                                    v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
-                                } else {
-                                    let extension = extension.container_as_bytes();
-                                    v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
-                                }
+                                let extension = extension.container_as_bytes();
+                                v = vec::with_capacity(idx + extension.len() + 1);
+                                v.push_all(name.slice_to(idx+1));
+                                v.push_all(extension);
                                 Some(v)
                             }
                         }
@@ -370,7 +336,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the filename contains a NUL.
+    /// Fails the task if the filename contains a NUL.
     #[inline]
     fn with_filename<T: BytesContainer>(&self, filename: T) -> Self {
         let mut p = self.clone();
@@ -383,7 +349,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the extension contains a NUL.
+    /// Fails the task if the extension contains a NUL.
     #[inline]
     fn with_extension<T: BytesContainer>(&self, extension: T) -> Self {
         let mut p = self.clone();
@@ -408,16 +374,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
-        if contains_nul(path.container_as_bytes()) {
-            let path = self::null_byte::cond.raise(path.container_into_owned_bytes());
-            assert!(!contains_nul(path));
-            unsafe { self.push_unchecked(path) }
-        } else {
-            unsafe { self.push_unchecked(path) }
-        }
+        assert!(!contains_nul(path.container_as_bytes()));
+        unsafe { self.push_unchecked(path) }
     }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
     /// See `push` for details.
@@ -445,7 +406,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Failure
     ///
-    /// Raises the `null_byte` condition if the path contains a NUL.
+    /// Fails the task if the path contains a NUL.
     #[inline]
     fn join<T: BytesContainer>(&self, path: T) -> Self {
         let mut p = self.clone();
@@ -533,8 +494,8 @@ pub struct Display<'a, P> {
 }
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
-    fn fmt(d: &Display<P>, f: &mut fmt::Formatter) -> fmt::Result {
-        d.with_str(|s| f.pad(s))
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_maybe_owned().as_slice().fmt(f)
     }
 }
 
@@ -544,33 +505,25 @@ impl<'a, P: GenericPath> ToStr for Display<'a, P> {
     /// If the path is not UTF-8, invalid sequences with be replaced with the
     /// unicode replacement char. This involves allocation.
     fn to_str(&self) -> ~str {
-        if self.filename {
-            match self.path.filename() {
-                None => ~"",
-                Some(v) => from_utf8_with_replacement(v)
-            }
-        } else {
-            from_utf8_with_replacement(self.path.as_vec())
-        }
+        self.as_maybe_owned().into_owned()
     }
 }
 
 impl<'a, P: GenericPath> Display<'a, P> {
-    /// Provides the path as a string to a closure
+    /// Returns the path as a possibly-owned string.
     ///
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// unicode replacement char. This involves allocation.
     #[inline]
-    pub fn with_str<T>(&self, f: |&str| -> T) -> T {
-        let opt = if self.filename { self.path.filename_str() }
-                  else { self.path.as_str() };
-        match opt {
-            Some(s) => f(s),
-            None => {
-                let s = self.to_str();
-                f(s.as_slice())
+    pub fn as_maybe_owned(&self) -> MaybeOwned<'a> {
+        from_utf8_lossy(if self.filename {
+            match self.path.filename() {
+                None => &[],
+                Some(v) => v
             }
-        }
+        } else {
+            self.path.as_vec()
+        })
     }
 }
 
@@ -630,34 +583,28 @@ impl BytesContainer for CString {
     }
 }
 
+impl<'a> BytesContainer for str::MaybeOwned<'a> {
+    #[inline]
+    fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
+        self.as_slice().as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> ~[u8] {
+        self.into_owned().into_bytes()
+    }
+    #[inline]
+    fn container_as_str<'b>(&'b self) -> Option<&'b str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<str::MaybeOwned>) -> bool { true }
+}
+
 #[inline(always)]
 fn contains_nul(v: &[u8]) -> bool {
     v.iter().any(|&x| x == 0)
 }
 
-#[inline(always)]
-fn from_utf8_with_replacement(mut v: &[u8]) -> ~str {
-    // FIXME (#9516): Don't decode utf-8 manually here once we have a good way to do it in str
-    // This is a truly horrifically bad implementation, done as a functionality stopgap until
-    // we have a proper utf-8 decoder. I don't really want to write one here.
-    static REPLACEMENT_CHAR: char = '\uFFFD';
-
-    let mut s = str::with_capacity(v.len());
-    while !v.is_empty() {
-        let w = str::utf8_char_width(v[0]);
-        if w == 0u {
-            s.push_char(REPLACEMENT_CHAR);
-            v = v.slice_from(1);
-        } else if v.len() < w || !str::is_utf8(v.slice_to(w)) {
-            s.push_char(REPLACEMENT_CHAR);
-            v = v.slice_from(1);
-        } else {
-            s.push_str(unsafe { ::cast::transmute(v.slice_to(w)) });
-            v = v.slice_from(w);
-        }
-    }
-    s
-}
 #[cfg(test)]
 mod tests {
     use prelude::*;

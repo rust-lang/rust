@@ -10,6 +10,7 @@
 
 fn foo() -> int { 23 }
 
-static a: [int, ..2] = [foo(), ..2]; //~ ERROR: function calls in constants are limited to struct and enum constructors
+static a: [int, ..2] = [foo(), ..2];
+//~^ ERROR: function calls in constants are limited to struct and enum constructors
 
 fn main() {}

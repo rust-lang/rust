@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 struct ctxt { v: uint }
 
 trait get_ctxt {
@@ -29,12 +27,12 @@ impl<'a> get_ctxt for has_ctxt<'a> {
 
 }
 
-fn get_v(gc: @get_ctxt) -> uint {
+fn get_v(gc: ~get_ctxt) -> uint {
     gc.get_ctxt().v
 }
 
 fn main() {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
-    assert_eq!(get_v(@hc as @get_ctxt), 22u);
+    assert_eq!(get_v(~hc as ~get_ctxt), 22u);
 }

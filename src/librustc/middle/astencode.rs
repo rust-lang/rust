@@ -37,12 +37,12 @@ use std::cast;
 use std::io::Seek;
 use std::rc::Rc;
 
-use extra::ebml::reader;
-use extra::ebml;
-use extra::serialize;
-use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use extra::serialize::{Decoder, Decodable};
-use writer = extra::ebml::writer;
+use serialize::ebml::reader;
+use serialize::ebml;
+use serialize;
+use serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use serialize::{Decoder, Decodable};
+use writer = serialize::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
@@ -1427,10 +1427,7 @@ trait fake_ext_ctxt {
 }
 
 #[cfg(test)]
-type fake_session = @parse::ParseSess;
-
-#[cfg(test)]
-impl fake_ext_ctxt for fake_session {
+impl fake_ext_ctxt for @parse::ParseSess {
     fn cfg(&self) -> ast::CrateConfig { ~[] }
     fn parse_sess(&self) -> @parse::ParseSess { *self }
     fn call_site(&self) -> Span {
@@ -1446,8 +1443,8 @@ impl fake_ext_ctxt for fake_session {
 }
 
 #[cfg(test)]
-fn mk_ctxt() -> @fake_ext_ctxt {
-    @parse::new_parse_sess(None) as @fake_ext_ctxt
+fn mk_ctxt() -> @parse::ParseSess {
+    parse::new_parse_sess()
 }
 
 #[cfg(test)]

@@ -92,7 +92,7 @@ mod imp {
     use libc;
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
-    use unstable::intrinsics;
+    use mem;
 
     type pthread_mutexattr_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
@@ -153,13 +153,17 @@ mod imp {
         static __SIZEOF_PTHREAD_MUTEX_T: uint = 40 - 8;
         #[cfg(target_arch = "x86")]
         static __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
+        #[cfg(target_arch = "arm")]
+        static __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
         #[cfg(target_arch = "x86_64")]
         static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
         #[cfg(target_arch = "x86")]
         static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
+        #[cfg(target_arch = "arm")]
+        static __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
 
         pub struct pthread_mutex_t {
-            __align: libc::c_long,
+            __align: libc::c_longlong,
             size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
         }
         pub struct pthread_cond_t {
@@ -204,8 +208,8 @@ mod imp {
     impl Mutex {
         pub unsafe fn new() -> Mutex {
             let mut m = Mutex {
-                lock: intrinsics::init(),
-                cond: intrinsics::init(),
+                lock: mem::init(),
+                cond: mem::init(),
             };
 
             pthread_mutex_init(&mut m.lock, 0 as *libc::c_void);
@@ -380,7 +384,6 @@ mod test {
 
     use super::{Mutex, MUTEX_INIT};
     use rt::thread::Thread;
-    use task;
 
     #[test]
     fn somke_lock() {

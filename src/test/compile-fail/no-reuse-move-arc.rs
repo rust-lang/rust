@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::arc;
+extern mod sync;
+use sync::Arc;
 
 use std::task;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    let arc_v = arc::Arc::new(v);
+    let arc_v = Arc::new(v);
 
     task::spawn(proc() {
         let v = arc_v.get();

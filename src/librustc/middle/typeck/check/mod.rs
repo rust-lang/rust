@@ -154,7 +154,7 @@ pub mod method;
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
 pub struct Inherited {
-    infcx: @infer::InferCtxt,
+    infcx: infer::InferCtxt,
     locals: @RefCell<HashMap<ast::NodeId, ty::t>>,
     param_env: ty::ParameterEnvironment,
 
@@ -517,9 +517,9 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         let orig_sp = field_names.find(&id).map(|x| *x);
         match orig_sp {
             Some(orig_sp) => {
-                tcx.sess.span_err(sp, format!("Duplicate field name {} in record type declaration",
+                tcx.sess.span_err(sp, format!("duplicate field name {} in record type declaration",
                                               tcx.sess.str_of(id)));
-                tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
+                tcx.sess.span_note(orig_sp, "first declaration of this field occurred here");
                 break;
             }
             None => {
@@ -936,7 +936,7 @@ fn compare_impl_method(tcx: ty::ctxt,
     };
     debug!("trait_fty (post-subst): {}", trait_fty.repr(tcx));
 
-    match infer::mk_subty(infcx, false, infer::MethodCompatCheck(impl_m_span),
+    match infer::mk_subty(&infcx, false, infer::MethodCompatCheck(impl_m_span),
                           impl_fty, trait_fty) {
         result::Ok(()) => {}
         result::Err(ref terr) => {
@@ -967,8 +967,8 @@ impl AstConv for FnCtxt {
 }
 
 impl FnCtxt {
-    pub fn infcx(&self) -> @infer::InferCtxt {
-        self.inh.infcx
+    pub fn infcx<'a>(&'a self) -> &'a infer::InferCtxt {
+        &self.inh.infcx
     }
 
     pub fn err_count_since_creation(&self) -> uint {
@@ -983,13 +983,12 @@ impl FnCtxt {
     }
 }
 
-impl RegionScope for @infer::InferCtxt {
-    fn anon_regions(&self,
-                    span: Span,
-                    count: uint) -> Result<~[ty::Region], ()> {
-        Ok(vec::from_fn(
-                count,
-                |_| self.next_region_var(infer::MiscVariable(span))))
+impl RegionScope for infer::InferCtxt {
+    fn anon_regions(&self, span: Span, count: uint)
+                    -> Result<~[ty::Region], ()> {
+        Ok(vec::from_fn(count, |_| {
+            self.next_region_var(infer::MiscVariable(span))
+        }))
     }
 }
 
@@ -1007,7 +1006,7 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.span_bug(
                     span,
-                    format!("No type for local variable {:?}", nid));
+                    format!("no type for local variable {:?}", nid));
             }
         }
     }
@@ -1076,7 +1075,7 @@ impl FnCtxt {
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> ty::t {
-        ast_ty_to_ty(self, &self.infcx(), ast_t)
+        ast_ty_to_ty(self, self.infcx(), ast_t)
     }
 
     pub fn pat_to_str(&self, pat: &ast::Pat) -> ~str {
@@ -1620,7 +1619,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 _ => {
                     fcx.tcx().sess.span_bug(
                         sp,
-                        format!("Method without bare fn type"));
+                        format!("method without bare fn type"));
                 }
             }
         }
@@ -2243,7 +2242,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                           &fcx.infcx(),
+                                           fcx.infcx(),
                                            expr.id,
                                            sigil,
                                            purity,
@@ -4127,9 +4126,6 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
                   mutbl: ast::MutImmutable
               });
               (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
-            }
-            "morestack_addr" => {
-              (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
             }
             "offset" => {
               (1,

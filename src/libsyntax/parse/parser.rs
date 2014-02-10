@@ -48,7 +48,7 @@ use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
-use ast::{SelfBox, SelfRegion, SelfStatic, SelfUniq, SelfValue};
+use ast::{SelfRegion, SelfStatic, SelfUniq, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn, TyTypeof};
@@ -285,7 +285,7 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: @Reader)
+pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
               -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
@@ -339,7 +339,7 @@ pub struct Parser {
     tokens_consumed: uint,
     restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
-    reader: @Reader,
+    reader: ~Reader:,
     interner: @token::IdentInterner,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -431,7 +431,7 @@ impl Parser {
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
             self.span_err(self.span,
-                          "Unit-like struct construction is written with no trailing `{ }`");
+                          "unit-like struct construction is written with no trailing `{ }`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
             true
@@ -1601,7 +1601,7 @@ impl Parser {
                 };
             }
             _ => {
-                self.fatal(format!("Expected a lifetime name"));
+                self.fatal(format!("expected a lifetime name"));
             }
         }
     }
@@ -1771,7 +1771,7 @@ impl Parser {
             self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
             return if es.len() == 1 && !trailing_comma {
-                self.mk_expr(lo, self.span.hi, ExprParen(es[0]))
+                self.mk_expr(lo, hi, ExprParen(es[0]))
             }
             else {
                 self.mk_expr(lo, hi, ExprTup(es))
@@ -1994,7 +1994,7 @@ impl Parser {
                                 seq_sep_trailing_disallowed(token::COMMA),
                                 |p| p.parse_expr()
                             );
-                            hi = self.span.hi;
+                            hi = self.last_span.hi;
 
                             es.unshift(e);
                             let nd = self.mk_method_call(i, tys, es, NoSugar);
@@ -2137,7 +2137,7 @@ impl Parser {
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
-                self.fatal("This file contains an un-closed delimiter ");
+                self.fatal("this file contains an un-closed delimiter ");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&self.token);
@@ -2510,7 +2510,7 @@ impl Parser {
                               parse_decl: |&mut Parser| -> P<FnDecl>,
                               parse_body: |&mut Parser| -> @Expr)
                               -> @Expr {
-        let lo = self.last_span.lo;
+        let lo = self.span.lo;
         let decl = parse_decl(self);
         let body = parse_body(self);
         let fakeblock = P(ast::Block {
@@ -3580,19 +3580,6 @@ impl Parser {
     // that may have a self type.
     fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
                                -> (ExplicitSelf, P<FnDecl>) {
-        fn maybe_parse_explicit_self(explicit_self: ast::ExplicitSelf_,
-                                     p: &mut Parser)
-                                     -> ast::ExplicitSelf_ {
-            // We need to make sure it isn't a type
-            if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
-                p.bump();
-                p.expect_self_ident();
-                explicit_self
-            } else {
-                SelfStatic
-            }
-        }
-
         fn maybe_parse_borrowed_explicit_self(this: &mut Parser)
                                               -> ast::ExplicitSelf_ {
             // The following things are possible to see here:
@@ -3650,11 +3637,15 @@ impl Parser {
             token::BINOP(token::AND) => {
                 maybe_parse_borrowed_explicit_self(self)
             }
-            token::AT => {
-                maybe_parse_explicit_self(SelfBox, self)
-            }
             token::TILDE => {
-                maybe_parse_explicit_self(SelfUniq, self)
+                // We need to make sure it isn't a type
+                if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
+                    self.bump();
+                    self.expect_self_ident();
+                    SelfUniq
+                } else {
+                    SelfStatic
+                }
             }
             token::IDENT(..) if self.is_self_ident() => {
                 self.bump();
@@ -3966,7 +3957,7 @@ impl Parser {
             }
             if fields.len() == 0 {
                 let string = get_ident_interner().get(class_name.name);
-                self.fatal(format!("Unit-like struct definition should be written as `struct {};`",
+                self.fatal(format!("unit-like struct definition should be written as `struct {};`",
                                    string.as_slice()));
             }
             self.bump();
@@ -4209,10 +4200,10 @@ impl Parser {
                     let mut err = ~"circular modules: ";
                     let len = included_mod_stack.get().len();
                     for p in included_mod_stack.get().slice(i, len).iter() {
-                        p.display().with_str(|s| err.push_str(s));
+                        err.push_str(p.display().as_maybe_owned().as_slice());
                         err.push_str(" -> ");
                     }
-                    path.display().with_str(|s| err.push_str(s));
+                    err.push_str(path.display().as_maybe_owned().as_slice());
                     self.span_fatal(id_sp, err);
                 }
                 None => ()

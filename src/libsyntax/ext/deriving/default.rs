@@ -14,14 +14,13 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_default(cx: &ExtCtxt,
+pub fn expand_deriving_default(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@Item])
-    -> ~[@Item] {
+                               -> ~[@Item] {
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "default", "Default"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -38,10 +37,10 @@ pub fn expand_deriving_default(cx: &ExtCtxt,
             },
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }
 
-fn default_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
+fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let default_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("default"),

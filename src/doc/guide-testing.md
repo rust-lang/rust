@@ -16,10 +16,12 @@ fn return_two_test() {
 }
 ~~~
 
-To run these tests, use `rustc --test`:
+To run these tests, compile with `rustc --test` and run the resulting
+binary:
 
 ~~~ {.notrust}
-$ rustc --test foo.rs; ./foo
+$ rustc --test foo.rs
+$ ./foo
 running 1 test
 test return_two_test ... ok
 
@@ -47,8 +49,8 @@ value. To run the tests in a crate, it must be compiled with the
 `--test` flag: `rustc myprogram.rs --test -o myprogram-tests`. Running
 the resulting executable will run all the tests in the crate. A test
 is considered successful if its function returns; if the task running
-the test fails, through a call to `fail!`, a failed `check` or
-`assert`, or some other (`assert_eq`, ...) means, then the test fails.
+the test fails, through a call to `fail!`, a failed `assert`, or some
+other (`assert_eq`, ...) means, then the test fails.
 
 When compiling a crate with the `--test` flag `--cfg test` is also
 implied, so that tests can be conditionally compiled.
@@ -100,7 +102,63 @@ failure output difficult. In these cases you can set the
 `RUST_TEST_TASKS` environment variable to 1 to make the tests run
 sequentially.
 
-## Benchmarking
+## Examples
+
+### Typical test run
+
+~~~ {.notrust}
+$ mytests
+
+running 30 tests
+running driver::tests::mytest1 ... ok
+running driver::tests::mytest2 ... ignored
+... snip ...
+running driver::tests::mytest30 ... ok
+
+result: ok. 28 passed; 0 failed; 2 ignored
+~~~
+
+### Test run with failures
+
+~~~ {.notrust}
+$ mytests
+
+running 30 tests
+running driver::tests::mytest1 ... ok
+running driver::tests::mytest2 ... ignored
+... snip ...
+running driver::tests::mytest30 ... FAILED
+
+result: FAILED. 27 passed; 1 failed; 2 ignored
+~~~
+
+### Running ignored tests
+
+~~~ {.notrust}
+$ mytests --ignored
+
+running 2 tests
+running driver::tests::mytest2 ... failed
+running driver::tests::mytest10 ... ok
+
+result: FAILED. 1 passed; 1 failed; 0 ignored
+~~~
+
+### Running a subset of tests
+
+~~~ {.notrust}
+$ mytests mytest1
+
+running 11 tests
+running driver::tests::mytest1 ... ok
+running driver::tests::mytest10 ... ignored
+... snip ...
+running driver::tests::mytest19 ... ok
+
+result: ok. 11 passed; 0 failed; 1 ignored
+~~~
+
+# Microbenchmarking
 
 The test runner also understands a simple form of benchmark execution.
 Benchmark functions are marked with the `#[bench]` attribute, rather
@@ -111,11 +169,12 @@ component of your testsuite, pass `--bench` to the compiled test
 runner.
 
 The type signature of a benchmark function differs from a unit test:
-it takes a mutable reference to type `test::BenchHarness`. Inside the
-benchmark function, any time-variable or "setup" code should execute
-first, followed by a call to `iter` on the benchmark harness, passing
-a closure that contains the portion of the benchmark you wish to
-actually measure the per-iteration speed of.
+it takes a mutable reference to type
+`extra::test::BenchHarness`. Inside the benchmark function, any
+time-variable or "setup" code should execute first, followed by a call
+to `iter` on the benchmark harness, passing a closure that contains
+the portion of the benchmark you wish to actually measure the
+per-iteration speed of.
 
 For benchmarks relating to processing/generating data, one can set the
 `bytes` field to the number of bytes consumed/produced in each
@@ -128,15 +187,16 @@ For example:
 ~~~
 extern mod extra;
 use std::vec;
+use extra::test::BenchHarness;
 
 #[bench]
-fn bench_sum_1024_ints(b: &mut extra::test::BenchHarness) {
+fn bench_sum_1024_ints(b: &mut BenchHarness) {
     let v = vec::from_fn(1024, |n| n);
     b.iter(|| {v.iter().fold(0, |old, new| old + *new);} );
 }
 
 #[bench]
-fn initialise_a_vector(b: &mut extra::test::BenchHarness) {
+fn initialise_a_vector(b: &mut BenchHarness) {
     b.iter(|| {vec::from_elem(1024, 0u64);} );
     b.bytes = 1024 * 8;
 }
@@ -163,66 +223,9 @@ Advice on writing benchmarks:
 To run benchmarks, pass the `--bench` flag to the compiled
 test-runner. Benchmarks are compiled-in but not executed by default.
 
-## Examples
-
-### Typical test run
-
 ~~~ {.notrust}
-> mytests
-
-running 30 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest2 ... ignored
-... snip ...
-running driver::tests::mytest30 ... ok
-
-result: ok. 28 passed; 0 failed; 2 ignored
-~~~ {.notrust}
-
-### Test run with failures
-
-~~~ {.notrust}
-> mytests
-
-running 30 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest2 ... ignored
-... snip ...
-running driver::tests::mytest30 ... FAILED
-
-result: FAILED. 27 passed; 1 failed; 2 ignored
-~~~
-
-### Running ignored tests
-
-~~~ {.notrust}
-> mytests --ignored
-
-running 2 tests
-running driver::tests::mytest2 ... failed
-running driver::tests::mytest10 ... ok
-
-result: FAILED. 1 passed; 1 failed; 0 ignored
-~~~
-
-### Running a subset of tests
-
-~~~ {.notrust}
-> mytests mytest1
-
-running 11 tests
-running driver::tests::mytest1 ... ok
-running driver::tests::mytest10 ... ignored
-... snip ...
-running driver::tests::mytest19 ... ok
-
-result: ok. 11 passed; 0 failed; 1 ignored
-~~~
-
-### Running benchmarks
-
-~~~ {.notrust}
-> mytests --bench
+$ rustc mytests.rs -O --test
+$ mytests --bench
 
 running 2 tests
 test bench_sum_1024_ints ... bench: 709 ns/iter (+/- 82)
@@ -230,6 +233,77 @@ test initialise_a_vector ... bench: 424 ns/iter (+/- 99) = 19320 MB/s
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
 ~~~
+
+## Benchmarks and the optimizer
+
+Benchmarks compiled with optimizations activated can be dramatically
+changed by the optimizer so that the benchmark is no longer
+benchmarking what one expects. For example, the compiler might
+recognize that some calculation has no external effects and remove
+it entirely.
+
+~~~
+extern mod extra;
+use extra::test::BenchHarness;
+
+#[bench]
+fn bench_xor_1000_ints(bh: &mut BenchHarness) {
+    bh.iter(|| {
+            range(0, 1000).fold(0, |old, new| old ^ new);
+        });
+}
+~~~
+
+gives the following results
+
+~~~ {.notrust}
+running 1 test
+test bench_xor_1000_ints ... bench:         0 ns/iter (+/- 0)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
+~~~
+
+The benchmarking runner offers two ways to avoid this. Either, the
+closure that the `iter` method receives can return an arbitrary value
+which forces the optimizer to consider the result used and ensures it
+cannot remove the computation entirely. This could be done for the
+example above by adjusting the `bh.iter` call to
+
+~~~
+bh.iter(|| range(0, 1000).fold(0, |old, new| old ^ new))
+~~~
+
+Or, the other option is to call the generic `extra::test::black_box`
+function, which is an opaque "black box" to the optimizer and so
+forces it to consider any argument as used.
+
+~~~
+use extra::test::black_box
+
+bh.iter(|| {
+        black_box(range(0, 1000).fold(0, |old, new| old ^ new));
+    });
+~~~
+
+Neither of these read or modify the value, and are very cheap for
+small values. Larger values can be passed indirectly to reduce
+overhead (e.g. `black_box(&huge_struct)`).
+
+Performing either of the above changes gives the following
+benchmarking results
+
+~~~ {.notrust}
+running 1 test
+test bench_xor_1000_ints ... bench:       375 ns/iter (+/- 148)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
+~~~
+
+However, the optimizer can still modify a testcase in an undesirable
+manner even when using either of the above. Benchmarks can be checked
+by hand by looking at the output of the compiler using the `--emit=ir`
+(for LLVM IR), `--emit=asm` (for assembly) or compiling normally and
+using any method for examining object code.
 
 ## Saving and ratcheting metrics
 

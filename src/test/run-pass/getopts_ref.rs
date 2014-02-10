@@ -10,13 +10,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern mod getopts;
 
-use extra::getopts::{optopt, getopts};
+use getopts::{optopt, getopts};
 
 pub fn main() {
     let args = ~[];
-    let opts = ~[optopt("b")];
+    let opts = ~[optopt("b", "", "something", "SMTHNG")];
 
     match getopts(args, opts) {
         Ok(ref m)  =>

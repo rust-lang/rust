@@ -49,27 +49,34 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate arena glob term semver uuid
+TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
+                 uuid serialize sync getopts collections fourcc
 HOST_CRATES := syntax rustc rustdoc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_std := native:rustrt
-DEPS_extra := std term
+DEPS_extra := std term sync serialize getopts collections
 DEPS_green := std
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std extra term
-DEPS_rustc := syntax native:rustllvm flate arena
-DEPS_rustdoc := rustc native:sundown
+DEPS_syntax := std extra term serialize collections
+DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
+              collections
+DEPS_rustdoc := rustc native:sundown serialize sync getopts collections
 DEPS_flate := std native:miniz
-DEPS_arena := std extra
+DEPS_arena := std collections
 DEPS_glob := std
+DEPS_serialize := std
 DEPS_term := std
 DEPS_semver := std
-DEPS_uuid := std extra
+DEPS_uuid := std serialize
+DEPS_sync := std
+DEPS_getopts := std
+DEPS_collections := std serialize
+DEPS_fourcc := syntax std
 
-TOOL_DEPS_compiletest := extra green rustuv
+TOOL_DEPS_compiletest := extra green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc green rustuv
 TOOL_DEPS_rustc := rustc green rustuv
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
@@ -100,7 +107,7 @@ $(foreach crate,$(CRATES),$(eval $(call RUST_CRATE,$(crate))))
 #
 # $(1) is the crate to generate variables for
 define RUST_TOOL
-TOOL_INPUTS_$(1) := $$(wildcard $$(addprefix $(S)$$(dir $$(TOOL_SOURCE_$(1))), \
+TOOL_INPUTS_$(1) := $$(wildcard $$(addprefix $$(dir $$(TOOL_SOURCE_$(1))), \
 				*.rs */*.rs */*/*.rs */*/*/*.rs))
 endef
 

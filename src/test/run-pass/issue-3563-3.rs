@@ -41,8 +41,6 @@ struct Rect {
     size: Size,
 }
 
-// TODO: operators
-
 // Contains the information needed to do shape rendering via ASCII art.
 struct AsciiArt {
     width: uint,

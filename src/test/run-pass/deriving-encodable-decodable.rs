@@ -16,14 +16,14 @@
 
 #[feature(struct_variant, managed_boxes)];
 
-extern mod extra;
+extern mod serialize;
 
 use std::io::MemWriter;
 use std::rand::{random, Rand};
-use extra::serialize::{Encodable, Decodable};
-use extra::ebml;
-use extra::ebml::writer::Encoder;
-use extra::ebml::reader::Decoder;
+use serialize::{Encodable, Decodable};
+use serialize::ebml;
+use serialize::ebml::writer::Encoder;
+use serialize::ebml::reader::Decoder;
 
 #[deriving(Encodable, Decodable, Eq, Rand)]
 struct A;

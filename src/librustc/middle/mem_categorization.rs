@@ -177,8 +177,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(region_ptr(ast::MutImmutable, r)))
         }
 
-        ty::ty_box(_) |
-        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
+        ty::ty_box(_) => {
             Some(deref_ptr(gc_ptr))
         }
 
@@ -549,7 +548,7 @@ impl mem_categorization_ctxt {
                   _ => {
                       self.tcx.sess.span_bug(
                           span,
-                          format!("Upvar of non-closure {:?} - {}",
+                          format!("upvar of non-closure {:?} - {}",
                                fn_node_id, ty.repr(self.tcx)));
                   }
               }
@@ -653,7 +652,7 @@ impl mem_categorization_ctxt {
             None => {
                 self.tcx.sess.span_bug(
                     node.span(),
-                    format!("Explicit deref of non-derefable type: {}",
+                    format!("explicit deref of non-derefable type: {}",
                          ty_to_str(self.tcx, base_cmt.ty)));
             }
         };
@@ -746,7 +745,7 @@ impl mem_categorization_ctxt {
           None => {
             self.tcx.sess.span_bug(
                 elt.span(),
-                format!("Explicit index of non-index type `{}`",
+                format!("explicit index of non-index type `{}`",
                      ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
@@ -1101,11 +1100,13 @@ pub fn field_mutbl(tcx: ty::ctxt,
 pub enum AliasableReason {
     AliasableManaged,
     AliasableBorrowed(ast::Mutability),
-    AliasableOther
+    AliasableOther,
+    AliasableStatic,
+    AliasableStaticMut,
 }
 
 impl cmt_ {
-    pub fn guarantor(@self) -> cmt {
+    pub fn guarantor(self) -> cmt {
         //! Returns `self` after stripping away any owned pointer derefs or
         //! interior content. The return value is basically the `cmt` which
         //! determines how long the value in `self` remains live.
@@ -1119,7 +1120,7 @@ impl cmt_ {
             cat_deref(_, _, unsafe_ptr(..)) |
             cat_deref(_, _, gc_ptr) |
             cat_deref(_, _, region_ptr(..)) => {
-                self
+                @self
             }
             cat_downcast(b) |
             cat_stack_upvar(b) |
@@ -1129,10 +1130,6 @@ impl cmt_ {
                 b.guarantor()
             }
         }
-    }
-
-    pub fn is_freely_aliasable(&self) -> bool {
-        self.freely_aliasable().is_some()
     }
 
     pub fn freely_aliasable(&self) -> Option<AliasableReason> {
@@ -1146,18 +1143,34 @@ impl cmt_ {
         // aliased and eventually recused.
 
         match self.cat {
+            cat_deref(b, _, region_ptr(MutMutable, _)) |
+            cat_downcast(b) |
+            cat_stack_upvar(b) |
+            cat_deref(b, _, uniq_ptr) |
+            cat_interior(b, _) |
+            cat_discr(b, _) => {
+                // Aliasability depends on base cmt
+                b.freely_aliasable()
+            }
+
             cat_copied_upvar(CopiedUpvar {onceness: ast::Once, ..}) |
             cat_rvalue(..) |
             cat_local(..) |
             cat_arg(_) |
-            cat_deref(_, _, unsafe_ptr(..)) | // of course it is aliasable, but...
-            cat_deref(_, _, region_ptr(MutMutable, _)) => {
+            cat_deref(_, _, unsafe_ptr(..)) => { // yes, it's aliasable, but...
                 None
             }
 
-            cat_copied_upvar(CopiedUpvar {onceness: ast::Many, ..}) |
-            cat_static_item(..) => {
+            cat_copied_upvar(CopiedUpvar {onceness: ast::Many, ..}) => {
                 Some(AliasableOther)
+            }
+
+            cat_static_item(..) => {
+                if self.mutbl.is_mutable() {
+                    Some(AliasableStaticMut)
+                } else {
+                    Some(AliasableStatic)
+                }
             }
 
             cat_deref(_, _, gc_ptr) => {
@@ -1166,14 +1179,6 @@ impl cmt_ {
 
             cat_deref(_, _, region_ptr(m @ MutImmutable, _)) => {
                 Some(AliasableBorrowed(m))
-            }
-
-            cat_downcast(..) |
-            cat_stack_upvar(..) |
-            cat_deref(_, _, uniq_ptr) |
-            cat_interior(..) |
-            cat_discr(..) => {
-                None
             }
         }
     }

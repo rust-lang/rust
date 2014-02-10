@@ -211,7 +211,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                 _ => {}
             }
         }
-        self.ccx.tcx.sess.bug("No loop scope found");
+        self.ccx.tcx.sess.bug("no loop scope found");
     }
 
     fn normal_exit_block(&'a self,
@@ -337,7 +337,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         }
 
         self.ccx.tcx.sess.bug(
-            format!("No cleanup scope {} found",
+            format!("no cleanup scope {} found",
                     ast_map::node_id_to_str(self.ccx.tcx.items, cleanup_scope,
                                             token::get_ident_interner())));
     }
@@ -548,7 +548,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
                     LoopExit(id, _) => {
                         self.ccx.tcx.sess.bug(format!(
-                                "Cannot exit from scope {:?}, \
+                                "cannot exit from scope {:?}, \
                                 not in scope", id));
                     }
                 }

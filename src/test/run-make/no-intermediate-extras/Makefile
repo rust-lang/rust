@@ -3,5 +3,5 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) --rlib --test foo.rs
+	$(RUSTC) --crate-type=rlib --test foo.rs
 	rm $(TMPDIR)/foo.bc && exit 1 || exit 0

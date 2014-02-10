@@ -11,7 +11,7 @@
 // xfail-win32: FIXME #10474
 // xfail-android: FIXME(#10381)
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:rbreak zzz
 // debugger:run
 // debugger:finish

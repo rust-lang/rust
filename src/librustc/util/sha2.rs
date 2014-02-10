@@ -22,7 +22,7 @@ use extra::hex::ToHex;
 /// format.
 fn write_u32_be(dst: &mut[u8], input: u32) {
     use std::cast::transmute;
-    use std::unstable::intrinsics::to_be32;
+    use std::mem::to_be32;
     assert!(dst.len() == 4);
     unsafe {
         let x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
@@ -33,7 +33,7 @@ fn write_u32_be(dst: &mut[u8], input: u32) {
 /// Read a vector of bytes into a vector of u32s. The values are read in big-endian format.
 fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     use std::cast::transmute;
-    use std::unstable::intrinsics::to_be32;
+    use std::mem::to_be32;
     assert!(dst.len() * 4 == input.len());
     unsafe {
         let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
@@ -64,12 +64,12 @@ fn add_bytes_to_bits<T: Int + CheckedAdd + ToBits>(bits: T, bytes: T) -> T {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
     if new_high_bits > Zero::zero() {
-        fail!("Numeric overflow occured.")
+        fail!("numeric overflow occured.")
     }
 
     match bits.checked_add(&new_low_bits) {
         Some(x) => return x,
-        None => fail!("Numeric overflow occured.")
+        None => fail!("numeric overflow occured.")
     }
 }
 

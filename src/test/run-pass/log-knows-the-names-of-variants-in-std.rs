@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::list;
+extern mod collections;
+use collections::list;
 
 #[deriving(Clone)]
 enum foo {

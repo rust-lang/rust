@@ -298,7 +298,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
                 Some(datum) => datum,
                 None => {
                     bcx.tcx().sess.span_bug(span,
-                        format!("No entry in lllocals table for {:?}",
+                        format!("no entry in lllocals table for {:?}",
                                 node_id));
                 }
             }
@@ -440,7 +440,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
                 Some(v) => v,
                 None => {
                     bcx.tcx().sess.span_bug(span,
-                        format!("No entry in llargs table for {:?}",
+                        format!("no entry in llargs table for {:?}",
                                 node_id));
                 }
             }
@@ -707,7 +707,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               fn_decl: &ast::FnDecl,
                               param_substs: Option<@param_substs>,
                               error_span: Span) -> DIArray {
-        if !cx.sess.opts.extra_debuginfo {
+        if !cx.sess.opts.debuginfo {
             return create_DIArray(DIB(cx), []);
         }
 
@@ -784,8 +784,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Only create type information if extra_debuginfo is enabled
-            if cx.sess.opts.extra_debuginfo {
+            // Only create type information if debuginfo is enabled
+            if cx.sess.opts.debuginfo {
                 let actual_self_type_metadata = type_metadata(cx,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
@@ -829,8 +829,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Again, only create type information if extra_debuginfo is enabled
-            if cx.sess.opts.extra_debuginfo {
+            // Again, only create type information if debuginfo is enabled
+            if cx.sess.opts.debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let param_metadata_string = token::get_ident(ident.name);
                 let param_metadata = param_metadata_string.get()
@@ -1130,9 +1130,31 @@ fn pointer_type_metadata(cx: &CrateContext,
     return ptr_metadata;
 }
 
-trait MemberDescriptionFactory {
+enum MemberDescriptionFactory {
+    StructMD(StructMemberDescriptionFactory),
+    TupleMD(TupleMemberDescriptionFactory),
+    GeneralMD(GeneralMemberDescriptionFactory),
+    EnumVariantMD(EnumVariantMemberDescriptionFactory)
+}
+
+impl MemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription];
+                                  -> ~[MemberDescription] {
+        match *self {
+            StructMD(ref this) => {
+                this.create_member_descriptions(cx)
+            }
+            TupleMD(ref this) => {
+                this.create_member_descriptions(cx)
+            }
+            GeneralMD(ref this) => {
+                this.create_member_descriptions(cx)
+            }
+            EnumVariantMD(ref this) => {
+                this.create_member_descriptions(cx)
+            }
+        }
+    }
 }
 
 struct StructMemberDescriptionFactory {
@@ -1140,7 +1162,7 @@ struct StructMemberDescriptionFactory {
     span: Span,
 }
 
-impl MemberDescriptionFactory for StructMemberDescriptionFactory {
+impl StructMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> ~[MemberDescription] {
         self.fields.map(|field| {
@@ -1189,10 +1211,10 @@ fn prepare_struct_metadata(cx: &CrateContext,
         metadata_stub: struct_metadata_stub,
         llvm_type: struct_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: @StructMemberDescriptionFactory {
+        member_description_factory: StructMD(StructMemberDescriptionFactory {
             fields: fields,
             span: span,
-        } as @MemberDescriptionFactory,
+        }),
     }
 }
 
@@ -1202,7 +1224,7 @@ enum RecursiveTypeDescription {
         metadata_stub: DICompositeType,
         llvm_type: Type,
         file_metadata: DIFile,
-        member_description_factory: @MemberDescriptionFactory,
+        member_description_factory: MemberDescriptionFactory,
     },
     FinalMetadata(DICompositeType)
 }
@@ -1217,7 +1239,7 @@ impl RecursiveTypeDescription {
                 metadata_stub,
                 llvm_type,
                 file_metadata,
-                member_description_factory
+                ref member_description_factory
             } => {
                 // Insert the stub into the cache in order to allow recursive references ...
                 {
@@ -1246,7 +1268,7 @@ struct TupleMemberDescriptionFactory {
     span: Span,
 }
 
-impl MemberDescriptionFactory for TupleMemberDescriptionFactory {
+impl TupleMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> ~[MemberDescription] {
         self.component_types.map(|&component_type| {
@@ -1281,10 +1303,10 @@ fn prepare_tuple_metadata(cx: &CrateContext,
                                           span),
         llvm_type: tuple_llvm_type,
         file_metadata: file_metadata,
-        member_description_factory: @TupleMemberDescriptionFactory {
+        member_description_factory: TupleMD(TupleMemberDescriptionFactory {
             component_types: component_types.to_owned(),
             span: span,
-        } as @MemberDescriptionFactory
+        })
     }
 }
 
@@ -1297,7 +1319,7 @@ struct GeneralMemberDescriptionFactory {
     span: Span,
 }
 
-impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
+impl GeneralMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> ~[MemberDescription] {
         // Capture type_rep, so we don't have to copy the struct_defs array
@@ -1344,7 +1366,7 @@ struct EnumVariantMemberDescriptionFactory {
     span: Span,
 }
 
-impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
+impl EnumVariantMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> ~[MemberDescription] {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
@@ -1368,7 +1390,7 @@ fn describe_enum_variant(cx: &CrateContext,
                          containing_scope: DIScope,
                          file_metadata: DIFile,
                          span: Span)
-                      -> (DICompositeType, Type, @MemberDescriptionFactory) {
+                      -> (DICompositeType, Type, MemberDescriptionFactory) {
     let variant_info_string = token::get_ident(variant_info.name.name);
     let variant_name = variant_info_string.get();
     let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
@@ -1424,11 +1446,11 @@ fn describe_enum_variant(cx: &CrateContext,
         .collect();
 
     let member_description_factory =
-        @EnumVariantMemberDescriptionFactory {
+        EnumVariantMD(EnumVariantMemberDescriptionFactory {
             args: args,
             discriminant_type_metadata: discriminant_type_metadata,
             span: span,
-        } as @MemberDescriptionFactory;
+        });
 
     (metadata_stub, variant_llvm_type, member_description_factory)
 }
@@ -1556,14 +1578,14 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 metadata_stub: enum_metadata,
                 llvm_type: enum_llvm_type,
                 file_metadata: file_metadata,
-                member_description_factory: @GeneralMemberDescriptionFactory {
+                member_description_factory: GeneralMD(GeneralMemberDescriptionFactory {
                     type_rep: type_rep,
                     variants: variants,
                     discriminant_type_metadata: discriminant_type_metadata,
                     containing_scope: containing_scope,
                     file_metadata: file_metadata,
                     span: span,
-                } as @MemberDescriptionFactory,
+                }),
             }
         }
         adt::NullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
@@ -1757,7 +1779,7 @@ fn boxed_type_metadata(cx: &CrateContext,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: ~"tydesc",
+            name: ~"drop_glue",
             llvm_type: member_llvm_types[1],
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
@@ -1802,7 +1824,7 @@ fn boxed_type_metadata(cx: &CrateContext,
                           -> bool {
         member_llvm_types.len() == 5 &&
         member_llvm_types[0] == cx.int_type &&
-        member_llvm_types[1] == cx.tydesc_type.ptr_to() &&
+        member_llvm_types[1] == Type::generic_glue_fn(cx).ptr_to() &&
         member_llvm_types[2] == Type::i8().ptr_to() &&
         member_llvm_types[3] == Type::i8().ptr_to() &&
         member_llvm_types[4] == content_llvm_type

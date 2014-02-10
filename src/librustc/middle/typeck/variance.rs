@@ -718,7 +718,7 @@ impl<'a> ConstraintContext<'a> {
             ty::ty_infer(..) | ty::ty_err |
             ty::ty_type | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
-                    format!("Unexpected type encountered in \
+                    format!("unexpected type encountered in \
                             variance inference: {}",
                             ty.repr(self.tcx())));
             }
@@ -804,7 +804,7 @@ impl<'a> ConstraintContext<'a> {
             ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
-                self.tcx().sess.bug(format!("Unexpected region encountered in \
+                self.tcx().sess.bug(format!("unexpected region encountered in \
                                             variance inference: {}",
                                             region.repr(self.tcx())));
             }

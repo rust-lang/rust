@@ -9,12 +9,12 @@
 // except according to those terms.
 
 // xfail-fast
-extern mod extra;
-use extra::arc;
-fn dispose(_x: arc::Arc<bool>) { }
+extern mod sync;
+use sync::Arc;
+fn dispose(_x: Arc<bool>) { }
 
 pub fn main() {
-    let p = arc::Arc::new(true);
+    let p = Arc::new(true);
     let x = Some(p);
     match x {
         Some(z) => { dispose(z); },

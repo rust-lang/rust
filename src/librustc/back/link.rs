@@ -11,7 +11,7 @@
 
 use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
-use driver::driver::CrateTranslation;
+use driver::driver::{CrateTranslation, OutputFilenames};
 use driver::session::Session;
 use driver::session;
 use lib::llvm::llvm;
@@ -44,9 +44,8 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::crateid::CrateId;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, TotalOrd, TotalEq)]
 pub enum OutputType {
-    OutputTypeNone,
     OutputTypeBitcode,
     OutputTypeAssembly,
     OutputTypeLlvmAssembly,
@@ -77,7 +76,7 @@ pub fn WriteOutputFile(
             let result = llvm::LLVMRustWriteOutputFile(
                     Target, PM, M, Output, FileType);
             if !result {
-                llvm_err(sess, ~"Could not write output");
+                llvm_err(sess, ~"could not write output");
             }
         })
     }
@@ -90,7 +89,7 @@ pub mod write {
     use back::link::{OutputTypeAssembly, OutputTypeBitcode};
     use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
     use back::link::{OutputTypeObject};
-    use driver::driver::CrateTranslation;
+    use driver::driver::{CrateTranslation, OutputFilenames};
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
@@ -101,7 +100,6 @@ pub mod write {
 
     use std::c_str::ToCStr;
     use std::libc::{c_uint, c_int};
-    use std::path::Path;
     use std::run;
     use std::str;
 
@@ -113,26 +111,26 @@ pub mod write {
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
         match sess.targ_cfg.os {
             abi::OsAndroid => {
-                if "" == sess.opts.target_feature {
+                if "" == sess.opts.cg.target_feature {
                     "+v7"
                 } else {
-                    sess.opts.target_feature.as_slice()
+                    sess.opts.cg.target_feature.as_slice()
                 }
             }
-            _ => sess.opts.target_feature.as_slice()
+            _ => sess.opts.cg.target_feature.as_slice()
         }
     }
 
     pub fn run_passes(sess: Session,
                       trans: &CrateTranslation,
-                      output_type: OutputType,
-                      output: &Path) {
+                      output_types: &[OutputType],
+                      output: &OutputFilenames) {
         let llmod = trans.module;
         let llcx = trans.context;
         unsafe {
             configure_llvm(sess);
 
-            if sess.opts.save_temps {
+            if sess.opts.cg.save_temps {
                 output.with_extension("no-opt.bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
@@ -144,7 +142,7 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
-            let use_softfp = sess.opts.debugging_opts & session::USE_SOFTFP != 0;
+            let use_softfp = sess.opts.cg.soft_float;
 
             // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
             // FIXME: #11954: mac64 unwinding may not work with fp elim
@@ -153,7 +151,7 @@ pub mod write {
                               sess.targ_cfg.arch == abi::X86_64);
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
-                sess.opts.target_cpu.with_c_str(|CPU| {
+                sess.opts.cg.target_cpu.with_c_str(|CPU| {
                     target_feature(&sess).with_c_str(|Features| {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
@@ -182,16 +180,16 @@ pub mod write {
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
 
-            if !sess.no_prepopulate_passes() {
+            if !sess.opts.cg.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
                 populate_llvm_passes(fpm, mpm, llmod, OptLevel);
             }
 
-            for pass in sess.opts.custom_passes.iter() {
+            for pass in sess.opts.cg.passes.iter() {
                 pass.with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
-                        sess.warn(format!("Unknown pass {}, ignoring", *pass));
+                        sess.warn(format!("unknown pass {}, ignoring", *pass));
                     }
                 })
             }
@@ -209,10 +207,11 @@ pub mod write {
             // Emit the bytecode if we're either saving our temporaries or
             // emitting an rlib. Whenever an rlib is created, the bytecode is
             // inserted into the archive in order to allow LTO against it.
-            let outputs = sess.outputs.borrow();
-            if sess.opts.save_temps ||
-               outputs.get().iter().any(|&o| o == session::OutputRlib) {
-                output.with_extension("bc").with_c_str(|buf| {
+            let crate_types = sess.crate_types.borrow();
+            if sess.opts.cg.save_temps ||
+               (crate_types.get().contains(&session::CrateTypeRlib) &&
+                sess.opts.output_types.contains(&OutputTypeExe)) {
+                output.temp_path(OutputTypeBitcode).with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
             }
@@ -221,7 +220,7 @@ pub mod write {
                 time(sess.time_passes(), "all lto passes", (), |()|
                      lto::run(sess, llmod, tm, trans.reachable));
 
-                if sess.opts.save_temps {
+                if sess.opts.cg.save_temps {
                     output.with_extension("lto.bc").with_c_str(|buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf);
                     })
@@ -247,52 +246,68 @@ pub mod write {
                 }
             }
 
-            time(sess.time_passes(), "codegen passes", (), |()| {
-                match output_type {
-                    OutputTypeNone => {}
+            let mut object_file = None;
+            let mut needs_metadata = false;
+            for output_type in output_types.iter() {
+                let path = output.path(*output_type);
+                match *output_type {
                     OutputTypeBitcode => {
-                        output.with_c_str(|buf| {
+                        path.with_c_str(|buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         })
                     }
                     OutputTypeLlvmAssembly => {
-                        output.with_c_str(|output| {
+                        path.with_c_str(|output| {
                             with_codegen(tm, llmod, |cpm| {
                                 llvm::LLVMRustPrintModule(cpm, llmod, output);
                             })
                         })
                     }
                     OutputTypeAssembly => {
-                        with_codegen(tm, llmod, |cpm| {
-                            WriteOutputFile(sess, tm, cpm, llmod, output,
-                                            lib::llvm::AssemblyFile);
-                        });
-
                         // If we're not using the LLVM assembler, this function
                         // could be invoked specially with output_type_assembly,
                         // so in this case we still want the metadata object
                         // file.
-                        if sess.opts.output_type != OutputTypeAssembly {
-                            with_codegen(tm, trans.metadata_module, |cpm| {
-                                let out = output.with_extension("metadata.o");
-                                WriteOutputFile(sess, tm, cpm,
-                                                trans.metadata_module, &out,
-                                                lib::llvm::ObjectFile);
-                            })
-                        }
-                    }
-                    OutputTypeExe | OutputTypeObject => {
+                        let ty = OutputTypeAssembly;
+                        let path = if sess.opts.output_types.contains(&ty) {
+                           path
+                        } else {
+                            needs_metadata = true;
+                            output.temp_path(OutputTypeAssembly)
+                        };
                         with_codegen(tm, llmod, |cpm| {
-                            WriteOutputFile(sess, tm, cpm, llmod, output,
+                            WriteOutputFile(sess, tm, cpm, llmod, &path,
+                                            lib::llvm::AssemblyFile);
+                        });
+                    }
+                    OutputTypeObject => {
+                        object_file = Some(path);
+                    }
+                    OutputTypeExe => {
+                        object_file = Some(output.temp_path(OutputTypeObject));
+                        needs_metadata = true;
+                    }
+                }
+            }
+
+            time(sess.time_passes(), "codegen passes", (), |()| {
+                match object_file {
+                    Some(ref path) => {
+                        with_codegen(tm, llmod, |cpm| {
+                            WriteOutputFile(sess, tm, cpm, llmod, path,
                                             lib::llvm::ObjectFile);
                         });
-                        with_codegen(tm, trans.metadata_module, |cpm| {
-                            let out = output.with_extension("metadata.o");
-                            WriteOutputFile(sess, tm, cpm,
-                                            trans.metadata_module, &out,
-                                            lib::llvm::ObjectFile);
-                        })
                     }
+                    None => {}
+                }
+                if needs_metadata {
+                    with_codegen(tm, trans.metadata_module, |cpm| {
+                        let out = output.temp_path(OutputTypeObject)
+                                        .with_extension("metadata.o");
+                        WriteOutputFile(sess, tm, cpm,
+                                        trans.metadata_module, &out,
+                                        lib::llvm::ObjectFile);
+                    })
                 }
             });
 
@@ -304,8 +319,10 @@ pub mod write {
         }
     }
 
-    pub fn run_assembler(sess: Session, assembly: &Path, object: &Path) {
+    pub fn run_assembler(sess: Session, outputs: &OutputFilenames) {
         let cc = super::get_cc_prog(sess);
+        let assembly = outputs.temp_path(OutputTypeAssembly);
+        let object = outputs.path(OutputTypeObject);
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         let args = [
@@ -331,15 +348,15 @@ pub mod write {
     }
 
     unsafe fn configure_llvm(sess: Session) {
-        use extra::sync::one::{Once, ONCE_INIT};
+        use sync::one::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3
-        let vectorize_loop = !sess.no_vectorize_loops() &&
+        let vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
                              (sess.opts.optimize == session::Default ||
                               sess.opts.optimize == session::Aggressive);
-        let vectorize_slp = !sess.no_vectorize_slp() &&
+        let vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
                             sess.opts.optimize == session::Aggressive;
 
         let mut llvm_c_strs = ~[];
@@ -357,7 +374,7 @@ pub mod write {
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
-        for arg in sess.opts.llvm_args.iter() {
+        for arg in sess.opts.cg.llvm_args.iter() {
             add(*arg);
         }
 
@@ -480,9 +497,8 @@ pub mod write {
  *    system linkers understand.
  */
 
-pub fn build_link_meta(sess: Session,
-                       attrs: &[ast::Attribute],
-                       output: &Path,
+pub fn build_link_meta(attrs: &[ast::Attribute],
+                       output: &OutputFilenames,
                        symbol_hasher: &mut Sha256)
                        -> LinkMeta {
     // This calculates CMH as defined above
@@ -493,14 +509,7 @@ pub fn build_link_meta(sess: Session,
     }
 
     let crateid = match attr::find_crateid(attrs) {
-        None => {
-            let stem = session::expect(
-                sess,
-                output.filestem_str(),
-                || format!("output file name '{}' doesn't appear to have a stem",
-                           output.display()));
-            from_str(stem).unwrap()
-        }
+        None => from_str(output.out_filestem).unwrap(),
         Some(s) => s,
     };
 
@@ -736,7 +745,7 @@ pub fn output_lib_filename(lm: &LinkMeta) -> ~str {
 }
 
 pub fn get_cc_prog(sess: Session) -> ~str {
-    match sess.opts.linker {
+    match sess.opts.cg.linker {
         Some(ref linker) => return linker.to_owned(),
         None => {}
     }
@@ -754,7 +763,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
 }
 
 pub fn get_ar_prog(sess: Session) -> ~str {
-    match sess.opts.ar {
+    match sess.opts.cg.ar {
         Some(ref ar) => return ar.to_owned(),
         None => {}
     }
@@ -764,7 +773,7 @@ pub fn get_ar_prog(sess: Session) -> ~str {
 
 fn get_system_tool(sess: Session, tool: &str) -> ~str {
     match sess.targ_cfg.os {
-        abi::OsAndroid => match sess.opts.android_cross_path {
+        abi::OsAndroid => match sess.opts.cg.android_cross_path {
             Some(ref path) => {
                 let tool_str = match tool {
                     "cc" => "gcc",
@@ -774,7 +783,7 @@ fn get_system_tool(sess: Session, tool: &str) -> ~str {
             }
             None => {
                 sess.fatal(format!("need Android NDK path for the '{}' tool \
-                                    (--android-cross-path)", tool))
+                                    (-C android-cross-path)", tool))
             }
         },
         _ => tool.to_owned(),
@@ -794,20 +803,21 @@ fn remove(sess: Session, path: &Path) {
 /// of the requested outputs for this compilation session.
 pub fn link_binary(sess: Session,
                    trans: &CrateTranslation,
-                   obj_filename: &Path,
-                   out_filename: &Path,
+                   outputs: &OutputFilenames,
                    lm: &LinkMeta) -> ~[Path] {
     let mut out_filenames = ~[];
-    let outputs = sess.outputs.borrow();
-    for &output in outputs.get().iter() {
-        let out_file = link_binary_output(sess, trans, output, obj_filename,
-                                          out_filename, lm);
+    let crate_types = sess.crate_types.borrow();
+    for &crate_type in crate_types.get().iter() {
+        let out_file = link_binary_output(sess, trans, crate_type, outputs, lm);
         out_filenames.push(out_file);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
-    if !sess.opts.save_temps {
-        remove(sess, obj_filename);
+    if !sess.opts.cg.save_temps {
+        let obj_filename = outputs.temp_path(OutputTypeObject);
+        if !sess.opts.output_types.contains(&OutputTypeObject) {
+            remove(sess, &obj_filename);
+        }
         remove(sess, &obj_filename.with_extension("metadata.o"));
     }
 
@@ -821,14 +831,14 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn filename_for_input(sess: &Session, output: session::OutputStyle, lm: &LinkMeta,
-                      out_filename: &Path) -> Path {
+pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
+                          lm: &LinkMeta, out_filename: &Path) -> Path {
     let libname = output_lib_filename(lm);
-    match output {
-        session::OutputRlib => {
+    match crate_type {
+        session::CrateTypeRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
-        session::OutputDylib => {
+        session::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
                 abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
                 abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
@@ -838,49 +848,54 @@ pub fn filename_for_input(sess: &Session, output: session::OutputStyle, lm: &Lin
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }
-        session::OutputStaticlib => {
+        session::CrateTypeStaticlib => {
             out_filename.with_filename(format!("lib{}.a", libname))
         }
-        session::OutputExecutable => out_filename.clone(),
+        session::CrateTypeExecutable => out_filename.clone(),
     }
-
 }
 
 fn link_binary_output(sess: Session,
                       trans: &CrateTranslation,
-                      output: session::OutputStyle,
-                      obj_filename: &Path,
-                      out_filename: &Path,
+                      crate_type: session::CrateType,
+                      outputs: &OutputFilenames,
                       lm: &LinkMeta) -> Path {
-    let out_filename = filename_for_input(&sess, output, lm, out_filename);
+    let obj_filename = outputs.temp_path(OutputTypeObject);
+    let out_filename = match outputs.single_output_file {
+        Some(ref file) => file.clone(),
+        None => {
+            let out_filename = outputs.path(OutputTypeExe);
+            filename_for_input(&sess, crate_type, lm, &out_filename)
+        }
+    };
 
     // Make sure the output and obj_filename are both writeable.
     // Mac, FreeBSD, and Windows system linkers check this already --
     // however, the Linux linker will happily overwrite a read-only file.
     // We should be consistent.
-    let obj_is_writeable = is_writeable(obj_filename);
+    let obj_is_writeable = is_writeable(&obj_filename);
     let out_is_writeable = is_writeable(&out_filename);
     if !out_is_writeable {
-        sess.fatal(format!("Output file {} is not writeable -- check its permissions.",
+        sess.fatal(format!("output file {} is not writeable -- check its permissions.",
                            out_filename.display()));
     }
     else if !obj_is_writeable {
-        sess.fatal(format!("Object file {} is not writeable -- check its permissions.",
+        sess.fatal(format!("object file {} is not writeable -- check its permissions.",
                            obj_filename.display()));
     }
 
-    match output {
-        session::OutputRlib => {
-            link_rlib(sess, Some(trans), obj_filename, &out_filename);
+    match crate_type {
+        session::CrateTypeRlib => {
+            link_rlib(sess, Some(trans), &obj_filename, &out_filename);
         }
-        session::OutputStaticlib => {
-            link_staticlib(sess, obj_filename, &out_filename);
+        session::CrateTypeStaticlib => {
+            link_staticlib(sess, &obj_filename, &out_filename);
         }
-        session::OutputExecutable => {
-            link_natively(sess, false, obj_filename, &out_filename);
+        session::CrateTypeExecutable => {
+            link_natively(sess, false, &obj_filename, &out_filename);
         }
-        session::OutputDylib => {
-            link_natively(sess, true, obj_filename, &out_filename);
+        session::CrateTypeDylib => {
+            link_natively(sess, true, &obj_filename, &out_filename);
         }
     }
 
@@ -954,7 +969,8 @@ fn link_rlib(sess: Session,
             // into the archive.
             let bc = obj_filename.with_extension("bc");
             a.add_file(&bc, false);
-            if !sess.opts.save_temps {
+            if !sess.opts.cg.save_temps &&
+               !sess.opts.output_types.contains(&OutputTypeBitcode) {
                 remove(sess, &bc);
             }
 
@@ -1126,7 +1142,7 @@ fn link_args(sess: Session,
             args.push(~"-dynamiclib");
             args.push(~"-Wl,-dylib");
             // FIXME (#9639): This needs to handle non-utf8 paths
-            if !sess.opts.no_rpath {
+            if !sess.opts.cg.no_rpath {
                 args.push(~"-Wl,-install_name,@rpath/" +
                           out_filename.filename_str().unwrap());
             }
@@ -1147,13 +1163,13 @@ fn link_args(sess: Session,
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
-    if !sess.opts.no_rpath {
+    if !sess.opts.cg.no_rpath {
         args.push_all(rpath::get_rpath_flags(sess, out_filename));
     }
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    args.push_all(sess.opts.linker_args);
+    args.push_all(sess.opts.cg.link_args);
     let used_link_args = sess.cstore.get_used_link_args();
     let used_link_args = used_link_args.borrow();
     for arg in used_link_args.get().iter() {
@@ -1219,7 +1235,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     }
 
     let cstore = sess.cstore;
-    if !dylib && !sess.prefer_dynamic() {
+    if !dylib && !sess.opts.cg.prefer_dynamic {
         // With an executable, things get a little interesting. As a limitation
         // of the current implementation, we require that everything must be
         // static or everything must be dynamic. The reasons for this are a

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 trait noisy {
   fn speak(&self);
 }
@@ -59,6 +57,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 fn main() {
-  let nyan : @noisy  = @cat(0, 2, ~"nyan") as @noisy;
+  let nyan: ~noisy = ~cat(0, 2, ~"nyan") as ~noisy;
   nyan.eat(); //~ ERROR does not implement any method in scope named `eat`
 }

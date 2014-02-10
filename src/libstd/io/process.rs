@@ -93,8 +93,8 @@ pub enum ProcessExit {
 
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
-    fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) -> fmt::Result {
-        match *obj {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
             ExitStatus(code) =>  write!(f.buf, "exit code: {}", code),
             ExitSignal(code) =>  write!(f.buf, "signal: {}", code),
         }

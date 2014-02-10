@@ -81,7 +81,7 @@ impl<'a> Reflector<'a> {
     pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
-        glue::lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
+        glue::lazily_emit_visit_glue(bcx.ccx(), static_ti);
         PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
@@ -95,7 +95,7 @@ impl<'a> Reflector<'a> {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
-            *self.visitor_methods).expect(format!("Couldn't find visit method \
+            *self.visitor_methods).expect(format!("couldn't find visit method \
                                                 for {}", ty_name));
         let mth_ty =
             ty::mk_bare_fn(tcx, self.visitor_methods[mth_idx].fty.clone());

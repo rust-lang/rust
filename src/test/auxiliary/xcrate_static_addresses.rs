@@ -24,9 +24,3 @@ pub fn verify_same2(a: &'static int) {
     let b = global2 as *int as uint;
     assert_eq!(a, b);
 }
-
-condition!{ pub test: int -> (); }
-
-pub fn raise() {
-    test::cond.raise(3);
-}

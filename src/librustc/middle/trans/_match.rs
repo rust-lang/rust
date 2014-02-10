@@ -484,7 +484,7 @@ fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
-            format!("Expected an identifier pattern but found p: {}",
+            format!("expected an identifier pattern but found p: {}",
                  p.repr(bcx.tcx())));
     }
 }
@@ -1371,7 +1371,7 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
             llmap.get().insert(binding_info.id, datum);
         }
 
-        if bcx.sess().opts.extra_debuginfo {
+        if bcx.sess().opts.debuginfo {
             debuginfo::create_match_binding_metadata(bcx,
                                                      ident,
                                                      binding_info.id,
@@ -2028,9 +2028,21 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
         Some(path) => {
             // Generate nicer LLVM for the common case of fn a pattern
             // like `x: T`
-            mk_binding_alloca(
-                bcx, pat.id, path, BindArgument, arg_scope, arg,
-                |arg, bcx, llval, _| arg.store_to(bcx, llval))
+            let arg_ty = node_id_type(bcx, pat.id);
+            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
+                && !bcx.ccx().sess.opts.debuginfo {
+                // Don't copy an indirect argument to an alloca, the caller
+                // already put it in a temporary alloca and gave it up, unless
+                // we emit extra-debug-info, which requires local allocas :(.
+                let arg_val = arg.add_clean(bcx.fcx, arg_scope);
+                let mut llmap = bcx.fcx.llargs.borrow_mut();
+                llmap.get().insert(pat.id, Datum(arg_val, arg_ty, Lvalue));
+                bcx
+            } else {
+                mk_binding_alloca(
+                    bcx, pat.id, path, BindArgument, arg_scope, arg,
+                    |arg, bcx, llval, _| arg.store_to(bcx, llval))
+            }
         }
 
         None => {

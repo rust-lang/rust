@@ -17,15 +17,19 @@ fn main() {
     }
 
     match (true, false) {
-        (true, false, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found tuple (expected a tuple with 2 elements but found one with 3 elements)
+        (true, false, false) => ()
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found tuple
+        //         (expected a tuple with 2 elements but found one with 3 elements)
     }
 
     match (true, false) {
-        ~(true, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found a ~-box pattern
+        ~(true, false) => ()
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found a ~-box pattern
     }
 
     match (true, false) {
-        &(true, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found an &-pointer pattern
+        &(true, false) => ()
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found an &-pointer pattern
     }
 
 

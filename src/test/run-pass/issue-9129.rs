@@ -10,11 +10,11 @@
 
 // xfail-pretty
 
-#[feature(managed_boxes, macro_rules)];
+#[feature(macro_rules)];
 
-pub trait bomb { fn boom(@self, Ident); }
+pub trait bomb { fn boom(&self, Ident); }
 pub struct S;
-impl bomb for S { fn boom(@self, _: Ident) { } }
+impl bomb for S { fn boom(&self, _: Ident) { } }
 
 pub struct Ident { name: uint }
 
@@ -26,7 +26,7 @@ fn Ident_new() -> Ident {
     Ident {name: 0x6789ABCD }
 }
 
-pub fn light_fuse(fld: @bomb) {
+pub fn light_fuse(fld: ~bomb) {
     int3!();
     let f = || {
         int3!();
@@ -36,6 +36,6 @@ pub fn light_fuse(fld: @bomb) {
 }
 
 pub fn main() {
-    let b = @S as @bomb;
+    let b = ~S as ~bomb;
     light_fuse(b);
 }

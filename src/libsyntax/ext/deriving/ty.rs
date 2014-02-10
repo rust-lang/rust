@@ -24,7 +24,6 @@ use opt_vec::OptVec;
 /// The types of pointers
 pub enum PtrTy<'a> {
     Send, // ~
-    Managed, // @
     Borrowed(Option<&'a str>, ast::Mutability), // &['lifetime] [mut]
 }
 
@@ -138,9 +137,6 @@ impl<'a> Ty<'a> {
                     Send => {
                         cx.ty_uniq(span, raw_ty)
                     }
-                    Managed => {
-                        cx.ty_box(span, raw_ty)
-                    }
                     Borrowed(ref lt, mutbl) => {
                         let lt = mk_lifetime(cx, span, lt);
                         cx.ty_rptr(span, raw_ty, lt, mutbl)
@@ -182,8 +178,8 @@ impl<'a> Ty<'a> {
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
             }
-            Ptr(..) => { cx.span_bug(span, "Pointer in a path in generic `deriving`") }
-            Tuple(..) => { cx.span_bug(span, "Tuple in a path in generic `deriving`") }
+            Ptr(..) => { cx.span_bug(span, "pointer in a path in generic `deriving`") }
+            Tuple(..) => { cx.span_bug(span, "tuple in a path in generic `deriving`") }
         }
     }
 }
@@ -251,7 +247,6 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 span,
                 match *ptr {
                     Send => ast::SelfUniq,
-                    Managed => ast::SelfBox,
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
                         ast::SelfRegion(lt, mutbl)

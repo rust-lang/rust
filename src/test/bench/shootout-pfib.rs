@@ -19,8 +19,9 @@
 */
 
 extern mod extra;
+extern mod getopts;
 
-use extra::{time, getopts};
+use extra::time;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
@@ -52,7 +53,7 @@ struct Config {
 }
 
 fn parse_opts(argv: ~[~str]) -> Config {
-    let opts = ~[getopts::optflag("stress")];
+    let opts = ~[getopts::optflag("", "stress", "")];
 
     let opt_args = argv.slice(1, argv.len());
 

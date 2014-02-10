@@ -87,8 +87,7 @@ syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
-syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
-syn keyword rustTrait Str StrVector StrSlice OwnedStr
+syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait CloneableTuple ImmutableTuple

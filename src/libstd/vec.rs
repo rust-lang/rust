@@ -120,7 +120,6 @@ use mem::size_of;
 use kinds::marker;
 use uint;
 use unstable::finally::Finally;
-use unstable::intrinsics;
 use unstable::raw::{Repr, Slice, Vec};
 use util;
 
@@ -137,7 +136,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
         let mut i: uint = 0u;
         (|| {
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
+                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
                 i += 1u;
             }
         }).finally(|| {
@@ -164,7 +163,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut i = 0u;
         (|| {
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
+                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
                 i += 1u;
             }
         }).finally(|| {
@@ -1495,7 +1494,7 @@ impl<T> OwnedVector<T> for ~[T] {
             (**repr).fill += mem::nonzero_size_of::<T>();
             let p = to_unsafe_ptr(&((**repr).data));
             let p = ptr::offset(p, fill as int) as *mut T;
-            intrinsics::move_val_init(&mut(*p), t);
+            mem::move_val_init(&mut(*p), t);
         }
     }
 
@@ -1549,10 +1548,10 @@ impl<T> OwnedVector<T> for ~[T] {
             let p = self.as_mut_ptr().offset(i as int);
             // Shift everything over to make space. (Duplicating the
             // `i`th element into two consecutive places.)
-            ptr::copy_memory(p.offset(1), p, len - i);
+            ptr::copy_memory(p.offset(1), &*p, len - i);
             // Write it in, overwriting the first copy of the `i`th
             // element.
-            intrinsics::move_val_init(&mut *p, x);
+            mem::move_val_init(&mut *p, x);
             self.set_len(len + 1);
         }
     }
@@ -1568,7 +1567,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ret = Some(ptr::read_ptr(ptr as *T));
 
                 // Shift everything down to fill in that spot.
-                ptr::copy_memory(ptr, ptr.offset(1), len - i - 1);
+                ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
                 self.set_len(len - 1);
 
                 ret
@@ -1812,11 +1811,69 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     }
 }
 
+fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
+    let len = v.len() as int;
+    let buf_v = v.as_mut_ptr();
+
+    // 1 <= i < len;
+    for i in range(1, len) {
+        // j satisfies: 0 <= j <= i;
+        let mut j = i;
+        unsafe {
+            // `i` is in bounds.
+            let read_ptr = buf_v.offset(i) as *T;
+
+            // find where to insert, we need to do strict <,
+            // rather than <=, to maintain stability.
+
+            // 0 <= j - 1 < len, so .offset(j - 1) is in bounds.
+            while j > 0 &&
+                    compare(&*read_ptr, &*buf_v.offset(j - 1)) == Less {
+                j -= 1;
+            }
+
+            // shift everything to the right, to make space to
+            // insert this value.
+
+            // j + 1 could be `len` (for the last `i`), but in
+            // that case, `i == j` so we don't copy. The
+            // `.offset(j)` is always in bounds.
+
+            if i != j {
+                let tmp = ptr::read_ptr(read_ptr);
+                ptr::copy_memory(buf_v.offset(j + 1),
+                                 &*buf_v.offset(j),
+                                 (i - j) as uint);
+                ptr::copy_nonoverlapping_memory(buf_v.offset(j),
+                                                &tmp as *T,
+                                                1);
+                cast::forget(tmp);
+            }
+        }
+    }
+}
+
 fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // warning: this wildly uses unsafe.
-    static INSERTION: uint = 8;
+    static BASE_INSERTION: uint = 32;
+    static LARGE_INSERTION: uint = 16;
+
+    // FIXME #12092: smaller insertion runs seems to make sorting
+    // vectors of large elements a little faster on some platforms,
+    // but hasn't been tested/tuned extensively
+    let insertion = if size_of::<T>() <= 16 {
+        BASE_INSERTION
+    } else {
+        LARGE_INSERTION
+    };
 
     let len = v.len();
+
+    // short vectors get sorted in-place via insertion sort to avoid allocations
+    if len <= insertion {
+        insertion_sort(v, compare);
+        return;
+    }
 
     // allocate some memory to use as scratch memory, we keep the
     // length 0 so we can keep shallow copies of the contents of `v`
@@ -1837,9 +1894,9 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // We could hardcode the sorting comparisons here, and we could
     // manipulate/step the pointers themselves, rather than repeatedly
     // .offset-ing.
-    for start in range_step(0, len, INSERTION) {
-        // start <= i <= len;
-        for i in range(start, cmp::min(start + INSERTION, len)) {
+    for start in range_step(0, len, insertion) {
+        // start <= i < len;
+        for i in range(start, cmp::min(start + insertion, len)) {
             // j satisfies: start <= j <= i;
             let mut j = i as int;
             unsafe {
@@ -1863,7 +1920,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                 // that case, `i == j` so we don't copy. The
                 // `.offset(j)` is always in bounds.
                 ptr::copy_memory(buf_dat.offset(j + 1),
-                                 buf_dat.offset(j),
+                                 &*buf_dat.offset(j),
                                  i - j as uint);
                 ptr::copy_nonoverlapping_memory(buf_dat.offset(j), read_ptr, 1);
             }
@@ -1871,7 +1928,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     }
 
     // step 2. merge the sorted runs.
-    let mut width = INSERTION;
+    let mut width = insertion;
     while width < len {
         // merge the sorted runs of length `width` in `buf_dat` two at
         // a time, placing the result in `buf_tmp`.
@@ -1913,11 +1970,11 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                     if left == right_start {
                         // the number remaining in this run.
                         let elems = (right_end as uint - right as uint) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, right, elems);
+                        ptr::copy_nonoverlapping_memory(out, &*right, elems);
                         break;
                     } else if right == right_end {
                         let elems = (right_start as uint - left as uint) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, left, elems);
+                        ptr::copy_nonoverlapping_memory(out, &*left, elems);
                         break;
                     }
 
@@ -1931,7 +1988,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                     } else {
                         step(&mut left)
                     };
-                    ptr::copy_nonoverlapping_memory(out, to_copy, 1);
+                    ptr::copy_nonoverlapping_memory(out, &*to_copy, 1);
                     step(&mut out);
                 }
             }
@@ -1945,7 +2002,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // write the result to `v` in one go, so that there are never two copies
     // of the same object in `v`.
     unsafe {
-        ptr::copy_nonoverlapping_memory(v.as_mut_ptr(), buf_dat, len);
+        ptr::copy_nonoverlapping_memory(v.as_mut_ptr(), &*buf_dat, len);
     }
 
     // increment the pointer, returning the old pointer.
@@ -2339,7 +2396,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn init_elem(self, i: uint, val: T) {
-        intrinsics::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
+        mem::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
     }
 
     #[inline]
@@ -4253,7 +4310,7 @@ mod tests {
         let h = x.mut_last();
         assert_eq!(*h.unwrap(), 5);
 
-        let mut y: &mut [int] = [];
+        let y: &mut [int] = [];
         assert!(y.mut_last().is_none());
     }
 }
@@ -4500,6 +4557,47 @@ mod bench {
     #[bench]
     fn sort_sorted(bh: &mut BenchHarness) {
         let mut v = vec::from_fn(10000, |i| i);
+        bh.iter(|| {
+            v.sort();
+        });
+        bh.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+    }
+
+    type BigSortable = (u64,u64,u64,u64);
+
+    #[bench]
+    fn sort_big_random_small(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(5);
+            v.sort();
+        });
+        bh.bytes = 5 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_random_medium(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(100);
+            v.sort();
+        });
+        bh.bytes = 100 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_random_large(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+            let mut v: ~[BigSortable] = rng.gen_vec(10000);
+            v.sort();
+        });
+        bh.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
+    }
+
+    #[bench]
+    fn sort_big_sorted(bh: &mut BenchHarness) {
+        let mut v = vec::from_fn(10000u, |i| (i, i, i, i));
         bh.iter(|| {
             v.sort();
         });

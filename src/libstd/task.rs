@@ -62,8 +62,7 @@ use option::{None, Some, Option};
 use result::{Result, Ok, Err};
 use rt::local::Local;
 use rt::task::Task;
-use send_str::{SendStr, IntoSendStr};
-use str::Str;
+use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use comm::SharedChan;
@@ -190,8 +189,8 @@ impl TaskBuilder {
 
     /// Name the task-to-be. Currently the name is used for identification
     /// only in failure messages.
-    pub fn name<S: IntoSendStr>(&mut self, name: S) {
-        self.opts.name = Some(name.into_send_str());
+    pub fn name<S: IntoMaybeOwned<'static>>(&mut self, name: S) {
+        self.opts.name = Some(name.into_maybe_owned());
     }
 
     /**
@@ -396,7 +395,7 @@ fn test_static_named_task() {
 #[test]
 fn test_send_named_task() {
     let mut t = task();
-    t.name("ada lovelace".into_send_str());
+    t.name("ada lovelace".into_maybe_owned());
     t.spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");

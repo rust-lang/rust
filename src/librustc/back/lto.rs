@@ -19,17 +19,17 @@ use std::libc;
 
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
-    if sess.prefer_dynamic() {
+    if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
         sess.abort_if_errors();
     }
 
     // Make sure we actually can run LTO
-    let outputs = sess.outputs.borrow();
-    for output in outputs.get().iter() {
-        match *output {
-            session::OutputExecutable | session::OutputStaticlib => {}
+    let crate_types = sess.crate_types.borrow();
+    for crate_type in crate_types.get().iter() {
+        match *crate_type {
+            session::CrateTypeExecutable | session::CrateTypeStaticlib => {}
             _ => {
                 sess.fatal("lto can only be run for executables and \
                             static library outputs");

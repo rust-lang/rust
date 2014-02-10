@@ -21,7 +21,7 @@ TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
 DOC_TEST_NAMES = tutorial guide-ffi guide-macros guide-lifetimes \
-                 guide-tasks guide-conditions guide-container guide-pointers \
+                 guide-tasks guide-container guide-pointers \
                  complement-cheatsheet guide-runtime \
                  rust
 
@@ -116,9 +116,11 @@ endif
 
 # Run the compiletest runner itself under valgrind
 ifdef CTEST_VALGRIND
-CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(2),$$(3))
+CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
+      $$(call CFG_RUN_TEST_$$(CFG_BUILD),$$(2),$$(3))
 else
-CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_$$(CFG_BUILD),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
+CFG_RUN_CTEST_$(1)=$$(RPATH_VAR$$(1)_T_$$(3)_H_$$(3)) \
+      $$(call CFG_RUN_$$(CFG_BUILD),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
 endif
 
 endef
@@ -183,8 +185,8 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-lite: cleantestlibs cleantmptestlogs \
-	check-stage2-std check-stage2-extra check-stage2-rpass \
-	check-stage2-rustuv check-stage2-native check-stage2-green \
+	$(foreach crate,$(TARGET_CRATES),check-stage2-$(crate)) \
+	check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -242,7 +244,6 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
 tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
-		| grep '^$(S)src/test' -v \
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/gyp' -v \
@@ -346,7 +347,7 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 		$$(CRATEFILE_$(4))					\
 		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
 		$$(STDTESTDEP_$(1)_$(2)_$(3)_$(4))
-	@$$(call E, compile_and_link: $$@)
+	@$$(call E, oxidize: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
 		-L "$$(LLVM_LIBDIR_$(2))"
@@ -529,7 +530,7 @@ CTEST_RUSTC_FLAGS := $$(subst --cfg ndebug,,$$(CFG_RUSTC_FLAGS))
 
 # There's no need our entire test suite to take up gigabytes of space on disk
 # including copies of libstd/libextra all over the place
-CTEST_RUSTC_FLAGS := $$(CTEST_RUSTC_FLAGS) -Z prefer-dynamic
+CTEST_RUSTC_FLAGS := $$(CTEST_RUSTC_FLAGS) -C prefer-dynamic
 
 # The tests can not be optimized while the rest of the compiler is optimized, so
 # filter out the optimization (if any) from rustc and then figure out if we need
@@ -834,15 +835,15 @@ define DEF_CHECK_FAST_FOR_T_H
 $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 		tmp/$$(FT).rc \
 		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$< \
+	@$$(call E, oxidize: $$@)
+	$$(STAGE2_T_$(2)_H_$(3)) --crate-type=dylib --out-dir $$(@D) $$< \
 	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
 $(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
 		tmp/$$(FT_DRIVER).rs \
 		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
 		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@ $$<)
+	@$$(call E, oxidize: $$@ $$<)
 	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$< \
 	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
@@ -861,7 +862,8 @@ $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
    $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
 
-check-fast: tidy check-fast-H-$(CFG_BUILD) check-stage2-std check-stage2-extra
+check-fast: tidy check-fast-H-$(CFG_BUILD) \
+	    $(foreach crate,$(TARGET_CRATES),check-stage2-$(crate))
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 define DEF_CHECK_FAST_FOR_H

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{P, Block, Crate, DeclLocal, ExprMac, SyntaxContext};
+use ast::{P, Block, Crate, DeclLocal, ExprMac};
 use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{TokenTree};
@@ -134,7 +134,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
         // Desugar expr_for_loop
         // From: `['<ident>:] for <src_pat> in <src_expr> <src_loop_block>`
-        // FIXME #6993 : change type of opt_ident to Option<Name>
+        // FIXME #6993: change type of opt_ident to Option<Name>
         ast::ExprForLoop(src_pat, src_expr, src_loop_block, opt_ident) => {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
@@ -800,9 +800,8 @@ impl<'a> Folder for MacroExpander<'a> {
 
 pub fn expand_crate(parse_sess: @parse::ParseSess,
                     loader: &mut CrateLoader,
-                    cfg: ast::CrateConfig,
                     c: Crate) -> Crate {
-    let mut cx = ExtCtxt::new(parse_sess, cfg.clone(), loader);
+    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), loader);
     let mut expander = MacroExpander {
         extsbox: syntax_expander_table(),
         cx: &mut cx,
@@ -819,59 +818,16 @@ pub fn expand_crate(parse_sess: @parse::ParseSess,
 // element that has one. a CtxtFn is a trait-ified
 // version of a closure in (SyntaxContext -> SyntaxContext).
 // the ones defined here include:
-// Renamer - add a rename to a context
-// MultiRenamer - add a set of renames to a context
 // Marker - add a mark to a context
-// Repainter - replace a context (maybe Replacer would be a better name?)
 
-// a function in SyntaxContext -> SyntaxContext
-pub trait CtxtFn{
-    fn f(&self, ast::SyntaxContext) -> ast::SyntaxContext;
-}
+// A Marker adds the given mark to the syntax context
+struct Marker { mark: Mrk }
 
-// a renamer adds a rename to the syntax context
-pub struct Renamer {
-    from : ast::Ident,
-    to : ast::Name
-}
-
-impl CtxtFn for Renamer {
-    fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
-        new_rename(self.from,self.to,ctxt)
-    }
-}
-
-// a marker adds the given mark to the syntax context
-pub struct Marker { mark : Mrk }
-
-impl CtxtFn for Marker {
-    fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
-        new_mark(self.mark,ctxt)
-    }
-}
-
-// a repainter just replaces the given context with the one it's closed over
-pub struct Repainter { ctxt : SyntaxContext }
-
-impl CtxtFn for Repainter {
-    fn f(&self, _ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
-        self.ctxt
-    }
-}
-
-pub struct ContextWrapper {
-    context_function: @CtxtFn,
-}
-
-impl Folder for ContextWrapper {
+impl Folder for Marker {
     fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
-        let ast::Ident {
-            name,
-            ctxt
-        } = id;
         ast::Ident {
-            name: name,
-            ctxt: self.context_function.f(ctxt),
+            name: id.name,
+            ctxt: new_mark(self.mark, id.ctxt)
         }
     }
     fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
@@ -879,7 +835,7 @@ impl Folder for ContextWrapper {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
                            fold_tts(*tts, self),
-                           self.context_function.f(ctxt))
+                           new_mark(self.mark, ctxt))
             }
         };
         Spanned {
@@ -889,48 +845,30 @@ impl Folder for ContextWrapper {
     }
 }
 
-// given a function from ctxts to ctxts, produce
-// a Folder that applies that function to all ctxts:
-pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> ContextWrapper {
-    ContextWrapper {
-        context_function: cf as @CtxtFn,
-    }
-}
-
 // just a convenience:
-pub fn new_mark_folder(m: Mrk) -> ContextWrapper {
-    fun_to_ctxt_folder(@Marker{mark:m})
-}
-
-pub fn new_rename_folder(from: ast::Ident, to: ast::Name) -> ContextWrapper {
-    fun_to_ctxt_folder(@Renamer{from:from,to:to})
+fn new_mark_folder(m: Mrk) -> Marker {
+    Marker {mark: m}
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
-fn mark_tts(tts : &[TokenTree], m : Mrk) -> ~[TokenTree] {
+fn mark_tts(tts: &[TokenTree], m: Mrk) -> ~[TokenTree] {
     fold_tts(tts, &mut new_mark_folder(m))
 }
 
 // apply a given mark to the given expr. Used following the expansion of a macro.
-fn mark_expr(expr : @ast::Expr, m : Mrk) -> @ast::Expr {
+fn mark_expr(expr: @ast::Expr, m: Mrk) -> @ast::Expr {
     new_mark_folder(m).fold_expr(expr)
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
-fn mark_stmt(expr : &ast::Stmt, m : Mrk) -> @ast::Stmt {
+fn mark_stmt(expr: &ast::Stmt, m: Mrk) -> @ast::Stmt {
     new_mark_folder(m).fold_stmt(expr)
             .expect_one("marking a stmt didn't return a stmt")
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_item(expr : @ast::Item, m : Mrk) -> SmallVector<@ast::Item> {
+fn mark_item(expr: @ast::Item, m: Mrk) -> SmallVector<@ast::Item> {
     new_mark_folder(m).fold_item(expr)
-}
-
-// replace all contexts in a given expr with the given mark. Used
-// for capturing macros
-pub fn replace_ctxts(expr : @ast::Expr, ctxt : SyntaxContext) -> @ast::Expr {
-    fun_to_ctxt_folder(@Repainter{ctxt:ctxt}).fold_expr(expr)
 }
 
 fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
@@ -952,17 +890,15 @@ fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
 mod test {
     use super::*;
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord, EMPTY_CTXT};
-    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve, new_rename};
+    use ast::{Attribute_, AttrOuter, MetaWord};
+    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve};
     use ast_util;
     use codemap;
     use codemap::Spanned;
-    use fold::*;
     use ext::base::{CrateLoader, MacroCrate};
     use parse;
-    use parse::token::{fresh_mark, gensym, intern};
     use parse::token;
-    use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
+    use util::parser_testing::{string_to_crate_and_sess};
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
@@ -1026,14 +962,14 @@ mod test {
     #[test] fn macros_cant_escape_fns_test () {
         let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
             ~[],sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
+        expand_crate(sess,&mut loader,crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -1041,28 +977,28 @@ mod test {
     #[test] fn macros_cant_escape_mods_test () {
         let src = ~"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
             ~[],sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
+        expand_crate(sess,&mut loader,crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
             ~[], sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess, &mut loader, ~[], crate_ast);
+        expand_crate(sess, &mut loader, crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1090,41 +1026,6 @@ mod test {
         }
     }
 
-    #[test]
-    fn renaming () {
-        let item_ast = string_to_crate(~"fn f() -> int { a }");
-        let a_name = intern("a");
-        let a2_name = gensym("a2");
-        let mut renamer = new_rename_folder(ast::Ident{name:a_name,ctxt:EMPTY_CTXT},
-                                        a2_name);
-        let renamed_ast = renamer.fold_crate(item_ast.clone());
-        let mut path_finder = new_path_finder(~[]);
-        visit::walk_crate(&mut path_finder, &renamed_ast, ());
-
-        match path_finder.path_accumulator {
-            [ast::Path{segments:[ref seg],..}] =>
-                assert_eq!(mtwt_resolve(seg.identifier),a2_name),
-            _ => assert_eq!(0,1)
-        }
-
-        // try a double-rename, with pending_renames.
-        let a3_name = gensym("a3");
-        // a context that renames from ("a",empty) to "a2" :
-        let ctxt2 = new_rename(ast::Ident::new(a_name),a2_name,EMPTY_CTXT);
-        let mut pending_renames = ~[
-            (ast::Ident::new(a_name),a2_name),
-            (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)
-        ];
-        let double_renamed = renames_to_fold(&mut pending_renames).fold_crate(item_ast);
-        let mut path_finder = new_path_finder(~[]);
-        visit::walk_crate(&mut path_finder, &double_renamed, ());
-        match path_finder.path_accumulator {
-            [ast::Path{segments:[ref seg],..}] =>
-                assert_eq!(mtwt_resolve(seg.identifier),a3_name),
-            _ => assert_eq!(0,1)
-        }
-    }
-
     //fn fake_print_crate(crate: &ast::Crate) {
     //    let mut out = ~std::io::stderr() as ~std::io::Writer;
     //    let mut s = pprust::rust_printer(out, get_ident_interner());
@@ -1135,7 +1036,7 @@ mod test {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
-        expand_crate(ps,&mut loader,~[],crate_ast)
+        expand_crate(ps,&mut loader,crate_ast)
     }
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
@@ -1143,7 +1044,7 @@ mod test {
         // println!("expanded: {:?}\n",expanded_ast);
         //mtwt_resolve_crate(expanded_ast)
     //}
-    //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
+    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> ~str {
         //let resolved_ast = expand_and_resolve(crate_str);
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
@@ -1176,12 +1077,12 @@ mod test {
 
     #[test]
     fn automatic_renaming () {
-        let tests : ~[RenamingTest] =
+        let tests: ~[RenamingTest] =
             ~[// b & c should get new names throughout, in the expr too:
                 ("fn a() -> int { let b = 13; let c = b; b+c }",
                  ~[~[0,1],~[2]], false),
                 // both x's should be renamed (how is this causing a bug?)
-                ("fn main () {let x : int = 13;x;}",
+                ("fn main () {let x: int = 13;x;}",
                  ~[~[0]], false),
                 // the use of b after the + should be renamed, the other one not:
                 ("macro_rules! f (($x:ident) => (b + $x)) fn a() -> int { let b = 13; f!(b)}",
@@ -1301,7 +1202,7 @@ foo_module!()
         visit::walk_crate(&mut name_finder, &cr, ());
         let bindings = name_finder.ident_accumulator;
 
-        let cxbinds : ~[&ast::Ident] =
+        let cxbinds: ~[&ast::Ident] =
             bindings.iter().filter(|b| {
                 let string = token::get_ident(b.name);
                 "xx" == string.get()
@@ -1324,7 +1225,7 @@ foo_module!()
                 "xx" == string.get()
             }
         }).enumerate() {
-            if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
+            if mtwt_resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
@@ -1338,7 +1239,7 @@ foo_module!()
                 {
                     let table = table.table.borrow();
                     for (idx,val) in table.get().iter().enumerate() {
-                        println!("{:4u} : {:?}",idx,val);
+                        println!("{:4u}: {:?}",idx,val);
                     }
                 }
             }

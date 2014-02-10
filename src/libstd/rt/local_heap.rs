@@ -21,6 +21,7 @@ use rt::env;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
+#[cfg(stage0)]
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
 use vec::ImmutableVector;
@@ -60,6 +61,7 @@ impl LocalHeap {
     }
 
     #[inline]
+    #[cfg(stage0)]
     pub fn alloc(&mut self, td: *TyDesc, size: uint) -> *mut Box {
         let total_size = global_heap::get_box_size(size, unsafe { (*td).align });
         let alloc = self.memory_region.malloc(total_size);
@@ -69,6 +71,28 @@ impl LocalHeap {
             // Clear out this box, and move it to the front of the live
             // allocations list
             mybox.type_desc = td;
+            mybox.ref_count = 1;
+            mybox.prev = ptr::mut_null();
+            mybox.next = self.live_allocs;
+            if !self.live_allocs.is_null() {
+                unsafe { (*self.live_allocs).prev = alloc; }
+            }
+            self.live_allocs = alloc;
+        }
+        return alloc;
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
+        let total_size = global_heap::get_box_size(size, align);
+        let alloc = self.memory_region.malloc(total_size);
+        {
+            // Make sure that we can't use `mybox` outside of this scope
+            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
+            // Clear out this box, and move it to the front of the live
+            // allocations list
+            mybox.drop_glue = drop_glue;
             mybox.ref_count = 1;
             mybox.prev = ptr::mut_null();
             mybox.next = self.live_allocs;
@@ -102,6 +126,7 @@ impl LocalHeap {
     }
 
     #[inline]
+    #[cfg(stage0)]
     pub fn free(&mut self, alloc: *mut Box) {
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -129,6 +154,28 @@ impl LocalHeap {
             mybox.prev = ptr::mut_null();
             mybox.next = ptr::mut_null();
             mybox.type_desc = ptr::null();
+        }
+
+        self.memory_region.free(alloc);
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn free(&mut self, alloc: *mut Box) {
+        {
+            // Make sure that we can't use `mybox` outside of this scope
+            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
+
+            // Unlink it from the linked list
+            if !mybox.prev.is_null() {
+                unsafe { (*mybox.prev).next = mybox.next; }
+            }
+            if !mybox.next.is_null() {
+                unsafe { (*mybox.next).prev = mybox.prev; }
+            }
+            if self.live_allocs == alloc {
+                self.live_allocs = mybox.next;
+            }
         }
 
         self.memory_region.free(alloc);
@@ -292,12 +339,26 @@ impl Drop for MemoryRegion {
 }
 
 #[inline]
+#[cfg(stage0)]
 pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
     // FIXME: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
             (*task).heap.alloc(td as *TyDesc, size) as *u8
+        }
+        None => rtabort!("local malloc outside of task")
+    }
+}
+
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
+    // FIXME: Unsafe borrow for speed. Lame.
+    let task: Option<*mut Task> = Local::try_unsafe_borrow();
+    match task {
+        Some(task) => {
+            (*task).heap.alloc(drop_glue, size, align) as *u8
         }
         None => rtabort!("local malloc outside of task")
     }

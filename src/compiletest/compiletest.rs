@@ -14,13 +14,13 @@
 #[deny(warnings)];
 
 extern mod extra;
+extern mod getopts;
 
 use std::os;
 use std::io;
 use std::io::fs;
 
-use extra::getopts;
-use extra::getopts::groups::{optopt, optflag, reqopt};
+use getopts::{optopt, optflag, reqopt};
 use extra::test;
 
 use common::config;
@@ -49,7 +49,7 @@ pub fn main() {
 
 pub fn parse_config(args: ~[~str]) -> config {
 
-    let groups : ~[getopts::groups::OptGroup] =
+    let groups : ~[getopts::OptGroup] =
         ~[reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
@@ -85,20 +85,20 @@ pub fn parse_config(args: ~[~str]) -> config {
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::groups::usage(message, groups));
+        println!("{}", getopts::usage(message, groups));
         println!("");
         fail!()
     }
 
     let matches =
-        &match getopts::groups::getopts(args_, groups) {
+        &match getopts::getopts(args_, groups) {
           Ok(m) => m,
           Err(f) => fail!("{}", f.to_err_msg())
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::groups::usage(message, groups));
+        println!("{}", getopts::usage(message, groups));
         println!("");
         fail!()
     }

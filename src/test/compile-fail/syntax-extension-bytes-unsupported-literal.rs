@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let vec = bytes!(45f64); //~ ERROR Unsupported literal in bytes!
+    let vec = bytes!(45f64); //~ ERROR unsupported literal in bytes!
 }

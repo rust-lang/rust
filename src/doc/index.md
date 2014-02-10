@@ -38,22 +38,24 @@ li {list-style-type: none; }
 * [The Rust compiler, `librustc`](rustc/index.html)
 
 * [The `arena` allocation library](arena/index.html)
+* [The `collections` library](collections/index.html)
 * [The `flate` compression library](flate/index.html)
+* [The `getopts` argument parsing library](getopts/index.html)
 * [The `glob` file path matching library](glob/index.html)
 * [The `semver` version collation library](semver/index.html)
+* [The `serialize` value encoding/decoding library](serialize/index.html)
+* [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
 * [The `term` terminal-handling library](term/index.html)
-* [The UUID library](uuid/index.html)
+* [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 
 # Tooling
 
 * [The `rustdoc` manual](rustdoc.html)
-* [The `rustpkg` manual](rustpkg.html)
 
 # FAQs
 
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
-* [Usage FAQ](complement-usage-faq.html)
 * [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
 * [How to submit a bug report](complement-bugreport.html)
 

@@ -11,8 +11,8 @@
 // issue 7327
 
 // xfail-fast #7103
-extern mod extra;
-use extra::arc::Arc;
+extern mod sync;
+use sync::Arc;
 
 struct A { y: Arc<int>, x: Arc<int> }
 

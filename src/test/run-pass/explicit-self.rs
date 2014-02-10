@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 static tau: f64 = 2.0*3.14159265358979323;
 
 struct Point {x: f64, y: f64}
@@ -49,7 +47,7 @@ struct thing {
 
 #[deriving(Clone)]
 struct A {
-    a: @int
+    a: int
 }
 
 fn thing(x: A) -> thing {
@@ -59,26 +57,20 @@ fn thing(x: A) -> thing {
 }
 
 impl thing {
-    pub fn foo(@self) -> int { *self.x.a }
-    pub fn bar(~self) -> int { *self.x.a }
-    pub fn quux(&self) -> int { *self.x.a }
+    pub fn bar(~self) -> int { self.x.a }
+    pub fn quux(&self) -> int { self.x.a }
     pub fn baz<'a>(&'a self) -> &'a A { &self.x }
-    pub fn spam(self) -> int { *self.x.a }
+    pub fn spam(self) -> int { self.x.a }
 }
 
 trait Nus { fn f(&self); }
 impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
-
-    let x = @thing(A {a: @10});
-    assert_eq!(x.foo(), 10);
-    assert_eq!(x.quux(), 10);
-
-    let y = ~thing(A {a: @10});
+    let y = ~thing(A {a: 10});
     assert_eq!(y.clone().bar(), 10);
     assert_eq!(y.quux(), 10);
 
-    let z = thing(A {a: @11});
+    let z = thing(A {a: 11});
     assert_eq!(z.spam(), 11);
 }

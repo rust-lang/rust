@@ -86,7 +86,9 @@ use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
+use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
+use fmt;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -100,7 +102,7 @@ use from_str::FromStr;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;
-use send_str::{SendStr, SendStrOwned};
+use to_bytes::{IterBytes, Cb};
 use unstable::raw::Repr;
 
 /*
@@ -729,6 +731,11 @@ Section: Misc
 
 /// Determines if a vector of bytes contains valid UTF-8
 pub fn is_utf8(v: &[u8]) -> bool {
+    first_non_utf8_index(v).is_none()
+}
+
+#[inline(always)]
+fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
     let mut i = 0u;
     let total = v.len();
     fn unsafe_get(xs: &[u8], i: uint) -> u8 {
@@ -740,10 +747,10 @@ pub fn is_utf8(v: &[u8]) -> bool {
             i += 1u;
         } else {
             let w = utf8_char_width(v_i);
-            if w == 0u { return false; }
+            if w == 0u { return Some(i); }
 
             let nexti = i + w;
-            if nexti > total { return false; }
+            if nexti > total { return Some(i); }
 
             // 2-byte encoding is for codepoints  \u0080 to  \u07ff
             //        first  C2 80        last DF BF
@@ -766,7 +773,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
             // UTF8-tail   = %x80-BF
             match w {
                 2 => if unsafe_get(v, i + 1) & 192u8 != TAG_CONT_U8 {
-                    return false
+                    return Some(i)
                 },
                 3 => match (v_i,
                             unsafe_get(v, i + 1),
@@ -775,7 +782,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
                     (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) => (),
                     (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) => (),
                     (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    _ => return false,
+                    _ => return Some(i),
                 },
                 _ => match (v_i,
                             unsafe_get(v, i + 1),
@@ -784,14 +791,14 @@ pub fn is_utf8(v: &[u8]) -> bool {
                     (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
                     (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
                     (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    _ => return false,
+                    _ => return Some(i)
                 },
             }
 
             i = nexti;
         }
     }
-    true
+    None
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -900,15 +907,302 @@ pub struct CharRange {
 // The first byte is special, only want bottom 5 bits for width 2, 4 bits
 // for width 3, and 3 bits for width 4
 macro_rules! utf8_first_byte(
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as uint)
+    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
 )
 
 // return the value of $ch updated with continuation byte $byte
 macro_rules! utf8_acc_cont_byte(
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as uint)
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 )
 
 static TAG_CONT_U8: u8 = 128u8;
+
+/// Converts a vector of bytes to a new utf-8 string.
+/// Any invalid utf-8 sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+///
+/// # Example
+///
+/// ```rust
+/// let input = bytes!("Hello ", 0xF0, 0x90, 0x80, "World");
+/// let output = std::str::from_utf8_lossy(input);
+/// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
+/// ```
+pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
+    let firstbad = match first_non_utf8_index(v) {
+        None => return Slice(unsafe { cast::transmute(v) }),
+        Some(i) => i
+    };
+
+    static REPLACEMENT: &'static [u8] = bytes!(0xEF, 0xBF, 0xBD); // U+FFFD in UTF-8
+    let mut i = firstbad;
+    let total = v.len();
+    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
+        unsafe { *xs.unsafe_ref(i) }
+    }
+    fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
+        if i >= total {
+            0
+        } else {
+            unsafe_get(xs, i)
+        }
+    }
+    let mut res = with_capacity(total);
+
+    if i > 0 {
+        unsafe { raw::push_bytes(&mut res, v.slice_to(i)) };
+    }
+
+    // subseqidx is the index of the first byte of the subsequence we're looking at.
+    // It's used to copy a bunch of contiguous good codepoints at once instead of copying
+    // them one by one.
+    let mut subseqidx = firstbad;
+
+    while i < total {
+        let i_ = i;
+        let byte = unsafe_get(v, i);
+        i += 1;
+
+        macro_rules! error(() => ({
+            unsafe {
+                if subseqidx != i_ {
+                    raw::push_bytes(&mut res, v.slice(subseqidx, i_));
+                }
+                subseqidx = i;
+                raw::push_bytes(&mut res, REPLACEMENT);
+            }
+        }))
+
+        if byte < 128u8 {
+            // subseqidx handles this
+        } else {
+            let w = utf8_char_width(byte);
+
+            match w {
+                2 => {
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                3 => {
+                    match (byte, safe_get(v, i, total)) {
+                        (0xE0        , 0xA0 .. 0xBF) => (),
+                        (0xE1 .. 0xEC, 0x80 .. 0xBF) => (),
+                        (0xED        , 0x80 .. 0x9F) => (),
+                        (0xEE .. 0xEF, 0x80 .. 0xBF) => (),
+                        _ => {
+                            error!();
+                            continue;
+                        }
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                4 => {
+                    match (byte, safe_get(v, i, total)) {
+                        (0xF0        , 0x90 .. 0xBF) => (),
+                        (0xF1 .. 0xF3, 0x80 .. 0xBF) => (),
+                        (0xF4        , 0x80 .. 0x8F) => (),
+                        _ => {
+                            error!();
+                            continue;
+                        }
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                    if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        error!();
+                        continue;
+                    }
+                    i += 1;
+                }
+                _ => {
+                    error!();
+                    continue;
+                }
+            }
+        }
+    }
+    if subseqidx < total {
+        unsafe { raw::push_bytes(&mut res, v.slice(subseqidx, total)) };
+    }
+    Owned(res)
+}
+
+/*
+Section: MaybeOwned
+*/
+
+/// A MaybeOwned is a string that can hold either a ~str or a &str.
+/// This can be useful as an optimization when an allocation is sometimes
+/// needed but not always.
+pub enum MaybeOwned<'a> {
+    /// A borrowed string
+    Slice(&'a str),
+    /// An owned string
+    Owned(~str)
+}
+
+/// SendStr is a specialization of `MaybeOwned` to be sendable
+pub type SendStr = MaybeOwned<'static>;
+
+impl<'a> MaybeOwned<'a> {
+    /// Returns `true` if this `MaybeOwned` wraps an owned string
+    #[inline]
+    pub fn is_owned(&self) -> bool {
+        match *self {
+            Slice(_) => false,
+            Owned(_) => true
+        }
+    }
+
+    /// Returns `true` if this `MaybeOwned` wraps a borrowed string
+    #[inline]
+    pub fn is_slice(&self) -> bool {
+        match *self {
+            Slice(_) => true,
+            Owned(_) => false
+        }
+    }
+}
+
+/// Trait for moving into a `MaybeOwned`
+pub trait IntoMaybeOwned<'a> {
+    /// Moves self into a `MaybeOwned`
+    fn into_maybe_owned(self) -> MaybeOwned<'a>;
+}
+
+impl<'a> IntoMaybeOwned<'a> for ~str {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self) }
+}
+
+impl<'a> IntoMaybeOwned<'a> for &'a str {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
+}
+
+impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
+}
+
+impl<'a> ToStr for MaybeOwned<'a> {
+    #[inline]
+    fn to_str(&self) -> ~str { self.as_slice().to_owned() }
+}
+
+impl<'a> Eq for MaybeOwned<'a> {
+    #[inline]
+    fn eq(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> TotalEq for MaybeOwned<'a> {
+    #[inline]
+    fn equals(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> Ord for MaybeOwned<'a> {
+    #[inline]
+    fn lt(&self, other: &MaybeOwned) -> bool {
+        self.as_slice().lt(&other.as_slice())
+    }
+}
+
+impl<'a> TotalOrd for MaybeOwned<'a> {
+    #[inline]
+    fn cmp(&self, other: &MaybeOwned) -> Ordering {
+        self.as_slice().cmp(&other.as_slice())
+    }
+}
+
+impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
+    #[inline]
+    fn equiv(&self, other: &S) -> bool {
+        self.as_slice().equals(&other.as_slice())
+    }
+}
+
+impl<'a> Str for MaybeOwned<'a> {
+    #[inline]
+    fn as_slice<'b>(&'b self) -> &'b str {
+        match *self {
+            Slice(s) => s,
+            Owned(ref s) => s.as_slice()
+        }
+    }
+
+    #[inline]
+    fn into_owned(self) -> ~str {
+        match self {
+            Slice(s) => s.to_owned(),
+            Owned(s) => s
+        }
+    }
+}
+
+impl<'a> Container for MaybeOwned<'a> {
+    #[inline]
+    fn len(&self) -> uint { self.as_slice().len() }
+}
+
+impl<'a> Clone for MaybeOwned<'a> {
+    #[inline]
+    fn clone(&self) -> MaybeOwned<'a> {
+        match *self {
+            Slice(s) => Slice(s),
+            Owned(ref s) => Owned(s.to_owned())
+        }
+    }
+}
+
+impl<'a> DeepClone for MaybeOwned<'a> {
+    #[inline]
+    fn deep_clone(&self) -> MaybeOwned<'a> {
+        match *self {
+            Slice(s) => Slice(s),
+            Owned(ref s) => Owned(s.to_owned())
+        }
+    }
+}
+
+impl<'a> Default for MaybeOwned<'a> {
+    #[inline]
+    fn default() -> MaybeOwned<'a> { Slice("") }
+}
+
+impl<'a> IterBytes for MaybeOwned<'a> {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        match *self {
+            Slice(s) => s.iter_bytes(lsb0, f),
+            Owned(ref s) => s.iter_bytes(lsb0, f)
+        }
+    }
+}
+
+impl<'a> fmt::Show for MaybeOwned<'a> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Slice(ref s) => s.fmt(f),
+            Owned(ref s) => s.fmt(f)
+        }
+    }
+}
 
 /// Unsafe operations
 pub mod raw {
@@ -1664,9 +1958,6 @@ pub trait StrSlice<'a> {
     /// Converts to a vector of `u16` encoded as UTF-16.
     fn to_utf16(&self) -> ~[u16];
 
-    /// Copy a slice into a new `SendStr`.
-    fn to_send_str(&self) -> SendStr;
-
     /// Check that `index`-th byte lies at the start and/or end of a
     /// UTF-8 code point sequence.
     ///
@@ -2192,11 +2483,6 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn to_send_str(&self) -> SendStr {
-        SendStrOwned(self.to_owned())
-    }
-
-    #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
         let b = self[index];
@@ -2211,7 +2497,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
         // Multibyte case is a fn to allow char_range_at to inline cleanly
         fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
-            let mut val = s[i] as uint;
+            let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
             assert!((w != 0));
 
@@ -2220,7 +2506,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val as u32) }, next: i + w};
+            return CharRange {ch: unsafe { transmute(val) }, next: i + w};
         }
 
         return multibyte_char_range_at(*self, i);
@@ -2243,7 +2529,7 @@ impl<'a> StrSlice<'a> for &'a str {
                 i -= 1u;
             }
 
-            let mut val = s[i] as uint;
+            let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
             assert!((w != 0));
 
@@ -2252,7 +2538,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val as u32) }, next: i};
+            return CharRange {ch: unsafe { transmute(val) }, next: i};
         }
 
         return multibyte_char_range_at_reverse(*self, prev);
@@ -2635,7 +2921,6 @@ mod tests {
     use prelude::*;
     use ptr;
     use str::*;
-    use send_str::{SendStrOwned, SendStrStatic};
 
     #[test]
     fn test_eq() {
@@ -3835,15 +4120,105 @@ mod tests {
     }
 
     #[test]
-    fn test_to_send_str() {
-        assert_eq!("abcde".to_send_str(), SendStrStatic("abcde"));
-        assert_eq!("abcde".to_send_str(), SendStrOwned(~"abcde"));
+    fn test_str_from_utf8_lossy() {
+        let xs = bytes!("hello");
+        assert_eq!(from_utf8_lossy(xs), Slice("hello"));
+
+        let xs = bytes!("ศไทย中华Việt Nam");
+        assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
+
+        let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD There\uFFFD Goodbye"));
+
+        let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD\uFFFD There\uFFFD Goodbye"));
+
+        let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFD\uFFFDbar"));
+
+        let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFDbaz"));
+
+        let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz"));
+
+        let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar"));
+
+        // surrogates
+        let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
+        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar"));
     }
 
     #[test]
     fn test_from_str() {
       let owned: Option<~str> = from_str(&"string");
       assert_eq!(owned, Some(~"string"));
+    }
+
+    #[test]
+    fn test_maybe_owned_traits() {
+        let s = Slice("abcde");
+        assert_eq!(s.len(), 5);
+        assert_eq!(s.as_slice(), "abcde");
+        assert_eq!(s.to_str(), ~"abcde");
+        assert!(s.lt(&Owned(~"bcdef")));
+        assert_eq!(Slice(""), Default::default());
+
+        let o = Owned(~"abcde");
+        assert_eq!(o.len(), 5);
+        assert_eq!(o.as_slice(), "abcde");
+        assert_eq!(o.to_str(), ~"abcde");
+        assert!(o.lt(&Slice("bcdef")));
+        assert_eq!(Owned(~""), Default::default());
+
+        assert_eq!(s.cmp(&o), Equal);
+        assert!(s.equals(&o));
+        assert!(s.equiv(&o));
+
+        assert_eq!(o.cmp(&s), Equal);
+        assert!(o.equals(&s));
+        assert!(o.equiv(&s));
+    }
+
+    #[test]
+    fn test_maybe_owned_methods() {
+        let s = Slice("abcde");
+        assert!(s.is_slice());
+        assert!(!s.is_owned());
+
+        let o = Owned(~"abcde");
+        assert!(!o.is_slice());
+        assert!(o.is_owned());
+    }
+
+    #[test]
+    fn test_maybe_owned_clone() {
+        assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
+        assert_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
+
+        assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
+        assert_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
+
+        assert_eq!(Slice("abcde"), Slice("abcde").clone());
+        assert_eq!(Slice("abcde"), Slice("abcde").deep_clone());
+
+        assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
+        assert_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
+    }
+
+    #[test]
+    fn test_maybe_owned_into_owned() {
+        assert_eq!(Slice("abcde").into_owned(), ~"abcde");
+        assert_eq!(Owned(~"abcde").into_owned(), ~"abcde");
+    }
+
+    #[test]
+    fn test_into_maybe_owned() {
+        assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
+        assert_eq!((~"abcde").into_maybe_owned(), Slice("abcde"));
+        assert_eq!("abcde".into_maybe_owned(), Owned(~"abcde"));
+        assert_eq!((~"abcde").into_maybe_owned(), Owned(~"abcde"));
     }
 }
 
@@ -3989,6 +4364,42 @@ mod bench {
         assert_eq!(100, s.len());
         bh.iter(|| {
             let _ = is_utf8(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_ascii(bh: &mut BenchHarness) {
+        let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
+                        Lorem ipsum dolor sit amet, consectetur. ");
+
+        assert_eq!(100, s.len());
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_multibyte(bh: &mut BenchHarness) {
+        let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
+        assert_eq!(100, s.len());
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_invalid(bh: &mut BenchHarness) {
+        let s = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
+        });
+    }
+
+    #[bench]
+    fn from_utf8_lossy_100_invalid(bh: &mut BenchHarness) {
+        let s = ::vec::from_elem(100, 0xF5u8);
+        bh.iter(|| {
+            let _ = from_utf8_lossy(s);
         });
     }
 

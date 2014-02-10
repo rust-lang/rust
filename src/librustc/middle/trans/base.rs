@@ -28,6 +28,7 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
 use driver::session::Session;
+use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, True, Vector};
@@ -351,7 +352,6 @@ pub fn malloc_raw_dyn<'a>(
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
 
-
         // Allocate space:
         let r = callee::trans_lang_call(
             bcx,
@@ -374,17 +374,14 @@ pub fn malloc_raw_dyn<'a>(
         // Grab the TypeRef type of box_ptr_ty.
         let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
-
-        // Get the tydesc for the body:
-        let static_ti = get_tydesc(ccx, t);
-        glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
+        let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
 
         // Allocate space:
-        let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+        let drop_glue = glue::get_drop_glue(ccx, t);
         let r = callee::trans_lang_call(
             bcx,
             langcall,
-            [tydesc, size],
+            [PointerCast(bcx, drop_glue, Type::glue_fn(Type::i8p()).ptr_to()), size, llalign],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     }
@@ -571,7 +568,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
 
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
-    if cx.sess.opts.save_temps {
+    if cx.sess.opts.cg.save_temps {
         s.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMSetValueName(v, buf)
@@ -1392,7 +1389,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
         bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
 
-        if fcx.ccx.sess.opts.extra_debuginfo {
+        if fcx.ccx.sess.opts.debuginfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
         }
     }
@@ -2513,7 +2510,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore.have_crate_data(n_subcrates) { n_subcrates += 1; }
-    let is_top = !sess.building_library.get() || sess.gen_crate_map();
+    let is_top = !sess.building_library.get() || sess.opts.cg.gen_crate_map;
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {
@@ -2657,10 +2654,10 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
 pub fn trans_crate(sess: session::Session,
                    crate: ast::Crate,
                    analysis: &CrateAnalysis,
-                   output: &Path) -> CrateTranslation {
+                   output: &OutputFilenames) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
-        use extra::sync::one::{Once, ONCE_INIT};
+        use sync::one::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
         INIT.doit(|| {
@@ -2677,7 +2674,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     let mut symbol_hasher = Sha256::new();
-    let link_meta = link::build_link_meta(sess, crate.attrs, output,
+    let link_meta = link::build_link_meta(crate.attrs, output,
                                           &mut symbol_hasher);
 
     // Append ".rs" to crate name as LLVM module identifier.

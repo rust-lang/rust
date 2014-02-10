@@ -135,7 +135,6 @@ pub enum vstore {
 
 #[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
 pub enum TraitStore {
-    BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
 }
@@ -238,7 +237,7 @@ pub enum AutoRef {
     /// Convert from T to *T
     AutoUnsafe(ast::Mutability),
 
-    /// Convert from @Trait/~Trait/&Trait to &Trait
+    /// Convert from ~Trait/&Trait to &Trait
     AutoBorrowObj(Region, ast::Mutability),
 }
 
@@ -2102,7 +2101,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_type => TC::None,
 
             ty_err => {
-                cx.sess.bug("Asked to compute contents of error type");
+                cx.sess.bug("asked to compute contents of error type");
             }
         };
 
@@ -2156,10 +2155,9 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let st = match cty.sigil {
             ast::BorrowedSigil =>
                 object_contents(cx, RegionTraitStore(cty.region), MutMutable, cty.bounds),
-            ast::ManagedSigil =>
-                object_contents(cx, BoxTraitStore, MutImmutable, cty.bounds),
             ast::OwnedSigil =>
                 object_contents(cx, UniqTraitStore, MutImmutable, cty.bounds),
+            ast::ManagedSigil => unreachable!()
         };
 
         // FIXME(#3569): This borrowed_contents call should be taken care of in
@@ -2189,9 +2187,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         match store {
             UniqTraitStore => {
                 contents.owned_pointer()
-            }
-            BoxTraitStore => {
-                contents.managed_pointer()
             }
             RegionTraitStore(r) => {
                 contents.reference(borrowed_contents(r, mutbl))
@@ -2931,7 +2926,7 @@ pub fn adjust_ty(cx: ctxt,
                                 None => {
                                     cx.sess.span_bug(
                                         span,
-                                        format!("The {}th autoderef failed: \
+                                        format!("the {}th autoderef failed: \
                                                 {}",
                                                 i,
                                                 ty_to_str(cx, adjusted_ty)));
@@ -3060,7 +3055,7 @@ pub fn trait_adjustment_to_ty(cx: ctxt, sigil: &ast::Sigil, region: &Option<Regi
     let trait_store = match *sigil {
         BorrowedSigil => RegionTraitStore(region.expect("expected valid region")),
         OwnedSigil => UniqTraitStore,
-        ManagedSigil => BoxTraitStore
+        ManagedSigil => unreachable!()
     };
 
     mk_trait(cx, def_id, substs.clone(), trait_store, m, bounds)
@@ -3137,7 +3132,7 @@ pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
-                "No def-map entry for expr {:?}", expr.id));
+                "no def-map entry for expr {:?}", expr.id));
         }
     }
 }
@@ -3214,7 +3209,7 @@ pub fn expr_kind(tcx: ctxt,
 
                 def => {
                     tcx.sess.span_bug(expr.span, format!(
-                        "Uncategorized def for expr {:?}: {:?}",
+                        "uncategorized def for expr {:?}: {:?}",
                         expr.id, def));
                 }
             }
@@ -3340,7 +3335,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, name: ast::Name, fields: &[field])
     for f in fields.iter() { if f.ident.name == name { return i; } i += 1u; }
     let string = token::get_ident(name);
     tcx.sess.bug(format!(
-        "No field named `{}` found in the list of fields `{:?}`",
+        "no field named `{}` found in the list of fields `{:?}`",
         string.get(),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
@@ -3692,7 +3687,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     }
 
     if def_id.crate == ast::LOCAL_CRATE {
-        fail!("No def'n found for {:?} in tcx.{}", def_id, descr);
+        fail!("no def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());
@@ -4935,10 +4930,9 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
                 hash.input([17]);
                 did(&mut hash, d);
                 match store {
-                    BoxTraitStore => hash.input([0]),
-                    UniqTraitStore => hash.input([1]),
+                    UniqTraitStore => hash.input([0]),
                     RegionTraitStore(r) => {
-                        hash.input([2]);
+                        hash.input([1]);
                         region(&mut hash, r);
                     }
                 }

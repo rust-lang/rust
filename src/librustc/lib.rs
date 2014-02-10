@@ -28,11 +28,17 @@ This API is completely unstable and subject to change.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
+#[allow(unknown_features)]; // Note: remove it after a snapshot.
+#[feature(quote)];
 
 extern mod extra;
 extern mod flate;
 extern mod arena;
 extern mod syntax;
+extern mod serialize;
+extern mod sync;
+extern mod getopts;
+extern mod collections;
 
 use back::link;
 use driver::session;
@@ -46,8 +52,6 @@ use std::os;
 use std::str;
 use std::task;
 use std::vec;
-use extra::getopts::groups;
-use extra::getopts;
 use syntax::ast;
 use syntax::attr;
 use syntax::diagnostic::Emitter;
@@ -93,6 +97,7 @@ pub mod front {
     pub mod std_inject;
     pub mod assign_node_ids_and_map;
     pub mod feature_gate;
+    pub mod show_span;
 }
 
 pub mod back {
@@ -138,7 +143,7 @@ pub fn usage(argv0: &str) {
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              groups::usage(message, d::optgroups()));
+              getopts::usage(message, d::optgroups()));
 }
 
 pub fn describe_warnings() {
@@ -163,7 +168,7 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
     }
-    println!("{}", "\nAvailable lint checks:\n"); // FIXME: #9970
+    println!("\nAvailable lint checks:\n");
     println!("    {}  {:7.7s}  {}",
              padded(max_key, "name"), "default", "meaning");
     println!("    {}  {:7.7s}  {}\n",
@@ -179,7 +184,7 @@ Available lint options:
 }
 
 pub fn describe_debug_flags() {
-    println!("{}", "\nAvailable debug options:\n"); // FIXME: #9970
+    println!("\nAvailable debug options:\n");
     let r = session::debugging_opts_map();
     for tuple in r.iter() {
         match *tuple {
@@ -190,17 +195,33 @@ pub fn describe_debug_flags() {
     }
 }
 
-pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
+pub fn describe_codegen_flags() {
+    println!("\nAvailable codegen options:\n");
+    let mut cg = session::basic_codegen_options();
+    for &(name, parser, desc) in session::CG_OPTIONS.iter() {
+        // we invoke the parser function on `None` to see if this option needs
+        // an argument or not.
+        let (width, extra) = if parser(&mut cg, None) {
+            (25, "")
+        } else {
+            (21, "=val")
+        };
+        println!("    -C {:>width$s}{} -- {}", name.replace("_", "-"),
+                 extra, desc, width=width);
+    }
+}
+
+pub fn run_compiler(args: &[~str]) {
     let mut args = args.to_owned();
     let binary = args.shift().unwrap();
 
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        &match getopts::groups::getopts(args, d::optgroups()) {
+        &match getopts::getopts(args, d::optgroups()) {
           Ok(m) => m,
           Err(f) => {
-            d::early_error(demitter, f.to_err_msg());
+            d::early_error(f.to_err_msg());
           }
         };
 
@@ -222,7 +243,13 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
 
-    if matches.opt_str("passes") == Some(~"list") {
+    let cg_flags = matches.opt_strs("C");
+    if cg_flags.iter().any(|x| x == &~"help") {
+        describe_codegen_flags();
+        return;
+    }
+
+    if cg_flags.contains(&~"passes=list") {
         unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
@@ -232,7 +259,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
     let (input, input_file_path) = match matches.free.len() {
-      0u => d::early_error(demitter, "no input filename given"),
+      0u => d::early_error("no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
         if ifile == "-" {
@@ -243,11 +270,11 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
             (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
         }
       }
-      _ => d::early_error(demitter, "multiple input filenames provided")
+      _ => d::early_error("multiple input filenames provided")
     };
 
-    let sopts = d::build_session_options(binary, matches, demitter);
-    let sess = d::build_session(sopts, input_file_path, demitter);
+    let sopts = d::build_session_options(binary, matches);
+    let sess = d::build_session(sopts, input_file_path);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = d::build_configuration(sess);
@@ -270,7 +297,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
                              &mut stdout as &mut io::Writer).unwrap();
           }
           d::StrInput(_) => {
-            d::early_error(demitter, "can not list metadata for stdin");
+            d::early_error("can not list metadata for stdin");
           }
         }
         return;
@@ -298,12 +325,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         }
 
         if crate_file_name {
-            let lm = link::build_link_meta(sess, attrs, &t_outputs.obj_filename,
+            let lm = link::build_link_meta(attrs, &t_outputs,
                                            &mut ::util::sha2::Sha256::new());
-            let outputs = session::collect_outputs(&sess, attrs);
-            for &style in outputs.iter() {
+            let crate_types = session::collect_crate_types(&sess, attrs);
+            for &style in crate_types.iter() {
                 let fname = link::filename_for_input(&sess, style, &lm,
-                                                     &t_outputs.out_filename);
+                                                     &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }
         }
@@ -334,7 +361,7 @@ fn parse_crate_attrs(sess: session::Session,
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor(f: proc(@diagnostic::Emitter)) {
+pub fn monitor(f: proc()) {
     // FIXME: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
@@ -358,7 +385,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
 
     match task_builder.try(proc() {
         io::stdio::set_stderr(~w as ~io::Writer);
-        f(@diagnostic::DefaultEmitter)
+        f()
     }) {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
@@ -397,6 +424,6 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
     let owned_args = args.to_owned();
-    monitor(proc(demitter) run_compiler(owned_args, demitter));
+    monitor(proc() run_compiler(owned_args));
     0
 }

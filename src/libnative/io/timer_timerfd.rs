@@ -34,7 +34,7 @@ use std::ptr;
 use std::os;
 use std::rt::rtio;
 use std::hashmap::HashMap;
-use std::unstable::intrinsics;
+use std::mem;
 
 use io::file::FileDesc;
 use io::IoResult;
@@ -75,7 +75,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     }
 
     add(efd, input);
-    let events: [imp::epoll_event, ..16] = unsafe { intrinsics::init() };
+    let events: [imp::epoll_event, ..16] = unsafe { mem::init() };
     let mut map: HashMap<libc::c_int, (Chan<()>, bool)> = HashMap::new();
     'outer: loop {
         let n = match unsafe {

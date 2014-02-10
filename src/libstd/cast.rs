@@ -10,7 +10,6 @@
 
 //! Unsafe casting functions
 
-use ptr::RawPtr;
 use mem;
 use unstable::intrinsics;
 use ptr::copy_nonoverlapping_memory;
@@ -18,7 +17,7 @@ use ptr::copy_nonoverlapping_memory;
 /// Casts the value at `src` to U. The two types must have the same length.
 #[inline]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = intrinsics::uninit();
+    let mut dest: U = mem::uninit();
     let dest_ptr: *mut u8 = transmute(&mut dest);
     let src_ptr: *u8 = transmute(src);
     copy_nonoverlapping_memory(dest_ptr, src_ptr, mem::size_of::<U>());
@@ -72,13 +71,13 @@ pub unsafe fn transmute_region<'a,'b,T>(ptr: &'a T) -> &'b T {
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_mut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *mut T {
+pub unsafe fn transmute_mut_unsafe<T>(ptr: *T) -> *mut T {
     transmute(ptr)
 }
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_immut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *T {
+pub unsafe fn transmute_immut_unsafe<T>(ptr: *mut T) -> *T {
     transmute(ptr)
 }
 

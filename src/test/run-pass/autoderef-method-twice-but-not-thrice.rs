@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 trait double {
-    fn double(@self) -> uint;
+    fn double(~self) -> uint;
 }
 
-impl double for @uint {
-    fn double(@self) -> uint { **self * 2u }
+impl double for ~uint {
+    fn double(~self) -> uint { **self * 2u }
 }
 
 pub fn main() {
-    let x = @@@@@3u;
+    let x = ~~~~~3u;
     assert_eq!(x.double(), 6u);
 }

@@ -22,18 +22,20 @@
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern mod collections;
 
-use extra::list::{List, Cons, Nil};
-use extra::list;
+#[cfg(test)] extern mod extra;
+
+use collections::list::{List, Cons, Nil};
+use collections::list;
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
 use std::cell::{Cell, RefCell};
+use std::mem;
 use std::num;
 use std::ptr;
 use std::kinds::marker;
-use std::mem;
 use std::rc::Rc;
 use std::rt::global_heap;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
@@ -212,10 +214,9 @@ impl Arena {
     #[inline]
     fn alloc_pod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
-            let tydesc = get_tydesc::<T>();
-            let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
+            let ptr = self.alloc_pod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ptr: *mut T = transmute(ptr);
-            intrinsics::move_val_init(&mut (*ptr), op());
+            mem::move_val_init(&mut (*ptr), op());
             return transmute(ptr);
         }
     }
@@ -270,14 +271,14 @@ impl Arena {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
-                self.alloc_nonpod_inner((*tydesc).size, (*tydesc).align);
+                self.alloc_nonpod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ty_ptr: *mut uint = transmute(ty_ptr);
             let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
             *ty_ptr = transmute(tydesc);
             // Actually initialize it
-            intrinsics::move_val_init(&mut(*ptr), op());
+            mem::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
@@ -378,7 +379,7 @@ impl TypedArenaChunk {
         let mut chunk = unsafe {
             let chunk = global_heap::exchange_malloc(size);
             let mut chunk: ~TypedArenaChunk = cast::transmute(chunk);
-            intrinsics::move_val_init(&mut chunk.next, next);
+            mem::move_val_init(&mut chunk.next, next);
             chunk
         };
 
@@ -465,7 +466,7 @@ impl<T> TypedArena<T> {
             }
 
             let ptr: &'a mut T = cast::transmute(this.ptr);
-            intrinsics::move_val_init(ptr, object);
+            mem::move_val_init(ptr, object);
             this.ptr = this.ptr.offset(1);
             let ptr: &'a T = ptr;
             ptr
@@ -535,18 +536,18 @@ mod test {
                 x: 1,
                 y: 2,
                 z: 3,
-            });
+            })
         })
     }
 
     #[bench]
     pub fn bench_pod_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = ~Point {
+            ~Point {
                 x: 1,
                 y: 2,
                 z: 3,
-            };
+            }
         })
     }
 
@@ -560,7 +561,7 @@ mod test {
                     y: 2,
                     z: 3,
                 }
-            });
+            })
         })
     }
 
@@ -587,17 +588,17 @@ mod test {
             arena.alloc(Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            });
+            })
         })
     }
 
     #[bench]
     pub fn bench_nonpod_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = ~Nonpod {
+            ~Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            };
+            }
         })
     }
 
@@ -605,10 +606,10 @@ mod test {
     pub fn bench_nonpod_old_arena(bh: &mut BenchHarness) {
         let arena = Arena::new();
         bh.iter(|| {
-            let _ = arena.alloc(|| Nonpod {
+            arena.alloc(|| Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
-            });
+            })
         })
     }
 }

@@ -22,7 +22,7 @@ use util::small_vector::SmallVector;
 
 use std::logging;
 use std::cell::RefCell;
-use extra::smallintmap::SmallIntMap;
+use collections::SmallIntMap;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {

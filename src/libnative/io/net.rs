@@ -14,7 +14,7 @@ use std::io;
 use std::libc;
 use std::mem;
 use std::rt::rtio;
-use std::unstable::intrinsics;
+use std::sync::arc::UnsafeArc;
 
 use super::{IoResult, retry};
 use super::file::keep_going;
@@ -27,10 +27,10 @@ use super::file::keep_going;
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
 pub fn htons(u: u16) -> u16 {
-    intrinsics::to_be16(u as i16) as u16
+    mem::to_be16(u as i16) as u16
 }
 pub fn ntohs(u: u16) -> u16 {
-    intrinsics::from_be16(u as i16) as u16
+    mem::from_be16(u as i16) as u16
 }
 
 enum InAddr {
@@ -67,7 +67,7 @@ fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
 
 fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
     unsafe {
-        let storage: libc::sockaddr_storage = intrinsics::init();
+        let storage: libc::sockaddr_storage = mem::init();
         let len = match ip_to_inaddr(addr.ip) {
             InAddr(inaddr) => {
                 let storage: *mut libc::sockaddr_in = cast::transmute(&storage);
@@ -108,8 +108,25 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
         let ret = libc::setsockopt(fd, opt, val,
                                    payload,
                                    mem::size_of::<T>() as libc::socklen_t);
-        super::mkerr_libc(ret)
+        if ret != 0 {
+            Err(last_error())
+        } else {
+            Ok(())
+        }
     }
+}
+
+#[cfg(windows)]
+fn last_error() -> io::IoError {
+    extern "system" {
+        fn WSAGetLastError() -> libc::c_int;
+    }
+    super::translate_error(unsafe { WSAGetLastError() }, true)
+}
+
+#[cfg(not(windows))]
+fn last_error() -> io::IoError {
+    super::last_error()
 }
 
 #[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
@@ -120,7 +137,7 @@ fn sockname(fd: sock_t,
                                          *mut libc::socklen_t) -> libc::c_int)
     -> IoResult<ip::SocketAddr>
 {
-    let mut storage: libc::sockaddr_storage = unsafe { intrinsics::init() };
+    let mut storage: libc::sockaddr_storage = unsafe { mem::init() };
     let mut len = mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
     unsafe {
         let storage = &mut storage as *mut libc::sockaddr_storage;
@@ -128,7 +145,7 @@ fn sockname(fd: sock_t,
                     storage as *mut libc::sockaddr,
                     &mut len as *mut libc::socklen_t);
         if ret != 0 {
-            return Err(super::last_error())
+            return Err(last_error())
         }
     }
     return sockaddr_to_addr(&storage, len as uint);
@@ -207,7 +224,7 @@ pub fn init() {
 
         LOCK.lock();
         if !INITIALIZED {
-            let mut data: WSADATA = intrinsics::init();
+            let mut data: WSADATA = mem::init();
             let ret = WSAStartup(0x202,      // version 2.2
                                  &mut data);
             assert_eq!(ret, 0);
@@ -222,7 +239,11 @@ pub fn init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpStream {
-    priv fd: sock_t,
+    priv inner: UnsafeArc<Inner>,
+}
+
+struct Inner {
+    fd: sock_t,
 }
 
 impl TcpStream {
@@ -231,27 +252,31 @@ impl TcpStream {
             socket(addr, libc::SOCK_STREAM).and_then(|fd| {
                 let (addr, len) = addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
-                let ret = TcpStream { fd: fd };
+                let inner = Inner { fd: fd };
+                let ret = TcpStream { inner: UnsafeArc::new(inner) };
                 match retry(|| {
                     libc::connect(fd, addrp as *libc::sockaddr,
                                   len as libc::socklen_t)
                 }) {
-                    -1 => Err(super::last_error()),
+                    -1 => Err(last_error()),
                     _ => Ok(ret),
                 }
             })
         }
     }
 
-    pub fn fd(&self) -> sock_t { self.fd }
+    pub fn fd(&self) -> sock_t {
+        // This unsafety is fine because it's just a read-only arc
+        unsafe { (*self.inner.get()).fd }
+    }
 
     fn set_nodelay(&mut self, nodelay: bool) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_TCP, libc::TCP_NODELAY,
+        setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_NODELAY,
                    nodelay as libc::c_int)
     }
 
     fn set_keepalive(&mut self, seconds: Option<uint>) -> IoResult<()> {
-        let ret = setsockopt(self.fd, libc::SOL_SOCKET, libc::SO_KEEPALIVE,
+        let ret = setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
                              seconds.is_some() as libc::c_int);
         match seconds {
             Some(n) => ret.and_then(|()| self.set_tcp_keepalive(n)),
@@ -261,12 +286,12 @@ impl TcpStream {
 
     #[cfg(target_os = "macos")]
     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
+        setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
                    seconds as libc::c_int)
     }
     #[cfg(target_os = "freebsd")]
     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
+        setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
                    seconds as libc::c_int)
     }
     #[cfg(not(target_os = "macos"), not(target_os = "freebsd"))]
@@ -282,7 +307,7 @@ impl rtio::RtioTcpStream for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let ret = retry(|| {
             unsafe {
-                libc::recv(self.fd,
+                libc::recv(self.fd(),
                            buf.as_ptr() as *mut libc::c_void,
                            buf.len() as wrlen,
                            0) as libc::c_int
@@ -291,7 +316,7 @@ impl rtio::RtioTcpStream for TcpStream {
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
-            Err(super::last_error())
+            Err(last_error())
         } else {
             Ok(ret as uint)
         }
@@ -299,20 +324,20 @@ impl rtio::RtioTcpStream for TcpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::send(self.fd,
+                libc::send(self.fd(),
                            buf as *mut libc::c_void,
                            len as wrlen,
                            0) as i64
             }
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(last_error())
         } else {
             Ok(())
         }
     }
     fn peer_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd, libc::getpeername)
+        sockname(self.fd(), libc::getpeername)
     }
     fn control_congestion(&mut self) -> IoResult<()> {
         self.set_nodelay(false)
@@ -326,15 +351,19 @@ impl rtio::RtioTcpStream for TcpStream {
     fn letdie(&mut self) -> IoResult<()> {
         self.set_keepalive(None)
     }
+
+    fn clone(&self) -> ~rtio::RtioTcpStream {
+        ~TcpStream { inner: self.inner.clone() } as ~rtio::RtioTcpStream
+    }
 }
 
 impl rtio::RtioSocket for TcpStream {
     fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd, libc::getsockname)
+        sockname(self.fd(), libc::getsockname)
     }
 }
 
-impl Drop for TcpStream {
+impl Drop for Inner {
     fn drop(&mut self) { unsafe { close(self.fd); } }
 }
 
@@ -343,7 +372,7 @@ impl Drop for TcpStream {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpListener {
-    priv fd: sock_t,
+    priv inner: UnsafeArc<Inner>,
 }
 
 impl TcpListener {
@@ -352,7 +381,8 @@ impl TcpListener {
             socket(addr, libc::SOCK_STREAM).and_then(|fd| {
                 let (addr, len) = addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
-                let ret = TcpListener { fd: fd };
+                let inner = Inner { fd: fd };
+                let ret = TcpListener { inner: UnsafeArc::new(inner) };
                 // On platforms with Berkeley-derived sockets, this allows
                 // to quickly rebind a socket, without needing to wait for
                 // the OS to clean up the previous one.
@@ -366,18 +396,21 @@ impl TcpListener {
                 }
                 match libc::bind(fd, addrp as *libc::sockaddr,
                                  len as libc::socklen_t) {
-                    -1 => Err(super::last_error()),
+                    -1 => Err(last_error()),
                     _ => Ok(ret),
                 }
             })
         }
     }
 
-    pub fn fd(&self) -> sock_t { self.fd }
+    pub fn fd(&self) -> sock_t {
+        // This is just a read-only arc so the unsafety is fine
+        unsafe { (*self.inner.get()).fd }
+    }
 
     pub fn native_listen(self, backlog: int) -> IoResult<TcpAcceptor> {
-        match unsafe { libc::listen(self.fd, backlog as libc::c_int) } {
-            -1 => Err(super::last_error()),
+        match unsafe { libc::listen(self.fd(), backlog as libc::c_int) } {
+            -1 => Err(last_error()),
             _ => Ok(TcpAcceptor { listener: self })
         }
     }
@@ -391,12 +424,8 @@ impl rtio::RtioTcpListener for TcpListener {
 
 impl rtio::RtioSocket for TcpListener {
     fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd, libc::getsockname)
+        sockname(self.fd(), libc::getsockname)
     }
-}
-
-impl Drop for TcpListener {
-    fn drop(&mut self) { unsafe { close(self.fd); } }
 }
 
 pub struct TcpAcceptor {
@@ -404,11 +433,11 @@ pub struct TcpAcceptor {
 }
 
 impl TcpAcceptor {
-    pub fn fd(&self) -> sock_t { self.listener.fd }
+    pub fn fd(&self) -> sock_t { self.listener.fd() }
 
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
         unsafe {
-            let mut storage: libc::sockaddr_storage = intrinsics::init();
+            let mut storage: libc::sockaddr_storage = mem::init();
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let size = mem::size_of::<libc::sockaddr_storage>();
             let mut size = size as libc::socklen_t;
@@ -417,8 +446,8 @@ impl TcpAcceptor {
                              storagep as *mut libc::sockaddr,
                              &mut size as *mut libc::socklen_t) as libc::c_int
             }) as sock_t {
-                -1 => Err(super::last_error()),
-                fd => Ok(TcpStream { fd: fd })
+                -1 => Err(last_error()),
+                fd => Ok(TcpStream { inner: UnsafeArc::new(Inner { fd: fd })})
             }
         }
     }
@@ -444,7 +473,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UdpSocket {
-    priv fd: sock_t,
+    priv inner: UnsafeArc<Inner>,
 }
 
 impl UdpSocket {
@@ -453,25 +482,29 @@ impl UdpSocket {
             socket(addr, libc::SOCK_DGRAM).and_then(|fd| {
                 let (addr, len) = addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
-                let ret = UdpSocket { fd: fd };
+                let inner = Inner { fd: fd };
+                let ret = UdpSocket { inner: UnsafeArc::new(inner) };
                 match libc::bind(fd, addrp as *libc::sockaddr,
                                  len as libc::socklen_t) {
-                    -1 => Err(super::last_error()),
+                    -1 => Err(last_error()),
                     _ => Ok(ret),
                 }
             })
         }
     }
 
-    pub fn fd(&self) -> sock_t { self.fd }
+    pub fn fd(&self) -> sock_t {
+        // unsafety is fine because it's just a read-only arc
+        unsafe { (*self.inner.get()).fd }
+    }
 
     pub fn set_broadcast(&mut self, on: bool) -> IoResult<()> {
-        setsockopt(self.fd, libc::SOL_SOCKET, libc::SO_BROADCAST,
+        setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_BROADCAST,
                    on as libc::c_int)
     }
 
     pub fn set_multicast_loop(&mut self, on: bool) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_IP, libc::IP_MULTICAST_LOOP,
+        setsockopt(self.fd(), libc::IPPROTO_IP, libc::IP_MULTICAST_LOOP,
                    on as libc::c_int)
     }
 
@@ -484,14 +517,14 @@ impl UdpSocket {
                     // interface == INADDR_ANY
                     imr_interface: libc::in_addr { s_addr: 0x0 },
                 };
-                setsockopt(self.fd, libc::IPPROTO_IP, opt, mreq)
+                setsockopt(self.fd(), libc::IPPROTO_IP, opt, mreq)
             }
             In6Addr(addr) => {
                 let mreq = libc::ip6_mreq {
                     ipv6mr_multiaddr: addr,
                     ipv6mr_interface: 0,
                 };
-                setsockopt(self.fd, libc::IPPROTO_IPV6, opt, mreq)
+                setsockopt(self.fd(), libc::IPPROTO_IPV6, opt, mreq)
             }
         }
     }
@@ -509,19 +542,19 @@ impl rtio::RtioSocket for UdpSocket {
 impl rtio::RtioUdpSocket for UdpSocket {
     fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, ip::SocketAddr)> {
         unsafe {
-            let mut storage: libc::sockaddr_storage = intrinsics::init();
+            let mut storage: libc::sockaddr_storage = mem::init();
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let mut addrlen: libc::socklen_t =
                     mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
             let ret = retry(|| {
-                libc::recvfrom(self.fd,
+                libc::recvfrom(self.fd(),
                                buf.as_ptr() as *mut libc::c_void,
                                buf.len() as msglen_t,
                                0,
                                storagep as *mut libc::sockaddr,
                                &mut addrlen) as libc::c_int
             });
-            if ret < 0 { return Err(super::last_error()) }
+            if ret < 0 { return Err(last_error()) }
             sockaddr_to_addr(&storage, addrlen as uint).and_then(|addr| {
                 Ok((ret as uint, addr))
             })
@@ -532,7 +565,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
         let dstp = &dst as *libc::sockaddr_storage;
         unsafe {
             let ret = retry(|| {
-                libc::sendto(self.fd,
+                libc::sendto(self.fd(),
                              buf.as_ptr() as *libc::c_void,
                              buf.len() as msglen_t,
                              0,
@@ -540,7 +573,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
                              len as libc::socklen_t) as libc::c_int
             });
             match ret {
-                -1 => Err(super::last_error()),
+                -1 => Err(last_error()),
                 n if n as uint != buf.len() => {
                     Err(io::IoError {
                         kind: io::OtherIoError,
@@ -582,11 +615,11 @@ impl rtio::RtioUdpSocket for UdpSocket {
     }
 
     fn multicast_time_to_live(&mut self, ttl: int) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_IP, libc::IP_MULTICAST_TTL,
+        setsockopt(self.fd(), libc::IPPROTO_IP, libc::IP_MULTICAST_TTL,
                    ttl as libc::c_int)
     }
     fn time_to_live(&mut self, ttl: int) -> IoResult<()> {
-        setsockopt(self.fd, libc::IPPROTO_IP, libc::IP_TTL, ttl as libc::c_int)
+        setsockopt(self.fd(), libc::IPPROTO_IP, libc::IP_TTL, ttl as libc::c_int)
     }
 
     fn hear_broadcasts(&mut self) -> IoResult<()> {
@@ -595,10 +628,10 @@ impl rtio::RtioUdpSocket for UdpSocket {
     fn ignore_broadcasts(&mut self) -> IoResult<()> {
         self.set_broadcast(false)
     }
-}
 
-impl Drop for UdpSocket {
-    fn drop(&mut self) { unsafe { close(self.fd) } }
+    fn clone(&self) -> ~rtio::RtioUdpSocket {
+        ~UdpSocket { inner: self.inner.clone() } as ~rtio::RtioUdpSocket
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

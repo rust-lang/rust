@@ -31,9 +31,9 @@ use std::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::rc::Rc;
 use std::vec;
-use extra::ebml::reader;
-use extra::ebml;
-use extra::serialize::Decodable;
+use serialize::ebml::reader;
+use serialize::ebml;
+use serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
@@ -772,7 +772,6 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     match explicit_self_kind as char {
         's' => ast::SelfStatic,
         'v' => ast::SelfValue,
-        '@' => ast::SelfBox,
         '~' => ast::SelfUniq,
         // FIXME(#4846) expl. region
         '&' => ast::SelfRegion(None, get_mutability(string[1])),

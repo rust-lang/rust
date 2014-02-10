@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast
+
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
 extern mod extra;
-use self::extra::json;
-use self::extra::serialize;
+extern mod serialize;
+use extra::json;
+use serialize::Decodable;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();
     let mut decoder = json::Decoder::new(json);
-    let _x: ~[int] = serialize::Decodable::decode(&mut decoder);
+    let _x: ~[int] = Decodable::decode(&mut decoder);
 }

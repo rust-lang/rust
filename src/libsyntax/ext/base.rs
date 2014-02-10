@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -36,7 +36,7 @@ pub struct MacroDef {
 }
 
 pub type ItemDecorator =
-    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
+    fn(&mut ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
 
 pub struct BasicMacroExpander {
     expander: MacroExpanderFn,
@@ -105,7 +105,7 @@ pub trait AnyMacro {
 pub enum MacResult {
     MRExpr(@ast::Expr),
     MRItem(@ast::Item),
-    MRAny(@AnyMacro),
+    MRAny(~AnyMacro:),
     MRDef(MacroDef),
 }
 impl MacResult {

@@ -22,7 +22,6 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
-use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -220,9 +219,8 @@ impl<'a> CheckLoanCtxt<'a> {
 
         // Restrictions that would cause the new loan to be illegal:
         let illegal_if = match loan2.mutbl {
-            MutableMutability   => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
-            ImmutableMutability => RESTR_ALIAS | RESTR_FREEZE,
-            ConstMutability     => RESTR_ALIAS,
+            MutableMutability   => RESTR_FREEZE | RESTR_CLAIM,
+            ImmutableMutability => RESTR_FREEZE,
         };
         debug!("illegal_if={:?}", illegal_if);
 
@@ -424,7 +422,7 @@ impl<'a> CheckLoanCtxt<'a> {
             debug!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
                    cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
             match guarantor.cat {
-                mc::cat_deref(b, _, mc::region_ptr(MutMutable, _)) => {
+                mc::cat_deref(b, _, mc::region_ptr(ast::MutMutable, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
 
                     check_for_aliasability_violation(this, expr, b);
@@ -438,43 +436,18 @@ impl<'a> CheckLoanCtxt<'a> {
 
         fn check_for_aliasability_violation(this: &CheckLoanCtxt,
                                             expr: &ast::Expr,
-                                            cmt: mc::cmt) -> bool {
-            let mut cmt = cmt;
-
-            loop {
-                match cmt.cat {
-                    mc::cat_deref(b, _, mc::region_ptr(MutMutable, _)) |
-                    mc::cat_downcast(b) |
-                    mc::cat_stack_upvar(b) |
-                    mc::cat_deref(b, _, mc::uniq_ptr) |
-                    mc::cat_interior(b, _) |
-                    mc::cat_discr(b, _) => {
-                        // Aliasability depends on base cmt
-                        cmt = b;
-                    }
-
-                    mc::cat_copied_upvar(_) |
-                    mc::cat_rvalue(..) |
-                    mc::cat_local(..) |
-                    mc::cat_arg(_) |
-                    mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
-                    mc::cat_static_item(..) |
-                    mc::cat_deref(_, _, mc::gc_ptr) |
-                    mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) => {
-                        // Aliasability is independent of base cmt
-                        match cmt.freely_aliasable() {
-                            None => {
-                                return true;
-                            }
-                            Some(cause) => {
-                                this.bccx.report_aliasability_violation(
-                                    expr.span,
-                                    MutabilityViolation,
-                                    cause);
-                                return false;
-                            }
-                        }
-                    }
+                                            cmt: mc::cmt)
+                                            -> bool {
+            match cmt.freely_aliasable() {
+                None => {
+                    return true;
+                }
+                Some(cause) => {
+                    this.bccx.report_aliasability_violation(
+                        expr.span,
+                        MutabilityViolation,
+                        cause);
+                    return false;
                 }
             }
         }
@@ -598,8 +571,7 @@ impl<'a> CheckLoanCtxt<'a> {
 
                 // Check for a non-const loan of `loan_path`
                 let cont = this.each_in_scope_loan(expr.id, |loan| {
-                    if loan.loan_path == loan_path &&
-                            loan.mutbl != ConstMutability {
+                    if loan.loan_path == loan_path {
                         this.report_illegal_mutation(expr,
                                                      full_loan_path,
                                                      loan);

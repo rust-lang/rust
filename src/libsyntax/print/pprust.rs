@@ -35,11 +35,11 @@ use std::io;
 use std::io::MemWriter;
 
 // The &mut State is stored here to prevent recursive type.
-pub enum AnnNode<'a,'b> {
-    NodeBlock(&'b mut State, &'a ast::Block),
-    NodeItem(&'b mut State, &'a ast::Item),
-    NodeExpr(&'b mut State, &'a ast::Expr),
-    NodePat(&'b mut State, &'a ast::Pat),
+pub enum AnnNode<'a, 'b> {
+    NodeBlock(&'a mut State<'a>, &'b ast::Block),
+    NodeItem(&'a mut State<'a>, &'b ast::Item),
+    NodeExpr(&'a mut State<'a>, &'b ast::Expr),
+    NodePat(&'a mut State<'a>, &'b ast::Pat),
 }
 
 pub trait PpAnn {
@@ -56,7 +56,7 @@ pub struct CurrentCommentAndLiteral {
     cur_lit: uint,
 }
 
-pub struct State {
+pub struct State<'a> {
     s: pp::Printer,
     cm: Option<@CodeMap>,
     intr: @token::IdentInterner,
@@ -64,7 +64,7 @@ pub struct State {
     literals: Option<~[comments::Literal]>,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: RefCell<~[pp::Breaks]>,
-    ann: @PpAnn
+    ann: &'a PpAnn
 }
 
 pub fn ibox(s: &mut State, u: uint) -> io::IoResult<()> {
@@ -83,15 +83,15 @@ pub fn end(s: &mut State) -> io::IoResult<()> {
     pp::end(&mut s.s)
 }
 
-pub fn rust_printer(writer: ~io::Writer, intr: @IdentInterner) -> State {
-    return rust_printer_annotated(writer, intr, @NoAnn as @PpAnn);
+pub fn rust_printer(writer: ~io::Writer, intr: @IdentInterner) -> State<'static> {
+    rust_printer_annotated(writer, intr, &NoAnn)
 }
 
-pub fn rust_printer_annotated(writer: ~io::Writer,
-                              intr: @IdentInterner,
-                              ann: @PpAnn)
-                              -> State {
-    return State {
+pub fn rust_printer_annotated<'a>(writer: ~io::Writer,
+                                  intr: @IdentInterner,
+                                  ann: &'a PpAnn)
+                                  -> State<'a> {
+    State {
         s: pp::mk_printer(writer, default_columns),
         cm: None,
         intr: intr,
@@ -103,7 +103,7 @@ pub fn rust_printer_annotated(writer: ~io::Writer,
         },
         boxes: RefCell::new(~[]),
         ann: ann
-    };
+    }
 }
 
 pub static indent_unit: uint = 4u;
@@ -120,7 +120,7 @@ pub fn print_crate(cm: @CodeMap,
                    filename: ~str,
                    input: &mut io::Reader,
                    out: ~io::Writer,
-                   ann: @PpAnn,
+                   ann: &PpAnn,
                    is_expanded: bool) -> io::IoResult<()> {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
@@ -1843,9 +1843,6 @@ fn print_explicit_self(s: &mut State,
             if_ok!(print_opt_lifetime(s, lt));
             if_ok!(print_mutability(s, m));
             if_ok!(word(&mut s.s, "self"));
-        }
-        ast::SelfBox => {
-            if_ok!(word(&mut s.s, "@self"));
         }
     }
     return Ok(true);

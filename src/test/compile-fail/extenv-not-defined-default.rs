@@ -8,4 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { env!("__HOPEFULLY_NOT_DEFINED__"); } //~ ERROR: environment variable `__HOPEFULLY_NOT_DEFINED__` not defined
+fn main() {
+    env!("__HOPEFULLY_NOT_DEFINED__");
+    //~^ ERROR: environment variable `__HOPEFULLY_NOT_DEFINED__` not defined
+}

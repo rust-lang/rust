@@ -11,7 +11,6 @@
 #[allow(non_uppercase_pattern_statics)];
 
 use arena::TypedArena;
-use back::abi;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{ValueRef, Pointer, Array, Struct};
 use lib;
@@ -228,7 +227,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("Unknown ordering in atomic intrinsic")
+                _ => ccx.sess.fatal("unknown ordering in atomic intrinsic")
             }
         };
 
@@ -269,7 +268,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("Unknown atomic operation")
+                    _ => ccx.sess.fatal("unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
@@ -326,7 +325,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "get_tydesc" => {
             let tp_ty = substs.tys[0];
             let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+            glue::lazily_emit_visit_glue(ccx, static_ti);
 
             // FIXME (#3730): ideally this shouldn't need a cast,
             // but there's a circularity between translating rust types to llvm
@@ -459,20 +458,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
             let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
-            glue::call_tydesc_glue_full(bcx, visitor, td,
-                                        abi::tydesc_field_visit_glue, None);
+            glue::call_visit_glue(bcx, visitor, td, None);
             RetVoid(bcx);
-        }
-        "morestack_addr" => {
-            // FIXME This is a hack to grab the address of this particular
-            // native function. There should be a general in-language
-            // way to do this
-            let llfty = type_of_rust_fn(bcx.ccx(), false, [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(bcx.ccx().llmod, "__morestack",
-                                               llfty, ty::mk_nil());
-            let morestack_addr = PointerCast(bcx, morestack_addr,
-                                             Type::nil().ptr_to());
-            Ret(bcx, morestack_addr);
         }
         "offset" => {
             let ptr = get_param(decl, first_real_arg);

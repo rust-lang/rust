@@ -8,11 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The native runtime crate
+//! The native I/O and threading crate
 //!
 //! This crate contains an implementation of 1:1 scheduling for a "native"
 //! runtime. In addition, all I/O provided by this crate is the thread blocking
 //! version of I/O.
+//!
+//! # Starting with libnative
+//!
+//! ```rust
+//! extern mod native;
+//!
+//! #[start]
+//! fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
+//!
+//! fn main() {
+//!     // this code is running on the main OS thread
+//! }
+//! ```
+//!
+//! # Force spawning a native task
+//!
+//! ```rust
+//! extern mod native;
+//!
+//! fn main() {
+//!     // We're not sure whether this main function is run in 1:1 or M:N mode.
+//!
+//!     native::task::spawn(proc() {
+//!         // this code is guaranteed to be run on a native thread
+//!     });
+//! }
+//! ```
 
 #[crate_id = "native#0.10-pre"];
 #[license = "MIT/ASL2"];

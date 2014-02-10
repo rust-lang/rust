@@ -15,7 +15,7 @@ use parse::token;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
 
-use extra::serialize::{Decodable, Decoder, Encodable, Encoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cast;
 use std::char;
 use std::fmt;
@@ -588,8 +588,8 @@ impl BytesContainer for InternedString {
 }
 
 impl fmt::Show for InternedString {
-    fn fmt(obj: &InternedString, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", obj.string.as_slice())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.string.as_slice())
     }
 }
 

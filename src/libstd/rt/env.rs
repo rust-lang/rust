@@ -10,6 +10,8 @@
 
 //! Runtime environment settings
 
+// NOTE: remove `POISON_ON_FREE` after a snapshot
+
 use from_str::from_str;
 use option::{Some, None};
 use os;

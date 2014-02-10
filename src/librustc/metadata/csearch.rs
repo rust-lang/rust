@@ -18,8 +18,8 @@ use middle::ty;
 use middle::typeck;
 
 use std::vec;
+use reader = serialize::ebml::reader;
 use std::rc::Rc;
-use reader = extra::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back::link;
 use back::target_strs;
 use back;
 use driver::driver::host_triple;
@@ -61,21 +60,13 @@ debugging_opts!(
         BORROWCK_STATS,
         NO_LANDING_PADS,
         DEBUG_LLVM,
+        SHOW_SPAN,
         COUNT_TYPE_SIZES,
         META_STATS,
         NO_OPT,
         GC,
-        DEBUG_INFO,
-        EXTRA_DEBUG_INFO,
         PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
-        NO_VECTORIZE_LOOPS,
-        NO_VECTORIZE_SLP,
-        NO_PREPOPULATE_PASSES,
-        USE_SOFTFP,
-        GEN_CRATE_MAP,
-        PREFER_DYNAMIC,
-        NO_INTEGRATED_AS,
         LTO
     ]
     0
@@ -96,6 +87,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
      ("no-landing-pads", "omit landing pads for unwinding",
       NO_LANDING_PADS),
      ("debug-llvm", "enable debug output from LLVM", DEBUG_LLVM),
+     ("show-span", "show spans for compiler debugging", SHOW_SPAN),
      ("count-type-sizes", "count the sizes of aggregate types",
       COUNT_TYPE_SIZES),
      ("meta-stats", "gather metadata statistics", META_STATS),
@@ -103,26 +95,9 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
      ("print-link-args", "Print the arguments passed to the linker",
       PRINT_LINK_ARGS),
      ("gc", "Garbage collect shared data (experimental)", GC),
-     ("extra-debug-info", "Extra debugging info (experimental)",
-      EXTRA_DEBUG_INFO),
-     ("debug-info", "Produce debug info (experimental)", DEBUG_INFO),
      ("print-llvm-passes",
       "Prints the llvm optimization passes being run",
       PRINT_LLVM_PASSES),
-     ("no-prepopulate-passes",
-      "Don't pre-populate the pass managers with a list of passes, only use \
-        the passes from --passes",
-      NO_PREPOPULATE_PASSES),
-     ("no-vectorize-loops",
-      "Don't run the loop vectorization optimization passes",
-      NO_VECTORIZE_LOOPS),
-     ("no-vectorize-slp", "Don't run LLVM's SLP vectorization passes",
-      NO_VECTORIZE_SLP),
-     ("soft-float", "Generate software floating point library calls", USE_SOFTFP),
-     ("gen-crate-map", "Force generation of a toplevel crate map", GEN_CRATE_MAP),
-     ("prefer-dynamic", "Prefer dynamic linking to static linking", PREFER_DYNAMIC),
-     ("no-integrated-as",
-      "Use external assembler rather than LLVM's integrated one", NO_INTEGRATED_AS),
      ("lto", "Perform LLVM link-time optimizations", LTO),
     ]
 }
@@ -139,28 +114,19 @@ pub enum OptLevel {
 pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    outputs: ~[OutputStyle],
+    crate_types: ~[CrateType],
 
     gc: bool,
     optimize: OptLevel,
-    custom_passes: ~[~str],
-    llvm_args: ~[~str],
     debuginfo: bool,
-    extra_debuginfo: bool,
     lint_opts: ~[(lint::Lint, lint::level)],
-    save_temps: bool,
-    output_type: back::link::OutputType,
+    output_types: ~[back::link::OutputType],
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
     addl_lib_search_paths: @RefCell<HashSet<Path>>,
-    ar: Option<~str>,
-    linker: Option<~str>,
-    linker_args: ~[~str],
     maybe_sysroot: Option<@Path>,
     target_triple: ~str,
-    target_cpu: ~str,
-    target_feature: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
@@ -171,13 +137,12 @@ pub struct Options {
     parse_only: bool,
     no_trans: bool,
     no_analysis: bool,
-    no_rpath: bool,
     debugging_opts: u64,
-    android_cross_path: Option<~str>,
     /// Whether to write dependency files. It's (enabled, optional filename).
     write_dependency_info: (bool, Option<Path>),
     /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
     print_metas: (bool, bool, bool),
+    cg: CodegenOptions,
 }
 
 // The type of entry function, so
@@ -192,11 +157,11 @@ pub enum EntryFnType {
 }
 
 #[deriving(Eq, Clone, TotalOrd, TotalEq)]
-pub enum OutputStyle {
-    OutputExecutable,
-    OutputDylib,
-    OutputRlib,
-    OutputStaticlib,
+pub enum CrateType {
+    CrateTypeExecutable,
+    CrateTypeDylib,
+    CrateTypeRlib,
+    CrateTypeStaticlib,
 }
 
 pub struct Session_ {
@@ -219,7 +184,7 @@ pub struct Session_ {
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::Lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
-    outputs: @RefCell<~[OutputStyle]>,
+    crate_types: @RefCell<~[CrateType]>,
 }
 
 pub type Session = @Session_;
@@ -307,7 +272,7 @@ impl Session_ {
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
-        self.span_bug(sp, format!("Impossible case reached: {}", msg));
+        self.span_bug(sp, format!("impossible case reached: {}", msg));
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(TIME_PASSES) }
@@ -328,29 +293,14 @@ impl Session_ {
     pub fn print_llvm_passes(&self) -> bool {
         self.debugging_opt(PRINT_LLVM_PASSES)
     }
-    pub fn no_prepopulate_passes(&self) -> bool {
-        self.debugging_opt(NO_PREPOPULATE_PASSES)
-    }
-    pub fn no_vectorize_loops(&self) -> bool {
-        self.debugging_opt(NO_VECTORIZE_LOOPS)
-    }
-    pub fn no_vectorize_slp(&self) -> bool {
-        self.debugging_opt(NO_VECTORIZE_SLP)
-    }
-    pub fn gen_crate_map(&self) -> bool {
-        self.debugging_opt(GEN_CRATE_MAP)
-    }
-    pub fn prefer_dynamic(&self) -> bool {
-        self.debugging_opt(PREFER_DYNAMIC)
-    }
-    pub fn no_integrated_as(&self) -> bool {
-        self.debugging_opt(NO_INTEGRATED_AS)
-    }
     pub fn lto(&self) -> bool {
         self.debugging_opt(LTO)
     }
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(NO_LANDING_PADS)
+    }
+    pub fn show_span(&self) -> bool {
+        self.debugging_opt(SHOW_SPAN)
     }
 
     // DEPRECATED. This function results in a lot of allocations when they
@@ -374,37 +324,134 @@ impl Session_ {
 /// Some reasonable defaults
 pub fn basic_options() -> @Options {
     @Options {
-        outputs: ~[],
+        crate_types: ~[],
         gc: false,
         optimize: No,
-        custom_passes: ~[],
-        llvm_args: ~[],
         debuginfo: false,
-        extra_debuginfo: false,
         lint_opts: ~[],
-        save_temps: false,
-        output_type: link::OutputTypeExe,
+        output_types: ~[],
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
-        ar: None,
-        linker: None,
-        linker_args: ~[],
         maybe_sysroot: None,
         target_triple: host_triple(),
-        target_cpu: ~"generic",
-        target_feature: ~"",
         cfg: ~[],
         binary: ~"rustc",
         test: false,
         parse_only: false,
         no_trans: false,
         no_analysis: false,
-        no_rpath: false,
         debugging_opts: 0,
-        android_cross_path: None,
         write_dependency_info: (false, None),
         print_metas: (false, false, false),
+        cg: basic_codegen_options(),
     }
 }
+
+/// Declare a macro that will define all CodegenOptions fields and parsers all
+/// at once. The goal of this macro is to define an interface that can be
+/// programmatically used by the option parser in order to initialize the struct
+/// without hardcoding field names all over the place.
+///
+/// The goal is to invoke this macro once with the correct fields, and then this
+/// macro generates all necessary code. The main gotcha of this macro is the
+/// cgsetters module which is a bunch of generated code to parse an option into
+/// its respective field in the struct. There are a few hand-written parsers for
+/// parsing specific types of values in this module.
+macro_rules! cgoptions(
+    ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
+(
+    #[deriving(Clone)]
+    pub struct CodegenOptions { $($opt: $t),* }
+
+    pub fn basic_codegen_options() -> CodegenOptions {
+        CodegenOptions { $($opt: $init),* }
+    }
+
+    pub type CodegenSetter = fn(&mut CodegenOptions, v: Option<&str>) -> bool;
+    pub static CG_OPTIONS: &'static [(&'static str, CodegenSetter,
+                                      &'static str)] =
+        &[ $( (stringify!($opt), cgsetters::$opt, $desc) ),* ];
+
+    mod cgsetters {
+        use super::CodegenOptions;
+
+        $(
+            pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {
+                $parse(&mut cg.$opt, v)
+            }
+        )*
+
+        fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
+            match v {
+                Some(..) => false,
+                None => { *slot = true; true }
+            }
+        }
+
+        fn parse_opt_string(slot: &mut Option<~str>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = Some(s.to_owned()); true },
+                None => false,
+            }
+        }
+
+        fn parse_string(slot: &mut ~str, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = s.to_owned(); true },
+                None => false,
+            }
+        }
+
+        fn parse_list(slot: &mut ~[~str], v: Option<&str>) -> bool {
+            match v {
+                Some(s) => {
+                    for s in s.words() {
+                        slot.push(s.to_owned());
+                    }
+                    true
+                },
+                None => false,
+            }
+        }
+
+    }
+) )
+
+cgoptions!(
+    ar: Option<~str> = (None, parse_opt_string,
+        "tool to assemble archives with"),
+    linker: Option<~str> = (None, parse_opt_string,
+        "system linker to link outputs with"),
+    link_args: ~[~str] = (~[], parse_list,
+        "extra arguments to pass to the linker (space separated)"),
+    target_cpu: ~str = (~"generic", parse_string,
+        "select target processor (llc -mcpu=help for details)"),
+    target_feature: ~str = (~"", parse_string,
+        "target specific attributes (llc -mattr=help for details)"),
+    passes: ~[~str] = (~[], parse_list,
+        "a list of extra LLVM passes to run (space separated)"),
+    llvm_args: ~[~str] = (~[], parse_list,
+        "a list of arguments to pass to llvm (space separated)"),
+    save_temps: bool = (false, parse_bool,
+        "save all temporary output files during compilation"),
+    android_cross_path: Option<~str> = (None, parse_opt_string,
+        "the path to the Android NDK"),
+    no_rpath: bool = (false, parse_bool,
+        "disables setting the rpath in libs/exes"),
+    no_prepopulate_passes: bool = (false, parse_bool,
+        "don't pre-populate the pass manager with a list of passes"),
+    no_vectorize_loops: bool = (false, parse_bool,
+        "don't run the loop vectorization optimization passes"),
+    no_vectorize_slp: bool = (false, parse_bool,
+        "don't run LLVM's SLP vectorization pass"),
+    soft_float: bool = (false, parse_bool,
+        "generate software floating point library calls"),
+    gen_crate_map: bool = (false, parse_bool,
+        "force generation of a toplevel crate map"),
+    prefer_dynamic: bool = (false, parse_bool,
+        "prefer dynamic linking to static linking"),
+    no_integrated_as: bool = (false, parse_bool,
+        "use an external assembler rather than LLVM's integrated one"),
+)
 
 // Seems out of place, but it uses session, so I'm putting it here
 pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
@@ -413,10 +460,10 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
 
 pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     if options.test { return false }
-    for output in options.outputs.iter() {
+    for output in options.crate_types.iter() {
         match *output {
-            OutputExecutable => {}
-            OutputStaticlib | OutputDylib | OutputRlib => return true
+            CrateTypeExecutable => {}
+            CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
     match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
@@ -430,30 +477,30 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     }
 }
 
-pub fn default_lib_output() -> OutputStyle {
-    OutputRlib
+pub fn default_lib_output() -> CrateType {
+    CrateTypeRlib
 }
 
-pub fn collect_outputs(session: &Session,
-                       attrs: &[ast::Attribute]) -> ~[OutputStyle] {
+pub fn collect_crate_types(session: &Session,
+                           attrs: &[ast::Attribute]) -> ~[CrateType] {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return ~[OutputExecutable];
+        return ~[CrateTypeExecutable];
     }
-    let mut base = session.opts.outputs.clone();
+    let mut base = session.opts.crate_types.clone();
     let mut iter = attrs.iter().filter_map(|a| {
         if a.name().equiv(&("crate_type")) {
             match a.value_str() {
-                Some(ref n) if n.equiv(&("rlib")) => Some(OutputRlib),
-                Some(ref n) if n.equiv(&("dylib")) => Some(OutputDylib),
+                Some(ref n) if n.equiv(&("rlib")) => Some(CrateTypeRlib),
+                Some(ref n) if n.equiv(&("dylib")) => Some(CrateTypeDylib),
                 Some(ref n) if n.equiv(&("lib")) => {
                     Some(default_lib_output())
                 }
                 Some(ref n) if n.equiv(&("staticlib")) => {
-                    Some(OutputStaticlib)
+                    Some(CrateTypeStaticlib)
                 }
-                Some(ref n) if n.equiv(&("bin")) => Some(OutputExecutable),
+                Some(ref n) if n.equiv(&("bin")) => Some(CrateTypeExecutable),
                 Some(_) => {
                     session.add_lint(lint::UnknownCrateType,
                                      ast::CRATE_NODE_ID,
@@ -473,7 +520,7 @@ pub fn collect_outputs(session: &Session,
     });
     base.extend(&mut iter);
     if base.len() == 0 {
-        base.push(OutputExecutable);
+        base.push(CrateTypeExecutable);
     }
     base.sort();
     base.dedup();

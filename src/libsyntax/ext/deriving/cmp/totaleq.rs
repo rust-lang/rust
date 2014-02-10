@@ -14,18 +14,17 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_totaleq(cx: &ExtCtxt,
+pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: @MetaItem,
                                in_items: ~[@Item]) -> ~[@Item] {
-    fn cs_equals(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+    fn cs_equals(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                cx, span, substr)
     }
 
     let trait_def = TraitDef {
-        cx: cx, span: span,
-
+        span: span,
         path: Path::new(~["std", "cmp", "TotalEq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -42,5 +41,5 @@ pub fn expand_deriving_totaleq(cx: &ExtCtxt,
             }
         ]
     };
-    trait_def.expand(mitem, in_items)
+    trait_def.expand(cx, mitem, in_items)
 }

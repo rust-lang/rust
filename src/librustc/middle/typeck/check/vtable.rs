@@ -73,7 +73,7 @@ pub struct LocationInfo {
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
 pub struct VtableContext<'a> {
-    infcx: @infer::InferCtxt,
+    infcx: &'a infer::InferCtxt,
     param_env: &'a ty::ParameterEnvironment,
 }
 
@@ -578,11 +578,10 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
               // Look up vtables for the type we're casting to,
               // passing in the source and target type.  The source
               // must be a pointer type suitable to the object sigil,
-              // e.g.: `@x as @Trait`, `&x as &Trait` or `~x as ~Trait`
+              // e.g.: `&x as &Trait` or `~x as ~Trait`
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
-                  (&ty::ty_box(..), ty::BoxTraitStore) |
                   (&ty::ty_uniq(..), ty::UniqTraitStore)
                     if !mutability_allowed(ast::MutImmutable,
                                            target_mutbl) => {
@@ -596,7 +595,6 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                                               format!("types differ in mutability"));
                   }
 
-                  (&ty::ty_box(..), ty::BoxTraitStore) |
                   (&ty::ty_uniq(..), ty::UniqTraitStore) |
                   (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
                     let typ = match &ty::get(ty).sty {
@@ -654,14 +652,6 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                           ex.span,
                           format!("can only cast an ~-pointer \
                                 to a ~-object, not a {}",
-                               ty::ty_sort_str(fcx.tcx(), ty)));
-                  }
-
-                  (_, ty::BoxTraitStore) => {
-                      fcx.ccx.tcx.sess.span_err(
-                          ex.span,
-                          format!("can only cast an @-pointer \
-                                to an @-object, not a {}",
                                ty::ty_sort_str(fcx.tcx(), ty)));
                   }
 
@@ -791,7 +781,7 @@ pub fn resolve_impl(ccx: @CrateCtxt,
 
     let impl_trait_ref = @impl_trait_ref.subst(ccx.tcx, &param_env.free_substs);
 
-    let infcx = infer::new_infer_ctxt(ccx.tcx);
+    let infcx = &infer::new_infer_ctxt(ccx.tcx);
     let vcx = VtableContext { infcx: infcx, param_env: &param_env };
     let loc_info = location_info_for_item(impl_item);
 

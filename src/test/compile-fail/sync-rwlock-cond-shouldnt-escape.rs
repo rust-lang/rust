@@ -9,10 +9,10 @@
 // except according to those terms.
 
 // error-pattern: lifetime of method receiver does not outlive the method call
-extern mod extra;
-use extra::sync;
+extern mod sync;
+use sync::RWLock;
 fn main() {
-    let x = ~sync::RWLock::new();
+    let x = ~RWLock::new();
     let mut y = None;
     x.write_cond(|cond| {
         y = Some(cond);

@@ -18,15 +18,17 @@
 extern mod syntax;
 extern mod rustc;
 extern mod extra;
+extern mod serialize;
+extern mod sync;
+extern mod getopts;
+extern mod collections;
 
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
-use extra::getopts;
-use extra::getopts::groups;
 use extra::json;
-use extra::serialize::{Decodable, Encodable};
+use serialize::{Decodable, Encodable};
 use extra::time;
 
 pub mod clean;
@@ -78,8 +80,8 @@ pub fn main() {
     std::os::set_exit_status(main_args(std::os::args()));
 }
 
-pub fn opts() -> ~[groups::OptGroup] {
-    use extra::getopts::groups::*;
+pub fn opts() -> ~[getopts::OptGroup] {
+    use getopts::*;
     ~[
         optflag("h", "help", "show this help message"),
         optflag("", "version", "print rustdoc's version"),
@@ -105,11 +107,11 @@ pub fn opts() -> ~[groups::OptGroup] {
 }
 
 pub fn usage(argv0: &str) {
-    println!("{}", groups::usage(format!("{} [options] <input>", argv0), opts()));
+    println!("{}", getopts::usage(format!("{} [options] <input>", argv0), opts()));
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let matches = match groups::getopts(args.tail(), opts()) {
+    let matches = match getopts::getopts(args.tail(), opts()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err.to_err_msg());
@@ -325,7 +327,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson],
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = ~extra::treemap::TreeMap::new();
+    let mut json = ~collections::TreeMap::new();
     json.insert(~"schema", json::String(SCHEMA_VERSION.to_owned()));
     let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
 

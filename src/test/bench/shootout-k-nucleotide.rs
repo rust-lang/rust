@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 // xfail-test
 
 extern mod extra;
@@ -6,8 +16,8 @@ use std::cast::transmute;
 use std::i32::range;
 use std::libc::{STDIN_FILENO, c_int, fdopen, fgets, fileno, fopen, fstat};
 use std::libc::{stat, strlen};
+use std::mem::init;
 use std::ptr::null;
-use std::unstable::intrinsics::init;
 use std::vec::{reverse};
 
 static LINE_LEN: uint = 80;

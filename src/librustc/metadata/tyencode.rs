@@ -195,7 +195,7 @@ fn enc_region(w: &mut MemWriter, cx: @ctxt, r: ty::Region) {
         }
         ty::ReInfer(_) => {
             // these should not crop up after typeck
-            cx.diag.handler().bug("Cannot encode region variables");
+            cx.diag.handler().bug("cannot encode region variables");
         }
     }
 }
@@ -236,7 +236,6 @@ pub fn enc_trait_ref(w: &mut MemWriter, cx: @ctxt, s: &ty::TraitRef) {
 pub fn enc_trait_store(w: &mut MemWriter, cx: @ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => mywrite!(w, "~"),
-        ty::BoxTraitStore => mywrite!(w, "@"),
         ty::RegionTraitStore(re) => {
             mywrite!(w, "&");
             enc_region(w, cx, re);
@@ -321,7 +320,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             enc_bare_fn_ty(w, cx, f);
         }
         ty::ty_infer(_) => {
-            cx.diag.handler().bug("Cannot encode inference variable types");
+            cx.diag.handler().bug("cannot encode inference variable types");
         }
         ty::ty_param(param_ty {idx: id, def_id: did}) => {
             mywrite!(w, "p{}|{}", (cx.ds)(did), id);
@@ -335,7 +334,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_err => fail!("Shouldn't encode error type")
+        ty::ty_err => fail!("shouldn't encode error type")
     }
 }
 

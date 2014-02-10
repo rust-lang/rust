@@ -22,7 +22,7 @@ use std::hashmap::HashMap;
 use std::option::Option;
 use std::rc::Rc;
 use std::to_str::ToStr;
-use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
 pub type P<T> = @T;
@@ -964,7 +964,6 @@ pub enum ExplicitSelf_ {
     SelfStatic,                                // no self
     SelfValue,                                 // `self`
     SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`, `&'lt mut self`
-    SelfBox,                                   // `@self`
     SelfUniq                                   // `~self`
 }
 
@@ -1064,8 +1063,8 @@ pub struct ViewItem {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum ViewItem_ {
     // ident: name used to refer to this crate in the code
-    // optional @str: if present, this is a location (containing
-    // arbitrary characters) from which to fetch the crate sources
+    // optional (InternedString,StrStyle): if present, this is a location
+    // (containing arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
     ViewItemExternMod(Ident, Option<(InternedString,StrStyle)>, NodeId),
     ViewItemUse(~[@ViewPath]),
@@ -1204,6 +1203,7 @@ pub enum InlinedItem {
 
 #[cfg(test)]
 mod test {
+    use serialize;
     use extra;
     use codemap::*;
     use super::*;
@@ -1230,6 +1230,6 @@ mod test {
             },
         };
         // doesn't matter which encoder we use....
-        let _f = (@e as @extra::serialize::Encodable<extra::json::Encoder>);
+        let _f = (&e as &serialize::Encodable<extra::json::Encoder>);
     }
 }

@@ -142,7 +142,7 @@ impl RegionMaps {
         let scope_map = self.scope_map.borrow();
         match scope_map.get().find(&id) {
             Some(&r) => r,
-            None => { fail!("No enclosing scope for id {}", id); }
+            None => { fail!("no enclosing scope for id {}", id); }
         }
     }
 
@@ -154,7 +154,7 @@ impl RegionMaps {
         let var_map = self.var_map.borrow();
         match var_map.get().find(&var_id) {
             Some(&r) => r,
-            None => { fail!("No enclosing scope for id {}", var_id); }
+            None => { fail!("no enclosing scope for id {}", var_id); }
         }
     }
 
@@ -501,12 +501,17 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             visitor.region_maps.mark_as_terminating_scope(otherwise.id);
         }
 
-        ast::ExprIf(_, then, None) => {
+        ast::ExprIf(expr, then, None) => {
+            visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(then.id);
         }
 
-        ast::ExprLoop(body, _) |
-        ast::ExprWhile(_, body) => {
+        ast::ExprLoop(body, _) => {
+            visitor.region_maps.mark_as_terminating_scope(body.id);
+        }
+
+        ast::ExprWhile(expr, body) => {
+            visitor.region_maps.mark_as_terminating_scope(expr.id);
             visitor.region_maps.mark_as_terminating_scope(body.id);
         }
 
@@ -554,7 +559,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
         None => {
             visitor.sess.span_bug(
                 local.span,
-                "Local without enclosing block");
+                "local without enclosing block");
         }
     };
 

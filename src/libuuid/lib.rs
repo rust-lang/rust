@@ -59,7 +59,10 @@ Examples of string representations:
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+// test harness access
+#[cfg(test)]
 extern mod extra;
+extern mod serialize;
 
 use std::str;
 use std::vec;
@@ -73,7 +76,7 @@ use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
 use std::to_bytes::{IterBytes, Cb};
 
-use extra::serialize::{Encoder, Encodable, Decoder, Decodable};
+use serialize::{Encoder, Encodable, Decoder, Decodable};
 
 /// A 128-bit (16 byte) buffer containing the ID
 pub type UuidBytes = [u8, ..16];
@@ -200,7 +203,7 @@ impl Uuid {
     /// * `d3` A 16-bit word
     /// * `d4` Array of 8 octets
     pub fn from_fields(d1: u32, d2: u16, d3: u16, d4: &[u8]) -> Uuid {
-        use std::unstable::intrinsics::{to_be16, to_be32};
+        use std::mem::{to_be16, to_be32};
 
         // First construct a temporary field-based struct
         let mut fields = UuidFields {
@@ -326,7 +329,7 @@ impl Uuid {
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
     pub fn to_hyphenated_str(&self) -> ~str {
-        use std::unstable::intrinsics::{to_be16, to_be32};
+        use std::mem::{to_be16, to_be32};
         // Convert to field-based struct as it matches groups in output.
         // Ensure fields are in network byte order, as per RFC.
         let mut uf: UuidFields;
@@ -784,8 +787,8 @@ mod test {
 
     #[test]
     fn test_serialize_round_trip() {
-        use extra::ebml;
-        use extra::serialize::{Encodable, Decodable};
+        use serialize::ebml;
+        use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();

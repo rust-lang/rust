@@ -166,11 +166,11 @@ method of the signature:
 # mod fmt { pub type Result = (); }
 # struct T;
 # trait SomeName<T> {
-fn fmt(value: &T, f: &mut std::fmt::Formatter) -> fmt::Result;
+fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result;
 # }
 ```
 
-Your type will be passed by-reference in `value`, and then the function should
+Your type will be passed as `self` by-reference, and then the function should
 emit output into the `f.buf` stream. It is up to each format trait
 implementation to correctly adhere to the requested formatting parameters. The
 values of these parameters will be listed in the fields of the `Formatter`
@@ -195,19 +195,19 @@ struct Vector2D {
 }
 
 impl fmt::Show for Vector2D {
-    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // The `f.buf` value is of the type `&mut io::Writer`, which is what th
         // write! macro is expecting. Note that this formatting ignores the
         // various flags provided to format strings.
-        write!(f.buf, "({}, {})", obj.x, obj.y)
+        write!(f.buf, "({}, {})", self.x, self.y)
     }
 }
 
 // Different traits allow different forms of output of a type. The meaning of
 // this format is to print the magnitude of a vector.
 impl fmt::Binary for Vector2D {
-    fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) -> fmt::Result {
-        let magnitude = (obj.x * obj.x + obj.y * obj.y) as f64;
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let magnitude = (self.x * self.x + self.y * self.y) as f64;
         let magnitude = magnitude.sqrt();
 
         // Respect the formatting flags by using the helper method
@@ -558,50 +558,50 @@ pub struct Arguments<'a> {
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
 #[allow(missing_doc)]
-pub trait Show { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Show { fn fmt(&self, &mut Formatter) -> Result; }
 
 /// Format trait for the `b` character
 #[allow(missing_doc)]
-pub trait Bool { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Bool { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `c` character
 #[allow(missing_doc)]
-pub trait Char { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Char { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `i` and `d` characters
 #[allow(missing_doc)]
-pub trait Signed { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Signed { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `u` character
 #[allow(missing_doc)]
-pub trait Unsigned { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Unsigned { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `o` character
 #[allow(missing_doc)]
-pub trait Octal { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Octal { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `b` character
 #[allow(missing_doc)]
-pub trait Binary { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Binary { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `x` character
 #[allow(missing_doc)]
-pub trait LowerHex { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait LowerHex { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `X` character
 #[allow(missing_doc)]
-pub trait UpperHex { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait UpperHex { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `s` character
 #[allow(missing_doc)]
-pub trait String { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait String { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `?` character
 #[allow(missing_doc)]
-pub trait Poly { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Poly { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `p` character
 #[allow(missing_doc)]
-pub trait Pointer { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Pointer { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `f` character
 #[allow(missing_doc)]
-pub trait Float { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait Float { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `e` character
 #[allow(missing_doc)]
-pub trait LowerExp { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait LowerExp { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `E` character
 #[allow(missing_doc)]
-pub trait UpperExp { fn fmt(&Self, &mut Formatter) -> Result; }
+pub trait UpperExp { fn fmt(&self, &mut Formatter) -> Result; }
 
 // FIXME #11938 - UFCS would make us able call the above methods
 // directly Show::show(x, fmt).
@@ -615,7 +615,7 @@ macro_rules! uniform_fn_call_workaround {
         $(
             #[doc(hidden)]
             pub fn $name<T: $trait_>(x: &T, fmt: &mut Formatter) -> Result {
-                $trait_::fmt(x, fmt)
+                x.fmt(fmt)
             }
             )*
     }
@@ -1042,44 +1042,44 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
 /// (such as for select), then it invokes this method.
 #[doc(hidden)] #[inline]
 pub fn argumentstr<'a>(s: &'a &str) -> Argument<'a> {
-    argument(String::fmt, s)
+    argument(secret_string, s)
 }
 
 /// When the compiler determines that the type of an argument *must* be a uint
 /// (such as for plural), then it invokes this method.
 #[doc(hidden)] #[inline]
 pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
-    argument(Unsigned::fmt, s)
+    argument(secret_unsigned, s)
 }
 
 // Implementations of the core formatting traits
 
 impl Bool for bool {
-    fn fmt(b: &bool, f: &mut Formatter) -> Result {
-        String::fmt(&(if *b {"true"} else {"false"}), f)
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_string(&(if *self {"true"} else {"false"}), f)
     }
 }
 
 impl<'a, T: str::Str> String for T {
-    fn fmt(s: &T, f: &mut Formatter) -> Result {
-        f.pad(s.as_slice())
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad(self.as_slice())
     }
 }
 
 impl Char for char {
-    fn fmt(c: &char, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8, ..4];
-        let amt = c.encode_utf8(utf8);
+        let amt = self.encode_utf8(utf8);
         let s: &str = unsafe { cast::transmute(utf8.slice_to(amt)) };
-        String::fmt(&s, f)
+        secret_string(&s, f)
     }
 }
 
 macro_rules! int_base(($ty:ident, $into:ident, $base:expr,
                        $name:ident, $prefix:expr) => {
     impl $name for $ty {
-        fn fmt(c: &$ty, f: &mut Formatter) -> Result {
-            ::$into::to_str_bytes(*c as $into, $base, |buf| {
+        fn fmt(&self, f: &mut Formatter) -> Result {
+            ::$into::to_str_bytes(*self as $into, $base, |buf| {
                 f.pad_integral(buf, $prefix, true)
             })
         }
@@ -1087,8 +1087,8 @@ macro_rules! int_base(($ty:ident, $into:ident, $base:expr,
 })
 macro_rules! upper_hex(($ty:ident, $into:ident) => {
     impl UpperHex for $ty {
-        fn fmt(c: &$ty, f: &mut Formatter) -> Result {
-            ::$into::to_str_bytes(*c as $into, 16, |buf| {
+        fn fmt(&self, f: &mut Formatter) -> Result {
+            ::$into::to_str_bytes(*self as $into, 16, |buf| {
                 upperhex(buf, f)
             })
         }
@@ -1112,9 +1112,9 @@ macro_rules! integer(($signed:ident, $unsigned:ident) => {
     // Signed is special because it actuall emits the negative sign,
     // nothing else should do that, however.
     impl Signed for $signed {
-        fn fmt(c: &$signed, f: &mut Formatter) -> Result {
-            ::$unsigned::to_str_bytes(c.abs() as $unsigned, 10, |buf| {
-                f.pad_integral(buf, "", *c >= 0)
+        fn fmt(&self, f: &mut Formatter) -> Result {
+            ::$unsigned::to_str_bytes(self.abs() as $unsigned, 10, |buf| {
+                f.pad_integral(buf, "", *self >= 0)
             })
         }
     }
@@ -1138,35 +1138,35 @@ integer!(i64, u64)
 
 macro_rules! floating(($ty:ident) => {
     impl Float for $ty {
-        fn fmt(f: &$ty, fmt: &mut Formatter) -> Result {
+        fn fmt(&self, fmt: &mut Formatter) -> Result {
             // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exact(f.abs(), i),
-                None => ::$ty::to_str_digits(f.abs(), 6)
+                Some(i) => ::$ty::to_str_exact(self.abs(), i),
+                None => ::$ty::to_str_digits(self.abs(), 6)
             };
-            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0)
+            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
         }
     }
 
     impl LowerExp for $ty {
-        fn fmt(f: &$ty, fmt: &mut Formatter) -> Result {
+        fn fmt(&self, fmt: &mut Formatter) -> Result {
             // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, false),
-                None => ::$ty::to_str_exp_digits(f.abs(), 6, false)
+                Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, false),
+                None => ::$ty::to_str_exp_digits(self.abs(), 6, false)
             };
-            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0)
+            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
         }
     }
 
     impl UpperExp for $ty {
-        fn fmt(f: &$ty, fmt: &mut Formatter) -> Result {
+        fn fmt(&self, fmt: &mut Formatter) -> Result {
             // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
-                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, true),
-                None => ::$ty::to_str_exp_digits(f.abs(), 6, true)
+                Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, true),
+                None => ::$ty::to_str_exp_digits(self.abs(), 6, true)
             };
-            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0)
+            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
         }
     }
 })
@@ -1174,16 +1174,16 @@ floating!(f32)
 floating!(f64)
 
 impl<T> Poly for T {
-    fn fmt(t: &T, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         match (f.width, f.precision) {
             (None, None) => {
-                repr::write_repr(f.buf, t)
+                repr::write_repr(f.buf, self)
             }
 
             // If we have a specified width for formatting, then we have to make
             // this allocation of a new string
             _ => {
-                let s = repr::repr_to_str(t);
+                let s = repr::repr_to_str(self);
                 f.pad(s)
             }
         }
@@ -1191,16 +1191,16 @@ impl<T> Poly for T {
 }
 
 impl<T> Pointer for *T {
-    fn fmt(t: &*T, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (parse::FlagAlternate as uint);
-        ::uint::to_str_bytes(*t as uint, 16, |buf| {
+        ::uint::to_str_bytes(*self as uint, 16, |buf| {
             f.pad_integral(buf, "0x", true)
         })
     }
 }
 impl<T> Pointer for *mut T {
-    fn fmt(t: &*mut T, f: &mut Formatter) -> Result {
-        Pointer::fmt(&(*t as *T), f)
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_pointer(&(*self as *T), f)
     }
 }
 
@@ -1208,33 +1208,33 @@ impl<T> Pointer for *mut T {
 
 macro_rules! delegate(($ty:ty to $other:ident) => {
     impl<'a> Show for $ty {
-        fn fmt(me: &$ty, f: &mut Formatter) -> Result {
-            $other::fmt(me, f)
+        fn fmt(&self, f: &mut Formatter) -> Result {
+            (concat_idents!(secret_, $other)(self, f))
         }
     }
 })
-delegate!(int to Signed)
-delegate!( i8 to Signed)
-delegate!(i16 to Signed)
-delegate!(i32 to Signed)
-delegate!(i64 to Signed)
-delegate!(uint to Unsigned)
-delegate!(  u8 to Unsigned)
-delegate!( u16 to Unsigned)
-delegate!( u32 to Unsigned)
-delegate!( u64 to Unsigned)
-delegate!(~str to String)
-delegate!(&'a str to String)
-delegate!(bool to Bool)
-delegate!(char to Char)
-delegate!(f32 to Float)
-delegate!(f64 to Float)
+delegate!(int to signed)
+delegate!( i8 to signed)
+delegate!(i16 to signed)
+delegate!(i32 to signed)
+delegate!(i64 to signed)
+delegate!(uint to unsigned)
+delegate!(  u8 to unsigned)
+delegate!( u16 to unsigned)
+delegate!( u32 to unsigned)
+delegate!( u64 to unsigned)
+delegate!(~str to string)
+delegate!(&'a str to string)
+delegate!(bool to bool)
+delegate!(char to char)
+delegate!(f32 to float)
+delegate!(f64 to float)
 
 impl<T> Show for *T {
-    fn fmt(me: &*T, f: &mut Formatter) -> Result { Pointer::fmt(me, f) }
+    fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 impl<T> Show for *mut T {
-    fn fmt(me: &*mut T, f: &mut Formatter) -> Result { Pointer::fmt(me, f) }
+    fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,

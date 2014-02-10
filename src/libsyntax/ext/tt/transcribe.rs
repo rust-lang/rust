@@ -49,8 +49,8 @@ pub struct TtReader {
 pub fn new_tt_reader(sp_diag: @SpanHandler,
                      interp: Option<HashMap<Ident, @NamedMatch>>,
                      src: ~[ast::TokenTree])
-                     -> @TtReader {
-    let r = @TtReader {
+                     -> TtReader {
+    let r = TtReader {
         sp_diag: sp_diag,
         stack: RefCell::new(@TtFrame {
             forest: @src,
@@ -69,7 +69,7 @@ pub fn new_tt_reader(sp_diag: @SpanHandler,
         cur_tok: RefCell::new(EOF),
         cur_span: RefCell::new(DUMMY_SP),
     };
-    tt_next_token(r); /* get cur_tok and cur_span set up */
+    tt_next_token(&r); /* get cur_tok and cur_span set up */
     return r;
 }
 
@@ -86,8 +86,8 @@ fn dup_tt_frame(f: @TtFrame) -> @TtFrame {
     }
 }
 
-pub fn dup_tt_reader(r: @TtReader) -> @TtReader {
-    @TtReader {
+pub fn dup_tt_reader(r: &TtReader) -> TtReader {
+    TtReader {
         sp_diag: r.sp_diag,
         stack: RefCell::new(dup_tt_frame(r.stack.get())),
         repeat_idx: r.repeat_idx.clone(),
@@ -148,7 +148,7 @@ fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
             LisConstraint(r_len, ref r_id) => {
                 let l_n = token::get_ident(l_id.name);
                 let r_n = token::get_ident(r_id.name);
-                LisContradiction(format!("Inconsistent lockstep iteration: \
+                LisContradiction(format!("inconsistent lockstep iteration: \
                                           '{}' has {} items, but '{}' has {}",
                                           l_n.get(), l_len, r_n.get(), r_len))
             }

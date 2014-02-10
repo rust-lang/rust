@@ -8,32 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 // Tests for "default" bounds inferred for traits with no bounds list.
 
-trait Foo {
-}
+trait Foo {}
 
 fn a(_x: ~Foo) { // should be same as ~Foo:Send
 }
 
-fn b(_x: @Foo) { // should be same as ~Foo:'static
+fn b(_x: &'static Foo) { // should be same as &'static Foo:'static
 }
 
-fn c(_x: &'static Foo) { // should be same as &'static Foo:'static
-}
-
-fn d(x: ~Foo:Freeze) {
+fn c(x: ~Foo:Freeze) {
     a(x); //~ ERROR expected bounds `Send`
 }
 
-fn e(x: @Foo:Freeze) {
+fn d(x: &'static Foo:Freeze) {
     b(x); //~ ERROR expected bounds `'static`
 }
 
-fn f(x: &'static Foo:Freeze) {
-    c(x); //~ ERROR expected bounds `'static`
-}
-
-fn main() { }
+fn main() {}

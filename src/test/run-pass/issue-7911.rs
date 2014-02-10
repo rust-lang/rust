@@ -10,7 +10,7 @@
 
 // xfail-pretty
 
-// (Closes #7911) Test that we can use the same self expression 
+// (Closes #7911) Test that we can use the same self expression
 // with different mutability in macro in two methods
 
 #[allow(unused_variable)]; // unused foobar_immut + foobar_mut

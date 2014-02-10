@@ -10,7 +10,7 @@
 
 // xfail-android: FIXME(#10381)
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:rbreak zzz
 // debugger:run
 // debugger:finish
@@ -24,7 +24,7 @@
 
 #[allow(unused_variable)];
 
-// This test case makes sure that debug info does not ICE when include_str is 
+// This test case makes sure that debug info does not ICE when include_str is
 // used multiple times (see issue #11322).
 
 fn main() {

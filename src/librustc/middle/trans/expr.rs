@@ -213,8 +213,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                     unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
                 }
                 Some(AutoBorrowObj(..)) => {
-                    unpack_datum!(bcx, auto_borrow_obj(
-                        bcx, adj.autoderefs, expr, datum))
+                    unpack_datum!(bcx, auto_borrow_obj(bcx, expr, datum))
                 }
             };
         }
@@ -326,88 +325,17 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         auto_ref(bcx, datum, expr)
     }
 
-    fn auto_borrow_obj<'a>(
-                       mut bcx: &'a Block<'a>,
-                       autoderefs: uint,
-                       expr: &ast::Expr,
-                       source_datum: Datum<Expr>)
-                       -> DatumBlock<'a, Expr> {
+    fn auto_borrow_obj<'a>(bcx: &'a Block<'a>,
+                           expr: &ast::Expr,
+                           source_datum: Datum<Expr>)
+                           -> DatumBlock<'a, Expr> {
         let tcx = bcx.tcx();
         let target_obj_ty = expr_ty_adjusted(bcx, expr);
-        debug!("auto_borrow_obj(target={})",
-               target_obj_ty.repr(tcx));
+        debug!("auto_borrow_obj(target={})", target_obj_ty.repr(tcx));
 
-        // Extract source store information
-        let (source_store, source_mutbl) = match ty::get(source_datum.ty).sty {
-            ty::ty_trait(_, _, s, m, _) => (s, m),
-            _ => {
-                bcx.sess().span_bug(
-                    expr.span,
-                    format!("auto_borrow_trait_obj expected a trait, found {}",
-                         source_datum.ty.repr(bcx.tcx())));
-            }
-        };
-
-        // check if any borrowing is really needed or we could reuse
-        // the source_datum instead
-        match ty::get(target_obj_ty).sty {
-            ty::ty_trait(_, _, ty::RegionTraitStore(target_scope), target_mutbl, _) => {
-                if target_mutbl == ast::MutImmutable && target_mutbl == source_mutbl {
-                    match source_store {
-                        ty::RegionTraitStore(source_scope) => {
-                            if tcx.region_maps.is_subregion_of(target_scope, source_scope) {
-                                return DatumBlock { bcx: bcx, datum: source_datum };
-                            }
-                        },
-                        _ => {}
-
-                    };
-                }
-            },
-            _ => {}
-        }
-
-        let scratch = rvalue_scratch_datum(bcx, target_obj_ty,
-                                           "__auto_borrow_obj");
-
-        // Convert a @Object, ~Object, or &Object pair into an &Object pair.
-
-        // Get a pointer to the source object, which is represented as
-        // a (vtable, data) pair.
-        let source_datum = unpack_datum!(
-            bcx, source_datum.to_lvalue_datum(bcx, "auto_borrow_obj", expr.id));
-        let source_llval = source_datum.to_llref();
-
-        // Set the vtable field of the new pair
-        let vtable_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_vtable]);
-        let vtable = Load(bcx, vtable_ptr);
-        Store(bcx, vtable, GEPi(bcx, scratch.val, [0u, abi::trt_field_vtable]));
-
-        // Load the data for the source, which is either an @T,
-        // ~T, or &T, depending on source_obj_ty.
-        let source_data_ptr = GEPi(bcx, source_llval, [0u, abi::trt_field_box]);
-        let target_data = match source_store {
-            ty::BoxTraitStore(..) => {
-                // For deref of @T, create a dummy datum and use the
-                // datum's deref method. This is more work than just
-                // calling GEPi ourselves, but it ensures that any
-                // necessary rooting is performed. Note that we don't
-                // know the type T, so just substitute `i8`-- it
-                // doesn't really matter for our purposes right now.
-                let source_ty = ty::mk_box(tcx, ty::mk_i8());
-                let source_datum = Datum(source_data_ptr, source_ty, LvalueExpr);
-                let derefd_datum = unpack_datum!(
-                    bcx, deref_once(bcx, expr, source_datum, autoderefs));
-                derefd_datum.assert_lvalue(bcx).to_llref()
-            }
-            ty::UniqTraitStore(..) | ty::RegionTraitStore(..) => {
-                Load(bcx, source_data_ptr)
-            }
-        };
-        Store(bcx, target_data,
-              GEPi(bcx, scratch.val, [0u, abi::trt_field_box]));
-
-        DatumBlock(bcx, scratch.to_expr_datum())
+        let mut datum = source_datum.to_expr_datum();
+        datum.ty = target_obj_ty;
+        DatumBlock(bcx, datum)
     }
 }
 

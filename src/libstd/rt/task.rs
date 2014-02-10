@@ -30,7 +30,7 @@ use rt::local::Local;
 use rt::local_heap::LocalHeap;
 use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
-use send_str::SendStr;
+use str::SendStr;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};

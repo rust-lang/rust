@@ -509,7 +509,7 @@ fn angle(vector: (f64, f64)) -> f64 {
     let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
-      (0.0, y) => 0.5 * pi,
+      (0.0, _) => 0.5 * pi,
       (x, y) => atan(y / x)
     }
 }
@@ -519,7 +519,9 @@ A variable name in a pattern matches any value, *and* binds that name
 to the value of the matched value inside of the arm's action. Thus, `(0.0,
 y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any two-element tuple, and binds both
-elements to variables.
+elements to variables. `(0.0,_)` matches any tuple whose first element is zero
+and does not bind anything to the second element.
+
 A subpattern can also be bound to a variable, using `variable @ pattern`. For
 example:
 
@@ -645,8 +647,43 @@ match mypoint {
 
 ## Enums
 
-Enums are datatypes that have several alternate representations. For
-example, consider the following type:
+Enums are datatypes with several alternate representations. A simple `enum`
+defines one or more constants, all of which have the same type:
+
+~~~~
+enum Direction {
+    North,
+    East,
+    South,
+    West
+}
+~~~~
+
+Each variant of this enum has a unique and constant integral discriminator
+value. If no explicit discriminator is specified for a variant, the value
+defaults to the value of the previous variant plus one. If the first variant
+does not have a discriminator, it defaults to 0. For example, the value of
+`North` is 0, `East` is 1, `South` is 2, and `West` is 3.
+
+When an enum has simple integer discriminators, you can apply the `as` cast
+operator to convert a variant to its discriminator value as an `int`:
+
+~~~~
+# enum Direction { North }
+println!( "{:?} => {}", North, North as int );
+~~~~
+
+It is possible to set the discriminator values to chosen constant values:
+
+~~~~
+enum Color {
+  Red = 0xff0000,
+  Green = 0x00ff00,
+  Blue = 0x0000ff
+}
+~~~~
+
+Variants do not have to be simple values; they may be more complex:
 
 ~~~~
 # struct Point { x: f64, y: f64 }
@@ -662,50 +699,14 @@ two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 "tagged union" pattern in C, but with better static guarantees.
 
-The above declaration will define a type `Shape` that can refer to
-such shapes, and two functions, `Circle` and `Rectangle`, which can be
-used to construct values of the type (taking arguments of the
-specified types). So `Circle(Point { x: 0.0, y: 0.0 }, 10.0)` is the way to
-create a new circle.
+This declaration defines a type `Shape` that can refer to such shapes, and two
+functions, `Circle` and `Rectangle`, which can be used to construct values of
+the type. To create a new Circle, write `Circle(Point { x: 0.0, y: 0.0 },
+10.0)`.
 
-Enum variants need not have parameters. This `enum` declaration,
-for example, is equivalent to a C enum:
-
-~~~~
-enum Direction {
-    North,
-    East,
-    South,
-    West
-}
-~~~~
-
-This declaration defines `North`, `East`, `South`, and `West` as constants,
-all of which have type `Direction`.
-
-When an enum is C-like (that is, when none of the variants have
-parameters), it is possible to explicitly set the discriminator values
-to a constant value:
-
-~~~~
-enum Color {
-  Red = 0xff0000,
-  Green = 0x00ff00,
-  Blue = 0x0000ff
-}
-~~~~
-
-If an explicit discriminator is not specified for a variant, the value
-defaults to the value of the previous variant plus one. If the first
-variant does not have a discriminator, it defaults to 0. For example,
-the value of `North` is 0, `East` is 1, `South` is 2, and `West` is 3.
-
-When an enum is C-like, you can apply the `as` cast operator to
-convert it to its discriminator value as an `int`.
-
-For enum types with multiple variants, destructuring is the only way to
-get at their contents. All variant constructors can be used as
-patterns, as in this definition of `area`:
+All of these variant constructors may be used as patterns. The only way to
+access the contents of an enum instance is the destructuring of a match. For
+example:
 
 ~~~~
 use std::f64;
@@ -719,10 +720,8 @@ fn area(sh: Shape) -> f64 {
 }
 ~~~~
 
-You can write a lone `_` to ignore an individual field, and can
-ignore all fields of a variant like: `Circle(..)`. As in their
-introduction form, nullary enum patterns are written without
-parentheses.
+Use a lone `_` to ignore an individual field. Ignore all fields of a variant
+like: `Circle(..)`. Nullary enum patterns are written without parentheses:
 
 ~~~~
 # struct Point { x: f64, y: f64 }
@@ -1855,7 +1854,7 @@ like any other function, except for the name `self`.
 
 The type of `self` is the type on which the method is implemented,
 or a pointer thereof. As an argument it is written either `self`,
-`&self`, `@self`, or `~self`.
+`&self`, or `~self`.
 A caller must in turn have a compatible pointer type to call the method.
 
 ~~~
@@ -1868,14 +1867,12 @@ A caller must in turn have a compatible pointer type to call the method.
 # }
 impl Shape {
     fn draw_reference(&self) { ... }
-    fn draw_managed(@self) { ... }
     fn draw_owned(~self) { ... }
     fn draw_value(self) { ... }
 }
 
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
-(@s).draw_managed();
 (~s).draw_owned();
 (&s).draw_reference();
 s.draw_value();
@@ -1895,7 +1892,6 @@ to a reference.
 # }
 # impl Shape {
 #    fn draw_reference(&self) { ... }
-#    fn draw_managed(@self) { ... }
 #    fn draw_owned(~self) { ... }
 #    fn draw_value(self) { ... }
 # }
@@ -2366,29 +2362,29 @@ an _object_.
 
 ~~~~
 # trait Drawable { fn draw(&self); }
-fn draw_all(shapes: &[@Drawable]) {
+fn draw_all(shapes: &[~Drawable]) {
     for shape in shapes.iter() { shape.draw(); }
 }
 ~~~~
 
-In this example, there is no type parameter. Instead, the `@Drawable`
-type denotes any managed box value that implements the `Drawable`
-trait. To construct such a value, you use the `as` operator to cast a
-value to an object:
+In this example, there is no type parameter. Instead, the `~Drawable`
+type denotes any owned box value that implements the `Drawable` trait.
+To construct such a value, you use the `as` operator to cast a value
+to an object:
 
 ~~~~
 # type Circle = int; type Rectangle = bool;
 # trait Drawable { fn draw(&self); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
-# fn draw_all(shapes: &[@Drawable]) {}
+# fn draw_all(shapes: &[~Drawable]) {}
 
 impl Drawable for Circle { fn draw(&self) { ... } }
 impl Drawable for Rectangle { fn draw(&self) { ... } }
 
-let c: @Circle = @new_circle();
-let r: @Rectangle = @new_rectangle();
-draw_all([c as @Drawable, r as @Drawable]);
+let c: ~Circle = ~new_circle();
+let r: ~Rectangle = ~new_rectangle();
+draw_all([c as ~Drawable, r as ~Drawable]);
 ~~~~
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
@@ -2405,8 +2401,6 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 # impl Drawable for int { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-// A managed object
-let boxy: @Drawable = @new_circle() as @Drawable;
 // An owned object
 let owny: ~Drawable = ~new_circle() as ~Drawable;
 // A borrowed object
@@ -2425,7 +2419,6 @@ particular set of built-in kinds that their contents must fulfill in
 order to be packaged up in a trait object of that storage class.
 
 * The contents of owned traits (`~Trait`) must fulfill the `Send` bound.
-* The contents of managed traits (`@Trait`) must fulfill the `'static` bound.
 * The contents of reference traits (`&Trait`) are not constrained by any bound.
 
 Consequently, the trait objects themselves automatically fulfill their
@@ -2437,7 +2430,6 @@ to fulfilling `Send`, contents must also fulfill `Freeze`, and as a consequence,
 the trait itself fulfills `Freeze`.
 
 * `~Trait:Send` is equivalent to `~Trait`.
-* `@Trait:'static` is equivalent to `@Trait`.
 * `&Trait:` is equivalent to `&Trait`.
 
 Builtin kind bounds can also be specified on closure types in the same way (for
@@ -2528,7 +2520,7 @@ enum ABC { A, B, C }
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
-`IterBytes`, `Rand`, `Default`, `Zero`, and `ToStr`.
+`IterBytes`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 
 # Crates and the module system
 
@@ -3160,8 +3152,8 @@ fn main() { println!("hello {}", world::explore()); }
 Now compile and run like this (adjust to your platform if necessary):
 
 ~~~~ {.notrust}
-> rustc --lib world.rs  # compiles libworld-<HASH>-0.42.so
-> rustc main.rs -L .    # compiles main
+> rustc --crate-type=lib world.rs  # compiles libworld-<HASH>-0.42.so
+> rustc main.rs -L .               # compiles main
 > ./main
 "hello world"
 ~~~~

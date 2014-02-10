@@ -146,14 +146,14 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                     const_deref_newtype(cx, v, t)
                 }
                 _ => {
-                    cx.sess.bug(format!("Unexpected dereferenceable type {}",
+                    cx.sess.bug(format!("unexpected dereferenceable type {}",
                                      ty_to_str(cx.tcx, t)))
                 }
             };
             (dv, mt.ty)
         }
         None => {
-            cx.sess.bug(format!("Can't dereference const of type {}",
+            cx.sess.bug(format!("can't dereference const of type {}",
                              ty_to_str(cx.tcx, t)))
         }
     }

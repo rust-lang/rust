@@ -297,7 +297,7 @@ impl LifetimeContext {
                        def: ast::DefRegion) {
         if lifetime_ref.id == ast::DUMMY_NODE_ID {
             self.sess.span_bug(lifetime_ref.span,
-                               "Lifetime reference not renumbered, \
+                               "lifetime reference not renumbered, \
                                probably a bug in syntax::fold");
         }
 

@@ -342,8 +342,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
           Ok(const_uint(i)) => Ok(const_uint(-i)),
-          Ok(const_str(_)) => Err(~"Negate on string"),
-          Ok(const_bool(_)) => Err(~"Negate on boolean"),
+          Ok(const_str(_)) => Err(~"negate on string"),
+          Ok(const_bool(_)) => Err(~"negate on boolean"),
           ref err => ((*err).clone())
         }
       }
@@ -352,7 +352,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
           Ok(const_bool(b)) => Ok(const_bool(!b)),
-          _ => Err(~"Not on float or string")
+          _ => Err(~"not on float or string")
         }
       }
       ExprBinary(_, op, a, b) => {
@@ -371,7 +371,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiNe => fromb(a != b),
               BiGe => fromb(a >= b),
               BiGt => fromb(a > b),
-              _ => Err(~"Can't do this op on floats")
+              _ => Err(~"can't do this op on floats")
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
@@ -423,14 +423,14 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
             match op {
               BiShl => Ok(const_int(a << b)),
               BiShr => Ok(const_int(a >> b)),
-              _ => Err(~"Can't do this op on an int and uint")
+              _ => Err(~"can't do this op on an int and uint")
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
               BiShl => Ok(const_uint(a << b)),
               BiShr => Ok(const_uint(a >> b)),
-              _ => Err(~"Can't do this op on a uint and int")
+              _ => Err(~"can't do this op on a uint and int")
             }
           }
           (Ok(const_bool(a)), Ok(const_bool(b))) => {
@@ -442,10 +442,10 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiBitOr => a | b,
               BiEq => a == b,
               BiNe => a != b,
-              _ => return Err(~"Can't do this op on bools")
+              _ => return Err(~"can't do this op on bools")
              }))
           }
-          _ => Err(~"Bad operands for binary")
+          _ => Err(~"bad operands for binary")
         }
       }
       ExprCast(base, target_ty) => {
@@ -456,7 +456,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                 .or_else(|| astconv::ast_ty_to_prim_ty(tcx.ty_ctxt(), target_ty))
                 .unwrap_or_else(|| tcx.ty_ctxt().sess.span_fatal(
                     target_ty.span,
-                    format!("Target type not found for const cast")
+                    format!("target type not found for const cast")
                 ));
 
         let base = eval_const_expr_partial(tcx, base);
@@ -469,7 +469,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                             const_uint(u) => Ok(const_float(u as f64)),
                             const_int(i) => Ok(const_float(i as f64)),
                             const_float(f) => Ok(const_float(f)),
-                            _ => Err(~"Can't cast float to str"),
+                            _ => Err(~"can't cast float to str"),
                         }
                     }
                     ty::ty_uint(_) => {
@@ -477,7 +477,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                             const_uint(u) => Ok(const_uint(u)),
                             const_int(i) => Ok(const_uint(i as u64)),
                             const_float(f) => Ok(const_uint(f as u64)),
-                            _ => Err(~"Can't cast str to uint"),
+                            _ => Err(~"can't cast str to uint"),
                         }
                     }
                     ty::ty_int(_) | ty::ty_bool => {
@@ -485,10 +485,10 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                             const_uint(u) => Ok(const_int(u as i64)),
                             const_int(i) => Ok(const_int(i)),
                             const_float(f) => Ok(const_int(f as i64)),
-                            _ => Err(~"Can't cast str to int"),
+                            _ => Err(~"can't cast str to int"),
                         }
                     }
-                    _ => Err(~"Can't cast this type")
+                    _ => Err(~"can't cast this type")
                 }
             }
         }
@@ -496,14 +496,14 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
       ExprPath(_) => {
           match lookup_const(tcx.ty_ctxt(), e) {
               Some(actual_e) => eval_const_expr_partial(&tcx.ty_ctxt(), actual_e),
-              None => Err(~"Non-constant path in constant expr")
+              None => Err(~"non-constant path in constant expr")
           }
       }
       ExprLit(lit) => Ok(lit_to_const(lit)),
       // If we have a vstore, just keep going; it has to be a string
       ExprVstore(e, _) => eval_const_expr_partial(tcx, e),
       ExprParen(e)     => eval_const_expr_partial(tcx, e),
-      _ => Err(~"Unsupported constant expr")
+      _ => Err(~"unsupported constant expr")
     }
 }
 

@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::ringbuf::RingBuf;
-use extra::container::Deque;
+extern mod collections;
+use collections::RingBuf;
+use collections::Deque;
 
 pub fn main() {
     let mut q = RingBuf::new();

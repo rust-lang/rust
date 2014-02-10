@@ -14,21 +14,24 @@ enum opts {
 
 fn matcher1(x: opts) {
     match x {
-      a(ref i) | b(i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      a(ref i) | b(i) => {}
+      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }
 
 fn matcher2(x: opts) {
     match x {
-      a(ref i) | b(i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      a(ref i) | b(i) => {}
+      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }
 
 fn matcher4(x: opts) {
     match x {
-      a(ref mut i) | b(ref i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
+      a(ref mut i) | b(ref i) => {}
+      //~^ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }

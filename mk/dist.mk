@@ -26,19 +26,12 @@ PKG_FILES := \
     $(S)man                                    \
     $(S)doc                                    \
     $(addprefix $(S)src/,                      \
-      README.txt                               \
-      driver                                   \
-      librustc                                 \
+      README.md                                \
       compiletest                              \
+      driver                                   \
       etc                                      \
-      libextra                                 \
-      libstd                                   \
-      libsyntax                                \
-      librustuv				       \
-      libgreen 				       \
-      libnative 			       \
+      $(foreach crate,$(CRATES),lib$(crate))   \
       rt                                       \
-      librustdoc                               \
       rustllvm                                 \
       snapshots.txt                            \
       test)                                    \

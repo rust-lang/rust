@@ -15,5 +15,7 @@ fn bar<T: Freeze>(_: T) {}
 
 fn main() {
     let x = Rc::new(RefCell::new(5));
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
+    bar(x);
+    //~^ ERROR instantiating a type parameter with an incompatible type
+    //         `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
 }

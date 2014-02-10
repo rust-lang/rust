@@ -9,9 +9,10 @@
 // except according to those terms.
 
 extern mod extra;
+extern mod collections;
 
 use extra::time;
-use extra::treemap::TreeMap;
+use collections::TreeMap;
 use std::hashmap::{HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};

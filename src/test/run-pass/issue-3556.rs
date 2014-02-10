@@ -13,31 +13,31 @@
 extern mod extra;
 
 enum Token {
-        Text(@~str),
-        ETag(@~[~str], @~str),
-        UTag(@~[~str], @~str),
-        Section(@~[~str], bool, @~[Token], @~str, @~str, @~str, @~str, @~str),
-        IncompleteSection(@~[~str], bool, @~str, bool),
-        Partial(@~str, @~str, @~str),
+    Text(@~str),
+    ETag(@~[~str], @~str),
+    UTag(@~[~str], @~str),
+    Section(@~[~str], bool, @~[Token], @~str, @~str, @~str, @~str, @~str),
+    IncompleteSection(@~[~str], bool, @~str, bool),
+    Partial(@~str, @~str, @~str),
 }
 
 fn check_strs(actual: &str, expected: &str) -> bool
 {
-        if actual != expected
-        {
-            println!("Found {}, but expected {}", actual, expected);
-            return false;
-        }
-        return true;
+    if actual != expected
+    {
+        println!("Found {}, but expected {}", actual, expected);
+        return false;
+    }
+    return true;
 }
 
 pub fn main()
 {
- //       assert!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
- //       assert!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
+// assert!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
+// assert!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
-        let t = Text(@~"foo");
-        let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
-        let v = format!("{:?}", u);    // this is the line that causes the seg fault
-        assert!(v.len() > 0);
+    let t = Text(@~"foo");
+    let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
+    let v = format!("{:?}", u);    // this is the line that causes the seg fault
+    assert!(v.len() > 0);
 }

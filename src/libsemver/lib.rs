@@ -35,6 +35,8 @@
 
 use std::char;
 use std::cmp;
+use std::fmt;
+use std::fmt::Show;
 use std::option::{Option, Some, None};
 use std::to_str::ToStr;
 
@@ -59,13 +61,20 @@ impl cmp::Ord for Identifier {
     }
 }
 
+impl fmt::Show for Identifier {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Numeric(ref n) => n.fmt(f),
+            AlphaNumeric(ref s) => s.fmt(f)
+        }
+    }
+}
+
 impl ToStr for Identifier {
     #[inline]
     fn to_str(&self) -> ~str {
-        match self {
-            &Numeric(n) => n.to_str(),
-            &AlphaNumeric(ref s) => s.to_str()
-        }
+        format!("{}", *self)
     }
 }
 
@@ -74,33 +83,45 @@ impl ToStr for Identifier {
 #[deriving(Clone, Eq)]
 pub struct Version {
     /// The major version, to be incremented on incompatible changes.
-    priv major: uint,
+    major: uint,
     /// The minor version, to be incremented when functionality is added in a
     /// backwards-compatible manner.
-    priv minor: uint,
+    minor: uint,
     /// The patch version, to be incremented when backwards-compatible bug
     /// fixes are made.
-    priv patch: uint,
+    patch: uint,
     /// The pre-release version identifier, if one exists.
-    priv pre: ~[Identifier],
+    pre: ~[Identifier],
     /// The build metadata, ignored when determining version precedence.
-    priv build: ~[Identifier],
+    build: ~[Identifier],
+}
+
+impl fmt::Show for Version {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, "{}.{}.{}", self.major, self.minor, self.patch))
+        if !self.pre.is_empty() {
+            if_ok!(write!(f.buf, "-"));
+            for (i, x) in self.pre.iter().enumerate() {
+                if i != 0 { if_ok!(write!(f.buf, ".")) };
+                if_ok!(x.fmt(f));
+            }
+        }
+        if !self.build.is_empty() {
+            if_ok!(write!(f.buf, "+"));
+            for (i, x) in self.build.iter().enumerate() {
+                if i != 0 { if_ok!(write!(f.buf, ".")) };
+                if_ok!(x.fmt(f));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl ToStr for Version {
     #[inline]
     fn to_str(&self) -> ~str {
-        let s = format!("{}.{}.{}", self.major, self.minor, self.patch);
-        let s = if self.pre.is_empty() {
-            s
-        } else {
-            format!("{}-{}", s, self.pre.map(|i| i.to_str()).connect("."))
-        };
-        if self.build.is_empty() {
-            s
-        } else {
-            format!("{}+{}", s, self.build.map(|i| i.to_str()).connect("."))
-        }
+        format!("{}", *self)
     }
 }
 
@@ -130,19 +151,6 @@ impl cmp::Ord for Version {
                  (_, 0) => true,
                  (_, _) => self.pre < other.pre
              }))
-    }
-
-    #[inline]
-    fn le(&self, other: &Version) -> bool {
-        ! (other < self)
-    }
-    #[inline]
-    fn gt(&self, other: &Version) -> bool {
-        other < self
-    }
-    #[inline]
-    fn ge(&self, other: &Version) -> bool {
-        ! (self < other)
     }
 }
 
@@ -363,6 +371,22 @@ fn test_ne() {
     assert!(parse("0.0.0")       != parse("1.0.0"));
     assert!(parse("1.2.3-alpha") != parse("1.2.3-beta"));
     assert!(parse("1.2.3+23")    != parse("1.2.3+42"));
+}
+
+#[test]
+fn test_show() {
+    assert_eq!(format!("{}", parse("1.2.3").unwrap()), ~"1.2.3");
+    assert_eq!(format!("{}", parse("1.2.3-alpha1").unwrap()), ~"1.2.3-alpha1");
+    assert_eq!(format!("{}", parse("1.2.3+build.42").unwrap()), ~"1.2.3+build.42");
+    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").unwrap()), ~"1.2.3-alpha1+42");
+}
+
+#[test]
+fn test_to_str() {
+    assert_eq!(parse("1.2.3").unwrap().to_str(), ~"1.2.3");
+    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), ~"1.2.3-alpha1");
+    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), ~"1.2.3+build.42");
+    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), ~"1.2.3-alpha1+42");
 }
 
 #[test]

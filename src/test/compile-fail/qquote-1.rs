@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-test Can't use syntax crate here
+#[feature(quote)];
 
 extern mod extra;
 extern mod syntax;

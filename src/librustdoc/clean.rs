@@ -404,7 +404,6 @@ pub enum SelfTy {
     SelfStatic,
     SelfValue,
     SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfManaged,
     SelfOwned,
 }
 
@@ -415,7 +414,6 @@ impl Clean<SelfTy> for ast::ExplicitSelf {
             ast::SelfValue => SelfValue,
             ast::SelfUniq => SelfOwned,
             ast::SelfRegion(lt, mt) => SelfBorrowed(lt.clean(), mt.clean()),
-            ast::SelfBox => SelfManaged,
         }
     }
 }

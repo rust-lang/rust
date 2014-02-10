@@ -185,7 +185,7 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
             if ret_val.contains_key(bind_name) {
                 let string = token::get_ident(bind_name.name);
                 p_s.span_diagnostic
-                   .span_fatal(sp, "Duplicated bind name: " + string.get())
+                   .span_fatal(sp, "duplicated bind name: " + string.get())
             }
             ret_val.insert(*bind_name, res[idx]);
           }
@@ -202,11 +202,11 @@ pub enum ParseResult {
     Error(codemap::Span, ~str)
 }
 
-pub fn parse_or_else(sess: @ParseSess,
-                     cfg: ast::CrateConfig,
-                     rdr: @Reader,
-                     ms: ~[Matcher])
-                     -> HashMap<Ident, @NamedMatch> {
+pub fn parse_or_else<R: Reader>(sess: @ParseSess,
+                                cfg: ast::CrateConfig,
+                                rdr: R,
+                                ms: ~[Matcher])
+                                -> HashMap<Ident, @NamedMatch> {
     match parse(sess, cfg, rdr, ms) {
         Success(m) => m,
         Failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
@@ -223,11 +223,11 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(sess: @ParseSess,
-             cfg: ast::CrateConfig,
-             rdr: @Reader,
-             ms: &[Matcher])
-             -> ParseResult {
+pub fn parse<R: Reader>(sess: @ParseSess,
+                        cfg: ast::CrateConfig,
+                        rdr: R,
+                        ms: &[Matcher])
+                        -> ParseResult {
     let mut cur_eis = ~[];
     cur_eis.push(initial_matcher_pos(ms.to_owned(), None, rdr.peek().sp.lo));
 
@@ -441,6 +441,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         res
       }
       "matchers" => token::NtMatchers(p.parse_matchers()),
-      _ => p.fatal(~"Unsupported builtin nonterminal parser: " + name)
+      _ => p.fatal(~"unsupported builtin nonterminal parser: " + name)
     }
 }

@@ -409,7 +409,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         }
     }
 
-    // Handle @, ~, and & being able to mean strs and vecs.
+    // Handle ~, and & being able to mean strs and vecs.
     // If a_seq_ty is a str or a vec, make it a str/vec.
     // Also handle first-class trait types.
     fn mk_pointer<AC:AstConv,
@@ -449,17 +449,16 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         let result = ast_path_to_trait_ref(
                             this, rscope, trait_def_id, None, path);
                         let trait_store = match ptr_ty {
-                            Box => ty::BoxTraitStore,
                             VStore(ty::vstore_uniq) => ty::UniqTraitStore,
                             VStore(ty::vstore_slice(r)) => {
                                 ty::RegionTraitStore(r)
                             }
-                            VStore(ty::vstore_fixed(..)) => {
+                            _ => {
                                 tcx.sess.span_err(
                                     path.span,
-                                    "@trait, ~trait or &trait are the only supported \
+                                    "~trait or &trait are the only supported \
                                      forms of casting-to-trait");
-                                ty::BoxTraitStore
+                                return ty::mk_err();
                             }
                         };
                         let bounds = conv_builtin_bounds(this.tcx(), bounds, trait_store);
@@ -546,7 +545,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         // if none were specified.
                         ast::BorrowedSigil => ty::RegionTraitStore(ty::ReEmpty), // dummy region
                         ast::OwnedSigil    => ty::UniqTraitStore,
-                        ast::ManagedSigil  => ty::BoxTraitStore,
+                        ast::ManagedSigil  => return ty::mk_err()
                     });
                 let fn_decl = ty_of_closure(this,
                                             rscope,
@@ -718,9 +717,6 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
-            ast::SelfBox => {
-                Some(ty::mk_box(this.tcx(), self_info.untransformed_self_ty))
-            }
             ast::SelfUniq => {
                 Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty))
             }
@@ -868,9 +864,7 @@ fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBou
         (&None, ty::UniqTraitStore) => {
             let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundSend); set
         }
-        // @Trait is sugar for @Trait:'static.
         // &'static Trait is sugar for &'static Trait:'static.
-        (&None, ty::BoxTraitStore) |
         (&None, ty::RegionTraitStore(ty::ReStatic)) => {
             let mut set = ty::EmptyBuiltinBounds(); set.add(ty::BoundStatic); set
         }

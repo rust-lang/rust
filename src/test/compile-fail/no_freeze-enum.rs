@@ -16,5 +16,7 @@ fn bar<T: Freeze>(_: T) {}
 
 fn main() {
     let x = A(marker::NoFreeze);
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Freeze`
+    bar(x);
+    //~^ ERROR instantiating a type parameter with an incompatible type `Foo`,
+    //         which does not fulfill `Freeze`
 }

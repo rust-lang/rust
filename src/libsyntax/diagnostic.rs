@@ -24,10 +24,8 @@ static BUG_REPORT_URL: &'static str =
 static MAX_LINES: uint = 6u;
 
 pub trait Emitter {
-    fn emit(&self,
-            cmsp: Option<(&codemap::CodeMap, Span)>,
-            msg: &str,
-            lvl: Level);
+    fn emit(&self, cmsp: Option<(&codemap::CodeMap, Span)>,
+            msg: &str, lvl: Level);
     fn custom_emit(&self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level);
 }
@@ -46,30 +44,30 @@ pub struct SpanHandler {
 }
 
 impl SpanHandler {
-    pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
         fail!(FatalError);
     }
-    pub fn span_err(@self, sp: Span, msg: &str) {
+    pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Error);
         self.handler.bump_err_count();
     }
-    pub fn span_warn(@self, sp: Span, msg: &str) {
+    pub fn span_warn(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Warning);
     }
-    pub fn span_note(@self, sp: Span, msg: &str) {
+    pub fn span_note(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Note);
     }
-    pub fn span_end_note(@self, sp: Span, msg: &str) {
+    pub fn span_end_note(&self, sp: Span, msg: &str) {
         self.handler.custom_emit(&*self.cm, sp, msg, Note);
     }
-    pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    pub fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    pub fn handler(@self) -> @Handler {
+    pub fn handler(&self) -> @Handler {
         self.handler
     }
 }
@@ -79,28 +77,28 @@ impl SpanHandler {
 // others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<uint>,
-    emit: @Emitter,
+    emit: DefaultEmitter,
 }
 
 impl Handler {
-    pub fn fatal(@self, msg: &str) -> ! {
+    pub fn fatal(&self, msg: &str) -> ! {
         self.emit.emit(None, msg, Fatal);
         fail!(FatalError);
     }
-    pub fn err(@self, msg: &str) {
+    pub fn err(&self, msg: &str) {
         self.emit.emit(None, msg, Error);
         self.bump_err_count();
     }
-    pub fn bump_err_count(@self) {
+    pub fn bump_err_count(&self) {
         self.err_count.set(self.err_count.get() + 1u);
     }
-    pub fn err_count(@self) -> uint {
+    pub fn err_count(&self) -> uint {
         self.err_count.get()
     }
-    pub fn has_errors(@self) -> bool {
+    pub fn has_errors(&self) -> bool {
         self.err_count.get()> 0u
     }
-    pub fn abort_if_errors(@self) {
+    pub fn abort_if_errors(&self) {
         let s;
         match self.err_count.get() {
           0u => return,
@@ -112,25 +110,25 @@ impl Handler {
         }
         self.fatal(s);
     }
-    pub fn warn(@self, msg: &str) {
+    pub fn warn(&self, msg: &str) {
         self.emit.emit(None, msg, Warning);
     }
-    pub fn note(@self, msg: &str) {
+    pub fn note(&self, msg: &str) {
         self.emit.emit(None, msg, Note);
     }
-    pub fn bug(@self, msg: &str) -> ! {
+    pub fn bug(&self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    pub fn unimpl(@self, msg: &str) -> ! {
+    pub fn unimpl(&self, msg: &str) -> ! {
         self.bug(~"unimplemented " + msg);
     }
-    pub fn emit(@self,
-            cmsp: Option<(&codemap::CodeMap, Span)>,
-            msg: &str,
-            lvl: Level) {
+    pub fn emit(&self,
+                cmsp: Option<(&codemap::CodeMap, Span)>,
+                msg: &str,
+                lvl: Level) {
         self.emit.emit(cmsp, msg, lvl);
     }
-    pub fn custom_emit(@self, cm: &codemap::CodeMap,
+    pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: Span, msg: &str, lvl: Level) {
         self.emit.custom_emit(cm, sp, msg, lvl);
     }
@@ -149,15 +147,10 @@ pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
     }
 }
 
-pub fn mk_handler(emitter: Option<@Emitter>) -> @Handler {
-    let emit: @Emitter = match emitter {
-        Some(e) => e,
-        None => @DefaultEmitter as @Emitter
-    };
-
+pub fn mk_handler() -> @Handler {
     @Handler {
         err_count: Cell::new(0),
-        emit: emit,
+        emit: DefaultEmitter,
     }
 }
 

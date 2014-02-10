@@ -10,7 +10,7 @@
 
 // xfail-android: FIXME(#10381)
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:rbreak zzz
 // debugger:run
 // debugger:finish
@@ -45,7 +45,7 @@
 // debugger:whatis f64
 // check:type = f64
 // debugger:info functions _yyy
-// check:[...]![...]_yyy()();
+// check:[...]![...]_yyy([...])([...]);
 // debugger:detach
 // debugger:quit
 

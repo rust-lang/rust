@@ -164,7 +164,6 @@ fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
 fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
-        '@' => ty::BoxTraitStore,
         '&' => ty::RegionTraitStore(parse_region(st, conv)),
         c => st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'", c))
     }
@@ -528,7 +527,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     let variadic = match next(st) {
         'V' => true,
         'N' => false,
-        r => fail!(format!("Bad variadic: {}", r)),
+        r => fail!(format!("bad variadic: {}", r)),
     };
     let ret_ty = parse_ty(st, |x,y| conv(x,y));
     ty::FnSig {binder_id: id,

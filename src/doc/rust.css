@@ -15,7 +15,6 @@
 body {
     margin: 0 auto;
     padding: 0 15px;
-    margin-bottom: 4em;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 14px;
     color: #333;
@@ -74,6 +73,15 @@ h6 {
 
 p {
     margin: 0 0 10px;
+}
+
+footer {
+    border-top: 1px solid #ddd;
+    font-size: 12px;
+    font-style: italic;
+    padding-top: 4px;
+    margin-top: 4em;
+    margin-bottom: 1em;
 }
 
 /* Links layout

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Unit-like struct construction is written with no trailing `{ }`
 struct Foo;
 
 fn g3() {
     let _mid_tuple    = (Foo { }, 2);
+    //~^ ERROR: unit-like struct construction is written with no trailing `{ }`
 }
 
 fn main() {}

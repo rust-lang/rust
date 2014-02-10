@@ -9,10 +9,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast
+
 extern mod extra;
+extern mod serialize;
 
 use extra::json;
-use extra::serialize::Decodable;
+use serialize::Decodable;
 
 trait JD : Decodable<json::Decoder> { }
 

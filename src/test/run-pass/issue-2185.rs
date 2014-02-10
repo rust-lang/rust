@@ -14,7 +14,8 @@
 
 // notes on this test case:
 // On Thu, Apr 18, 2013 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
-// the "issue-2185.rs" test was xfailed with a ref to #2263. Issue #2263 is now fixed, so I tried it again, and after adding some &self parameters, I got this error:
+// the "issue-2185.rs" test was xfailed with a ref to #2263. Issue #2263 is now fixed,
+// so I tried it again, and after adding some &self parameters, I got this error:
 //
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
@@ -26,10 +27,15 @@
 // issue-2185.rs:21     fn iter(&self, blk: |A|) { self(blk); }
 // issue-2185.rs:22 }
 //
-// … so it looks like it's just not possible to implement both the generic iterable<uint> and iterable<A> for the type iterable<uint>. Is it okay if I just remove this test?
+// … so it looks like it's just not possible to implement both
+// the generic iterable<uint> and iterable<A> for the type iterable<uint>.
+// Is it okay if I just remove this test?
 //
 // but Niko responded:
-// think it's fine to remove this test, just because it's old and cruft and not hard to reproduce. *However* it should eventually be possible to implement the same interface for the same type multiple times with different type parameters, it's just that our current trait implementation has accidental limitations.
+// think it's fine to remove this test, just because it's old and cruft and not hard to reproduce.
+// *However* it should eventually be possible to implement the same interface for the same type
+// multiple times with different type parameters, it's just that our current trait implementation
+// has accidental limitations.
 
 // so I'm leaving it in.
 // actually, it looks like this is related to bug #3429. I'll rename this bug.

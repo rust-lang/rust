@@ -881,7 +881,7 @@ use foo::baz::foobaz;    // good: foo is at the root of the crate
 mod foo {
     extern mod extra;
 
-    use foo::extra::list;  // good: foo is at crate root
+    use foo::extra::time;  // good: foo is at crate root
 //  use extra::*;          // bad:  extra is not at the crate root
     use self::baz::foobaz; // good: self refers to module 'foo'
     use foo::bar::foobar;  // good: foo is at crate root
@@ -1335,7 +1335,7 @@ to pointers to the trait name, used as a type.
 # impl Shape for int { }
 # let mycircle = 0;
 
-let myshape: @Shape = @mycircle as @Shape;
+let myshape: ~Shape = ~mycircle as ~Shape;
 ~~~~
 
 The resulting value is a managed box containing the value that was cast,
@@ -1396,7 +1396,7 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
 
-let mycircle: Circle = @mycircle as @Circle;
+let mycircle: Circle = ~mycircle as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~~
 
@@ -1969,13 +1969,14 @@ impl<T: Eq> Eq for Foo<T> {
 Supported traits for `deriving` are:
 
 * Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
-* Serialization: `Encodable`, `Decodable`. These require `extra`.
+* Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.
 * `Zero`, to create an zero instance of a numeric data type.
-* `FromPrimitive`, to create an instance from a numeric primitve.
+* `FromPrimitive`, to create an instance from a numeric primitive.
+* `Show`, to format a value using the `{}` formatter.
 
 ### Stability
 One can indicate the stability of an API using the following attributes:
@@ -3290,8 +3291,8 @@ Whereas most calls to trait methods are "early bound" (statically resolved) to s
 a call to a method on an object type is only resolved to a vtable entry at compile time.
 The actual implementation for each vtable entry can vary on an object-by-object basis.
 
-Given a pointer-typed expression `E` of type `&T`, `~T` or `@T`, where `T` implements trait `R`,
-casting `E` to the corresponding pointer type `&R`, `~R` or `@R` results in a value of the _object type_ `R`.
+Given a pointer-typed expression `E` of type `&T` or `~T`, where `T` implements trait `R`,
+casting `E` to the corresponding pointer type `&R` or `~R` results in a value of the _object type_ `R`.
 This result is represented as a pair of pointers:
 the vtable pointer for the `T` implementation of `R`, and the pointer value of `E`.
 
@@ -3306,12 +3307,12 @@ impl Printable for int {
   fn to_string(&self) -> ~str { self.to_str() }
 }
 
-fn print(a: @Printable) {
+fn print(a: ~Printable) {
    println!("{}", a.to_string());
 }
 
 fn main() {
-   print(@10 as @Printable);
+   print(~10 as ~Printable);
 }
 ~~~~
 
@@ -3678,43 +3679,43 @@ found in the [ffi tutorial][ffi].
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of command line flags and the `crate_type` attribute.
 
-* `--bin`, `#[crate_type = "bin"]` - A runnable executable will be produced.
-  This requires that there is a `main` function in the crate which will be run
-  when the program begins executing. This will link in all Rust and native
-  dependencies, producing a distributable binary.
+* `--crate-type=bin`, `#[crate_type = "bin"]` - A runnable executable will be
+  produced.  This requires that there is a `main` function in the crate which
+  will be run when the program begins executing. This will link in all Rust and
+  native dependencies, producing a distributable binary.
 
-* `--lib`, `#[crate_type = "lib"]` - A Rust library will be produced. This is
-  an ambiguous concept as to what exactly is produced because a library can
-  manifest itself in several forms. The purpose of this generic `lib` option is
-  to generate the "compiler recommended" style of library. The output library
-  will always be usable by rustc, but the actual type of library may change
-  from time-to-time. The remaining output types are all different flavors of
-  libraries, and the `lib` type can be seen as an alias for one of them (but
-  the actual one is compiler-defined).
+* `--crate-type=lib`, `#[crate_type = "lib"]` - A Rust library will be produced.
+  This is an ambiguous concept as to what exactly is produced because a library
+  can manifest itself in several forms. The purpose of this generic `lib` option
+  is to generate the "compiler recommended" style of library. The output library
+  will always be usable by rustc, but the actual type of library may change from
+  time-to-time. The remaining output types are all different flavors of
+  libraries, and the `lib` type can be seen as an alias for one of them (but the
+  actual one is compiler-defined).
 
-* `--dylib`, `#[crate_type = "dylib"]` - A dynamic Rust library will be
-  produced. This is different from the `lib` output type in that this forces
+* `--crate-type=dylib`, `#[crate_type = "dylib"]` - A dynamic Rust library will
+  be produced. This is different from the `lib` output type in that this forces
   dynamic library generation. The resulting dynamic library can be used as a
   dependency for other libraries and/or executables.  This output type will
   create `*.so` files on linux, `*.dylib` files on osx, and `*.dll` files on
   windows.
 
-* `--staticlib`, `#[crate_type = "staticlib"]` - A static system library will
-  be produced. This is different from other library outputs in that the Rust
-  compiler will never attempt to link to `staticlib` outputs. The purpose of
-  this output type is to create a static library containing all of the local
-  crate's code along with all upstream dependencies. The static library is
-  actually a `*.a` archive on linux and osx and a `*.lib` file on windows. This
-  format is recommended for use in situtations such as linking Rust code into an
-  existing non-Rust application because it will not have dynamic dependencies on
-  other Rust code.
+* `--crate-type=staticlib`, `#[crate_type = "staticlib"]` - A static system
+  library will be produced. This is different from other library outputs in that
+  the Rust compiler will never attempt to link to `staticlib` outputs. The
+  purpose of this output type is to create a static library containing all of
+  the local crate's code along with all upstream dependencies. The static
+  library is actually a `*.a` archive on linux and osx and a `*.lib` file on
+  windows. This format is recommended for use in situtations such as linking
+  Rust code into an existing non-Rust application because it will not have
+  dynamic dependencies on other Rust code.
 
-* `--rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be produced.
-  This is used as an intermediate artifact and can be thought of as a "static
-  Rust library". These `rlib` files, unlike `staticlib` files, are interpreted
-  by the Rust compiler in future linkage. This essentially means that `rustc`
-  will look for metadata in `rlib` files like it looks for metadata in dynamic
-  libraries. This form of output is used to produce statically linked
+* `--crate-type=rlib`, `#[crate_type = "rlib"]` - A "Rust library" file will be
+  produced.  This is used as an intermediate artifact and can be thought of as a
+  "static Rust library". These `rlib` files, unlike `staticlib` files, are
+  interpreted by the Rust compiler in future linkage. This essentially means
+  that `rustc` will look for metadata in `rlib` files like it looks for metadata
+  in dynamic libraries. This form of output is used to produce statically linked
   executables as well as `staticlib` outputs.
 
 Note that these outputs are stackable in the sense that if multiple are
@@ -3760,7 +3761,7 @@ dependencies will be used:
    with the above limitations in dynamic and static libraries, it is required
    for all upstream dependencies to be in the same format. The next question is
    whether to prefer a dynamic or a static format. The compiler currently favors
-   static linking over dynamic linking, but this can be inverted with the `-Z
+   static linking over dynamic linking, but this can be inverted with the `-C
    prefer-dynamic` flag to the compiler.
 
    What this means is that first the compiler will attempt to find all upstream
@@ -3769,9 +3770,9 @@ dependencies will be used:
    then the compiler will force all dependencies to be dynamic and will generate
    errors if dynamic versions could not be found.
 
-In general, `--bin` or `--lib` should be sufficient for all compilation needs,
-and the other options are just available if more fine-grained control is desired
-over the output format of a Rust crate.
+In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
+all compilation needs, and the other options are just available if more
+fine-grained control is desired over the output format of a Rust crate.
 
 ### Logging system
 
@@ -3906,4 +3907,4 @@ Additional specific influences can be seen from the following languages:
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
 
-[ffi]: tutorial-ffi.html
+[ffi]: guide-ffi.html

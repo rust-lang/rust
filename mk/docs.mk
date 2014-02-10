@@ -19,8 +19,10 @@ HTML_DEPS := doc/
 
 BASE_DOC_OPTS := --standalone --toc --number-sections
 HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
-    --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
-TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md --to=latex
+    --include-before-body=doc/version_info.html \
+    --include-in-header=doc/favicon.inc --include-after-body=doc/footer.inc
+TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md \
+    --from=markdown --include-before-body=doc/footer.tex --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
 D := $(S)src/doc
@@ -55,12 +57,21 @@ doc/rust.css: $(D)/rust.css | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
+HTML_DEPS += doc/favicon.inc
+doc/favicon.inc: $(D)/favicon.inc | doc/
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
 doc/full-toc.inc: $(D)/full-toc.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-HTML_DEPS += doc/favicon.inc
-doc/favicon.inc: $(D)/favicon.inc | doc/
+HTML_DEPS += doc/footer.inc
+doc/footer.inc: $(D)/footer.inc | doc/
+	@$(call E, cp: $@)
+	$(Q)cp -a $< $@ 2> /dev/null
+
+doc/footer.tex: $(D)/footer.tex | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
@@ -83,7 +94,7 @@ doc/rust.html: $(D)/rust.md doc/full-toc.inc $(HTML_DEPS) | doc/
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
 
 DOCS += doc/rust.tex
-doc/rust.tex: $(D)/rust.md doc/version.md | doc/
+doc/rust.tex: $(D)/rust.md doc/footer.tex doc/version.md | doc/
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
@@ -107,7 +118,7 @@ doc/tutorial.html: $(D)/tutorial.md $(HTML_DEPS)
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/tutorial.tex
-doc/tutorial.tex: $(D)/tutorial.md doc/version.md
+doc/tutorial.tex: $(D)/tutorial.md doc/footer.tex doc/version.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
@@ -145,12 +156,6 @@ doc/complement-lang-faq.html: $(D)/complement-lang-faq.md doc/full-toc.inc $(HTM
 
 DOCS += doc/complement-project-faq.html
 doc/complement-project-faq.html: $(D)/complement-project-faq.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/complement-usage-faq.html
-doc/complement-usage-faq.html: $(D)/complement-usage-faq.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
@@ -201,12 +206,6 @@ doc/guide-lifetimes.html: $(D)/guide-lifetimes.md $(HTML_DEPS)
 
 DOCS += doc/guide-tasks.html
 doc/guide-tasks.html: $(D)/guide-tasks.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-conditions.html
-doc/guide-conditions.html: $(D)/guide-conditions.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
@@ -281,8 +280,7 @@ endif
 
 # The rustdoc executable, rpath included in case --disable-rpath was provided to
 # ./configure
-RUSTDOC = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
-	  $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
+RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
 #
@@ -297,7 +295,9 @@ doc/$(1)/index.html:							    \
 	    $$(foreach dep,$$(RUST_DEPS_$(1)),				    \
 		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep))
 	@$$(call E, rustdoc: $$@)
-	$$(Q)$$(RUSTDOC) --cfg stage2 $$<
+	$$(Q)$$(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $$(RUSTDOC) \
+	    --cfg stage2 $$<
+
 endef
 
 $(foreach crate,$(CRATES),$(eval $(call libdoc,$(crate))))

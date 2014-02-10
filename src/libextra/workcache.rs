@@ -13,8 +13,8 @@
 use json;
 use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
-use arc::{Arc,RWArc};
-use treemap::TreeMap;
+use sync::{Arc,RWArc};
+use collections::TreeMap;
 use std::str;
 use std::io;
 use std::io::{File, MemWriter};
