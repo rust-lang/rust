@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::util;
+use std::mem::swap;
 
 pub fn main() {
     let mut x = 3; let mut y = 7;
-    util::swap(&mut x, &mut y);
+    swap(&mut x, &mut y);
     assert!((x == 7)); assert!((y == 3));
 }

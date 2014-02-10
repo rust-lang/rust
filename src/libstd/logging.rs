@@ -99,13 +99,13 @@ use fmt;
 use io::LineBufferedWriter;
 use io;
 use io::Writer;
+use mem::replace;
 use ops::Drop;
 use option::{Some, None, Option};
 use prelude::drop;
 use result::{Ok, Err};
 use rt::local::Local;
 use rt::task::Task;
-use util;
 
 /// Debug log level
 pub static DEBUG: u32 = 4;
@@ -173,7 +173,7 @@ pub fn log(level: u32, args: &fmt::Arguments) {
     logger.get_mut_ref().log(level, args);
 
     let mut task = Local::borrow(None::<Task>);
-    let prev = util::replace(&mut task.get().logger, logger);
+    let prev = replace(&mut task.get().logger, logger);
     drop(task);
     drop(prev);
 }
@@ -182,5 +182,5 @@ pub fn log(level: u32, args: &fmt::Arguments) {
 /// logger.
 pub fn set_logger(logger: ~Logger) -> Option<~Logger> {
     let mut task = Local::borrow(None::<Task>);
-    util::replace(&mut task.get().logger, Some(logger))
+    replace(&mut task.get().logger, Some(logger))
 }

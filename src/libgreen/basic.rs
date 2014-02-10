@@ -16,10 +16,10 @@
 //! loop if no other one is provided (and M:N scheduling is desired).
 
 use std::cast;
+use std::mem::replace;
 use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausableIdleCallback,
                     Callback};
 use std::unstable::sync::Exclusive;
-use std::util;
 
 /// This is the only exported function from this module.
 pub fn event_loop() -> ~EventLoop {
@@ -50,7 +50,7 @@ impl BasicLoop {
     /// Process everything in the work queue (continually)
     fn work(&mut self) {
         while self.work.len() > 0 {
-            for work in util::replace(&mut self.work, ~[]).move_iter() {
+            for work in replace(&mut self.work, ~[]).move_iter() {
                 work();
             }
         }
@@ -60,7 +60,7 @@ impl BasicLoop {
         let messages = unsafe {
             self.messages.with(|messages| {
                 if messages.len() > 0 {
-                    Some(util::replace(messages, ~[]))
+                    Some(replace(messages, ~[]))
                 } else {
                     None
                 }

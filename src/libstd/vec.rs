@@ -121,7 +121,6 @@ use kinds::marker;
 use uint;
 use unstable::finally::Finally;
 use unstable::raw::{Repr, Slice, Vec};
-use util;
 
 /**
  * Creates and initializes an owned vector.
@@ -1799,7 +1798,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
                 if *p_r != *p_wm1 {
                     if r != w {
                         let p_w = ptr::mut_offset(p_wm1, 1);
-                        util::swap(&mut *p_r, &mut *p_w);
+                        mem::swap(&mut *p_r, &mut *p_w);
                     }
                     w += 1;
                 }
@@ -1994,7 +1993,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
             }
         }
 
-        util::swap(&mut buf_dat, &mut buf_tmp);
+        mem::swap(&mut buf_dat, &mut buf_tmp);
 
         width *= 2;
     }
@@ -2374,7 +2373,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
         for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
-            util::swap(a, b);
+            mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
     }
@@ -2757,14 +2756,14 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let len = tmp.len();
                 let (head, tail) = tmp.mut_split_at(len);
                 self.v = tail;
                 Some(head)
             }
             Some(idx) => {
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.mut_split_at(idx);
                 self.v = tail.mut_slice_from(1);
                 Some(head)
@@ -2792,11 +2791,11 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 Some(tmp)
             }
             Some(idx) => {
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.mut_split_at(idx);
                 self.v = head;
                 Some(tail.mut_slice_from(1))
@@ -2820,7 +2819,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
             None
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
-            let tmp = util::replace(&mut self.v, &mut []);
+            let tmp = mem::replace(&mut self.v, &mut []);
             let (head, tail) = tmp.mut_split_at(sz);
             self.v = tail;
             Some(head)
@@ -2847,7 +2846,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
-            let tmp = util::replace(&mut self.v, &mut []);
+            let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
             let (head, tail) = tmp.mut_split_at(tmp_len - sz);
             self.v = head;

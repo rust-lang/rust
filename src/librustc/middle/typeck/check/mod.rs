@@ -115,8 +115,8 @@ use util::ppaux::{UserString, Repr};
 
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
+use std::mem::replace;
 use std::result;
-use std::util::replace;
 use std::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{Provided, Required};
