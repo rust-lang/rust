@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! Blocking posix-based file I/O
+
+#[allow(non_camel_case_types)];
 
 use std::sync::arc::UnsafeArc;
 use std::c_str::CString;
