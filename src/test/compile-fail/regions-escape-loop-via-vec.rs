@@ -14,7 +14,7 @@ fn broken() {
     let mut _y = ~[&mut x];
     while x < 10 {
         let mut z = x;
-        _y.push(&mut z); //~ ERROR borrowed value does not live long enough
+        _y.push(&mut z); //~ ERROR `z` does not live long enough
         x += 1; //~ ERROR cannot assign
     }
 }
