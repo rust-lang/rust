@@ -64,6 +64,26 @@ pub fn find<T:Clone>(ls: @List<T>, f: |&T| -> bool) -> Option<T> {
 }
 
 /**
+ * Returns true if all list elements matches a given predicate
+ *
+ * Apply function `f` to each element of `ls`, starting from the first.
+ * When function `f` returns false then it also returns false. If `f` matches
+ * all elements then true is returned.
+ */
+pub fn all<T>(ls: @List<T>, f: |&T| -> bool) -> bool {
+    let mut ls = ls;
+    loop {
+        ls = match *ls {
+            Cons(ref hd, tl) => {
+                if !f(hd) { return false; }
+                tl
+            }
+            Nil => return true
+        }
+    }
+}
+
+/**
  * Returns true if a list contains an element that matches a given predicate
  *
  * Apply function `f` to each element of `ls`, starting from the first.
@@ -240,6 +260,15 @@ mod tests {
         let empty = @list::Nil::<int>;
         assert_eq!(list::find(l, match_), option::None::<int>);
         assert_eq!(list::find(empty, match_), option::None::<int>);
+    }
+
+    #[test]
+    fn test_all() {
+        fn is_even(i: &int) -> bool { return *i % 2 == 0; }
+        let l_even = from_vec([2, 4, 6]);
+        let l_odd = from_vec([1, 3, 5]);
+        assert_eq!(list::all(l_even, match_), true);
+        assert_eq!(list::all(l_odd, match_), false);
     }
 
     #[test]
