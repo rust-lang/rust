@@ -582,6 +582,18 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
+There is also a for-loop that can be used to iterate over a range of numbers
+(or, more generally, anything implementing the `Iterator` trait):
+
+~~~~
+for n in range(0, 5) {
+    println!("{}", n);
+}
+~~~~
+
+The snippet above prints integer numbers under 5 starting at 0.
+
+
 # Data structures
 
 ## Structs
