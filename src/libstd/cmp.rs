@@ -72,6 +72,9 @@ totaleq_impl!(uint)
 
 totaleq_impl!(char)
 
+totaleq_impl!(f32)
+totaleq_impl!(f64)
+
 #[deriving(Clone, Eq)]
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
@@ -125,6 +128,9 @@ totalord_impl!(int)
 totalord_impl!(uint)
 
 totalord_impl!(char)
+
+totalord_impl!(f32)
+totalord_impl!(f64)
 
 /// Compares (a1, b1) against (a2, b2), where the a values are more significant.
 pub fn cmp2<A:TotalOrd,B:TotalOrd>(
@@ -214,6 +220,18 @@ mod test {
     fn test_int_totaleq() {
         assert!(5.equals(&5));
         assert!(!2.equals(&17));
+    }
+
+    #[test]
+    fn test_f32_totaleq() {
+        assert!(3.14f32.cmp(3.0f32), Less);
+        assert!(4.12f32.cmp(4.11f32), Greater);
+    }
+
+    #[test]
+    fn test_f64_totaleq() {
+        assert!(3.14f64.cmp(3.0f64), Less);
+        assert!(4.12f64.cmp(4.11f64), Greater);
     }
 
     #[test]
