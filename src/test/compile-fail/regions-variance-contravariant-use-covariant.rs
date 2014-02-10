@@ -15,8 +15,8 @@
 // variance inference works in the first place.
 
 // This is contravariant with respect to 'a, meaning that
-// Contravariant<'foo> <: Contravariant<'static> because
-// 'foo <= 'static
+// Contravariant<'long> <: Contravariant<'short> iff
+// 'short <= 'long
 struct Contravariant<'a> {
     f: &'a int
 }
