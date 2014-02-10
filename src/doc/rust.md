@@ -3761,7 +3761,7 @@ dependencies will be used:
    with the above limitations in dynamic and static libraries, it is required
    for all upstream dependencies to be in the same format. The next question is
    whether to prefer a dynamic or a static format. The compiler currently favors
-   static linking over dynamic linking, but this can be inverted with the `-Z
+   static linking over dynamic linking, but this can be inverted with the `-C
    prefer-dynamic` flag to the compiler.
 
    What this means is that first the compiler will attempt to find all upstream

@@ -10,7 +10,7 @@
 
 // xfail-android: FIXME(#10381)
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:run
 
 // Test whether compiling a recursive enum definition crashes debug info generation. The test case

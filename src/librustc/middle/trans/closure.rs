@@ -298,7 +298,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
-    let env_pointer_alloca = if bcx.ccx().sess.opts.extra_debuginfo {
+    let env_pointer_alloca = if bcx.ccx().sess.opts.debuginfo {
         let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), cdata_ty), "__debuginfo_env_ptr");
         Store(bcx, llcdata, alloc);
         Some(alloc)

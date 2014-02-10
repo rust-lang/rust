@@ -27,17 +27,14 @@ Display this message
 \fB\-L\fR PATH
 Add a directory to the library search path
 .TP
-\fB\-\-linker\fR LINKER
-Program to use for linking instead of the default
-.TP
-\fB\-\-link-args\fR FLAGS
-A space-separated list of flags passed to the linker
-.TP
 \fB\-\-ls\fR
 List the symbols defined by a library crate
 .TP
 \fB\-\-no\-trans\fR
 Run all passes except translation; no output
+.TP
+\fB\-g\fR, \fB\-\-debuginfo\fR
+Emit DWARF debug information into object files generated.
 .TP
 \fB\-O\fR
 Equivalent to \fI\-\-opt\-level=2\fR
@@ -47,11 +44,6 @@ Write output to <filename>. Ignored if more than one --emit is specified.
 .TP
 \fB\-\-opt\-level\fR LEVEL
 Optimize with possible levels 0-3
-.TP
-\fB\-\-passes\fR NAMES
-Comma- or space-separated list of optimization passes. Overrides
-the default passes for the optimization level. A value of 'list'
-will list the available passes.
 .TP
 \fB\-\-out\-dir\fR DIR
 Write output to compiler-chosen filename in <dir>. Ignored if -o is specified.
@@ -66,9 +58,6 @@ Pretty-print the input instead of compiling; valid types are: normal
 expanded, with type annotations), or identified (fully parenthesized,
 AST nodes and blocks with IDs)
 .TP
-\fB\-\-save\-temps\fR
-Write intermediate files (.bc, .opt.bc, .o) in addition to normal output
-.TP
 \fB\-\-sysroot\fR PATH
 Override the system root
 .TP
@@ -79,12 +68,6 @@ Build a test harness
 Target triple cpu-manufacturer-kernel[-os] to compile for (see
 http://sources.redhat.com/autobook/autobook/autobook_17.html
 for details)
-.TP
-\fB\-\-target-feature\fR TRIPLE
-Target-specific attributes (see llc -mattr=help for details)
-.TP
-\fB\-\-android-cross-path\fR PATH
-The path to the Android NDK
 .TP
 \fB\-W\fR help
 Print 'lint' options and default settings
@@ -104,8 +87,79 @@ Set lint forbidden
 \fB\-Z\fR FLAG
 Set internal debugging options. Use "-Z help" to print available options.
 .TP
+\fB\-C\fR FLAG[=VAL], \fB\-\-codegen\fR FLAG[=VAL]
+Set a codegen-related flag to the value specifie.d Use "-C help" to print
+available flags. See CODEGEN OPTIONS below
+.TP
 \fB\-v\fR, \fB\-\-version\fR
 Print version info and exit
+
+.SH CODEGEN OPTIONS
+
+.TP
+\fBar\fR=/path/to/ar
+Path to the archive utility to use when assembling archives.
+.TP
+\fBlinker\fR=/path/to/cc
+Path to the linker utility to use when linking libraries, executables, and
+objects.
+.TP
+\fBlink-args\fR='-flag1 -flag2'
+A space-separated list of extra arguments to pass to the linker when the linker
+is invoked.
+.TP
+\fBtarget-cpu\fR=help
+Selects a target processor. If the value is 'help', then a list of available
+cpus is printed.
+.TP
+\fBtarget-feature\fR='+feature1 -feature2'
+A space-separated list of features to enable or disable for the target. A
+preceding '+' enables a feature while a preceding '-' disables it. Available
+features can be discovered through target-cpu=help.
+.TP
+\fBpasses\fR=list
+A space-separated list of extra LLVM passes to run. A value of 'list' will
+cause rustc to print all known passes and exit. The passes specified are
+appended at the end of the normal pass manager.
+.TP
+\fBllvm-args\fR='-arg1 -arg2'
+A space-separted list of argument to pass through to LLVM.
+.TP
+\fBsave-temps\fR
+If specified, the compiler will save more files (.bc, .o, .no-opt.bc) generated
+throughout compilation in the output directory.
+.TP
+\fBandroid-cross-path\fR=path/to/ndk/bin
+Directory to find the Android NDK cross-compilation tools
+.TP
+\fBno-rpath\fR
+If specified, then the rpath value for dynamic libraries will not be set in
+either dynamic library or executable outputs.
+.TP
+\fBno-prepopulate-passes\fR
+Suppresses pre-population of the LLVM pass manager that is run over the module.
+.TP
+\fBno-vectorize-loops\fR
+Suppresses running the loop vectorization LLVM pass, regardless of optimization
+level.
+.TP
+\fBno-vectorize-slp\fR
+Suppresses running the LLVM SLP vectorization pass, regardless of optimization
+level.
+.TP
+\fBsoft-float\fR
+Generates software floating point library calls instead of hardware
+instructions.
+.TP
+\fBgen-crate-map\fR
+Forces generate of a toplevel crate map. May be required for logging to work
+when rust is embedded into another application.
+.TP
+\fBprefer-dynamic\fR
+Prefers dynamic linking to static linking.
+.TP
+\fBno-integrated-as\fR
+Force usage of an external assembler rather than LLVM's integrated one.
 
 .SH "EXAMPLES"
 To build an executable from a source file with a main function:
@@ -117,8 +171,8 @@ To build a library from a source file:
 To build either with a crate (.rs) file:
     $ rustc hello.rs
 
-To build an executable with debug info (experimental):
-    $ rustc -Z debug-info -o hello hello.rs
+To build an executable with debug info:
+    $ rustc -g -o hello hello.rs
 
 .SH "SEE ALSO"
 

@@ -2,6 +2,6 @@
 
 all:
 	$(RUSTC) both.rs
-	$(RUSTC) dylib.rs -Z prefer-dynamic
+	$(RUSTC) dylib.rs -C prefer-dynamic
 	$(RUSTC) prog.rs
 	$(call RUN,prog)

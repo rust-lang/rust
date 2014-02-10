@@ -568,7 +568,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
 
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
-    if cx.sess.opts.save_temps {
+    if cx.sess.opts.cg.save_temps {
         s.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMSetValueName(v, buf)
@@ -1389,7 +1389,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
         bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
 
-        if fcx.ccx.sess.opts.extra_debuginfo {
+        if fcx.ccx.sess.opts.debuginfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
         }
     }
@@ -2510,7 +2510,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore.have_crate_data(n_subcrates) { n_subcrates += 1; }
-    let is_top = !sess.building_library.get() || sess.gen_crate_map();
+    let is_top = !sess.building_library.get() || sess.opts.cg.gen_crate_map;
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {

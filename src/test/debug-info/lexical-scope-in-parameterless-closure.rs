@@ -10,7 +10,7 @@
 
 // xfail-android: FIXME(#10381)
 
-// compile-flags:-Z debug-info
+// compile-flags:-g
 // debugger:run
 
 // Nothing to do here really, just make sure it compiles. See issue #8513.
