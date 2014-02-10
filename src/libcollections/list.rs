@@ -46,7 +46,7 @@ pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: |&T, &U| -> T) -> T {
 /**
  * Search for an element that matches a given predicate
  *
- * Apply function `f` to each element of `v`, starting from the first.
+ * Apply function `f` to each element of `ls`, starting from the first.
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
