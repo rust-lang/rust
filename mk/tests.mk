@@ -347,7 +347,7 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 		$$(CRATEFILE_$(4))					\
 		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
 		$$(STDTESTDEP_$(1)_$(2)_$(3)_$(4))
-	@$$(call E, compile_and_link: $$@)
+	@$$(call E, oxidize: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
 		-L "$$(LLVM_LIBDIR_$(2))"
@@ -835,7 +835,7 @@ define DEF_CHECK_FAST_FOR_T_H
 $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 		tmp/$$(FT).rc \
 		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@)
+	@$$(call E, oxidize: $$@)
 	$$(STAGE2_T_$(2)_H_$(3)) --crate-type=dylib --out-dir $$(@D) $$< \
 	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
@@ -843,7 +843,7 @@ $(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
 		tmp/$$(FT_DRIVER).rs \
 		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
 		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@ $$<)
+	@$$(call E, oxidize: $$@ $$<)
 	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$< \
 	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
