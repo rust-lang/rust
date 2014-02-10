@@ -20,6 +20,7 @@ use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
+use std::unstable::intrinsics;
 
 use access::Access;
 use homing::{HomingIO, HomeHandle};
