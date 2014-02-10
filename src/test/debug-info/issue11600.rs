@@ -19,7 +19,7 @@ fn main() {
 // This test case checks whether compile unit names are set correctly, so that the correct default
 // source file can be found.
 
-// compile-flags:-Z extra-debug-info
+// compile-flags:-g
 // debugger:list
 // check:1[...]fn main() {
 // check:2[...]let args : ~[~str] = ::std::os::args();

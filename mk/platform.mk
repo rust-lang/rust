@@ -300,8 +300,8 @@ CFG_PATH_MUNGE_arm-linux-androideabi := true
 CFG_LDPATH_arm-linux-androideabi :=
 CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
-RUSTC_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
-RUSTC_CROSS_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
+RUSTC_FLAGS_arm-linux-androideabi :=-C android-cross-path=$(CFG_ANDROID_CROSS_PATH)
+RUSTC_CROSS_FLAGS_arm-linux-androideabi :=-C android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
 # arm-unknown-linux-gnueabihf configuration
 CROSS_PREFIX_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-
