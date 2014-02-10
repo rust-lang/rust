@@ -647,8 +647,43 @@ match mypoint {
 
 ## Enums
 
-Enums are datatypes that have several alternate representations. For
-example, consider the following type:
+Enums are datatypes with several alternate representations. A simple `enum`
+defines one or more constants, all of which have the same type:
+
+~~~~
+enum Direction {
+    North,
+    East,
+    South,
+    West
+}
+~~~~
+
+Each variant of this enum has a unique and constant integral discriminator
+value. If no explicit discriminator is specified for a variant, the value
+defaults to the value of the previous variant plus one. If the first variant
+does not have a discriminator, it defaults to 0. For example, the value of
+`North` is 0, `East` is 1, `South` is 2, and `West` is 3.
+
+When an enum has simple integer discriminators, you can apply the `as` cast
+operator to convert a variant to its discriminator value as an `int`:
+
+~~~~
+# enum Direction { North }
+println!( "{:?} => {}", North, North as int );
+~~~~
+
+It is possible to set the discriminator values to chosen constant values:
+
+~~~~
+enum Color {
+  Red = 0xff0000,
+  Green = 0x00ff00,
+  Blue = 0x0000ff
+}
+~~~~
+
+Variants do not have to be simple values; they may be more complex:
 
 ~~~~
 # struct Point { x: f64, y: f64 }
@@ -664,50 +699,14 @@ two `Point` structs. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 "tagged union" pattern in C, but with better static guarantees.
 
-The above declaration will define a type `Shape` that can refer to
-such shapes, and two functions, `Circle` and `Rectangle`, which can be
-used to construct values of the type (taking arguments of the
-specified types). So `Circle(Point { x: 0.0, y: 0.0 }, 10.0)` is the way to
-create a new circle.
+This declaration defines a type `Shape` that can refer to such shapes, and two
+functions, `Circle` and `Rectangle`, which can be used to construct values of
+the type. To create a new Circle, write `Circle(Point { x: 0.0, y: 0.0 },
+10.0)`.
 
-Enum variants need not have parameters. This `enum` declaration,
-for example, is equivalent to a C enum:
-
-~~~~
-enum Direction {
-    North,
-    East,
-    South,
-    West
-}
-~~~~
-
-This declaration defines `North`, `East`, `South`, and `West` as constants,
-all of which have type `Direction`.
-
-When an enum is C-like (that is, when none of the variants have
-parameters), it is possible to explicitly set the discriminator values
-to a constant value:
-
-~~~~
-enum Color {
-  Red = 0xff0000,
-  Green = 0x00ff00,
-  Blue = 0x0000ff
-}
-~~~~
-
-If an explicit discriminator is not specified for a variant, the value
-defaults to the value of the previous variant plus one. If the first
-variant does not have a discriminator, it defaults to 0. For example,
-the value of `North` is 0, `East` is 1, `South` is 2, and `West` is 3.
-
-When an enum is C-like, you can apply the `as` cast operator to
-convert it to its discriminator value as an `int`.
-
-For enum types with multiple variants, destructuring is the only way to
-get at their contents. All variant constructors can be used as
-patterns, as in this definition of `area`:
+All of these variant constructors may be used as patterns. The only way to
+access the contents of an enum instance is the destructuring of a match. For
+example:
 
 ~~~~
 use std::f64;
@@ -721,10 +720,8 @@ fn area(sh: Shape) -> f64 {
 }
 ~~~~
 
-You can write a lone `_` to ignore an individual field, and can
-ignore all fields of a variant like: `Circle(..)`. As in their
-introduction form, nullary enum patterns are written without
-parentheses.
+Use a lone `_` to ignore an individual field. Ignore all fields of a variant
+like: `Circle(..)`. Nullary enum patterns are written without parentheses:
 
 ~~~~
 # struct Point { x: f64, y: f64 }
