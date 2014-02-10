@@ -14,11 +14,12 @@ use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
 use to_str::ToStr;
+use to_bytes::IterBytes;
 use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
 
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(Eq, TotalEq, Clone, IterBytes)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -48,7 +49,7 @@ impl ToStr for IpAddr {
     }
 }
 
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(Eq, TotalEq, Clone, IterBytes)]
 pub struct SocketAddr {
     ip: IpAddr,
     port: Port,
@@ -339,6 +340,7 @@ impl FromStr for SocketAddr {
 mod test {
     use prelude::*;
     use super::*;
+    use to_bytes::ToBytes;
 
     #[test]
     fn test_from_str_ipv4() {
@@ -441,4 +443,13 @@ mod test {
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
     }
 
+    #[test]
+    fn ipv4_addr_to_bytes() {
+        Ipv4Addr(123, 20, 12, 56).to_bytes(true);
+    }
+
+    #[test]
+    fn socket_addr_to_bytes() {
+        SocketAddr { ip: Ipv4Addr(1, 2, 3, 4), port: 1234 }.to_bytes(true);
+    }
 }
