@@ -704,9 +704,13 @@ fn compose_and_run_compiler(
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_props = load_props(&abs_ab);
+        let crate_type = if aux_props.no_prefer_dynamic {
+            ~[]
+        } else {
+            ~[~"--crate-type=dylib"]
+        };
         let aux_args =
-            make_compile_args(config, &aux_props, ~[~"--crate-type=dylib"]
-                                                  + extra_link_args,
+            make_compile_args(config, &aux_props, crate_type + extra_link_args,
                               |a,b| {
                                   let f = make_lib_name(a, b, testfile);
                                   ThisDirectory(f.dir_path())
@@ -770,6 +774,10 @@ fn make_compile_args(config: &config,
                      ~"-L", config.build_base.as_str().unwrap().to_owned(),
                      ~"--target=" + target]
         + extras;
+    if !props.no_prefer_dynamic {
+        args.push(~"-C");
+        args.push(~"prefer-dynamic");
+    }
     let path = match xform_file {
         ThisFile(path) => { args.push(~"-o"); path }
         ThisDirectory(path) => { args.push(~"--out-dir"); path }
