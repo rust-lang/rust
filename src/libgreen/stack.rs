@@ -138,9 +138,9 @@ impl StackPool {
 
     pub fn take_stack(&mut self, min_size: uint) -> Stack {
         // Ideally this would be a binary search
-        match self.stacks.iter().position(|s| s.min_size < min_size) {
+        match self.stacks.iter().position(|s| min_size <= s.min_size) {
             Some(idx) => self.stacks.swap_remove(idx),
-            None      => Stack::new(min_size)
+            None => Stack::new(min_size)
         }
     }
 
@@ -155,4 +155,34 @@ extern {
     fn rust_valgrind_stack_register(start: *libc::uintptr_t,
                                     end: *libc::uintptr_t) -> libc::c_uint;
     fn rust_valgrind_stack_deregister(id: libc::c_uint);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StackPool;
+
+    #[test]
+    fn stack_pool_caches() {
+        let mut p = StackPool::new();
+        let s = p.take_stack(10);
+        p.give_stack(s);
+        let s = p.take_stack(4);
+        assert_eq!(s.min_size, 10);
+        p.give_stack(s);
+        let s = p.take_stack(14);
+        assert_eq!(s.min_size, 14);
+        p.give_stack(s);
+    }
+
+    #[test]
+    fn stack_pool_caches_exact() {
+        let mut p = StackPool::new();
+        let mut s = p.take_stack(10);
+        s.valgrind_id = 100;
+        p.give_stack(s);
+
+        let s = p.take_stack(10);
+        assert_eq!(s.min_size, 10);
+        assert_eq!(s.valgrind_id, 100);
+    }
 }
