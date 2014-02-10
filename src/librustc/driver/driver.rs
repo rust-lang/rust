@@ -728,8 +728,7 @@ pub fn host_triple() -> ~str {
     (env!("CFG_COMPILER")).to_owned()
 }
 
-pub fn build_session_options(binary: ~str,
-                             matches: &getopts::Matches)
+pub fn build_session_options(matches: &getopts::Matches)
                              -> @session::Options {
     let crate_types = matches.opt_strs("crate-type").flat_map(|s| {
         s.split(',').map(|part| {
@@ -864,7 +863,6 @@ pub fn build_session_options(binary: ~str,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         cfg: cfg,
-        binary: binary,
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
@@ -1159,7 +1157,7 @@ mod test {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
-        let sessopts = build_session_options(~"rustc", matches);
+        let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
         let cfg = build_configuration(sess);
         assert!((attr::contains_name(cfg, "test")));
@@ -1177,7 +1175,7 @@ mod test {
                        f.to_err_msg());
               }
             };
-        let sessopts = build_session_options(~"rustc", matches);
+        let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
         let cfg = build_configuration(sess);
         let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
