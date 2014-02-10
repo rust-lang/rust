@@ -10,7 +10,6 @@
 
 //! Unsafe casting functions
 
-use ptr::RawPtr;
 use mem;
 use unstable::intrinsics;
 use ptr::copy_nonoverlapping_memory;
@@ -72,13 +71,13 @@ pub unsafe fn transmute_region<'a,'b,T>(ptr: &'a T) -> &'b T {
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_mut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *mut T {
+pub unsafe fn transmute_mut_unsafe<T>(ptr: *T) -> *mut T {
     transmute(ptr)
 }
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
-pub unsafe fn transmute_immut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *T {
+pub unsafe fn transmute_immut_unsafe<T>(ptr: *mut T) -> *T {
     transmute(ptr)
 }
 

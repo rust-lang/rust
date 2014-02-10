@@ -1548,7 +1548,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let p = self.as_mut_ptr().offset(i as int);
             // Shift everything over to make space. (Duplicating the
             // `i`th element into two consecutive places.)
-            ptr::copy_memory(p.offset(1), p, len - i);
+            ptr::copy_memory(p.offset(1), &*p, len - i);
             // Write it in, overwriting the first copy of the `i`th
             // element.
             mem::move_val_init(&mut *p, x);
@@ -1567,7 +1567,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ret = Some(ptr::read_ptr(ptr as *T));
 
                 // Shift everything down to fill in that spot.
-                ptr::copy_memory(ptr, ptr.offset(1), len - i - 1);
+                ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
                 self.set_len(len - 1);
 
                 ret
@@ -1842,7 +1842,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
             if i != j {
                 let tmp = ptr::read_ptr(read_ptr);
                 ptr::copy_memory(buf_v.offset(j + 1),
-                                 buf_v.offset(j),
+                                 &*buf_v.offset(j),
                                  (i - j) as uint);
                 ptr::copy_nonoverlapping_memory(buf_v.offset(j),
                                                 &tmp as *T,
@@ -1920,7 +1920,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                 // that case, `i == j` so we don't copy. The
                 // `.offset(j)` is always in bounds.
                 ptr::copy_memory(buf_dat.offset(j + 1),
-                                 buf_dat.offset(j),
+                                 &*buf_dat.offset(j),
                                  i - j as uint);
                 ptr::copy_nonoverlapping_memory(buf_dat.offset(j), read_ptr, 1);
             }
@@ -1970,11 +1970,11 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                     if left == right_start {
                         // the number remaining in this run.
                         let elems = (right_end as uint - right as uint) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, right, elems);
+                        ptr::copy_nonoverlapping_memory(out, &*right, elems);
                         break;
                     } else if right == right_end {
                         let elems = (right_start as uint - left as uint) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, left, elems);
+                        ptr::copy_nonoverlapping_memory(out, &*left, elems);
                         break;
                     }
 
@@ -1988,7 +1988,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                     } else {
                         step(&mut left)
                     };
-                    ptr::copy_nonoverlapping_memory(out, to_copy, 1);
+                    ptr::copy_nonoverlapping_memory(out, &*to_copy, 1);
                     step(&mut out);
                 }
             }
@@ -2002,7 +2002,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // write the result to `v` in one go, so that there are never two copies
     // of the same object in `v`.
     unsafe {
-        ptr::copy_nonoverlapping_memory(v.as_mut_ptr(), buf_dat, len);
+        ptr::copy_nonoverlapping_memory(v.as_mut_ptr(), &*buf_dat, len);
     }
 
     // increment the pointer, returning the old pointer.
