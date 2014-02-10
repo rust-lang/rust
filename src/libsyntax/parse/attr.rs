@@ -50,7 +50,7 @@ impl ParserAttr for Parser {
                     self.span.hi
                 );
                 if attr.node.style != ast::AttrOuter {
-                  self.fatal("expected outer comment");
+                  alert_fatal!(self, C0076, "expected outer comment");
                 }
                 attrs.push(attr);
                 self.bump();
@@ -85,8 +85,8 @@ impl ParserAttr for Parser {
             }
             _ => {
                 let token_str = self.this_token_to_str();
-                self.fatal(format!("expected `\\#` but found `{}`",
-                                   token_str));
+                alert_fatal!(self, C0078, "expected `\\#` but found `{}`",
+                             token_str)
             }
         };
         let style = if permit_inner && self.token == token::SEMI {
@@ -167,8 +167,7 @@ impl ParserAttr for Parser {
                 match lit.node {
                     ast::LitStr(..) => {}
                     _ => {
-                        self.span_err(
-                            lit.span,
+                        span_err!(self, lit.span, C0017,
                             "non-string literals are not allowed in meta-items");
                     }
                 }

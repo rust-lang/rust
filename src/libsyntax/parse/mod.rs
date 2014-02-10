@@ -17,6 +17,7 @@ use codemap;
 use diagnostic::{SpanHandler, mk_span_handler, mk_handler};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
+use diag_db::DiagnosticDb;
 
 use std::cell::RefCell;
 use std::io::File;
@@ -45,11 +46,11 @@ pub struct ParseSess {
     included_mod_stack: RefCell<~[Path]>,
 }
 
-pub fn new_parse_sess() -> @ParseSess {
+pub fn new_parse_sess(db: DiagnosticDb) -> @ParseSess {
     let cm = @CodeMap::new();
     @ParseSess {
         cm: cm,
-        span_diagnostic: mk_span_handler(mk_handler(), cm),
+        span_diagnostic: mk_span_handler(mk_handler(db), cm),
         included_mod_stack: RefCell::new(~[]),
     }
 }
@@ -227,8 +228,10 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
     -> @FileMap {
     let err = |msg: &str| {
         match spanopt {
-            Some(sp) => sess.span_diagnostic.span_fatal(sp, msg),
-            None => sess.span_diagnostic.handler().fatal(msg),
+            Some(sp) => span_fatal!(sess.span_diagnostic, sp, C0012,
+                                    "error creating file map: {}", msg),
+            None => alert_fatal!(sess.span_diagnostic.handler(), C0086,
+                                 "error creating file map: {}", msg),
         }
     };
     let bytes = match File::open(path).read_to_end() {

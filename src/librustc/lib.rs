@@ -57,6 +57,14 @@ use syntax::attr;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::diag_db::{explain_diagnostic, explain_diag_help};
+
+// Define the diagnostic macros
+#[path = "../libsyntax/diag_macros.rs"]
+pub mod diag_macros;
+// The index of all diagnostic codes used by this crate. This must be defined
+// lexically before any diagnostics are used.
+pub mod diag_index;
 
 pub mod middle {
     pub mod trans;
@@ -214,6 +222,21 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
+    match matches.opt_str("explain") {
+        Some(ref code) if code == &~"help" => {
+            explain_diag_help();
+            return;
+        },
+        Some(code) => {
+            if !explain_diagnostic(&diag_db::load(), code) {
+                d::early_error(format!("no extended information about code {}", code));
+            }
+            return;
+        }
+        None => ()
+    }
+
+    // Display the available lint options if "-W help" or only "-W" is given.
     let lint_flags = vec::append(matches.opt_strs("W"),
                                  matches.opt_strs("warn"));
     if lint_flags.iter().any(|x| x == &~"help") {
@@ -290,7 +313,7 @@ pub fn run_compiler(args: &[~str]) {
             let crateid = match attr::find_crateid(attrs) {
                 Some(crateid) => crateid,
                 None => {
-                    sess.fatal("No crate_id and --crate-id or \
+                    alert_fatal!(sess, A0048, "No crate_id and --crate-id or \
                                 --crate-name requested")
                 }
             };
@@ -372,7 +395,7 @@ pub fn monitor(f: proc()) {
                 diagnostic::DefaultEmitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
-                    diagnostic::Error);
+                    diagnostic::Error, None);
 
                 let xs = [
                     ~"the compiler hit an unexpected failure path. \
@@ -381,7 +404,7 @@ pub fn monitor(f: proc()) {
                 for note in xs.iter() {
                     diagnostic::DefaultEmitter.emit(None,
                                                     *note,
-                                                    diagnostic::Note)
+                                                    diagnostic::Note, None)
                 }
 
                 println!("{}", r.read_to_str());
@@ -405,3 +428,7 @@ pub fn main_args(args: &[~str]) -> int {
     monitor(proc() run_compiler(owned_args));
     0
 }
+
+// The database of extended diagnostic descriptions. Must come lexically
+// after all uses of diagnostics. See `diag_macros` for why.
+pub mod diag_db;

@@ -49,9 +49,9 @@ impl EffectCheckVisitor {
         match self.unsafe_context {
             SafeContext => {
                 // Report an error.
-                self.tcx.sess.span_err(span,
-                                  format!("{} requires unsafe function or block",
-                                       description))
+                span_err!(self.tcx.sess, span, A0312,
+                                  "{} requires unsafe function or block",
+                                       description)
             }
             UnsafeBlock(block_id) => {
                 // OK, but record this.
@@ -72,7 +72,7 @@ impl EffectCheckVisitor {
                 ppaux::ty_to_str(self.tcx, base_type));
         match ty::get(base_type).sty {
             ty::ty_str(..) => {
-                self.tcx.sess.span_err(e.span,
+                span_err!(self.tcx.sess, e.span, A0313,
                     "modification of string types is not allowed");
             }
             _ => {}

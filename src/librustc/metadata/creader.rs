@@ -101,8 +101,8 @@ fn warn_if_multiple_versions(e: &mut Env,
         assert!(!matches.is_empty());
 
         if matches.len() != 1u {
-            diag.handler().warn(
-                format!("using multiple versions of crate `{}`", name));
+            alert_warn!(diag.handler(), A0334,
+                        "using multiple versions of crate `{}`", name);
             for match_ in matches.iter() {
                 diag.span_note(match_.span, "used here");
                 loader::note_crateid_attr(diag, &match_.crateid);
@@ -231,6 +231,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 })
                 .to_owned_vec();
             for m in link_args.iter() {
+                let span = m.span;
                 match m.meta_item_list() {
                     Some(items) => {
                         let kind = items.iter().find(|k| {
@@ -244,13 +245,13 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
-                                    e.sess.span_err(m.span,
+                                    span_err!(e.sess, span, A0322,
                                         "native frameworks are only available \
                                          on OSX targets");
                                     cstore::NativeUnknown
                                 } else {
-                                    e.sess.span_err(m.span,
-                                        format!("unknown kind: `{}`", k));
+                                    span_err!(e.sess, span, A0323,
+                                        "unknown kind: `{}`", k);
                                     cstore::NativeUnknown
                                 }
                             }
@@ -262,14 +263,15 @@ fn visit_item(e: &Env, i: &ast::Item) {
                         let n = match n {
                             Some(n) => n,
                             None => {
-                                e.sess.span_err(m.span,
+                                span_err!(e.sess, span, A0324,
                                     "#[link(...)] specified without \
                                      `name = \"foo\"`");
                                 InternedString::new("foo")
                             }
                         };
                         if n.get().is_empty() {
-                            e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
+                            span_err!(e.sess, span, A0325,
+                                      "#[link(name = \"\")] given with empty name");
                         } else {
                             cstore.add_used_library(n.get().to_owned(), kind);
                         }

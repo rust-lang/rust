@@ -941,7 +941,8 @@ impl<'a> SolveContext<'a> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(ast_map::node_span(tcx.items, item_id), found);
+                span_err!(tcx.sess, ast_map::node_span(tcx.items, item_id), A0153,
+                          "rustc_variance: {}", found);
             }
 
             let mut item_variance_map = tcx.item_variance_map.borrow_mut();

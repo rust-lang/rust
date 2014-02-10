@@ -201,8 +201,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
         if depth > 30 {
-            ccx.sess.span_fatal(
-                span, "overly deep expansion of inlined function");
+            span_fatal!(ccx.sess, span, A0022,
+                        "overly deep expansion of inlined function");
         }
         monomorphizing.get().insert(fn_id, depth + 1);
     }

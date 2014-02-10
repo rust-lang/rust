@@ -513,15 +513,15 @@ impl<'a> PrivacyVisitor<'a> {
                      source_did: Option<ast::DefId>, msg: &str) -> bool {
         match self.def_privacy(to_check) {
             ExternallyDenied => {
-                self.tcx.sess.span_err(span, format!("{} is private", msg))
+                span_err!(self.tcx.sess, span, A0246, "{} is private", msg)
             }
             DisallowedBy(id) => {
                 if id == source_did.unwrap_or(to_check).node {
-                    self.tcx.sess.span_err(span, format!("{} is private", msg));
+                    span_err!(self.tcx.sess, span, A0247,
+                              "{} is private", msg);
                     return false;
                 } else {
-                    self.tcx.sess.span_err(span, format!("{} is inaccessible",
-                                                         msg));
+                    span_err!(self.tcx.sess, span, A0248, "{} is inaccessible", msg);
                 }
                 match self.tcx.items.find(id) {
                     Some(ast_map::NodeItem(item, _)) => {
@@ -591,9 +591,9 @@ impl<'a> PrivacyVisitor<'a> {
             if !is_local(field.id) ||
                !self.private_accessible(field.id.node) {
                 let string = token::get_ident(ident.name);
-                self.tcx.sess.span_err(span,
-                                       format!("field `{}` is private",
-                                               string.get()))
+                span_err!(self.tcx.sess, span, A0249,
+                                       "field `{}` is private",
+                                               string.get())
             }
             break;
         }
@@ -881,19 +881,22 @@ impl Visitor<()> for SanePrivacyVisitor {
         match i.vis {
             ast::Inherited => {}
             ast::Private => {
-                self.tcx.sess.span_err(i.span, "unnecessary visibility \
-                                                qualifier");
+                span_err!(self.tcx.sess, i.span, A0250,
+                          "unnecessary visibility \
+                          qualifier");
             }
             ast::Public => {
                 if self.in_fn {
-                    self.tcx.sess.span_err(i.span, "unnecessary `pub`, imports \
-                                                    in functions are never \
-                                                    reachable");
+                    span_err!(self.tcx.sess, i.span, A0251,
+                              "unnecessary `pub`, imports \
+                              in functions are never \
+                              reachable");
                 } else {
                     match i.node {
                         ast::ViewItemExternMod(..) => {
-                            self.tcx.sess.span_err(i.span, "`pub` visibility \
-                                                            is not allowed");
+                            span_err!(self.tcx.sess, i.span, A0252,
+                                      "`pub` visibility \
+                                      is not allowed");
                         }
                         _ => {}
                     }
@@ -913,7 +916,7 @@ impl SanePrivacyVisitor {
         let tcx = self.tcx;
         let check_inherited = |sp: Span, vis: ast::Visibility, note: &str| {
             if vis != ast::Inherited {
-                tcx.sess.span_err(sp, "unnecessary visibility qualifier");
+                span_err!(tcx.sess, sp, A0253, "unnecessary visibility qualifier");
                 if note.len() > 0 {
                     tcx.sess.span_note(sp, note);
                 }
@@ -921,7 +924,7 @@ impl SanePrivacyVisitor {
         };
         let check_not_priv = |sp: Span, vis: ast::Visibility, note: &str| {
             if vis == ast::Private {
-                tcx.sess.span_err(sp, "unnecessary `priv` qualifier");
+                span_err!(tcx.sess, sp, A0254, "unnecessary `priv` qualifier");
                 if note.len() > 0 {
                     tcx.sess.span_note(sp, note);
                 }
@@ -937,11 +940,11 @@ impl SanePrivacyVisitor {
             for f in def.fields.iter() {
                match f.node.kind {
                     ast::NamedField(_, ast::Public) if public_def => {
-                        tcx.sess.span_err(f.span, "unnecessary `pub` \
+                        span_err!(tcx.sess, f.span, A0255, "unnecessary `pub` \
                                                    visibility");
                     }
                     ast::NamedField(_, ast::Private) if !public_def => {
-                        tcx.sess.span_err(f.span, "unnecessary `priv` \
+                        span_err!(tcx.sess, f.span, A0256, "unnecessary `priv` \
                                                    visibility");
                     }
                     ast::NamedField(..) | ast::UnnamedField => {}
@@ -983,13 +986,13 @@ impl SanePrivacyVisitor {
                     match v.node.vis {
                         ast::Public => {
                             if item.vis == ast::Public {
-                                tcx.sess.span_err(v.span, "unnecessary `pub` \
+                                span_err!(tcx.sess, v.span, A0257, "unnecessary `pub` \
                                                            visibility");
                             }
                         }
                         ast::Private => {
                             if item.vis != ast::Public {
-                                tcx.sess.span_err(v.span, "unnecessary `priv` \
+                                span_err!(tcx.sess, v.span, A0258, "unnecessary `priv` \
                                                            visibility");
                             }
                         }
@@ -1034,7 +1037,7 @@ impl SanePrivacyVisitor {
         let tcx = self.tcx;
         let check_inherited = |sp: Span, vis: ast::Visibility| {
             if vis != ast::Inherited {
-                tcx.sess.span_err(sp, "visibility has no effect inside functions");
+                span_err!(tcx.sess, sp, A0259, "visibility has no effect inside functions");
             }
         };
         let check_struct = |def: &@ast::StructDef| {

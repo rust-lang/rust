@@ -369,13 +369,13 @@ impl Parser {
 
     pub fn unexpected_last(&mut self, t: &token::Token) -> ! {
         let token_str = Parser::token_to_str(t);
-        self.span_fatal(self.last_span, format!("unexpected token: `{}`",
-                                                token_str));
+        span_fatal!(self, self.last_span, B0096,
+                   "unexpected token: `{}`", token_str)
     }
 
     pub fn unexpected(&mut self) -> ! {
         let this_token = self.this_token_to_str();
-        self.fatal(format!("unexpected token: `{}`", this_token));
+        alert_fatal!(self, C0040, "unexpected token: `{}`", this_token)
     }
 
     // expect and consume the token t. Signal an error if
@@ -386,9 +386,10 @@ impl Parser {
         } else {
             let token_str = Parser::token_to_str(t);
             let this_token_str = self.this_token_to_str();
-            self.fatal(format!("expected `{}` but found `{}`",
-                               token_str,
-                               this_token_str))
+            alert_fatal!(self, C0041,
+                         "expected `{}` but found `{}`",
+                         token_str,
+                         this_token_str)
         }
     }
 
@@ -412,13 +413,13 @@ impl Parser {
             let expected = vec::append(edible.to_owned(), inedible);
             let expect = tokens_to_str(expected);
             let actual = self.this_token_to_str();
-            self.fatal(
-                if expected.len() != 1 {
-                    format!("expected one of `{}` but found `{}`", expect, actual)
-                } else {
-                    format!("expected `{}` but found `{}`", expect, actual)
-                }
-            )
+            if expected.len() != 1 {
+                alert_fatal!(self, C0042,
+                             "expected one of `{}` but found `{}`", expect, actual)
+            } else {
+                alert_fatal!(self, C0043,
+                             "expected `{}` but found `{}`", expect, actual)
+            }
         }
     }
 
@@ -430,7 +431,7 @@ impl Parser {
             && expected.iter().all(|t| *t != token::LBRACE)
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
-            self.span_err(self.span,
+            span_err!(self, self.span, C0018,
                           "unit-like struct construction is written with no trailing `{ }`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
@@ -490,7 +491,7 @@ impl Parser {
             }
             _ => {
                 let token_str = self.this_token_to_str();
-                self.fatal(format!( "expected ident, found `{}`", token_str))
+                alert_fatal!(self, C0044,  "expected ident, found `{}`", token_str)
             }
         }
     }
@@ -534,9 +535,9 @@ impl Parser {
             let id_ident = kw.to_ident();
             let id_interned_str = token::get_ident(id_ident.name);
             let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `{}`, found `{}`",
+            alert_fatal!(self, C0045, "expected `{}`, found `{}`",
                                id_interned_str.get(),
-                               token_str))
+                               token_str)
         }
     }
 
@@ -544,8 +545,8 @@ impl Parser {
     pub fn check_strict_keywords(&mut self) {
         if token::is_strict_keyword(&self.token) {
             let token_str = self.this_token_to_str();
-            self.span_err(self.span,
-                          format!("found `{}` in ident position", token_str));
+            span_err!(self, self.span, C0019,
+                      "found `{}` in ident position", token_str);
         }
     }
 
@@ -553,7 +554,7 @@ impl Parser {
     pub fn check_reserved_keywords(&mut self) {
         if token::is_reserved_keyword(&self.token) {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("`{}` is a reserved keyword", token_str))
+            alert_fatal!(self, C0073, "`{}` is a reserved keyword", token_str)
         }
     }
 
@@ -570,9 +571,10 @@ impl Parser {
                 let token_str = self.this_token_to_str();
                 let found_token =
                     Parser::token_to_str(&token::BINOP(token::OR));
-                self.fatal(format!("expected `{}`, found `{}`",
-                                   found_token,
-                                   token_str))
+                alert_fatal!(self, C0046,
+                             "expected `{}`, found `{}`",
+                             found_token,
+                             token_str)
             }
         }
     }
@@ -611,9 +613,9 @@ impl Parser {
             _ => {
                 let gt_str = Parser::token_to_str(&token::GT);
                 let this_token_str = self.this_token_to_str();
-                self.fatal(format!("expected `{}`, found `{}`",
+                alert_fatal!(self, C0047, "expected `{}`, found `{}`",
                                    gt_str,
-                                   this_token_str))
+                                   this_token_str)
             }
         }
     }
@@ -781,11 +783,11 @@ impl Parser {
         }
         f(&self.buffer[(self.buffer_start + dist - 1) & 3].tok)
     }
-    pub fn fatal(&mut self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_fatal(self.span, m)
+    pub fn fatal_with_diagnostic_code(&mut self, code: &str, m: &str) -> ! {
+        self.sess.span_diagnostic.span_fatal_with_diagnostic_code(self.span, code, m)
     }
-    pub fn span_fatal(&mut self, sp: Span, m: &str) -> ! {
-        self.sess.span_diagnostic.span_fatal(sp, m)
+    pub fn span_fatal_with_diagnostic_code(&mut self, sp: Span, code: &str, m: &str) -> ! {
+        self.sess.span_diagnostic.span_fatal_with_diagnostic_code(sp, code, m)
     }
     pub fn span_note(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
@@ -793,11 +795,11 @@ impl Parser {
     pub fn bug(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
     }
-    pub fn warn(&mut self, m: &str) {
-        self.sess.span_diagnostic.span_warn(self.span, m)
+    pub fn span_warn_with_diagnostic_code(&mut self, code: &str, m: &str) {
+        self.sess.span_diagnostic.span_warn_with_diagnostic_code(self.span, code, m)
     }
-    pub fn span_err(&mut self, sp: Span, m: &str) {
-        self.sess.span_diagnostic.span_err(sp, m)
+    pub fn span_err_with_diagnostic_code(&mut self, sp: Span, code: &str, msg: &str) {
+        self.sess.span_diagnostic.span_err_with_diagnostic_code(sp, code, msg);
     }
     pub fn abort_if_errors(&mut self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
@@ -937,7 +939,7 @@ impl Parser {
 
                     // Re-parse the region here. What a hack.
                     if region.is_some() {
-                        self.span_err(self.last_span,
+                        span_err!(self, self.last_span, C0020,
                                       "lifetime declarations must precede \
                                        the lifetime associated with a \
                                        closure");
@@ -1100,8 +1102,8 @@ impl Parser {
 
               _ => {
                   let token_str = p.this_token_to_str();
-                  p.fatal(format!("expected `;` or `\\{` but found `{}`",
-                                  token_str))
+                  alert_fatal!(p, C0048, "expected `;` or `\\{` but found `{}`",
+                                  token_str)
               }
             }
         })
@@ -1262,8 +1264,7 @@ impl Parser {
             } = self.parse_path(LifetimeAndTypesAndBounds);
             TyPath(path, bounds, ast::DUMMY_NODE_ID)
         } else {
-            let msg = format!("expected type, found token {:?}", self.token);
-            self.fatal(msg);
+            alert_fatal!(self, C0049, "expected type, found token {:?}", self.token)
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
@@ -1553,7 +1554,7 @@ impl Parser {
 
             if bound_set.is_some() {
                 if i != last_segment_index {
-                    self.span_err(span,
+                    span_err!(self, span, C0021,
                                   "type parameter bounds are allowed only \
                                    before the last segment in a path")
                 }
@@ -1601,7 +1602,7 @@ impl Parser {
                 };
             }
             _ => {
-                self.fatal(format!("expected a lifetime name"));
+                alert_fatal!(self, C0050, "expected a lifetime name");
             }
         }
     }
@@ -1634,10 +1635,10 @@ impl Parser {
                 token::GT => { return res; }
                 token::BINOP(token::SHR) => { return res; }
                 _ => {
-                    let msg = format!("expected `,` or `>` after lifetime \
-                                      name, got: {:?}",
-                                      self.token);
-                    self.fatal(msg);
+                    alert_fatal!(self, C0051,
+                                 "expected `,` or `>` after lifetime \
+                                 name, got: {:?}",
+                                 self.token)
                 }
             }
         }
@@ -1815,7 +1816,7 @@ impl Parser {
             } else if self.eat_keyword(keywords::Loop) {
                 return self.parse_loop_expr(Some(lifetime))
             } else {
-                self.fatal("expected `for` or `loop` after a label")
+                alert_fatal!(self, C0052, "expected `for` or `loop` after a label")
             }
         } else if self.eat_keyword(keywords::Loop) {
             return self.parse_loop_expr(None);
@@ -1903,7 +1904,7 @@ impl Parser {
                 self.bump();
                 match self.token {
                     token::LPAREN | token::LBRACE => {}
-                    _ => self.fatal("expected open delimiter")
+                    _ => alert_fatal!(self, C0053, "expected open delimiter")
                 };
 
                 let ket = token::flip_delimiter(&self.token);
@@ -2064,7 +2065,7 @@ impl Parser {
         let separator = self.bump_and_get();
         match parse_zerok(self) {
             Some(zerok) => (Some(separator), zerok),
-            None => self.fatal("expected `*` or `+`")
+            None => alert_fatal!(self, C0054, "expected `*` or `+`")
         }
     }
 
@@ -2094,8 +2095,8 @@ impl Parser {
                       Some(&sp) => p.span_note(sp, "unclosed delimiter"),
                   };
                   let token_str = p.this_token_to_str();
-                  p.fatal(format!("incorrect close delimiter: `{}`",
-                                  token_str))
+                  alert_fatal!(p, C0055, "incorrect close delimiter: `{}`",
+                                  token_str)
               },
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u => {
@@ -2133,11 +2134,12 @@ impl Parser {
             token::EOF => {
                 let open_braces = self.open_braces.clone();
                 for sp in open_braces.iter() {
+                    // FIXME: lower case error msgs
                     self.span_note(*sp, "Did you mean to close this delimiter?");
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
                 // if we give it one
-                self.fatal("this file contains an un-closed delimiter ");
+                alert_fatal!(self, C0056, "this file contains an un-closed delimiter ");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&self.token);
@@ -2183,7 +2185,7 @@ impl Parser {
                 self.bump();
                 self.parse_matcher_subseq_upto(name_idx, &other_delimiter)
             }
-            _ => self.fatal("expected open delimiter")
+            _ => alert_fatal!(self, C0057, "expected open delimiter")
         }
     }
 
@@ -2219,7 +2221,7 @@ impl Parser {
                 let ms = self.parse_matcher_subseq_upto(name_idx,
                                                         &token::RPAREN);
                 if ms.len() == 0u {
-                    self.fatal("repetition body must be nonempty");
+                    alert_fatal!(self, C0058, "repetition body must be nonempty")
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
                 MatchSeq(ms, sep, zerok, name_idx_lo, name_idx.get())
@@ -2572,7 +2574,7 @@ impl Parser {
         } else {
             // This is an obsolete 'continue' expression
             if opt_ident.is_some() {
-                self.span_err(self.last_span,
+                span_err!(self, self.last_span, C0022,
                               "a label may not be used with a `loop` expression");
             }
 
@@ -2715,8 +2717,8 @@ impl Parser {
                         ast::Pat { node: PatIdent(_, _, _), .. } => {
                             slice = Some(subpat);
                         }
-                        ast::Pat { span, .. } => self.span_fatal(
-                            span, "expected an identifier or nothing"
+                        ast::Pat { span, .. } => span_fatal!(self, span, B0097,
+                            "expected an identifier or nothing"
                         )
                     }
                 }
@@ -2755,8 +2757,8 @@ impl Parser {
                 self.bump();
                 if self.token != token::RBRACE {
                     let token_str = self.this_token_to_str();
-                    self.fatal(format!("expected `\\}`, found `{}`",
-                                       token_str))
+                    alert_fatal!(self, C0059, "expected `\\}`, found `{}`",
+                                       token_str)
                 }
                 etc = true;
                 break;
@@ -2780,7 +2782,7 @@ impl Parser {
                 match bind_type {
                     BindByRef(..) | BindByValue(MutMutable) => {
                         let token_str = self.this_token_to_str();
-                        self.fatal(format!("unexpected `{}`", token_str))
+                        alert_fatal!(self, C0060, "unexpected `{}`", token_str)
                     }
                     _ => {}
                 }
@@ -3069,8 +3071,8 @@ impl Parser {
                        binding_mode: ast::BindingMode)
                        -> ast::Pat_ {
         if !is_plain_ident(&self.token) {
-            self.span_fatal(self.last_span,
-                            "expected identifier, found path");
+            span_fatal!(self, self.last_span, B0098,
+                        "expected identifier, found path")
         }
         // why a path here, and not just an identifier?
         let name = self.parse_path(NoTypesAllowed).path;
@@ -3087,9 +3089,9 @@ impl Parser {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to parse_enum_variant()
         if self.token == token::LPAREN {
-            self.span_fatal(
-                self.last_span,
-                "expected identifier, found enum pattern");
+            span_fatal!(self,
+                self.last_span, B0099,
+                "expected identifier, found enum pattern")
         }
 
         PatIdent(binding_mode, name, sub)
@@ -3132,7 +3134,7 @@ impl Parser {
                          attrs: ~[Attribute]) -> StructField {
         let lo = self.span.lo;
         if !is_plain_ident(&self.token) {
-            self.fatal("expected ident");
+            alert_fatal!(self, C0061, "expected ident")
         }
         let name = self.parse_ident();
         self.expect(&token::COLON);
@@ -3153,7 +3155,7 @@ impl Parser {
         fn check_expected_item(p: &mut Parser, found_attrs: bool) {
             // If we have attributes then we should have an item
             if found_attrs {
-                p.span_err(p.last_span, "expected item after attributes");
+                span_err!(p, p.last_span, C0023, "expected item after attributes");
             }
         }
 
@@ -3223,11 +3225,11 @@ impl Parser {
                     return @spanned(lo, hi, StmtDecl(decl, ast::DUMMY_NODE_ID));
                 }
                 IoviViewItem(vi) => {
-                    self.span_fatal(vi.span,
-                                    "view items must be declared at the top of the block");
+                    span_fatal!(self, vi.span, C0011,
+                                    "view items must be declared at the top of the block")
                 }
                 IoviForeignItem(_) => {
-                    self.fatal("foreign items are not allowed here");
+                    alert_fatal!(self, C0062, "foreign items are not allowed here")
                 }
                 IoviNone(_) => { /* fallthrough */ }
             }
@@ -3313,7 +3315,8 @@ impl Parser {
             match self.token {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
-                        self.span_err(self.last_span, "expected item after attributes");
+                        span_err!(self, self.last_span, C0024,
+                                  "expected item after attributes");
                         attributes_box = ~[];
                     }
                     self.bump(); // empty
@@ -3391,7 +3394,8 @@ impl Parser {
         }
 
         if !attributes_box.is_empty() {
-            self.span_err(self.last_span, "expected item after attributes");
+            span_err!(self, self.last_span, C0025,
+                      "expected item after attributes");
         }
 
         let hi = self.span.hi;
@@ -3427,7 +3431,7 @@ impl Parser {
                     if lifetime_interned_string.equiv(&("static")) {
                         result.push(RegionTyParamBound);
                     } else {
-                        self.span_err(self.span,
+                        span_err!(self, self.span, C0026,
                                       "`'static` is the only permissible region bound here");
                     }
                     self.bump();
@@ -3481,7 +3485,7 @@ impl Parser {
                 if ty_param.default.is_some() {
                     seen_default = true;
                 } else if seen_default {
-                    p.span_err(p.last_span,
+                    span_err!(p, p.last_span, C0084,
                                "type parameters with a default must be trailing");
                 }
                 ty_param
@@ -3513,12 +3517,12 @@ impl Parser {
                         p.bump();
                         if allow_variadic {
                             if p.token != token::RPAREN {
-                                p.span_fatal(p.span,
-                                    "`...` must be last in argument list for variadic function");
+                                span_fatal!(p, p.span, C0001,
+                                    "`...` must be last in argument list for variadic function")
                             }
                         } else {
-                            p.span_fatal(p.span,
-                                         "only foreign functions are allowed to be variadic");
+                            span_fatal!(p, p.span, C0002,
+                                         "only foreign functions are allowed to be variadic")
                         }
                         None
                     } else {
@@ -3538,7 +3542,7 @@ impl Parser {
         };
 
         if variadic && args.is_empty() {
-            self.span_err(sp,
+            span_err!(self, sp, C0027,
                           "variadic function must be declared with at least one named argument");
         }
 
@@ -3571,7 +3575,7 @@ impl Parser {
     fn expect_self_ident(&mut self) {
         if !self.is_self_ident() {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `self` but found `{}`", token_str))
+            alert_fatal!(self, C0063, "expected `self` but found `{}`", token_str)
         }
         self.bump();
     }
@@ -3659,7 +3663,8 @@ impl Parser {
                     self.parse_mutability()
                 } else { MutImmutable };
                 if self.is_self_ident() {
-                    self.span_err(self.span, "cannot pass self by unsafe pointer");
+                    span_err!(self, self.span, C0038,
+                              "cannot pass self by unsafe pointer");
                     self.bump();
                 }
                 SelfValue
@@ -3702,8 +3707,8 @@ impl Parser {
                 }
                 _ => {
                     let token_str = self.this_token_to_str();
-                    self.fatal(format!("expected `,` or `)`, found `{}`",
-                                       token_str))
+                    alert_fatal!(self, C0064, "expected `,` or `)`, found `{}`",
+                                       token_str)
                 }
             }
         } else {
@@ -3895,12 +3900,12 @@ impl Parser {
                     })
                 }
                 TyPath(..) => {
-                    self.span_err(ty.span,
-                                  "bounded traits are only valid in type position");
+                    span_err!(self, ty.span, C0028,
+                              "bounded traits are only valid in type position");
                     None
                 }
                 _ => {
-                    self.span_err(ty.span, "not a trait");
+                    span_err!(self, ty.span, C0029, "not a trait");
                     None
                 }
             };
@@ -3957,8 +3962,9 @@ impl Parser {
             }
             if fields.len() == 0 {
                 let string = get_ident_interner().get(class_name.name);
-                self.fatal(format!("unit-like struct definition should be written as `struct {};`",
-                                   string.as_slice()));
+                alert_fatal!(self, C0065,
+                             "unit-like struct definition should be written as `struct {};`",
+                                   string.as_slice());
             }
             self.bump();
         } else if self.token == token::LPAREN {
@@ -3986,9 +3992,10 @@ impl Parser {
             fields = ~[];
         } else {
             let token_str = self.this_token_to_str();
-            self.fatal(format!("expected `\\{`, `(`, or `;` after struct \
-                                name but found `{}`",
-                               token_str))
+            alert_fatal!(self, C0066,
+                         "expected `\\{`, `(`, or `;` after struct \
+                         name but found `{}`",
+                         token_str)
         }
 
         let _ = ast::DUMMY_NODE_ID;  // FIXME: Workaround for crazy bug.
@@ -4014,9 +4021,9 @@ impl Parser {
             token::RBRACE => {}
             _ => {
                 let token_str = self.this_token_to_str();
-                self.span_fatal(self.span,
-                                format!("expected `,`, or `\\}` but found `{}`",
-                                        token_str))
+                span_fatal!(self, self.span, C0003,
+                            "expected `,`, or `\\}` but found `{}`",
+                            token_str)
             }
         }
         a_var
@@ -4077,21 +4084,22 @@ impl Parser {
                                                true /* macros allowed */) {
               IoviItem(item) => items.push(item),
               IoviViewItem(view_item) => {
-                self.span_fatal(view_item.span,
+                span_fatal!(self, view_item.span, C0004,
                                 "view items must be declared at the top of \
-                                 the module");
+                                 the module")
               }
               _ => {
                   let token_str = self.this_token_to_str();
-                  self.fatal(format!("expected item but found `{}`",
-                                     token_str))
+                  alert_fatal!(self, C0067,
+                               "expected item but found `{}`",
+                                     token_str)
               }
             }
         }
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.span_err(self.last_span, "expected item after attributes");
+            span_err!(self, self.last_span, C0030, "expected item after attributes");
         }
 
         ast::Mod { view_items: view_items, items: items }
@@ -4168,12 +4176,13 @@ impl Parser {
                     (true, false) => default_path,
                     (false, true) => secondary_path,
                     (false, false) => {
-                        self.span_fatal(id_sp, format!("file not found for module `{}`", mod_name));
+                        span_fatal!(self, id_sp, C0005,
+                                    "file not found for module `{}`", mod_name)
                     }
                     (true, true) => {
-                        self.span_fatal(id_sp,
-                                        format!("file for module `{}` found at both {} and {}",
-                                             mod_name, default_path_str, secondary_path_str));
+                        span_fatal!(self, id_sp, C0006,
+                                    "file for module `{}` found at both {} and {}",
+                                    mod_name, default_path_str, secondary_path_str)
                     }
                 }
             }
@@ -4197,14 +4206,14 @@ impl Parser {
                                             .position(|p| *p == path);
             match maybe_i {
                 Some(i) => {
-                    let mut err = ~"circular modules: ";
+                    let mut err = ~"";
                     let len = included_mod_stack.get().len();
                     for p in included_mod_stack.get().slice(i, len).iter() {
                         err.push_str(p.display().as_maybe_owned().as_slice());
                         err.push_str(" -> ");
                     }
                     err.push_str(path.display().as_maybe_owned().as_slice());
-                    self.span_fatal(id_sp, err);
+                    span_fatal!(self, id_sp, C0039, "circular modules: {}", err);
                 }
                 None => ()
             }
@@ -4297,7 +4306,7 @@ impl Parser {
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
         if ! attrs_remaining.is_empty() {
-            self.span_err(self.last_span,
+            span_err!(self, self.last_span, C0031,
                           "expected item after attributes");
         }
         assert!(self.token == token::RBRACE);
@@ -4322,9 +4331,9 @@ impl Parser {
             self.expect_keyword(keywords::Mod);
         } else if self.token != token::LBRACE {
             let token_str = self.this_token_to_str();
-            self.span_fatal(self.span,
-                            format!("expected `\\{` or `mod` but found `{}`",
-                                    token_str))
+            span_fatal!(self, self.span, C0007,
+                        "expected `\\{` or `mod` but found `{}`",
+                        token_str)
         }
 
         let (named, maybe_path, ident) = match self.token {
@@ -4340,10 +4349,10 @@ impl Parser {
             _ => {
                 if must_be_named_mod {
                     let token_str = self.this_token_to_str();
-                    self.span_fatal(self.span,
-                                    format!("expected foreign module name but \
-                                             found `{}`",
-                                            token_str))
+                    span_fatal!(self, self.span, C0008,
+                                "expected foreign module name but \
+                                found `{}`",
+                                token_str)
                 }
 
                 (false, None,
@@ -4374,7 +4383,7 @@ impl Parser {
         }
 
         if opt_abis.is_some() {
-            self.span_err(self.span, "an ABI may not be specified here");
+            span_err!(self, self.span, C0032, "an ABI may not be specified here");
         }
 
 
@@ -4477,8 +4486,9 @@ impl Parser {
         }
         self.expect(&token::RBRACE);
         if have_disr && !all_nullary {
-            self.fatal("discriminator values can only be used with a c-like \
-                        enum");
+            alert_fatal!(self, C0068,
+                         "discriminator values can only be used with a c-like \
+                         enum")
         }
 
         ast::EnumDef { variants: variants }
@@ -4519,23 +4529,23 @@ impl Parser {
                     match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {
-                                self.span_err(
-                                    self.span,
-                                    format!("ABI `{}` appears twice",
-                                         word));
+                                span_err!(self,
+                                          self.span, C0033,
+                                          "ABI `{}` appears twice",
+                                          word);
                             } else {
                                 abis.add(abi);
                             }
                         }
 
                         None => {
-                            self.span_err(
-                                self.span,
-                                format!("illegal ABI: \
+                            span_err!(self,
+                                self.span, C0034,
+                                      "illegal ABI: \
                                       expected one of [{}], \
                                       found `{}`",
-                                     abi::all_names().connect(", "),
-                                     word));
+                                      abi::all_names().connect(", "),
+                                      word);
                         }
                      }
                  }
@@ -4776,7 +4786,7 @@ impl Parser {
                                           seq_sep_none(),
                                           |p| p.parse_token_tree())
                 }
-                _ => self.fatal("expected open delimiter")
+                _ => alert_fatal!(self, C0069, "expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
@@ -4795,14 +4805,14 @@ impl Parser {
 
         // FAILURE TO PARSE ITEM
         if visibility != Inherited {
-            let mut s = ~"unmatched visibility `";
+            let mut s = ~"`";
             if visibility == Public {
                 s.push_str("pub")
             } else {
                 s.push_str("priv")
             }
             s.push_char('`');
-            self.span_fatal(self.last_span, s);
+            span_fatal!(self, self.last_span, C0009, "unmatched visibility {}", s)
         }
         return IoviNone(attrs);
     }
@@ -4811,9 +4821,9 @@ impl Parser {
         match self.parse_item_or_view_item(attrs, true) {
             IoviNone(_) => None,
             IoviViewItem(_) =>
-                self.fatal("view items are not allowed here"),
+                alert_fatal!(self, C0070, "view items are not allowed here"),
             IoviForeignItem(_) =>
-                self.fatal("foreign items are not allowed here"),
+                alert_fatal!(self, C0071, "foreign items are not allowed here"),
             IoviItem(item) => Some(item)
         }
     }
@@ -4998,7 +5008,7 @@ impl Parser {
                             extern_mod_allowed = false;
                         }
                         ViewItemExternMod(..) if !extern_mod_allowed => {
-                            self.span_err(view_item.span,
+                            span_err!(self, view_item.span, C0035,
                                           "\"extern mod\" declarations are not allowed here");
                         }
                         ViewItemExternMod(..) => {}
@@ -5026,7 +5036,7 @@ impl Parser {
                 }
                 IoviViewItem(view_item) => {
                     attrs = self.parse_outer_attributes();
-                    self.span_err(view_item.span,
+                    span_err!(self, view_item.span, C0036,
                                   "`use` and `extern mod` declarations must precede items");
                 }
                 IoviItem(item) => {
@@ -5066,12 +5076,13 @@ impl Parser {
                 },
                 IoviViewItem(view_item) => {
                     // I think this can't occur:
-                    self.span_err(view_item.span,
+                    span_err!(self, view_item.span, C0037,
                                   "`use` and `extern mod` declarations must precede items");
                 }
                 IoviItem(item) => {
                     // FIXME #5668: this will occur for a macro invocation:
-                    self.span_fatal(item.span, "macros cannot expand to foreign items");
+                    span_fatal!(self, item.span, C0010,
+                                "macros cannot expand to foreign items")
                 }
                 IoviForeignItem(foreign_item) => {
                     foreign_items.push(foreign_item);
@@ -5123,7 +5134,7 @@ impl Parser {
     pub fn parse_str(&mut self) -> (InternedString, StrStyle) {
         match self.parse_optional_str() {
             Some(s) => { s }
-            _ =>  self.fatal("expected string literal")
+            _ =>  alert_fatal!(self, C0072, "expected string literal")
         }
     }
 }

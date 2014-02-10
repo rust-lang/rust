@@ -12,6 +12,7 @@ use rustc;
 use rustc::{driver, middle};
 use rustc::metadata::creader::Loader;
 use rustc::middle::privacy;
+use rustc::diag_db;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -47,7 +48,7 @@ fn get_ast_and_resolve(cpath: &Path,
                                 phase_2_configure_and_expand,
                                 phase_3_run_analysis_passes};
 
-    let parsesess = parse::new_parse_sess();
+    let parsesess = parse::new_parse_sess(diag_db::load());
     let input = FileInput(cpath.clone());
 
     let sessopts = @driver::session::Options {
@@ -59,7 +60,7 @@ fn get_ast_and_resolve(cpath: &Path,
     };
 
 
-    let diagnostic_handler = syntax::diagnostic::mk_handler();
+    let diagnostic_handler = syntax::diagnostic::mk_handler(diag_db::load());
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 

@@ -20,7 +20,7 @@ use std::libc;
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
     if sess.prefer_dynamic() {
-        sess.err("cannot prefer dynamic linking when performing LTO");
+        alert_err!(sess, A0355, "cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
         sess.abort_if_errors();
     }
@@ -31,7 +31,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
         match *crate_type {
             session::CrateTypeExecutable | session::CrateTypeStaticlib => {}
             _ => {
-                sess.fatal("lto can only be run for executables and \
+                alert_fatal!(sess, A0049, "lto can only be run for executables and \
                             static library outputs");
             }
         }
@@ -46,7 +46,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
         let path = match path {
             Some(p) => p,
             None => {
-                sess.fatal(format!("could not find rlib for: `{}`", name));
+                alert_fatal!(sess, A0050, "could not find rlib for: `{}`", name);
             }
         };
 

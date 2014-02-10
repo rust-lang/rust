@@ -52,11 +52,11 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                          -> ~[@Item] {
     match mitem.node {
         MetaNameValue(_, ref l) => {
-            cx.span_err(l.span, "unexpected value in `deriving`");
+            span_err!(cx, l.span, B0046, "unexpected value in `deriving`");
             in_items
         }
         MetaWord(_) | MetaList(_, []) => {
-            cx.span_warn(mitem.span, "empty trait list in `deriving`");
+            span_warn!(cx, mitem.span, B0047, "empty trait list in `deriving`");
             in_items
         }
         MetaList(_, ref titems) => {
@@ -92,8 +92,9 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
 
                             ref tname => {
-                                cx.span_err(titem.span, format!("unknown \
-                                    `deriving` trait: `{}`", *tname));
+                                span_err!(cx, titem.span, B0048,
+                                          "unknown \
+                                          `deriving` trait: `{}`", *tname);
                                 in_items
                             }
                         }

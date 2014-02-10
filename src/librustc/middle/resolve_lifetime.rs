@@ -258,10 +258,10 @@ impl LifetimeContext {
 
     fn unresolved_lifetime_ref(&self,
                                lifetime_ref: &ast::Lifetime) {
-        self.sess.span_err(
-            lifetime_ref.span,
-            format!("use of undeclared lifetime name `'{}`",
-                    self.sess.str_of(lifetime_ref.ident)));
+        span_err!(self.sess,
+            lifetime_ref.span, A0327,
+            "use of undeclared lifetime name `'{}`",
+                    self.sess.str_of(lifetime_ref.ident));
     }
 
     fn check_lifetime_names(&self, lifetimes: &OptVec<ast::Lifetime>) {
@@ -271,10 +271,10 @@ impl LifetimeContext {
             let special_idents = [special_idents::statik];
             for lifetime in lifetimes.iter() {
                 if special_idents.iter().any(|&i| i == lifetime.ident) {
-                    self.sess.span_err(
-                        lifetime.span,
-                        format!("illegal lifetime parameter name: `{}`",
-                                self.sess.str_of(lifetime.ident)));
+                    span_err!(self.sess,
+                        lifetime.span, A0328,
+                        "illegal lifetime parameter name: `{}`",
+                                self.sess.str_of(lifetime.ident));
                 }
             }
 
@@ -282,11 +282,11 @@ impl LifetimeContext {
                 let lifetime_j = lifetimes.get(j);
 
                 if lifetime_i.ident == lifetime_j.ident {
-                    self.sess.span_err(
-                        lifetime_j.span,
-                        format!("lifetime name `'{}` declared twice in \
+                    span_err!(self.sess,
+                        lifetime_j.span, A0329,
+                        "lifetime name `'{}` declared twice in \
                                 the same scope",
-                                self.sess.str_of(lifetime_j.ident)));
+                                self.sess.str_of(lifetime_j.ident));
                 }
             }
         }

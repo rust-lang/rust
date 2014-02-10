@@ -84,7 +84,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         cx.span_unimpl(p.last_span,
                                        "'+' (read+write) output operand constraint modifier");
                     } else if !constraint.get().starts_with("=") {
-                        cx.span_err(p.last_span, "output operand constraint lacks '='");
+                        span_err!(cx, p.last_span, B0053, "output operand constraint lacks '='");
                     }
 
                     p.expect(&token::LPAREN);
@@ -106,9 +106,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     let (constraint, _str_style) = p.parse_str();
 
                     if constraint.get().starts_with("=") {
-                        cx.span_err(p.last_span, "input operand constraint contains '='");
+                        span_err!(cx, p.last_span, B0054, "input operand constraint contains '='");
                     } else if constraint.get().starts_with("+") {
-                        cx.span_err(p.last_span, "input operand constraint contains '+'");
+                        span_err!(cx, p.last_span, B0055, "input operand constraint contains '+'");
                     }
 
                     p.expect(&token::LPAREN);

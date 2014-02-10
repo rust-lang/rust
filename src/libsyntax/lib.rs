@@ -37,6 +37,12 @@ extern mod serialize;
 extern mod term;
 extern mod collections;
 
+// Define the diagnostic macros
+pub mod diag_macros;
+// The index of all diagnostic codes used by this crate. This must be defined
+// lexically before any diagnostics are used.
+pub mod diag_index;
+
 pub mod util {
     pub mod interner;
     #[cfg(test)]
@@ -97,6 +103,11 @@ pub mod ext {
     pub mod concat_idents;
     pub mod log_syntax;
     pub mod source_util;
+    pub mod tt_map;
 
     pub mod trace_macros;
 }
+
+// The database of extended diagnostic descriptions. Must come lexically
+// after all uses of diagnostics. See `diag_macros` for why.
+pub mod diag_db;

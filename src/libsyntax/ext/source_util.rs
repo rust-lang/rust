@@ -110,7 +110,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let file = res_rel_file(cx, sp, &Path::new(file));
     let bytes = match File::open(&file).read_to_end() {
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            span_err!(cx, sp, B0068, "couldn't read {}: {}", file.display(), e);
             return MacResult::dummy_expr();
         }
         Ok(bytes) => bytes,
@@ -126,7 +126,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             base::MRExpr(cx.expr_str(sp, interned))
         }
         None => {
-            cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
+            span_err!(cx, sp, B0069, "{} wasn't a utf-8 file", file.display());
             return MacResult::dummy_expr();
         }
     }
@@ -142,7 +142,7 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let file = res_rel_file(cx, sp, &Path::new(file));
     match File::open(&file).read_to_end() {
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            span_err!(cx, sp, B0070, "couldn't read {}: {}", file.display(), e);
             return MacResult::dummy_expr();
         }
         Ok(bytes) => {

@@ -226,17 +226,29 @@ pub struct Session_ {
 pub type Session = @Session_;
 
 impl Session_ {
-    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        self.span_diagnostic.span_fatal(sp, msg)
+    pub fn span_fatal_without_diagnostic_code(&self, sp: Span, msg: &str) -> ! {
+        self.span_diagnostic.span_fatal_without_diagnostic_code(sp, msg)
     }
-    pub fn fatal(&self, msg: &str) -> ! {
-        self.span_diagnostic.handler().fatal(msg)
+    pub fn span_fatal_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) -> ! {
+        self.span_diagnostic.span_fatal_with_diagnostic_code(sp, code, msg)
     }
-    pub fn span_err(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_err(sp, msg)
+    pub fn fatal_without_diagnostic_code(&self, msg: &str) -> ! {
+        self.span_diagnostic.handler().fatal_without_diagnostic_code(msg)
     }
-    pub fn err(&self, msg: &str) {
-        self.span_diagnostic.handler().err(msg)
+    pub fn fatal_with_diagnostic_code(&self, code: &str, msg: &str) -> ! {
+        self.span_diagnostic.handler().fatal_with_diagnostic_code(code, msg)
+    }
+    pub fn span_err_without_diagnostic_code(&self, sp: Span, msg: &str) {
+        self.span_diagnostic.span_err_without_diagnostic_code(sp, msg)
+    }
+    pub fn span_err_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) {
+        self.span_diagnostic.span_err_with_diagnostic_code(sp, code, msg)
+    }
+    pub fn err_without_diagnostic_code(&self, msg: &str) {
+        self.span_diagnostic.handler().err_without_diagnostic_code(msg)
+    }
+    pub fn err_with_diagnostic_code(&self, code: &str, msg: &str) {
+        self.span_diagnostic.handler().err_with_diagnostic_code(code, msg)
     }
     pub fn err_count(&self) -> uint {
         self.span_diagnostic.handler().err_count()
@@ -247,11 +259,17 @@ impl Session_ {
     pub fn abort_if_errors(&self) {
         self.span_diagnostic.handler().abort_if_errors()
     }
-    pub fn span_warn(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_warn(sp, msg)
+    pub fn span_warn_without_diagnostic_code(&self, sp: Span, msg: &str) {
+        self.span_diagnostic.span_warn_without_diagnostic_code(sp, msg)
     }
-    pub fn warn(&self, msg: &str) {
-        self.span_diagnostic.handler().warn(msg)
+    pub fn span_warn_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) {
+        self.span_diagnostic.span_warn_with_diagnostic_code(sp, code, msg)
+    }
+    pub fn warn_without_diagnostic_code(&self, msg: &str) {
+        self.span_diagnostic.handler().warn_without_diagnostic_code(msg)
+    }
+    pub fn warn_with_diagnostic_code(&self, code: &str, msg: &str) {
+        self.span_diagnostic.handler().warn_with_diagnostic_code(code, msg)
     }
     pub fn span_note(&self, sp: Span, msg: &str) {
         self.span_diagnostic.span_note(sp, msg)

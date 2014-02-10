@@ -870,8 +870,8 @@ impl<'a> LookupContext<'a> {
         }
 
         if relevant_candidates.len() > 1 {
-            self.tcx().sess.span_err(
-                self.expr.span,
+            span_err!(self.tcx().sess,
+                self.expr.span, A0154,
                 "multiple applicable methods in scope");
             for (idx, candidate) in relevant_candidates.iter().enumerate() {
                 self.report_candidate(idx, &candidate.origin);
@@ -957,13 +957,13 @@ impl<'a> LookupContext<'a> {
             if num_supplied_tps == 0u {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_method_tps == 0u {
-                tcx.sess.span_err(
-                    self.expr.span,
+                span_err!(tcx.sess,
+                    self.expr.span, A0155,
                     "this method does not take type parameters");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_supplied_tps != num_method_tps {
-                tcx.sess.span_err(
-                    self.expr.span,
+                span_err!(tcx.sess,
+                    self.expr.span, A0156,
                     "incorrect number of type \
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
@@ -1122,15 +1122,15 @@ impl<'a> LookupContext<'a> {
 
         match candidate.method_ty.explicit_self {
             ast::SelfStatic => { // reason (a) above
-                self.tcx().sess.span_err(
-                    self.expr.span,
+                span_err!(self.tcx().sess,
+                    self.expr.span, A0157,
                     "cannot call a method without a receiver \
                      through an object");
             }
 
             ast::SelfValue => { // reason (a) above
-                self.tcx().sess.span_err(
-                    self.expr.span,
+                span_err!(self.tcx().sess,
+                    self.expr.span, A0158,
                     "cannot call a method with a by-value receiver \
                      through an object");
             }
@@ -1141,8 +1141,8 @@ impl<'a> LookupContext<'a> {
         // reason (a) above
         let check_for_self_ty = |ty| {
             if ty::type_has_self(ty) {
-                self.tcx().sess.span_err(
-                    self.expr.span,
+                span_err!(self.tcx().sess,
+                    self.expr.span, A0159,
                     "cannot call a method whose type contains a \
                      self-type through an object");
                 true
@@ -1163,8 +1163,8 @@ impl<'a> LookupContext<'a> {
         }
 
         if candidate.method_ty.generics.has_type_params() { // reason (b) above
-            self.tcx().sess.span_err(
-                self.expr.span,
+            span_err!(self.tcx().sess,
+                self.expr.span, A0160,
                 "cannot call a generic method through an object");
         }
     }
@@ -1189,7 +1189,7 @@ impl<'a> LookupContext<'a> {
         }
 
         if bad {
-            self.tcx().sess.span_err(self.expr.span,
+            span_err!(self.tcx().sess, self.expr.span, A0210,
                                      "explicit call to destructor");
         }
     }

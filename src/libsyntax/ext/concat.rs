@@ -48,12 +48,12 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                         accumulator.push_str(format!("{}", b));
                     }
                     ast::LitBinary(..) => {
-                        cx.span_err(e.span, "cannot concatenate a binary literal");
+                        span_err!(cx, e.span, B0066, "cannot concatenate a binary literal");
                     }
                 }
             }
             _ => {
-                cx.span_err(e.span, "expected a literal");
+                span_err!(cx, e.span, B0067, "expected a literal");
             }
         }
     }

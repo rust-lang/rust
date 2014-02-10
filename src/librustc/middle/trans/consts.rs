@@ -470,7 +470,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               if iv >= len {
                   // FIXME #3170: report this earlier on in the const-eval
                   // pass. Reporting here is a bit late.
-                  cx.sess.span_err(e.span,
+                  span_err!(cx.sess, e.span, A0311,
                                    "const index-expr is out of bounds");
               }
               (const_get_elt(cx, arr, [iv as c_uint]), inlineable)

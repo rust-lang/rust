@@ -11,6 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
+use diag_db;
 use driver::session::{Aggressive, CrateTypeExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
@@ -140,7 +141,7 @@ pub fn build_configuration(sess: Session) ->
 fn parse_cfgspecs(cfgspecs: ~[~str])
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        let sess = parse::new_parse_sess();
+        let sess = parse::new_parse_sess(diag_db::load());
         parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
@@ -479,7 +480,7 @@ fn write_out_deps(sess: Session,
         (true, None) => match *input {
             FileInput(..) => outputs.with_extension("d"),
             StrInput(..) => {
-                sess.warn("can not write --dep-info without a filename \
+                alert_warn!(sess, A0338, "can not write --dep-info without a filename \
                            when compiling stdin.");
                 return Ok(());
             },
@@ -925,7 +926,7 @@ pub fn build_session(sopts: @session::Options,
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler();
+        diagnostic::mk_handler(diag_db::load());
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -983,7 +984,7 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
       &"expanded,identified" => PpmExpandedIdentified,
       &"identified" => PpmIdentified,
       _ => {
-        sess.fatal("argument to `pretty` must be one of `normal`, \
+        alert_fatal!(sess, A0056, "argument to `pretty` must be one of `normal`, \
                     `expanded`, `typed`, `identified`, \
                     or `expanded,identified`");
       }
@@ -1032,6 +1033,8 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                           in <dir>", "DIR"),
   optflag("", "parse-only",
                         "Parse only; do not compile, assemble, or link"),
+  optopt("", "explain",
+         "Provide a detailed explanation of an error message", "ERRCODE"),
   optflagopt("", "pretty",
                         "Pretty-print the input instead of compiling;
                           valid types are: normal (un-annotated source),
@@ -1142,14 +1145,14 @@ pub fn build_output_filenames(input: &Input,
 
         Some(ref out_file) => {
             let ofile = if sess.opts.output_types.len() > 1 {
-                sess.warn("ignoring specified output filename because multiple \
+                alert_warn!(sess, A0341, "ignoring specified output filename because multiple \
                            outputs were requested");
                 None
             } else {
                 Some(out_file.clone())
             };
             if *odir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag.");
+                alert_warn!(sess, A0337, "ignoring --out-dir flag due to -o flag.");
             }
             OutputFilenames {
                 out_directory: out_file.dir_path(),
@@ -1161,7 +1164,7 @@ pub fn build_output_filenames(input: &Input,
 }
 
 pub fn early_error(msg: &str) -> ! {
-    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal);
+    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal, None);
     fail!(diagnostic::FatalError);
 }
 

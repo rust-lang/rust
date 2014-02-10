@@ -259,6 +259,12 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
+    syntax_expanders.insert(intern(&"__tt_map_insert"),
+                            builtin_normal_expander(
+                                    ext::tt_map::insert_expr));
+    syntax_expanders.insert(intern(&"__tt_map_get_expr"),
+                            builtin_normal_expander(
+                                    ext::tt_map::get_expr));
     syntax_expanders
 }
 
@@ -283,7 +289,9 @@ pub struct ExtCtxt<'a> {
     loader: &'a mut CrateLoader,
 
     mod_path: ~[ast::Ident],
-    trace_mac: bool
+    trace_mac: bool,
+    // State for the hacky __tt_map_* extensions
+    tt_maps: HashMap<ast::Name, HashMap<ast::Name, ast::TokenTree>>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -295,7 +303,8 @@ impl<'a> ExtCtxt<'a> {
             backtrace: None,
             loader: loader,
             mod_path: ~[],
-            trace_mac: false
+            trace_mac: false,
+            tt_maps: HashMap::new()
         }
     }
 
@@ -346,6 +355,7 @@ impl<'a> ExtCtxt<'a> {
             _ => self.bug("tried to pop without a push")
         }
     }
+
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly prefered where-ever possible:
@@ -357,23 +367,34 @@ impl<'a> ExtCtxt<'a> {
     ///   in most cases one can construct a dummy expression/item to
     ///   substitute; we never hit resolve/type-checking so the dummy
     ///   value doesn't have to match anything)
+    pub fn span_fatal_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) -> ! {
+        self.print_backtrace();
+        self.parse_sess.span_diagnostic.span_fatal_with_diagnostic_code(sp, code, msg);
+    }
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.print_backtrace();
-        self.parse_sess.span_diagnostic.span_fatal(sp, msg);
+        self.parse_sess.span_diagnostic.span_fatal_without_diagnostic_code(sp, msg);
     }
-
     /// Emit `msg` attached to `sp`, without immediately stopping
     /// compilation.
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
+    pub fn span_err_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) {
+        self.print_backtrace();
+        self.parse_sess.span_diagnostic.span_err_with_diagnostic_code(sp, code, msg);
+    }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.print_backtrace();
-        self.parse_sess.span_diagnostic.span_err(sp, msg);
+        self.parse_sess.span_diagnostic.span_err_without_diagnostic_code(sp, msg);
+    }
+    pub fn span_warn_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) {
+        self.print_backtrace();
+        self.parse_sess.span_diagnostic.span_warn_with_diagnostic_code(sp, code, msg);
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.print_backtrace();
-        self.parse_sess.span_diagnostic.span_warn(sp, msg);
+        self.parse_sess.span_diagnostic.span_warn_without_diagnostic_code(sp, msg);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.print_backtrace();
@@ -407,13 +428,20 @@ impl<'a> ExtCtxt<'a> {
 /// merely emits a non-fatal error and returns None.
 pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str)
                    -> Option<(InternedString, ast::StrStyle)> {
+    let err_span;
     match expr.node {
         ast::ExprLit(l) => match l.node {
             ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
-            _ => cx.span_err(l.span, err_msg)
+            _ => err_span = Some(l.span)
         },
-        _ => cx.span_err(expr.span, err_msg)
+        _ => err_span = Some(expr.span)
     }
+
+    match err_span {
+        Some(sp) => span_err!(cx, sp, B0018, "expr_to_str: {}", err_msg),
+        None => ()
+    }
+
     None
 }
 
@@ -427,7 +455,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_err(sp, format!("{} takes no arguments", name));
+        span_err!(cx, sp, B0019, "{} takes no arguments", name);
     }
 }
 
@@ -439,7 +467,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                name: &str)
                                -> Option<~str> {
     if tts.len() != 1 {
-        cx.span_err(sp, format!("{} takes 1 argument.", name));
+        span_err!(cx, sp, B0020, "{} takes 1 argument.", name);
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
@@ -447,7 +475,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                 let interned_str = token::get_ident(ident.name);
                 return Some(interned_str.get().to_str())
             }
-            _ => cx.span_err(sp, format!("{} requires a string.", name)),
+            _ => span_err!(cx, sp, B0043, "{} requires a string.", name),
         }
     }
     None
@@ -464,7 +492,7 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
     let mut es = ~[];
     while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
-            cx.span_err(sp, "expected token: `,`");
+            span_err!(cx, sp, B0022, "expected token: `,`");
             return None;
         }
         es.push(p.parse_expr());

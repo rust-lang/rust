@@ -872,7 +872,8 @@ fn compile_unit_metadata(cx: &CrateContext) {
         None => fallback_path(cx),
         Some(ref abs_path) => {
             if abs_path.is_relative() {
-                cx.sess.warn("debuginfo: Invalid path to crate's local root source file!");
+                alert_warn!(cx.sess, A0339,
+                            "debuginfo: Invalid path to crate's local root source file!");
                 fallback_path(cx)
             } else {
                 match abs_path.path_relative_from(work_dir) {
@@ -1403,10 +1404,10 @@ fn describe_enum_variant(cx: &CrateContext,
             match cx.tcx.items.find(variant_info.id.node) {
                 Some(ast_map::NodeVariant(ref variant, _, _)) => variant.span,
                 ref node => {
-                    cx.sess.span_warn(span,
-                        format!("debuginfo::enum_metadata()::\
+                    span_warn!(cx.sess, span, A0331,
+                        "debuginfo::enum_metadata()::\
                                  adt_struct_metadata() - Unexpected node \
-                                 type: {:?}. This is a bug.", node));
+                                 type: {:?}. This is a bug.", node);
                     codemap::DUMMY_SP
                 }
             }
@@ -2266,10 +2267,10 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
             let definition_span = match cx.tcx.items.find(def_id.node) {
                 Some(ast_map::NodeItem(item, _)) => item.span,
                 ref node => {
-                    cx.sess.span_warn(warning_span,
-                        format!("debuginfo::\
+                    span_warn!(cx.sess, warning_span, A0332,
+                        "debuginfo::\
                                  get_namespace_and_span_for_item() \
-                                 - Unexpected node type: {:?}", *node));
+                                 - Unexpected node type: {:?}", *node);
                     codemap::DUMMY_SP
                 }
             };

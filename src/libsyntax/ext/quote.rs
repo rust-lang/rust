@@ -589,7 +589,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::COMMA) {
-        p.fatal("expected token `,`");
+        alert_fatal!(p, C0082, "expected token `,`");
     }
 
     let tts = p.parse_all_token_trees();

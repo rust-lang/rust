@@ -1444,7 +1444,8 @@ impl fake_ext_ctxt for @parse::ParseSess {
 
 #[cfg(test)]
 fn mk_ctxt() -> @parse::ParseSess {
-    parse::new_parse_sess()
+    use diag_db;
+    parse::new_parse_sess(diag_db::load())
 }
 
 #[cfg(test)]

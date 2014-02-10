@@ -328,7 +328,8 @@ pub enum const_val {
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(&tcx, e) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, s)
+        Err(s) => span_fatal!(tcx.sess, e.span, A0029,
+                              "error evaluating constant  expression: {}", s)
     }
 }
 
@@ -454,9 +455,10 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
         // (#5900). Fall back to doing a limited lookup to get past it.
         let ety = ty::expr_ty_opt(tcx.ty_ctxt(), e)
                 .or_else(|| astconv::ast_ty_to_prim_ty(tcx.ty_ctxt(), target_ty))
-                .unwrap_or_else(|| tcx.ty_ctxt().sess.span_fatal(
-                    target_ty.span,
-                    format!("target type not found for const cast")
+                .unwrap_or_else(||
+                    span_fatal!(tcx.ty_ctxt().sess,
+                    target_ty.span, A0218,
+                    "target type not found for const cast"
                 ));
 
         let base = eval_const_expr_partial(tcx, base);

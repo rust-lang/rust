@@ -157,22 +157,50 @@ impl ErrorReporting for InferCtxt {
             }
         };
 
-        let message_root_str = match trace.origin {
-            infer::Misc(_) => "mismatched types",
-            infer::MethodCompatCheck(_) => "method not compatible with trait",
-            infer::ExprAssignable(_) => "mismatched types",
-            infer::RelateTraitRefs(_) => "mismatched traits",
-            infer::RelateSelfType(_) => "mismatched types",
-            infer::MatchExpression(_) => "match arms have incompatible types",
-            infer::IfExpression(_) => "if and else have incompatible types",
+        match trace.origin {
+            infer::Misc(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0131,
+                          "mismatched types: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::MethodCompatCheck(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0132,
+                          "method not compatible with trait: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::ExprAssignable(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0133,
+                          "mismatched types: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::RelateTraitRefs(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0134,
+                          "mismatched traits: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::RelateSelfType(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0135,
+                          "mismatched types: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::MatchExpression(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0136,
+                          "match arms have incompatible types: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
+            infer::IfExpression(_) => {
+                span_err!(self.tcx.sess, trace.origin.span(), A0137,
+                          "if and else have incompatible types: {} ({})",
+                          expected_found_str,
+                          ty::type_err_to_str(self.tcx, terr));
+            }
         };
-
-        self.tcx.sess.span_err(
-            trace.origin.span(),
-            format!("{}: {} ({})",
-                 message_root_str,
-                 expected_found_str,
-                 ty::type_err_to_str(self.tcx, terr)));
 
         ty::note_and_explain_type_err(self.tcx, terr);
     }
@@ -222,8 +250,8 @@ impl ErrorReporting for InferCtxt {
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0138,
                     "lifetime of reference outlines \
                      lifetime of borrowed content...");
                 note_and_explain_region(
@@ -238,8 +266,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::InfStackClosure(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0139,
                     "closure outlives stack frame");
                 note_and_explain_region(
                     self.tcx,
@@ -253,8 +281,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::InvokeClosure(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0140,
                     "cannot invoke closure outside of its lifetime");
                 note_and_explain_region(
                     self.tcx,
@@ -263,8 +291,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::DerefPointer(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0141,
                     "dereference of reference outside its lifetime");
                 note_and_explain_region(
                     self.tcx,
@@ -273,8 +301,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::FreeVariable(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0142,
                     "captured variable does not outlive the enclosing closure");
                 note_and_explain_region(
                     self.tcx,
@@ -288,9 +316,9 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::IndexSlice(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("index of slice outside its lifetime"));
+                span_err!(self.tcx.sess,
+                    span, A0143,
+                    "index of slice outside its lifetime");
                 note_and_explain_region(
                     self.tcx,
                     "the slice is only valid for ",
@@ -298,8 +326,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::RelateObjectBound(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0144,
                     "lifetime of the source pointer does not outlive \
                      lifetime bound of the object type");
                 note_and_explain_region(
@@ -314,8 +342,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::CallRcvr(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0145,
                     "lifetime of method receiver does not outlive \
                      the method call");
                 note_and_explain_region(
@@ -325,8 +353,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::CallArg(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0146,
                     "lifetime of function argument does not outlive \
                      the function call");
                 note_and_explain_region(
@@ -336,8 +364,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::CallReturn(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0147,
                     "lifetime of return value does not outlive \
                      the function call");
                 note_and_explain_region(
@@ -347,8 +375,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::AddrOf(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0148,
                     "reference is not valid \
                      at the time of borrow");
                 note_and_explain_region(
@@ -358,8 +386,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::AutoBorrow(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0149,
                     "automatically reference is not valid \
                      at the time of borrow");
                 note_and_explain_region(
@@ -369,8 +397,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0150,
                     "lifetime of variable does not enclose its declaration");
                 note_and_explain_region(
                     self.tcx,
@@ -379,8 +407,8 @@ impl ErrorReporting for InferCtxt {
                     "");
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess,
+                    span, A0151,
                     format!("in type `{}`, pointer has a longer lifetime than \
                           the data it references",
                          ty.user_string(self.tcx)));
@@ -475,11 +503,11 @@ impl ErrorReportingHelpers for InferCtxt {
             }
         };
 
-        self.tcx.sess.span_err(
-            var_origin.span(),
-            format!("cannot infer an appropriate lifetime{} \
+        span_err!(self.tcx.sess,
+            var_origin.span(), A0152,
+            "cannot infer an appropriate lifetime{} \
                     due to conflicting requirements",
-                    var_description));
+                    var_description);
     }
 
     fn note_region_origin(&self, origin: SubregionOrigin) {

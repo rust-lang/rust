@@ -49,7 +49,8 @@ pub fn find_macro_registrar(diagnostic: @diagnostic::SpanHandler,
             })
         },
         _ => {
-            diagnostic.handler().err("multiple macro registration functions found");
+            alert_err!(diagnostic.handler(), B0100,
+                       "multiple macro registration functions found");
             for &(_, span) in ctx.registrars.iter() {
                 diagnostic.span_note(span, "one is here");
             }

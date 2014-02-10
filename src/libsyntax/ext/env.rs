@@ -41,7 +41,7 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some([]) => {
-            cx.span_err(sp, "env! takes 1 or 2 arguments");
+            span_err!(cx, sp, B0063, "env! takes 1 or 2 arguments");
             return MacResult::dummy_expr();
         }
         None => return MacResult::dummy_expr(),
@@ -65,14 +65,14 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             }
         }
         _ => {
-            cx.span_err(sp, "env! takes 1 or 2 arguments");
+            span_err!(cx, sp, B0064, "env! takes 1 or 2 arguments");
             return MacResult::dummy_expr();
         }
     };
 
     let e = match os::getenv(var.get()) {
         None => {
-            cx.span_err(sp, msg.get());
+            span_err!(cx, sp, B0065, "env: {}", msg.get());
             cx.expr_uint(sp, 0)
         }
         Some(s) => cx.expr_str(sp, token::intern_and_get_ident(s))

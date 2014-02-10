@@ -379,8 +379,8 @@ pub fn require_unique_names(diagnostic: @SpanHandler, metas: &[@MetaItem]) {
         let name = meta.name();
 
         if !set.insert(name.clone()) {
-            diagnostic.span_fatal(meta.span,
-                                  format!("duplicate meta item `{}`", name));
+            span_fatal!(diagnostic, meta.span, C0013,
+                        "duplicate meta item `{}`", name)
         }
     }
 }
@@ -413,8 +413,8 @@ pub fn find_repr_attr(diagnostic: @SpanHandler, attr: @ast::MetaItem, acc: ReprA
                                 Some(ity) => ReprInt(item.span, ity),
                                 None => {
                                     // Not a word we recognize
-                                    diagnostic.span_err(item.span,
-                                                        "unrecognized representation hint");
+                                    span_err!(diagnostic, item.span, C0014,
+                                              "unrecognized representation hint");
                                     ReprAny
                                 }
                             }
@@ -423,13 +423,14 @@ pub fn find_repr_attr(diagnostic: @SpanHandler, attr: @ast::MetaItem, acc: ReprA
                             if acc == ReprAny {
                                 acc = hint;
                             } else if acc != hint {
-                                diagnostic.span_warn(item.span,
+                                span_warn!(diagnostic, item.span, C0085,
                                                      "conflicting representation hint ignored")
                             }
                         }
                     }
                     // Not a word:
-                    _ => diagnostic.span_err(item.span, "unrecognized representation hint")
+                    _ => span_err!(diagnostic, item.span, C0015,
+                                   "unrecognized representation hint")
                 }
             }
         }

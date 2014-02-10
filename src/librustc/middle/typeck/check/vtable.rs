@@ -154,12 +154,12 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
         match lookup_vtable(vcx, location_info, ty, trait_ref, is_early) {
             Some(vtable) => param_result.push(vtable),
             None => {
-                vcx.tcx().sess.span_fatal(
-                    location_info.span,
-                    format!("failed to find an implementation of \
+                span_fatal!(vcx.tcx().sess,
+                    location_info.span, A0032,
+                    "failed to find an implementation of \
                           trait {} for {}",
                          vcx.infcx.trait_ref_to_str(trait_ref),
-                         vcx.infcx.ty_to_str(ty)));
+                         vcx.infcx.ty_to_str(ty));
             }
         }
         true
@@ -211,12 +211,12 @@ fn relate_trait_refs(vcx: &VtableContext,
                 !ty::trait_ref_contains_error(&r_exp_trait_ref)
             {
                 let tcx = vcx.tcx();
-                tcx.sess.span_err(
-                    location_info.span,
-                    format!("expected {}, but found {} ({})",
+                span_err!(tcx.sess,
+                    location_info.span, A0124,
+                    "expected {}, but found {} ({})",
                          ppaux::trait_ref_to_str(tcx, &r_exp_trait_ref),
                          ppaux::trait_ref_to_str(tcx, &r_act_trait_ref),
-                         ty::type_err_to_str(tcx, err)));
+                         ty::type_err_to_str(tcx, err));
             }
         }
     }
@@ -468,8 +468,8 @@ fn search_for_vtable(vcx: &VtableContext,
         1 => return Some(found[0].clone()),
         _ => {
             if !is_early {
-                vcx.tcx().sess.span_err(
-                    location_info.span,
+                span_err!(vcx.tcx().sess,
+                    location_info.span, A0125,
                     "multiple applicable methods in scope");
             }
             return Some(found[0].clone());
@@ -508,11 +508,11 @@ fn fixup_ty(vcx: &VtableContext,
     match resolve_type(vcx.infcx, ty, resolve_and_force_all_but_regions) {
         Ok(new_type) => Some(new_type),
         Err(e) if !is_early => {
-            tcx.sess.span_fatal(
-                location_info.span,
-                format!("cannot determine a type \
+            span_fatal!(tcx.sess,
+                location_info.span, A0033,
+                "cannot determine a type \
                       for this bounded type parameter: {}",
-                     fixup_err_to_str(e)))
+                     fixup_err_to_str(e))
         }
         Err(_) => {
             None
@@ -585,14 +585,14 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                   (&ty::ty_uniq(..), ty::UniqTraitStore)
                     if !mutability_allowed(ast::MutImmutable,
                                            target_mutbl) => {
-                      fcx.tcx().sess.span_err(ex.span,
-                                              format!("types differ in mutability"));
+                      span_err!(fcx.tcx().sess, ex.span, A0126,
+                                              "types differ in mutability");
                   }
 
                   (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
                     if !mutability_allowed(mt.mutbl, target_mutbl) => {
-                      fcx.tcx().sess.span_err(ex.span,
-                                              format!("types differ in mutability"));
+                      span_err!(fcx.tcx().sess, ex.span, A0127,
+                                              "types differ in mutability");
                   }
 
                   (&ty::ty_uniq(..), ty::UniqTraitStore) |
@@ -648,19 +648,19 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                   }
 
                   (_, ty::UniqTraitStore) => {
-                      fcx.ccx.tcx.sess.span_err(
-                          ex.span,
-                          format!("can only cast an ~-pointer \
+                      span_err!(fcx.ccx.tcx.sess,
+                          ex.span, A0128,
+                          "can only cast an ~-pointer \
                                 to a ~-object, not a {}",
-                               ty::ty_sort_str(fcx.tcx(), ty)));
+                               ty::ty_sort_str(fcx.tcx(), ty));
                   }
 
                   (_, ty::RegionTraitStore(_)) => {
-                      fcx.ccx.tcx.sess.span_err(
-                          ex.span,
-                          format!("can only cast an &-pointer \
+                      span_err!(fcx.ccx.tcx.sess,
+                          ex.span, A0130,
+                          "can only cast an &-pointer \
                                 to an &-object, not a {}",
-                               ty::ty_sort_str(fcx.tcx(), ty)));
+                               ty::ty_sort_str(fcx.tcx(), ty));
                   }
               }
           }

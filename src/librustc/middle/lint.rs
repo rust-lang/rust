@@ -488,8 +488,12 @@ impl<'a> Context<'a> {
             }
         };
         match level {
-            warn =>          { self.tcx.sess.span_warn(span, msg); }
-            deny | forbid => { self.tcx.sess.span_err(span, msg);  }
+            warn =>          {
+                self.tcx.sess.span_warn_without_diagnostic_code(span, msg);
+            }
+            deny | forbid => {
+                self.tcx.sess.span_err_without_diagnostic_code(span, msg);
+            }
             allow => fail!(),
         }
 
@@ -524,10 +528,10 @@ impl<'a> Context<'a> {
                     let lint = lint.lint;
                     let now = self.get_level(lint);
                     if now == forbid && level != forbid {
-                        self.tcx.sess.span_err(meta.span,
-                        format!("{}({}) overruled by outer forbid({})",
+                        span_err!(self.tcx.sess, meta.span, A0273,
+                        "{}({}) overruled by outer forbid({})",
                         level_to_str(level),
-                        lintname, lintname));
+                        lintname, lintname);
                     } else if now != level {
                         let src = self.get_source(lint);
                         self.lint_stack.push((lint, now, src));
@@ -585,7 +589,7 @@ pub fn each_lint(sess: session::Session,
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
                 _ => {
-                    sess.span_err(meta.span, "malformed lint attribute");
+                    span_err!(sess, meta.span, A0274, "malformed lint attribute");
                     continue;
                 }
             };
@@ -597,7 +601,7 @@ pub fn each_lint(sess: session::Session,
                         }
                     }
                     _ => {
-                        sess.span_err(meta.span, "malformed lint attribute");
+                        span_err!(sess, meta.span, A0275, "malformed lint attribute");
                     }
                 }
             }
@@ -986,7 +990,7 @@ fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
             cx.span_lint(AttributeUsage, attr.span, "unknown crate attribute");
         }
         if name.equiv(& &"link") {
-            cx.tcx.sess.span_err(attr.span,
+            span_err!(cx.tcx.sess, attr.span, A0315,
                                  "obsolete crate `link` attribute");
             cx.tcx.sess.note("the link attribute has been superceded by the crate_id \
                              attribute, which has the format `#[crate_id = \"name#version\"]`");
