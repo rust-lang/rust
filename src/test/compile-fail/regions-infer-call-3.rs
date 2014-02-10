@@ -16,7 +16,7 @@ fn with<T>(f: |x: &int| -> T) -> T {
 
 fn manip<'a>(x: &'a int) -> int {
     let z = with(|y| { select(x, y) });
-    //~^ ERROR cannot infer an appropriate lifetime
+    //~^ ERROR cannot infer
     *z
 }
 

@@ -12,9 +12,10 @@ fn ignore(_f: <'z>|&'z int| -> &'z int) {}
 
 fn nested() {
     let y = 3;
-    ignore(|z| {
-        if false { &y } else { z } //~ ERROR borrowed value does not live long enough
-    });
+    ignore(
+        |z| { //~ ERROR `y` does not live long enough
+            if false { &y } else { z }
+        });
 }
 
 fn main() {}

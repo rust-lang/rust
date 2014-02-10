@@ -32,8 +32,8 @@ fn a() {
     p.impurem();
 
     // But in this case we do not honor the loan:
-    p.blockm(|| {
-        p.x = 10; //~ ERROR cannot assign
+    p.blockm(|| { //~ ERROR cannot borrow `p` as mutable
+        p.x = 10;
     })
 }
 

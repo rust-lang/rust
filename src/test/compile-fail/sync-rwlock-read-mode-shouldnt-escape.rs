@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: cannot infer an appropriate lifetime
+// error-pattern: cannot infer
 extern mod sync;
 use sync::RWLock;
 fn main() {

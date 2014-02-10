@@ -15,7 +15,7 @@ fn main() {
     let mut y = None;
     x.write_downgrade(|write_mode| {
         y = Some(x.downgrade(write_mode));
-        //~^ ERROR cannot infer an appropriate lifetime
+        //~^ ERROR cannot infer
     });
     y.unwrap();
     // Adding this line causes a method unification failure instead
