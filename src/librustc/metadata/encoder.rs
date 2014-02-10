@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,6 +11,7 @@
 // Metadata encoding
 
 #[allow(unused_must_use)]; // everything is just a MemWriter, can't fail
+#[allow(non_camel_case_types)];
 
 use metadata::common::*;
 use metadata::cstore;

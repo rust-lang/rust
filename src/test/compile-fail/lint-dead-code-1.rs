@@ -10,6 +10,7 @@
 
 #[no_std];
 #[allow(unused_variable)];
+#[allow(non_camel_case_types)];
 #[deny(dead_code)];
 
 #[crate_type="lib"];

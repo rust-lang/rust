@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[deny(unused_imports)];
+#[allow(non_camel_case_types)];
 #[allow(dead_code)];
 
 // Regression test for issue #6633
