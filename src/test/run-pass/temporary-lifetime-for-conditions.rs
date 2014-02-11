@@ -23,7 +23,7 @@ impl Drop for Temporary {
 }
 
 impl Temporary {
-    fn do(&self) -> bool {true}
+    fn do_stuff(&self) -> bool {true}
 }
 
 fn borrow() -> ~Temporary { ~Temporary }
@@ -35,7 +35,7 @@ pub fn main() {
     // This loop's condition
     // should call `Temporary`'s
     // `drop` 6 times.
-    while borrow().do() {
+    while borrow().do_stuff() {
         i += 1;
         if i > 5 {
             break;
@@ -44,7 +44,7 @@ pub fn main() {
 
     // This if condition should
     // call it 1 time
-    if borrow().do() {
+    if borrow().do_stuff() {
         unsafe { assert_eq!(DROPPED, 7) }
     }
 }
