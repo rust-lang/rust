@@ -13,6 +13,7 @@ use std::libc::{c_int, size_t, ssize_t};
 use std::ptr;
 use std::rt::task::BlockedTask;
 
+use Loop;
 use super::{UvError, Buf, slice_to_uv_buf, Request, wait_until_woken_after,
             ForbidUnwind, wakeup};
 use uvll;
@@ -87,7 +88,8 @@ impl StreamWatcher {
             uvll::uv_read_start(self.handle, alloc_cb, read_cb)
         } {
             0 => {
-                wait_until_woken_after(&mut rcx.task, || {});
+                let loop_ = unsafe { uvll::get_loop_for_uv_handle(self.handle) };
+                wait_until_woken_after(&mut rcx.task, &Loop::wrap(loop_), || {});
                 match rcx.result {
                     n if n < 0 => Err(UvError(n as c_int)),
                     n => Ok(n as uint),
@@ -121,7 +123,8 @@ impl StreamWatcher {
                 let mut wcx = WriteContext { result: 0, task: None, };
                 req.defuse(); // uv callback now owns this request
 
-                wait_until_woken_after(&mut wcx.task, || {
+                let loop_ = unsafe { uvll::get_loop_for_uv_handle(self.handle) };
+                wait_until_woken_after(&mut wcx.task, &Loop::wrap(loop_), || {
                     req.set_data(&wcx);
                 });
                 self.last_write_req = Some(Request::wrap(req.handle));

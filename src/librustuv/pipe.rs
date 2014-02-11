@@ -92,7 +92,7 @@ impl PipeWatcher {
         let mut req = Request::new(uvll::UV_CONNECT);
         let pipe = PipeWatcher::new(io, false);
 
-        wait_until_woken_after(&mut cx.task, || {
+        wait_until_woken_after(&mut cx.task, &io.loop_, || {
             unsafe {
                 uvll::uv_pipe_connect(req.handle,
                                       pipe.handle(),

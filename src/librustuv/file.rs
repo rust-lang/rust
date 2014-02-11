@@ -304,7 +304,8 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
         0 => {
             req.fired = true;
             let mut slot = None;
-            wait_until_woken_after(&mut slot, || {
+            let loop_ = unsafe { uvll::get_loop_from_fs_req(req.req) };
+            wait_until_woken_after(&mut slot, &Loop::wrap(loop_), || {
                 unsafe { uvll::set_data_for_req(req.req, &slot) }
             });
             match req.get_result() {
