@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use driver::session::Session;
 use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
@@ -64,14 +63,34 @@ pub type ExternalExports = HashSet<DefId>;
 pub type LastPrivateMap = HashMap<NodeId, LastPrivate>;
 
 pub enum LastPrivate {
+    LastMod(PrivateDep),
+    // `use` directives (imports) can refer to two separate definitions in the
+    // type and value namespaces. We record here the last private node for each
+    // and whether the import is in fact used for each.
+    // If the Option<PrivateDep> fields are None, it means there is no defintion
+    // in that namespace.
+    LastImport{value_priv: Option<PrivateDep>,
+               value_used: ImportUse,
+               type_priv: Option<PrivateDep>,
+               type_used: ImportUse},
+}
+
+pub enum PrivateDep {
     AllPublic,
     DependsOn(DefId),
+}
+
+// How an import is used.
+#[deriving(Eq)]
+pub enum ImportUse {
+    Unused,       // The import is not used.
+    Used,         // The import is used.
 }
 
 impl LastPrivate {
     fn or(self, other: LastPrivate) -> LastPrivate {
         match (self, other) {
-            (me, AllPublic) => me,
+            (me, LastMod(AllPublic)) => me,
             (_, other) => other,
         }
     }
@@ -84,7 +103,7 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 enum Namespace {
     TypeNS,
     ValueNS
@@ -869,7 +888,7 @@ struct Resolver {
     // so as to avoid printing duplicate errors
     emit_errors: bool,
 
-    used_imports: HashSet<NodeId>,
+    used_imports: HashSet<(NodeId, Namespace)>,
 }
 
 struct BuildReducedGraphVisitor<'a> {
@@ -904,7 +923,7 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
 }
 
-struct UnusedImportCheckVisitor<'a> { resolver: &'a Resolver }
+struct UnusedImportCheckVisitor<'a> { resolver: &'a mut Resolver }
 
 impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
@@ -2152,7 +2171,7 @@ impl Resolver {
         // First, resolve the module path for the directive, if necessary.
         let container = if module_path.len() == 0 {
             // Use the crate root.
-            Some((self.graph_root.get_module(), AllPublic))
+            Some((self.graph_root.get_module(), LastMod(AllPublic)))
         } else {
             match self.resolve_module_path(module_,
                                            *module_path,
@@ -2257,6 +2276,12 @@ impl Resolver {
                directive.id,
                lp);
 
+        let lp = match lp {
+            LastMod(lp) => lp,
+            LastImport{..} => self.session.span_bug(directive.span,
+                                                    "Not expecting Import here, must be LastMod"),
+        };
+
         // We need to resolve both namespaces for this to succeed.
         //
 
@@ -2287,7 +2312,8 @@ impl Resolver {
 
         // Unless we managed to find a result in both namespaces (unlikely),
         // search imports as well.
-        let mut used_reexport = false;
+        let mut value_used_reexport = false;
+        let mut type_used_reexport = false;
         match (value_result, type_result) {
             (BoundResult(..), BoundResult(..)) => {} // Continue.
             _ => {
@@ -2342,7 +2368,7 @@ impl Resolver {
                                 }
                                 Some(target) => {
                                     let id = import_resolution.id(namespace);
-                                    this.used_imports.insert(id);
+                                    this.used_imports.insert((id, namespace));
                                     return BoundResult(target.target_module,
                                                        target.bindings);
                                 }
@@ -2354,12 +2380,12 @@ impl Resolver {
                         if value_result.is_unknown() {
                             value_result = get_binding(self, *import_resolution,
                                                        ValueNS);
-                            used_reexport = import_resolution.is_public.get();
+                            value_used_reexport = import_resolution.is_public.get();
                         }
                         if type_result.is_unknown() {
                             type_result = get_binding(self, *import_resolution,
                                                       TypeNS);
-                            used_reexport = import_resolution.is_public.get();
+                            type_used_reexport = import_resolution.is_public.get();
                         }
 
                     }
@@ -2375,7 +2401,8 @@ impl Resolver {
 
         // If we didn't find a result in the type namespace, search the
         // external modules.
-        let mut used_public = false;
+        let mut value_used_public = false;
+        let mut type_used_public = false;
         match type_result {
             BoundResult(..) => {}
             _ => {
@@ -2393,7 +2420,7 @@ impl Resolver {
                                 module);
                         type_result = BoundResult(containing_module,
                                                   name_bindings);
-                        used_public = true;
+                        type_used_public = true;
                     }
                 }
             }
@@ -2412,7 +2439,7 @@ impl Resolver {
                 import_resolution.value_target.set(
                     Some(Target::new(target_module, name_bindings)));
                 import_resolution.value_id.set(directive.id);
-                used_public = name_bindings.defined_in_public_namespace(ValueNS);
+                value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2426,7 +2453,7 @@ impl Resolver {
                 import_resolution.type_target.set(
                     Some(Target::new(target_module, name_bindings)));
                 import_resolution.type_id.set(directive.id);
-                used_public = name_bindings.defined_in_public_namespace(TypeNS);
+                type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2443,7 +2470,8 @@ impl Resolver {
             self.resolve_error(directive.span, msg);
             return Failed;
         }
-        let used_public = used_reexport || used_public;
+        let value_used_public = value_used_reexport || value_used_public;
+        let type_used_public = type_used_reexport || type_used_public;
 
         assert!(import_resolution.outstanding_references.get() >= 1);
         import_resolution.outstanding_references.set(
@@ -2452,28 +2480,33 @@ impl Resolver {
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        match import_resolution.value_target.get() {
+        let value_private = match import_resolution.value_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 let mut def_map = self.def_map.borrow_mut();
                 def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
-                self.last_private.insert(directive.id,
-                    if used_public {lp} else {DependsOn(did)});
-            }
-            None => {}
-        }
-        match import_resolution.type_target.get() {
+                if value_used_public {Some(lp)} else {Some(DependsOn(did))}
+            },
+            // AllPublic here and below is a dummy value, it should never be used because
+            // _exists is false.
+            None => None,
+        };
+        let type_private = match import_resolution.type_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 let mut def_map = self.def_map.borrow_mut();
                 def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
-                self.last_private.insert(directive.id,
-                    if used_public {lp} else {DependsOn(did)});
-            }
-            None => {}
-        }
+                if type_used_public {Some(lp)} else {Some(DependsOn(did))}
+            },
+            None => None,
+        };
+
+        self.last_private.insert(directive.id, LastImport{value_priv: value_private,
+                                                          value_used: Used,
+                                                          type_priv: type_private,
+                                                          type_used: Used});
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -2732,7 +2765,7 @@ impl Resolver {
                                                                    .get() {
                                                     Some(did) => {
                                                         closest_private =
-                                                            DependsOn(did);
+                                                            LastMod(DependsOn(did));
                                                     }
                                                     None => {}
                                                 }
@@ -2817,7 +2850,7 @@ impl Resolver {
                         // resolution process at index zero.
                         search_module = self.graph_root.get_module();
                         start_index = 0;
-                        last_private = AllPublic;
+                        last_private = LastMod(AllPublic);
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
@@ -2839,7 +2872,7 @@ impl Resolver {
                             Success(containing_module) => {
                                 search_module = containing_module;
                                 start_index = 1;
-                                last_private = AllPublic;
+                                last_private = LastMod(AllPublic);
                             }
                         }
                     }
@@ -2848,9 +2881,9 @@ impl Resolver {
             Success(PrefixFound(containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
-                last_private = DependsOn(containing_module.def_id
-                                                          .get()
-                                                          .unwrap());
+                last_private = LastMod(DependsOn(containing_module.def_id
+                                                                  .get()
+                                                                  .unwrap()));
             }
         }
 
@@ -2914,7 +2947,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
-                        self.used_imports.insert(import_resolution.id(namespace));
+                        self.used_imports.insert((import_resolution.id(namespace), namespace));
                         return Success((target, false));
                     }
                 }
@@ -3199,7 +3232,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        self.used_imports.insert(import_resolution.id(namespace));
+                        self.used_imports.insert((import_resolution.id(namespace), namespace));
                         return Success((target, true));
                     }
                 }
@@ -3808,7 +3841,7 @@ impl Resolver {
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
-                                    (DefTyParamBinder(node_id), AllPublic));
+                                    (DefTyParamBinder(node_id), LastMod(AllPublic)));
                     // plain insert (no renaming)
                     let mut bindings = function_type_rib.bindings
                                                         .borrow_mut();
@@ -4269,7 +4302,7 @@ impl Resolver {
 
                         Some(&primitive_type) => {
                             result_def =
-                                Some((DefPrimTy(primitive_type), AllPublic));
+                                Some((DefPrimTy(primitive_type), LastMod(AllPublic)));
 
                             if path.segments
                                    .iter()
@@ -4438,7 +4471,7 @@ impl Resolver {
                             // will be able to distinguish variants from
                             // locals in patterns.
 
-                            self.record_def(pattern.id, (def, AllPublic));
+                            self.record_def(pattern.id, (def, LastMod(AllPublic)));
 
                             // Add the binding to the local ribs, if it
                             // doesn't already exist in the bindings list. (We
@@ -4632,10 +4665,10 @@ impl Resolver {
                         // the lookup happened only within the current module.
                         match def.def {
                             def @ DefVariant(..) | def @ DefStruct(..) => {
-                                return FoundStructOrEnumVariant(def, AllPublic);
+                                return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                             }
                             def @ DefStatic(_, false) => {
-                                return FoundConst(def, AllPublic);
+                                return FoundConst(def, LastMod(AllPublic));
                             }
                             _ => {
                                 return BareIdentifierPatternUnresolved;
@@ -4711,7 +4744,7 @@ impl Resolver {
                                                       namespace,
                                                       span) {
                 Some(def) => {
-                    return Some((def, AllPublic));
+                    return Some((def, LastMod(AllPublic)));
                 }
                 None => {
                     // Continue.
@@ -4741,8 +4774,8 @@ impl Resolver {
                             // Found it. Stop the search here.
                             let p = child_name_bindings.defined_in_public_namespace(
                                             namespace);
-                            let lp = if p {AllPublic} else {
-                                DependsOn(def_id_of_def(def))
+                            let lp = if p {LastMod(AllPublic)} else {
+                                LastMod(DependsOn(def_id_of_def(def)))
                             };
                             return ChildNameDefinition(def, lp);
                         }
@@ -4764,8 +4797,8 @@ impl Resolver {
                             Some(def) => {
                                 // Found it.
                                 let id = import_resolution.id(namespace);
-                                self.used_imports.insert(id);
-                                return ImportNameDefinition(def, AllPublic);
+                                self.used_imports.insert((id, namespace));
+                                return ImportNameDefinition(def, LastMod(AllPublic));
                             }
                             None => {
                                 // This can happen with external impls, due to
@@ -4792,8 +4825,8 @@ impl Resolver {
                     match module.def_id.get() {
                         None => {} // Continue.
                         Some(def_id) => {
-                            let lp = if module.is_public {AllPublic} else {
-                                DependsOn(def_id)
+                            let lp = if module.is_public {LastMod(AllPublic)} else {
+                                LastMod(DependsOn(def_id))
                             };
                             return ChildNameDefinition(DefMod(def_id), lp);
                         }
@@ -4887,7 +4920,7 @@ impl Resolver {
                                                  0,
                                                  path.span,
                                                  PathSearch,
-                                                 AllPublic) {
+                                                 LastMod(AllPublic)) {
             Failed => {
                 let msg = format!("use of undeclared module `::{}`",
                                   self.idents_to_str(module_path_idents));
@@ -4983,7 +5016,7 @@ impl Resolver {
                         // This lookup is "all public" because it only searched
                         // for one identifier in the current module (couldn't
                         // have passed through reexports or anything like that.
-                        return Some((def, AllPublic));
+                        return Some((def, LastMod(AllPublic)));
                     }
                 }
             }
@@ -5194,8 +5227,8 @@ impl Resolver {
                                               format!("use of undeclared label `{}`",
                                                    token::get_name(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
-                        // FIXME: is AllPublic correct?
-                        self.record_def(expr.id, (def, AllPublic))
+                        // Since this def is a label, it is never read.
+                        self.record_def(expr.id, (def, LastMod(AllPublic)))
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
@@ -5353,7 +5386,7 @@ impl Resolver {
                     };
                     if candidate_traits.contains(&did) {
                         self.add_trait_info(&mut found_traits, did, name);
-                        self.used_imports.insert(import.type_id.get());
+                        self.used_imports.insert((import.type_id.get(), TypeNS));
                     }
                 }
 
@@ -5395,6 +5428,8 @@ impl Resolver {
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {
         debug!("(recording def) recording {:?} for {:?}, last private {:?}",
                 def, node_id, lp);
+        assert!(match lp {LastImport{..} => false, _ => true},
+                "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
         let mut def_map = self.def_map.borrow_mut();
         def_map.get().insert_or_update_with(node_id, def, |_, old_value| {
@@ -5426,16 +5461,17 @@ impl Resolver {
     //
     // Unused import checking
     //
-    // Although this is a lint pass, it lives in here because it depends on
-    // resolve data structures.
+    // Although this is mostly a lint pass, it lives in here because it depends on
+    // resolve data structures and because it finalises the privacy information for
+    // `use` directives.
     //
 
-    fn check_for_unused_imports(&self, krate: &ast::Crate) {
+    fn check_for_unused_imports(&mut self, krate: &ast::Crate) {
         let mut visitor = UnusedImportCheckVisitor{ resolver: self };
         visit::walk_crate(&mut visitor, krate, ());
     }
 
-    fn check_for_item_unused_imports(&self, vi: &ViewItem) {
+    fn check_for_item_unused_imports(&mut self, vi: &ViewItem) {
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
@@ -5448,27 +5484,71 @@ impl Resolver {
             ViewItemUse(ref path) => {
                 for p in path.iter() {
                     match p.node {
-                        ViewPathSimple(_, _, id) | ViewPathGlob(_, id) => {
-                            if !self.used_imports.contains(&id) {
-                                self.session.add_lint(UnusedImports,
-                                                      id, p.span,
-                                                      ~"unused import");
-                            }
-                        }
-
+                        ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
                         ViewPathList(_, ref list, _) => {
                             for i in list.iter() {
-                                if !self.used_imports.contains(&i.node.id) {
-                                    self.session.add_lint(UnusedImports,
-                                                          i.node.id, i.span,
-                                                          ~"unused import");
-                                }
+                                self.finalize_import(i.node.id, i.span);
                             }
-                        }
+                        },
+                        ViewPathGlob(_, id) => {
+                            if !self.used_imports.contains(&(id, TypeNS)) &&
+                               !self.used_imports.contains(&(id, ValueNS)) {
+                                self.session.add_lint(UnusedImports, id, p.span, ~"unused import");
+                            }
+                        },
                     }
                 }
             }
         }
+    }
+
+    // We have information about whether `use` (import) directives are actually used now.
+    // If an import is not used at all, we signal a lint error. If an import is only used
+    // for a single namespace, we remove the other namespace from the recorded privacy
+    // information. That means in privacy.rs, we will only check imports and namespaces
+    // which are used. In particular, this means that if an import could name either a
+    // public or private item, we will check the correct thing, dependent on how the import
+    // is used.
+    fn finalize_import(&mut self, id: NodeId, span: Span) {
+        debug!("finalizing import uses for {}", self.session.codemap.span_to_snippet(span));
+
+        if !self.used_imports.contains(&(id, TypeNS)) &&
+           !self.used_imports.contains(&(id, ValueNS)) {
+            self.session.add_lint(UnusedImports, id, span, ~"unused import");
+        }
+
+        let (v_priv, t_priv) = match self.last_private.find(&id) {
+            Some(&LastImport{value_priv: v,
+                             value_used: _,
+                             type_priv: t,
+                             type_used: _}) => (v, t),
+            Some(_) => fail!("We should only have LastImport for `use` directives"),
+            _ => return,
+        };
+
+        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
+            Used
+        } else {
+            Unused
+        };
+        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
+            Used
+        } else {
+            Unused
+        };
+
+        match (v_priv, t_priv) {
+            // Since some items may be both in the value _and_ type namespaces (e.g., structs)
+            // we might have two LastPrivates pointing at the same thing. There is no point
+            // checking both, so lets not check the value one.
+            (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
+            _ => {},
+        }
+
+        self.last_private.insert(id, LastImport{value_priv: v_priv,
+                                                value_used: v_used,
+                                                type_priv: t_priv,
+                                                type_used: t_used});
     }
 
     //
