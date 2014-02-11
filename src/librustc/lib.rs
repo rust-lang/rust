@@ -274,7 +274,7 @@ pub fn run_compiler(args: &[~str]) {
       _ => d::early_error("multiple input filenames provided")
     };
 
-    let sopts = d::build_session_options(binary, matches);
+    let sopts = d::build_session_options(matches);
     let sess = d::build_session(sopts, input_file_path);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
