@@ -38,6 +38,7 @@ li {list-style-type: none; }
 * [The Rust compiler, `librustc`](rustc/index.html)
 
 * [The `arena` allocation library](arena/index.html)
+* [The `num` arbitrary precision numerics library](num/index.html)
 * [The `collections` library](collections/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `fourcc` four-character code library](fourcc/index.html)
