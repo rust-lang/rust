@@ -492,6 +492,7 @@ declare_special_idents_and_keywords! {
         (53,                         Typeof,     "typeof");
         (54,                         Unsized,    "unsized");
         (55,                         Yield,      "yield");
+        (56,                         Do,         "do");
     }
 }
 
