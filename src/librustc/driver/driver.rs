@@ -1085,7 +1085,7 @@ pub fn build_output_filenames(input: &Input,
             // We want to toss everything after the final '.'
             let dirpath = match *odir {
                 Some(ref d) => d.clone(),
-                None => os::getcwd(),
+                None => Path::new(".")
             };
 
             let mut stem = match *input {
