@@ -132,7 +132,6 @@ pub struct Options {
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
     cfg: ast::CrateConfig,
-    binary: ~str,
     test: bool,
     parse_only: bool,
     no_trans: bool,
@@ -334,7 +333,6 @@ pub fn basic_options() -> @Options {
         maybe_sysroot: None,
         target_triple: host_triple(),
         cfg: ~[],
-        binary: ~"rustc",
         test: false,
         parse_only: false,
         no_trans: false,
