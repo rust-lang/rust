@@ -252,12 +252,23 @@ impl Scheduler {
 
     // * Execution Functions - Core Loop Logic
 
-    // The model for this function is that you continue through it
-    // until you either use the scheduler while performing a schedule
-    // action, in which case you give it away and return early, or
-    // you reach the end and sleep. In the case that a scheduler
-    // action is performed the loop is evented such that this function
-    // is called again.
+    // This function is run from the idle callback on the uv loop, indicating
+    // that there are no I/O events pending. When this function returns, we will
+    // fall back to epoll() in the uv event loop, waiting for more things to
+    // happen. We may come right back off epoll() if the idle callback is still
+    // active, in which case we're truly just polling to see if I/O events are
+    // complete.
+    //
+    // The model for this function is to execute as much work as possible while
+    // still fairly considering I/O tasks. Falling back to epoll() frequently is
+    // often quite expensive, so we attempt to avoid it as much as possible. If
+    // we have any active I/O on the event loop, then we're forced to fall back
+    // to epoll() in order to provide fairness, but as long as we're doing work
+    // and there's no active I/O, we can continue to do work.
+    //
+    // If we try really hard to do some work, but no work is available to be
+    // done, then we fall back to epoll() to block this thread waiting for more
+    // work (instead of busy waiting).
     fn run_sched_once(mut ~self, stask: ~GreenTask) {
         // Make sure that we're not lying in that the `stask` argument is indeed
         // the scheduler task for this scheduler.
@@ -269,23 +280,43 @@ impl Scheduler {
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
-        let (sched, stask, did_work) =
+        let (mut sched, mut stask, mut did_work) =
             self.interpret_message_queue(stask, DontTryTooHard);
-        if did_work {
-            return stask.put_with_sched(sched);
+
+        // After processing a message, we consider doing some more work on the
+        // event loop. The "keep going" condition changes after the first
+        // iteration becase we don't want to spin here infinitely.
+        //
+        // Once we start doing work we can keep doing work so long as the
+        // iteration does something. Note that we don't want to starve the
+        // message queue here, so each iteration when we're done working we
+        // check the message queue regardless of whether we did work or not.
+        let mut keep_going = !did_work || !sched.event_loop.has_active_io();
+        while keep_going {
+            let (a, b, c) = match sched.do_work(stask) {
+                (sched, task, false) => {
+                    sched.interpret_message_queue(task, GiveItYourBest)
+                }
+                (sched, task, true) => {
+                    let (sched, task, _) =
+                        sched.interpret_message_queue(task, GiveItYourBest);
+                    (sched, task, true)
+                }
+            };
+            sched = a;
+            stask = b;
+            did_work = c;
+
+            // We only keep going if we managed to do something productive and
+            // also don't have any active I/O. If we didn't do anything, we
+            // should consider going to sleep, and if we have active I/O we need
+            // to poll for completion.
+            keep_going = did_work && !sched.event_loop.has_active_io();
         }
 
-        // This helper will use a randomized work-stealing algorithm
-        // to find work.
-        let (sched, stask, did_work) = sched.do_work(stask);
-        if did_work {
-            return stask.put_with_sched(sched);
-        }
-
-        // Now, before sleeping we need to find out if there really
-        // were any messages. Give it your best!
-        let (mut sched, stask, did_work) =
-            sched.interpret_message_queue(stask, GiveItYourBest);
+        // If we ever did some work, then we shouldn't put our scheduler
+        // entirely to sleep just yet. Leave the idle callback active and fall
+        // back to epoll() to see what's going on.
         if did_work {
             return stask.put_with_sched(sched);
         }
