@@ -95,19 +95,19 @@ pub fn load_props(testfile: &Path) -> TestProps {
 }
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
-    fn xfail_target(config: &config) -> ~str {
-        ~"xfail-" + util::get_os(config.target)
+    fn ignore_target(config: &config) -> ~str {
+        ~"ignore-" + util::get_os(config.target)
     }
-    fn xfail_stage(config: &config) -> ~str {
-        ~"xfail-" + config.stage_id.split('-').next().unwrap()
+    fn ignore_stage(config: &config) -> ~str {
+        ~"ignore-" + config.stage_id.split('-').next().unwrap()
     }
 
     let val = iter_header(testfile, |ln| {
-        if parse_name_directive(ln, "xfail-test") { false }
-        else if parse_name_directive(ln, xfail_target(config)) { false }
-        else if parse_name_directive(ln, xfail_stage(config)) { false }
+        if parse_name_directive(ln, "ignore-test") { false }
+        else if parse_name_directive(ln, ignore_target(config)) { false }
+        else if parse_name_directive(ln, ignore_stage(config)) { false }
         else if config.mode == common::mode_pretty &&
-            parse_name_directive(ln, "xfail-pretty") { false }
+            parse_name_directive(ln, "ignore-pretty") { false }
         else { true }
     });
 

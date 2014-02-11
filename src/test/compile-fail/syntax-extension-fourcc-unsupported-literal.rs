@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-stage1
-// xfail-pretty
-// xfail-android
+// ignore-stage1
+// ignore-pretty
+// ignore-android
 
 #[feature(phase)];
 

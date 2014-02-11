@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:static_fn_trait_xc_aux.rs
-// xfail-fast
+// ignore-fast
 
 extern mod mycore = "static_fn_trait_xc_aux";
 

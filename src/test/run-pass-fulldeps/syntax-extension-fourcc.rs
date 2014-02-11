@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast Feature gating doesn't work
-// xfail-stage1
-// xfail-pretty
-// xfail-android
+// ignore-fast Feature gating doesn't work
+// ignore-stage1
+// ignore-pretty
+// ignore-android
 
 #[feature(phase)];
 

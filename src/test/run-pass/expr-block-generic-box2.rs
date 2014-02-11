@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-// xfail-fast
+// ignore-fast
 
 type compare<'a, T> = 'a |T, T| -> bool;
 

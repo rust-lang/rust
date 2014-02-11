@@ -1,4 +1,4 @@
-# Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2011-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -36,9 +36,9 @@ for t in os.listdir(run_pass):
             t.startswith(".") or t.startswith("#") or t.startswith("~")):
         f = codecs.open(os.path.join(run_pass, t), "r", "utf8")
         s = f.read()
-        if not ("xfail-test" in s or
-                "xfail-fast" in s or
-                "xfail-win32" in s):
+        if not ("ignore-test" in s or
+                "ignore-fast" in s or
+                "ignore-win32" in s):
             if not "pub fn main" in s and "fn main" in s:
                 print("Warning: no public entry point in " + t)
             stage2_tests.append(t)

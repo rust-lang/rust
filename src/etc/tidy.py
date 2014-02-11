@@ -14,9 +14,9 @@ import snapshot
 
 err=0
 cols=100
-cr_flag="xfail-tidy-cr"
-tab_flag="xfail-tidy-tab"
-linelength_flag="xfail-tidy-linelength"
+cr_flag="ignore-tidy-cr"
+tab_flag="ignore-tidy-tab"
+linelength_flag="ignore-tidy-linelength"
 
 # Be careful to support Python 2.4, 2.6, and 3.x here!
 config_proc=subprocess.Popen([ "git", "config", "core.autocrlf" ],

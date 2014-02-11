@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,8 @@
 // This actually tests a lot more than just encodable/decodable, but it gets the
 // job done at least
 
-// xfail-fast
-// xfail-test FIXME(#5121)
+// ignore-fast
+// ignore-test FIXME(#5121)
 
 #[feature(struct_variant, managed_boxes)];
 

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test: this has weird linking problems on linux, and it probably needs a
+// ignore-test: this has weird linking problems on linux, and it probably needs a
 //             solution along the lines of disabling segmented stacks and/or the
 //             stack checks.
 // aux-build:no_std_crate.rs

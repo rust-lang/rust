@@ -61,7 +61,7 @@ pub fn parse_config(args: ~[~str]) -> config {
           reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
           reqopt("", "mode", "which sort of compile tests to run",
                  "(compile-fail|run-fail|run-pass|pretty|debug-info)"),
-          optflag("", "ignored", "run tests marked as ignored / xfailed"),
+          optflag("", "ignored", "run tests marked as ignored"),
           optopt("", "runtool", "supervisor program to run tests under \
                                  (eg. emulator, valgrind)", "PROGRAM"),
           optopt("", "rustcflags", "flags to pass to rustc", "FLAGS"),

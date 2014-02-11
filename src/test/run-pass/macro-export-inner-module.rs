@@ -9,8 +9,8 @@
 // except according to those terms.
 
 //aux-build:macro_export_inner_module.rs
-//xfail-stage1
-//xfail-fast
+//ignore-stage1
+//ignore-fast
 
 #[feature(phase)];
 
