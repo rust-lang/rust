@@ -36,11 +36,41 @@ let y: ~str = x.to_str_radix(16);
 Use [`FromStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.FromStrRadix.html), and its helper function, [`from_str_radix`](http://static.rust-lang.org/doc/master/std/num/fn.from_str_radix.html).
 
 ~~~
-use std::num::from_str_radix;
+use std::num;
 
-let x: Option<i64> = from_str_radix("deadbeef", 16);
+let x: Option<i64> = num::from_str_radix("deadbeef", 16);
 let y: i64 = x.unwrap();
 ~~~
+
+**Vector of Bytes to String**
+
+To return a Borrowed String Slice (&str) use the str helper function [`from_utf8`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8.html).
+
+~~~
+use std::str;
+
+let bytes = ~[104u8,105u8];
+let x: Option<&str> = str::from_utf8(bytes);
+let y: &str = x.unwrap();
+~~~
+
+To return an Owned String (~str) use the str helper function [`from_utf8_owned`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).
+
+~~~
+use std::str;
+
+let x: Option<~str> = str::from_utf8_owned(~[104u8,105u8]);
+let y: ~str = x.unwrap();
+~~~~
+
+To return a [`MaybeOwned`](http://static.rust-lang.org/doc/master/std/str/enum.MaybeOwned.html) use the str helper function [`from_utf8_lossy`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).  This function also replaces non-valid utf-8 sequences with U+FFFD replacement character.
+
+~~~
+use std::str;
+
+let x = bytes!(72u8,"ello ",0xF0,0x90,0x80,"World!");
+let y = str::from_utf8_lossy(x);
+~~~~
 
 # File operations
 
