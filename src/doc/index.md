@@ -18,7 +18,6 @@ li {list-style-type: none; }
 * [Tasks and Communication](guide-tasks.html)
 * [Foreign Function Interface](guide-ffi.html)
 * [Macros](guide-macros.html)
-* [Packaging](guide-rustpkg.html)
 * [Testing](guide-testing.html)
 * [Conditions](guide-conditions.html)
 * [Rust's Runtime](guide-runtime.html)
@@ -32,7 +31,6 @@ li {list-style-type: none; }
 * [The 1:1 runtime library, `libnative`](native/index.html)
 
 * [The Rust libuv library, `librustuv`](rustuv/index.html)
-* [The Rust packaging library, `librustpkg`](rustpkg/index.html)
 
 * [The Rust parser, `libsyntax`](syntax/index.html)
 * [The Rust compiler, `librustc`](rustc/index.html)
