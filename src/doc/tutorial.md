@@ -2679,25 +2679,24 @@ manual.
 
 ## Files and modules
 
-One important aspect about Rusts module system is that source files are not important:
-You define a module hierarchy, populate it with all your definitions, define visibility,
-maybe put in a `fn main()`, and that's it: No need to think about source files.
+One important aspect of Rust's module system is that source files and modules are not the same thing. You define a module hierarchy, populate it with all your definitions, define visibility, maybe put in a `fn main()`, and that's it.
 
-The only file that's relevant is the one that contains the body of your crate root,
-and it's only relevant because you have to pass that file to `rustc` to compile your crate.
+The only file that's relevant when compiling is the one that contains the body
+of your crate root, and it's only relevant because you have to pass that file
+to `rustc` to compile your crate.
 
-And in principle, that's all you need: You can write any Rust program as one giant source file that contains your
-crate root and everything below it in `mod ... { ... }` declarations.
+In principle, that's all you need: You can write any Rust program as one giant source file that contains your
+crate root and everything else in `mod ... { ... }` declarations.
 
-However, in practice you usually want to split you code up into multiple source files to make it more manageable.
-In order to do that, Rust allows you to move the body of any module into it's own source file, which works like this:
+However, in practice you usually want to split up your code into multiple
+source files to make it more manageable. Rust allows you to move the body of
+any module into its own source file. If you declare a module without its body,
+like `mod foo;`, the compiler will look for the files `foo.rs` and `foo/mod.rs`
+inside some directory (usually the same as of the source file containing the
+`mod foo;` declaration). If it finds either, it uses the content of that file
+as the body of the module. If it finds both, that's a compile error.
 
-If you declare a module without its body, like `mod foo;`, the compiler will look for the
-files `foo.rs` and `foo/mod.rs` inside some directory (usually the same as of the source file containing
-the `mod foo;`). If it finds either, it uses the content of that file as the body of the module.
-If it finds both, that's a compile error.
-
-So, if we want to move the content of `mod farm` into it's own file, it would look like this:
+To move the content of `mod farm` into its own file, you can write:
 
 ~~~~ {.ignore}
 // `main.rs` - contains body of the crate root
@@ -2722,17 +2721,13 @@ pub mod barn {
 
 In short, `mod foo;` is just syntactic sugar for `mod foo { /* content of <...>/foo.rs or <...>/foo/mod.rs */ }`.
 
-This also means that having two or more identical `mod foo;` somewhere
-in your crate hierarchy is generally a bad idea,
-just like copy-and-paste-ing a module into two or more places is one.
+This also means that having two or more identical `mod foo;` declarations somewhere in your crate hierarchy is generally a bad idea,
+just like copy-and-paste-ing a module into multiple places is a bad idea.
 Both will result in duplicate and mutually incompatible definitions.
 
-The directory the compiler looks in for those two files is determined by starting with
-the same directory as the source file that contains the `mod foo;` declaration, and concatenating to that a
-path equivalent to the relative path of all nested `mod { ... }` declarations the `mod foo;`
-is contained in, if any.
-
-For example, given a file with this module body:
+When `rustc` resolves these module declarations, it starts by looking in the
+parent directory of the file containing the `mod foo` declaration. For example,
+given a file with the module body:
 
 ~~~ {.ignore}
 // `src/main.rs`
@@ -2745,7 +2740,7 @@ mod animals {
 }
 ~~~
 
-The compiler would then try all these files:
+The compiler will look for these files, in this order:
 
 ~~~ {.notrust}
 src/plants.rs
@@ -2758,9 +2753,9 @@ src/animals/mammals/humans.rs
 src/animals/mammals/humans/mod.rs
 ~~~
 
-Keep in mind that identical module hierachies can still lead to different path lookups
-depending on how and where you've moved a module body to its own file.
-For example, if we move the `animals` module above into its own file...
+Keep in mind that identical module hierarchies can still lead to different path
+lookups depending on how and where you've moved a module body to its own file.
+For example, if you move the `animals` module into its own file:
 
 ~~~ {.ignore}
 // `src/main.rs`
@@ -2776,21 +2771,21 @@ mod mammals {
 }
 ~~~
 
-...then the source files of `mod animals`'s submodules can
-either be placed right next to that of its parents, or in a subdirectory if `animals` source file is:
+...then the source files of `mod animals`'s submodules can either be in the same directory as the animals source file or in a subdirectory of its directory. If the animals file is `src/animals.rs`, `rustc` will look for:
 
 ~~~ {.notrust}
-src/plants.rs
-src/plants/mod.rs
-
-src/animals.rs - if file sits next to that of parent module's:
+src/animals.rs
     src/fish.rs
     src/fish/mod.rs
 
     src/mammals/humans.rs
     src/mammals/humans/mod.rs
+~~
 
-src/animals/mod.rs - if file is in it's own subdirectory:
+If the animals file is `src/animals/mod.rs`, `rustc` will look for:
+
+~~ {.notrust}
+src/animals/mod.rs
     src/animals/fish.rs
     src/animals/fish/mod.rs
 
@@ -2799,11 +2794,11 @@ src/animals/mod.rs - if file is in it's own subdirectory:
 
 ~~~
 
-These rules allow you to have both small modules that only need
-to consist of one source file each and can be conveniently placed right next to each other,
-and big complicated modules that group the source files of submodules in subdirectories.
+These rules allow you to write small modules consisting of single source files which can live in the same directory as well as large modules which group submodule source files in subdirectories.
 
-If you need to circumvent the defaults, you can also overwrite the path a `mod foo;` would take:
+If you need to override where `rustc` will look for the file containing a
+module's source code, use the `path` compiler directive. For example, to load a
+`classified` module from a different file:
 
 ~~~ {.ignore}
 #[path="../../area51/alien.rs"]
