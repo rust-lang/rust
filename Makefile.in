@@ -140,7 +140,8 @@ endif
 # snapshot will be generated with a statically linked rustc so we only have to
 # worry about the distribution of one file (with its native dynamic
 # dependencies)
-RUSTFLAGS_STAGE0 += -Z prefer-dynamic
+#
+# NOTE: after a snapshot (stage0), put this on stage0 as well
 RUSTFLAGS_STAGE1 += -C prefer-dynamic
 
 # platform-specific auto-configuration
