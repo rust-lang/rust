@@ -1799,7 +1799,7 @@ impl Parser {
         } else if self.eat_keyword(keywords::Self) {
             let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
             ex = ExprPath(path);
-            hi = self.span.hi;
+            hi = self.last_span.hi;
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else if self.eat_keyword(keywords::For) {
@@ -1934,7 +1934,7 @@ impl Parser {
                                          &[token::COMMA], &[token::RBRACE]);
                     }
 
-                    hi = pth.span.hi;
+                    hi = self.span.hi;
                     self.expect(&token::RBRACE);
                     ex = ExprStruct(pth, fields, base);
                     return self.mk_expr(lo, hi, ex);
