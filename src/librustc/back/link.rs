@@ -361,21 +361,23 @@ pub mod write {
 
         let mut llvm_c_strs = ~[];
         let mut llvm_args = ~[];
-        let add = |arg: &str| {
-            let s = arg.to_c_str();
-            llvm_args.push(s.with_ref(|p| p));
-            llvm_c_strs.push(s);
-        };
-        add("rustc"); // fake program name
-        add("-arm-enable-ehabi");
-        add("-arm-enable-ehabi-descriptors");
-        if vectorize_loop { add("-vectorize-loops"); }
-        if vectorize_slp  { add("-vectorize-slp");   }
-        if sess.time_llvm_passes() { add("-time-passes"); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+        {
+            let add = |arg: &str| {
+                let s = arg.to_c_str();
+                llvm_args.push(s.with_ref(|p| p));
+                llvm_c_strs.push(s);
+            };
+            add("rustc"); // fake program name
+            add("-arm-enable-ehabi");
+            add("-arm-enable-ehabi-descriptors");
+            if vectorize_loop { add("-vectorize-loops"); }
+            if vectorize_slp  { add("-vectorize-slp");   }
+            if sess.time_llvm_passes() { add("-time-passes"); }
+            if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
-        for arg in sess.opts.cg.llvm_args.iter() {
-            add(*arg);
+            for arg in sess.opts.cg.llvm_args.iter() {
+                add(*arg);
+            }
         }
 
         INIT.doit(|| {
@@ -631,7 +633,7 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
 
     let mut n = ~"_ZN"; // _Z == Begin name-sequence, N == nested
 
-    let push = |s: &str| {
+    let push = |n: &mut ~str, s: &str| {
         let sani = sanitize(s);
         n.push_str(format!("{}{}", sani.len(), sani));
     };
@@ -640,7 +642,7 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
     for s in ss.iter() {
         match *s {
             PathName(s) | PathMod(s) | PathPrettyName(s, _) => {
-                push(sess.str_of(s))
+                push(&mut n, sess.str_of(s))
             }
         }
     }
@@ -665,10 +667,10 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
         }
     }
     if hash.len() > 0 {
-        push(hash);
+        push(&mut n, hash);
     }
     match vers {
-        Some(s) => push(s),
+        Some(s) => push(&mut n, s),
         None => {}
     }
 

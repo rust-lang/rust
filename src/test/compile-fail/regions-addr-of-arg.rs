@@ -12,7 +12,7 @@
 // bounded by the current function call.
 
 fn foo(a: int) {
-    let _p: &'static int = &a; //~ ERROR borrowed value does not live long enough
+    let _p: &'static int = &a; //~ ERROR `a` does not live long enough
 }
 
 fn bar(a: int) {
@@ -20,7 +20,7 @@ fn bar(a: int) {
 }
 
 fn zed<'a>(a: int) -> &'a int {
-    &a //~ ERROR borrowed value does not live long enough
+    &a //~ ERROR `a` does not live long enough
 }
 
 fn main() {

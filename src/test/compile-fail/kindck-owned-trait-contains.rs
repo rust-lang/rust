@@ -24,7 +24,7 @@ fn main() {
 
     let y = {
         let tmp0 = 3;
-        let tmp1 = &tmp0; //~ ERROR borrowed value does not live long enough
+        let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
         repeater(tmp1)
     };
     assert!(3 == *(y.get()));

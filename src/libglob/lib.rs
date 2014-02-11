@@ -28,6 +28,7 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+use std::cell::Cell;
 use std::{os, path};
 use std::io::fs;
 use std::path::is_sep;
@@ -342,22 +343,24 @@ impl Pattern {
     }
 
     fn matches_from(&self,
-                    mut prev_char: Option<char>,
+                    prev_char: Option<char>,
                     mut file: &str,
                     i: uint,
                     options: MatchOptions) -> MatchResult {
 
+        let prev_char = Cell::new(prev_char);
+
         let require_literal = |c| {
             (options.require_literal_separator && is_sep(c)) ||
             (options.require_literal_leading_dot && c == '.'
-             && is_sep(prev_char.unwrap_or('/')))
+             && is_sep(prev_char.get().unwrap_or('/')))
         };
 
         for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
             match *token {
                 AnySequence => {
                     loop {
-                        match self.matches_from(prev_char, file, i + ti + 1, options) {
+                        match self.matches_from(prev_char.get(), file, i + ti + 1, options) {
                             SubPatternDoesntMatch => (), // keep trying
                             m => return m,
                         }
@@ -370,7 +373,7 @@ impl Pattern {
                         if require_literal(c) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char = Some(c);
+                        prev_char.set(Some(c));
                         file = next;
                     }
                 }
@@ -400,7 +403,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char = Some(c);
+                    prev_char.set(Some(c));
                     file = next;
                 }
             }

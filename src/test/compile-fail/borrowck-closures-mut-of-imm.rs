@@ -8,23 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that if you move from `x.f` or `x[0]`, `x` is inaccessible.
-// Also tests that we give a more specific error message.
+// Tests that two closures cannot simultaneously have mutable
+// and immutable access to the variable. Issue #6801.
 
-struct Foo { f: ~str, y: int }
-fn consume(_s: ~str) {}
-fn touch<A>(_a: &A) {}
-
-fn f10() {
-    let x = Foo { f: ~"hi", y: 3 };
-    consume(x.f);
-    touch(&x.y); //~ ERROR use of partially moved value: `x`
+fn get(x: &int) -> int {
+    *x
 }
 
-fn f20() {
-    let x = ~[~"hi"];
-    consume(x[0]);
-    touch(&x[0]); //~ ERROR use of partially moved value: `x`
+fn set(x: &mut int) {
+    *x = 4;
 }
 
-fn main() {}
+fn a(x: &int) {
+    let c1 = || set(&mut *x);
+    //~^ ERROR cannot borrow
+    let c2 = || set(&mut *x);
+    //~^ ERROR closure requires unique access to `x`
+    //~^^ ERROR cannot borrow
+}
+
+fn main() {
+}

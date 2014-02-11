@@ -270,7 +270,11 @@ impl RegionVarBindings {
         // cannot add constraints once regions are resolved
         assert!(self.values_are_none());
 
-        debug!("RegionVarBindings: make_subregion({:?}, {:?})", sub, sup);
+        debug!("RegionVarBindings: make_subregion({}, {}) due to {}",
+               sub.repr(self.tcx),
+               sup.repr(self.tcx),
+               origin.repr(self.tcx));
+
         match (sub, sup) {
           (ReEarlyBound(..), _) |
           (ReLateBound(..), _) |

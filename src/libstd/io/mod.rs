@@ -277,7 +277,7 @@ use str::{StrSlice, OwnedStr};
 use str;
 use to_str::ToStr;
 use uint;
-use unstable::finally::Finally;
+use unstable::finally::try_finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
 use vec;
 
@@ -473,25 +473,33 @@ pub trait Reader {
     /// pushed on to the vector, otherwise the amount `len` bytes couldn't be
     /// read (an error was encountered), and the error is returned.
     fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
+        struct State<'a> {
+            buf: &'a mut ~[u8],
+            total_read: uint
+        }
+
         let start_len = buf.len();
-        let mut total_read = 0;
+        let mut s = State { buf: buf, total_read: 0 };
 
-        buf.reserve_additional(len);
-        unsafe { buf.set_len(start_len + len); }
+        s.buf.reserve_additional(len);
+        unsafe { s.buf.set_len(start_len + len); }
 
-        (|| {
-            while total_read < len {
-                let len = buf.len();
-                let slice = buf.mut_slice(start_len + total_read, len);
-                match self.read(slice) {
-                    Ok(nread) => {
-                        total_read += nread;
+        try_finally(
+            &mut s, (),
+            |s, _| {
+                while s.total_read < len {
+                    let len = s.buf.len();
+                    let slice = s.buf.mut_slice(start_len + s.total_read, len);
+                    match self.read(slice) {
+                        Ok(nread) => {
+                            s.total_read += nread;
+                        }
+                        Err(e) => return Err(e)
                     }
-                    Err(e) => return Err(e)
                 }
-            }
-            Ok(())
-        }).finally(|| unsafe { buf.set_len(start_len + total_read) })
+                Ok(())
+            },
+            |s| unsafe { s.buf.set_len(start_len + s.total_read) })
     }
 
     /// Reads `len` bytes and gives you back a new vector of length `len`

@@ -38,7 +38,7 @@ impl get_ctxt for Foo<'a> {
 }
 
 fn make_gc2<'a,'b>(foo: Foo<'a>) -> @get_ctxt<'b>  {
-    return @foo as @get_ctxt; //~ ERROR cannot infer an appropriate lifetime
+    return @foo as @get_ctxt; //~ ERROR cannot infer
 }
 
 fn main() {

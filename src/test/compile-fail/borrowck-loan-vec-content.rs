@@ -23,9 +23,11 @@ fn has_mut_vec_and_does_not_try_to_change_it() {
 
 fn has_mut_vec_but_tries_to_change_it() {
     let mut v = ~[1, 2, 3];
-    takes_imm_elt(&v[0], || {
-        v[1] = 4; //~ ERROR cannot assign
-    })
+    takes_imm_elt(
+        &v[0],
+        || { //~ ERROR cannot borrow `v` as mutable
+            v[1] = 4;
+        })
 }
 
 fn main() {
