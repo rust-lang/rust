@@ -47,7 +47,7 @@ via `close` and `delete` methods.
 use std::cast;
 use std::io;
 use std::io::IoError;
-use std::libc::c_int;
+use std::libc::{c_int, c_void};
 use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
@@ -95,6 +95,10 @@ pub mod stream;
 pub trait UvHandle<T> {
     fn uv_handle(&self) -> *T;
 
+    fn uv_loop(&self) -> Loop {
+        Loop::wrap(unsafe { uvll::get_loop_for_uv_handle(self.uv_handle()) })
+    }
+
     // FIXME(#8888) dummy self
     fn alloc(_: Option<Self>, ty: uvll::uv_handle_type) -> *T {
         unsafe {
@@ -136,7 +140,7 @@ pub trait UvHandle<T> {
             uvll::uv_close(self.uv_handle() as *uvll::uv_handle_t, close_cb);
             uvll::set_data_for_uv_handle(self.uv_handle(), ptr::null::<()>());
 
-            wait_until_woken_after(&mut slot, || {
+            wait_until_woken_after(&mut slot, &self.uv_loop(), || {
                 uvll::set_data_for_uv_handle(self.uv_handle(), &slot);
             })
         }
@@ -195,16 +199,20 @@ impl Drop for ForbidUnwind {
     }
 }
 
-fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
+fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
+                          loop_: &Loop,
+                          f: ||) {
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
         assert!((*slot).is_none());
         let task: ~Task = Local::take();
+        loop_.modify_blockers(1);
         task.deschedule(1, |task| {
             *slot = Some(task);
             f();
             Ok(())
         });
+        loop_.modify_blockers(-1);
     }
 }
 
@@ -273,6 +281,7 @@ impl Loop {
     pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         assert!(handle.is_not_null());
+        unsafe { uvll::set_data_for_uv_loop(handle, 0 as *c_void) }
         Loop::wrap(handle)
     }
 
@@ -284,6 +293,19 @@ impl Loop {
 
     pub fn close(&mut self) {
         unsafe { uvll::uv_loop_delete(self.handle) };
+    }
+
+    // The 'data' field of the uv_loop_t is used to count the number of tasks
+    // that are currently blocked waiting for I/O to complete.
+    fn modify_blockers(&self, amt: uint) {
+        unsafe {
+            let cur = uvll::get_data_for_uv_loop(self.handle) as uint;
+            uvll::set_data_for_uv_loop(self.handle, (cur + amt) as *c_void)
+        }
+    }
+
+    fn get_blockers(&self) -> uint {
+        unsafe { uvll::get_data_for_uv_loop(self.handle) as uint }
     }
 }
 

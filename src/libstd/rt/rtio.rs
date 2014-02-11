@@ -41,6 +41,7 @@ pub trait EventLoop {
 
     /// The asynchronous I/O services. Not all event loops may provide one.
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
+    fn has_active_io(&self) -> bool;
 }
 
 pub trait RemoteCallback {
