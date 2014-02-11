@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,8 @@
 
 // Test that we use fully-qualified type names in error messages.
 
-// xfail-test
+// ignore-test
+
 type T1 = uint;
 type T2 = int;
 

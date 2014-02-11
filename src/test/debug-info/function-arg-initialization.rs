@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-android: FIXME(#10381)
-// xfail-test: FIXME(#12021)
+// ignore-android: FIXME(#10381)
+// ignore-test: FIXME(#12021)
 
 // This test case checks if function arguments already have the correct value when breaking at the
 // first line of the function, that is if the function prologue has already been executed at the

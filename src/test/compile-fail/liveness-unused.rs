@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// xfail'd because lint is messed up with the new visitor transition
+// ignore-test
+// ignored because lint is messed up with the new visitor transition
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at

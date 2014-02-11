@@ -34,7 +34,7 @@ ifdef TESTNAME
   TESTARGS += $(TESTNAME)
 endif
 
-ifdef CHECK_XFAILS
+ifdef CHECK_IGNORED
   TESTARGS += --ignored
 endif
 

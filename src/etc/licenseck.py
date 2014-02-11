@@ -1,4 +1,4 @@
-# Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -52,7 +52,7 @@ def check_license(name, contents):
 
     # Xfail check
     firstlineish = contents[:100]
-    if firstlineish.find("xfail-license") != -1:
+    if firstlineish.find("ignore-license") != -1:
         return True
 
     # License check

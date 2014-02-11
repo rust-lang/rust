@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//xfail-test
+// ignore-test
 
 // Creating a stack closure which references an owned pointer and then
 // transferring ownership of the owned box before invoking the stack

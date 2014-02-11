@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:impl_privacy_xc_2.rs
-// xfail-fast
+// ignore-fast
 
 extern mod impl_privacy_xc_2;
 
