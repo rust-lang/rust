@@ -14,7 +14,7 @@ enum ast<'a> {
 }
 
 fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
-    add(x, y) //~ ERROR cannot infer an appropriate lifetime
+    add(x, y) //~ ERROR cannot infer
 }
 
 fn main() {

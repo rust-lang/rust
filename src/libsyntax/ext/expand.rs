@@ -709,14 +709,15 @@ pub fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
 // expand the elements of a block.
 pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
-    let new_stmts = b.stmts.iter()
-            .map(|x| {
+    let new_stmts =
+        b.stmts.iter().flat_map(|x| {
+            let renamed_stmt = {
                 let pending_renames = &mut fld.extsbox.info().pending_renames;
                 let mut rename_fld = renames_to_fold(pending_renames);
                 rename_fld.fold_stmt(*x).expect_one("rename_fold didn't return one value")
-             })
-            .flat_map(|x| fld.fold_stmt(x).move_iter())
-            .collect();
+            };
+            fld.fold_stmt(renamed_stmt).move_iter()
+        }).collect();
     let new_expr = b.expr.map(|x| {
         let expr = {
             let pending_renames = &mut fld.extsbox.info().pending_renames;

@@ -18,7 +18,7 @@ fn call1<'a>(x: &'a uint) {
     let y: uint = 3;
     let z: &'a & uint = &(&y);
     //~^ ERROR borrowed value does not live long enough
-    //~^^ ERROR borrowed value does not live long enough
+    //~^^ ERROR `y` does not live long enough
 }
 
 fn main() {}

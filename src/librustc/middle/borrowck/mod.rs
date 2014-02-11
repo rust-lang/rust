@@ -120,41 +120,32 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                body: &ast::Block,
                sp: Span,
                id: ast::NodeId) {
-    match fk {
-        &visit::FkFnBlock(..) => {
-            // Closures are checked as part of their containing fn item.
-        }
+    debug!("borrowck_fn(id={})", id);
 
-        &visit::FkItemFn(..) | &visit::FkMethod(..) => {
-            debug!("borrowck_fn(id={:?})", id);
-
-            // Check the body of fn items.
-            let (id_range, all_loans, move_data) =
-                gather_loans::gather_loans(this, decl, body);
-
-            let all_loans = all_loans.borrow();
-            let mut loan_dfcx = DataFlowContext::new(this.tcx,
-                                                     this.method_map,
-                                                     LoanDataFlowOperator,
-                                                     id_range,
-                                                     all_loans.get().len());
-            for (loan_idx, loan) in all_loans.get().iter().enumerate() {
-                loan_dfcx.add_gen(loan.gen_scope, loan_idx);
-                loan_dfcx.add_kill(loan.kill_scope, loan_idx);
-            }
-
-            loan_dfcx.propagate(body);
-
-            let flowed_moves = move_data::FlowedMoveData::new(move_data,
-                                                              this.tcx,
-                                                              this.method_map,
-                                                              id_range,
-                                                              body);
-
-            check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                                     *all_loans.get(), body);
-        }
+    // Check the body of fn items.
+    let (id_range, all_loans, move_data) =
+        gather_loans::gather_loans(this, decl, body);
+    let all_loans = all_loans.borrow();
+    let mut loan_dfcx =
+        DataFlowContext::new(this.tcx,
+                             this.method_map,
+                             LoanDataFlowOperator,
+                             id_range,
+                             all_loans.get().len());
+    for (loan_idx, loan) in all_loans.get().iter().enumerate() {
+        loan_dfcx.add_gen(loan.gen_scope, loan_idx);
+        loan_dfcx.add_kill(loan.kill_scope, loan_idx);
     }
+    loan_dfcx.propagate(body);
+
+    let flowed_moves = move_data::FlowedMoveData::new(move_data,
+                                                      this.tcx,
+                                                      this.method_map,
+                                                      id_range,
+                                                      body);
+
+    check_loans::check_loans(this, &loan_dfcx, flowed_moves,
+                             *all_loans.get(), body);
 
     visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
@@ -211,41 +202,25 @@ pub enum PartialTotal {
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
-#[deriving(Clone, Eq)]
-pub enum LoanMutability {
-    ImmutableMutability,
-    MutableMutability,
-}
-
-impl LoanMutability {
-    pub fn from_ast_mutability(ast_mutability: ast::Mutability)
-                               -> LoanMutability {
-        match ast_mutability {
-            ast::MutImmutable => ImmutableMutability,
-            ast::MutMutable => MutableMutability,
-        }
-    }
-}
-
-impl ToStr for LoanMutability {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ImmutableMutability => ~"immutable",
-            MutableMutability => ~"mutable",
-        }
-    }
-}
-
 /// Record of a loan that was issued.
 pub struct Loan {
     index: uint,
     loan_path: @LoanPath,
     cmt: mc::cmt,
-    mutbl: LoanMutability,
+    kind: ty::BorrowKind,
     restrictions: ~[Restriction],
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,
+    cause: LoanCause,
+}
+
+#[deriving(Eq)]
+pub enum LoanCause {
+    ClosureCapture(Span),
+    AddrOf,
+    AutoRef,
+    RefBinding,
 }
 
 #[deriving(Eq, IterBytes)]
@@ -283,7 +258,9 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
             None
         }
 
-        mc::cat_local(id) | mc::cat_arg(id) => {
+        mc::cat_local(id) |
+        mc::cat_arg(id) |
+        mc::cat_upvar(ty::UpvarId {var_id: id, ..}, _) => {
             Some(@LpVar(id))
         }
 
@@ -300,7 +277,6 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
         }
 
         mc::cat_downcast(cmt_base) |
-        mc::cat_stack_upvar(cmt_base) |
         mc::cat_discr(cmt_base, _) => {
             opt_loan_path(cmt_base)
         }
@@ -313,8 +289,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
 // Borrowing an lvalue often results in *restrictions* that limit what
 // can be done with this lvalue during the scope of the loan:
 //
-// - `RESTR_MUTATE`: The lvalue may not be modified.
-// - `RESTR_CLAIM`: `&mut` borrows of the lvalue are forbidden.
+// - `RESTR_MUTATE`: The lvalue may not be modified or `&mut` borrowed.
 // - `RESTR_FREEZE`: `&` borrows of the lvalue are forbidden.
 //
 // In addition, no value which is restricted may be moved. Therefore,
@@ -333,8 +308,7 @@ pub struct RestrictionSet {
 
 pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
 pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
-pub static RESTR_CLAIM: RestrictionSet  = RestrictionSet {bits: 0b0010};
-pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0100};
+pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0010};
 
 impl RestrictionSet {
     pub fn intersects(&self, restr: RestrictionSet) -> bool {
@@ -355,6 +329,12 @@ impl BitOr<RestrictionSet,RestrictionSet> for RestrictionSet {
 impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
     fn bitand(&self, rhs: &RestrictionSet) -> RestrictionSet {
         RestrictionSet {bits: self.bits & rhs.bits}
+    }
+}
+
+impl Repr for RestrictionSet {
+    fn repr(&self, _tcx: ty::ctxt) -> ~str {
+        format!("RestrictionSet(0x{:x})", self.bits as uint)
     }
 }
 
@@ -393,10 +373,9 @@ pub fn root_map() -> root_map {
 // Errors that can occur
 #[deriving(Eq)]
 pub enum bckerr_code {
-    err_mutbl(LoanMutability),
+    err_mutbl,
     err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
-    err_freeze_aliasable_const,
     err_borrowed_pointer_too_short(
         ty::Region, ty::Region, RestrictionSet), // loan, ptr
 }
@@ -406,13 +385,14 @@ pub enum bckerr_code {
 #[deriving(Eq)]
 pub struct BckError {
     span: Span,
+    cause: LoanCause,
     cmt: mc::cmt,
     code: bckerr_code
 }
 
 pub enum AliasableViolationKind {
     MutabilityViolation,
-    BorrowViolation
+    BorrowViolation(LoanCause)
 }
 
 pub enum MovedValueUseKind {
@@ -439,29 +419,55 @@ impl BorrowckCtxt {
         moves_map.get().contains(&id)
     }
 
+    pub fn mc(&self) -> mc::MemCategorizationContext<TcxTyper> {
+        mc::MemCategorizationContext {
+            typer: TcxTyper {
+                tcx: self.tcx,
+                method_map: self.method_map
+            }
+        }
+    }
+
     pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt {
-        mc::cat_expr(self.tcx, self.method_map, expr)
+        match self.mc().cat_expr(expr) {
+            Ok(c) => c,
+            Err(()) => {
+                self.tcx.sess.span_bug(expr.span, "error in mem categorization");
+            }
+        }
     }
 
     pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> mc::cmt {
-        mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
+        match self.mc().cat_expr_unadjusted(expr) {
+            Ok(c) => c,
+            Err(()) => {
+                self.tcx.sess.span_bug(expr.span, "error in mem categorization");
+            }
+        }
     }
 
     pub fn cat_expr_autoderefd(&self,
                                expr: &ast::Expr,
                                adj: &ty::AutoAdjustment)
                                -> mc::cmt {
-        match *adj {
+        let r = match *adj {
             ty::AutoAddEnv(..) | ty::AutoObject(..) => {
                 // no autoderefs
-                mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
+                self.mc().cat_expr_unadjusted(expr)
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoderefs: autoderefs, ..}) => {
-                mc::cat_expr_autoderefd(self.tcx, self.method_map, expr,
-                                        autoderefs)
+                self.mc().cat_expr_autoderefd(expr, autoderefs)
+            }
+        };
+
+        match r {
+            Ok(c) => c,
+            Err(()) => {
+                self.tcx.sess.span_bug(expr.span,
+                                       "error in mem categorization");
             }
         }
     }
@@ -472,7 +478,23 @@ impl BorrowckCtxt {
                    ty: ty::t,
                    def: ast::Def)
                    -> mc::cmt {
-        mc::cat_def(self.tcx, self.method_map, id, span, ty, def)
+        match self.mc().cat_def(id, span, ty, def) {
+            Ok(c) => c,
+            Err(()) => {
+                self.tcx.sess.span_bug(span, "error in mem categorization");
+            }
+        }
+    }
+
+    pub fn cat_captured_var(&self,
+                            id: ast::NodeId,
+                            span: Span,
+                            captured_var: &moves::CaptureVar) -> mc::cmt {
+        // Create the cmt for the variable being borrowed, from the
+        // caller's perspective
+        let var_id = ast_util::def_id_of_def(captured_var.def).node;
+        let var_ty = ty::node_id_to_type(self.tcx, var_id);
+        self.cat_def(id, span, var_ty, captured_var.def)
     }
 
     pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::NodeId) -> mc::cmt {
@@ -481,17 +503,12 @@ impl BorrowckCtxt {
                    ..*cmt}
     }
 
-    pub fn mc_ctxt(&self) -> mc::mem_categorization_ctxt {
-        mc::mem_categorization_ctxt {tcx: self.tcx,
-                                     method_map: self.method_map}
-    }
-
     pub fn cat_pattern(&self,
                        cmt: mc::cmt,
-                       pat: &ast::Pat,
+                       pat: @ast::Pat,
                        op: |mc::cmt, &ast::Pat|) {
-        let mc = self.mc_ctxt();
-        mc.cat_pattern(cmt, pat, op);
+        let r = self.mc().cat_pattern(cmt, pat, |_,x,y| op(x,y));
+        assert!(r.is_ok());
     }
 
     pub fn report(&self, err: BckError) {
@@ -622,24 +639,35 @@ impl BorrowckCtxt {
 
     pub fn bckerr_to_str(&self, err: BckError) -> ~str {
         match err.code {
-            err_mutbl(lk) => {
-                format!("cannot borrow {} {} as {}",
-                     err.cmt.mutbl.to_user_str(),
-                     self.cmt_to_str(err.cmt),
-                     self.mut_to_str(lk))
+            err_mutbl => {
+                let descr = match opt_loan_path(err.cmt) {
+                    None => format!("{} {}",
+                                    err.cmt.mutbl.to_user_str(),
+                                    self.cmt_to_str(err.cmt)),
+                    Some(lp) => format!("{} {} `{}`",
+                                        err.cmt.mutbl.to_user_str(),
+                                        self.cmt_to_str(err.cmt),
+                                        self.loan_path_to_str(lp)),
+                };
+
+                match err.cause {
+                    ClosureCapture(_) => {
+                        format!("closure cannot assign to {}", descr)
+                    }
+                    AddrOf | RefBinding | AutoRef => {
+                        format!("cannot borrow {} as mutable", descr)
+                    }
+                }
             }
             err_out_of_root_scope(..) => {
                 format!("cannot root managed value long enough")
             }
             err_out_of_scope(..) => {
-                format!("borrowed value does not live long enough")
-            }
-            err_freeze_aliasable_const => {
-                // Means that the user borrowed a ~T or enum value
-                // residing in &const or @const pointer.  Terrible
-                // error message, but then &const and @const are
-                // supposed to be going away.
-                format!("unsafe borrow of aliasable, const value")
+                let msg = match opt_loan_path(err.cmt) {
+                    None => format!("borrowed value"),
+                    Some(lp) => format!("`{}`", self.loan_path_to_str(lp)),
+                };
+                format!("{} does not live long enough", msg)
             }
             err_borrowed_pointer_too_short(..) => {
                 let descr = match opt_loan_path(err.cmt) {
@@ -659,8 +687,24 @@ impl BorrowckCtxt {
                                          kind: AliasableViolationKind,
                                          cause: mc::AliasableReason) {
         let prefix = match kind {
-            MutabilityViolation => "cannot assign to data",
-            BorrowViolation => "cannot borrow data mutably"
+            MutabilityViolation => {
+                "cannot assign to data"
+            }
+            BorrowViolation(ClosureCapture(_)) => {
+                // I don't think we can get aliasability violations
+                // with closure captures, so no need to come up with a
+                // good error message. The reason this cannot happen
+                // is because we only capture local variables in
+                // closures, and those are never aliasable.
+                self.tcx.sess.span_bug(
+                    span,
+                    "aliasability violation with closure");
+            }
+            BorrowViolation(AddrOf) |
+            BorrowViolation(AutoRef) |
+            BorrowViolation(RefBinding) => {
+                "cannot borrow data mutably"
+            }
         };
 
         match cause {
@@ -680,7 +724,7 @@ impl BorrowckCtxt {
                     span,
                     format!("{} in a `@` pointer", prefix));
             }
-            mc::AliasableBorrowed(_) => {
+            mc::AliasableBorrowed => {
                 self.tcx.sess.span_err(
                     span,
                     format!("{} in a `&` reference", prefix));
@@ -691,7 +735,7 @@ impl BorrowckCtxt {
     pub fn note_and_explain_bckerr(&self, err: BckError) {
         let code = err.code;
         match code {
-            err_mutbl(..) | err_freeze_aliasable_const(..) => {}
+            err_mutbl(..) => { }
 
             err_out_of_root_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
@@ -738,52 +782,16 @@ impl BorrowckCtxt {
         }
     }
 
-    pub fn append_loan_path_to_str_from_interior(&self,
-                                                 loan_path: &LoanPath,
-                                                 out: &mut ~str) {
-        match *loan_path {
-            LpExtend(_, _, LpDeref(_)) => {
-                out.push_char('(');
-                self.append_loan_path_to_str(loan_path, out);
-                out.push_char(')');
-            }
-            LpExtend(_, _, LpInterior(_)) |
-            LpVar(_) => {
-                self.append_loan_path_to_str(loan_path, out);
-            }
-        }
-    }
-
     pub fn append_loan_path_to_str(&self,
                                    loan_path: &LoanPath,
                                    out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
-                match self.tcx.items.find(id) {
-                    Some(ast_map::NodeLocal(pat)) => {
-                        match pat.node {
-                            ast::PatIdent(_, ref path, _) => {
-                                let ident = ast_util::path_to_ident(path);
-                                let string = token::get_ident(ident.name);
-                                out.push_str(string.get());
-                            }
-                            _ => {
-                                self.tcx.sess.bug(
-                                    format!("loan path LpVar({:?}) maps to {:?}, not local",
-                                        id, pat));
-                            }
-                        }
-                    }
-                    r => {
-                        self.tcx.sess.bug(
-                            format!("loan path LpVar({:?}) maps to {:?}, not local",
-                                 id, r));
-                    }
-                }
+                out.push_str(ty::local_var_name_str(self.tcx, id).get());
             }
 
             LpExtend(lp_base, _, LpInterior(mc::InteriorField(fname))) => {
-                self.append_loan_path_to_str_from_interior(lp_base, out);
+                self.append_autoderefd_loan_path_to_str(lp_base, out);
                 match fname {
                     mc::NamedField(ref fname) => {
                         let string = token::get_ident(*fname);
@@ -798,13 +806,30 @@ impl BorrowckCtxt {
             }
 
             LpExtend(lp_base, _, LpInterior(mc::InteriorElement(_))) => {
-                self.append_loan_path_to_str_from_interior(lp_base, out);
-                out.push_str("[]");
+                self.append_autoderefd_loan_path_to_str(lp_base, out);
+                out.push_str("[..]");
             }
 
             LpExtend(lp_base, _, LpDeref(_)) => {
                 out.push_char('*');
                 self.append_loan_path_to_str(lp_base, out);
+            }
+        }
+    }
+
+    pub fn append_autoderefd_loan_path_to_str(&self,
+                                              loan_path: &LoanPath,
+                                              out: &mut ~str) {
+        match *loan_path {
+            LpExtend(lp_base, _, LpDeref(_)) => {
+                // For a path like `(*x).f` or `(*x)[3]`, autoderef
+                // rules would normally allow users to omit the `*x`.
+                // So just serialize such paths to `x.f` or x[3]` respectively.
+                self.append_autoderefd_loan_path_to_str(lp_base, out)
+            }
+
+            LpVar(..) | LpExtend(_, _, LpInterior(..)) => {
+                self.append_loan_path_to_str(loan_path, out)
             }
         }
     }
@@ -816,13 +841,11 @@ impl BorrowckCtxt {
     }
 
     pub fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {
-        let mc = &mc::mem_categorization_ctxt {tcx: self.tcx,
-                                               method_map: self.method_map};
-        mc.cmt_to_str(cmt)
+        self.mc().cmt_to_str(cmt)
     }
 
-    pub fn mut_to_str(&self, mutbl: LoanMutability) -> ~str {
-        mutbl.to_str()
+    pub fn mut_to_str(&self, mutbl: ast::Mutability) -> ~str {
+        self.mc().mut_to_str(mutbl)
     }
 
     pub fn mut_to_keyword(&self, mutbl: ast::Mutability) -> &'static str {
@@ -843,11 +866,6 @@ impl DataFlowOperator for LoanDataFlowOperator {
     fn join(&self, succ: uint, pred: uint) -> uint {
         succ | pred // loans from both preds are in scope
     }
-
-    #[inline]
-    fn walk_closures(&self) -> bool {
-        true
-    }
 }
 
 impl Repr for Loan {
@@ -855,7 +873,7 @@ impl Repr for Loan {
         format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
              self.index,
              self.loan_path.repr(tcx),
-             self.mutbl,
+             self.kind,
              self.gen_scope,
              self.kill_scope,
              self.restrictions.repr(tcx))
@@ -888,5 +906,41 @@ impl Repr for LoanPath {
                 format!("{}.{}", lp.repr(tcx), interior.repr(tcx))
             }
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+struct TcxTyper {
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+}
+
+impl mc::Typer for TcxTyper {
+    fn tcx(&self) -> ty::ctxt {
+        self.tcx
+    }
+
+    fn node_ty(&mut self, id: ast::NodeId) -> mc::McResult<ty::t> {
+        Ok(ty::node_id_to_type(self.tcx, id))
+    }
+
+    fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
+        let adjustments = self.tcx.adjustments.borrow();
+        adjustments.get().find_copy(&id)
+    }
+
+    fn is_method_call(&mut self, id: ast::NodeId) -> bool {
+        let method_map = self.method_map.borrow();
+        method_map.get().contains_key(&id)
+    }
+
+    fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
+        self.tcx.region_maps.temporary_scope(id)
+    }
+
+    fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
+        let upvar_borrow_map = self.tcx.upvar_borrow_map.borrow();
+        upvar_borrow_map.get().get_copy(&id)
     }
 }

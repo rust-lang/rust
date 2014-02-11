@@ -75,14 +75,12 @@ pub trait Folder {
     }
 
     fn fold_struct_field(&mut self, sf: &StructField) -> StructField {
-        let fold_attribute = |x| fold_attribute_(x, self);
-
         Spanned {
             node: ast::StructField_ {
                 kind: sf.node.kind,
                 id: self.new_id(sf.node.id),
                 ty: self.fold_ty(sf.node.ty),
-                attrs: sf.node.attrs.map(|e| fold_attribute(*e))
+                attrs: sf.node.attrs.map(|e| fold_attribute_(*e, self))
             },
             span: self.new_span(sf.span)
         }
@@ -225,8 +223,7 @@ pub trait Folder {
             }
         }
 
-        let fold_attribute = |x| fold_attribute_(x, self);
-        let attrs = v.node.attrs.map(|x| fold_attribute(*x));
+        let attrs = v.node.attrs.map(|x| fold_attribute_(*x, self));
 
         let de = match v.node.disr_expr {
           Some(e) => Some(self.fold_expr(e)),
@@ -323,8 +320,7 @@ fn fold_meta_item_<T: Folder>(mi: @MetaItem, fld: &mut T) -> @MetaItem {
             match mi.node {
                 MetaWord(ref id) => MetaWord((*id).clone()),
                 MetaList(ref id, ref mis) => {
-                    let fold_meta_item = |x| fold_meta_item_(x, fld);
-                    MetaList((*id).clone(), mis.map(|e| fold_meta_item(*e)))
+                    MetaList((*id).clone(), mis.map(|e| fold_meta_item_(*e, fld)))
                 }
                 MetaNameValue(ref id, ref s) => {
                     MetaNameValue((*id).clone(), (*s).clone())
@@ -604,23 +600,18 @@ pub fn noop_fold_mod<T: Folder>(m: &Mod, folder: &mut T) -> Mod {
 }
 
 pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
-    let fold_meta_item = |x| fold_meta_item_(x, folder);
-    let fold_attribute = |x| fold_attribute_(x, folder);
-
     Crate {
         module: folder.fold_mod(&c.module),
-        attrs: c.attrs.map(|x| fold_attribute(*x)),
-        config: c.config.map(|x| fold_meta_item(*x)),
+        attrs: c.attrs.map(|x| fold_attribute_(*x, folder)),
+        config: c.config.map(|x| fold_meta_item_(*x, folder)),
         span: folder.new_span(c.span),
     }
 }
 
 pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item> {
-    let fold_attribute = |x| fold_attribute_(x, folder);
-
     SmallVector::one(@Item {
         ident: folder.fold_ident(i.ident),
-        attrs: i.attrs.map(|e| fold_attribute(*e)),
+        attrs: i.attrs.map(|e| fold_attribute_(*e, folder)),
         id: folder.new_id(i.id),
         node: folder.fold_item_underscore(&i.node),
         vis: i.vis,
@@ -711,8 +702,6 @@ pub fn noop_fold_pat<T: Folder>(p: @Pat, folder: &mut T) -> @Pat {
 }
 
 pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
-    let fold_field = |x| fold_field_(x, folder);
-
     let node = match e.node {
         ExprVstore(e, v) => {
             ExprVstore(folder.fold_expr(e), v)
@@ -824,7 +813,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprMac(ref mac) => ExprMac(folder.fold_mac(mac)),
         ExprStruct(ref path, ref fields, maybe_expr) => {
             ExprStruct(folder.fold_path(path),
-                       fields.map(|x| fold_field(*x)),
+                       fields.map(|x| fold_field_(*x, folder)),
                        maybe_expr.map(|x| folder.fold_expr(x)))
         },
         ExprParen(ex) => ExprParen(folder.fold_expr(ex))

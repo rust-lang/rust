@@ -32,7 +32,7 @@ impl<'a> set_f<'a> for c<'a> {
 
     fn set_f_bad(&self, b: @b) {
         self.f = b; //~ ERROR mismatched types: expected `@@&'a int` but found `@@&int`
-        //~^ ERROR cannot infer an appropriate lifetime
+        //~^ ERROR cannot infer
     }
 }
 

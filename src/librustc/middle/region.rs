@@ -36,19 +36,42 @@ use syntax::ast_util::{stmt_id};
 /**
 The region maps encode information about region relationships.
 
-- `scope_map` maps from:
-  - an expression to the expression or block encoding the maximum
-    (static) lifetime of a value produced by that expression.  This is
-    generally the innermost call, statement, match, or block.
-  - a variable or binding id to the block in which that variable is declared.
-- `free_region_map` maps from:
-  - a free region `a` to a list of free regions `bs` such that
-    `a <= b for all b in bs`
+- `scope_map` maps from a scope id to the enclosing scope id; this is
+  usually corresponding to the lexical nesting, though in the case of
+  closures the parent scope is the innermost conditinal expression or repeating
+  block
+
+- `var_map` maps from a variable or binding id to the block in which
+  that variable is declared.
+
+- `free_region_map` maps from a free region `a` to a list of free
+  regions `bs` such that `a <= b for all b in bs`
   - the free region map is populated during type check as we check
     each function. See the function `relate_free_regions` for
     more information.
-- `temporary_scopes` includes scopes where cleanups for temporaries occur.
-  These are statements and loop/fn bodies.
+
+- `rvalue_scopes` includes entries for those expressions whose cleanup
+  scope is larger than the default. The map goes from the expression
+  id to the cleanup scope id. For rvalues not present in this table,
+  the appropriate cleanup scope is the innermost enclosing statement,
+  conditional expression, or repeating block (see `terminating_scopes`).
+
+- `terminating_scopes` is a set containing the ids of each statement,
+  or conditional/repeating expression. These scopes are calling "terminating
+  scopes" because, when attempting to find the scope of a temporary, by
+  default we search up the enclosing scopes until we encounter the
+  terminating scope. A conditional/repeating
+  expression is one which is not guaranteed to execute exactly once
+  upon entering the parent scope. This could be because the expression
+  only executes conditionally, such as the expression `b` in `a && b`,
+  or because the expression may execute many times, such as a loop
+  body. The reason that we distinguish such expressions is that, upon
+  exiting the parent scope, we cannot statically know how many times
+  the expression executed, and thus if the expression creates
+  temporaries we cannot know statically how many such temporaries we
+  would have to cleanup. Therefore we ensure that the temporaries never
+  outlast the conditional/repeating expression, preventing the need
+  for dynamic checks and/or arbitrary amounts of stack space.
 */
 pub struct RegionMaps {
     priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
@@ -840,7 +863,16 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
         visit::FkItemFn(..) | visit::FkMethod(..) => {
             Context {parent: None, var_parent: None, ..cx}
         }
-        visit::FkFnBlock(..) => cx
+        visit::FkFnBlock(..) => {
+            // FIXME(#3696) -- at present we are place the closure body
+            // within the region hierarchy exactly where it appears lexically.
+            // This is wrong because the closure may live longer
+            // than the enclosing expression. We should probably fix this,
+            // but the correct fix is a bit subtle, and I am also not sure
+            // that the present approach is unsound -- it may not permit
+            // any illegal programs. See issue for more details.
+            cx
+        }
     };
     visitor.visit_block(body, body_cx);
 }

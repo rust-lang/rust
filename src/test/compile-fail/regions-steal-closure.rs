@@ -19,7 +19,7 @@ fn box_it<'r>(x: 'r ||) -> closure_box<'r> {
 fn main() {
     let cl_box = {
         let mut i = 3;
-        box_it(|| i += 1) //~ ERROR cannot infer an appropriate lifetime
+        box_it(|| i += 1) //~ ERROR cannot infer
     };
     (cl_box.cl)();
 }

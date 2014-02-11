@@ -565,8 +565,23 @@ impl<T:Repr> Repr for Option<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
             &None => ~"None",
-            &Some(ref t) => format!("Some({})", t.repr(tcx))
+            &Some(ref t) => t.repr(tcx),
         }
+    }
+}
+
+impl<T:Repr,U:Repr> Repr for Result<T,U> {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        match self {
+            &Ok(ref t) => t.repr(tcx),
+            &Err(ref u) => format!("Err({})", u.repr(tcx))
+        }
+    }
+}
+
+impl Repr for () {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        ~"()"
     }
 }
 
@@ -1019,5 +1034,34 @@ impl Repr for AbiSet {
 impl UserString for AbiSet {
     fn user_string(&self, _tcx: ctxt) -> ~str {
         self.to_str()
+    }
+}
+
+impl Repr for ty::UpvarId {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        format!("UpvarId({};`{}`;{})",
+             self.var_id,
+             ty::local_var_name_str(tcx, self.var_id),
+             self.closure_expr_id)
+    }
+}
+
+impl Repr for ast::Mutability {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        format!("{:?}", *self)
+    }
+}
+
+impl Repr for ty::BorrowKind {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        format!("{:?}", *self)
+    }
+}
+
+impl Repr for ty::UpvarBorrow {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        format!("UpvarBorrow({}, {})",
+             self.kind.repr(tcx),
+             self.region.repr(tcx))
     }
 }
