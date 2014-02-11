@@ -394,15 +394,20 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
 pub fn expand_view_item(vi: &ast::ViewItem,
                         fld: &mut MacroExpander)
                         -> ast::ViewItem {
-    let should_load = vi.attrs.iter().any(|attr| {
-        attr.name().get() == "phase" &&
-            attr.meta_item_list().map_or(false, |phases| {
-                attr::contains_name(phases, "syntax")
-            })
-    });
+    match vi.node {
+        ast::ViewItemExternMod(..) => {
+            let should_load = vi.attrs.iter().any(|attr| {
+                attr.name().get() == "phase" &&
+                    attr.meta_item_list().map_or(false, |phases| {
+                        attr::contains_name(phases, "syntax")
+                    })
+            });
 
-    if should_load {
-        load_extern_macros(vi, fld);
+            if should_load {
+                load_extern_macros(vi, fld);
+            }
+        }
+        ast::ViewItemUse(_) => {}
     }
 
     noop_fold_view_item(vi, fld)
