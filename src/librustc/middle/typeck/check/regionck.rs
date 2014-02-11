@@ -38,7 +38,7 @@ checks and effort.
 
 Whenever we introduce a borrowed pointer, for example as the result of
 a borrow expression `let x = &data`, the lifetime of the pointer `x`
-is always specified as a region inferencr variable. `regionck` has the
+is always specified as a region inference variable. `regionck` has the
 job of adding constraints such that this inference variable is as
 narrow as possible while still accommodating all uses (that is, every
 dereference of the resulting pointer must be within the lifetime).
@@ -95,7 +95,7 @@ the following lattice:
     ty::ImmBorrow -> ty::UniqueImmBorrow -> ty::MutBorrow
 
 So, for example, if we see an assignment `x = 5` to an upvar `x`, we
-will promote it's borrow kind to mutable borrow. If we see an `&mut x`
+will promote its borrow kind to mutable borrow. If we see an `&mut x`
 we'll do the same. Naturally, this applies not just to the upvar, but
 to everything owned by `x`, so the result is the same for something
 like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
@@ -107,7 +107,7 @@ The fact that we are inferring borrow kinds as we go results in a
 semi-hacky interaction with mem-categorization. In particular,
 mem-categorization will query the current borrow kind as it
 categorizes, and we'll return the *current* value, but this may get
-adjusted later. Therefore, in this module, we genreally ignore the
+adjusted later. Therefore, in this module, we generally ignore the
 borrow kind (and derived mutabilities) that are returned from
 mem-categorization, since they may be inaccurate. (Another option
 would be to use a unification scheme, where instead of returning a
@@ -698,9 +698,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                     let inner_upvar_id = ty::UpvarId {
                         var_id: var_id,
                         closure_expr_id: expr.id };
-                    link_upvar_borrow_kind(rcx,
-                                           inner_upvar_id,
-                                           outer_upvar_id);
+                    link_upvar_borrow_kind_for_nested_closures(rcx,
+                                                               inner_upvar_id,
+                                                               outer_upvar_id);
                 }
                 _ => {}
             }
@@ -1114,7 +1114,7 @@ fn link_region_from_node_type(rcx: &mut Rcx,
     /*!
      * Like `link_region()`, except that the region is
      * extracted from the type of `id`, which must be some
-     * region-typed thing.
+     * reference (`&T`, `&str`, etc).
      */
 
     let rptr_ty = rcx.resolve_node_type(id);
@@ -1359,12 +1359,14 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &mut Rcx,
     }
 }
 
-fn link_upvar_borrow_kind(rcx: &mut Rcx,
-                          inner_upvar_id: ty::UpvarId,
-                          outer_upvar_id: ty::UpvarId) {
+fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
+                                              inner_upvar_id: ty::UpvarId,
+                                              outer_upvar_id: ty::UpvarId) {
     /*!
      * Indicates that the borrow_kind of `outer_upvar_id` must
-     * permit a reborrowing with the borrow_kind of `inner_upvar_id`
+     * permit a reborrowing with the borrow_kind of `inner_upvar_id`.
+     * This occurs in nested closures, see comment above at the call to
+     * this function.
      */
 
     debug!("link_upvar_borrow_kind: inner_upvar_id={:?} outer_upvar_id={:?}",
