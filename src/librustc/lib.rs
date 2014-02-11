@@ -141,6 +141,7 @@ pub fn usage(argv0: &str) {
     let message = format!("Usage: {} [OPTIONS] INPUT", argv0);
     println!("{}\n\
 Additional help:
+    -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
               getopts::usage(message, d::optgroups()));
