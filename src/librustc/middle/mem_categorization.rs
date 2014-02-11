@@ -48,7 +48,7 @@
  * ## By-reference upvars
  *
  * One part of the translation which may be non-obvious is that we translate
- * closure upvars into the dereference of a borrow pointer; this more closely
+ * closure upvars into the dereference of a borrowed pointer; this more closely
  * resembles the runtime translation. So, for example, if we had:
  *
  *     let mut x = 3;
@@ -246,7 +246,7 @@ pub struct MemCategorizationContext<TYPER> {
 pub type McResult<T> = Result<T, ()>;
 
 /**
- * The `Typer` trait provides the interface fro the mem-categorization
+ * The `Typer` trait provides the interface for the mem-categorization
  * module to the results of the type check. It can be used to query
  * the type assigned to an expression node, to inquire after adjustments,
  * and so on.
