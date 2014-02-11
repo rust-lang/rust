@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// xfail-stage1
-// xfail-fast
-// xfail-android
+// ignore-stage1
+// ignore-fast
+// ignore-android
 // force-host
 
 // You'll note that there's lots of directives above. This is a very particular
@@ -19,8 +19,8 @@
 // This implies that both versions are the host architecture, meaning this test
 // must also be compiled with the host arch.
 //
-// Hence, xfail-stage1 because macros are unstable around there, xfail-fast
-// because this doesn't work with that test runner, xfail-android because it
+// Hence, ignore-stage1 because macros are unstable around there, ignore-fast
+// because this doesn't work with that test runner, ignore-android because it
 // can't run host binaries, and force-host to make this test build as the host
 // arch.
 

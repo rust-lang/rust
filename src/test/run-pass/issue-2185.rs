@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// does the second one subsume the first?
-// xfail-test
-// xfail-fast
+// ignore-test
+// ignore-fast
 
 // notes on this test case:
-// On Thu, Apr 18, 2013 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
-// the "issue-2185.rs" test was xfailed with a ref to #2263. Issue #2263 is now fixed,
+// On Thu, Apr 18, 2013-2014 at 6:30 PM, John Clements <clements@brinckerhoff.org> wrote:
+// the "issue-2185.rs" test was ignoreed with a ref to #2263. Issue #2263 is now fixed,
 // so I tried it again, and after adding some &self parameters, I got this error:
 //
 // Running /usr/local/bin/rustc:

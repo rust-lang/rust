@@ -1,6 +1,6 @@
-// xfail-pretty
+// ignore-pretty
 
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,7 +13,7 @@
 // Tests that a heterogeneous list of existential types can be put inside an Arc
 // and shared between tasks as long as all types fulfill Freeze+Send.
 
-// xfail-fast
+// ignore-fast
 
 extern mod sync;
 

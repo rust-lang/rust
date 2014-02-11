@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // exec-env:RUST_LOG=std::ptr
-// xfail-fast this would cause everything to print forever on check-fast...
+// ignore-fast this would cause everything to print forever on check-fast...
 
 // In issue #9487, it was realized that std::ptr was invoking the logging
 // infrastructure, and when std::ptr was used during runtime initialization,
