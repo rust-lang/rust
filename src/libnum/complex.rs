@@ -191,7 +191,7 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 mod test {
     #[allow(non_uppercase_statics)];
 
-    use super::*;
+    use super::{Complex64, Cmplx};
     use std::num::{Zero,One,Real};
 
     pub static _0_0i : Complex64 = Cmplx { re: 0.0, im: 0.0 };
@@ -285,7 +285,7 @@ mod test {
     }
 
     mod arith {
-        use super::*;
+        use super::{_0_0i, _1_0i, _1_1i, _0_1i, _neg1_1i, _05_05i, all_consts};
         use std::num::Zero;
 
         #[test]

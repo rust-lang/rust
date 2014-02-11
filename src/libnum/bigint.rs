@@ -16,9 +16,6 @@ A `BigUint` is represented as an array of `BigDigit`s.
 A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
-#[allow(missing_doc)];
-#[allow(non_uppercase_statics)];
-
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::num;
 use std::num::{Zero, One, ToStrRadix, FromStrRadix, Orderable};
@@ -48,7 +45,7 @@ pub type BigDigit = u32;
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
 
 pub mod BigDigit {
-    use bigint::BigDigit;
+    use super::BigDigit;
 
     #[cfg(target_word_size = "32")]
     pub static bits: uint = 16;
@@ -1433,8 +1430,8 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-    use super::*;
-    use super::RandBigInt;
+    use super::{BigDigit, BigUint, ToBigUint};
+    use super::{Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2090,8 +2087,8 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use super::*;
-    use super::RandBigInt;
+    use super::{BigDigit, BigUint, ToBigUint};
+    use super::{Sign, Minus, Zero, Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2591,7 +2588,7 @@ mod bigint_tests {
 
 #[cfg(test)]
 mod bench {
-    use super::*;
+    use super::{BigInt, BigUint};
     use std::iter;
     use std::mem::replace;
     use std::num::{FromPrimitive, Zero, One};
