@@ -110,8 +110,16 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled below
             clean::ModuleItem(..) => {}
 
-            // impls/tymethods have no control over privacy
-            clean::ImplItem(..) | clean::TyMethodItem(..) => {}
+            // trait impls for private items should be stripped
+            clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: ref for_id, .. }, .. }) => {
+                if !self.exported_items.contains(for_id) {
+                    return None;
+                }
+            }
+            clean::ImplItem(..) => {}
+
+            // tymethods have no control over privacy
+            clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {
