@@ -480,9 +480,9 @@ impl Datum<Expr> {
          * no cleanup scheduled).
          */
 
-        let mut bcx = bcx;
         self.match_kind(
             |l| {
+                let mut bcx = bcx;
                 match l.appropriate_rvalue_mode(bcx.ccx()) {
                     ByRef => {
                         let scratch = rvalue_scratch_datum(bcx, l.ty, name);

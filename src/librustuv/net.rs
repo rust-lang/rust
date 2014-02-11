@@ -510,8 +510,9 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                     buf: Some(slice_to_uv_buf(buf)),
                     result: None,
                 };
+                let handle = self.handle;
                 wait_until_woken_after(&mut cx.task, || {
-                    unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                    unsafe { uvll::set_data_for_uv_handle(handle, &cx) }
                 });
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>

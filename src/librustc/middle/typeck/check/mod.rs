@@ -164,6 +164,7 @@ pub struct Inherited {
     adjustments: RefCell<HashMap<ast::NodeId, @ty::AutoAdjustment>>,
     method_map: method_map,
     vtable_map: vtable_map,
+    upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
 }
 
 #[deriving(Clone)]
@@ -266,6 +267,7 @@ impl Inherited {
             adjustments: RefCell::new(HashMap::new()),
             method_map: @RefCell::new(HashMap::new()),
             vtable_map: @RefCell::new(HashMap::new()),
+            upvar_borrow_map: RefCell::new(HashMap::new()),
         }
     }
 }

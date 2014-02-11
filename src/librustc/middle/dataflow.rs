@@ -17,7 +17,6 @@
  */
 
 
-use std::cast;
 use std::io;
 use std::uint;
 use std::vec;
@@ -72,9 +71,6 @@ pub trait DataFlowOperator {
 
     /// Joins two predecessor bits together, typically either `|` or `&`
     fn join(&self, succ: uint, pred: uint) -> uint;
-
-    /// True if we should propagate through closures
-    fn walk_closures(&self) -> bool;
 }
 
 struct PropagationContext<'a, O> {
@@ -373,8 +369,8 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                   blk: &ast::Block,
                   in_out: &mut [uint],
                   loop_scopes: &mut ~[LoopScope]) {
-        debug!("DataFlowContext::walk_block(blk.id={:?}, in_out={})",
-               blk.id, bits_to_str(reslice(in_out)));
+        debug!("DataFlowContext::walk_block(blk.id={}, in_out={})",
+               blk.id, bits_to_str(in_out));
 
         self.merge_with_entry_set(blk.id, in_out);
 
@@ -425,99 +421,12 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_expr(expr={}, in_out={})",
-               expr.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
+               expr.repr(self.dfcx.tcx), bits_to_str(in_out));
 
         self.merge_with_entry_set(expr.id, in_out);
 
         match expr.node {
-            ast::ExprFnBlock(ref decl, body) |
-            ast::ExprProc(ref decl, body) => {
-                if self.dfcx.oper.walk_closures() {
-                    // In the absence of once fns, we must assume that
-                    // every function body will execute more than
-                    // once. Thus we treat every function body like a
-                    // loop.
-                    //
-                    // What is subtle and a bit tricky, also, is how
-                    // to deal with the "output" bits---that is, what
-                    // do we consider to be the successor of a
-                    // function body, given that it could be called
-                    // from any point within its lifetime? What we do
-                    // is to add their effects immediately as of the
-                    // point of creation. Of course we have to ensure
-                    // that this is sound for the analyses which make
-                    // use of dataflow.
-                    //
-                    // In the case of the initedness checker (which
-                    // does not currently use dataflow, but I hope to
-                    // convert at some point), we will simply not walk
-                    // closures at all, so it's a moot point.
-                    //
-                    // In the case of the borrow checker, this means
-                    // the loans which would be created by calling a
-                    // function come into effect immediately when the
-                    // function is created. This is guaranteed to be
-                    // earlier than the point at which the loan
-                    // actually comes into scope (which is the point
-                    // at which the closure is *called*). Because
-                    // loans persist until the scope of the loans is
-                    // exited, it is always a safe approximation to
-                    // have a loan begin earlier than it actually will
-                    // at runtime, so this should be sound.
-                    //
-                    // We stil have to be careful in the region
-                    // checker and borrow checker to treat function
-                    // bodies like loops, which implies some
-                    // limitations. For example, a closure cannot root
-                    // a managed box for longer than its body.
-                    //
-                    // General control flow looks like this:
-                    //
-                    //  +- (expr) <----------+
-                    //  |    |               |
-                    //  |    v               |
-                    //  |  (body) -----------+--> (exit)
-                    //  |    |               |
-                    //  |    + (break/loop) -+
-                    //  |                    |
-                    //  +--------------------+
-                    //
-                    // This is a bit more conservative than a loop.
-                    // Note that we must assume that even after a
-                    // `break` occurs (e.g., in a `for` loop) that the
-                    // closure may be reinvoked.
-                    //
-                    // One difference from other loops is that `loop`
-                    // and `break` statements which target a closure
-                    // both simply add to the `break_bits`.
-
-                    // func_bits represents the state when the function
-                    // returns
-                    let mut func_bits = reslice(in_out).to_owned();
-
-                    loop_scopes.push(LoopScope {
-                        loop_id: expr.id,
-                        break_bits: reslice(in_out).to_owned()
-                    });
-                    for input in decl.inputs.iter() {
-                        self.walk_pat(input.pat, func_bits, loop_scopes);
-                    }
-                    self.walk_block(body, func_bits, loop_scopes);
-
-                    // add the bits from any early return via `break`,
-                    // `continue`, or `return` into `func_bits`
-                    let loop_scope = loop_scopes.pop().unwrap();
-                    join_bits(&self.dfcx.oper, loop_scope.break_bits, func_bits);
-
-                    // add `func_bits` to the entry bits for `expr`,
-                    // since we must assume the function may be called
-                    // more than once
-                    self.add_to_entry_set(expr.id, reslice(func_bits));
-
-                    // the final exit bits include whatever was present
-                    // in the original, joined with the bits from the function
-                    join_bits(&self.dfcx.oper, func_bits, in_out);
-                }
+            ast::ExprFnBlock(..) | ast::ExprProc(..) => {
             }
 
             ast::ExprIf(cond, then, els) => {
@@ -536,7 +445,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 //
                 self.walk_expr(cond, in_out, loop_scopes);
 
-                let mut then_bits = reslice(in_out).to_owned();
+                let mut then_bits = in_out.to_owned();
                 self.walk_block(then, then_bits, loop_scopes);
 
                 self.walk_opt_expr(els, in_out, loop_scopes);
@@ -558,10 +467,10 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
                 self.walk_expr(cond, in_out, loop_scopes);
 
-                let mut body_bits = reslice(in_out).to_owned();
+                let mut body_bits = in_out.to_owned();
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    break_bits: reslice(in_out).to_owned()
+                    break_bits: in_out.to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
@@ -581,11 +490,11 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 //    <--+ (break)
                 //
 
-                let mut body_bits = reslice(in_out).to_owned();
+                let mut body_bits = in_out.to_owned();
                 self.reset(in_out);
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    break_bits: reslice(in_out).to_owned()
+                    break_bits: in_out.to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
@@ -609,7 +518,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 //
                 self.walk_expr(discr, in_out, loop_scopes);
 
-                let mut guards = reslice(in_out).to_owned();
+                let mut guards = in_out.to_owned();
 
                 // We know that exactly one arm will be taken, so we
                 // can start out with a blank slate and just union
@@ -622,7 +531,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
                     // determine the bits for the body and then union
                     // them into `in_out`, which reflects all bodies to date
-                    let mut body = reslice(guards).to_owned();
+                    let mut body = guards.to_owned();
                     self.walk_pat_alternatives(arm.pats, body, loop_scopes);
                     self.walk_block(arm.body, body, loop_scopes);
                     join_bits(&self.dfcx.oper, body, in_out);
@@ -643,7 +552,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             ast::ExprAgain(label) => {
                 let scope = self.find_scope(expr, label, loop_scopes);
                 self.pop_scopes(expr, scope, in_out);
-                self.add_to_entry_set(scope.loop_id, reslice(in_out));
+                self.add_to_entry_set(scope.loop_id, in_out);
                 self.reset(in_out);
             }
 
@@ -693,7 +602,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
             ast::ExprBinary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 self.walk_expr(l, in_out, loop_scopes);
-                let temp = reslice(in_out).to_owned();
+                let temp = in_out.to_owned();
                 self.walk_expr(r, in_out, loop_scopes);
                 join_bits(&self.dfcx.oper, temp, in_out);
             }
@@ -756,7 +665,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
         debug!("pop_scopes(from_expr={}, to_scope={:?}, in_out={})",
                from_expr.repr(tcx), to_scope.loop_id,
-               bits_to_str(reslice(in_out)));
+               bits_to_str(in_out));
 
         let mut id = from_expr.id;
         while id != to_scope.loop_id {
@@ -781,11 +690,11 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                      in_out: &mut [uint]) {
         self.pop_scopes(from_expr, to_scope, in_out);
         self.dfcx.apply_kill(from_expr.id, in_out);
-        join_bits(&self.dfcx.oper, reslice(in_out), to_scope.break_bits);
-        debug!("break_from_to(from_expr={}, to_scope={:?}) final break_bits={}",
+        join_bits(&self.dfcx.oper, in_out, to_scope.break_bits);
+        debug!("break_from_to(from_expr={}, to_scope={}) final break_bits={}",
                from_expr.repr(self.tcx()),
                to_scope.loop_id,
-               bits_to_str(reslice(in_out)));
+               bits_to_str(in_out));
     }
 
     fn walk_exprs(&mut self,
@@ -830,10 +739,10 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 in_out: &mut [uint],
                 _loop_scopes: &mut ~[LoopScope]) {
         debug!("DataFlowContext::walk_pat(pat={}, in_out={})",
-               pat.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
+               pat.repr(self.dfcx.tcx), bits_to_str(in_out));
 
         ast_util::walk_pat(pat, |p| {
-            debug!("  p.id={:?} in_out={}", p.id, bits_to_str(reslice(in_out)));
+            debug!("  p.id={} in_out={}", p.id, bits_to_str(in_out));
             self.merge_with_entry_set(p.id, in_out);
             self.dfcx.apply_gen_kill(p.id, in_out);
             true
@@ -852,7 +761,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
         // In the general case, the patterns in `pats` are
         // alternatives, so we must treat this like an N-way select
         // statement.
-        let initial_state = reslice(in_out).to_owned();
+        let initial_state = in_out.to_owned();
         for &pat in pats.iter() {
             let mut temp = initial_state.clone();
             self.walk_pat(pat, temp, loop_scopes);
@@ -929,8 +838,8 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
         let (start, end) = self.dfcx.compute_id_range(id);
         let changed = { // FIXME(#5074) awkward construction
             let on_entry = self.dfcx.on_entry.mut_slice(start, end);
-            let changed = join_bits(&self.dfcx.oper, reslice(pred_bits), on_entry);
-            copy_bits(reslice(on_entry), pred_bits);
+            let changed = join_bits(&self.dfcx.oper, pred_bits, on_entry);
+            copy_bits(on_entry, pred_bits);
             changed
         };
         if changed {
@@ -942,7 +851,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 }
 
 fn mut_bits_to_str(words: &mut [uint]) -> ~str {
-    bits_to_str(reslice(words))
+    bits_to_str(words)
 }
 
 fn bits_to_str(words: &[uint]) -> ~str {
@@ -1007,9 +916,3 @@ fn bit_str(bit: uint) -> ~str {
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 
-fn reslice<'a>(v: &'a mut [uint]) -> &'a [uint] {
-    // bFIXME(#5074) this function should not be necessary at all
-    unsafe {
-        cast::transmute(v)
-    }
-}

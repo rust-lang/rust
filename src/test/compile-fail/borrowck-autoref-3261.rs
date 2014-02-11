@@ -21,13 +21,14 @@ impl X {
 
 fn main() {
     let mut x = X(Right(main));
-    (&mut x).with(|opt| {
-        match opt {
-            &Right(ref f) => {
-                x = X(Left((0,0))); //~ ERROR cannot assign to `x`
-                (*f)()
-            },
-            _ => fail!()
-        }
-    })
+    (&mut x).with(
+        |opt| { //~ ERROR cannot borrow `x` as mutable more than once at a time
+            match opt {
+                &Right(ref f) => {
+                    x = X(Left((0,0)));
+                    (*f)()
+                },
+                _ => fail!()
+            }
+        })
 }

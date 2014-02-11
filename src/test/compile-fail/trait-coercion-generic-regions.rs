@@ -24,7 +24,7 @@ impl Trait<&'static str> for Struct {
 
 fn main() {
     let person = ~"Fred";
-    let person: &str = person;  //~ ERROR borrowed value does not live long enough
+    let person: &str = person;  //~ ERROR `person[..]` does not live long enough
     let s: ~Trait<&'static str> = ~Struct { person: person };
 }
 

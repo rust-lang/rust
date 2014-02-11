@@ -625,15 +625,17 @@ impl<'a> Iterator<char> for Normalizations<'a> {
 
         if !self.sorted {
             for ch in self.iter {
+                let buffer = &mut self.buffer;
+                let sorted = &mut self.sorted;
                 decomposer(ch, |d| {
                     let class = canonical_combining_class(d);
-                    if class == 0 && !self.sorted {
-                        canonical_sort(self.buffer);
-                        self.sorted = true;
+                    if class == 0 && !*sorted {
+                        canonical_sort(*buffer);
+                        *sorted = true;
                     }
-                    self.buffer.push((d, class));
+                    buffer.push((d, class));
                 });
-                if self.sorted { break }
+                if *sorted { break }
             }
         }
 

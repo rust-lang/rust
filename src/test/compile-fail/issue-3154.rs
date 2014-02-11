@@ -13,7 +13,7 @@ struct thing<'a, Q> {
 }
 
 fn thing<Q>(x: &Q) -> thing<Q> {
-    thing{ x: x } //~ ERROR cannot infer an appropriate lifetime
+    thing{ x: x } //~ ERROR cannot infer
 }
 
 fn main() {
