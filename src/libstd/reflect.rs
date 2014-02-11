@@ -442,6 +442,8 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    // NOTE Remove after next snapshot.
+    #[cfg(stage0)]
     fn visit_type(&mut self) -> bool {
         if ! self.inner.visit_type() { return false; }
         true

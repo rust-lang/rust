@@ -368,8 +368,7 @@ impl<'a> Reflector<'a> {
               let extra = ~[self.c_uint(p.idx)];
               self.visit("param", extra)
           }
-          ty::ty_self(..) => self.leaf("self"),
-          ty::ty_type => self.leaf("type")
+          ty::ty_self(..) => self.leaf("self")
         }
     }
 

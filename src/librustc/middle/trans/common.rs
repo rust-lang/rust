@@ -520,19 +520,6 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-// Let T be the content of a box @T.  tuplify_box_ty(t) returns the
-// representation of @T as a tuple (i.e., the ty::t version of what T_box()
-// returns).
-pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(
-        tcx,
-        ty::mt {ty: ty::mk_i8(), mutbl: ast::MutImmutable}
-    );
-    return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
-                         ptr, ptr,
-                         t]);
-}
-
 // LLVM constant constructors.
 pub fn C_null(t: Type) -> ValueRef {
     unsafe {
