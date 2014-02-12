@@ -1725,14 +1725,17 @@ mod bar {
 pub type int8_t = i8;
 ~~~~
 
-> **Note:** In future versions of Rust, user-provided extensions to the compiler will be able to interpret attributes.
-> When this facility is provided, the compiler will distinguish between language-reserved and user-available attributes.
+> **Note:** In future versions of Rust, user-provided extensions to the compiler
+> will be able to interpret attributes.  When this facility is provided, the
+> compiler will distinguish between language-reserved and user-available
+> attributes.
 
-At present, only the Rust compiler interprets attributes, so all attribute
-names are effectively reserved. Some significant attributes include:
+At present, only the Rust compiler interprets attributes, so all attribute names
+are effectively reserved. Some significant attributes include:
 
 * The `doc` attribute, for documenting code in-place.
-* The `cfg` attribute, for conditional-compilation by build-configuration.
+* The `cfg` attribute, for conditional-compilation by build-configuration (see
+  [Conditional compilation](#conditional-compilation)).
 * The `crate_id` attribute, for describing the package ID of a crate.
 * The `lang` attribute, for custom definitions of traits and functions that are
   known to the Rust compiler (see [Language items](#language-items)).
@@ -1740,15 +1743,76 @@ names are effectively reserved. Some significant attributes include:
 * The `test` attribute, for marking functions as unit tests.
 * The `allow`, `warn`, `forbid`, and `deny` attributes, for
   controlling lint checks (see [Lint check attributes](#lint-check-attributes)).
-* The `deriving` attribute, for automatically generating
-  implementations of certain traits.
+* The `deriving` attribute, for automatically generating implementations of
+  certain traits.
 * The `inline` attribute, for expanding functions at caller location (see
   [Inline attributes](#inline-attributes)).
-* The `static_assert` attribute, for asserting that a static bool is true at compiletime
-* The `thread_local` attribute, for defining a `static mut` as a thread-local. Note that this is
-  only a low-level building block, and is not local to a *task*, nor does it provide safety.
+* The `static_assert` attribute, for asserting that a static bool is true at
+  compiletime.
+* The `thread_local` attribute, for defining a `static mut` as a thread-local.
+  Note that this is only a low-level building block, and is not local to a
+  *task*, nor does it provide safety.
 
 Other attributes may be added or removed during development of the language.
+
+### Conditional compilation
+
+Sometimes one wants to have different compiler outputs from the same code,
+depending on build target, such as targeted operating system, or to enable
+release builds.
+
+There are two kinds of configuration options, one that is either defined or not
+(`#[cfg(foo)]`), and the other that contains a string that can be checked
+against (`#[cfg(bar = "baz")]` (currently only compiler-defined configuration
+options can have the latter form).
+
+~~~~
+// The function is only included in the build when compiling for OSX
+#[cfg(target_os = "macos")]
+fn macos_only() {
+  // ...
+}
+
+// This function is only included when either foo or bar is defined
+#[cfg(foo)]
+#[cfg(bar)]
+fn needs_foo_or_bar() {
+  // ...
+}
+
+// This function is only included when compiling for a unixish OS with a 32-bit
+// architecture
+#[cfg(unix, target_word_size = "32")]
+fn on_32bit_unix() {
+  // ...
+}
+~~~~
+
+This illustrates some conditional compilation can be achieved using the
+`#[cfg(...)]` attribute. Note that `#[cfg(foo, bar)]` is a condition that needs
+both `foo` and `bar` to be defined while `#[cfg(foo)] #[cfg(bar)]` only needs
+one of `foo` and `bar` to be defined (this resembles in the disjunctive normal
+form). Additionally, one can reverse a condition by enclosing it in a
+`not(...)`, like e. g. `#[cfg(not(target_os = "win32"))]`.
+
+To pass a configuration option which triggers a `#[cfg(identifier)]` one can use
+`rustc --cfg identifier`. In addition to that, the following configurations are
+pre-defined by the compiler:
+
+ * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
+   `"mips"`, or `"arm"`.
+ * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
+   `"big"`.
+ * `target_family = "..."`. Operating system family of the target, e. g.
+   `"unix"` or `"windows"`. The value of this configuration option is defined as
+   a configuration itself, like `unix` or `windows`.
+ * `target_os = "..."`. Operating system of the target, examples include
+   `"win32"`, `"macos"`, `"linux"`, `"android"` or `"freebsd"`.
+ * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
+   for 32-bit CPU targets, and likewise set to `"64"` for 64-bit CPU targets.
+ * `test`. Only set in test builds (`rustc --test`).
+ * `unix`. See `target_family`.
+ * `windows`. See `target_family`.
 
 ### Lint check attributes
 
