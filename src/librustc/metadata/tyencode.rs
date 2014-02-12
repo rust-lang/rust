@@ -328,7 +328,6 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
         ty::ty_self(did) => {
             mywrite!(w, "s{}|", (cx.ds)(did));
         }
-        ty::ty_type => mywrite!(w, "Y"),
         ty::ty_struct(def, ref substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);

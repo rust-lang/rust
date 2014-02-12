@@ -756,7 +756,6 @@ pub enum sty {
             // on non-useful type error messages)
 
     // "Fake" types, used for trans purposes
-    ty_type, // type_desc*
     ty_unboxed_vec(mt),
 }
 
@@ -1181,7 +1180,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= get(mt.ty).flags;
       }
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str(_) | &ty_type => {}
+      &ty_str(_) => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1444,8 +1443,6 @@ pub fn mk_param(cx: ctxt, n: uint, k: DefId) -> t {
     mk_t(cx, ty_param(param_ty { idx: n, def_id: k }))
 }
 
-pub fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
-
 pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1456,7 +1453,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str(_) | ty_type | ty_self(_) |
+        ty_str(_) | ty_self(_) |
         ty_infer(_) | ty_param(_) | ty_err => {}
         ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
         ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
@@ -1730,7 +1727,7 @@ pub fn type_is_unique(ty: t) -> bool {
 pub fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
+      ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) |
       ty_bare_fn(..) | ty_ptr(_) => true,
       _ => false
     }
@@ -2216,8 +2213,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
             ty_unboxed_vec(mt) => TC::InteriorUnsized | tc_mt(cx, mt, cache),
 
-            ty_type => TC::None,
-
             ty_err => {
                 cx.sess.bug("asked to compute contents of error type");
             }
@@ -2401,7 +2396,6 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_err |
             ty_param(_) |
             ty_self(_) |
-            ty_type |
             ty_vec(_, _) |
             ty_unboxed_vec(_) => {
                 false
@@ -2628,7 +2622,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
     match get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
+      ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
       ty_str(vstore_uniq) |
@@ -3556,7 +3550,7 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
-        ty_uint(_) | ty_float(_) | ty_str(_) | ty_type => {
+        ty_uint(_) | ty_float(_) | ty_str(_) => {
             ::util::ppaux::ty_to_str(cx, t)
         }
 
@@ -5120,9 +5114,8 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             }
             ty_infer(_) => unreachable!(),
             ty_err => hash.input([23]),
-            ty_type => hash.input([24]),
             ty_unboxed_vec(m) => {
-                hash.input([25]);
+                hash.input([24]);
                 mt(&mut hash, m);
             }
         }

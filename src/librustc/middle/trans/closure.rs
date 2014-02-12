@@ -152,8 +152,12 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-pub fn allocate_cbox<'a>(
-                     bcx: &'a Block<'a>,
+fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+    let ptr = ty::mk_imm_ptr(tcx, ty::mk_i8());
+    ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t])
+}
+
+fn allocate_cbox<'a>(bcx: &'a Block<'a>,
                      sigil: ast::Sigil,
                      cdata_ty: ty::t)
                      -> Result<'a> {
