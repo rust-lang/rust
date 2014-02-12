@@ -26,10 +26,10 @@ To load the extension and use it:
 extern mod fourcc;
 
 fn main() {
-    let val = fourcc!("\xC0\xFF\xEE!")
-    // val is 0xC0FFEE21
-    let big_val = fourcc!("foo ", big);
-    // big_val is 0x21EEFFC0
+    let val = fourcc!("\xC0\xFF\xEE!");
+    assert_eq!(val, 0xC0FFEE21u32);
+    let little_val = fourcc!("foo ", little);
+    assert_eq!(little_val, 0x21EEFFC0u32);
 }
  ```
 
@@ -60,7 +60,6 @@ use syntax::parse::token;
 use syntax::parse::token::InternedString;
 
 #[macro_registrar]
-#[cfg(not(test))]
 pub fn macro_registrar(register: |Name, SyntaxExtension|) {
     register(token::intern("fourcc"),
         NormalTT(~BasicMacroExpander {
@@ -155,6 +154,6 @@ fn target_endian_little(cx: &ExtCtxt, sp: Span) -> bool {
     contains(cx.cfg(), meta)
 }
 
-// Fixes LLVM assert on Windows
+// FIXME (10872): This is required to prevent an LLVM assert on Windows
 #[test]
 fn dummy_test() { }
