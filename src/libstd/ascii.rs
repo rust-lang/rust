@@ -17,6 +17,7 @@ use str::StrSlice;
 use str::OwnedStr;
 use container::Container;
 use cast;
+use fmt;
 use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
 use to_bytes::IterBytes;
@@ -131,6 +132,12 @@ impl ToStr for Ascii {
     fn to_str(&self) -> ~str {
         // self.chr is always a valid utf8 byte, no need for the check
         unsafe { str::raw::from_byte(self.chr) }
+    }
+}
+
+impl<'a> fmt::Show for Ascii {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (self.chr as char).fmt(f)
     }
 }
 
@@ -698,5 +705,9 @@ mod tests {
         assert_eq!(s, ~"t");
     }
 
-
+    #[test]
+    fn test_show() {
+        let c = Ascii { chr: 't' as u8 };
+        assert_eq!(format!("{}", c), ~"t");
+    }
 }
