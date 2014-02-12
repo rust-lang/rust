@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test #2978
-
 struct Foo {
     f: proc()
 }
 
-fn call(x: @Foo) {
-    x.f(); //~ ERROR foo
-    //~^ NOTE bar
+fn call(x: Foo) {
+    x.f(); //~ ERROR does not implement any method in scope named `f`
 }
 
 fn main() {}
