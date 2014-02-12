@@ -1200,19 +1200,21 @@ pub enum SeekStyle {
     SeekCur,
 }
 
-/// # FIXME
-/// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     /// Return position of file cursor in the stream
     fn tell(&self) -> IoResult<u64>;
 
     /// Seek to an offset in a stream
     ///
-    /// A successful seek clears the EOF indicator.
+    /// A successful seek clears the EOF indicator. Seeking beyond EOF is
+    /// allowed, but seeking before position 0 is not allowed.
     ///
-    /// # FIXME
+    /// # Errors
     ///
-    /// * What is the behavior when seeking past the end of a stream?
+    /// * Seeking to a negative offset is considered an error
+    /// * Seeking past the end of the stream does not modify the underlying
+    ///   stream, but the next write may cause the previous data to be filled in
+    ///   with a bit pattern.
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()>;
 }
 
