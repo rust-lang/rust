@@ -14,12 +14,12 @@
 //! Starting implementation of a btree for rust.
 //! Structure inspired by github user davidhalperin's gist.
 
-#[allow(dead_code)];
-#[allow(unused_variable)];
-
 ///A B-tree contains a root node (which contains a vector of elements),
 ///a length (the height of the tree), and lower and upper bounds on the
 ///number of elements that a given node can contain.
+
+use std::vec::OwnedVector;
+
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
     priv root: Node<K, V>,
@@ -28,14 +28,10 @@ pub struct BTree<K, V> {
     priv upper_bound: uint
 }
 
-//We would probably want to remove the dependence on the Clone trait in the future.
-//It is here as a crutch to ensure values can be passed around through the tree's nodes
-//especially during insertions and deletions.
-//Using the swap or replace methods is one option for replacing dependence on Clone, or
-//changing the way in which the BTree is stored could also potentially work.
 impl<K: TotalOrd, V> BTree<K, V> {
 
     ///Returns new BTree with root node (leaf) and user-supplied lower bound
+    ///The lower bound applies to every node except the root node.
     pub fn new(k: K, v: V, lb: uint) -> BTree<K, V> {
         BTree {
             root: Node::new_leaf(~[LeafElt::new(k, v)]),
@@ -57,21 +53,33 @@ impl<K: TotalOrd, V> BTree<K, V> {
             upper_bound: 2 * lb
         }
     }
-
-
-    ///Stub for add method in progress.
-    pub fn add(self, k: K, v: V) -> BTree<K, V> {
-        //replace(&self.root,self.root.add(k, v));
-        return BTree::new(k, v, 2);
-    }
 }
 
-impl<K: TotalOrd, V: Clone> BTree<K, V> {
-
+//We would probably want to remove the dependence on the Clone trait in the future.
+//It is here as a crutch to ensure values can be passed around through the tree's nodes
+//especially during insertions and deletions.
+impl<K: Clone + TotalOrd, V: Clone> BTree<K, V> {
     ///Returns the value of a given key, which may not exist in the tree.
     ///Calls the root node's get method.
     pub fn get(self, k: K) -> Option<V> {
         return self.root.get(k);
+    }
+
+    ///An insert method that uses the clone() feature for support.
+    pub fn insert(mut self, k: K, v: V) -> BTree<K, V> {
+        let (a, b) = self.root.clone().insert(k, v, self.upper_bound.clone());
+        if b {
+            match a.clone() {
+                LeafNode(leaf) => {
+                    self.root = Node::new_leaf(leaf.clone().elts);
+                }
+                BranchNode(branch) => {
+                    self.root = Node::new_branch(branch.clone().elts,
+                                                 branch.clone().rightmost_child);
+                }
+            }
+        }
+        self
     }
 }
 
@@ -120,40 +128,50 @@ enum Node<K, V> {
 
 //Node functions/methods
 impl<K: TotalOrd, V> Node<K, V> {
-
-    ///Differentiates between leaf and branch nodes.
-    fn is_leaf(&self) -> bool {
-        match self{
-            &LeafNode(..) => true,
-            &BranchNode(..) => false
-        }
-    }
-
     ///Creates a new leaf node given a vector of elements.
     fn new_leaf(vec: ~[LeafElt<K, V>]) -> Node<K,V> {
         LeafNode(Leaf::new(vec))
     }
-
 
     ///Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
     fn new_branch(vec: ~[BranchElt<K, V>], right: ~Node<K, V>) -> Node<K, V> {
         BranchNode(Branch::new(vec, right))
     }
 
-    ///A placeholder/stub for add
-    ///Currently returns a leaf node with a single value (the added one)
-    fn add(self, k: K, v: V) -> Node<K, V> {
-        return Node::new_leaf(~[LeafElt::new(k, v)]);
+    ///Determines whether the given Node contains a Branch or a Leaf.
+    ///Used in testing.
+    fn is_leaf(&self) -> bool {
+        match self {
+            &LeafNode(..) => true,
+            &BranchNode(..) => false
+        }
     }
+
+    ///A binary search function for Nodes.
+    ///Calls either the Branch's or the Leaf's bsearch function.
+    fn bsearch_node(&self, k: K) -> Option<uint> {
+         match self {
+             &LeafNode(ref leaf) => leaf.bsearch_leaf(k),
+             &BranchNode(ref branch) => branch.bsearch_branch(k)
+         }
+     }
 }
 
-impl<K: TotalOrd, V: Clone> Node<K, V> {
+impl<K: Clone + TotalOrd, V: Clone> Node<K, V> {
     ///Returns the corresponding value to the provided key.
     ///get() is called in different ways on a branch or a leaf.
     fn get(&self, k: K) -> Option<V> {
         match *self {
             LeafNode(ref leaf) => return leaf.get(k),
             BranchNode(ref branch) => return branch.get(k)
+        }
+    }
+
+    ///Matches on the Node, then performs and returns the appropriate insert method.
+    fn insert(self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
+        match self {
+            LeafNode(leaf) => leaf.insert(k, v, ub),
+            BranchNode(branch) => branch.insert(k, v, ub)
         }
     }
 }
@@ -174,20 +192,23 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Node<K, V> {
 }
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V> {
-    ///Returns whether two nodes are equal
+    ///Returns whether two nodes are equal based on the keys of each element.
+    ///Two nodes are equal if all of their keys are the same.
     fn equals(&self, other: &Node<K, V>) -> bool{
         match *self{
             BranchNode(ref branch) => {
-                match *other{
+                if other.is_leaf() {
+                    return false;
+                }
+                match *other {
                     BranchNode(ref branch2) => branch.cmp(branch2) == Equal,
-                    LeafNode(ref leaf) => false
+                    LeafNode(..) => false
                 }
             }
-
             LeafNode(ref leaf) => {
-                match *other{
+                match *other {
                     LeafNode(ref leaf2) => leaf.cmp(leaf2) == Equal,
-                    BranchNode(ref branch) => false
+                    BranchNode(..) => false
                 }
             }
         }
@@ -216,7 +237,9 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
 
 impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V> {
     ///Returns a string representation of a Node.
-    ///The Branch's to_str() is not implemented yet.
+    ///Will iterate over the Node and show "Key: x, value: y, child: () // "
+    ///for all elements in the Node. "Child" only exists if the Node contains
+    ///a branch.
     fn to_str(&self) -> ~str {
         match *self {
             LeafNode(ref leaf) => leaf.to_str(),
@@ -247,15 +270,59 @@ impl<K: TotalOrd, V> Leaf<K, V> {
         }
     }
 
-    ///Placeholder for add method in progress.
-    ///Currently returns a new Leaf containing a single LeafElt.
-    fn add(&self, k: K, v: V) -> Node<K, V> {
-        return Node::new_leaf(~[LeafElt::new(k, v)]);
+    ///Searches a leaf for a spot for a new element using a binary search.
+    ///Returns None if the element is already in the vector.
+    fn bsearch_leaf(&self, k: K) -> Option<uint> {
+        let mut high: uint = self.elts.len();
+        let mut low: uint = 0;
+        let mut midpoint: uint = (high - low) / 2 ;
+        if midpoint == high {
+            midpoint = 0;
+        }
+        loop {
+            let order = self.elts[midpoint].key.cmp(&k);
+            match order {
+                Equal => {
+                    return None;
+                }
+                Greater => {
+                    if midpoint > 0 {
+                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
+                            return Some(midpoint);
+                        }
+                        else {
+                            let tmp = midpoint;
+                            midpoint = midpoint / 2;
+                            high = tmp;
+                            continue;
+                        }
+                    }
+                    else {
+                        return Some(0);
+                    }
+                }
+                Less => {
+                    if midpoint + 1 < self.elts.len() {
+                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
+                            return Some(midpoint);
+                        }
+                        else {
+                            let tmp = midpoint;
+                            midpoint = (high + low) / 2;
+                            low = tmp;
+                        }
+                    }
+                    else {
+                        return Some(self.elts.len());
+                    }
+                }
+            }
+        }
     }
-
 }
 
-impl<K: TotalOrd, V: Clone> Leaf<K, V> {
+
+impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
     ///Returns the corresponding value to the supplied key.
     fn get(&self, k: K) -> Option<V> {
         for s in self.elts.iter() {
@@ -266,6 +333,43 @@ impl<K: TotalOrd, V: Clone> Leaf<K, V> {
             }
         }
         return None;
+    }
+
+    ///Uses clone() to facilitate inserting new elements into a tree.
+    fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
+        let to_insert = LeafElt::new(k, v);
+        let index: Option<uint> = self.bsearch_leaf(to_insert.clone().key);
+        //Check index to see whether we actually inserted the element into the vector.
+        match index {
+            //If the index is None, the new element already exists in the vector.
+            None => {
+                return (Node::new_leaf(self.clone().elts), false);
+            }
+            //If there is an index, insert at that index.
+            _ => {
+                if index.unwrap() >= self.elts.len() {
+                    self.elts.push(to_insert.clone());
+                }
+                else {
+                    self.elts.insert(index.unwrap(), to_insert.clone());
+                }
+            }
+        }
+        //If we have overfilled the vector (by making its size greater than the
+        //upper bound), we return a new Branch with one element and two children.
+        if self.elts.len() > ub {
+            let midpoint_opt = self.elts.remove(ub / 2);
+            let midpoint = midpoint_opt.unwrap();
+            let (left_leaf, right_leaf) = self.elts.partition(|le|
+                                                              le.key.cmp(&midpoint.key.clone())
+                                                              == Less);
+            let branch_return = Node::new_branch(~[BranchElt::new(midpoint.key.clone(),
+                                                                  midpoint.value.clone(),
+                                                             ~Node::new_leaf(left_leaf))],
+                                            ~Node::new_leaf(right_leaf));
+            return (branch_return, true);
+        }
+        (Node::new_leaf(self.elts.clone()), true)
     }
 }
 
@@ -314,13 +418,56 @@ impl<K: TotalOrd, V> Branch<K, V> {
         }
     }
 
-    ///Placeholder for add method in progress
-    fn add(&self, k: K, v: V) -> Node<K, V> {
-        return Node::new_leaf(~[LeafElt::new(k, v)]);
+    fn bsearch_branch(&self, k: K) -> Option<uint> {
+        let mut midpoint: uint = self.elts.len() / 2;
+        let mut high: uint = self.elts.len();
+        let mut low: uint = 0u;
+        if midpoint == high {
+            midpoint = 0u;
+        }
+        loop {
+            let order = self.elts[midpoint].key.cmp(&k);
+            match order {
+                Equal => {
+                    return None;
+                }
+                Greater => {
+                    if midpoint > 0 {
+                        if self.elts[midpoint - 1].key.cmp(&k) == Less {
+                            return Some(midpoint);
+                        }
+                        else {
+                            let tmp = midpoint;
+                            midpoint = (midpoint - low) / 2;
+                            high = tmp;
+                            continue;
+                        }
+                    }
+                    else {
+                        return Some(0);
+                    }
+                }
+                Less => {
+                    if midpoint + 1 < self.elts.len() {
+                        if self.elts[midpoint + 1].key.cmp(&k) == Greater {
+                            return Some(midpoint);
+                        }
+                        else {
+                            let tmp = midpoint;
+                            midpoint = (high - midpoint) / 2;
+                            low = tmp;
+                        }
+                    }
+                    else {
+                        return Some(self.elts.len());
+                    }
+                }
+            }
+        }
     }
 }
 
-impl<K: TotalOrd, V: Clone> Branch<K, V> {
+impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
     ///Returns the corresponding value to the supplied key.
     ///If the key is not there, find the child that might hold it.
     fn get(&self, k: K) -> Option<V> {
@@ -333,6 +480,114 @@ impl<K: TotalOrd, V: Clone> Branch<K, V> {
             }
         }
         self.rightmost_child.get(k)
+    }
+
+    ///An insert method that uses .clone() for support.
+    fn insert(mut self, k: K, v: V, ub: uint) -> (Node<K, V>, bool) {
+        let mut new_branch = Node::new_branch(self.clone().elts, self.clone().rightmost_child);
+        let mut outcome = false;
+        let index: Option<uint> = new_branch.bsearch_node(k.clone());
+        //First, find which path down the tree will lead to the appropriate leaf
+        //for the key-value pair.
+        match index.clone() {
+            None => {
+                return (Node::new_branch(self.clone().elts,
+                                         self.clone().rightmost_child),
+                        outcome);
+            }
+            _ => {
+                if index.unwrap() == self.elts.len() {
+                    let new_outcome = self.clone().rightmost_child.insert(k.clone(),
+                                                                       v.clone(),
+                                                                       ub.clone());
+                    new_branch = new_outcome.clone().n0();
+                    outcome = new_outcome.n1();
+                }
+                else {
+                    let new_outcome = self.clone().elts[index.unwrap()].left.insert(k.clone(),
+                                                                                 v.clone(),
+                                                                                 ub.clone());
+                    new_branch = new_outcome.clone().n0();
+                    outcome = new_outcome.n1();
+                }
+                //Check to see whether a branch or a leaf was returned from the
+                //tree traversal.
+                match new_branch.clone() {
+                    //If we have a leaf, we do not need to resize the tree,
+                    //so we can return false.
+                    LeafNode(..) => {
+                        if index.unwrap() == self.elts.len() {
+                            self.rightmost_child = ~new_branch.clone();
+                        }
+                        else {
+                            self.elts[index.unwrap()].left = ~new_branch.clone();
+                        }
+                        return (Node::new_branch(self.clone().elts,
+                                                 self.clone().rightmost_child),
+                                true);
+                    }
+                    //If we have a branch, we might need to refactor the tree.
+                    BranchNode(..) => {}
+                }
+            }
+        }
+        //If we inserted something into the tree, do the following:
+        if outcome {
+            match new_branch.clone() {
+                //If we have a new leaf node, integrate it into the current branch
+                //and return it, saying we have inserted a new element.
+                LeafNode(..) => {
+                    if index.unwrap() == self.elts.len() {
+                        self.rightmost_child = ~new_branch;
+                    }
+                    else {
+                        self.elts[index.unwrap()].left = ~new_branch;
+                    }
+                    return (Node::new_branch(self.clone().elts,
+                                             self.clone().rightmost_child),
+                            true);
+                }
+                //If we have a new branch node, attempt to insert it into the tree
+                //as with the key-value pair, then check to see if the node is overfull.
+                BranchNode(branch) => {
+                    let new_elt = branch.clone().elts[0];
+                    let new_elt_index = self.bsearch_branch(new_elt.clone().key);
+                    match new_elt_index {
+                        None => {
+                            return (Node::new_branch(self.clone().elts,
+                                                     self.clone().rightmost_child),
+                                    false);
+                            }
+                        _ => {
+                            self.elts.insert(new_elt_index.unwrap(), new_elt);
+                            if new_elt_index.unwrap() + 1 >= self.elts.len() {
+                                self.rightmost_child = branch.clone().rightmost_child;
+                            }
+                            else {
+                                self.elts[new_elt_index.unwrap() + 1].left =
+                                    branch.clone().rightmost_child;
+                            }
+                        }
+                    }
+                }
+            }
+            //If the current node is overfilled, create a new branch with one element
+            //and two children.
+            if self.elts.len() > ub {
+                let midpoint = self.elts.remove(ub / 2).unwrap();
+                let (new_left, new_right) = self.clone().elts.partition(|le|
+                                                                midpoint.key.cmp(&le.key)
+                                                                        == Greater);
+                new_branch = Node::new_branch(
+                    ~[BranchElt::new(midpoint.clone().key,
+                                     midpoint.clone().value,
+                                     ~Node::new_branch(new_left,
+                                                       midpoint.clone().left))],
+                    ~Node::new_branch(new_right, self.clone().rightmost_child));
+                return (new_branch, true);
+            }
+        }
+        (Node::new_branch(self.elts.clone(), self.rightmost_child.clone()), outcome)
     }
 }
 
@@ -368,7 +623,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
     fn to_str(&self) -> ~str {
         let mut ret = self.elts.iter().map(|s| s.to_str()).to_owned_vec().connect(" // ");
         ret.push_str(" // ");
-        ret.push_str(self.rightmost_child.to_str());
+        ret.push_str("rightmost child: ("+ self.rightmost_child.to_str() +") ");
         ret
     }
 }
@@ -379,9 +634,9 @@ struct LeafElt<K, V> {
     value: V
 }
 
-//A BranchElt has a left child in addition to a key-value pair.
+//A BranchElt has a left child in insertition to a key-value pair.
 struct BranchElt<K, V> {
-    left: Node<K, V>,
+    left: ~Node<K, V>,
     key: K,
     value: V
 }
@@ -392,36 +647,6 @@ impl<K: TotalOrd, V> LeafElt<K, V> {
         LeafElt {
             key: k,
             value: v
-        }
-    }
-
-    ///Compares another LeafElt against itself and determines whether
-    ///the original LeafElt's key is less than the other one's key.
-    fn less_than(&self, other: LeafElt<K, V>) -> bool {
-        let order = self.key.cmp(&other.key);
-        match order {
-            Less => true,
-            _ => false
-        }
-    }
-
-    ///Compares another LeafElt against itself and determines whether
-    ///the original LeafElt's key is greater than the other one's key.
-    fn greater_than(&self, other: LeafElt<K, V>) -> bool {
-        let order = self.key.cmp(&other.key);
-        match order {
-            Greater => true,
-            _ => false
-        }
-    }
-
-    ///Takes a key and determines whether its own key and the supplied key
-    ///are the same.
-    fn has_key(&self, other: K) -> bool {
-        let order = self.key.cmp(&other);
-        match order {
-            Equal => true,
-            _ => false
         }
     }
 }
@@ -457,18 +682,12 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for LeafElt<K, V> {
 
 impl<K: TotalOrd, V> BranchElt<K, V> {
     ///Creates a new BranchElt from a supplied key, value, and left child.
-    fn new(k: K, v: V, n: Node<K, V>) -> BranchElt<K, V> {
+    fn new(k: K, v: V, n: ~Node<K, V>) -> BranchElt<K, V> {
         BranchElt {
             left: n,
             key: k,
             value: v
         }
-    }
-
-    ///Placeholder for add method in progress.
-    ///Overall implementation will determine the actual return value of this method.
-    fn add(&self, k: K, v: V) -> LeafElt<K, V> {
-        return LeafElt::new(k, v);
     }
 }
 
@@ -500,7 +719,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
     ///Returns string containing key, value, and child (which should recur to a leaf)
     ///Consider changing in future to be more readable.
     fn to_str(&self) -> ~str {
-        format!("Key: {}, value: {}, child: {};",
+        format!("Key: {}, value: {}, (child: {})",
             self.key.to_str(), self.value.to_str(), self.left.to_str())
     }
 }
@@ -508,15 +727,90 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
 #[cfg(test)]
 mod test_btree {
 
-    use super::{BTree, LeafElt};
+    use super::{BTree, Node, LeafElt};
 
-    //Tests the functionality of the add methods (which are unfinished).
-    /*#[test]
-    fn add_test(){
+    //Tests the functionality of the insert methods (which are unfinished).
+    #[test]
+    fn insert_test_one() {
         let b = BTree::new(1, ~"abc", 2);
-        let is_add = b.add(2, ~"xyz");
-        assert!(is_add);
-    }*/
+        let is_insert = b.insert(2, ~"xyz");
+        //println!("{}", is_insert.clone().to_str());
+        assert!(is_insert.root.is_leaf());
+    }
+
+    #[test]
+    fn insert_test_two() {
+        let leaf_elt_1 = LeafElt::new(1, ~"aaa");
+        let leaf_elt_2 = LeafElt::new(2, ~"bbb");
+        let leaf_elt_3 = LeafElt::new(3, ~"ccc");
+        let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3]);
+        let b = BTree::new_with_node_len(n, 3, 2);
+        //println!("{}", b.clone().insert(4, ~"ddd").to_str());
+        assert!(b.insert(4, ~"ddd").root.is_leaf());
+    }
+
+    #[test]
+    fn insert_test_three() {
+        let leaf_elt_1 = LeafElt::new(1, ~"aaa");
+        let leaf_elt_2 = LeafElt::new(2, ~"bbb");
+        let leaf_elt_3 = LeafElt::new(3, ~"ccc");
+        let leaf_elt_4 = LeafElt::new(4, ~"ddd");
+        let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4]);
+        let b = BTree::new_with_node_len(n, 3, 2);
+        //println!("{}", b.clone().insert(5, ~"eee").to_str());
+        assert!(!b.insert(5, ~"eee").root.is_leaf());
+    }
+
+    #[test]
+    fn insert_test_four() {
+        let leaf_elt_1 = LeafElt::new(1, ~"aaa");
+        let leaf_elt_2 = LeafElt::new(2, ~"bbb");
+        let leaf_elt_3 = LeafElt::new(3, ~"ccc");
+        let leaf_elt_4 = LeafElt::new(4, ~"ddd");
+        let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4]);
+        let mut b = BTree::new_with_node_len(n, 3, 2);
+        b = b.clone().insert(5, ~"eee");
+        b = b.clone().insert(6, ~"fff");
+        b = b.clone().insert(7, ~"ggg");
+        b = b.clone().insert(8, ~"hhh");
+        b = b.clone().insert(0, ~"omg");
+        //println!("{}", b.clone().to_str());
+        assert!(!b.root.is_leaf());
+    }
+
+    #[test]
+    fn bsearch_test_one() {
+        let b = BTree::new(1, ~"abc", 2);
+        assert_eq!(Some(1), b.root.bsearch_node(2));
+    }
+
+    #[test]
+    fn bsearch_test_two() {
+        let b = BTree::new(1, ~"abc", 2);
+        assert_eq!(Some(0), b.root.bsearch_node(0));
+    }
+
+    #[test]
+    fn bsearch_test_three() {
+        let leaf_elt_1 = LeafElt::new(1, ~"aaa");
+        let leaf_elt_2 = LeafElt::new(2, ~"bbb");
+        let leaf_elt_3 = LeafElt::new(4, ~"ccc");
+        let leaf_elt_4 = LeafElt::new(5, ~"ddd");
+        let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4]);
+        let b = BTree::new_with_node_len(n, 3, 2);
+        assert_eq!(Some(2), b.root.bsearch_node(3));
+    }
+
+    #[test]
+    fn bsearch_test_four() {
+        let leaf_elt_1 = LeafElt::new(1, ~"aaa");
+        let leaf_elt_2 = LeafElt::new(2, ~"bbb");
+        let leaf_elt_3 = LeafElt::new(4, ~"ccc");
+        let leaf_elt_4 = LeafElt::new(5, ~"ddd");
+        let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4]);
+        let b = BTree::new_with_node_len(n, 3, 2);
+        assert_eq!(Some(4), b.root.bsearch_node(800));
+    }
 
     //Tests the functionality of the get method.
     #[test]
@@ -524,30 +818,6 @@ mod test_btree {
         let b = BTree::new(1, ~"abc", 2);
         let val = b.get(1);
         assert_eq!(val, Some(~"abc"));
-    }
-
-    //Tests the LeafElt's less_than() method.
-    #[test]
-    fn leaf_lt() {
-        let l1 = LeafElt::new(1, ~"abc");
-        let l2 = LeafElt::new(2, ~"xyz");
-        assert!(l1.less_than(l2));
-    }
-
-
-    //Tests the LeafElt's greater_than() method.
-    #[test]
-    fn leaf_gt() {
-        let l1 = LeafElt::new(1, ~"abc");
-        let l2 = LeafElt::new(2, ~"xyz");
-        assert!(l2.greater_than(l1));
-    }
-
-    //Tests the LeafElt's has_key() method.
-    #[test]
-    fn leaf_hk() {
-        let l1 = LeafElt::new(1, ~"abc");
-        assert!(l1.has_key(1));
     }
 
     //Tests the BTree's clone() method.
