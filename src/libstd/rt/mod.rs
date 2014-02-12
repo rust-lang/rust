@@ -73,6 +73,7 @@ pub use self::unwind::{begin_unwind, begin_unwind_raw, begin_unwind_fmt};
 // FIXME: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
+    #[cfg(not(test))]
     pub use super::local_ptr::native::maybe_tls_key;
     #[cfg(not(windows), not(target_os = "android"))]
     pub use super::local_ptr::compiled::RT_TLS_PTR;

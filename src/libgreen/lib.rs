@@ -193,6 +193,7 @@ use task::GreenTask;
 
 mod macros;
 mod simple;
+mod message_queue;
 
 pub mod basic;
 pub mod context;
@@ -314,7 +315,7 @@ pub struct SchedPool {
 #[deriving(Clone)]
 struct TaskState {
     cnt: UnsafeArc<AtomicUint>,
-    done: SharedChan<()>,
+    done: Chan<()>,
 }
 
 impl SchedPool {
@@ -468,7 +469,7 @@ impl SchedPool {
 
 impl TaskState {
     fn new() -> (Port<()>, TaskState) {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         (p, TaskState {
             cnt: UnsafeArc::new(AtomicUint::new(0)),
             done: c,

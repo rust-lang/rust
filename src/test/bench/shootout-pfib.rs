@@ -28,13 +28,13 @@ use std::task;
 use std::uint;
 
 fn fib(n: int) -> int {
-    fn pfib(c: &SharedChan<int>, n: int) {
+    fn pfib(c: &Chan<int>, n: int) {
         if n == 0 {
             c.send(0);
         } else if n <= 2 {
             c.send(1);
         } else {
-            let (pp, cc) = SharedChan::new();
+            let (pp, cc) = Chan::new();
             let ch = cc.clone();
             task::spawn(proc() pfib(&ch, n - 1));
             let ch = cc.clone();
@@ -43,7 +43,7 @@ fn fib(n: int) -> int {
         }
     }
 
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
     let _t = task::spawn(proc() pfib(&ch, n) );
     p.recv()
 }

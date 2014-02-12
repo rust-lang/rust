@@ -22,7 +22,6 @@
 //! that you would find on the respective platform.
 
 use std::c_str::CString;
-use std::comm::SharedChan;
 use std::io;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
@@ -289,7 +288,7 @@ impl rtio::IoFactory for IoFactory {
             })
         }
     }
-    fn signal(&mut self, _signal: Signum, _channel: SharedChan<Signum>)
+    fn signal(&mut self, _signal: Signum, _channel: Chan<Signum>)
         -> IoResult<~RtioSignal> {
         Err(unimpl())
     }

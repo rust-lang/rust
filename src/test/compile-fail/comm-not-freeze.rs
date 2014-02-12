@@ -13,5 +13,5 @@ fn test<T: Freeze>() {}
 fn main() {
     test::<Chan<int>>();        //~ ERROR: does not fulfill `Freeze`
     test::<Port<int>>();        //~ ERROR: does not fulfill `Freeze`
-    test::<SharedChan<int>>();  //~ ERROR: does not fulfill `Freeze`
+    test::<Chan<int>>();  //~ ERROR: does not fulfill `Freeze`
 }

@@ -13,7 +13,7 @@
 use std::task;
 
 pub fn main() {
-    let (po, ch) = SharedChan::new();
+    let (po, ch) = Chan::new();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
@@ -37,7 +37,7 @@ pub fn main() {
     info!("main thread exiting");
 }
 
-fn child(x: int, ch: &SharedChan<int>) {
+fn child(x: int, ch: &Chan<int>) {
     info!("{}", x);
     ch.send(x);
 }
