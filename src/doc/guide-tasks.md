@@ -232,7 +232,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 ~~~
 # use std::task::spawn;
 
-let (port, chan) = SharedChan::new();
+let (port, chan) = Chan::new();
 
 for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task

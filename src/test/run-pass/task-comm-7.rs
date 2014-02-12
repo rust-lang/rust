@@ -18,7 +18,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &SharedChan<int>, start: int,
+fn test00_start(c: &Chan<int>, start: int,
                 number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
@@ -27,7 +27,7 @@ fn test00_start(c: &SharedChan<int>, start: int,
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
     let number_of_messages: int = 10;
 
     let c = ch.clone();

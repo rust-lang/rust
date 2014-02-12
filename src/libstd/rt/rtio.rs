@@ -10,7 +10,7 @@
 
 use c_str::CString;
 use cast;
-use comm::{SharedChan, Port};
+use comm::{Chan, Port};
 use libc::c_int;
 use libc;
 use ops::Drop;
@@ -181,7 +181,7 @@ pub trait IoFactory {
     fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
-    fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
+    fn signal(&mut self, signal: Signum, channel: Chan<Signum>)
         -> Result<~RtioSignal, IoError>;
 }
 

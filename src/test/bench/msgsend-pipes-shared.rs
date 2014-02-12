@@ -53,7 +53,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
 
 fn run(args: &[~str]) {
     let (from_child, to_parent) = Chan::new();
-    let (from_parent, to_child) = SharedChan::new();
+    let (from_parent, to_child) = Chan::new();
 
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();
