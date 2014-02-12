@@ -10,7 +10,6 @@
 
 //! Readers and Writers for in-memory buffers
 
-use cmp::max;
 use cmp::min;
 use container::Container;
 use option::None;
@@ -19,6 +18,25 @@ use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use vec;
 use vec::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
+
+fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
+    // compute offset as signed and clamp to prevent overflow
+    let pos = match seek {
+        SeekSet => 0,
+        SeekEnd => end,
+        SeekCur => cur,
+    } as i64;
+
+    if offset + pos < 0 {
+        Err(IoError {
+            kind: io::InvalidInput,
+            desc: "invalid seek to a negative offset",
+            detail: None
+        })
+    } else {
+        Ok((offset + pos) as u64)
+    }
+}
 
 /// Writes to an owned, growable byte vector
 ///
@@ -92,19 +110,11 @@ impl Writer for MemWriter {
     }
 }
 
-// FIXME(#10432)
 impl Seek for MemWriter {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
-
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        // compute offset as signed and clamp to prevent overflow
-        let offset = match style {
-            SeekSet => { 0 }
-            SeekEnd => { self.buf.len() }
-            SeekCur => { self.pos }
-        } as i64;
-
-        self.pos = max(0, offset+pos) as uint;
+        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        self.pos = new as uint;
         Ok(())
     }
 }
@@ -139,7 +149,7 @@ impl MemReader {
     /// Tests whether this reader has read all bytes in its buffer.
     ///
     /// If `true`, then this will no longer return bytes from `read`.
-    pub fn eof(&self) -> bool { self.pos == self.buf.len() }
+    pub fn eof(&self) -> bool { self.pos >= self.buf.len() }
 
     /// Acquires an immutable reference to the underlying buffer of this
     /// `MemReader`.
@@ -172,7 +182,11 @@ impl Reader for MemReader {
 
 impl Seek for MemReader {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
+        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        self.pos = new as uint;
+        Ok(())
+    }
 }
 
 impl Buffer for MemReader {
@@ -236,23 +250,14 @@ impl<'a> Writer for BufWriter<'a> {
     }
 }
 
-// FIXME(#10432)
 impl<'a> Seek for BufWriter<'a> {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
-
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        // compute offset as signed and clamp to prevent overflow
-        let offset = match style {
-            SeekSet => { 0 }
-            SeekEnd => { self.buf.len() }
-            SeekCur => { self.pos }
-        } as i64;
-
-        self.pos = max(0, offset+pos) as uint;
+        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        self.pos = new as uint;
         Ok(())
     }
 }
-
 
 /// Reads from a fixed-size byte slice
 ///
@@ -284,7 +289,7 @@ impl<'a> BufReader<'a> {
     /// Tests whether this reader has read all bytes in its buffer.
     ///
     /// If `true`, then this will no longer return bytes from `read`.
-    pub fn eof(&self) -> bool { self.pos == self.buf.len() }
+    pub fn eof(&self) -> bool { self.pos >= self.buf.len() }
 }
 
 impl<'a> Reader for BufReader<'a> {
@@ -307,7 +312,11 @@ impl<'a> Reader for BufReader<'a> {
 
 impl<'a> Seek for BufReader<'a> {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
+        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        self.pos = new as uint;
+        Ok(())
+    }
 }
 
 impl<'a> Buffer for BufReader<'a> {
@@ -505,5 +514,43 @@ mod test {
             Ok(..) => fail!(),
             Err(..) => {}
         }
+    }
+
+    #[test]
+    fn seek_past_end() {
+        let buf = [0xff];
+        let mut r = BufReader::new(buf);
+        r.seek(10, SeekSet).unwrap();
+        assert!(r.read(&mut []).is_err());
+
+        let mut r = MemReader::new(~[10]);
+        r.seek(10, SeekSet).unwrap();
+        assert!(r.read(&mut []).is_err());
+
+        let mut r = MemWriter::new();
+        r.seek(10, SeekSet).unwrap();
+        assert!(r.write([3]).is_ok());
+
+        let mut buf = [0];
+        let mut r = BufWriter::new(buf);
+        r.seek(10, SeekSet).unwrap();
+        assert!(r.write([3]).is_err());
+    }
+
+    #[test]
+    fn seek_before_0() {
+        let buf = [0xff];
+        let mut r = BufReader::new(buf);
+        assert!(r.seek(-1, SeekSet).is_err());
+
+        let mut r = MemReader::new(~[10]);
+        assert!(r.seek(-1, SeekSet).is_err());
+
+        let mut r = MemWriter::new();
+        assert!(r.seek(-1, SeekSet).is_err());
+
+        let mut buf = [0];
+        let mut r = BufWriter::new(buf);
+        assert!(r.seek(-1, SeekSet).is_err());
     }
 }
