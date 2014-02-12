@@ -15,8 +15,6 @@
 
 // Modified to not use export since it's going away. --pcw
 
-#[feature(globs)];
-
 mod foo {
     use foo::bar::*;
     pub mod bar {

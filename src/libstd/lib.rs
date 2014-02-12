@@ -52,7 +52,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args, simd)];
+#[feature(macro_rules, asm, managed_boxes, thread_local, link_args, simd)];
 
 // Don't link to std. We are std.
 #[no_std];

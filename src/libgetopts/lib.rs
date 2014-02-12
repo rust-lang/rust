@@ -82,8 +82,6 @@
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 
-#[feature(globs)];
-
 use std::cmp::Eq;
 use std::result::{Err, Ok};
 use std::result;

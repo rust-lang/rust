@@ -44,7 +44,7 @@ OUTPUT_BLOCK_HEADER = '\n'.join((
     "#[ allow(unused_mut) ];",
     "#[ allow(attribute_usage) ];",
     "#[ allow(dead_code) ];",
-    "#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n",))
+    "#[ feature(macro_rules, struct_variant, managed_boxes) ];\n",))
 
 
 def add_extern_mod(block):

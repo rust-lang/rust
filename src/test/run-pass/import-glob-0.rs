@@ -10,8 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs)];
-
 use module_of_many_things::*;
 use dug::too::greedily::and::too::deep::*;
 
