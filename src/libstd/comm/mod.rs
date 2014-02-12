@@ -15,17 +15,16 @@
 //! communication between concurrent tasks. The primitives defined in this
 //! module are the building blocks for synchronization in rust.
 //!
-//! This module currently provides three main types:
+//! This module currently provides two types:
 //!
 //! * `Chan`
 //! * `Port`
-//! * `SharedChan`
 //!
-//! The `Chan` and `SharedChan` types are used to send data to a `Port`. A
-//! `SharedChan` is clone-able such that many tasks can send simultaneously to
-//! one receiving port. These communication primitives are *task blocking*, not
-//! *thread blocking*. This means that if one task is blocked on a channel,
-//! other tasks can continue to make progress.
+//! `Chan` is used to send data to a `Port`. A `Chan` is clone-able such that
+//! many tasks can send simultaneously to one receiving port. These
+//! communication primitives are *task blocking*, not *thread blocking*. This
+//! means that if one task is blocked on a channel, other tasks can continue to
+//! make progress.
 //!
 //! Rust channels can be used as if they have an infinite internal buffer. What
 //! this means is that the `send` operation will never block. `Port`s, on the
@@ -39,8 +38,8 @@
 //! next operation `fail!`. The purpose of this is to allow propagation of
 //! failure among tasks that are linked to one another via channels.
 //!
-//! There are methods on all of `Chan`, `SharedChan`, and `Port` to perform
-//! their respective operations without failing, however.
+//! There are methods on both of `Chan` and `Port` to perform their respective
+//! operations without failing, however.
 //!
 //! ## Outside the Runtime
 //!
@@ -66,7 +65,7 @@
 //! assert_eq!(port.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks
-//! let (port, chan) = SharedChan::new();
+//! let (port, chan) = Chan::new();
 //! for i in range(0, 10) {
 //!     let chan = chan.clone();
 //!     spawn(proc() {
@@ -100,10 +99,22 @@
 //
 // ## Flavors of channels
 //
-// Rust channels come in two flavors: streams and shared channels. A stream has
-// one sender and one receiver while a shared channel could have multiple
-// senders. This choice heavily influences the design of the protocol set
-// forth for both senders/receivers.
+// From the perspective of a consumer of this library, there is only one flavor
+// of channel. This channel can be used as a stream and cloned to allow multiple
+// senders. Under the hood, however, there are actually three flavors of
+// channels in play.
+//
+// * Oneshots - these channels are highly optimized for the one-send use case.
+//              They contain as few atomics as possible and involve one and
+//              exactly one allocation.
+// * Streams - these channels are optimized for the non-shared use case. They
+//             use a different concurrent queue which is more tailored for this
+//             use case. The initial allocation of this flavor of channel is not
+//             optimized.
+// * Shared - this is the most general form of channel that this module offers,
+//            a channel with multiple senders. This type is as optimized as it
+//            can be, but the previous two types mentioned are much faster for
+//            their use-cases.
 //
 // ## Concurrent queues
 //
@@ -226,25 +237,20 @@
 // here's the code for you to find some more!
 
 use cast;
+use cell::Cell;
 use clone::Clone;
-use container::Container;
-use int;
 use iter::Iterator;
-use kinds::marker;
 use kinds::Send;
+use kinds::marker;
+use mem;
 use ops::Drop;
-use option::{Option, Some, None};
-use result::{Ok, Err};
+use option::{Some, None, Option};
+use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
-use rt::thread::Thread;
-use sync::atomics::{AtomicInt, AtomicBool, SeqCst, Relaxed};
-use vec::OwnedVector;
+use sync::arc::UnsafeArc;
 
-use spsc = sync::spsc_queue;
-use mpsc = sync::mpsc_queue;
-
-pub use self::select::{Select, Handle};
+pub use comm::select::{Select, Handle};
 
 macro_rules! test (
     { fn $name:ident() $b:block $($a:attr)*} => (
@@ -272,34 +278,19 @@ macro_rules! test (
 )
 
 mod select;
+mod oneshot;
+mod stream;
+mod shared;
 
-///////////////////////////////////////////////////////////////////////////////
-// Helper type to abstract ports for channels and shared channels
-///////////////////////////////////////////////////////////////////////////////
-
-enum Consumer<T> {
-    SPSC(spsc::Consumer<T, Packet>),
-    MPSC(mpsc::Consumer<T, Packet>),
-}
-
-impl<T: Send> Consumer<T>{
-    unsafe fn packet(&self) -> *mut Packet {
-        match *self {
-            SPSC(ref c) => c.packet(),
-            MPSC(ref c) => c.packet(),
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Public structs
-///////////////////////////////////////////////////////////////////////////////
+// Use a power of 2 to allow LLVM to optimize to something that's not a
+// division, this is hit pretty regularly.
+static RESCHED_FREQ: int = 256;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
 pub struct Port<T> {
-    priv queue: Consumer<T>,
-
+    priv inner: Flavor<T>,
+    priv receives: Cell<uint>,
     // can't share in an arc
     priv marker: marker::NoFreeze,
 }
@@ -314,20 +305,9 @@ pub struct Messages<'a, T> {
 /// The sending-half of Rust's channel type. This half can only be owned by one
 /// task
 pub struct Chan<T> {
-    priv queue: spsc::Producer<T, Packet>,
-
+    priv inner: Flavor<T>,
+    priv sends: Cell<uint>,
     // can't share in an arc
-    priv marker: marker::NoFreeze,
-}
-
-/// The sending-half of Rust's channel type. This half can be shared among many
-/// tasks by creating copies of itself through the `clone` method.
-pub struct SharedChan<T> {
-    priv queue: mpsc::Producer<T, Packet>,
-
-    // can't share in an arc -- technically this implementation is
-    // shareable, but it shouldn't be required to be shareable in an
-    // arc
     priv marker: marker::NoFreeze,
 }
 
@@ -345,202 +325,10 @@ pub enum TryRecvResult<T> {
     Data(T),
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Internal struct definitions
-///////////////////////////////////////////////////////////////////////////////
-
-struct Packet {
-    cnt: AtomicInt, // How many items are on this channel
-    steals: int,    // How many times has a port received without blocking?
-    to_wake: Option<BlockedTask>, // Task to wake up
-
-    // This lock is used to wake up native threads blocked in select. The
-    // `lock` field is not used because the thread blocking in select must
-    // block on only one mutex.
-    //selection_lock: Option<UnsafeArc<Mutex>>,
-
-    // The number of channels which are currently using this packet. This is
-    // used to reference count shared channels.
-    channels: AtomicInt,
-
-    selecting: AtomicBool,
-    selection_id: uint,
-    select_next: *mut Packet,
-    select_prev: *mut Packet,
-    recv_cnt: int,
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// All implementations -- the fun part
-///////////////////////////////////////////////////////////////////////////////
-
-static DISCONNECTED: int = int::MIN;
-static RESCHED_FREQ: int = 200;
-
-impl Packet {
-    fn new() -> Packet {
-        Packet {
-            cnt: AtomicInt::new(0),
-            steals: 0,
-            to_wake: None,
-            channels: AtomicInt::new(1),
-
-            selecting: AtomicBool::new(false),
-            selection_id: 0,
-            select_next: 0 as *mut Packet,
-            select_prev: 0 as *mut Packet,
-            recv_cnt: 0,
-        }
-    }
-
-    // Increments the channel size count, preserving the disconnected state if
-    // the other end has disconnected.
-    fn increment(&mut self) -> int {
-        match self.cnt.fetch_add(1, SeqCst) {
-            DISCONNECTED => {
-                // see the comment in 'try' for a shared channel for why this
-                // window of "not disconnected" is "ok".
-                self.cnt.store(DISCONNECTED, SeqCst);
-                DISCONNECTED
-            }
-            n => n
-        }
-    }
-
-    // Decrements the reference count of the channel, returning whether the task
-    // should block or not. This assumes that the task is ready to sleep in that
-    // the `to_wake` field has already been filled in. Once this decrement
-    // happens, the task could wake up on the other end.
-    //
-    // From an implementation perspective, this is also when our "steal count"
-    // gets merged into the "channel count". Our steal count is reset to 0 after
-    // this function completes.
-    //
-    // As with increment(), this preserves the disconnected state if the
-    // channel is disconnected.
-    fn decrement(&mut self) -> bool {
-        let steals = self.steals;
-        self.steals = 0;
-        match self.cnt.fetch_sub(1 + steals, SeqCst) {
-            DISCONNECTED => {
-                self.cnt.store(DISCONNECTED, SeqCst);
-                false
-            }
-            n => {
-                assert!(n >= 0);
-                n - steals <= 0
-            }
-        }
-    }
-
-    // Helper function for select, tests whether this port can receive without
-    // blocking (obviously not an atomic decision).
-    fn can_recv(&self) -> bool {
-        let cnt = self.cnt.load(SeqCst);
-        cnt == DISCONNECTED || cnt - self.steals > 0
-    }
-
-    // This function must have had at least an acquire fence before it to be
-    // properly called.
-    fn wakeup(&mut self) {
-        match self.to_wake.take_unwrap().wake() {
-            Some(task) => task.reawaken(),
-            None => {}
-        }
-        self.selecting.store(false, Relaxed);
-    }
-
-    // Aborts the selection process for a port. This happens as part of select()
-    // once the task has reawoken. This will place the channel back into a
-    // consistent state which is ready to be received from again.
-    //
-    // The method of doing this is a little subtle. These channels have the
-    // invariant that if -1 is seen, then to_wake is always Some(..) and should
-    // be woken up. This aborting process at least needs to add 1 to the
-    // reference count, but that is not guaranteed to make the count positive
-    // (our steal count subtraction could mean that after the addition the
-    // channel count is still negative).
-    //
-    // In order to get around this, we force our channel count to go above 0 by
-    // adding a large number >= 1 to it. This way no sender will see -1 unless
-    // we are indeed blocking. This "extra lump" we took out of the channel
-    // becomes our steal count (which will get re-factored into the count on the
-    // next blocking recv)
-    //
-    // The return value of this method is whether there is data on this channel
-    // to receive or not.
-    fn abort_selection(&mut self, take_to_wake: bool) -> bool {
-        // make sure steals + 1 makes the count go non-negative
-        let steals = {
-            let cnt = self.cnt.load(SeqCst);
-            if cnt < 0 && cnt != DISCONNECTED {-cnt} else {0}
-        };
-        let prev = self.cnt.fetch_add(steals + 1, SeqCst);
-
-        // If we were previously disconnected, then we know for sure that there
-        // is no task in to_wake, so just keep going
-        if prev == DISCONNECTED {
-            assert!(self.to_wake.is_none());
-            self.cnt.store(DISCONNECTED, SeqCst);
-            self.selecting.store(false, SeqCst);
-            true // there is data, that data is that we're disconnected
-        } else {
-            let cur = prev + steals + 1;
-            assert!(cur >= 0);
-
-            // If the previous count was negative, then we just made things go
-            // positive, hence we passed the -1 boundary and we're responsible
-            // for removing the to_wake() field and trashing it.
-            if prev < 0 {
-                if take_to_wake {
-                    self.to_wake.take_unwrap().trash();
-                } else {
-                    assert!(self.to_wake.is_none());
-                }
-
-                // We woke ourselves up, we're responsible for cancelling
-                assert!(self.selecting.load(Relaxed));
-                self.selecting.store(false, Relaxed);
-            }
-            assert_eq!(self.steals, 0);
-            self.steals = steals;
-
-            // if we were previously positive, then there's surely data to
-            // receive
-            prev >= 0
-        }
-    }
-
-    // Decrement the reference count on a channel. This is called whenever a
-    // Chan is dropped and may end up waking up a receiver. It's the receiver's
-    // responsibility on the other end to figure out that we've disconnected.
-    unsafe fn drop_chan(&mut self) {
-        match self.channels.fetch_sub(1, SeqCst) {
-            1 => {
-                match self.cnt.swap(DISCONNECTED, SeqCst) {
-                    -1 => { self.wakeup(); }
-                    DISCONNECTED => {}
-                    n => { assert!(n >= 0); }
-                }
-            }
-            n if n > 1 => {},
-            n => fail!("bad number of channels left {}", n),
-        }
-    }
-}
-
-impl Drop for Packet {
-    fn drop(&mut self) {
-        unsafe {
-            // Note that this load is not only an assert for correctness about
-            // disconnection, but also a proper fence before the read of
-            // `to_wake`, so this assert cannot be removed with also removing
-            // the `to_wake` assert.
-            assert_eq!(self.cnt.load(SeqCst), DISCONNECTED);
-            assert!(self.to_wake.is_none());
-            assert_eq!(self.channels.load(SeqCst), 0);
-        }
-    }
+enum Flavor<T> {
+    Oneshot(UnsafeArc<oneshot::Packet<T>>),
+    Stream(UnsafeArc<stream::Packet<T>>),
+    Shared(UnsafeArc<shared::Packet<T>>),
 }
 
 impl<T: Send> Chan<T> {
@@ -548,12 +336,12 @@ impl<T: Send> Chan<T> {
     /// will become available on the port as well. See the documentation of
     /// `Port` and `Chan` to see what's possible with them.
     pub fn new() -> (Port<T>, Chan<T>) {
-        // arbitrary 128 size cache -- this is just a max cache size, not a
-        // maximum buffer size
-        let (c, p) = spsc::queue(128, Packet::new());
-        let c = SPSC(c);
-        (Port { queue: c, marker: marker::NoFreeze },
-         Chan { queue: p, marker: marker::NoFreeze })
+        let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
+        (Port::my_new(Oneshot(a)), Chan::my_new(Oneshot(b)))
+    }
+
+    fn my_new(inner: Flavor<T>) -> Chan<T> {
+        Chan { inner: inner, sends: Cell::new(0), marker: marker::NoFreeze }
     }
 
     /// Sends a value along this channel to be received by the corresponding
@@ -595,132 +383,105 @@ impl<T: Send> Chan<T> {
     /// Like `send`, this method will never block. If the failure of send cannot
     /// be tolerated, then this method should be used instead.
     pub fn try_send(&self, t: T) -> bool {
-        unsafe {
-            let this = cast::transmute_mut(self);
-            this.queue.push(t);
-            let packet = this.queue.packet();
-            match (*packet).increment() {
-                // As described above, -1 == wakeup
-                -1 => { (*packet).wakeup(); true }
-                // Also as above, SPSC queues must be >= -2
-                -2 => true,
-                // We succeeded if we sent data
-                DISCONNECTED => this.queue.is_empty(),
-                // In order to prevent starvation of other tasks in situations
-                // where a task sends repeatedly without ever receiving, we
-                // occassionally yield instead of doing a send immediately.
-                // Only doing this if we're doing a rescheduling send, otherwise
-                // the caller is expecting not to context switch.
-                //
-                // Note that we don't unconditionally attempt to yield because
-                // the TLS overhead can be a bit much.
-                n => {
-                    assert!(n >= 0);
-                    if n > 0 && n % RESCHED_FREQ == 0 {
-                        let task: ~Task = Local::take();
-                        task.maybe_yield();
+        // In order to prevent starvation of other tasks in situations where
+        // a task sends repeatedly without ever receiving, we occassionally
+        // yield instead of doing a send immediately.  Only doing this if
+        // we're doing a rescheduling send, otherwise the caller is
+        // expecting not to context switch.
+        //
+        // Note that we don't unconditionally attempt to yield because the
+        // TLS overhead can be a bit much.
+        let cnt = self.sends.get() + 1;
+        self.sends.set(cnt);
+        if cnt % (RESCHED_FREQ as uint) == 0 {
+            let task: ~Task = Local::take();
+            task.maybe_yield();
+        }
+
+        let (new_inner, ret) = match self.inner {
+            Oneshot(ref p) => {
+                let p = p.get();
+                unsafe {
+                    if !(*p).sent() {
+                        return (*p).send(t);
+                    } else {
+                        let (a, b) = UnsafeArc::new2(stream::Packet::new());
+                        match (*p).upgrade(Port::my_new(Stream(b))) {
+                            oneshot::UpSuccess => {
+                                (*a.get()).send(t);
+                                (a, true)
+                            }
+                            oneshot::UpDisconnected => (a, false),
+                            oneshot::UpWoke(task) => {
+                                (*a.get()).send(t);
+                                task.wake().map(|t| t.reawaken());
+                                (a, true)
+                            }
+                        }
                     }
-                    true
                 }
             }
+            Stream(ref p) => return unsafe { (*p.get()).send(t) },
+            Shared(ref p) => return unsafe { (*p.get()).send(t) },
+        };
+
+        unsafe {
+            let mut tmp = Chan::my_new(Stream(new_inner));
+            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
+        return ret;
+    }
+}
+
+impl<T: Send> Clone for Chan<T> {
+    fn clone(&self) -> Chan<T> {
+        let (packet, sleeper) = match self.inner {
+            Oneshot(ref p) => {
+                let (a, b) = UnsafeArc::new2(shared::Packet::new());
+                match unsafe { (*p.get()).upgrade(Port::my_new(Shared(a))) } {
+                    oneshot::UpSuccess | oneshot::UpDisconnected => (b, None),
+                    oneshot::UpWoke(task) => (b, Some(task))
+                }
+            }
+            Stream(ref p) => {
+                let (a, b) = UnsafeArc::new2(shared::Packet::new());
+                match unsafe { (*p.get()).upgrade(Port::my_new(Shared(a))) } {
+                    stream::UpSuccess | stream::UpDisconnected => (b, None),
+                    stream::UpWoke(task) => (b, Some(task)),
+                }
+            }
+            Shared(ref p) => {
+                unsafe { (*p.get()).clone_chan(); }
+                return Chan::my_new(Shared(p.clone()));
+            }
+        };
+
+        unsafe {
+            (*packet.get()).inherit_blocker(sleeper);
+
+            let mut tmp = Chan::my_new(Shared(packet.clone()));
+            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
+        }
+        Chan::my_new(Shared(packet))
     }
 }
 
 #[unsafe_destructor]
 impl<T: Send> Drop for Chan<T> {
     fn drop(&mut self) {
-        unsafe { (*self.queue.packet()).drop_chan(); }
-    }
-}
-
-impl<T: Send> SharedChan<T> {
-    /// Creates a new shared channel and port pair. The purpose of a shared
-    /// channel is to be cloneable such that many tasks can send data at the
-    /// same time. All data sent on any channel will become available on the
-    /// provided port as well.
-    pub fn new() -> (Port<T>, SharedChan<T>) {
-        let (c, p) = mpsc::queue(Packet::new());
-        let c = MPSC(c);
-        (Port { queue: c, marker: marker::NoFreeze },
-         SharedChan { queue: p, marker: marker::NoFreeze })
-    }
-
-    /// Equivalent method to `send` on the `Chan` type (using the same
-    /// semantics)
-    pub fn send(&self, t: T) {
-        if !self.try_send(t) {
-            fail!("sending on a closed channel");
+        match self.inner {
+            Oneshot(ref mut p) => unsafe { (*p.get()).drop_chan(); },
+            Stream(ref mut p) => unsafe { (*p.get()).drop_chan(); },
+            Shared(ref mut p) => unsafe { (*p.get()).drop_chan(); },
         }
-    }
-
-    /// Equivalent method to `try_send` on the `Chan` type (using the same
-    /// semantics)
-    pub fn try_send(&self, t: T) -> bool {
-        unsafe {
-            // Note that the multiple sender case is a little tricker
-            // semantically than the single sender case. The logic for
-            // incrementing is "add and if disconnected store disconnected".
-            // This could end up leading some senders to believe that there
-            // wasn't a disconnect if in fact there was a disconnect. This means
-            // that while one thread is attempting to re-store the disconnected
-            // states, other threads could walk through merrily incrementing
-            // this very-negative disconnected count. To prevent senders from
-            // spuriously attempting to send when the channels is actually
-            // disconnected, the count has a ranged check here.
-            //
-            // This is also done for another reason. Remember that the return
-            // value of this function is:
-            //
-            //  `true` == the data *may* be received, this essentially has no
-            //            meaning
-            //  `false` == the data will *never* be received, this has a lot of
-            //             meaning
-            //
-            // In the SPSC case, we have a check of 'queue.is_empty()' to see
-            // whether the data was actually received, but this same condition
-            // means nothing in a multi-producer context. As a result, this
-            // preflight check serves as the definitive "this will never be
-            // received". Once we get beyond this check, we have permanently
-            // entered the realm of "this may be received"
-            let packet = self.queue.packet();
-            if (*packet).cnt.load(Relaxed) < DISCONNECTED + 1024 {
-                return false
-            }
-
-            let this = cast::transmute_mut(self);
-            this.queue.push(t);
-
-            match (*packet).increment() {
-                DISCONNECTED => {} // oh well, we tried
-                -1 => { (*packet).wakeup(); }
-                n => {
-                    if n > 0 && n % RESCHED_FREQ == 0 {
-                        let task: ~Task = Local::take();
-                        task.maybe_yield();
-                    }
-                }
-            }
-            true
-        }
-    }
-}
-
-impl<T: Send> Clone for SharedChan<T> {
-    fn clone(&self) -> SharedChan<T> {
-        unsafe { (*self.queue.packet()).channels.fetch_add(1, SeqCst); }
-        SharedChan { queue: self.queue.clone(), marker: marker::NoFreeze }
-    }
-}
-
-#[unsafe_destructor]
-impl<T: Send> Drop for SharedChan<T> {
-    fn drop(&mut self) {
-        unsafe { (*self.queue.packet()).drop_chan(); }
     }
 }
 
 impl<T: Send> Port<T> {
+    fn my_new(inner: Flavor<T>) -> Port<T> {
+        Port { inner: inner, receives: Cell::new(0), marker: marker::NoFreeze }
+    }
+
     /// Blocks waiting for a value on this port
     ///
     /// This function will block if necessary to wait for a corresponding send
@@ -758,100 +519,45 @@ impl<T: Send> Port<T> {
     ///
     /// This function cannot fail.
     pub fn try_recv(&self) -> TryRecvResult<T> {
-        self.try_recv_inc(true)
-    }
-
-    fn try_recv_inc(&self, increment: bool) -> TryRecvResult<T> {
-        // This is a "best effort" situation, so if a queue is inconsistent just
-        // don't worry about it.
-        let this = unsafe { cast::transmute_mut(self) };
-
-        // See the comment about yielding on sends, but the same applies here.
-        // If a thread is spinning in try_recv we should try
-        unsafe {
-            let packet = this.queue.packet();
-            (*packet).recv_cnt += 1;
-            if (*packet).recv_cnt % RESCHED_FREQ == 0 {
-                let task: ~Task = Local::take();
-                task.maybe_yield();
-            }
+        // If a thread is spinning in try_recv, we should take the opportunity
+        // to reschedule things occasionally. See notes above in scheduling on
+        // sends for why this doesn't always hit TLS.
+        let cnt = self.receives.get() + 1;
+        self.receives.set(cnt);
+        if cnt % (RESCHED_FREQ as uint) == 0 {
+            let task: ~Task = Local::take();
+            task.maybe_yield();
         }
 
-        let ret = match this.queue {
-            SPSC(ref mut queue) => queue.pop(),
-            MPSC(ref mut queue) => match queue.pop() {
-                mpsc::Data(t) => Some(t),
-                mpsc::Empty => None,
-
-                // This is a bit of an interesting case. The channel is
-                // reported as having data available, but our pop() has
-                // failed due to the queue being in an inconsistent state.
-                // This means that there is some pusher somewhere which has
-                // yet to complete, but we are guaranteed that a pop will
-                // eventually succeed. In this case, we spin in a yield loop
-                // because the remote sender should finish their enqueue
-                // operation "very quickly".
-                //
-                // Note that this yield loop does *not* attempt to do a green
-                // yield (regardless of the context), but *always* performs an
-                // OS-thread yield. The reasoning for this is that the pusher in
-                // question which is causing the inconsistent state is
-                // guaranteed to *not* be a blocked task (green tasks can't get
-                // pre-empted), so it must be on a different OS thread. Also,
-                // `try_recv` is normally a "guaranteed no rescheduling" context
-                // in a green-thread situation. By yielding control of the
-                // thread, we will hopefully allow time for the remote task on
-                // the other OS thread to make progress.
-                //
-                // Avoiding this yield loop would require a different queue
-                // abstraction which provides the guarantee that after M
-                // pushes have succeeded, at least M pops will succeed. The
-                // current queues guarantee that if there are N active
-                // pushes, you can pop N times once all N have finished.
-                mpsc::Inconsistent => {
-                    let data;
-                    loop {
-                        Thread::yield_now();
-                        match queue.pop() {
-                            mpsc::Data(t) => { data = t; break }
-                            mpsc::Empty => fail!("inconsistent => empty"),
-                            mpsc::Inconsistent => {}
-                        }
+        loop {
+            let mut new_port = match self.inner {
+                Oneshot(ref p) => {
+                    match unsafe { (*p.get()).try_recv() } {
+                        Ok(t) => return Data(t),
+                        Err(oneshot::Empty) => return Empty,
+                        Err(oneshot::Disconnected) => return Disconnected,
+                        Err(oneshot::Upgraded(port)) => port,
                     }
-                    Some(data)
                 }
-            }
-        };
-        if increment && ret.is_some() {
-            unsafe { (*this.queue.packet()).steals += 1; }
-        }
-        match ret {
-            Some(t) => Data(t),
-            None => {
-                // It's possible that between the time that we saw the queue was
-                // empty and here the other side disconnected. It's also
-                // possible for us to see the disconnection here while there is
-                // data in the queue. It's pretty backwards-thinking to return
-                // Disconnected when there's actually data on the queue, so if
-                // we see a disconnected state be sure to check again to be 100%
-                // sure that there's no data in the queue.
-                let cnt = unsafe { (*this.queue.packet()).cnt.load(Relaxed) };
-                if cnt != DISCONNECTED { return Empty }
-
-                let ret = match this.queue {
-                    SPSC(ref mut queue) => queue.pop(),
-                    MPSC(ref mut queue) => match queue.pop() {
-                        mpsc::Data(t) => Some(t),
-                        mpsc::Empty => None,
-                        mpsc::Inconsistent => {
-                            fail!("inconsistent with no senders?!");
-                        }
+                Stream(ref p) => {
+                    match unsafe { (*p.get()).try_recv() } {
+                        Ok(t) => return Data(t),
+                        Err(stream::Empty) => return Empty,
+                        Err(stream::Disconnected) => return Disconnected,
+                        Err(stream::Upgraded(port)) => port,
                     }
-                };
-                match ret {
-                    Some(data) => Data(data),
-                    None => Disconnected,
                 }
+                Shared(ref p) => {
+                    match unsafe { (*p.get()).try_recv() } {
+                        Ok(t) => return Data(t),
+                        Err(shared::Empty) => return Empty,
+                        Err(shared::Disconnected) => return Disconnected,
+                    }
+                }
+            };
+            unsafe {
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
@@ -869,34 +575,36 @@ impl<T: Send> Port<T> {
     /// If the channel has hung up, then `None` is returned. Otherwise `Some` of
     /// the value found on the port is returned.
     pub fn recv_opt(&self) -> Option<T> {
-        // optimistic preflight check (scheduling is expensive)
-        match self.try_recv() {
-            Empty => {},
-            Disconnected => return None,
-            Data(t) => return Some(t),
-        }
-
-        let packet;
-        let this;
-        unsafe {
-            this = cast::transmute_mut(self);
-            packet = this.queue.packet();
-            let task: ~Task = Local::take();
-            task.deschedule(1, |task| {
-                assert!((*packet).to_wake.is_none());
-                (*packet).to_wake = Some(task);
-                if (*packet).decrement() {
-                    Ok(())
-                } else {
-                    Err((*packet).to_wake.take_unwrap())
+        loop {
+            let mut new_port = match self.inner {
+                Oneshot(ref p) => {
+                    match unsafe { (*p.get()).recv() } {
+                        Ok(t) => return Some(t),
+                        Err(oneshot::Empty) => return unreachable!(),
+                        Err(oneshot::Disconnected) => return None,
+                        Err(oneshot::Upgraded(port)) => port,
+                    }
                 }
-            });
-        }
-
-        match self.try_recv_inc(false) {
-            Data(t) => Some(t),
-            Empty => fail!("bug: woke up too soon"),
-            Disconnected => None,
+                Stream(ref p) => {
+                    match unsafe { (*p.get()).recv() } {
+                        Ok(t) => return Some(t),
+                        Err(stream::Empty) => return unreachable!(),
+                        Err(stream::Disconnected) => return None,
+                        Err(stream::Upgraded(port)) => port,
+                    }
+                }
+                Shared(ref p) => {
+                    match unsafe { (*p.get()).recv() } {
+                        Ok(t) => return Some(t),
+                        Err(shared::Empty) => return unreachable!(),
+                        Err(shared::Disconnected) => return None,
+                    }
+                }
+            };
+            unsafe {
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
+            }
         }
     }
 
@@ -907,6 +615,84 @@ impl<T: Send> Port<T> {
     }
 }
 
+impl<T: Send> select::Packet for Port<T> {
+    fn can_recv(&self) -> bool {
+        loop {
+            let mut new_port = match self.inner {
+                Oneshot(ref p) => {
+                    match unsafe { (*p.get()).can_recv() } {
+                        Ok(ret) => return ret,
+                        Err(upgrade) => upgrade,
+                    }
+                }
+                Stream(ref p) => {
+                    match unsafe { (*p.get()).can_recv() } {
+                        Ok(ret) => return ret,
+                        Err(upgrade) => upgrade,
+                    }
+                }
+                Shared(ref p) => {
+                    return unsafe { (*p.get()).can_recv() };
+                }
+            };
+            unsafe {
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
+            }
+        }
+    }
+
+    fn start_selection(&self, mut task: BlockedTask) -> Result<(), BlockedTask>{
+        loop {
+            let (t, mut new_port) = match self.inner {
+                Oneshot(ref p) => {
+                    match unsafe { (*p.get()).start_selection(task) } {
+                        oneshot::SelSuccess => return Ok(()),
+                        oneshot::SelCanceled(task) => return Err(task),
+                        oneshot::SelUpgraded(t, port) => (t, port),
+                    }
+                }
+                Stream(ref p) => {
+                    match unsafe { (*p.get()).start_selection(task) } {
+                        stream::SelSuccess => return Ok(()),
+                        stream::SelCanceled(task) => return Err(task),
+                        stream::SelUpgraded(t, port) => (t, port),
+                    }
+                }
+                Shared(ref p) => {
+                    return unsafe { (*p.get()).start_selection(task) };
+                }
+            };
+            task = t;
+            unsafe {
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
+            }
+        }
+    }
+
+    fn abort_selection(&self) -> bool {
+        let mut was_upgrade = false;
+        loop {
+            let result = match self.inner {
+                Oneshot(ref p) => unsafe { (*p.get()).abort_selection() },
+                Stream(ref p) => unsafe {
+                    (*p.get()).abort_selection(was_upgrade)
+                },
+                Shared(ref p) => return unsafe {
+                    (*p.get()).abort_selection(was_upgrade)
+                },
+            };
+            let mut new_port = match result { Ok(b) => return b, Err(p) => p };
+            was_upgrade = true;
+            unsafe {
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
+            }
+        }
+    }
+}
+
 impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
     fn next(&mut self) -> Option<T> { self.port.recv_opt() }
 }
@@ -914,11 +700,10 @@ impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Port<T> {
     fn drop(&mut self) {
-        // All we need to do is store that we're disconnected. If the channel
-        // half has already disconnected, then we'll just deallocate everything
-        // when the shared packet is deallocated.
-        unsafe {
-            (*self.queue.packet()).cnt.store(DISCONNECTED, SeqCst);
+        match self.inner {
+            Oneshot(ref mut p) => unsafe { (*p.get()).drop_port(); },
+            Stream(ref mut p) => unsafe { (*p.get()).drop_port(); },
+            Shared(ref mut p) => unsafe { (*p.get()).drop_port(); },
         }
     }
 }
@@ -950,12 +735,12 @@ mod test {
     })
 
     test!(fn drop_full_shared() {
-        let (_p, c) = SharedChan::new();
+        let (_p, c) = Chan::new();
         c.send(~1);
     })
 
     test!(fn smoke_shared() {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         c.send(1);
         assert_eq!(p.recv(), 1);
         let c = c.clone();
@@ -978,13 +763,13 @@ mod test {
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone() {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         drop(p);
         c.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone2() {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         drop(p);
         let c2 = c.clone();
         drop(c);
@@ -1000,7 +785,7 @@ mod test {
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let c1 = c.clone();
         spawn(proc() {
             p.recv();
@@ -1018,7 +803,7 @@ mod test {
     } #[should_fail])
 
     test!(fn smoke_chan_gone_shared() {
-        let (p, c) = SharedChan::<()>::new();
+        let (p, c) = Chan::<()>::new();
         let c2 = c.clone();
         drop(c);
         drop(c2);
@@ -1047,7 +832,7 @@ mod test {
     test!(fn stress_shared() {
         static AMT: uint = 10000;
         static NTHREADS: uint = 8;
-        let (p, c) = SharedChan::<int>::new();
+        let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::new();
 
         spawn(proc() {
@@ -1074,7 +859,7 @@ mod test {
     fn send_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::new();
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         let chan2 = chan.clone();
         spawn(proc() {
             c1.send(());
@@ -1114,7 +899,7 @@ mod test {
     fn no_runtime() {
         let (p1, c1) = Chan::<int>::new();
         let (p2, c2) = Chan::<int>::new();
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         let chan2 = chan.clone();
         native::task::spawn(proc() {
             assert_eq!(p1.recv(), 1);
@@ -1317,7 +1102,7 @@ mod test {
     })
 
     test!(fn shared_chan_stress() {
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         let total = stress_factor() + 100;
         for _ in range(0, total) {
             let chan_clone = chan.clone();
@@ -1395,5 +1180,27 @@ mod test {
         c1.send(());
         p2.recv();
         assert_eq!(p.try_recv(), Disconnected);
+    })
+
+    // This bug used to end up in a livelock inside of the Port destructor
+    // because the internal state of the Shared port was corrupted
+    test!(fn destroy_upgraded_shared_port_when_sender_still_active() {
+        let (p, c) = Chan::new();
+        let (p1, c2) = Chan::new();
+        spawn(proc() {
+            p.recv(); // wait on a oneshot port
+            drop(p);  // destroy a shared port
+            c2.send(());
+        });
+        // make sure the other task has gone to sleep
+        for _ in range(0, 5000) { task::deschedule(); }
+
+        // upgrade to a shared chan and send a message
+        let t = c.clone();
+        drop(c);
+        t.send(());
+
+        // wait for the child task to exit before we exit
+        p1.recv();
     })
 }

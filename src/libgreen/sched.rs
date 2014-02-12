@@ -17,7 +17,6 @@ use std::rt::task::Task;
 use std::sync::deque;
 use std::unstable::mutex::Mutex;
 use std::unstable::raw;
-use mpsc = std::sync::mpsc_queue;
 
 use TaskState;
 use context::Context;
@@ -25,6 +24,7 @@ use coroutine::Coroutine;
 use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::{TypeSched, GreenTask, HomeSched, AnySched};
+use msgq = message_queue;
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified
@@ -47,9 +47,9 @@ pub struct Scheduler {
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    message_queue: mpsc::Consumer<SchedMessage, ()>,
+    message_queue: msgq::Consumer<SchedMessage>,
     /// Producer used to clone sched handles from
-    message_producer: mpsc::Producer<SchedMessage, ()>,
+    message_producer: msgq::Producer<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
     sleeper_list: SleeperList,
@@ -143,7 +143,7 @@ impl Scheduler {
                        state: TaskState)
         -> Scheduler {
 
-        let (consumer, producer) = mpsc::queue(());
+        let (consumer, producer) = msgq::queue();
         let mut sched = Scheduler {
             pool_id: pool_id,
             sleeper_list: sleeper_list,
@@ -215,7 +215,7 @@ impl Scheduler {
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
-        rtassert!(match message { mpsc::Empty => true, _ => false });
+        rtassert!(match message { msgq::Empty => true, _ => false });
 
         stask.task.get_mut_ref().destroyed = true;
     }
@@ -340,8 +340,8 @@ impl Scheduler {
             //
             // I have chosen to take route #2.
             match self.message_queue.pop() {
-                mpsc::Data(t) => Some(t),
-                mpsc::Empty | mpsc::Inconsistent => None
+                msgq::Data(t) => Some(t),
+                msgq::Empty | msgq::Inconsistent => None
             }
         };
 
@@ -849,7 +849,7 @@ pub enum SchedMessage {
 
 pub struct SchedHandle {
     priv remote: ~RemoteCallback,
-    priv queue: mpsc::Producer<SchedMessage, ()>,
+    priv queue: msgq::Producer<SchedMessage>,
     sched_id: uint
 }
 

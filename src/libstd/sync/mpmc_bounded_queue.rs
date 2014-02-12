@@ -172,7 +172,7 @@ mod tests {
         let nmsgs = 1000u;
         let mut q = Queue::with_capacity(nthreads*nmsgs);
         assert_eq!(None, q.pop());
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
 
         for _ in range(0, nthreads) {
             let q = q.clone();

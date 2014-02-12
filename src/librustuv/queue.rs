@@ -24,6 +24,7 @@ use std::cast;
 use std::libc::{c_void, c_int};
 use std::rt::task::BlockedTask;
 use std::unstable::sync::LittleLock;
+use std::sync::arc::UnsafeArc;
 use mpsc = std::sync::mpsc_queue;
 
 use async::AsyncWatcher;
@@ -39,46 +40,46 @@ enum Message {
 struct State {
     handle: *uvll::uv_async_t,
     lock: LittleLock, // see comments in async_cb for why this is needed
+    queue: mpsc::Queue<Message>,
 }
 
 /// This structure is intended to be stored next to the event loop, and it is
 /// used to create new `Queue` structures.
 pub struct QueuePool {
-    priv producer: mpsc::Producer<Message, State>,
-    priv consumer: mpsc::Consumer<Message, State>,
+    priv queue: UnsafeArc<State>,
     priv refcnt: uint,
 }
 
 /// This type is used to send messages back to the original event loop.
 pub struct Queue {
-    priv queue: mpsc::Producer<Message, State>,
+    priv queue: UnsafeArc<State>,
 }
 
 extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
     assert_eq!(status, 0);
-    let state: &mut QueuePool = unsafe {
+    let pool: &mut QueuePool = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
-    let packet = unsafe { state.consumer.packet() };
+    let state: &mut State = unsafe { cast::transmute(pool.queue.get()) };
 
     // Remember that there is no guarantee about how many times an async
     // callback is called with relation to the number of sends, so process the
     // entire queue in a loop.
     loop {
-        match state.consumer.pop() {
+        match state.queue.pop() {
             mpsc::Data(Task(task)) => {
                 let _ = task.wake().map(|t| t.reawaken());
             }
             mpsc::Data(Increment) => unsafe {
-                if state.refcnt == 0 {
-                    uvll::uv_ref((*packet).handle);
+                if pool.refcnt == 0 {
+                    uvll::uv_ref(state.handle);
                 }
-                state.refcnt += 1;
+                pool.refcnt += 1;
             },
             mpsc::Data(Decrement) => unsafe {
-                state.refcnt -= 1;
-                if state.refcnt == 0 {
-                    uvll::uv_unref((*packet).handle);
+                pool.refcnt -= 1;
+                if pool.refcnt == 0 {
+                    uvll::uv_unref(state.handle);
                 }
             },
             mpsc::Empty | mpsc::Inconsistent => break
@@ -99,9 +100,9 @@ extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
     // If we acquire the mutex here, then we are guaranteed that there are no
     // longer any senders which are holding on to their handles, so we can
     // safely allow the event loop to exit.
-    if state.refcnt == 0 {
+    if pool.refcnt == 0 {
         unsafe {
-            let _l = (*packet).lock.lock();
+            let _l = state.lock.lock();
         }
     }
 }
@@ -109,14 +110,14 @@ extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
 impl QueuePool {
     pub fn new(loop_: &mut Loop) -> ~QueuePool {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
-        let (c, p) = mpsc::queue(State {
+        let state = UnsafeArc::new(State {
             handle: handle,
             lock: LittleLock::new(),
+            queue: mpsc::Queue::new(),
         });
         let q = ~QueuePool {
-            producer: p,
-            consumer: c,
             refcnt: 0,
+            queue: state,
         };
 
         unsafe {
@@ -132,23 +133,23 @@ impl QueuePool {
     pub fn queue(&mut self) -> Queue {
         unsafe {
             if self.refcnt == 0 {
-                uvll::uv_ref((*self.producer.packet()).handle);
+                uvll::uv_ref((*self.queue.get()).handle);
             }
             self.refcnt += 1;
         }
-        Queue { queue: self.producer.clone() }
+        Queue { queue: self.queue.clone() }
     }
 
     pub fn handle(&self) -> *uvll::uv_async_t {
-        unsafe { (*self.producer.packet()).handle }
+        unsafe { (*self.queue.get()).handle }
     }
 }
 
 impl Queue {
     pub fn push(&mut self, task: BlockedTask) {
-        self.queue.push(Task(task));
         unsafe {
-            uvll::uv_async_send((*self.queue.packet()).handle);
+            (*self.queue.get()).queue.push(Task(task));
+            uvll::uv_async_send((*self.queue.get()).handle);
         }
     }
 }
@@ -161,7 +162,7 @@ impl Clone for Queue {
         // and if the queue is dropped later on it'll see the increment for the
         // decrement anyway.
         unsafe {
-            cast::transmute_mut(self).queue.push(Increment);
+            (*self.queue.get()).queue.push(Increment);
         }
         Queue { queue: self.queue.clone() }
     }
@@ -172,9 +173,9 @@ impl Drop for Queue {
         // See the comments in the async_cb function for why there is a lock
         // that is acquired only on a drop.
         unsafe {
-            let state = self.queue.packet();
+            let state = self.queue.get();
             let _l = (*state).lock.lock();
-            self.queue.push(Decrement);
+            (*state).queue.push(Decrement);
             uvll::uv_async_send((*state).handle);
         }
     }

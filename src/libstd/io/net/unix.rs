@@ -270,7 +270,7 @@ mod tests {
     fn unix_clone_two_read() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let c2 = c.clone();
 
         spawn(proc() {

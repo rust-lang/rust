@@ -100,8 +100,8 @@ fn creature(
     name: uint,
     color: color,
     from_rendezvous: Port<Option<CreatureInfo>>,
-    to_rendezvous: SharedChan<CreatureInfo>,
-    to_rendezvous_log: SharedChan<~str>
+    to_rendezvous: Chan<CreatureInfo>,
+    to_rendezvous_log: Chan<~str>
 ) {
     let mut color = color;
     let mut creatures_met = 0;
@@ -137,8 +137,8 @@ fn creature(
 fn rendezvous(nn: uint, set: ~[color]) {
 
     // these ports will allow us to hear from the creatures
-    let (from_creatures, to_rendezvous) = SharedChan::<CreatureInfo>::new();
-    let (from_creatures_log, to_rendezvous_log) = SharedChan::<~str>::new();
+    let (from_creatures, to_rendezvous) = Chan::<CreatureInfo>::new();
+    let (from_creatures_log, to_rendezvous_log) = Chan::<~str>::new();
 
     // these channels will be passed to the creatures so they can talk to us
 

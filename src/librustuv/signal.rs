@@ -10,7 +10,6 @@
 
 use std::libc::c_int;
 use std::io::signal::Signum;
-use std::comm::SharedChan;
 use std::rt::rtio::RtioSignal;
 
 use homing::{HomingIO, HomeHandle};
@@ -22,13 +21,13 @@ pub struct SignalWatcher {
     handle: *uvll::uv_signal_t,
     home: HomeHandle,
 
-    channel: SharedChan<Signum>,
+    channel: Chan<Signum>,
     signal: Signum,
 }
 
 impl SignalWatcher {
     pub fn new(io: &mut UvIoFactory, signum: Signum,
-               channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
+               channel: Chan<Signum>) -> Result<~SignalWatcher, UvError> {
         let s = ~SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
             home: io.make_handle(),
@@ -81,7 +80,7 @@ mod test {
     #[test]
     fn closing_channel_during_drop_doesnt_kill_everything() {
         // see issue #10375, relates to timers as well.
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
                                          chan);
 
