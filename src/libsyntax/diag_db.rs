@@ -66,7 +66,7 @@ impl DiagnosticDb {
                             map.insert(code, info);
                         }
                     }
-                    new_map = Some(map);
+                    new_map = map;
                 }
                 Initialized(ref mut map) => {
                     return f(map);
@@ -74,13 +74,8 @@ impl DiagnosticDb {
             }
         }
 
-        match new_map {
-            Some(new_map) => {
-                self.state.set(Initialized(new_map));
-                return self.get_map(f);
-            }
-            None => unreachable!()
-        }
+        self.state.set(Initialized(new_map));
+        return self.get_map(f);
     }
 
     pub fn get_info(&self, code: &str) -> Option<DiagnosticInfo> {

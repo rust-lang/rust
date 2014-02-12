@@ -202,7 +202,7 @@ fn with_appropriate_checker(cx: &Context,
         span_err!(cx.tcx.sess,
             fv.span, A0316,
             "can't capture dynamic environment in a fn item; \
-            use the || { ... } closure form instead");
+            use the || \\{ ... \\} closure form instead");
     } // same check is done in resolve.rs, but shouldn't be done
 
     let fty = ty::node_id_to_type(cx.tcx, id);

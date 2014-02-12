@@ -264,14 +264,14 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(n) => n,
                             None => {
                                 span_err!(e.sess, span, A0324,
-                                    "#[link(...)] specified without \
+                                    "\\#[link(...)] specified without \
                                      `name = \"foo\"`");
                                 InternedString::new("foo")
                             }
                         };
                         if n.get().is_empty() {
                             span_err!(e.sess, span, A0325,
-                                      "#[link(name = \"\")] given with empty name");
+                                      "\\#[link(name = \"\")] given with empty name");
                         } else {
                             cstore.add_used_library(n.get().to_owned(), kind);
                         }

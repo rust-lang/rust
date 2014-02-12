@@ -409,9 +409,9 @@ impl ErrorReporting for InferCtxt {
             infer::ReferenceOutlivesReferent(ty, span) => {
                 span_err!(self.tcx.sess,
                     span, A0151,
-                    format!("in type `{}`, pointer has a longer lifetime than \
+                    "in type `{}`, pointer has a longer lifetime than \
                           the data it references",
-                         ty.user_string(self.tcx)));
+                         ty.user_string(self.tcx));
                 note_and_explain_region(
                     self.tcx,
                     "the pointer is valid for ",

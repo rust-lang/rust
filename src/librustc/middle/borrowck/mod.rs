@@ -672,12 +672,12 @@ impl BorrowckCtxt {
             mc::AliasableStaticMut => {
                 span_err!(self.tcx.sess,
                     span, A0357,
-                    format!("{} in a static location", prefix));
+                    "{} in a static location", prefix);
             }
             mc::AliasableManaged => {
                 span_err!(self.tcx.sess,
                     span, A0010,
-                    format!("{} in a `@` pointer", prefix));
+                    "{} in a `@` pointer", prefix);
             }
             mc::AliasableBorrowed(_) => {
                 span_err!(self.tcx.sess,

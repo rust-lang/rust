@@ -3526,7 +3526,7 @@ impl Resolver {
                         resolve_err!(self,
                             span, A0076,
                             "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
+                            use the || \\{ ... \\} closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
@@ -3549,7 +3549,7 @@ impl Resolver {
                         resolve_err!(self,
                             span, A0078,
                             "can't capture dynamic environment in a fn item; \
-                            use the || { ... } closure form instead");
+                            use the || \\{ ... \\} closure form instead");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.

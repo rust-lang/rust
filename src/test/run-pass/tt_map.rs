@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+#[feature(__tt_map)];
+
+pub fn main() {
 
     let j = 2;
     mod m { __tt_map_insert!(my_tt_map, i, j) }

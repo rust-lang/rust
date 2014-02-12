@@ -142,7 +142,7 @@ impl<'a> Context<'a> {
             parse::CurrentArgument => {
                 if self.nest_level == 0 {
                     span_err!(self.ecx, self.fmtsp, B0077,
-                                      "`#` reference used with nothing to \
+                                      "`\\#` reference used with nothing to \
                                        reference back to");
                 }
             }

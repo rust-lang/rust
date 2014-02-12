@@ -62,16 +62,11 @@ macro_rules! reg_diag_msg (
 )
 
 macro_rules! report_diag (
-    ($f: expr, $name: tt, $msg: expr, $($arg: expr), *) => { {
+    ($f: expr, $name: tt, $msg:expr $($arg: tt)*) => { {
         reg_diag_msg!($name, $msg);
-        let msg: &str = format!($msg, $($arg), *);
+        let msg: &str = format!($msg $($arg)*);
         let f: |&str, &str| -> () = $f;
         f(stringify!($name), msg);
-    } };
-    ($f: expr, $name: tt, $msg: expr) => { {
-        reg_diag_msg!($name, $msg);
-        let f: |&str, &str| -> () = $f;
-        f(stringify!($name), $msg);
     } }
 )
 

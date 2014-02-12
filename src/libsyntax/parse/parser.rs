@@ -432,7 +432,7 @@ impl Parser {
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
             span_err!(self, self.span, C0018,
-                          "unit-like struct construction is written with no trailing `{ }`");
+                          "unit-like struct construction is written with no trailing `\\{ \\}`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
             true

@@ -284,7 +284,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
         match attr.meta_item_list() {
             None => {
                 span_err!(sess, attr.span, A0319, "malformed feature attribute, \
-                                          expected #[feature(...)]");
+                                          expected \\#[feature(...)]");
             }
             Some(list) => {
                 for &mi in list.iter() {
