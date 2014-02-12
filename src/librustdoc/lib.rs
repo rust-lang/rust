@@ -13,7 +13,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 
-#[feature(globs, struct_variant, managed_boxes)];
+#[feature(struct_variant, managed_boxes)];
 
 extern mod syntax;
 extern mod rustc;

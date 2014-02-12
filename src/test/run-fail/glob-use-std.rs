@@ -11,8 +11,6 @@
 // Issue #7580
 
 // error-pattern:fail works
-#[feature(globs)];
-
 use std::*;
 
 fn main() {

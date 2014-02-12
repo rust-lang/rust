@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_nested_lib.rs
 
-#[feature(globs, managed_boxes)];
+#[feature(managed_boxes)];
 
 extern mod cci_nested_lib;
 use cci_nested_lib::*;

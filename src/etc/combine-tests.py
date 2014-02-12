@@ -53,7 +53,7 @@ c.write(
 // AUTO-GENERATED FILE: DO NOT EDIT
 #[crate_id=\"run_pass_stage2#0.1\"];
 #[crate_id=\"run_pass_stage2#0.1\"];
-#[feature(globs, macro_rules, struct_variant, managed_boxes)];
+#[feature(macro_rules, struct_variant, managed_boxes)];
 #[allow(warnings)];
 """
 )
@@ -70,7 +70,7 @@ d = open("tmp/run_pass_stage2_driver.rs", "w")
 d.write(
 """
 // AUTO-GENERATED FILE: DO NOT EDIT
-#[feature(globs, managed_boxes)];
+#[feature(managed_boxes)];
 extern mod extra;
 extern mod run_pass_stage2;
 use run_pass_stage2::*;

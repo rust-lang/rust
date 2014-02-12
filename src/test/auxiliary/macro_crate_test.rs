@@ -10,7 +10,7 @@
 
 // force-host
 
-#[feature(globs, macro_registrar, macro_rules, quote)];
+#[feature(macro_registrar, macro_rules, quote)];
 
 extern mod syntax;
 
