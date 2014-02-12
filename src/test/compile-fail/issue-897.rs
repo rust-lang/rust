@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// error-pattern: unreachable statement
 
 #[deny(unreachable_code)];
 
 fn f() -> ! {
     return fail!();
-    fail!(); //~ ERROR: unreachable statement
+    fail!(); // the unreachable statement error is in <std macro>, at this line, there
+             // only is a note
 }
-fn main() { }
+
+fn main() { f() }
