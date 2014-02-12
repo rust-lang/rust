@@ -242,13 +242,13 @@ use clone::Clone;
 use iter::Iterator;
 use kinds::Send;
 use kinds::marker;
+use mem;
 use ops::Drop;
 use option::{Some, None, Option};
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use sync::arc::UnsafeArc;
-use util;
 
 pub use comm::select::{Select, Handle};
 
@@ -427,7 +427,7 @@ impl<T: Send> Chan<T> {
 
         unsafe {
             let mut tmp = Chan::my_new(Stream(new_inner));
-            util::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
+            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
         return ret;
     }
@@ -460,7 +460,7 @@ impl<T: Send> Clone for Chan<T> {
             (*packet.get()).inherit_blocker(sleeper);
 
             let mut tmp = Chan::my_new(Shared(packet.clone()));
-            util::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
+            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
         Chan::my_new(Shared(packet))
     }
@@ -556,8 +556,8 @@ impl<T: Send> Port<T> {
                 }
             };
             unsafe {
-                util::swap(&mut cast::transmute_mut(self).inner,
-                           &mut new_port.inner);
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
@@ -602,8 +602,8 @@ impl<T: Send> Port<T> {
                 }
             };
             unsafe {
-                util::swap(&mut cast::transmute_mut(self).inner,
-                           &mut new_port.inner);
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
@@ -636,8 +636,8 @@ impl<T: Send> select::Packet for Port<T> {
                 }
             };
             unsafe {
-                util::swap(&mut cast::transmute_mut(self).inner,
-                           &mut new_port.inner);
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
@@ -665,8 +665,8 @@ impl<T: Send> select::Packet for Port<T> {
             };
             task = t;
             unsafe {
-                util::swap(&mut cast::transmute_mut(self).inner,
-                           &mut new_port.inner);
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
@@ -686,8 +686,8 @@ impl<T: Send> select::Packet for Port<T> {
             let mut new_port = match result { Ok(b) => return b, Err(p) => p };
             was_upgrade = true;
             unsafe {
-                util::swap(&mut cast::transmute_mut(self).inner,
-                           &mut new_port.inner);
+                mem::swap(&mut cast::transmute_mut(self).inner,
+                          &mut new_port.inner);
             }
         }
     }
