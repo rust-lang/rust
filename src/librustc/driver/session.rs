@@ -63,9 +63,9 @@ debugging_opts!(
         META_STATS,
         NO_OPT,
         GC,
-        PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
-        LTO
+        LTO,
+        DEBUG_LINKER
     ]
     0
 )
@@ -90,13 +90,12 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
       COUNT_TYPE_SIZES),
      ("meta-stats", "gather metadata statistics", META_STATS),
      ("no-opt", "do not optimize, even if -O is passed", NO_OPT),
-     ("print-link-args", "Print the arguments passed to the linker",
-      PRINT_LINK_ARGS),
      ("gc", "Garbage collect shared data (experimental)", GC),
      ("print-llvm-passes",
       "Prints the llvm optimization passes being run",
       PRINT_LLVM_PASSES),
      ("lto", "Perform LLVM link-time optimizations", LTO),
+     ("debug-linker", "enable debug output from linker", DEBUG_LINKER)
     ]
 }
 

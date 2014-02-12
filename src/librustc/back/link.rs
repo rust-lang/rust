@@ -1013,12 +1013,13 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
     cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(),
                                     obj_filename, out_filename));
-    if (sess.opts.debugging_opts & session::PRINT_LINK_ARGS) != 0 {
-        println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
-    }
-
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
+
+    let debug_linker = (sess.opts.debugging_opts & session::DEBUG_LINKER) != 0;
+    if debug_linker { // show arguments we are passing to linker
+        sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
+    }
 
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
@@ -1031,6 +1032,9 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
                 sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
                 sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
                 sess.abort_if_errors();
+            }
+            else if debug_linker { // show linker output
+                sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
             }
         },
         Err(e) => {
