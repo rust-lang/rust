@@ -30,4 +30,8 @@ pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
     DecoderHelpers, EncoderHelpers};
 
 mod serialize;
+
+pub mod base64;
 pub mod ebml;
+pub mod hex;
+
