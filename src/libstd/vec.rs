@@ -4428,6 +4428,7 @@ mod bench {
         let mut vec: ~[uint] = ~[0u];
         bh.iter(|| {
             vec.push(0);
+            &vec
         })
     }
 
@@ -4435,7 +4436,7 @@ mod bench {
     fn starts_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-            vec.starts_with(vec);
+            vec.starts_with(vec)
         })
     }
 
@@ -4443,7 +4444,7 @@ mod bench {
     fn starts_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
         bh.iter(|| {
-            vec.starts_with(vec);
+            vec.starts_with(vec)
         })
     }
 
@@ -4453,7 +4454,7 @@ mod bench {
         let mut match_vec: ~[uint] = vec::from_fn(99, |i| i);
         match_vec.push(0);
         bh.iter(|| {
-            vec.starts_with(match_vec);
+            vec.starts_with(match_vec)
         })
     }
 
@@ -4461,7 +4462,7 @@ mod bench {
     fn ends_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-            vec.ends_with(vec);
+            vec.ends_with(vec)
         })
     }
 
@@ -4469,7 +4470,7 @@ mod bench {
     fn ends_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
         bh.iter(|| {
-            vec.ends_with(vec);
+            vec.ends_with(vec)
         })
     }
 
@@ -4479,7 +4480,7 @@ mod bench {
         let mut match_vec: ~[uint] = vec::from_fn(100, |i| i);
         match_vec[0] = 200;
         bh.iter(|| {
-            vec.starts_with(match_vec);
+            vec.starts_with(match_vec)
         })
     }
 
@@ -4487,7 +4488,7 @@ mod bench {
     fn contains_last_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-                vec.contains(&99u);
+            vec.contains(&99u)
         })
     }
 
@@ -4507,13 +4508,14 @@ mod bench {
                 ptr::set_memory(vp, 0, 1024);
                 v.set_len(1024);
             }
+            v
         });
     }
 
     #[bench]
     fn zero_1kb_fixed_repeat(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _v: ~[u8] = ~[0u8, ..1024];
+            ~[0u8, ..1024]
         });
     }
 
@@ -4542,6 +4544,7 @@ mod bench {
             for x in v.mut_iter() {
                 *x = 0;
             }
+            v
         });
     }
 
