@@ -34,7 +34,7 @@ use std::run;
 use std::str;
 use std::io;
 use std::io::fs;
-use extra::hex::ToHex;
+use serialize::hex::ToHex;
 use extra::tempfile::TempDir;
 use syntax::abi;
 use syntax::ast;

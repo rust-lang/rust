@@ -59,11 +59,9 @@ pub mod url;
 pub mod json;
 pub mod tempfile;
 pub mod time;
-pub mod base64;
 pub mod workcache;
 pub mod enum_set;
 pub mod stats;
-pub mod hex;
 
 #[cfg(unicode)]
 mod unicode;
