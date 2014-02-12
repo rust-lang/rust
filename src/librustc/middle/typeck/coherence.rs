@@ -23,7 +23,7 @@ use middle::ty::{substs, t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
-use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
+use middle::ty::{ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_unboxed_vec, type_is_ty_var};
 use middle::subst::Subst;
 use middle::ty;
@@ -82,7 +82,7 @@ fn get_base_type(inference_context: &InferCtxt,
 
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
-        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
+        ty_infer(..) | ty_param(..) | ty_self(..) |
         ty_unboxed_vec(..) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {:?}",
