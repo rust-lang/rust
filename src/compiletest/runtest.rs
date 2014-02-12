@@ -452,7 +452,12 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for line in ProcRes.stderr.lines() {
+    let output_to_check = if props.check_stdout {
+        ProcRes.stdout + ProcRes.stderr
+    } else {
+        ProcRes.stderr.clone()
+    };
+    for line in output_to_check.lines() {
         if line.contains(*next_err_pat) {
             debug!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
