@@ -55,7 +55,7 @@ use ptr::RawPtr;
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
-use super::Port;
+use super::{Port, TryRecvResult};
 use uint;
 
 macro_rules! select {
@@ -249,6 +249,9 @@ impl<'port, T: Send> Handle<'port, T> {
     /// success or `None` if the channel disconnects. This function has the same
     /// semantics as `Port.recv_opt`
     pub fn recv_opt(&mut self) -> Option<T> { self.port.recv_opt() }
+    /// Immediately attempt to receive a value on a port, this function will
+    /// never block. Has the same semantics as `Port.try_recv`.
+    pub fn try_recv(&mut self) -> TryRecvResult<T> { self.port.try_recv() }
 
     /// Adds this handle to the port set that the handle was created from. This
     /// method can be called multiple times, but it has no effect if `add` was
