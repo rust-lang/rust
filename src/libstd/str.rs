@@ -4357,7 +4357,7 @@ mod bench {
 
         assert_eq!(100, s.len());
         bh.iter(|| {
-            let _ = is_utf8(s);
+            is_utf8(s)
         });
     }
 
@@ -4366,7 +4366,7 @@ mod bench {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
         bh.iter(|| {
-            let _ = is_utf8(s);
+            is_utf8(s)
         });
     }
 
@@ -4409,7 +4409,7 @@ mod bench {
     #[bench]
     fn bench_with_capacity(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = with_capacity(100);
+            with_capacity(100)
         });
     }
 

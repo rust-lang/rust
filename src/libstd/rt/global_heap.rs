@@ -112,14 +112,14 @@ mod bench {
     #[bench]
     fn alloc_owned_small(bh: &mut BenchHarness) {
         bh.iter(|| {
-            ~10;
+            ~10
         })
     }
 
     #[bench]
     fn alloc_owned_big(bh: &mut BenchHarness) {
         bh.iter(|| {
-            ~[10, ..1000];
+            ~[10, ..1000]
         })
     }
 }
