@@ -28,7 +28,8 @@ impl<'a> ToHex for &'a [u8] {
      * # Example
      *
      * ```rust
-     * use extra::hex::ToHex;
+     * extern mod serialize;
+     * use serialize::hex::ToHex;
      *
      * fn main () {
      *     let str = [52,32].to_hex();
@@ -88,7 +89,8 @@ impl<'a> FromHex for &'a str {
      * This converts a string literal to hexadecimal and back.
      *
      * ```rust
-     * use extra::hex::{FromHex, ToHex};
+     * extern mod serialize;
+     * use serialize::hex::{FromHex, ToHex};
      * use std::str;
      *
      * fn main () {
@@ -137,8 +139,8 @@ impl<'a> FromHex for &'a str {
 
 #[cfg(test)]
 mod tests {
-    use test::BenchHarness;
-    use hex::*;
+    use extra::test::BenchHarness;
+    use hex::{FromHex, ToHex};
 
     #[test]
     pub fn test_to_hex() {

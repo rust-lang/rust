@@ -63,8 +63,8 @@ impl<'a> ToBase64 for &'a [u8] {
      * # Example
      *
      * ```rust
-     * extern mod extra;
-     * use extra::base64::{ToBase64, STANDARD};
+     * extern mod serialize;
+     * use serialize::base64::{ToBase64, STANDARD};
      *
      * fn main () {
      *     let str = [52,32].to_base64(STANDARD);
@@ -189,8 +189,8 @@ impl<'a> FromBase64 for &'a str {
      * This converts a string literal to base64 and back.
      *
      * ```rust
-     * extern mod extra;
-     * use extra::base64::{ToBase64, FromBase64, STANDARD};
+     * extern mod serialize;
+     * use serialize::base64::{ToBase64, FromBase64, STANDARD};
      * use std::str;
      *
      * fn main () {
@@ -261,8 +261,8 @@ impl<'a> FromBase64 for &'a str {
 
 #[cfg(test)]
 mod test {
-    use test::BenchHarness;
-    use base64::*;
+    use extra::test::BenchHarness;
+    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]
     fn test_to_base64_basic() {
