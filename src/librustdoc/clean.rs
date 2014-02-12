@@ -342,7 +342,9 @@ impl Clean<Item> for ast::Method {
             _ => self.decl.inputs.slice_from(1)
         };
         let decl = FnDecl {
-            inputs: inputs.iter().map(|x| x.clean()).collect(),
+            inputs: Arguments {
+                values: inputs.iter().map(|x| x.clean()).collect(),
+            },
             output: (self.decl.output.clean()),
             cf: self.decl.cf.clean(),
             attrs: ~[]
@@ -378,7 +380,9 @@ impl Clean<Item> for ast::TypeMethod {
             _ => self.decl.inputs.slice_from(1)
         };
         let decl = FnDecl {
-            inputs: inputs.iter().map(|x| x.clean()).collect(),
+            inputs: Arguments {
+                values: inputs.iter().map(|x| x.clean()).collect(),
+            },
             output: (self.decl.output.clean()),
             cf: self.decl.cf.clean(),
             attrs: ~[]
@@ -472,16 +476,23 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct FnDecl {
-    inputs: ~[Argument],
+    inputs: Arguments,
     output: Type,
     cf: RetStyle,
     attrs: ~[Attribute]
 }
 
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Arguments {
+    values: ~[Argument],
+}
+
 impl Clean<FnDecl> for ast::FnDecl {
     fn clean(&self) -> FnDecl {
         FnDecl {
-            inputs: self.inputs.iter().map(|x| x.clean()).collect(),
+            inputs: Arguments {
+                values: self.inputs.iter().map(|x| x.clean()).collect(),
+            },
             output: (self.output.clean()),
             cf: self.cf.clean(),
             attrs: ~[]
