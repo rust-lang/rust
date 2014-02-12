@@ -11,7 +11,7 @@
 // ignore-fast Feature gating doesn't work
 // ignore-stage1
 // ignore-pretty
-// ignore-android
+// ignore-cross-compile
 
 #[feature(phase)];
 
