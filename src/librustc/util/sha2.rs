@@ -16,7 +16,7 @@ use std::iter::range_step;
 use std::num::Zero;
 use std::vec;
 use std::vec::bytes::{MutableByteVector, copy_memory};
-use extra::hex::ToHex;
+use serialize::hex::ToHex;
 
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
 /// format.
@@ -529,7 +529,7 @@ mod tests {
     use std::vec;
     use std::rand::isaac::IsaacRng;
     use std::rand::Rng;
-    use extra::hex::FromHex;
+    use serialize::hex::FromHex;
 
     // A normal addition - no overflow occurs
     #[test]
