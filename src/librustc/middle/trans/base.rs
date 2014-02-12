@@ -598,19 +598,8 @@ pub fn compare_scalar_types<'a>(
         ty::ty_int(_) => rslt(cx, f(signed_int)),
         ty::ty_uint(_) => rslt(cx, f(unsigned_int)),
         ty::ty_float(_) => rslt(cx, f(floating_point)),
-        ty::ty_type => {
-            rslt(
-                controlflow::trans_fail(
-                    cx, None,
-                    InternedString::new("attempt to compare values of type \
-                                         type")),
-                C_nil())
-        }
-        _ => {
             // Should never get here, because t is scalar.
-            cx.sess().bug("non-scalar type passed to \
-                           compare_scalar_types")
-        }
+        _ => cx.sess().bug("non-scalar type passed to compare_scalar_types")
     }
 }
 
