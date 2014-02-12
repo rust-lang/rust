@@ -698,7 +698,7 @@ mod test {
     iotest!(fn tcp_clone_two_read() {
         let addr = next_test_ip6();
         let mut acceptor = TcpListener::bind(addr).listen();
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let c2 = c.clone();
 
         spawn(proc() {
