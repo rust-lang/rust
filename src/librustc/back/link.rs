@@ -1005,6 +1005,7 @@ fn link_rlib(sess: Session,
 fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
     let mut a = link_rlib(sess, None, obj_filename, out_filename);
     a.add_native_library("morestack").unwrap();
+    a.add_native_library("compiler-rt").unwrap();
 
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
@@ -1132,6 +1133,19 @@ fn link_args(sess: Session,
         args.push(~"-shared-libgcc");
     }
 
+    if sess.targ_cfg.os == abi::OsAndroid {
+        // Many of the symbols defined in compiler-rt are also defined in libgcc.
+        // Android linker doesn't like that by default.
+        args.push(~"-Wl,--allow-multiple-definition");
+    }
+
+    // Stack growth requires statically linking a __morestack function
+    args.push(~"-lmorestack");
+    // compiler-rt contains implementations of low-level LLVM helpers
+    // It should go before platform and user libraries, so it has first dibs
+    // at resolving symbols that also appear in libgcc.
+    args.push(~"-lcompiler-rt");
+
     add_local_native_libraries(&mut args, sess);
     add_upstream_rust_crates(&mut args, sess, dylib, tmpdir);
     add_upstream_native_libraries(&mut args, sess);
@@ -1158,9 +1172,6 @@ fn link_args(sess: Session,
                        ~"-L/usr/local/lib/gcc46",
                        ~"-L/usr/local/lib/gcc44"]);
     }
-
-    // Stack growth requires statically linking a __morestack function
-    args.push(~"-lmorestack");
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the

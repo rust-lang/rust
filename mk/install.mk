@@ -96,6 +96,7 @@ install-target-$(1)-host-$(2):						\
 		$$(call INSTALL_LIB,$$(call CFG_LIB_GLOB_$(1),$$(crate)));\
 		$$(call INSTALL_LIB,$$(call CFG_RLIB_GLOB,$$(crate)));)
 	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,libcompiler-rt.a)
 
 endef
 
@@ -110,6 +111,7 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(foreach crate,$$(TARGET_CRATES),\
 	    $$(call INSTALL_LIB,$$(call CFG_RLIB_GLOB,$$(crate)));)
 	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
+	$$(Q)$$(call INSTALL_LIB,libcompiler-rt.a)
 endef
 
 $(foreach target,$(CFG_TARGET), \

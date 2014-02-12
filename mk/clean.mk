@@ -54,6 +54,7 @@ clean-generic-$(2)-$(1):
 	         $(1)/rt \
 		 $(1)/test \
 		 $(1)/stage* \
+		 -type f \(           \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -62,6 +63,7 @@ clean-generic-$(2)-$(1):
          -name '*.dll' -o     \
          -name '*.def' -o     \
          -name '*.bc'         \
+         \)                   \
          | xargs rm -f
 	$(Q)find $(1)\
          -name '*.dSYM'       \
@@ -96,6 +98,7 @@ clean$(1)_T_$(2)_H_$(3):						       \
 	    $$(foreach crate,$$(CRATES),clean$(1)_T_$(2)_H_$(3)-lib-$$(crate))  \
 	    $$(foreach tool,$$(TOOLS),clean$(1)_T_$(2)_H_$(3)-tool-$$(tool))
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
+	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 
