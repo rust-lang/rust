@@ -222,7 +222,7 @@ pub fn init() {
         static mut INITIALIZED: bool = false;
         static mut LOCK: Mutex = MUTEX_INIT;
 
-        LOCK.lock();
+        let _guard = LOCK.lock();
         if !INITIALIZED {
             let mut data: WSADATA = mem::init();
             let ret = WSAStartup(0x202,      // version 2.2
@@ -230,7 +230,6 @@ pub fn init() {
             assert_eq!(ret, 0);
             INITIALIZED = true;
         }
-        LOCK.unlock();
     }
 }
 

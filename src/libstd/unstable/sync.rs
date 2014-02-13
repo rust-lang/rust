@@ -11,28 +11,21 @@
 use clone::Clone;
 use kinds::Send;
 use ops::Drop;
-use option::{Option,Some,None};
+use option::Option;
 use sync::arc::UnsafeArc;
-use unstable::mutex::Mutex;
+use unstable::mutex::{Mutex, LockGuard};
 
 pub struct LittleLock {
     priv l: Mutex,
 }
 
 pub struct LittleGuard<'a> {
-    priv l: &'a mut Mutex,
+    priv l: LockGuard<'a>
 }
 
 impl Drop for LittleLock {
     fn drop(&mut self) {
         unsafe { self.l.destroy(); }
-    }
-}
-
-#[unsafe_destructor]
-impl<'a> Drop for LittleGuard<'a> {
-    fn drop(&mut self) {
-        unsafe { self.l.unlock(); }
     }
 }
 
@@ -42,20 +35,15 @@ impl LittleLock {
     }
 
     pub unsafe fn lock<'a>(&'a mut self) -> LittleGuard<'a> {
-        self.l.lock();
-        LittleGuard { l: &mut self.l }
+        LittleGuard { l: self.l.lock() }
     }
 
     pub unsafe fn try_lock<'a>(&'a mut self) -> Option<LittleGuard<'a>> {
-        if self.l.trylock() {
-            Some(LittleGuard { l: &mut self.l })
-        } else {
-            None
-        }
+        self.l.trylock().map(|guard| LittleGuard { l: guard })
     }
 
     pub unsafe fn signal(&mut self) {
-        self.l.signal();
+        self.l.signal_noguard();
     }
 }
 

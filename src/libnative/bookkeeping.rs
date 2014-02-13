@@ -29,9 +29,8 @@ pub fn increment() {
 pub fn decrement() {
     unsafe {
         if TASK_COUNT.fetch_sub(1, atomics::SeqCst) == 1 {
-            TASK_LOCK.lock();
-            TASK_LOCK.signal();
-            TASK_LOCK.unlock();
+            let mut guard = TASK_LOCK.lock();
+            guard.signal();
         }
     }
 }
@@ -40,11 +39,12 @@ pub fn decrement() {
 /// the entry points of native programs
 pub fn wait_for_other_tasks() {
     unsafe {
-        TASK_LOCK.lock();
-        while TASK_COUNT.load(atomics::SeqCst) > 0 {
-            TASK_LOCK.wait();
+        {
+            let mut guard = TASK_LOCK.lock();
+            while TASK_COUNT.load(atomics::SeqCst) > 0 {
+                guard.wait();
+            }
         }
-        TASK_LOCK.unlock();
         TASK_LOCK.destroy();
     }
 }

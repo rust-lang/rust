@@ -68,7 +68,6 @@ mod imp {
     use option::{Option, Some, None};
     use ptr::RawPtr;
     use iter::Iterator;
-    use unstable::finally::Finally;
     use unstable::mutex::{Mutex, MUTEX_INIT};
     use mem;
 
@@ -111,16 +110,10 @@ mod imp {
     }
 
     fn with_lock<T>(f: || -> T) -> T {
-        (|| {
-            unsafe {
-                lock.lock();
-                f()
-            }
-        }).finally(|| {
-            unsafe {
-                lock.unlock();
-            }
-        })
+        unsafe {
+            let _guard = lock.lock();
+            f()
+        }
     }
 
     fn get_global_ptr() -> *mut Option<~~[~[u8]]> {

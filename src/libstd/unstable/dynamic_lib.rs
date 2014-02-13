@@ -157,7 +157,7 @@ pub mod dl {
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
-            lock.lock();
+            let _guard = lock.lock();
             let _old_error = dlerror();
 
             let result = f();
@@ -168,7 +168,7 @@ pub mod dl {
             } else {
                 Err(str::raw::from_c_str(last_error))
             };
-            lock.unlock();
+
             ret
         }
     }
