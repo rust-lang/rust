@@ -784,11 +784,12 @@ impl BigUint {
         if n_bits == 0 || self.data.is_empty() { return (*self).clone(); }
 
         let mut borrow = 0;
-        let mut shifted = ~[];
+        let mut shifted_rev = vec::with_capacity(self.data.len());
         for elem in self.data.rev_iter() {
-            shifted = ~[(*elem >> n_bits) | borrow] + shifted;
+            shifted_rev.push((*elem >> n_bits) | borrow);
             borrow = *elem << (BigDigit::bits - n_bits);
         }
+        let shifted = { shifted_rev.reverse(); shifted_rev };
         return BigUint::new(shifted);
     }
 
@@ -2636,5 +2637,16 @@ mod bench {
         bh.iter(|| {
             fib.to_str();
         });
+    }
+
+    #[bench]
+    fn shr(bh: &mut BenchHarness) {
+        let n = { let one : BigUint = One::one(); one << 1000 };
+        bh.iter(|| {
+            let mut m = n.clone();
+            for _ in range(0, 10) {
+                m = m >> 1;
+            }
+        })
     }
 }

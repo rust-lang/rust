@@ -18,6 +18,7 @@ use iter::Iterator;
 use option::Option;
 use io::Reader;
 use vec::{OwnedVector, ImmutableVector};
+use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -104,7 +105,7 @@ pub fn u64_from_be_bytes(data: &[u8],
                          start: uint,
                          size: uint)
                       -> u64 {
-    use ptr::{copy_nonoverlapping_memory, offset, mut_offset};
+    use ptr::{copy_nonoverlapping_memory};
     use mem::from_be64;
     use vec::MutableVector;
 
@@ -116,9 +117,9 @@ pub fn u64_from_be_bytes(data: &[u8],
 
     let mut buf = [0u8, ..8];
     unsafe {
-        let ptr = offset(data.as_ptr(), start as int);
+        let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
-        copy_nonoverlapping_memory(mut_offset(out, (8 - size) as int), ptr, size);
+        copy_nonoverlapping_memory(out.offset((8 - size) as int), ptr, size);
         from_be64(*(out as *i64)) as u64
     }
 }

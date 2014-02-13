@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,6 +28,7 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
+use std::cast;
 use std::vec;
 use std::unstable::dynamic_lib::DynamicLibrary;
 use std::os;
@@ -469,9 +470,12 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
             };
             fld.extsbox.insert(name, extension);
         });
-    }
 
-    fld.extsbox.insert_macro_crate(lib);
+        // Intentionally leak the dynamic library. We can't ever unload it
+        // since the library can do things that will outlive the expansion
+        // phase (e.g. make an @-box cycle or launch a task).
+        cast::forget(lib);
+    }
 }
 
 // expand a stmt
