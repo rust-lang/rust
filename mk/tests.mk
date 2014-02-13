@@ -333,21 +333,22 @@ $(foreach host,$(CFG_HOST), \
 
 define TEST_RUNNER
 
-# If NO_REBUILD is set then break the dependencies on extra so we can
-# test crates without rebuilding std and extra first
+# If NO_REBUILD is set then break the dependencies on everything but
+# the source files so we can test crates without rebuilding any of the
+# parent crates.
 ifeq ($(NO_REBUILD),)
-STDTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
+TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
 			    $$(foreach crate,$$(TARGET_CRATES),\
-				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))
+				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
+				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
 else
-STDTESTDEP_$(1)_$(2)_$(3)_$(4) =
+TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER = $(2)
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
-		$$(CRATEFILE_$(4))					\
-		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
-		$$(STDTESTDEP_$(1)_$(2)_$(3)_$(4))
+		$$(CRATEFILE_$(4)) \
+		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, oxidize: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
@@ -684,13 +685,22 @@ $(foreach host,$(CFG_HOST), \
 
 define DEF_CRATE_DOC_TEST
 
+# If NO_REBUILD is set then break the dependencies on everything but
+# the source files so we can test crate documentation without
+# rebuilding any of the parent crates.
+ifeq ($(NO_REBUILD),)
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
+	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
+	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
+	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+else
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
+endif
+
 check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
 ifeq ($(2),$$(CFG_BUILD))
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):				\
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
-		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
-		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-$(4) [$(2)])
 	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
 	    $$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@

@@ -22,7 +22,8 @@ use cast::{forget, transmute};
 use rt::global_heap::{malloc_raw, realloc_raw};
 use vec::{ImmutableVector, Items, MutableVector};
 use unstable::raw::Slice;
-use ptr::{offset, read_ptr};
+use ptr::read_ptr;
+use ptr::RawPtr;
 use libc::{free, c_void};
 
 pub struct Vec<T> {
@@ -135,7 +136,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = offset(self.ptr as *T, self.len as int) as *mut T;
+            let end = (self.ptr as *T).offset(self.len as int) as *mut T;
             move_val_init(&mut *end, value);
             self.len += 1;
         }

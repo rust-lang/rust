@@ -23,6 +23,7 @@ use io;
 use iter::Iterator;
 use option::{Some, None, Option};
 use ptr;
+use ptr::RawPtr;
 use reflect;
 use reflect::{MovePtr, align};
 use result::{Ok, Err};
@@ -221,7 +222,7 @@ impl<'a> ReprVisitor<'a> {
                 if_ok!(self, self.writer.write(", ".as_bytes()));
             }
             self.visit_ptr_inner(p as *u8, inner);
-            p = align(unsafe { ptr::offset(p, sz as int) as uint }, al) as *u8;
+            p = align(unsafe { p.offset(sz as int) as uint }, al) as *u8;
             left -= dec;
         }
         if_ok!(self, self.writer.write([']' as u8]));
@@ -601,10 +602,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
-
-    // NOTE Remove after next snapshot.
-    #[cfg(stage0)]
-    fn visit_type(&mut self) -> bool { true }
 }
 
 pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {

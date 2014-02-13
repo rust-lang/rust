@@ -35,19 +35,9 @@ Rust extras are part of the standard Rust distribution.
 #[deny(missing_doc)];
 
 extern mod sync;
-#[cfg(not(stage0))]
 extern mod serialize;
 
 extern mod collections;
-
-#[cfg(stage0)]
-pub mod serialize {
-    #[allow(missing_doc)];
-    // Temp re-export until after a snapshot
-    extern mod serialize = "serialize";
-    pub use self::serialize::{Encoder, Decoder, Encodable, Decodable,
-                                   EncoderHelpers, DecoderHelpers};
-}
 
 // Utility modules
 
@@ -59,11 +49,9 @@ pub mod url;
 pub mod json;
 pub mod tempfile;
 pub mod time;
-pub mod base64;
 pub mod workcache;
 pub mod enum_set;
 pub mod stats;
-pub mod hex;
 
 #[cfg(unicode)]
 mod unicode;
