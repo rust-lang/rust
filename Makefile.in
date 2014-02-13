@@ -222,6 +222,7 @@ endif
 
 # Copy all the distributables to another directory for binary install
 ifneq ($(strip $(findstring prepare,$(MAKECMDGOALS)) \
+               $(findstring dist,$(MAKECMDGOALS)) \
                $(findstring install,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including prepare rules)
   include $(CFG_SRC_DIR)mk/prepare.mk
