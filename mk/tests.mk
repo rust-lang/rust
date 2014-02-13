@@ -247,6 +247,16 @@ tidy:
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q)find $(S)src/doc -name '*.js' \
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q)find $(S)src/etc -name '*.sh' \
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q)find $(S)src/etc -name '*.pl' \
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q)find $(S)src/etc -name '*.c' \
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q)find $(S)src/etc -name '*.h' \
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_CS) \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
