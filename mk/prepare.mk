@@ -36,6 +36,8 @@ prepare-base: PREPARE_DEST_LIB_DIR=$(PREPARE_DEST_DIR)/$(CFG_LIBDIR_RELATIVE)
 prepare-base: PREPARE_DEST_MAN_DIR=$(PREPARE_DEST_DIR)/man1
 prepare-base: prepare-host prepare-targets
 
+prepare-everything: prepare-host prepare-targets
+
 DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
 DEFAULT_PREPARE_LIB_CMD = install -m644
