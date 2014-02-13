@@ -531,7 +531,7 @@ mod test {
         let (p, c) = Chan::new();
         c.send(());
         select!(
-            () = p.recv() => {},
+            () = p.recv() => {}
         )
     })
 
@@ -540,7 +540,7 @@ mod test {
         c.send(());
         c.send(());
         select!(
-            () = p.recv() => {},
+            () = p.recv() => {}
         )
     })
 
@@ -549,7 +549,7 @@ mod test {
         drop(c.clone());
         c.send(());
         select!(
-            () = p.recv() => {},
+            () = p.recv() => {}
         )
     })
 
