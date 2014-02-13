@@ -647,14 +647,10 @@ impl Visitor<()> for NewNameFinderContext {
                     &ast::Path {
                         global: false,
                         span: _,
-                        segments: [
-                            ast::PathSegment {
-                                identifier: id,
-                                lifetimes: _,
-                                types: _
-                            }
-                        ]
-                    } => self.ident_accumulator.push(id),
+                        segments: ref segments
+                    } if segments.len() == 1 => {
+                        self.ident_accumulator.push(segments[0].identifier)
+                    }
                     // I believe these must be enums...
                     _ => ()
                 }
@@ -1187,7 +1183,12 @@ foo_module!()
         let bindings = name_finder.ident_accumulator;
 
         let cxbinds: ~[&ast::Ident] =
-            bindings.iter().filter(|b| "xx" == token::get_ident(**b).get()).collect();
+            bindings.iter().filter(|b| {
+                let ident = token::get_ident(**b);
+                let string = ident.get();
+                "xx" == string
+            }).collect();
+        let cxbinds: &[&ast::Ident] = cxbinds;
         let cxbind = match cxbinds {
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")

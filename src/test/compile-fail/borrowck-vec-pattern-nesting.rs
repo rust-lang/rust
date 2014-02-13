@@ -9,17 +9,17 @@
 // except according to those terms.
 
 fn a() {
-    let mut vec = ~[~1, ~2, ~3];
+    let mut vec = [~1, ~2, ~3];
     match vec {
-        [~ref _a] => {
+        [~ref _a, _, _] => {
             vec[0] = ~4; //~ ERROR cannot assign
         }
-        _ => fail!("foo")
     }
 }
 
 fn b() {
     let mut vec = ~[~1, ~2, ~3];
+    let vec: &mut [~int] = vec;
     match vec {
         [.._b] => {
             vec[0] = ~4; //~ ERROR cannot assign
@@ -29,6 +29,7 @@ fn b() {
 
 fn c() {
     let mut vec = ~[~1, ~2, ~3];
+    let vec: &mut [~int] = vec;
     match vec {
         [_a, .._b] => {
             //~^ ERROR cannot move out
@@ -41,27 +42,31 @@ fn c() {
         }
         _ => {}
     }
-    let a = vec[0]; //~ ERROR use of partially moved value: `vec`
+    let a = vec[0]; //~ ERROR cannot move out
 }
 
 fn d() {
     let mut vec = ~[~1, ~2, ~3];
+    let vec: &mut [~int] = vec;
     match vec {
         [.._a, _b] => {
             //~^ ERROR cannot move out
         }
         _ => {}
     }
-    let a = vec[0]; //~ ERROR use of partially moved value: `vec`
+    let a = vec[0]; //~ ERROR cannot move out
 }
 
 fn e() {
     let mut vec = ~[~1, ~2, ~3];
+    let vec: &mut [~int] = vec;
     match vec {
-        [_a, _b, _c] => {}
+        [_a, _b, _c] => {}  //~ ERROR cannot move out
+        //~^ ERROR cannot move out
+        //~^^ ERROR cannot move out
         _ => {}
     }
-    let a = vec[0]; //~ ERROR use of partially moved value: `vec`
+    let a = vec[0]; //~ ERROR cannot move out
 }
 
 fn main() {}

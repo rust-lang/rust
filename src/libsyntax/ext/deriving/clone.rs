@@ -97,30 +97,27 @@ fn cs_clone(
                                                                  name))
     }
 
-    match *all_fields {
-        [FieldInfo { name: None, .. }, ..] => {
-            // enum-like
-            let subcalls = all_fields.map(subcall);
-            cx.expr_call_ident(trait_span, ctor_ident, subcalls)
-        },
-        _ => {
-            // struct-like
-            let fields = all_fields.map(|field| {
-                let ident = match field.name {
-                    Some(i) => i,
-                    None => cx.span_bug(trait_span,
-                                        format!("unnamed field in normal struct in `deriving({})`",
-                                                name))
-                };
-                cx.field_imm(field.span, ident, subcall(field))
-            });
+    if all_fields.len() >= 1 && all_fields[0].name.is_none() {
+        // enum-like
+        let subcalls = all_fields.map(subcall);
+        cx.expr_call_ident(trait_span, ctor_ident, subcalls)
+    } else {
+        // struct-like
+        let fields = all_fields.map(|field| {
+            let ident = match field.name {
+                Some(i) => i,
+                None => cx.span_bug(trait_span,
+                                    format!("unnamed field in normal struct in `deriving({})`",
+                                            name))
+            };
+            cx.field_imm(field.span, ident, subcall(field))
+        });
 
-            if fields.is_empty() {
-                // no fields, so construct like `None`
-                cx.expr_ident(trait_span, ctor_ident)
-            } else {
-                cx.expr_struct_ident(trait_span, ctor_ident, fields)
-            }
+        if fields.is_empty() {
+            // no fields, so construct like `None`
+            cx.expr_ident(trait_span, ctor_ident)
+        } else {
+            cx.expr_struct_ident(trait_span, ctor_ident, fields)
         }
     }
 }

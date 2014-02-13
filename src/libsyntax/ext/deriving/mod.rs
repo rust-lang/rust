@@ -54,7 +54,10 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `deriving`");
         }
-        MetaWord(_) | MetaList(_, []) => {
+        MetaWord(_) => {
+            cx.span_warn(mitem.span, "empty trait list in `deriving`");
+        }
+        MetaList(_, ref titems) if titems.len() == 0 => {
             cx.span_warn(mitem.span, "empty trait list in `deriving`");
         }
         MetaList(_, ref titems) => {
