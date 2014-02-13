@@ -36,7 +36,7 @@ Uninstallable=yes
 Name: modifypath; Description: &Add {app}\bin to your PATH (recommended)
 
 [Files]
-Source: "i686-pc-mingw32/stage3/*.*" ; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "tmp/dist/win/*.*" ; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Code]
 const
