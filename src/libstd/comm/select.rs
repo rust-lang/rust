@@ -60,21 +60,17 @@ use uint;
 
 macro_rules! select {
     (
-        $name1:pat = $port1:ident.$meth1:ident() => $code1:expr,
-        $($name:pat = $port:ident.$meth:ident() => $code:expr),*
+        $($name:pat = $port:ident.$meth:ident() => $code:expr),+
     ) => ({
         use std::comm::Select;
         let sel = Select::new();
-        let mut $port1 = sel.handle(&$port1);
-        $( let mut $port = sel.handle(&$port); )*
+        $( let mut $port = sel.handle(&$port); )+
         unsafe {
-            $port1.add();
-            $( $port.add(); )*
+            $( $port.add(); )+
         }
         let ret = sel.wait();
-        if ret == $port1.id { let $name1 = $port1.$meth1(); $code1 }
-        $( else if ret == $port.id { let $name = $port.$meth(); $code } )*
-        else { unreachable!() }
+        $( if ret == $port.id() { let $name = $port.$meth(); $code } else )+
+        { unreachable!() }
     })
 }
 
@@ -94,7 +90,7 @@ pub struct Select {
 pub struct Handle<'port, T> {
     /// The ID of this handle, used to compare against the return value of
     /// `Select::wait()`
-    id: uint,
+    priv id: uint,
     priv selector: &'port Select,
     priv next: *mut Handle<'static, ()>,
     priv prev: *mut Handle<'static, ()>,
@@ -150,7 +146,7 @@ impl Select {
 
     /// Waits for an event on this port set. The returned valus is *not* and
     /// index, but rather an id. This id can be queried against any active
-    /// `Handle` structures (each one has a public `id` field). The handle with
+    /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The
     /// event could either be that data is available or the corresponding
     /// channel has been closed.
@@ -242,6 +238,10 @@ impl Select {
 }
 
 impl<'port, T: Send> Handle<'port, T> {
+    /// Retrieve the id of this handle.
+    #[inline]
+    pub fn id(&self) -> uint { self.id }
+
     /// Receive a value on the underlying port. Has the same semantics as
     /// `Port.recv`
     pub fn recv(&mut self) -> T { self.port.recv() }
@@ -355,7 +355,7 @@ mod test {
         )
         drop(c2);
         select! (
-            bar = p2.recv_opt() => { assert_eq!(bar, None); },
+            bar = p2.recv_opt() => { assert_eq!(bar, None); }
         )
     })
 
