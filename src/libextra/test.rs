@@ -904,15 +904,14 @@ pub fn run_test(force_ignore: bool,
                       monitor_ch: Chan<MonitorMsg>,
                       testfn: proc()) {
         spawn(proc() {
-            let mut task = task::task();
             let (p, c) = Chan::new();
             let mut reader = PortReader::new(p);
             let stdout = ChanWriter::new(c.clone());
             let stderr = ChanWriter::new(c);
-            match desc.name {
-                DynTestName(ref name) => task.name(name.clone()),
-                StaticTestName(name) => task.name(name),
-            }
+            let mut task = task::task().named(match desc.name {
+                DynTestName(ref name) => name.clone().into_maybe_owned(),
+                StaticTestName(name) => name.into_maybe_owned(),
+            });
             task.opts.stdout = Some(~stdout as ~Writer);
             task.opts.stderr = Some(~stderr as ~Writer);
             let result_future = task.future_result();

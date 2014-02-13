@@ -13,9 +13,7 @@
 use std::task;
 
 fn main() {
-    let mut t = task::task();
-    t.name(~"owned name");
-    t.try(proc() {
+    task::task().named(~"owned name").try(proc() {
         fail!("test");
         1
     }).unwrap()
