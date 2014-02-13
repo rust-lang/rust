@@ -601,10 +601,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
-
-    // NOTE Remove after next snapshot.
-    #[cfg(stage0)]
-    fn visit_type(&mut self) -> bool { true }
 }
 
 pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
