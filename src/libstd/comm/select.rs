@@ -151,6 +151,11 @@ impl Select {
     /// event could either be that data is available or the corresponding
     /// channel has been closed.
     pub fn wait(&self) -> uint {
+        self.wait2(false)
+    }
+
+    /// Helper method for skipping the preflight checks during testing
+    fn wait2(&self, do_preflight_checks: bool) -> uint {
         // Note that this is currently an inefficient implementation. We in
         // theory have knowledge about all ports in the set ahead of time, so
         // this method shouldn't really have to iterate over all of them yet
@@ -175,7 +180,7 @@ impl Select {
             let mut amt = 0;
             for p in self.iter() {
                 amt += 1;
-                if (*p).packet.can_recv() {
+                if do_preflight_checks && (*p).packet.can_recv() {
                     return (*p).id;
                 }
             }
@@ -507,7 +512,7 @@ mod test {
         let (p2, c2) = Chan::<()>::new();
         let (p, c) = Chan::new();
         spawn(proc() {
-            let mut s = Select::new();
+            let s = Select::new();
             let mut h1 = s.handle(&p1);
             let mut h2 = s.handle(&p2);
             unsafe { h2.add(); }
@@ -520,5 +525,92 @@ mod test {
         drop(c1.clone());
         c2.send(());
         p.recv();
+    })
+
+    test!(fn preflight1() {
+        let (p, c) = Chan::new();
+        c.send(());
+        select!(
+            () = p.recv() => {},
+        )
+    })
+
+    test!(fn preflight2() {
+        let (p, c) = Chan::new();
+        c.send(());
+        c.send(());
+        select!(
+            () = p.recv() => {},
+        )
+    })
+
+    test!(fn preflight3() {
+        let (p, c) = Chan::new();
+        drop(c.clone());
+        c.send(());
+        select!(
+            () = p.recv() => {},
+        )
+    })
+
+    test!(fn preflight4() {
+        let (p, c) = Chan::new();
+        c.send(());
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
+    })
+
+    test!(fn preflight5() {
+        let (p, c) = Chan::new();
+        c.send(());
+        c.send(());
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
+    })
+
+    test!(fn preflight6() {
+        let (p, c) = Chan::new();
+        drop(c.clone());
+        c.send(());
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
+    })
+
+    test!(fn preflight7() {
+        let (p, c) = Chan::<()>::new();
+        drop(c);
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
+    })
+
+    test!(fn preflight8() {
+        let (p, c) = Chan::new();
+        c.send(());
+        drop(c);
+        p.recv();
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
+    })
+
+    test!(fn preflight9() {
+        let (p, c) = Chan::new();
+        drop(c.clone());
+        c.send(());
+        drop(c);
+        p.recv();
+        let s = Select::new();
+        let mut h = s.handle(&p);
+        unsafe { h.add(); }
+        assert_eq!(s.wait2(false), h.id);
     })
 }
