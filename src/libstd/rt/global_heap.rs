@@ -10,8 +10,6 @@
 
 use libc::{c_void, size_t, free, malloc, realloc};
 use ptr::{RawPtr, mut_null};
-#[cfg(stage0)]
-use unstable::intrinsics::TyDesc;
 use unstable::intrinsics::abort;
 use unstable::raw;
 use mem::size_of;
@@ -75,15 +73,7 @@ pub unsafe fn exchange_malloc(size: uint) -> *u8 {
 }
 
 // FIXME: #7496
-#[cfg(not(test), stage0)]
-#[lang="closure_exchange_malloc"]
-#[inline]
-pub unsafe fn closure_exchange_malloc_(td: *u8, size: uint) -> *u8 {
-    closure_exchange_malloc(td, size)
-}
-
-// FIXME: #7496
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 #[lang="closure_exchange_malloc"]
 #[inline]
 pub unsafe fn closure_exchange_malloc_(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
@@ -91,24 +81,6 @@ pub unsafe fn closure_exchange_malloc_(drop_glue: fn(*mut u8), size: uint, align
 }
 
 #[inline]
-#[cfg(stage0)]
-pub unsafe fn closure_exchange_malloc(td: *u8, size: uint) -> *u8 {
-    let td = td as *TyDesc;
-    let size = size;
-
-    assert!(td.is_not_null());
-
-    let total_size = get_box_size(size, (*td).align);
-    let p = malloc_raw(total_size);
-
-    let alloc = p as *mut raw::Box<()>;
-    (*alloc).type_desc = td;
-
-    alloc as *u8
-}
-
-#[inline]
-#[cfg(not(stage0))]
 pub unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
     let total_size = get_box_size(size, align);
     let p = malloc_raw(total_size);
