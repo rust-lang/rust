@@ -21,23 +21,6 @@ use unstable::intrinsics;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
-/// Calculate the offset from a pointer.
-/// The `count` argument is in units of T; e.g. a `count` of 3
-/// represents a pointer offset of `3 * sizeof::<T>()` bytes.
-#[inline]
-pub unsafe fn offset<T>(ptr: *T, count: int) -> *T {
-    intrinsics::offset(ptr, count)
-}
-
-/// Calculate the offset from a mut pointer. The count *must* be in bounds or
-/// otherwise the loads of this address are undefined.
-/// The `count` argument is in units of T; e.g. a `count` of 3
-/// represents a pointer offset of `3 * sizeof::<T>()` bytes.
-#[inline]
-pub unsafe fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    intrinsics::offset(ptr as *T, count) as *mut T
-}
-
 /// Return the offset of the first null pointer in `buf`.
 #[inline]
 pub unsafe fn buf_len<T>(buf: **T) -> uint {
@@ -63,7 +46,7 @@ impl<T> Clone for *mut T {
 pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
     let mut i = 0;
     loop {
-        if f(&(*offset(buf, i as int))) { return i; }
+        if f(&(*buf.offset(i as int))) { return i; }
         else { i += 1; }
     }
 }
@@ -75,14 +58,6 @@ pub fn null<T>() -> *T { 0 as *T }
 /// Create an unsafe mutable null pointer
 #[inline]
 pub fn mut_null<T>() -> *mut T { 0 as *mut T }
-
-/// Returns true if the pointer is equal to the null pointer.
-#[inline]
-pub fn is_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_null() }
-
-/// Returns true if the pointer is not equal to the null pointer.
-#[inline]
-pub fn is_not_null<T,P:RawPtr<T>>(ptr: P) -> bool { ptr.is_not_null() }
 
 /**
  * Copies data from one location to another.
@@ -206,7 +181,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     }
     //let start_ptr = *arr;
     for e in range(0, len) {
-        let n = offset(arr, e as int);
+        let n = arr.offset(e as int);
         cb(*n);
     }
     debug!("array_each_with_len: after iterate");
@@ -278,7 +253,7 @@ impl<T> RawPtr<T> for *T {
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
     /// the object, or one-byte-past-the-end.
     #[inline]
-    unsafe fn offset(self, count: int) -> *T { offset(self, count) }
+    unsafe fn offset(self, count: int) -> *T { intrinsics::offset(self, count) }
 }
 
 /// Extension methods for mutable pointers
@@ -323,7 +298,7 @@ impl<T> RawPtr<T> for *mut T {
     /// This method should be preferred over `offset` when the guarantee can be
     /// satisfied, to enable better optimization.
     #[inline]
-    unsafe fn offset(self, count: int) -> *mut T { mut_offset(self, count) }
+    unsafe fn offset(self, count: int) -> *mut T { intrinsics::offset(self as *T, count) as *mut T }
 }
 
 // Equality for pointers
@@ -478,14 +453,14 @@ pub mod ptr_tests {
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
 
-            copy_memory(mut_offset(v1.as_mut_ptr(), 1),
-                        offset(v0.as_ptr(), 1), 1);
+            copy_memory(v1.as_mut_ptr().offset(1),
+                        v0.as_ptr().offset(1), 1);
             assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
             copy_memory(v1.as_mut_ptr(),
-                        offset(v0.as_ptr(), 2), 1);
+                        v0.as_ptr().offset(2), 1);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 0u16));
-            copy_memory(mut_offset(v1.as_mut_ptr(), 2),
+            copy_memory(v1.as_mut_ptr().offset(2),
                         v0.as_ptr(), 1u);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 32000u16));
@@ -525,7 +500,7 @@ pub mod ptr_tests {
         assert!(p.is_null());
         assert!(!p.is_not_null());
 
-        let q = unsafe { offset(p, 1) };
+        let q = unsafe { p.offset(1) };
         assert!(!q.is_null());
         assert!(q.is_not_null());
 

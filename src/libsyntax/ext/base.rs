@@ -20,7 +20,6 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
-use std::unstable::dynamic_lib::DynamicLibrary;
 
 // new-style macro! tt code:
 //
@@ -143,8 +142,6 @@ pub struct BlockInfo {
     macros_escape : bool,
     // what are the pending renames?
     pending_renames : RenameList,
-    // references for crates loaded in this scope
-    macro_crates: ~[DynamicLibrary],
 }
 
 impl BlockInfo {
@@ -152,7 +149,6 @@ impl BlockInfo {
         BlockInfo {
             macros_escape: false,
             pending_renames: ~[],
-            macro_crates: ~[],
         }
     }
 }
@@ -549,10 +545,6 @@ impl SyntaxEnv {
 
     pub fn insert(&mut self, k: Name, v: SyntaxExtension) {
         self.find_escape_frame().map.insert(k, v);
-    }
-
-    pub fn insert_macro_crate(&mut self, lib: DynamicLibrary) {
-        self.find_escape_frame().info.macro_crates.push(lib);
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {

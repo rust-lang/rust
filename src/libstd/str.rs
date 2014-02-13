@@ -1242,7 +1242,7 @@ pub mod raw {
         let mut i = 0;
         while *curr != 0 {
             i += 1;
-            curr = ptr::offset(buf, i);
+            curr = buf.offset(i);
         }
         from_buf_len(buf as *u8, i as uint)
     }
@@ -1272,7 +1272,7 @@ pub mod raw {
         let mut len = 0u;
         while *curr != 0u8 {
             len += 1u;
-            curr = ptr::offset(s, len as int);
+            curr = s.offset(len as int);
         }
         let v = Slice { data: s, len: len };
         assert!(is_utf8(::cast::transmute(v)));
@@ -2921,7 +2921,6 @@ impl Default for ~str {
 mod tests {
     use iter::AdditiveIterator;
     use prelude::*;
-    use ptr;
     use str::*;
 
     #[test]
@@ -3549,11 +3548,11 @@ mod tests {
     fn test_as_ptr() {
         let buf = "hello".as_ptr();
         unsafe {
-            assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
-            assert_eq!(*ptr::offset(buf, 1), 'e' as u8);
-            assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
-            assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
-            assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
+            assert_eq!(*buf.offset(0), 'h' as u8);
+            assert_eq!(*buf.offset(1), 'e' as u8);
+            assert_eq!(*buf.offset(2), 'l' as u8);
+            assert_eq!(*buf.offset(3), 'l' as u8);
+            assert_eq!(*buf.offset(4), 'o' as u8);
         }
     }
 
@@ -4164,6 +4163,7 @@ mod tests {
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
         assert_eq!(s.to_str(), ~"abcde");
+        assert_eq!(format!("{}", s), ~"abcde");
         assert!(s.lt(&Owned(~"bcdef")));
         assert_eq!(Slice(""), Default::default());
 
@@ -4171,6 +4171,7 @@ mod tests {
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
         assert_eq!(o.to_str(), ~"abcde");
+        assert_eq!(format!("{}", o), ~"abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned(~""), Default::default());
 
