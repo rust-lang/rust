@@ -19,8 +19,8 @@ use opt_vec;
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
-                            in_items: ~[@Item])
-                            -> ~[@Item] {
+                            item: @Item,
+                            push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "rand", "Rand"]),
@@ -46,7 +46,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
