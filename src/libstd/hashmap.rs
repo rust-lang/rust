@@ -56,6 +56,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv};
 use default::Default;
+#[cfg(not(stage0))] use fmt;
 use hash::Hash;
 use iter;
 use iter::{Iterator, FromIterator, Extendable};
@@ -65,6 +66,7 @@ use num;
 use option::{None, Option, Some};
 use rand::Rng;
 use rand;
+#[cfg(not(stage0))] use result::{Ok, Err};
 use vec::{ImmutableVector, MutableVector, OwnedVector, Items, MutItems};
 use vec_ng;
 use vec_ng::Vec;
@@ -595,6 +597,23 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, r"\{"))
+        let mut first = true;
+        for (key, value) in self.iter() {
+            if first {
+                first = false;
+            } else {
+                if_ok!(write!(f.buf, ", "));
+            }
+            if_ok!(write!(f.buf, "{}: {}", *key, *value));
+        }
+        write!(f.buf, r"\}")
+    }
+}
+
 /// HashMap iterator
 #[deriving(Clone)]
 pub struct Entries<'a, K, V> {
@@ -857,6 +876,23 @@ impl<T:Hash + Eq + Clone> Clone for HashSet<T> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, r"\{"))
+        let mut first = true;
+        for x in self.iter() {
+            if first {
+                first = false;
+            } else {
+                if_ok!(write!(f.buf, ", "));
+            }
+            if_ok!(write!(f.buf, "{}", *x));
+        }
+        write!(f.buf, r"\}")
+    }
+}
+
 impl<K: Eq + Hash> FromIterator<K> for HashSet<K> {
     fn from_iterator<T: Iterator<K>>(iter: &mut T) -> HashSet<K> {
         let (lower, _) = iter.size_hint();
@@ -890,6 +926,7 @@ pub type SetAlgebraItems<'a, T> =
 mod test_map {
     use prelude::*;
     use super::*;
+    use fmt;
 
     #[test]
     fn test_create_capacity_zero() {
@@ -1121,6 +1158,30 @@ mod test_map {
             assert_eq!(map.find(&k), Some(&v));
         }
     }
+
+    struct ShowableStruct {
+        value: int,
+    }
+
+    impl fmt::Show for ShowableStruct {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f.buf, r"s{}", self.value)
+        }
+    }
+
+    #[test]
+    fn test_show() {
+        let mut table: HashMap<int, ShowableStruct> = HashMap::new();
+        let empty: HashMap<int, ShowableStruct> = HashMap::new();
+
+        table.insert(3, ShowableStruct { value: 4 });
+        table.insert(1, ShowableStruct { value: 2 });
+
+        let table_str = format!("{}", table);
+
+        assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
+        assert_eq!(format!("{}", empty), ~"{}");
+    }
 }
 
 #[cfg(test)]
@@ -1345,5 +1406,19 @@ mod test_set {
         s2.insert(3);
 
         assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn test_show() {
+        let mut set: HashSet<int> = HashSet::new();
+        let empty: HashSet<int> = HashSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = format!("{}", set);
+
+        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        assert_eq!(format!("{}", empty), ~"{}");
     }
 }

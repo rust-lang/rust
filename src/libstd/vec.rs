@@ -108,6 +108,7 @@ use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
+#[cfg(not(stage0))] use fmt;
 use iter::*;
 use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
@@ -115,6 +116,7 @@ use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
+#[cfg(not(stage0))] use result::{Ok, Err};
 use mem;
 use mem::size_of;
 use kinds::marker;
@@ -2640,6 +2642,30 @@ impl<A: DeepClone> DeepClone for ~[A] {
     }
 }
 
+#[cfg(not(stage0))]
+impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, "["));
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                if_ok!(write!(f.buf, ", "));
+            }
+            if_ok!(write!(f.buf, "{}", *x))
+        }
+        write!(f.buf, "]")
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: fmt::Show> fmt::Show for ~[T] {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+
 // This works because every lifetime is a sub-lifetime of 'static
 impl<'a, A> Default for &'a [A] {
     fn default() -> &'a [A] { &'a [] }
@@ -4047,6 +4073,22 @@ mod tests {
         let mut values = [1,2,3,4,5];
         values.mut_slice(1, 4).reverse();
         assert_eq!(values, [1,4,3,2,5]);
+    }
+
+    #[test]
+    fn test_show() {
+        macro_rules! test_show_vec(
+            ($x:expr, $x_str:expr) => ({
+                let (x, x_str) = ($x, $x_str);
+                assert_eq!(format!("{}", x), x_str);
+                assert_eq!(format!("{}", x.as_slice()), x_str);
+            })
+        )
+        let empty: ~[int] = ~[];
+        test_show_vec!(empty, ~"[]");
+        test_show_vec!(~[1], ~"[1]");
+        test_show_vec!(~[1, 2, 3], ~"[1, 2, 3]");
+        test_show_vec!(~[~[], ~[1u], ~[1u, 1u]], ~"[[], [1], [1, 1]]");
     }
 
     #[test]
