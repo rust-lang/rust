@@ -20,8 +20,8 @@ use parse::token;
 pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
                               span: Span,
                               mitem: @MetaItem,
-                              in_items: ~[@Item])
-                              -> ~[@Item] {
+                              item: @Item,
+                              push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "to_str", "ToStr"]),
@@ -40,7 +40,7 @@ pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 // It used to be the case that this deriving implementation invoked

@@ -322,27 +322,23 @@ impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
                   _mitem: @ast::MetaItem,
-                  in_items: ~[@ast::Item]) -> ~[@ast::Item] {
-        let mut result = ~[];
-        for item in in_items.iter() {
-            result.push(*item);
-            match item.node {
-                ast::ItemStruct(struct_def, ref generics) => {
-                    result.push(self.expand_struct_def(cx,
-                                                       struct_def,
-                                                       item.ident,
-                                                       generics));
-                }
-                ast::ItemEnum(ref enum_def, ref generics) => {
-                    result.push(self.expand_enum_def(cx,
-                                                     enum_def,
-                                                     item.ident,
-                                                     generics));
-                }
-                _ => ()
+                  item: @ast::Item,
+                  push: |@ast::Item|) {
+        match item.node {
+            ast::ItemStruct(struct_def, ref generics) => {
+                push(self.expand_struct_def(cx,
+                                            struct_def,
+                                            item.ident,
+                                            generics));
             }
+            ast::ItemEnum(ref enum_def, ref generics) => {
+                push(self.expand_enum_def(cx,
+                                          enum_def,
+                                          item.ident,
+                                          generics));
+            }
+            _ => ()
         }
-        result
     }
 
     /**

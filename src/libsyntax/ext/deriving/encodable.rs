@@ -85,7 +85,8 @@ use parse::token;
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
-                                 in_items: ~[@Item]) -> ~[@Item] {
+                                 item: @Item,
+                                 push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new_(~["serialize", "Encodable"], None,
@@ -110,7 +111,7 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
