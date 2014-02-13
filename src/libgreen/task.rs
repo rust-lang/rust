@@ -175,7 +175,6 @@ impl GreenTask {
                      opts: TaskOpts,
                      f: proc()) -> ~GreenTask {
         let TaskOpts {
-            watched: _watched,
             notify_chan, name, stack_size,
             stderr, stdout, logger,
         } = opts;
