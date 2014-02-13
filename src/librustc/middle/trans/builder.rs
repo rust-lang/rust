@@ -21,7 +21,6 @@ use std::cast;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
 use syntax::codemap::Span;
-use std::ptr::is_not_null;
 
 pub struct Builder<'a> {
     llbuilder: BuilderRef,
@@ -492,7 +491,7 @@ impl<'a> Builder<'a> {
         debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
-        assert!(is_not_null(self.llbuilder));
+        assert!(self.llbuilder.is_not_null());
         self.count_insn("store");
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr);
@@ -503,7 +502,7 @@ impl<'a> Builder<'a> {
         debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
-        assert!(is_not_null(self.llbuilder));
+        assert!(self.llbuilder.is_not_null());
         self.count_insn("store.volatile");
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);

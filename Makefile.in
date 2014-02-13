@@ -125,10 +125,7 @@ ifdef TRACE
   CFG_RUSTC_FLAGS += -Z trace
 endif
 ifdef CFG_DISABLE_RPATH
-# NOTE: make this CFG_RUSTC_FLAGS after stage0 snapshot
-RUSTFLAGS_STAGE1 += -C no-rpath
-RUSTFLAGS_STAGE2 += -C no-rpath
-RUSTFLAGS_STAGE3 += -C no-rpath
+CFG_RUSTC_FLAGS += -C no-rpath
 endif
 
 # The executables crated during this compilation process have no need to include
@@ -140,8 +137,7 @@ endif
 # snapshot will be generated with a statically linked rustc so we only have to
 # worry about the distribution of one file (with its native dynamic
 # dependencies)
-#
-# NOTE: after a snapshot (stage0), put this on stage0 as well
+RUSTFLAGS_STAGE0 += -C prefer-dynamic
 RUSTFLAGS_STAGE1 += -C prefer-dynamic
 
 # platform-specific auto-configuration

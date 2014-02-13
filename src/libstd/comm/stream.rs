@@ -333,6 +333,17 @@ impl<T: Send> Packet<T> {
         }
     }
 
+    // increment the count on the channel (used for selection)
+    fn bump(&mut self, amt: int) -> int {
+        match self.cnt.fetch_add(amt, atomics::SeqCst) {
+            DISCONNECTED => {
+                self.cnt.store(DISCONNECTED, atomics::SeqCst);
+                DISCONNECTED
+            }
+            n => n
+        }
+    }
+
     // Attempts to start selecting on this port. Like a oneshot, this can fail
     // immediately because of an upgrade.
     pub fn start_selection(&mut self, task: BlockedTask) -> SelectionResult<T> {
@@ -351,8 +362,8 @@ impl<T: Send> Packet<T> {
                 };
                 // Undo our decrement above, and we should be guaranteed that the
                 // previous value is positive because we're not going to sleep
-                let prev = self.cnt.fetch_add(1, atomics::SeqCst);
-                assert!(prev >= 0);
+                let prev = self.bump(1);
+                assert!(prev == DISCONNECTED || prev >= 0);
                 return ret;
             }
         }
@@ -384,13 +395,12 @@ impl<T: Send> Packet<T> {
         // and in the stream case we can have at most one steal, so just assume
         // that we had one steal.
         let steals = 1;
-        let prev = self.cnt.fetch_add(steals + 1, atomics::SeqCst);
+        let prev = self.bump(steals + 1);
 
         // If we were previously disconnected, then we know for sure that there
         // is no task in to_wake, so just keep going
         let has_data = if prev == DISCONNECTED {
             assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-            self.cnt.store(DISCONNECTED, atomics::SeqCst);
             true // there is data, that data is that we're disconnected
         } else {
             let cur = prev + steals + 1;

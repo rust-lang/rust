@@ -160,10 +160,6 @@ pub trait TyVisitor {
     fn visit_trait(&mut self, name: &str) -> bool;
     fn visit_param(&mut self, i: uint) -> bool;
     fn visit_self(&mut self) -> bool;
-
-    // NOTE Remove after next snapshot.
-    #[cfg(stage0)]
-    fn visit_type(&mut self) -> bool;
 }
 
 extern "rust-intrinsic" {

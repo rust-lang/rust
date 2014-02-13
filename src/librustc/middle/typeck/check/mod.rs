@@ -3035,6 +3035,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     if type_is_c_like_enum(fcx, expr.span, t_e) && t_1_is_trivial {
                         // casts from C-like enums are allowed
                     } else if t_1_is_char {
+                        let te = fcx.infcx().resolve_type_vars_if_possible(te);
                         if ty::get(te).sty != ty::ty_uint(ast::TyU8) {
                             fcx.type_error_message(expr.span, |actual| {
                                 format!("only `u8` can be cast as `char`, not `{}`", actual)

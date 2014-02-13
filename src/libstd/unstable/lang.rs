@@ -27,14 +27,6 @@ pub fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
 }
 
 #[lang="malloc"]
-#[cfg(stage0)]
-#[inline]
-pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
-    ::rt::local_heap::local_malloc(td, size)
-}
-
-#[lang="malloc"]
-#[cfg(not(stage0))]
 #[inline]
 pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
     ::rt::local_heap::local_malloc(drop_glue, size, align)
