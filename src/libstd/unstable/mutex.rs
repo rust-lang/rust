@@ -459,7 +459,7 @@ mod test {
     use rt::thread::Thread;
 
     #[test]
-    fn somke_lock() {
+    fn smoke_lock() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             let _guard = lock.lock();
@@ -467,7 +467,7 @@ mod test {
     }
 
     #[test]
-    fn somke_cond() {
+    fn smoke_cond() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             let mut guard = lock.lock();
@@ -477,6 +477,32 @@ mod test {
             });
             guard.wait();
             drop(guard);
+
+            t.join();
+        }
+    }
+
+    #[test]
+    fn smoke_lock_noguard() {
+        static mut lock: Mutex = MUTEX_INIT;
+        unsafe {
+            lock.lock_noguard();
+            lock.unlock_noguard();
+        }
+    }
+
+    #[test]
+    fn smoke_cond_noguard() {
+        static mut lock: Mutex = MUTEX_INIT;
+        unsafe {
+            lock.lock_noguard();
+            let t = Thread::start(proc() {
+                lock.lock_noguard();
+                lock.signal_noguard();
+                lock.unlock_noguard();
+            });
+            lock.wait_noguard();
+            lock.unlock_noguard();
 
             t.join();
         }
