@@ -145,16 +145,18 @@ macro_rules! format(
 
 #[macro_export]
 macro_rules! write(
-    ($dst:expr, $($arg:tt)*) => (
-        format_args!(|args| { ::std::fmt::write($dst, args) }, $($arg)*)
-    )
+    ($dst:expr, $($arg:tt)*) => ({
+        let dst: &mut ::std::io::Writer = $dst;
+        format_args!(|args| { ::std::fmt::write(dst, args) }, $($arg)*)
+    })
 )
 
 #[macro_export]
 macro_rules! writeln(
-    ($dst:expr, $($arg:tt)*) => (
-        format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
-    )
+    ($dst:expr, $($arg:tt)*) => ({
+        let dst: &mut ::std::io::Writer = $dst;
+        format_args!(|args| { ::std::fmt::writeln(dst, args) }, $($arg)*)
+    })
 )
 
 #[macro_export]
