@@ -293,7 +293,7 @@ braced block gives the whole block the value of that last expression.
 
 Put another way, the semicolon in Rust *ignores the value of an expression*.
 Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
-would simply assign `()` (nil or void) to `price`. But without the semicolon, each
+would simply assign `()` (unit or void) to `price`. But without the semicolon, each
 branch has a different value, and `price` gets the value of the branch that
 was taken.
 
@@ -352,7 +352,7 @@ before the opening and after the closing quote, and can contain any sequence of
 characters except their closing delimiter.  More on strings
 [later](#vectors-and-strings).
 
-The nil type, written `()`, has a single value, also written `()`.
+The unit type, written `()`, has a single value, also written `()`.
 
 ## Operators
 
@@ -852,7 +852,7 @@ fn line(a: int, b: int, x: int) -> int {
 It's better Rust style to write a return value this way instead of
 writing an explicit `return`. The utility of `return` comes in when
 returning early from a function. Functions that do not return a value
-are said to return nil, `()`, and both the return type and the return
+are said to return unit, `()`, and both the return type and the return
 value may be omitted from the definition. The following two functions
 are equivalent.
 
