@@ -9,21 +9,8 @@
 // except according to those terms.
 
 use cast;
-#[cfg(stage0)]
-use unstable::intrinsics::TyDesc;
 
 /// The representation of a Rust managed box
-#[cfg(stage0)]
-pub struct Box<T> {
-    ref_count: uint,
-    type_desc: *TyDesc,
-    prev: *mut Box<T>,
-    next: *mut Box<T>,
-    data: T
-}
-
-/// The representation of a Rust managed box
-#[cfg(not(stage0))]
 pub struct Box<T> {
     ref_count: uint,
     drop_glue: fn(ptr: *mut u8),
