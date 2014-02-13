@@ -74,7 +74,8 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // Getting harder... making the format string:
     match *substr.fields {
         // unit struct/nullary variant: no work necessary!
-        Struct([]) | EnumMatching(_, _, []) => {}
+        Struct(ref fields) if fields.len() == 0 => {}
+        EnumMatching(_, _, ref fields) if fields.len() == 0 => {}
 
         Struct(ref fields) | EnumMatching(_, _, ref fields) => {
             if fields[0].name.is_none() {

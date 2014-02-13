@@ -495,24 +495,23 @@ impl ToPrimitive for BigUint {
     #[cfg(target_word_size = "32")]
     #[inline]
     fn to_u64(&self) -> Option<u64> {
-        match self.data {
-            [] => {
-                Some(0)
+        match self.data.len() {
+            0 => Some(0),
+            1 => Some(self.data[0] as u64),
+            2 => {
+                Some(BigDigit::to_uint(self.data[1], self.data[0]) as u64)
             }
-            [n0] => {
-                Some(n0 as u64)
-            }
-            [n0, n1] => {
-                Some(BigDigit::to_uint(n1, n0) as u64)
-            }
-            [n0, n1, n2] => {
-                let n_lo = BigDigit::to_uint(n1, n0) as u64;
-                let n_hi = n2 as u64;
+            3 => {
+                let n_lo = BigDigit::to_uint(self.data[1], self.data[0]) as
+                    u64;
+                let n_hi = self.data[2] as u64;
                 Some((n_hi << 32) + n_lo)
             }
-            [n0, n1, n2, n3] => {
-                let n_lo = BigDigit::to_uint(n1, n0) as u64;
-                let n_hi = BigDigit::to_uint(n3, n2) as u64;
+            4 => {
+                let n_lo = BigDigit::to_uint(self.data[1], self.data[0])
+                    as u64;
+                let n_hi = BigDigit::to_uint(self.data[3], self.data[2])
+                    as u64;
                 Some((n_hi << 32) + n_lo)
             }
             _ => None
@@ -522,16 +521,10 @@ impl ToPrimitive for BigUint {
     #[cfg(target_word_size = "64")]
     #[inline]
     fn to_u64(&self) -> Option<u64> {
-        match self.data {
-            [] => {
-                Some(0)
-            }
-            [n0] => {
-                Some(n0 as u64)
-            }
-            [n0, n1] => {
-                Some(BigDigit::to_uint(n1, n0) as u64)
-            }
+        match self.data.len() {
+            0 => Some(0),
+            1 => Some(self.data[0] as u64),
+            2 => Some(BigDigit::to_uint(self.data[1], self.data[0]) as u64),
             _ => None
         }
     }

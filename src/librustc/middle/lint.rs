@@ -1213,15 +1213,13 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
         ast::PatIdent(ast::BindByValue(ast::MutMutable),
                       ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
             // `let mut _a = 1;` doesn't need a warning.
-            let initial_underscore = match path.segments {
-                [ast::PathSegment { identifier: id, .. }] => {
-                    token::get_ident(id).get().starts_with("_")
-                }
-                _ => {
-                    cx.tcx.sess.span_bug(p.span,
-                                         "mutable binding that doesn't \
-                                         consist of exactly one segment");
-                }
+            let initial_underscore = if path.segments.len() == 1 {
+                token::get_ident(path.segments[0].identifier).get()
+                                                             .starts_with("_")
+            } else {
+                cx.tcx.sess.span_bug(p.span,
+                                     "mutable binding that doesn't consist \
+                                      of exactly one segment")
             };
 
             let used_mut_nodes = cx.tcx.used_mut_nodes.borrow();
