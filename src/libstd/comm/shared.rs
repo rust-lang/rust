@@ -75,7 +75,7 @@ impl<T: Send> Packet<T> {
             select_lock: unsafe { Mutex::new() },
         };
         // see comments in inherit_blocker about why we grab this lock
-        unsafe { p.select_lock.lock() }
+        unsafe { p.select_lock.lock_noguard() }
         return p;
     }
 
@@ -124,7 +124,7 @@ impl<T: Send> Packet<T> {
         // interfere with this method. After we unlock this lock, we're
         // signifying that we're done modifying self.cnt and self.to_wake and
         // the port is ready for the world to continue using it.
-        unsafe { self.select_lock.unlock() }
+        unsafe { self.select_lock.unlock_noguard() }
     }
 
     pub fn send(&mut self, t: T) -> bool {
@@ -438,8 +438,7 @@ impl<T: Send> Packet<T> {
         // about looking at and dealing with to_wake. Once we have acquired the
         // lock, we are guaranteed that inherit_blocker is done.
         unsafe {
-            self.select_lock.lock();
-            self.select_lock.unlock();
+            let _guard = self.select_lock.lock();
         }
 
         // Like the stream implementation, we want to make sure that the count

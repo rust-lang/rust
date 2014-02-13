@@ -288,11 +288,11 @@ impl StaticMutex {
     // `lock()` function on an OS mutex
     fn native_lock(&mut self, t: ~Task) {
         Local::put(t);
-        unsafe { self.lock.lock(); }
+        unsafe { self.lock.lock_noguard(); }
     }
 
     fn native_unlock(&mut self) {
-        unsafe { self.lock.unlock(); }
+        unsafe { self.lock.unlock_noguard(); }
     }
 
     fn green_lock(&mut self, t: ~Task) {

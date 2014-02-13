@@ -41,7 +41,7 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
     static mut INITIALIZED: bool = false;
 
     unsafe {
-        LOCK.lock();
+        let mut _guard = LOCK.lock();
         if !INITIALIZED {
             let (msgp, msgc) = Chan::new();
             // promote this to a shared channel
@@ -58,7 +58,6 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
             rt::at_exit(proc() { shutdown() });
             INITIALIZED = true;
         }
-        LOCK.unlock();
     }
 }
 

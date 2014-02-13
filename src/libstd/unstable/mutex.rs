@@ -47,8 +47,22 @@
 
 #[allow(non_camel_case_types)];
 
+use option::{Option, None, Some};
+use ops::Drop;
+
 pub struct Mutex {
     priv inner: imp::Mutex,
+}
+
+/// Automatically unlocks the mutex that it was created from on
+/// destruction.
+///
+/// Using this makes lock-based code resilient to unwinding/task
+/// failure, because the lock will be automatically unlocked even
+/// then.
+#[must_use]
+pub struct LockGuard<'a> {
+    priv lock: &'a mut Mutex
 }
 
 pub static MUTEX_INIT: Mutex = Mutex {
@@ -63,28 +77,86 @@ impl Mutex {
 
     /// Acquires this lock. This assumes that the current thread does not
     /// already hold the lock.
-    pub unsafe fn lock(&mut self) { self.inner.lock() }
+    ///
+    /// # Example
+    /// ```
+    /// use std::unstable::mutex::Mutex;
+    /// unsafe {
+    ///     let mut lock = Mutex::new();
+    ///
+    ///     {
+    ///         let _guard = lock.lock();
+    ///         // critical section...
+    ///     } // automatically unlocked in `_guard`'s destructor
+    /// }
+    /// ```
+    pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
+        self.inner.lock();
 
-    /// Attempts to acquire the lock. The value returned is whether the lock was
-    /// acquired or not
-    pub unsafe fn trylock(&mut self) -> bool { self.inner.trylock() }
+        LockGuard { lock: self }
+    }
+
+    /// Attempts to acquire the lock. The value returned is `Some` if
+    /// the attempt succeeded.
+    pub unsafe fn trylock<'a>(&'a mut self) -> Option<LockGuard<'a>> {
+        if self.inner.trylock() {
+            Some(LockGuard { lock: self })
+        } else {
+            None
+        }
+    }
+
+    /// Acquire the lock without creating a `LockGuard`.
+    ///
+    /// Prefer using `.lock`.
+    pub unsafe fn lock_noguard(&mut self) { self.inner.lock() }
+
+    /// Attempts to acquire the lock without creating a
+    /// `LockGuard`. The value returned is whether the lock was
+    /// acquired or not.
+    ///
+    /// Prefer using `.trylock`.
+    pub unsafe fn trylock_noguard(&mut self) -> bool {
+        self.inner.trylock()
+    }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
-    pub unsafe fn unlock(&mut self) { self.inner.unlock() }
+    pub unsafe fn unlock_noguard(&mut self) { self.inner.unlock() }
 
     /// Block on the internal condition variable.
     ///
-    /// This function assumes that the lock is already held
-    pub unsafe fn wait(&mut self) { self.inner.wait() }
+    /// This function assumes that the lock is already held. Prefer
+    /// using `LockGuard.wait` since that guarantees that the lock is
+    /// held.
+    pub unsafe fn wait_noguard(&mut self) { self.inner.wait() }
 
     /// Signals a thread in `wait` to wake up
-    pub unsafe fn signal(&mut self) { self.inner.signal() }
+    pub unsafe fn signal_noguard(&mut self) { self.inner.signal() }
 
     /// This function is especially unsafe because there are no guarantees made
     /// that no other thread is currently holding the lock or waiting on the
     /// condition variable contained inside.
     pub unsafe fn destroy(&mut self) { self.inner.destroy() }
+}
+
+impl<'a> LockGuard<'a> {
+    /// Block on the internal condition variable.
+    pub unsafe fn wait(&mut self) {
+        self.lock.wait_noguard()
+    }
+
+    /// Signals a thread in `wait` to wake up.
+    pub unsafe fn signal(&mut self) {
+        self.lock.signal_noguard()
+    }
+}
+
+#[unsafe_destructor]
+impl<'a> Drop for LockGuard<'a> {
+    fn drop(&mut self) {
+        unsafe {self.lock.unlock_noguard()}
+    }
 }
 
 #[cfg(unix)]
@@ -382,6 +454,7 @@ mod imp {
 mod test {
     use prelude::*;
 
+    use mem::drop;
     use super::{Mutex, MUTEX_INIT};
     use rt::thread::Thread;
 
@@ -389,8 +462,7 @@ mod test {
     fn somke_lock() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
-            lock.lock();
-            lock.unlock();
+            let _guard = lock.lock();
         }
     }
 
@@ -398,14 +470,14 @@ mod test {
     fn somke_cond() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
-            lock.lock();
+            let mut guard = lock.lock();
             let t = Thread::start(proc() {
-                lock.lock();
-                lock.signal();
-                lock.unlock();
+                let mut guard = lock.lock();
+                guard.signal();
             });
-            lock.wait();
-            lock.unlock();
+            guard.wait();
+            drop(guard);
+
             t.join();
         }
     }

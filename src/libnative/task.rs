@@ -191,20 +191,19 @@ impl rt::Runtime for Ops {
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {
-                (*me).lock.lock();
+                let mut guard = (*me).lock.lock();
                 (*me).awoken = false;
                 match f(task) {
                     Ok(()) => {
                         while !(*me).awoken {
-                            (*me).lock.wait();
+                            guard.wait();
                         }
                     }
                     Err(task) => { cast::forget(task.wake()); }
                 }
-                (*me).lock.unlock();
             } else {
                 let mut iter = task.make_selectable(times);
-                (*me).lock.lock();
+                let mut guard = (*me).lock.lock();
                 (*me).awoken = false;
                 let success = iter.all(|task| {
                     match f(task) {
@@ -216,9 +215,8 @@ impl rt::Runtime for Ops {
                     }
                 });
                 while success && !(*me).awoken {
-                    (*me).lock.wait();
+                    guard.wait();
                 }
-                (*me).lock.unlock();
             }
             // re-acquire ownership of the task
             cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
@@ -235,10 +233,9 @@ impl rt::Runtime for Ops {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self as ~rt::Runtime);
             cast::forget(to_wake);
-            (*me).lock.lock();
+            let mut guard = (*me).lock.lock();
             (*me).awoken = true;
-            (*me).lock.signal();
-            (*me).lock.unlock();
+            guard.signal();
         }
     }
 

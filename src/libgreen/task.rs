@@ -324,9 +324,8 @@ impl GreenTask {
         unsafe {
             let mtx = &mut self.nasty_deschedule_lock as *mut Mutex;
             let handle = self.handle.get_mut_ref() as *mut SchedHandle;
-            (*mtx).lock();
+            let _guard = (*mtx).lock();
             (*handle).send(RunOnce(self));
-            (*mtx).unlock();
         }
     }
 }
