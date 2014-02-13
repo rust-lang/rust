@@ -1034,6 +1034,17 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 TraitTyParamBound(ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, ty);
+                    if added_bounds.contains_key(&trait_ref.def_id) {
+                        ccx.tcx.sess.span_warn(
+                            b.path.span,
+                            format!("duplicated bound `{}`, ignoring it",
+                                    trait_ref.repr(ccx.tcx)));
+                        continue;
+
+                    } else {
+                        added_bounds.insert(trait_ref.def_id, ());
+                    }
+
                     if !ty::try_add_builtin_trait(
                         ccx.tcx, trait_ref.def_id,
                         &mut param_bounds.builtin_bounds)
