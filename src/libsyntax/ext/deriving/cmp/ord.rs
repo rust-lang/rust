@@ -18,7 +18,8 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
                            mitem: @MetaItem,
-                           in_items: ~[@Item]) -> ~[@Item] {
+                           item: @Item,
+                           push: |@Item|) {
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => {
             MethodDef {
@@ -46,7 +47,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
             md!("ge", false, true)
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 /// Strict inequality.

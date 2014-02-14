@@ -29,7 +29,6 @@ use visit::Visitor;
 use util::small_vector::SmallVector;
 
 use std::cast;
-use std::vec;
 use std::unstable::dynamic_lib::DynamicLibrary;
 use std::os;
 
@@ -220,8 +219,9 @@ pub fn expand_mod_items(module_: &ast::Mod, fld: &mut MacroExpander) -> ast::Mod
     // For each item, look through the attributes.  If any of them are
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
-    let new_items = vec::flat_map(module_.items, |item| {
-        item.attrs.rev_iter().fold(~[*item], |items, attr| {
+    let mut new_items = module_.items.clone();
+    for item in module_.items.iter() {
+        for attr in item.attrs.rev_iter() {
             let mname = attr.name();
 
             match fld.extsbox.find(&intern(mname.get())) {
@@ -234,14 +234,14 @@ pub fn expand_mod_items(module_: &ast::Mod, fld: &mut MacroExpander) -> ast::Mod
                           span: None
                       }
                   });
-                  let r = dec_fn(fld.cx, attr.span, attr.node.value, items);
+                  dec_fn(fld.cx, attr.span, attr.node.value, *item,
+                         |item| new_items.push(item));
                   fld.cx.bt_pop();
-                  r
               },
-              _ => items,
+              _ => {},
             }
-        })
-    });
+        }
+    }
 
     ast::Mod {
         items: new_items,
