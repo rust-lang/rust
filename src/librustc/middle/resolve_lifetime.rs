@@ -44,13 +44,13 @@ enum ScopeChain<'a> {
     RootScope
 }
 
-pub fn crate(sess: session::Session, crate: &ast::Crate)
+pub fn krate(sess: session::Session, krate: &ast::Crate)
              -> @RefCell<NamedRegionMap> {
     let mut ctxt = LifetimeContext {
         sess: sess,
         named_region_map: @RefCell::new(HashMap::new())
     };
-    visit::walk_crate(&mut ctxt, crate, &RootScope);
+    visit::walk_crate(&mut ctxt, krate, &RootScope);
     sess.abort_if_errors();
     ctxt.named_region_map
 }

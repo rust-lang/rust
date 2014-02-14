@@ -615,7 +615,7 @@ pub enum Type {
         typarams: Option<~[TyParamBound]>,
         fqn: ~[~str],
         kind: TypeKind,
-        crate: ast::CrateNum,
+        krate: ast::CrateNum,
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
@@ -1250,7 +1250,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
             }
         }).to_owned_vec();
         ExternalPath{ path: path, typarams: tpbs, fqn: fqn, kind: kind,
-                      crate: def_id.crate }
+                      krate: def_id.krate }
     }
 }
 

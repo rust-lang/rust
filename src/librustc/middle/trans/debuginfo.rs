@@ -1398,7 +1398,7 @@ fn describe_enum_variant(cx: &CrateContext,
     // Could some consistency checks here: size, align, field count, discr type
 
     // Find the source code location of the variant's definition
-    let variant_definition_span = if variant_info.id.crate == ast::LOCAL_CRATE {
+    let variant_definition_span = if variant_info.id.krate == ast::LOCAL_CRATE {
         {
             match cx.tcx.items.find(variant_info.id.node) {
                 Some(ast_map::NodeVariant(ref variant, _, _)) => variant.span,
@@ -2261,7 +2261,7 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
                                    warning_span: Span)
                                 -> (DIScope, Span) {
     let containing_scope = namespace_for_item(cx, def_id, warning_span).scope;
-    let definition_span = if def_id.crate == ast::LOCAL_CRATE {
+    let definition_span = if def_id.krate == ast::LOCAL_CRATE {
         {
             let definition_span = match cx.tcx.items.find(def_id.node) {
                 Some(ast_map::NodeItem(item, _)) => item.span,
@@ -2782,8 +2782,8 @@ fn namespace_for_item(cx: &CrateContext,
     let namespace_path = {
         let mut item_path = ty::item_path(cx.tcx, def_id);
 
-        if (def_id.crate == ast::LOCAL_CRATE && item_path.len() < 1) ||
-           (def_id.crate != ast::LOCAL_CRATE && item_path.len() < 2) {
+        if (def_id.krate == ast::LOCAL_CRATE && item_path.len() < 1) ||
+           (def_id.krate != ast::LOCAL_CRATE && item_path.len() < 2) {
             cx.sess.bug(format!("debuginfo::namespace_for_item() - Item path too short: {}",
                 ast_map::path_to_str(item_path, token::get_ident_interner())));
         }
@@ -2791,7 +2791,7 @@ fn namespace_for_item(cx: &CrateContext,
         // remove the name of the item
         item_path.pop();
 
-        if def_id.crate == ast::LOCAL_CRATE {
+        if def_id.krate == ast::LOCAL_CRATE {
             // prepend crate name if not already present
             let crate_namespace_ident = token::str_to_ident(cx.link_meta.crateid.name);
             item_path.insert(0, ast_map::PathMod(crate_namespace_ident));

@@ -414,10 +414,10 @@ pub fn expand_view_item(vi: &ast::ViewItem,
     noop_fold_view_item(vi, fld)
 }
 
-fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
-    let MacroCrate { lib, cnum } = fld.cx.loader.load_crate(crate);
+fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
+    let MacroCrate { lib, cnum } = fld.cx.loader.load_crate(krate);
 
-    let crate_name = match crate.node {
+    let crate_name = match krate.node {
         ast::ViewItemExternMod(ref name, _, _) => {
             let string = token::get_ident(name.name);
             string.get().to_str()
@@ -453,19 +453,19 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
         // this is fatal: there are almost certainly macros we need
         // inside this crate, so continue would spew "macro undefined"
         // errors
-        Err(err) => fld.cx.span_fatal(crate.span, err)
+        Err(err) => fld.cx.span_fatal(krate.span, err)
     };
 
     unsafe {
         let registrar: MacroCrateRegistrationFun = match lib.symbol(registrar) {
             Ok(registrar) => registrar,
             // again fatal if we can't register macros
-            Err(err) => fld.cx.span_fatal(crate.span, err)
+            Err(err) => fld.cx.span_fatal(krate.span, err)
         };
         registrar(|name, extension| {
             let extension = match extension {
-                NormalTT(ext, _) => NormalTT(ext, Some(crate.span)),
-                IdentTT(ext, _) => IdentTT(ext, Some(crate.span)),
+                NormalTT(ext, _) => NormalTT(ext, Some(krate.span)),
+                IdentTT(ext, _) => IdentTT(ext, Some(krate.span)),
                 ItemDecorator(ext) => ItemDecorator(ext),
             };
             fld.extsbox.insert(name, extension);
@@ -1036,10 +1036,10 @@ mod test {
         }
     }
 
-    //fn fake_print_crate(crate: &ast::Crate) {
+    //fn fake_print_crate(krate: &ast::Crate) {
     //    let mut out = ~std::io::stderr() as ~std::io::Writer;
     //    let mut s = pprust::rust_printer(out, get_ident_interner());
-    //    pprust::print_crate_(&mut s, crate);
+    //    pprust::print_crate_(&mut s, krate);
     //}
 
     fn expand_crate_str(crate_str: ~str) -> ast::Crate {

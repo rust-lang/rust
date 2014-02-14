@@ -312,9 +312,9 @@ impl Visitor<()> for CheckItemTypesVisitor {
     }
 }
 
-pub fn check_item_types(ccx: @CrateCtxt, crate: &ast::Crate) {
+pub fn check_item_types(ccx: @CrateCtxt, krate: &ast::Crate) {
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, crate, ());
+    visit::walk_crate(&mut visit, krate, ());
 }
 
 fn check_bare_fn(ccx: @CrateCtxt,
@@ -2648,7 +2648,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                       Err(msg) => {
                                           tcx.sess.span_err(expr.span, msg);
                                           ast::DefId {
-                                              crate: ast::CRATE_NODE_ID,
+                                              krate: ast::CRATE_NODE_ID,
                                               node: ast::DUMMY_NODE_ID,
                                           }
                                       }
@@ -3625,7 +3625,7 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
         return variants;
     }
 
-    let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { crate: ast::LOCAL_CRATE, node: id });
+    let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id });
     if hint != attr::ReprAny && vs.len() <= 1 {
         ccx.tcx.sess.span_err(sp, format!("unsupported representation for {}variant enum",
                                           if vs.len() == 1 { "uni" } else { "zero-" }))

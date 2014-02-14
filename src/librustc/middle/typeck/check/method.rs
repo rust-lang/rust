@@ -1297,7 +1297,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn report_static_candidate(&self, idx: uint, did: DefId) {
-        let span = if did.crate == ast::LOCAL_CRATE {
+        let span = if did.krate == ast::LOCAL_CRATE {
             {
                 match self.tcx().items.find(did.node) {
                   Some(ast_map::NodeMethod(m, _, _)) => m.span,

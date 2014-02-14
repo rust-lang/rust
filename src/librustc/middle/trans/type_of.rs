@@ -321,10 +321,10 @@ pub fn llvm_type_name(cx: &CrateContext,
     let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did),
                                     &ty::NonerasedRegions(opt_vec::Empty),
                                     tps, did, false);
-    if did.crate == 0 {
+    if did.krate == 0 {
         format!("{}.{}", name, tstr)
     } else {
-        format!("{}.{}[\\#{}]", name, tstr, did.crate)
+        format!("{}.{}[\\#{}]", name, tstr, did.krate)
     }
 }
 

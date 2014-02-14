@@ -35,7 +35,7 @@ use syntax::visit;
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: Session,
-                   crate: &ast::Crate,
+                   krate: &ast::Crate,
                    os: loader::Os,
                    intr: @IdentInterner) {
     let mut e = Env {
@@ -45,12 +45,12 @@ pub fn read_crates(sess: Session,
         next_crate_num: 1,
         intr: intr
     };
-    visit_crate(&e, crate);
+    visit_crate(&e, krate);
     {
         let mut v = ReadCrateVisitor {
             e: &mut e
         };
-        visit::walk_crate(&mut v, crate, ());
+        visit::walk_crate(&mut v, krate, ());
     }
     let crate_cache = e.crate_cache.borrow();
     dump_crates(*crate_cache.get());
@@ -424,14 +424,14 @@ impl Loader {
 }
 
 impl CrateLoader for Loader {
-    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate {
-        let info = extract_crate_info(crate).unwrap();
+    fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
+        let info = extract_crate_info(krate).unwrap();
         let cnum = resolve_crate(&mut self.env,
                                  info.ident.clone(),
                                  info.name.clone(),
                                  info.version.clone(),
                                  ~"",
-                                 crate.span);
+                                 krate.span);
         let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
         MacroCrate {
             lib: library.dylib,

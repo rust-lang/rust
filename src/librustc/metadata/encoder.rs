@@ -167,7 +167,7 @@ fn encode_family(ebml_w: &mut writer::Encoder, c: char) {
 }
 
 pub fn def_to_str(did: DefId) -> ~str {
-    format!("{}:{}", did.crate, did.node)
+    format!("{}:{}", did.krate, did.node)
 }
 
 fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
@@ -344,7 +344,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
-                               ast::DefId { crate: LOCAL_CRATE, node: id });
+                               ast::DefId { krate: LOCAL_CRATE, node: id });
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
         {
@@ -568,7 +568,7 @@ fn encode_reexports(ecx: &EncodeContext,
                 debug!("(encoding info for module) reexport '{}' ({}/{}) for \
                         {}",
                        exp.name,
-                       exp.def_id.crate,
+                       exp.def_id.krate,
                        exp.def_id.node,
                        id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
@@ -1210,7 +1210,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Now output the method info for each method.
         let r = ty::trait_method_def_ids(tcx, def_id);
         for (i, &method_def_id) in r.iter().enumerate() {
-            assert_eq!(method_def_id.crate, ast::LOCAL_CRATE);
+            assert_eq!(method_def_id.krate, ast::LOCAL_CRATE);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1409,7 +1409,7 @@ impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
 
 fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
-                         crate: &Crate)
+                         krate: &Crate)
                          -> ~[entry<i64>] {
     let index = @RefCell::new(~[]);
     ebml_w.start_tag(tag_items_data);
@@ -1422,7 +1422,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     }
     encode_info_for_mod(ecx,
                         ebml_w,
-                        &crate.module,
+                        &krate.module,
                         CRATE_NODE_ID,
                         [],
                         syntax::parse::token::special_idents::invalid,
@@ -1439,7 +1439,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
             ebml_w_for_visit_item: &mut *ebml_w,
         };
 
-        visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, krate, ());
     }
 
     ebml_w.end_tag();
@@ -1559,7 +1559,7 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
 // metadata that Rust cares about for linking crates. If the user didn't
 // provide it we will throw it in anyway with a default value.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
-                          crate: &Crate) -> ~[Attribute] {
+                          krate: &Crate) -> ~[Attribute] {
 
     fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
         assert!(!ecx.link_meta.crateid.name.is_empty());
@@ -1571,7 +1571,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
     }
 
     let mut attrs = ~[];
-    for attr in crate.attrs.iter() {
+    for attr in krate.attrs.iter() {
         if !attr.name().equiv(&("crate_id")) {
             attrs.push(*attr);
         }
@@ -1628,7 +1628,7 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 
     for (i, def_id) in ecx.tcx.lang_items.items() {
         for id in def_id.iter() {
-            if id.crate == LOCAL_CRATE {
+            if id.krate == LOCAL_CRATE {
                 ebml_w.start_tag(tag_lang_items_item);
 
                 ebml_w.start_tag(tag_lang_items_item_id);
@@ -1714,7 +1714,7 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
 }
 
 fn encode_macro_defs(ecx: &EncodeContext,
-                     crate: &Crate,
+                     krate: &Crate,
                      ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_exported_macros);
     {
@@ -1722,7 +1722,7 @@ fn encode_macro_defs(ecx: &EncodeContext,
             ecx: ecx,
             ebml_w: ebml_w,
         };
-        visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, krate, ());
     }
     ebml_w.end_tag();
 }
@@ -1744,7 +1744,7 @@ impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
                 // Load eagerly if this is an implementation of the Drop trait
                 // or if the trait is not defined in this crate.
                 if Some(def_id) == self.ecx.tcx.lang_items.drop_trait() ||
-                        def_id.crate != LOCAL_CRATE {
+                        def_id.krate != LOCAL_CRATE {
                     self.ebml_w.start_tag(tag_impls_impl);
                     encode_def_id(self.ebml_w, local_def(item.id));
                     self.ebml_w.end_tag();
@@ -1767,7 +1767,7 @@ impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
 ///
 /// * Implementations of traits not defined in this crate.
 fn encode_impls(ecx: &EncodeContext,
-                crate: &Crate,
+                krate: &Crate,
                 ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_impls);
 
@@ -1776,18 +1776,18 @@ fn encode_impls(ecx: &EncodeContext,
             ecx: ecx,
             ebml_w: ebml_w,
         };
-        visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, krate, ());
     }
 
     ebml_w.end_tag();
 }
 
 fn encode_misc_info(ecx: &EncodeContext,
-                    crate: &Crate,
+                    krate: &Crate,
                     ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_misc_info);
     ebml_w.start_tag(tag_misc_info_crate_items);
-    for &item in crate.module.items.iter() {
+    for &item in krate.module.items.iter() {
         ebml_w.start_tag(tag_mod_child);
         ebml_w.wr_str(def_to_str(local_def(item.id)));
         ebml_w.end_tag();
@@ -1838,13 +1838,13 @@ pub static metadata_encoding_version : &'static [u8] =
       0x74, //'t' as u8,
       0, 0, 0, 1 ];
 
-pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
+pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> ~[u8] {
     let mut wr = MemWriter::new();
-    encode_metadata_inner(&mut wr, parms, crate);
+    encode_metadata_inner(&mut wr, parms, krate);
     wr.unwrap()
 }
 
-fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate) {
+fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate) {
     let stats = Stats {
         inline_bytes: Cell::new(0),
         attr_bytes: Cell::new(0),
@@ -1895,7 +1895,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
 
     let mut i = ebml_w.writer.tell().unwrap();
-    let crate_attrs = synthesize_crate_attrs(&ecx, crate);
+    let crate_attrs = synthesize_crate_attrs(&ecx, krate);
     encode_attributes(&mut ebml_w, crate_attrs);
     ecx.stats.attr_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
@@ -1920,23 +1920,23 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
 
     // Encode macro definitions
     i = ebml_w.writer.tell().unwrap();
-    encode_macro_defs(&ecx, crate, &mut ebml_w);
+    encode_macro_defs(&ecx, krate, &mut ebml_w);
     ecx.stats.macro_defs_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell().unwrap();
-    encode_impls(&ecx, crate, &mut ebml_w);
+    encode_impls(&ecx, krate, &mut ebml_w);
     ecx.stats.impl_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     // Encode miscellaneous info.
     i = ebml_w.writer.tell().unwrap();
-    encode_misc_info(&ecx, crate, &mut ebml_w);
+    encode_misc_info(&ecx, krate, &mut ebml_w);
     ecx.stats.misc_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = ebml_w.writer.tell().unwrap();
-    let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
+    let items_index = encode_info_for_items(&ecx, &mut ebml_w, krate);
     ecx.stats.item_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     i = ebml_w.writer.tell().unwrap();

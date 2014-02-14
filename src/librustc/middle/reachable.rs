@@ -207,7 +207,7 @@ impl ReachableContext {
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: ast::DefId)
                                             -> bool {
-        if def_id.crate != ast::LOCAL_CRATE {
+        if def_id.krate != ast::LOCAL_CRATE {
             return false
         }
 
@@ -232,7 +232,7 @@ impl ReachableContext {
                 } else {
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
-                    assert!(impl_did.crate == ast::LOCAL_CRATE);
+                    assert!(impl_did.krate == ast::LOCAL_CRATE);
                     match tcx.items.find(impl_did.node) {
                         Some(ast_map::NodeItem(item, _)) => {
                             match item.node {
@@ -410,7 +410,7 @@ impl ReachableContext {
     fn mark_destructors_reachable(&self) {
         let destructor_for_type = self.tcx.destructor_for_type.borrow();
         for (_, destructor_def_id) in destructor_for_type.get().iter() {
-            if destructor_def_id.crate == ast::LOCAL_CRATE {
+            if destructor_def_id.krate == ast::LOCAL_CRATE {
                 let mut reachable_symbols = self.reachable_symbols
                                                 .borrow_mut();
                 reachable_symbols.get().insert(destructor_def_id.node);

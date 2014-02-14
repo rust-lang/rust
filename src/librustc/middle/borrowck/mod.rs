@@ -73,7 +73,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    moves_map: moves::MovesMap,
                    moved_variables_set: moves::MovedVariablesSet,
                    capture_map: moves::CaptureMap,
-                   crate: &ast::Crate)
+                   krate: &ast::Crate)
                    -> root_map {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
@@ -91,7 +91,7 @@ pub fn check_crate(tcx: ty::ctxt,
     };
     let bccx = &mut bccx;
 
-    visit::walk_crate(bccx, crate, ());
+    visit::walk_crate(bccx, krate, ());
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");

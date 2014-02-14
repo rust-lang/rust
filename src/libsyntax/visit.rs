@@ -132,8 +132,8 @@ pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
 }
 
 
-pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, crate: &Crate, env: E) {
-    visitor.visit_mod(&crate.module, crate.span, CRATE_NODE_ID, env)
+pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, krate: &Crate, env: E) {
+    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID, env)
 }
 
 pub fn walk_mod<E: Clone, V: Visitor<E>>(visitor: &mut V, module: &Mod, env: E) {

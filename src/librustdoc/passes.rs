@@ -21,7 +21,7 @@ use fold;
 use fold::DocFolder;
 
 /// Strip items marked `#[doc(hidden)]`
-pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
+pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     struct Stripper;
     impl fold::DocFolder for Stripper {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -45,19 +45,19 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
         }
     }
     let mut stripper = Stripper;
-    let crate = stripper.fold_crate(crate);
-    (crate, None)
+    let krate = stripper.fold_crate(krate);
+    (krate, None)
 }
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
+pub fn strip_private(krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
     let exported_items = local_data::get(super::analysiskey, |analysis| {
         analysis.unwrap().exported_items.clone()
     });
-    let mut crate = crate;
+    let mut krate = krate;
 
     // strip all private items
     {
@@ -65,15 +65,15 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
             retained: &mut retained,
             exported_items: &exported_items,
         };
-        crate = stripper.fold_crate(crate);
+        krate = stripper.fold_crate(krate);
     }
 
     // strip all private implementations of traits
     {
         let mut stripper = ImplStripper(&retained);
-        crate = stripper.fold_crate(crate);
+        krate = stripper.fold_crate(krate);
     }
-    (crate, None)
+    (krate, None)
 }
 
 struct Stripper<'a> {
@@ -174,7 +174,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
 }
 
 
-pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
+pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
     impl fold::DocFolder for CommentCleaner {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -192,11 +192,11 @@ pub fn unindent_comments(crate: clean::Crate) -> plugins::PluginResult {
         }
     }
     let mut cleaner = CommentCleaner;
-    let crate = cleaner.fold_crate(crate);
-    (crate, None)
+    let krate = cleaner.fold_crate(krate);
+    (krate, None)
 }
 
-pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
+pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     struct Collapser;
     impl fold::DocFolder for Collapser {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
@@ -223,8 +223,8 @@ pub fn collapse_docs(crate: clean::Crate) -> plugins::PluginResult {
         }
     }
     let mut collapser = Collapser;
-    let crate = collapser.fold_crate(crate);
-    (crate, None)
+    let krate = collapser.fold_crate(krate);
+    (krate, None)
 }
 
 pub fn unindent(s: &str) -> ~str {
