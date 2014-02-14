@@ -40,6 +40,7 @@
 		<keyword>break</keyword>
 		<keyword>const</keyword>
 		<keyword>continue</keyword>
+		<keyword>crate</keyword>
 		<keyword>do</keyword>
 		<keyword>drop</keyword>
 		<keyword>else</keyword>

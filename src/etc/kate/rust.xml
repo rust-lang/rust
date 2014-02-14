@@ -19,6 +19,7 @@
 		<item> as </item>
 		<item> break </item>
 		<item> continue </item>
+		<item> crate </item>
 		<item> do </item>
 		<item> drop </item>
 		<item> else </item>
