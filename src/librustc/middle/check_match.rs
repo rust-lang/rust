@@ -52,13 +52,13 @@ impl Visitor<()> for CheckMatchVisitor {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: method_map,
                    moves_map: moves::MovesMap,
-                   crate: &Crate) {
+                   krate: &Crate) {
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
     let mut v = CheckMatchVisitor { cx: cx };
 
-    visit::walk_crate(&mut v, crate, ());
+    visit::walk_crate(&mut v, krate, ());
 
     tcx.sess.abort_if_errors();
 }

@@ -769,7 +769,7 @@ fn Resolver(session: Session,
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
-                             Some(DefId { crate: 0, node: 0 }),
+                             Some(DefId { krate: 0, node: 0 }),
                              NormalModuleKind,
                              false,
                              true,
@@ -918,8 +918,8 @@ impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
 
 impl Resolver {
     /// The main name resolution procedure.
-    fn resolve(&mut self, crate: &ast::Crate) {
-        self.build_reduced_graph(crate);
+    fn resolve(&mut self, krate: &ast::Crate) {
+        self.build_reduced_graph(krate);
         self.session.abort_if_errors();
 
         self.resolve_imports();
@@ -928,10 +928,10 @@ impl Resolver {
         self.record_exports();
         self.session.abort_if_errors();
 
-        self.resolve_crate(crate);
+        self.resolve_crate(krate);
         self.session.abort_if_errors();
 
-        self.check_for_unused_imports(crate);
+        self.check_for_unused_imports(krate);
     }
 
     //
@@ -942,12 +942,12 @@ impl Resolver {
     //
 
     /// Constructs the reduced graph for the entire crate.
-    fn build_reduced_graph(&mut self, crate: &ast::Crate) {
+    fn build_reduced_graph(&mut self, krate: &ast::Crate) {
         let initial_parent =
             ModuleReducedGraphParent(self.graph_root.get_module());
 
         let mut visitor = BuildReducedGraphVisitor { resolver: self, };
-        visit::walk_crate(&mut visitor, crate, initial_parent);
+        visit::walk_crate(&mut visitor, krate, initial_parent);
     }
 
     /// Returns the current module tracked by the reduced graph parent.
@@ -1138,7 +1138,7 @@ impl Resolver {
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(new_parent, ident);
-                let def_id = DefId { crate: 0, node: item.id };
+                let def_id = DefId { krate: 0, node: item.id };
                 name_bindings.define_module(parent_link,
                                             Some(def_id),
                                             NormalModuleKind,
@@ -1500,7 +1500,7 @@ impl Resolver {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
                     Some(crate_id) => {
-                        let def_id = DefId { crate: crate_id, node: 0 };
+                        let def_id = DefId { krate: crate_id, node: 0 };
                         self.external_exports.insert(def_id);
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(parent), name);
@@ -1921,7 +1921,7 @@ impl Resolver {
                                               root.def_id
                                                   .get()
                                                   .unwrap()
-                                                  .crate,
+                                                  .krate,
                                               |def_like, ident, visibility| {
             self.build_reduced_graph_for_external_crate_def(root,
                                                             def_like,
@@ -3298,11 +3298,11 @@ impl Resolver {
 
     fn record_exports_for_module_subtree(&mut self,
                                              module_: @Module) {
-        // If this isn't a local crate, then bail out. We don't need to record
+        // If this isn't a local krate, then bail out. We don't need to record
         // exports for nonlocal crates.
 
         match module_.def_id.get() {
-            Some(def_id) if def_id.crate == LOCAL_CRATE => {
+            Some(def_id) if def_id.krate == LOCAL_CRATE => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `{}`",
@@ -3610,10 +3610,10 @@ impl Resolver {
         return None;
     }
 
-    fn resolve_crate(&mut self, crate: &ast::Crate) {
+    fn resolve_crate(&mut self, krate: &ast::Crate) {
         debug!("(resolving crate) starting");
 
-        visit::walk_crate(self, crate, ());
+        visit::walk_crate(self, krate, ());
     }
 
     fn resolve_item(&mut self, item: &Item) {
@@ -5401,7 +5401,7 @@ impl Resolver {
                           trait_def_id: DefId,
                           name: Ident) {
         debug!("(adding trait info) found trait {}:{} for method '{}'",
-               trait_def_id.crate,
+               trait_def_id.krate,
                trait_def_id.node,
                self.session.str_of(name));
         found_traits.push(trait_def_id);
@@ -5456,9 +5456,9 @@ impl Resolver {
     // resolve data structures.
     //
 
-    fn check_for_unused_imports(&self, crate: &ast::Crate) {
+    fn check_for_unused_imports(&self, krate: &ast::Crate) {
         let mut visitor = UnusedImportCheckVisitor{ resolver: self };
-        visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, krate, ());
     }
 
     fn check_for_item_unused_imports(&self, vi: &ViewItem) {
@@ -5579,10 +5579,10 @@ pub struct CrateMap {
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
                      lang_items: @LanguageItems,
-                     crate: &Crate)
+                     krate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver(session, lang_items, crate.span);
-    resolver.resolve(crate);
+    let mut resolver = Resolver(session, lang_items, krate.span);
+    resolver.resolve(krate);
     let Resolver { def_map, export_map2, trait_map, last_private,
                    external_exports, .. } = resolver;
     CrateMap {

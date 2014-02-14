@@ -160,10 +160,10 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
 /// will invoke `path` with proper linking-style arguments.
 fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
                  fqn: &[~str], kind: clean::TypeKind,
-                 crate: ast::CrateNum) -> fmt::Result {
+                 krate: ast::CrateNum) -> fmt::Result {
     path(w, p, print_all,
         |cache, loc| {
-            match *cache.extern_locations.get(&crate) {
+            match *cache.extern_locations.get(&krate) {
                 render::Remote(ref s) => Some(s.clone()),
                 render::Local => Some("../".repeat(loc.len())),
                 render::Unknown => None,
@@ -310,9 +310,9 @@ impl fmt::Show for clean::Type {
                 typarams(f.buf, tp)
             }
             clean::ExternalPath{path: ref path, typarams: ref tp,
-                                fqn: ref fqn, kind, crate} => {
+                                fqn: ref fqn, kind, krate} => {
                 if_ok!(external_path(f.buf, path, false, fqn.as_slice(), kind,
-                                     crate))
+                                     krate))
                 typarams(f.buf, tp)
             }
             clean::Self(..) => f.buf.write("Self".as_bytes()),

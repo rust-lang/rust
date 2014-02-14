@@ -57,7 +57,7 @@ type conv_did<'a> =
 
 pub struct PState<'a> {
     data: &'a [u8],
-    crate: ast::CrateNum,
+    krate: ast::CrateNum,
     pos: uint,
     tcx: ty::ctxt
 }
@@ -106,7 +106,7 @@ pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
                              pos: uint, tcx: ty::ctxt) -> PState<'a> {
     PState {
         data: data,
-        crate: crate_num,
+        krate: crate_num,
         pos: pos,
         tcx: tcx
     }
@@ -377,7 +377,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         assert_eq!(next(st), ':');
         let len = parse_hex(st);
         assert_eq!(next(st), '#');
-        let key = ty::creader_cache_key {cnum: st.crate,
+        let key = ty::creader_cache_key {cnum: st.krate,
                                          pos: pos,
                                          len: len };
 
@@ -559,7 +559,7 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
        None => fail!("internal error: parse_def_id: id expected, but found {:?}",
                      def_part)
     };
-    ast::DefId { crate: crate_num, node: def_num }
+    ast::DefId { krate: crate_num, node: def_num }
 }
 
 pub fn parse_type_param_def_data(data: &[u8], start: uint,

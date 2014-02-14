@@ -57,15 +57,15 @@ impl PluginManager {
         self.callbacks.push(plugin);
     }
     /// Run all the loaded plugins over the crate, returning their results
-    pub fn run_plugins(&self, crate: clean::Crate) -> (clean::Crate, ~[PluginJson]) {
+    pub fn run_plugins(&self, krate: clean::Crate) -> (clean::Crate, ~[PluginJson]) {
         let mut out_json = ~[];
-        let mut crate = crate;
+        let mut krate = krate;
         for &callback in self.callbacks.iter() {
-            let (c, res) = callback(crate);
-            crate = c;
+            let (c, res) = callback(krate);
+            krate = c;
             out_json.push(res);
         }
-        (crate, out_json)
+        (krate, out_json)
     }
 }
 

@@ -28,7 +28,7 @@ use clean;
 use clean::Clean;
 
 pub struct DocContext {
-    crate: ast::Crate,
+    krate: ast::Crate,
     tycx: Option<middle::ty::ctxt>,
     sess: driver::session::Session
 }
@@ -73,15 +73,15 @@ fn get_ast_and_resolve(cpath: &Path,
         cfg.push(@dummy_spanned(ast::MetaWord(cfg_)));
     }
 
-    let crate = phase_1_parse_input(sess, cfg, &input);
+    let krate = phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (crate, ast_map) = phase_2_configure_and_expand(sess, loader, crate);
+    let (krate, ast_map) = phase_2_configure_and_expand(sess, loader, krate);
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = phase_3_run_analysis_passes(sess, &crate, ast_map);
+    } = phase_3_run_analysis_passes(sess, &krate, ast_map);
 
-    debug!("crate: {:?}", crate);
-    return (DocContext { crate: crate, tycx: Some(ty_cx), sess: sess },
+    debug!("crate: {:?}", krate);
+    return (DocContext { krate: krate, tycx: Some(ty_cx), sess: sess },
             CrateAnalysis {
                 exported_items: exported_items,
                 public_items: public_items,
@@ -93,11 +93,11 @@ pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Cra
     let ctxt = @ctxt;
     local_data::set(super::ctxtkey, ctxt);
 
-    let crate = {
+    let krate = {
         let mut v = RustdocVisitor::new(ctxt, Some(&analysis));
-        v.visit(&ctxt.crate);
+        v.visit(&ctxt.krate);
         v.clean()
     };
 
-    (crate, analysis)
+    (krate, analysis)
 }

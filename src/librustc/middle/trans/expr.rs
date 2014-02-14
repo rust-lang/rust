@@ -582,7 +582,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
 
             fn get_did(ccx: @CrateContext, did: ast::DefId)
                        -> ast::DefId {
-                if did.crate != ast::LOCAL_CRATE {
+                if did.krate != ast::LOCAL_CRATE {
                     inline::maybe_instantiate_inline(ccx, did)
                 } else {
                     did
@@ -592,7 +592,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
             fn get_val<'a>(bcx: &'a Block<'a>, did: ast::DefId, const_ty: ty::t)
                        -> ValueRef {
                 // For external constants, we don't inline.
-                if did.crate == ast::LOCAL_CRATE {
+                if did.krate == ast::LOCAL_CRATE {
                     // The LLVM global has the type of its initializer,
                     // which may not be equal to the enum's type for
                     // non-C-like enums.
@@ -1710,7 +1710,7 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>)
             let external_srcs = ccx.external_srcs.borrow();
             srccrate = match external_srcs.get().find(&bcx.fcx.id) {
                 Some(&src) => {
-                    ccx.sess.cstore.get_crate_data(src.crate).name.clone()
+                    ccx.sess.cstore.get_crate_data(src.krate).name.clone()
                 }
                 None => ccx.link_meta.crateid.name.to_str(),
             };

@@ -25,29 +25,29 @@ use syntax::util::small_vector::SmallVector;
 
 pub static VERSION: &'static str = "0.10-pre";
 
-pub fn maybe_inject_crates_ref(sess: Session, crate: ast::Crate)
+pub fn maybe_inject_crates_ref(sess: Session, krate: ast::Crate)
                                -> ast::Crate {
-    if use_std(&crate) {
-        inject_crates_ref(sess, crate)
+    if use_std(&krate) {
+        inject_crates_ref(sess, krate)
     } else {
-        crate
+        krate
     }
 }
 
-pub fn maybe_inject_prelude(sess: Session, crate: ast::Crate) -> ast::Crate {
-    if use_std(&crate) {
-        inject_prelude(sess, crate)
+pub fn maybe_inject_prelude(sess: Session, krate: ast::Crate) -> ast::Crate {
+    if use_std(&krate) {
+        inject_prelude(sess, krate)
     } else {
-        crate
+        krate
     }
 }
 
-fn use_std(crate: &ast::Crate) -> bool {
-    !attr::contains_name(crate.attrs, "no_std")
+fn use_std(krate: &ast::Crate) -> bool {
+    !attr::contains_name(krate.attrs, "no_std")
 }
 
-fn use_uv(crate: &ast::Crate) -> bool {
-    !attr::contains_name(crate.attrs, "no_uv")
+fn use_uv(krate: &ast::Crate) -> bool {
+    !attr::contains_name(krate.attrs, "no_uv")
 }
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
@@ -58,12 +58,12 @@ struct StandardLibraryInjector {
     sess: Session,
 }
 
-pub fn with_version(crate: &str) -> Option<(InternedString, ast::StrStyle)> {
+pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
     match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
         Some("1") => None,
         _ => {
             Some((token::intern_and_get_ident(format!("{}\\#{}",
-                                                      crate,
+                                                      krate,
                                                       VERSION)),
                   ast::CookedStr))
         }
@@ -71,7 +71,7 @@ pub fn with_version(crate: &str) -> Option<(InternedString, ast::StrStyle)> {
 }
 
 impl fold::Folder for StandardLibraryInjector {
-    fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         let mut vis = ~[ast::ViewItem {
             node: ast::ViewItemExternMod(self.sess.ident_of("std"),
                                          with_version("std"),
@@ -88,7 +88,7 @@ impl fold::Folder for StandardLibraryInjector {
             span: DUMMY_SP
         }];
 
-        if use_uv(&crate) && !self.sess.building_library.get() {
+        if use_uv(&krate) && !self.sess.building_library.get() {
             vis.push(ast::ViewItem {
                 node: ast::ViewItemExternMod(self.sess.ident_of("green"),
                                              with_version("green"),
@@ -107,24 +107,24 @@ impl fold::Folder for StandardLibraryInjector {
             });
         }
 
-        vis.push_all(crate.module.view_items);
+        vis.push_all(krate.module.view_items);
         let new_module = ast::Mod {
             view_items: vis,
-            ..crate.module.clone()
+            ..krate.module.clone()
         };
 
         ast::Crate {
             module: new_module,
-            ..crate
+            ..krate
         }
     }
 }
 
-fn inject_crates_ref(sess: Session, crate: ast::Crate) -> ast::Crate {
+fn inject_crates_ref(sess: Session, krate: ast::Crate) -> ast::Crate {
     let mut fold = StandardLibraryInjector {
         sess: sess,
     };
-    fold.fold_crate(crate)
+    fold.fold_crate(krate)
 }
 
 struct PreludeInjector {
@@ -133,16 +133,16 @@ struct PreludeInjector {
 
 
 impl fold::Folder for PreludeInjector {
-    fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
-        if !no_prelude(crate.attrs) {
+    fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
+        if !no_prelude(krate.attrs) {
             // only add `use std::prelude::*;` if there wasn't a
             // `#[no_implicit_prelude];` at the crate level.
             ast::Crate {
-                module: self.fold_mod(&crate.module),
-                ..crate
+                module: self.fold_mod(&krate.module),
+                ..krate
             }
         } else {
-            crate
+            krate
         }
     }
 
@@ -194,9 +194,9 @@ impl fold::Folder for PreludeInjector {
     }
 }
 
-fn inject_prelude(sess: Session, crate: ast::Crate) -> ast::Crate {
+fn inject_prelude(sess: Session, krate: ast::Crate) -> ast::Crate {
     let mut fold = PreludeInjector {
         sess: sess,
     };
-    fold.fold_crate(crate)
+    fold.fold_crate(krate)
 }

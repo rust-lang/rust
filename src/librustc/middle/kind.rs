@@ -77,12 +77,12 @@ impl Visitor<()> for Context {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   crate: &Crate) {
+                   krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
         method_map: method_map,
     };
-    visit::walk_crate(&mut ctx, crate, ());
+    visit::walk_crate(&mut ctx, krate, ());
     tcx.sess.abort_if_errors();
 }
 

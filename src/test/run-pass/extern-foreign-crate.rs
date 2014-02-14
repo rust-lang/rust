@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A {
-    pub fn foo(); //~ ERROR: visibility not necessary
-    pub fn bar(); //~ ERROR: visibility not necessary
-}
+extern crate extra;
+extern mod mystd = "std";
 
-fn main() { }
+pub fn main() {}

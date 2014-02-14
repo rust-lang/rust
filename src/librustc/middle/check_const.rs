@@ -42,7 +42,7 @@ impl Visitor<bool> for CheckCrateVisitor {
 }
 
 pub fn check_crate(sess: Session,
-                   crate: &Crate,
+                   krate: &Crate,
                    ast_map: ast_map::Map,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
@@ -54,7 +54,7 @@ pub fn check_crate(sess: Session,
         method_map: method_map,
         tcx: tcx,
     };
-    visit::walk_crate(&mut v, crate, false);
+    visit::walk_crate(&mut v, krate, false);
     sess.abort_if_errors();
 }
 

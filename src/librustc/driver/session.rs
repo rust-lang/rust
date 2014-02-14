@@ -456,7 +456,7 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
+pub fn building_library(options: &Options, krate: &ast::Crate) -> bool {
     if options.test { return false }
     for output in options.crate_types.iter() {
         match *output {
@@ -464,7 +464,7 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
             CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
-    match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
+    match syntax::attr::first_attr_value_str_by_name(krate.attrs, "crate_type") {
         Some(s) => {
             s.equiv(&("lib")) ||
             s.equiv(&("rlib")) ||
