@@ -170,7 +170,7 @@ runner.
 
 The type signature of a benchmark function differs from a unit test:
 it takes a mutable reference to type
-`extra::test::BenchHarness`. Inside the benchmark function, any
+`test::BenchHarness`. Inside the benchmark function, any
 time-variable or "setup" code should execute first, followed by a call
 to `iter` on the benchmark harness, passing a closure that contains
 the portion of the benchmark you wish to actually measure the
@@ -185,9 +185,10 @@ amount.
 For example:
 
 ~~~
-extern crate extra;
+extern crate test;
+
 use std::vec;
-use extra::test::BenchHarness;
+use test::BenchHarness;
 
 #[bench]
 fn bench_sum_1024_ints(b: &mut BenchHarness) {
@@ -243,8 +244,8 @@ recognize that some calculation has no external effects and remove
 it entirely.
 
 ~~~
-extern crate extra;
-use extra::test::BenchHarness;
+extern crate test;
+use test::BenchHarness;
 
 #[bench]
 fn bench_xor_1000_ints(bh: &mut BenchHarness) {
@@ -273,15 +274,15 @@ example above by adjusting the `bh.iter` call to
 bh.iter(|| range(0, 1000).fold(0, |old, new| old ^ new))
 ~~~
 
-Or, the other option is to call the generic `extra::test::black_box`
+Or, the other option is to call the generic `test::black_box`
 function, which is an opaque "black box" to the optimizer and so
 forces it to consider any argument as used.
 
 ~~~
-use extra::test::black_box
+extern crate test;
 
 bh.iter(|| {
-        black_box(range(0, 1000).fold(0, |old, new| old ^ new));
+        test::black_box(range(0, 1000).fold(0, |old, new| old ^ new));
     });
 ~~~
 

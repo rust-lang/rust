@@ -346,11 +346,12 @@ impl<S: Stream> Writer for BufferedStream<S> {
 
 #[cfg(test)]
 mod test {
+    extern crate test;
     use io;
     use prelude::*;
     use super::*;
     use super::super::mem::{MemReader, MemWriter, BufReader};
-    use Harness = extra::test::BenchHarness;
+    use Harness = self::test::BenchHarness;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[doc(hidden)];
-
 // Support code for rustc's built in test runner generator. Currently,
 // none of this is meant for users. It is intended to support the
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+#[crate_id = "test#0.10-pre"];
+#[comment = "Rust internal test library only used by rustc"];
+#[license = "MIT/ASL2"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+
+#[feature(asm)];
+
+extern crate collections;
+extern crate extra;
 extern crate getopts;
+extern crate serialize;
 extern crate term;
 
-use json::ToJson;
-use json;
-use serialize::Decodable;
-use stats::Stats;
-use stats;
-use time::precise_time_ns;
 use collections::TreeMap;
+use extra::json::ToJson;
+use extra::json;
+use extra::stats::Stats;
+use extra::stats;
+use extra::time::precise_time_ns;
+use getopts::{OptGroup, optflag, optopt};
+use serialize::Decodable;
+use term::Terminal;
+use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::cmp;
 use std::io;
@@ -35,6 +47,17 @@ use std::task;
 use std::to_str::ToStr;
 use std::f64;
 use std::os;
+
+// to be used by rustc to compile tests in libtest
+pub mod test {
+    pub use {BenchHarness, TestName, TestResult, TestDesc,
+             TestDescAndFn, TestOpts, TrFailed, TrIgnored, TrOk,
+             Metric, MetricMap, MetricAdded, MetricRemoved,
+             MetricChange, Improvement, Regression, LikelyNoise,
+             StaticTestFn, StaticTestName, DynTestName, DynTestFn,
+             run_test, test_main, test_main_static, filter_tests,
+             parse_opts};
+}
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -129,6 +152,12 @@ pub struct TestDescAndFn {
 pub struct Metric {
     priv value: f64,
     priv noise: f64
+}
+
+impl Metric {
+    pub fn new(value: f64, noise: f64) -> Metric {
+        Metric {value: value, noise: noise}
+    }
 }
 
 #[deriving(Eq)]
@@ -245,7 +274,7 @@ Test Attributes:
     #[test]        - Indicates a function is a test to be run. This function
                      takes no arguments.
     #[bench]       - Indicates a function is a benchmark to be run. This
-                     function takes one argument (extra::test::BenchHarness).
+                     function takes one argument (test::BenchHarness).
     #[should_fail] - This function (also labeled with #[test]) will only pass if
                      the code causes a failure (an assertion failure or fail!)
     #[ignore]      - When applied to a function which is already attributed as a
@@ -783,7 +812,7 @@ fn run_tests(opts: &TestOpts,
     remaining.reverse();
     let mut pending = 0;
 
-    let (p, ch) = Chan::new();
+    let (p, ch) = Chan::<MonitorMsg>::new();
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -929,12 +958,12 @@ pub fn run_test(force_ignore: bool,
 
     match testfn {
         DynBenchFn(bencher) => {
-            let bs = ::test::bench::benchmark(|harness| bencher.run(harness));
+            let bs = ::bench::benchmark(|harness| bencher.run(harness));
             monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::test::bench::benchmark(|harness| benchfn(harness));
+            let bs = ::bench::benchmark(|harness| benchfn(harness));
             monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
@@ -1230,15 +1259,11 @@ impl BenchHarness {
             n *= 2;
         }
     }
-
-
-
-
 }
 
 pub mod bench {
     use std::cmp;
-    use test::{BenchHarness, BenchSamples};
+    use super::{BenchHarness, BenchSamples};
 
     pub fn benchmark(f: |&mut BenchHarness|) -> BenchSamples {
         let mut bs = BenchHarness {
@@ -1264,13 +1289,11 @@ pub mod bench {
 #[cfg(test)]
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
-               TestDesc, TestDescAndFn,
+               TestDesc, TestDescAndFn, TestOpts, run_test,
                Metric, MetricMap, MetricAdded, MetricRemoved,
                Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn};
-    use test::{TestOpts, run_test};
-
-    use tempfile::TempDir;
+    use extra::tempfile::TempDir;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1532,8 +1555,8 @@ mod tests {
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&~"runtime").unwrap()), Metric { value: 1000.0, noise: 2.0 });
-        assert_eq!(*(m3.find(&~"throughput").unwrap()), Metric { value: 50.0, noise: 2.0 });
+        assert_eq!(*(m3.find(&~"runtime").unwrap()), Metric::new(1000.0, 2.0));
+        assert_eq!(*(m3.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
@@ -1547,7 +1570,8 @@ mod tests {
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric { value: 1100.0, noise: 2.0 });
-        assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric { value: 50.0, noise: 2.0 });
+        assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric::new(1100.0, 2.0));
+        assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
     }
 }
+

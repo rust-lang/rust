@@ -803,7 +803,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use rand::{XorShiftRng, Rng};
     use to_str::ToStr;
     use f64;

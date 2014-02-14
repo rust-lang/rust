@@ -154,7 +154,7 @@ testing this code, the `fib` function will be included (so it can compile).
 
 Running tests often requires some special configuration to filter tests, find
 libraries, or try running ignored examples. The testing framework that rustdoc
-uses is build on `extra::test`, which is also used when you compile crates with
+uses is build on crate `test`, which is also used when you compile crates with
 rustc's `--test` flag. Extra arguments can be passed to rustdoc's test harness
 with the `--test-args` flag.
 

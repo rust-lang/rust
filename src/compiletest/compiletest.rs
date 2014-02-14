@@ -13,16 +13,13 @@
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
 
-extern crate extra;
+extern crate test;
 extern crate getopts;
 
 use std::os;
 use std::io;
 use std::io::fs;
-
 use getopts::{optopt, optflag, reqopt};
-use extra::test;
-
 use common::config;
 use common::mode_run_pass;
 use common::mode_run_fail;
