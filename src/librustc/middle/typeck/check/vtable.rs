@@ -702,7 +702,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
       ast::ExprUnary(callee_id, _, _) |
       ast::ExprAssignOp(callee_id, _, _, _) |
       ast::ExprIndex(callee_id, _, _) |
-      ast::ExprMethodCall(callee_id, _, _, _, _) => {
+      ast::ExprMethodCall(callee_id, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
             debug!("vtable resolution on parameter bounds for method call {}",

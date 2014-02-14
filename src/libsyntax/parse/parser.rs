@@ -13,7 +13,6 @@
 use abi;
 use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
-use ast::{CallSugar, NoSugar};
 use ast::{BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{Provided, Public, Purity};
@@ -1690,13 +1689,12 @@ impl Parser {
         ExprBinary(ast::DUMMY_NODE_ID, binop, lhs, rhs)
     }
 
-    pub fn mk_call(&mut self, f: @Expr, args: ~[@Expr], sugar: CallSugar) -> ast::Expr_ {
-        ExprCall(f, args, sugar)
+    pub fn mk_call(&mut self, f: @Expr, args: ~[@Expr]) -> ast::Expr_ {
+        ExprCall(f, args)
     }
 
-    fn mk_method_call(&mut self, ident: Ident, tps: ~[P<Ty>], args: ~[@Expr],
-                      sugar: CallSugar) -> ast::Expr_ {
-        ExprMethodCall(ast::DUMMY_NODE_ID, ident, tps, args, sugar)
+    fn mk_method_call(&mut self, ident: Ident, tps: ~[P<Ty>], args: ~[@Expr]) -> ast::Expr_ {
+        ExprMethodCall(ast::DUMMY_NODE_ID, ident, tps, args)
     }
 
     pub fn mk_index(&mut self, expr: @Expr, idx: @Expr) -> ast::Expr_ {
@@ -1997,7 +1995,7 @@ impl Parser {
                             hi = self.last_span.hi;
 
                             es.unshift(e);
-                            let nd = self.mk_method_call(i, tys, es, NoSugar);
+                            let nd = self.mk_method_call(i, tys, es);
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
@@ -2022,7 +2020,7 @@ impl Parser {
                 );
                 hi = self.last_span.hi;
 
-                let nd = self.mk_call(e, es, NoSugar);
+                let nd = self.mk_call(e, es);
                 e = self.mk_expr(lo, hi, nd);
               }
 

@@ -831,10 +831,10 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       ast::ExprAssignOp(_, _, dest, _) => {
         this.check_assignment(dest);
       }
-      ast::ExprCall(f, ref args, _) => {
+      ast::ExprCall(f, ref args) => {
         this.check_call(expr, Some(f), f.id, f.span, *args);
       }
-      ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+      ast::ExprMethodCall(callee_id, _, _, ref args) => {
         this.check_call(expr, None, callee_id, expr.span, *args);
       }
       ast::ExprIndex(callee_id, _, rval) |
