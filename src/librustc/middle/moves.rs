@@ -209,7 +209,7 @@ impl visit::Visitor<()> for VisitContext {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: &Crate) -> MoveMaps
+                     krate: &Crate) -> MoveMaps
 {
     let mut visit_cx = VisitContext {
         tcx: tcx,
@@ -221,7 +221,7 @@ pub fn compute_moves(tcx: ty::ctxt,
         }
     };
     let visit_cx = &mut visit_cx;
-    visit::walk_crate(visit_cx, crate, ());
+    visit::walk_crate(visit_cx, krate, ());
     return visit_cx.move_maps;
 }
 

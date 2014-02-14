@@ -38,10 +38,10 @@ pub fn path_to_ident(path: &Path) -> Ident {
 }
 
 pub fn local_def(id: NodeId) -> DefId {
-    ast::DefId { crate: LOCAL_CRATE, node: id }
+    ast::DefId { krate: LOCAL_CRATE, node: id }
 }
 
-pub fn is_local(did: ast::DefId) -> bool { did.crate == LOCAL_CRATE }
+pub fn is_local(did: ast::DefId) -> bool { did.krate == LOCAL_CRATE }
 
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {

@@ -236,8 +236,8 @@ impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert_eq!(did.crate, ast::LOCAL_CRATE);
-        ast::DefId { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
+        assert_eq!(did.krate, ast::LOCAL_CRATE);
+        ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: Span) -> Span {
         codemap::DUMMY_SP // FIXME (#1972): handle span properly
@@ -989,7 +989,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
+    let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
     {
         let tcache = tcx.tcache.borrow();
         let r = tcache.get().find(&lid);
@@ -1350,7 +1350,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
-                        let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
+                        let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
                         let mut tcache = dcx.tcx.tcache.borrow_mut();
                         tcache.get().insert(lid, tpbt);
                     }

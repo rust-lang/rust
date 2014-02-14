@@ -44,14 +44,14 @@ impl Visitor<()> for EntryContext {
     }
 }
 
-pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) {
+pub fn find_entry_point(session: Session, krate: &Crate, ast_map: ast_map::Map) {
     if session.building_library.get() {
         // No need to find a main function
         return;
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(crate.attrs, "no_main") {
+    if attr::contains_name(krate.attrs, "no_main") {
         session.entry_type.set(Some(session::EntryNone));
         return
     }
@@ -65,7 +65,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) 
         non_main_fns: ~[],
     };
 
-    visit::walk_crate(&mut ctxt, crate, ());
+    visit::walk_crate(&mut ctxt, krate, ());
 
     configure_main(&mut ctxt);
 }

@@ -522,13 +522,13 @@ pub fn get_res_dtor(ccx: @CrateContext,
                     substs: &[ty::t])
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
-    let did = if did.crate != ast::LOCAL_CRATE {
+    let did = if did.krate != ast::LOCAL_CRATE {
         inline::maybe_instantiate_inline(ccx, did)
     } else {
         did
     };
     if !substs.is_empty() {
-        assert_eq!(did.crate, ast::LOCAL_CRATE);
+        assert_eq!(did.krate, ast::LOCAL_CRATE);
         let tsubsts = ty::substs {regions: ty::ErasedRegions,
                                   self_ty: None,
                                   tps: /*bad*/ substs.to_owned() };
@@ -547,7 +547,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
                                                     None);
 
         val
-    } else if did.crate == ast::LOCAL_CRATE {
+    } else if did.krate == ast::LOCAL_CRATE {
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx;
@@ -1895,7 +1895,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.tcx.sess.fatal(s); }
                 };
-                let start_fn = if start_def_id.crate == ast::LOCAL_CRATE {
+                let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
@@ -2610,7 +2610,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
+pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
     use flate;
 
     if !cx.sess.building_library.get() {
@@ -2622,7 +2622,7 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
         astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
-    let metadata = encoder::encode_metadata(encode_parms, crate);
+    let metadata = encoder::encode_metadata(encode_parms, krate);
     let compressed = encoder::metadata_encoding_version +
                         flate::deflate_bytes(metadata);
     let llmeta = C_bytes(compressed);
@@ -2644,7 +2644,7 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
 }
 
 pub fn trans_crate(sess: session::Session,
-                   crate: ast::Crate,
+                   krate: ast::Crate,
                    analysis: &CrateAnalysis,
                    output: &OutputFilenames) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
@@ -2666,7 +2666,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     let mut symbol_hasher = Sha256::new();
-    let link_meta = link::build_link_meta(crate.attrs, output,
+    let link_meta = link::build_link_meta(krate.attrs, output,
                                           &mut symbol_hasher);
 
     // Append ".rs" to crate name as LLVM module identifier.
@@ -2689,7 +2689,7 @@ pub fn trans_crate(sess: session::Session,
                                      analysis.reachable);
     {
         let _icx = push_ctxt("text");
-        trans_mod(ccx, &crate.module);
+        trans_mod(ccx, &krate.module);
     }
 
     decl_gc_metadata(ccx, llmod_id);
@@ -2719,7 +2719,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     // Translate the metadata.
-    let metadata = write_metadata(ccx, &crate);
+    let metadata = write_metadata(ccx, &krate);
     if ccx.sess.trans_stats() {
         println!("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs.get());

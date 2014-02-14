@@ -2187,7 +2187,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
+                assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
                 let ty_param_defs = cx.ty_param_defs.borrow();
                 let tp_def = ty_param_defs.get().get(&p.def_id.node);
@@ -3842,8 +3842,8 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
         None => { }
     }
 
-    if def_id.crate == ast::LOCAL_CRATE {
-        fail!("no def'n found for {:?} in tcx.{}", def_id, descr);
+    if def_id.krate == ast::LOCAL_CRATE {
+        fail!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
     map.insert(def_id, v.clone());
@@ -3895,7 +3895,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
         }
     }
 
-    let ret = if id.crate == ast::LOCAL_CRATE {
+    let ret = if id.krate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl {:?}", id);
         {
             match cx.items.find(id.node) {
@@ -4085,7 +4085,7 @@ pub fn has_dtor(cx: ctxt, struct_id: DefId) -> bool {
 }
 
 pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::Path {
-    if id.crate != ast::LOCAL_CRATE {
+    if id.krate != ast::LOCAL_CRATE {
         return csearch::get_item_path(cx, id)
     }
 
@@ -4155,7 +4155,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
         }
     }
 
-    let result = if ast::LOCAL_CRATE != id.crate {
+    let result = if ast::LOCAL_CRATE != id.krate {
         @csearch::get_enum_variants(cx, id)
     } else {
         /*
@@ -4274,7 +4274,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
             return trait_def;
         }
         None => {
-            assert!(did.crate != ast::LOCAL_CRATE);
+            assert!(did.krate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
             trait_defs.get().insert(did, trait_def);
             return trait_def;
@@ -4348,7 +4348,7 @@ pub fn lookup_field_type(tcx: ctxt,
                          id: DefId,
                          substs: &substs)
                       -> ty::t {
-    let t = if id.crate == ast::LOCAL_CRATE {
+    let t = if id.krate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
     } else {
         {
@@ -4369,7 +4369,7 @@ pub fn lookup_field_type(tcx: ctxt,
 // Look up the list of field names and IDs for a given struct
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
-  if did.crate == ast::LOCAL_CRATE {
+  if did.krate == ast::LOCAL_CRATE {
       {
           match cx.items.find(did.node) {
            Some(ast_map::NodeItem(i,_)) => {
@@ -4799,7 +4799,7 @@ fn record_trait_implementation(tcx: ctxt,
 /// if necessary.
 pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
                                                       type_id: ast::DefId) {
-    if type_id.crate == LOCAL_CRATE {
+    if type_id.krate == LOCAL_CRATE {
         return
     }
     {
@@ -4867,7 +4867,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
 pub fn populate_implementations_for_trait_if_necessary(
         tcx: ctxt,
         trait_id: ast::DefId) {
-    if trait_id.crate == LOCAL_CRATE {
+    if trait_id.krate == LOCAL_CRATE {
         return
     }
     {
@@ -4931,7 +4931,7 @@ pub fn trait_id_of_impl(tcx: ctxt,
 /// the trait that the method belongs to. Otherwise, return `None`.
 pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
                        -> Option<ast::DefId> {
-    if def_id.crate != LOCAL_CRATE {
+    if def_id.krate != LOCAL_CRATE {
         return csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
     }
     let method;
@@ -5012,7 +5012,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
         let h = if ast_util::is_local(did) {
             local_hash.clone()
         } else {
-            tcx.sess.cstore.get_crate_hash(did.crate)
+            tcx.sess.cstore.get_crate_hash(did.krate)
         };
         hash.input(h.as_bytes());
         iter(hash, &did.node);

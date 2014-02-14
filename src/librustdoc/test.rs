@@ -58,31 +58,31 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(sess);
-    let crate = driver::phase_1_parse_input(sess, cfg, &input);
+    let krate = driver::phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (crate, _) = driver::phase_2_configure_and_expand(sess, loader, crate);
+    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate);
 
     let ctx = @core::DocContext {
-        crate: crate,
+        krate: krate,
         tycx: None,
         sess: sess,
     };
     local_data::set(super::ctxtkey, ctx);
 
     let mut v = RustdocVisitor::new(ctx, None);
-    v.visit(&ctx.crate);
-    let crate = v.clean();
-    let (crate, _) = passes::unindent_comments(crate);
-    let (crate, _) = passes::collapse_docs(crate);
+    v.visit(&ctx.krate);
+    let krate = v.clean();
+    let (krate, _) = passes::unindent_comments(krate);
+    let (krate, _) = passes::collapse_docs(krate);
 
     let mut collector = Collector {
         tests: ~[],
         names: ~[],
         cnt: 0,
         libs: libs,
-        cratename: crate.name.to_owned(),
+        cratename: krate.name.to_owned(),
     };
-    collector.fold_crate(crate);
+    collector.fold_crate(krate);
 
     let args = matches.opt_strs("test-args");
     let mut args = args.iter().flat_map(|s| s.words()).map(|s| s.to_owned());

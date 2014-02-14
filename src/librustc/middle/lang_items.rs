@@ -161,24 +161,24 @@ impl LanguageItemCollector {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    pub fn collect_local_language_items(&mut self, crate: &ast::Crate) {
+    pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {
         let mut v = LanguageItemVisitor { this: self };
-        visit::walk_crate(&mut v, crate, ());
+        visit::walk_crate(&mut v, krate, ());
     }
 
     pub fn collect_external_language_items(&mut self) {
         let crate_store = self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
-                let def_id = ast::DefId { crate: crate_number, node: node_id };
+                let def_id = ast::DefId { krate: crate_number, node: node_id };
                 self.collect_item(item_index, def_id);
                 true
             });
         })
     }
 
-    pub fn collect(&mut self, crate: &ast::Crate) {
-        self.collect_local_language_items(crate);
+    pub fn collect(&mut self, krate: &ast::Crate) {
+        self.collect_local_language_items(krate);
         self.collect_external_language_items();
     }
 }
@@ -196,10 +196,10 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     return None;
 }
 
-pub fn collect_language_items(crate: &ast::Crate,
+pub fn collect_language_items(krate: &ast::Crate,
                               session: Session) -> @LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
-    collector.collect(crate);
+    collector.collect(krate);
     let LanguageItemCollector { items, .. } = collector;
     session.abort_if_errors();
     @items

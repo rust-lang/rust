@@ -116,7 +116,7 @@ pub static default_columns: uint = 78u;
 pub fn print_crate(cm: @CodeMap,
                    intr: @IdentInterner,
                    span_diagnostic: @diagnostic::SpanHandler,
-                   crate: &ast::Crate,
+                   krate: &ast::Crate,
                    filename: ~str,
                    input: &mut io::Reader,
                    out: ~io::Writer,
@@ -147,11 +147,11 @@ pub fn print_crate(cm: @CodeMap,
         boxes: RefCell::new(~[]),
         ann: ann
     };
-    print_crate_(&mut s, crate)
+    print_crate_(&mut s, krate)
 }
 
-pub fn print_crate_(s: &mut State, crate: &ast::Crate) -> io::IoResult<()> {
-    if_ok!(print_mod(s, &crate.module, crate.attrs));
+pub fn print_crate_(s: &mut State, krate: &ast::Crate) -> io::IoResult<()> {
+    if_ok!(print_mod(s, &krate.module, krate.attrs));
     if_ok!(print_remaining_comments(s));
     if_ok!(eof(&mut s.s));
     Ok(())

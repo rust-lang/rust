@@ -15,7 +15,7 @@ use std::io;
 pub struct Layout {
     logo: ~str,
     favicon: ~str,
-    crate: ~str,
+    krate: ~str,
 }
 
 pub struct Page<'a> {
@@ -37,7 +37,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400'
           rel='stylesheet' type='text/css'>
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}{crate}/main.css\">
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}{krate}/main.css\">
 
     {favicon, select, none{} other{<link rel=\"shortcut icon\" href=\"#\" />}}
 </head>
@@ -51,7 +51,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <section class=\"sidebar\">
         {logo, select, none{} other{
-            <a href='{root_path}{crate}/index.html'><img src='#' alt=''/></a>
+            <a href='{root_path}{krate}/index.html'><img src='#' alt=''/></a>
         }}
 
         {sidebar}
@@ -77,9 +77,9 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     <script>
         var rootPath = \"{root_path}\";
     </script>
-    <script src=\"{root_path}{crate}/jquery.js\"></script>
-    <script src=\"{root_path}{crate}/search-index.js\"></script>
-    <script src=\"{root_path}{crate}/main.js\"></script>
+    <script src=\"{root_path}{krate}/jquery.js\"></script>
+    <script src=\"{root_path}{krate}/search-index.js\"></script>
+    <script src=\"{root_path}{krate}/main.js\"></script>
 
     <div id=\"help\" class=\"hidden\">
         <div class=\"shortcuts\">
@@ -121,7 +121,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     title     = page.title,
     favicon   = nonestr(layout.favicon),
     sidebar   = *sidebar,
-    crate     = layout.crate,
+    krate     = layout.krate,
     )
 }
 

@@ -908,7 +908,7 @@ impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
     }
 }
 
-pub fn resolve_crate(sess: Session, crate: &ast::Crate) -> RegionMaps {
+pub fn resolve_crate(sess: Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
         scope_map: RefCell::new(HashMap::new()),
         var_map: RefCell::new(HashMap::new()),
@@ -922,7 +922,7 @@ pub fn resolve_crate(sess: Session, crate: &ast::Crate) -> RegionMaps {
             region_maps: &maps
         };
         let cx = Context { parent: None, var_parent: None };
-        visit::walk_crate(&mut visitor, crate, cx);
+        visit::walk_crate(&mut visitor, krate, cx);
     }
     return maps;
 }
