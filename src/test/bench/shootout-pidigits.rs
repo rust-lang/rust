@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod num;
+extern crate num;
 
 use std::from_str::FromStr;
 use std::num::One;

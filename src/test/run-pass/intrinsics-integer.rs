@@ -12,7 +12,7 @@
 
 #[feature(globs)];
 
-extern mod extra;
+extern crate extra;
 
 mod rusti {
     extern "rust-intrinsic" {

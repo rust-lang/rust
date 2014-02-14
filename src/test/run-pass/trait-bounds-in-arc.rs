@@ -15,7 +15,7 @@
 
 // ignore-fast
 
-extern mod sync;
+extern crate sync;
 
 use sync::Arc;
 use std::task;

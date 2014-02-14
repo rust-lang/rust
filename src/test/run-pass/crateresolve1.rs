@@ -13,7 +13,7 @@
 // aux-build:crateresolve1-2.rs
 // aux-build:crateresolve1-3.rs
 
-extern mod crateresolve1 = "crateresolve1#0.2";
+extern crate crateresolve1 = "crateresolve1#0.2";
 
 pub fn main() {
     assert_eq!(crateresolve1::f(), 20);

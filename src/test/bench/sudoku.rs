@@ -12,7 +12,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern crate extra;
 
 use std::io;
 use std::io::stdio::StdReader;

@@ -13,7 +13,7 @@
 // ignore-fast
 
 #[feature(once_fns)];
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 
 fn foo(blk: once ||) {

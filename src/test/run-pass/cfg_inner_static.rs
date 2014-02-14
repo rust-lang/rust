@@ -11,7 +11,7 @@
 // aux-build:cfg_inner_static.rs
 // ignore-fast
 
-extern mod cfg_inner_static;
+extern crate cfg_inner_static;
 
 pub fn main() {
     cfg_inner_static::foo();

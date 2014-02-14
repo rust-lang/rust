@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:anon_trait_static_method_lib.rs
 
-extern mod anon_trait_static_method_lib;
+extern crate anon_trait_static_method_lib;
 use anon_trait_static_method_lib::Foo;
 
 pub fn main() {

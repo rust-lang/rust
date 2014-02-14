@@ -10,7 +10,7 @@
 
 
 
-extern mod extra;
+extern crate extra;
 
 fn test1() {
     let mut s: ~str = ~"hello";

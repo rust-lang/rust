@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:xcrate_static_addresses.rs
 
-extern mod xcrate_static_addresses;
+extern crate xcrate_static_addresses;
 
 use other = xcrate_static_addresses;
 

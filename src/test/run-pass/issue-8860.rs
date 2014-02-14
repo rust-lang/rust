@@ -10,7 +10,7 @@
 
 // ignore-fast
 
-extern mod green;
+extern crate green;
 
 static mut DROP: int = 0i;
 static mut DROP_S: int = 0i;

@@ -23,7 +23,7 @@ To load the extension and use it:
 
 ```rust,ignore
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
     let val = fourcc!("\xC0\xFF\xEE!");
@@ -46,7 +46,7 @@ fn main() {
 
 #[feature(macro_registrar, managed_boxes)];
 
-extern mod syntax;
+extern crate syntax;
 
 use syntax::ast;
 use syntax::ast::Name;

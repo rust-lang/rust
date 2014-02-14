@@ -10,7 +10,7 @@
 
 // aux-build:noexporttypelib.rs
 
-extern mod noexporttypelib;
+extern crate noexporttypelib;
 
 fn main() {
     // Here, the type returned by foo() is not exported.

@@ -10,7 +10,7 @@
 
 // ignore-fast
 // aux-build:reexported_static_methods.rs
-extern mod reexported_static_methods;
+extern crate reexported_static_methods;
 
 use reexported_static_methods::Foo;
 use reexported_static_methods::Baz;

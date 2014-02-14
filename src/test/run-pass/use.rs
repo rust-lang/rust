@@ -15,9 +15,9 @@
 #[allow(unused_imports)];
 
 #[no_std];
-extern mod std;
-extern mod zed = "std";
-extern mod bar = "std#0.10-pre";
+extern crate std;
+extern crate zed = "std";
+extern crate bar = "std#0.10-pre";
 
 
 use std::str;

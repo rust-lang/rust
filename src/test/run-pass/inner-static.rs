@@ -11,7 +11,7 @@
 // aux-build:inner_static.rs
 // ignore-fast
 
-extern mod inner_static;
+extern crate inner_static;
 
 pub fn main() {
     let a = inner_static::A::<()>;

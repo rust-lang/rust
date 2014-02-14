@@ -15,7 +15,7 @@
 
 #[allow(default_type_param_usage)];
 
-extern mod default_type_params_xc;
+extern crate default_type_params_xc;
 
 struct Vec<T, A = default_type_params_xc::Heap>;
 

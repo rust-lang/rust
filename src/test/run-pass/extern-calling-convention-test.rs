@@ -11,7 +11,7 @@
 // ignore-fast: aux-build not compatible with fast
 // aux-build:extern_calling_convention.rs
 
-extern mod extern_calling_convention;
+extern crate extern_calling_convention;
 
 use extern_calling_convention::foo;
 

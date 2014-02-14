@@ -18,7 +18,7 @@
 // different scalability characteristics compared to the select
 // version.
 
-extern mod extra;
+extern crate extra;
 
 use std::comm;
 use std::os;

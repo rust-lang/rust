@@ -13,7 +13,7 @@
 // ignore-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
-extern mod extra;
+extern crate extra;
 
 use std::cmp::Ord;
 use std::comm;

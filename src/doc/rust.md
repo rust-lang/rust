@@ -759,7 +759,7 @@ A view item manages the namespace of a module.
 View items do not define new items, but rather, simply change other items' visibility.
 There are several kinds of view item:
 
- * [`extern mod` declarations](#extern-mod-declarations)
+ * [`extern crate` declarations](#extern-mod-declarations)
  * [`use` declarations](#use-declarations)
 
 ##### Extern mod declarations
@@ -770,7 +770,7 @@ link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~
 
-An _`extern mod` declaration_ specifies a dependency on an external crate.
+An _`extern crate` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope
 as the `ident` provided in the `extern_mod_decl`.
 
@@ -782,16 +782,16 @@ against the `crateid` attributes that were declared on the external crate when
 it was compiled.  If no `crateid` is provided, a default `name` attribute is
 assumed, equal to the `ident` given in the `extern_mod_decl`.
 
-Four examples of `extern mod` declarations:
+Four examples of `extern crate` declarations:
 
 ~~~~ {.ignore}
-extern mod pcre;
+extern crate pcre;
 
-extern mod extra; // equivalent to: extern mod extra = "extra";
+extern crate extra; // equivalent to: extern crate extra = "extra";
 
-extern mod rustextra = "extra"; // linking to 'extra' under another name
+extern crate rustextra = "extra"; // linking to 'extra' under another name
 
-extern mod foo = "some/where/rust-foo#foo:1.0"; // a full package ID for external tools
+extern crate foo = "some/where/rust-foo#foo:1.0"; // a full package ID for external tools
 ~~~~
 
 ##### Use declarations
@@ -813,7 +813,7 @@ module item. These declarations may appear at the top of [modules](#modules) and
 
 *Note*: Unlike in many languages,
 `use` declarations in Rust do *not* declare linkage dependency with external crates.
-Rather, [`extern mod` declarations](#extern-mod-declarations) declare linkage dependencies.
+Rather, [`extern crate` declarations](#extern-mod-declarations) declare linkage dependencies.
 
 Use declarations support a number of convenient shortcuts:
 
@@ -869,7 +869,7 @@ This also means that top-level module declarations should be at the crate root i
 of the declared modules within `use` items is desired.  It is also possible to use `self` and `super`
 at the beginning of a `use` item to refer to the current and direct parent modules respectively.
 All rules regarding accessing declared modules in `use` declarations applies to both module declarations
-and `extern mod` declarations.
+and `extern crate` declarations.
 
 An example of what will and will not work for `use` items:
 
@@ -879,7 +879,7 @@ use foo::extra;          // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
 mod foo {
-    extern mod extra;
+    extern crate extra;
 
     use foo::extra::time;  // good: foo is at crate root
 //  use extra::*;          // bad:  extra is not at the crate root

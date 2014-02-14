@@ -11,7 +11,7 @@
 // issue 7327
 
 // ignore-fast #7103
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 
 struct A { y: Arc<int>, x: Arc<int> }

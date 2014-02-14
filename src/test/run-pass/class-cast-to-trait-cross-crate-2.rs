@@ -10,7 +10,7 @@
 
 // ignore-fast
 // aux-build:cci_class_cast.rs
-extern mod cci_class_cast;
+extern crate cci_class_cast;
 use std::to_str::ToStr;
 use cci_class_cast::kitty::cat;
 

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:newtype_struct_xc.rs
 
-extern mod newtype_struct_xc;
+extern crate newtype_struct_xc;
 
 pub fn main() {
     let x = newtype_struct_xc::Au(21);

@@ -11,6 +11,6 @@
 // aux-build:issue-11224.rs
 // ignore-fast
 
-extern mod unused = "issue-11224";
+extern crate unused = "issue-11224";
 
 pub fn main() {}

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:packed.rs
 
-extern mod packed;
+extern crate packed;
 
 use std::mem;
 

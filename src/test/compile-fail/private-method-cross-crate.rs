@@ -10,7 +10,7 @@
 
 // ignore-fast
 // aux-build:cci_class_5.rs
-extern mod cci_class_5;
+extern crate cci_class_5;
 use cci_class_5::kitties::cat;
 
 fn main() {

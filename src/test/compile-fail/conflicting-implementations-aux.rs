@@ -12,7 +12,7 @@
 // 'conflicting implementations' error message.
 
 // aux-build:trait_impl_conflict.rs
-extern mod trait_impl_conflict;
+extern crate trait_impl_conflict;
 use trait_impl_conflict::Foo;
 
 impl<A> Foo for A {

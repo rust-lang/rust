@@ -16,12 +16,12 @@
 // as long as no name collision on invoked functions.
 
 mod a {
-    extern mod crateresolve3 = "crateresolve3#0.1";
+    extern crate crateresolve3 = "crateresolve3#0.1";
     pub fn f() { assert!(crateresolve3::f() == 10); }
 }
 
 mod b {
-    extern mod crateresolve3 = "crateresolve3#0.2";
+    extern crate crateresolve3 = "crateresolve3#0.2";
     pub fn f() { assert!(crateresolve3::g() == 20); }
 }
 

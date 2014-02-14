@@ -22,7 +22,7 @@
 // longer happens by enabling logging for *this* crate and then invoking a
 // function in an external crate which will fail when logging is enabled.
 
-extern mod logging_right_crate;
+extern crate logging_right_crate;
 
 pub fn main() {
     // this function fails if logging is turned on

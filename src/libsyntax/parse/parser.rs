@@ -4528,7 +4528,7 @@ impl Parser {
     // parse one of the items or view items allowed by the
     // flags; on failure, return IoviNone.
     // NB: this function no longer parses the items inside an
-    // extern mod.
+    // extern crate.
     fn parse_item_or_view_item(&mut self,
                                attrs: ~[Attribute],
                                macros_allowed: bool)
@@ -4567,10 +4567,10 @@ impl Parser {
 
             if next_is_mod || self.eat_keyword(keywords::Crate) {
                 if next_is_mod {
-                   self.span_err(self.span,
-                                  format!("`extern mod` is obsolete, use \
-                                           `extern crate` instead \
-                                           to refer to external crates."))
+                   self.span_err(mk_sp(lo, self.last_span.hi),
+                                 format!("`extern mod` is obsolete, use \
+                                          `extern crate` instead \
+                                          to refer to external crates."))
                 }
                 return self.parse_item_extern_crate(lo, visibility, attrs);
             }
@@ -4970,7 +4970,7 @@ impl Parser {
         let mut items = ~[];
 
         // I think this code would probably read better as a single
-        // loop with a mutable three-state-variable (for extern mods,
+        // loop with a mutable three-state-variable (for extern crates,
         // view items, and regular items) ... except that because
         // of macros, I'd like to delay that entire check until later.
         loop {
@@ -4986,12 +4986,12 @@ impl Parser {
                 IoviViewItem(view_item) => {
                     match view_item.node {
                         ViewItemUse(..) => {
-                            // `extern mod` must precede `use`.
+                            // `extern crate` must precede `use`.
                             extern_mod_allowed = false;
                         }
                         ViewItemExternMod(..) if !extern_mod_allowed => {
                             self.span_err(view_item.span,
-                                          "\"extern mod\" declarations are not allowed here");
+                                          "\"extern crate\" declarations are not allowed here");
                         }
                         ViewItemExternMod(..) => {}
                     }
@@ -5019,7 +5019,7 @@ impl Parser {
                 IoviViewItem(view_item) => {
                     attrs = self.parse_outer_attributes();
                     self.span_err(view_item.span,
-                                  "`use` and `extern mod` declarations must precede items");
+                                  "`use` and `extern crate` declarations must precede items");
                 }
                 IoviItem(item) => {
                     attrs = self.parse_outer_attributes();
@@ -5059,7 +5059,7 @@ impl Parser {
                 IoviViewItem(view_item) => {
                     // I think this can't occur:
                     self.span_err(view_item.span,
-                                  "`use` and `extern mod` declarations must precede items");
+                                  "`use` and `extern crate` declarations must precede items");
                 }
                 IoviItem(item) => {
                     // FIXME #5668: this will occur for a macro invocation:

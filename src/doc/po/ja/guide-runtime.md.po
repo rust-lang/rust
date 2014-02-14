@@ -83,13 +83,13 @@ msgstr "## 他のクレートの利用"
 #: src/doc/guide-runtime.md:231
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello "
 #| "\" + world::explore()); } ~~~~"
 msgid "~~~{.rust} fn main() {} ~~~"
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -97,7 +97,7 @@ msgstr ""
 #: src/doc/guide-runtime.md:236
 #, fuzzy
 #| msgid "~~~~ {.ignore} let foo = 10;"
-msgid "~~~{.rust} extern mod green;"
+msgid "~~~{.rust} extern crate green;"
 msgstr ""
 "~~~~ {.ignore}\n"
 "let foo = 10;"
@@ -106,13 +106,13 @@ msgstr ""
 #: src/doc/guide-runtime.md:246
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello "
 #| "\" + world::explore()); } ~~~~"
 msgid "fn main() {} ~~~"
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 

@@ -30,7 +30,7 @@
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
 //! ~~~{.rust}
-//! extern mod getopts;
+//! extern crate getopts;
 //! use getopts::{optopt,optflag,getopts,OptGroup};
 //! use std::os;
 //!

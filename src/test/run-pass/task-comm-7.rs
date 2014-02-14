@@ -12,7 +12,7 @@
 
 #[allow(dead_assignment)];
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

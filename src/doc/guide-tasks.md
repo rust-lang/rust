@@ -285,7 +285,7 @@ later.
 The basic example below illustrates this.
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 
 # fn main() {
 # fn make_a_sandwich() {};
@@ -310,7 +310,7 @@ Here is another example showing how futures allow you to background computations
 be distributed on the available cores.
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use std::vec;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
@@ -346,7 +346,7 @@ Here is a small example showing how to use Arcs. We wish to run concurrently sev
 a single large vector of floats. Each task needs the full vector to perform its duty.
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use std::vec;
 # use std::rand;
 use sync::Arc;
@@ -379,7 +379,7 @@ at the power given as argument and takes the inverse power of this value). The A
 created by the line
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use sync::Arc;
 # use std::vec;
 # use std::rand;
@@ -392,7 +392,7 @@ let numbers_arc=Arc::new(numbers);
 and a clone of it is sent to each task
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use sync::Arc;
 # use std::vec;
 # use std::rand;
@@ -409,7 +409,7 @@ copying only the wrapper and not its contents.
 Each task recovers the underlying data by
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use sync::Arc;
 # use std::vec;
 # use std::rand;
@@ -499,7 +499,7 @@ the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # fn main() {
 # use sync::DuplexStream;
     fn stringifier(channel: &DuplexStream<~str, uint>) {
@@ -524,7 +524,7 @@ response itself is simply the stringified version of the received value,
 Here is the code for the parent task:
 
 ~~~
-# extern mod sync;
+# extern crate sync;
 # use std::task::spawn;
 # use sync::DuplexStream;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {

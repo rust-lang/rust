@@ -14,7 +14,7 @@
 #[feature(globs)];
 #[allow(unused_imports)];
 
-extern mod issue_2526;
+extern crate issue_2526;
 use issue_2526::*;
 
 pub fn main() {}

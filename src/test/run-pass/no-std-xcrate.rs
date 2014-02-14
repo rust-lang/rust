@@ -14,7 +14,7 @@
 // This tests that crates which link to std can also be linked to crates with
 // #[no_std] that have no lang items.
 
-extern mod no_std_crate;
+extern crate no_std_crate;
 
 pub fn main() {
     no_std_crate::foo();

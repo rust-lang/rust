@@ -12,7 +12,7 @@
 
 #[feature(macro_registrar)];
 
-extern mod syntax;
+extern crate syntax;
 
 use std::any::Any;
 use std::local_data;

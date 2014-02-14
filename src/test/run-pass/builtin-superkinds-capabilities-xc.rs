@@ -15,7 +15,7 @@
 // Tests "capabilities" granted by traits with super-builtin-kinds,
 // even when using them cross-crate.
 
-extern mod trait_superkinds_in_metadata;
+extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresFreezeAndSend, RequiresFreeze};
 
 #[deriving(Eq)]

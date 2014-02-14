@@ -42,7 +42,7 @@ via `close` and `delete` methods.
 #[feature(macro_rules)];
 #[deny(unused_result, unused_must_use)];
 
-#[cfg(test)] extern mod green;
+#[cfg(test)] extern crate green;
 
 use std::cast;
 use std::io;

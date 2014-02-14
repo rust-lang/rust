@@ -12,7 +12,7 @@
 
 #[feature(struct_variant)];
 
-extern mod bäz; //~ ERROR non-ascii idents
+extern crate bäz; //~ ERROR non-ascii idents
 
 use föö::bar; //~ ERROR non-ascii idents
 
