@@ -351,11 +351,11 @@ impl CFGBuilder {
                 self.straightline(expr, pred, *elems)
             }
 
-            ast::ExprCall(func, ref args, _) => {
+            ast::ExprCall(func, ref args) => {
                 self.call(expr, pred, func, *args)
             }
 
-            ast::ExprMethodCall(_, _, _, ref args, _) => {
+            ast::ExprMethodCall(_, _, _, ref args) => {
                 self.call(expr, pred, args[0], args.slice_from(1))
             }
 

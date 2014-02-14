@@ -705,7 +705,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprMethodCall(_, ident, _, ref args, _) => {
+            ast::ExprMethodCall(_, ident, _, ref args) => {
                 // see above
                 let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
                 match ty::get(t).sty {

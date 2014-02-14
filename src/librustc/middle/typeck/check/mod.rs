@@ -1592,22 +1592,20 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         method_fn_ty: ty::t,
         callee_expr: &ast::Expr,
         args: &[@ast::Expr],
-        sugar: ast::CallSugar,
-        deref_args: DerefArgs) -> ty::t
-    {
+        deref_args: DerefArgs) -> ty::t {
         // HACK(eddyb) ignore provided self (it has special typeck rules).
         let args = args.slice_from(1);
         if ty::type_is_error(method_fn_ty) {
             let err_inputs = err_args(args.len());
             check_argument_types(fcx, sp, err_inputs, callee_expr,
-                                 args, sugar, deref_args, false);
+                                 args, deref_args, false);
             method_fn_ty
         } else {
             match ty::get(method_fn_ty).sty {
                 ty::ty_bare_fn(ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
                     check_argument_types(fcx, sp, fty.sig.inputs.slice_from(1),
-                                         callee_expr, args, sugar, deref_args,
+                                         callee_expr, args, deref_args,
                                          fty.sig.variadic);
                     fty.sig.output
                 }
@@ -1625,7 +1623,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                             fn_inputs: &[ty::t],
                             callee_expr: &ast::Expr,
                             args: &[@ast::Expr],
-                            sugar: ast::CallSugar,
                             deref_args: DerefArgs,
                             variadic: bool) {
         /*!
@@ -1659,18 +1656,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 err_args(supplied_arg_count)
             }
         } else {
-            let suffix = match sugar {
-                ast::NoSugar => "",
-                ast::ForSugar => " (including the closure passed by \
-                                  the `for` keyword)"
-            };
             let msg = format!(
                 "this function takes {} parameter{} \
-                 but {} parameter{} supplied{}",
+                 but {} parameter{} supplied",
                  expected_arg_count, if expected_arg_count == 1 {""} else {"s"},
                  supplied_arg_count,
-                 if supplied_arg_count == 1 {" was"} else {"s were"},
-                 suffix);
+                 if supplied_arg_count == 1 {" was"} else {"s were"});
 
             tcx.sess.span_err(sp, msg);
 
@@ -1783,24 +1774,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // The callee checks for bot / err, we don't need to
     }
 
-    fn write_call(fcx: @FnCtxt,
-                  call_expr: &ast::Expr,
-                  output: ty::t,
-                  sugar: ast::CallSugar) {
-        let ret_ty = match sugar {
-            ast::ForSugar => {
-                match ty::get(output).sty {
-                    ty::ty_bool => {}
-                    _ => fcx.type_error_message(call_expr.span, |actual| {
-                            format!("expected `for` closure to return `bool`, \
-                                  but found `{}`", actual) },
-                            output, None)
-                }
-                ty::mk_nil()
-            }
-            _ => output
-        };
-        fcx.write_ty(call_expr.id, ret_ty);
+    fn write_call(fcx: @FnCtxt, call_expr: &ast::Expr, output: ty::t) {
+        fcx.write_ty(call_expr.id, output);
     }
 
     // A generic function for doing all of the checking for call expressions
@@ -1808,8 +1783,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                   callee_id: ast::NodeId,
                   call_expr: &ast::Expr,
                   f: &ast::Expr,
-                  args: &[@ast::Expr],
-                  sugar: ast::CallSugar) {
+                  args: &[@ast::Expr]) {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
         check_expr(fcx, f);
@@ -1857,9 +1831,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
         // Call the generic checker.
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
-                             args, sugar, DontDerefArgs, fn_sig.variadic);
+                             args, DontDerefArgs, fn_sig.variadic);
 
-        write_call(fcx, call_expr, fn_sig.output, sugar);
+        write_call(fcx, call_expr, fn_sig.output);
     }
 
     // Checks a method call.
@@ -1868,8 +1842,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                          expr: &ast::Expr,
                          method_name: ast::Ident,
                          args: &[@ast::Expr],
-                         tps: &[ast::P<ast::Ty>],
-                         sugar: ast::CallSugar) {
+                         tps: &[ast::P<ast::Ty>]) {
         let rcvr = args[0];
         check_expr(fcx, rcvr);
 
@@ -1915,10 +1888,10 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // Call the generic checker.
         let fn_ty = fcx.node_ty(callee_id);
         let ret_ty = check_method_argument_types(fcx, expr.span,
-                                                 fn_ty, expr, args, sugar,
+                                                 fn_ty, expr, args,
                                                  DontDerefArgs);
 
-        write_call(fcx, expr, ret_ty, sugar);
+        write_call(fcx, expr, ret_ty);
     }
 
     // A generic function for checking the then and else in an if
@@ -1985,8 +1958,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     method_map.get().insert(op_ex.id, *origin);
                 }
                 check_method_argument_types(fcx, op_ex.span,
-                                            method_ty, op_ex, args,
-                                            ast::NoSugar, deref_args)
+                                            method_ty, op_ex,
+                                            args, deref_args)
             }
             _ => {
                 unbound_method();
@@ -1994,8 +1967,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 // so we get all the error messages
                 let expected_ty = ty::mk_err();
                 check_method_argument_types(fcx, op_ex.span,
-                                            expected_ty, op_ex, args,
-                                            ast::NoSugar, deref_args);
+                                            expected_ty, op_ex,
+                                            args, deref_args);
                 ty::mk_err()
             }
         }
@@ -2948,8 +2921,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         check_block_with_expected(fcx, b, expected);
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
-      ast::ExprCall(f, ref args, sugar) => {
-          check_call(fcx, expr.id, expr, f, *args, sugar);
+      ast::ExprCall(f, ref args) => {
+          check_call(fcx, expr.id, expr, f, *args);
           let f_ty = fcx.expr_ty(f);
           let (args_bot, args_err) = args.iter().fold((false, false),
              |(rest_bot, rest_err), a| {
@@ -2964,8 +2937,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
               fcx.write_bot(id);
           }
       }
-      ast::ExprMethodCall(callee_id, ident, ref tps, ref args, sugar) => {
-        check_method_call(fcx, callee_id, expr, ident, *args, *tps, sugar);
+      ast::ExprMethodCall(callee_id, ident, ref tps, ref args) => {
+        check_method_call(fcx, callee_id, expr, ident, *args, *tps);
         let arg_tys = args.map(|a| fcx.expr_ty(*a));
         let (args_bot, args_err) = arg_tys.iter().fold((false, false),
              |(rest_bot, rest_err), a| {
