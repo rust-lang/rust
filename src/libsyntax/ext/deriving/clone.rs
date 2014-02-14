@@ -17,8 +17,8 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: @MetaItem,
-                             in_items: ~[@Item])
-                          -> ~[@Item] {
+                             item: @Item,
+                             push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "clone", "Clone"]),
@@ -38,14 +38,14 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
                                   span: Span,
                                   mitem: @MetaItem,
-                                  in_items: ~[@Item])
-    -> ~[@Item] {
+                                  item: @Item,
+                                  push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "clone", "DeepClone"]),
@@ -67,7 +67,7 @@ pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn cs_clone(

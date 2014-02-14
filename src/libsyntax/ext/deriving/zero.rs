@@ -17,8 +17,8 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
-                            in_items: ~[@Item])
-                            -> ~[@Item] {
+                            item: @Item,
+                            push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "num", "Zero"]),
@@ -53,7 +53,7 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
