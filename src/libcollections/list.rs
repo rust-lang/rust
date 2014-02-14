@@ -10,8 +10,6 @@
 
 //! A standard, garbage-collected linked list.
 
-
-
 #[deriving(Clone, Eq)]
 #[allow(missing_doc)]
 pub enum List<T> {
@@ -33,30 +31,30 @@ pub fn from_vec<T:Clone + 'static>(v: &[T]) -> @List<T> {
  *
  * # Arguments
  *
- * * ls - The list to fold
+ * * list - The list to fold
  * * z - The initial value
  * * f - The function to apply
  */
-pub fn foldl<T:Clone,U>(z: T, ls: @List<U>, f: |&T, &U| -> T) -> T {
+pub fn foldl<T:Clone,U>(z: T, list: @List<U>, f: |&T, &U| -> T) -> T {
     let mut accum: T = z;
-    iter(ls, |elt| accum = f(&accum, elt));
+    iter(list, |element| accum = f(&accum, element));
     accum
 }
 
 /**
  * Search for an element that matches a given predicate
  *
- * Apply function `f` to each element of `ls`, starting from the first.
+ * Apply function `f` to each element of `list`, starting from the first.
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub fn find<T:Clone>(ls: @List<T>, f: |&T| -> bool) -> Option<T> {
-    let mut ls = ls;
+pub fn find<T:Clone>(list: @List<T>, f: |&T| -> bool) -> Option<T> {
+    let mut list = list;
     loop {
-        ls = match *ls {
-          Cons(ref hd, tl) => {
-            if f(hd) { return Some((*hd).clone()); }
-            tl
+        list = match *list {
+          Cons(ref head, tail) => {
+            if f(head) { return Some((*head).clone()); }
+            tail
           }
           Nil => return None
         }
@@ -66,17 +64,17 @@ pub fn find<T:Clone>(ls: @List<T>, f: |&T| -> bool) -> Option<T> {
 /**
  * Returns true if a list contains an element that matches a given predicate
  *
- * Apply function `f` to each element of `ls`, starting from the first.
+ * Apply function `f` to each element of `list`, starting from the first.
  * When function `f` returns true then it also returns true. If `f` matches no
  * elements then false is returned.
  */
-pub fn any<T>(ls: @List<T>, f: |&T| -> bool) -> bool {
-    let mut ls = ls;
+pub fn any<T>(list: @List<T>, f: |&T| -> bool) -> bool {
+    let mut list = list;
     loop {
-        ls = match *ls {
-            Cons(ref hd, tl) => {
-                if f(hd) { return true; }
-                tl
+        list = match *list {
+            Cons(ref head, tail) => {
+                if f(head) { return true; }
+                tail
             }
             Nil => return false
         }
@@ -84,53 +82,53 @@ pub fn any<T>(ls: @List<T>, f: |&T| -> bool) -> bool {
 }
 
 /// Returns true if a list contains an element with the given value
-pub fn has<T:Eq>(ls: @List<T>, elt: T) -> bool {
+pub fn has<T:Eq>(list: @List<T>, element: T) -> bool {
     let mut found = false;
-    each(ls, |e| {
-        if *e == elt { found = true; false } else { true }
+    each(list, |e| {
+        if *e == element { found = true; false } else { true }
     });
     return found;
 }
 
 /// Returns true if the list is empty
-pub fn is_empty<T>(ls: @List<T>) -> bool {
-    match *ls {
+pub fn is_empty<T>(list: @List<T>) -> bool {
+    match *list {
         Nil => true,
         _ => false
     }
 }
 
 /// Returns the length of a list
-pub fn len<T>(ls: @List<T>) -> uint {
+pub fn len<T>(list: @List<T>) -> uint {
     let mut count = 0u;
-    iter(ls, |_e| count += 1u);
+    iter(list, |_e| count += 1u);
     count
 }
 
 /// Returns all but the first element of a list
-pub fn tail<T>(ls: @List<T>) -> @List<T> {
-    match *ls {
-        Cons(_, tl) => return tl,
+pub fn tail<T>(list: @List<T>) -> @List<T> {
+    match *list {
+        Cons(_, tail) => return tail,
         Nil => fail!("list empty")
     }
 }
 
 /// Returns the first element of a list
-pub fn head<T:Clone>(ls: @List<T>) -> T {
-    match *ls {
-      Cons(ref hd, _) => (*hd).clone(),
+pub fn head<T:Clone>(list: @List<T>) -> T {
+    match *list {
+      Cons(ref head, _) => (*head).clone(),
       // makes me sad
       _ => fail!("head invoked on empty list")
     }
 }
 
 /// Appends one list to another
-pub fn append<T:Clone + 'static>(l: @List<T>, m: @List<T>) -> @List<T> {
-    match *l {
-      Nil => return m,
-      Cons(ref x, xs) => {
-        let rest = append(xs, m);
-        return @Cons((*x).clone(), rest);
+pub fn append<T:Clone + 'static>(list: @List<T>, other: @List<T>) -> @List<T> {
+    match *list {
+      Nil => return other,
+      Cons(ref head, tail) => {
+        let rest = append(tail, other);
+        return @Cons((*head).clone(), rest);
       }
     }
 }
@@ -144,13 +142,13 @@ fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
 */
 
 /// Iterate over a list
-pub fn iter<T>(l: @List<T>, f: |&T|) {
-    let mut cur = l;
+pub fn iter<T>(list: @List<T>, f: |&T|) {
+    let mut cur = list;
     loop {
         cur = match *cur {
-          Cons(ref hd, tl) => {
-            f(hd);
-            tl
+          Cons(ref head, tail) => {
+            f(head);
+            tail
           }
           Nil => break
         }
@@ -158,13 +156,13 @@ pub fn iter<T>(l: @List<T>, f: |&T|) {
 }
 
 /// Iterate over a list
-pub fn each<T>(l: @List<T>, f: |&T| -> bool) -> bool {
-    let mut cur = l;
+pub fn each<T>(list: @List<T>, f: |&T| -> bool) -> bool {
+    let mut cur = list;
     loop {
         cur = match *cur {
-          Cons(ref hd, tl) => {
-            if !f(hd) { return false; }
-            tl
+          Cons(ref head, tail) => {
+            if !f(head) { return false; }
+            tail
           }
           Nil => { return true; }
         }
@@ -191,11 +189,11 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        let l = from_vec([0, 1, 2]);
+        let list = from_vec([0, 1, 2]);
 
-        assert_eq!(head(l), 0);
+        assert_eq!(head(list), 0);
 
-        let tail_l = tail(l);
+        let tail_l = tail(list);
         assert_eq!(head(tail_l), 1);
 
         let tail_tail_l = tail(tail_l);
@@ -211,9 +209,9 @@ mod tests {
     #[test]
     fn test_foldl() {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
-        let l = from_vec([0, 1, 2, 3, 4]);
+        let list = from_vec([0, 1, 2, 3, 4]);
         let empty = @list::Nil::<int>;
-        assert_eq!(list::foldl(0u, l, add), 10u);
+        assert_eq!(list::foldl(0u, list, add), 10u);
         assert_eq!(list::foldl(0u, empty, add), 0u);
     }
 
@@ -222,50 +220,50 @@ mod tests {
         fn sub(a: &int, b: &int) -> int {
             *a - *b
         }
-        let l = from_vec([1, 2, 3, 4]);
-        assert_eq!(list::foldl(0, l, sub), -10);
+        let list = from_vec([1, 2, 3, 4]);
+        assert_eq!(list::foldl(0, list, sub), -10);
     }
 
     #[test]
     fn test_find_success() {
         fn match_(i: &int) -> bool { return *i == 2; }
-        let l = from_vec([0, 1, 2]);
-        assert_eq!(list::find(l, match_), option::Some(2));
+        let list = from_vec([0, 1, 2]);
+        assert_eq!(list::find(list, match_), option::Some(2));
     }
 
     #[test]
     fn test_find_fail() {
         fn match_(_i: &int) -> bool { return false; }
-        let l = from_vec([0, 1, 2]);
+        let list = from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
-        assert_eq!(list::find(l, match_), option::None::<int>);
+        assert_eq!(list::find(list, match_), option::None::<int>);
         assert_eq!(list::find(empty, match_), option::None::<int>);
     }
 
     #[test]
     fn test_any() {
         fn match_(i: &int) -> bool { return *i == 2; }
-        let l = from_vec([0, 1, 2]);
+        let list = from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
-        assert_eq!(list::any(l, match_), true);
+        assert_eq!(list::any(list, match_), true);
         assert_eq!(list::any(empty, match_), false);
     }
 
     #[test]
     fn test_has() {
-        let l = from_vec([5, 8, 6]);
+        let list = from_vec([5, 8, 6]);
         let empty = @list::Nil::<int>;
-        assert!((list::has(l, 5)));
-        assert!((!list::has(l, 7)));
-        assert!((list::has(l, 8)));
+        assert!((list::has(list, 5)));
+        assert!((!list::has(list, 7)));
+        assert!((list::has(list, 8)));
         assert!((!list::has(empty, 5)));
     }
 
     #[test]
     fn test_len() {
-        let l = from_vec([0, 1, 2]);
+        let list = from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
-        assert_eq!(list::len(l), 3u);
+        assert_eq!(list::len(list), 3u);
         assert_eq!(list::len(empty), 0u);
     }
 
