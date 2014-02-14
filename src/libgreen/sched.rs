@@ -11,11 +11,13 @@
 use std::cast;
 use std::libc::funcs::posix88::unistd;
 use std::num;
+use std::ptr;
 use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
+use std::sync::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst};
 use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
@@ -23,7 +25,6 @@ use std::unstable::raw;
 use TaskState;
 use context::Context;
 use coroutine::Coroutine;
-use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::{TypeSched, GreenTask, HomeSched, AnySched};
 use msgq = message_queue;
@@ -57,21 +58,21 @@ pub struct Scheduler {
     message_queue: msgq::Consumer<SchedMessage>,
     /// Producer used to clone sched handles from
     message_producer: msgq::Producer<SchedMessage>,
-    /// A shared list of sleeping schedulers. We'll use this to wake
-    /// up schedulers when pushing work onto the work queue.
-    sleeper_list: SleeperList,
     /// Indicates that we have previously pushed a handle onto the
     /// SleeperList but have not yet received the Wake message.
     /// Being `true` does not necessarily mean that the scheduler is
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
-    sleepy: bool,
+    sleepy: AtomicBool,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
     /// We only go to sleep when backoff_counter hits 0.
     backoff_counter: uint,
+    /// A scheduler only ever tries to wake up its two neighboring neighbors
+    left_sched: Option<SchedHandle>,
+    right_sched: Option<SchedHandle>,
     stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
@@ -110,6 +111,20 @@ pub struct Scheduler {
     event_loop: ~EventLoop,
 }
 
+macro_rules! wakeup_if_sleepy(
+    ($expr:expr) => {
+        unsafe {
+            match $expr {
+                Some(ref mut sched) if (*sched.sleepy).load(SeqCst) => {
+                    sched.send(Wake);
+                    true
+                },
+                _ => false
+            }
+        }
+    }
+)
+
 /// An indication of how hard to work on a given operation, the difference
 /// mainly being whether memory is synchronized or not
 #[deriving(Eq)]
@@ -133,12 +148,11 @@ impl Scheduler {
                event_loop: ~EventLoop,
                work_queue: deque::Worker<~GreenTask>,
                work_queues: ~[deque::Stealer<~GreenTask>],
-               sleeper_list: SleeperList,
                state: TaskState)
         -> Scheduler {
 
         Scheduler::new_special(pool_id, event_loop, work_queue, work_queues,
-                               sleeper_list, true, None, state)
+                               true, None, state)
 
     }
 
@@ -146,7 +160,6 @@ impl Scheduler {
                        event_loop: ~EventLoop,
                        work_queue: deque::Worker<~GreenTask>,
                        work_queues: ~[deque::Stealer<~GreenTask>],
-                       sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>,
                        state: TaskState)
@@ -155,12 +168,13 @@ impl Scheduler {
         let (consumer, producer) = msgq::queue();
         let mut sched = Scheduler {
             pool_id: pool_id,
-            sleeper_list: sleeper_list,
             message_queue: consumer,
             message_producer: producer,
-            sleepy: false,
+            sleepy: INIT_ATOMIC_BOOL,
             no_sleep: false,
             backoff_counter: 0,
+            left_sched: None,
+            right_sched: None,
             event_loop: event_loop,
             work_queue: work_queue,
             work_queues: work_queues,
@@ -334,20 +348,18 @@ impl Scheduler {
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
-        if !sched.sleepy && !sched.no_sleep {
+        if !sched.no_sleep && !sched.sleepy.load(SeqCst) {
             if sched.backoff_counter == EXPONENTIAL_BACKOFF_FACTOR {
                 sched.backoff_counter = 0;
-                rtdebug!("scheduler has no work to do, going to sleep");
-                sched.sleepy = true;
-                let handle = sched.make_handle();
-                sched.sleeper_list.push(handle);
+                rterrln!("scheduler has no work to do, going to sleep");
+                sched.sleepy.store(true, SeqCst);
                 // Since we are sleeping, deactivate the idle callback.
                 sched.idle_callback.get_mut_ref().pause();
             }
             unsafe { unistd::usleep(num::pow(2, sched.backoff_counter) as u32); }
             sched.backoff_counter += 1;
         } else {
-            rtdebug!("not sleeping, already doing so or no_sleep set");
+            rterrln!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
             // the idle callback.
             sched.idle_callback.get_mut_ref().pause();
@@ -412,29 +424,22 @@ impl Scheduler {
                 (sched, task, true)
             }
             Some(Wake) => {
-                self.sleepy = false;
+                self.sleepy.store(false, SeqCst);
                 (self, stask, true)
             }
             Some(Shutdown) => {
                 rtdebug!("shutting down");
-                if self.sleepy {
-                    // There may be an outstanding handle on the
-                    // sleeper list.  Pop them all to make sure that's
-                    // not the case.
-                    loop {
-                        match self.sleeper_list.pop() {
-                            Some(handle) => {
-                                let mut handle = handle;
-                                handle.send(Wake);
-                            }
-                            None => break
-                        }
-                    }
+                rterrln!("receiving shutdown");
+                if self.sleepy.load(SeqCst) {
+                    wakeup_if_sleepy!(self.left_sched);
+                    wakeup_if_sleepy!(self.right_sched);
+                    self.left_sched = None;
+                    self.right_sched = None;
                 }
                 // No more sleeping. After there are no outstanding
                 // event loop references we will shut down.
                 self.no_sleep = true;
-                self.sleepy = false;
+                self.sleepy.store(false, SeqCst);
                 (self, stask, true)
             }
             Some(NewNeighbor(neighbor)) => {
@@ -601,14 +606,9 @@ impl Scheduler {
 
         // We've made work available. Notify a
         // sleeping scheduler.
-
-        match self.sleeper_list.casual_pop() {
-            Some(handle) => {
-                let mut handle = handle;
-                handle.send(Wake)
-            }
-            None => { (/* pass */) }
-        };
+        if !wakeup_if_sleepy!(self.left_sched) {
+            wakeup_if_sleepy!(self.right_sched);
+        }
     }
 
     // * Core Context Switching Functions
@@ -879,6 +879,7 @@ impl Scheduler {
 
         return SchedHandle {
             remote: remote,
+            sleepy: ptr::to_unsafe_ptr(&(self.sleepy)),
             queue: self.message_producer.clone(),
             sched_id: self.sched_id()
         }
@@ -902,6 +903,7 @@ pub enum SchedMessage {
 pub struct SchedHandle {
     priv remote: ~RemoteCallback,
     priv queue: msgq::Producer<SchedMessage>,
+    priv sleepy: *AtomicBool,
     sched_id: uint
 }
 

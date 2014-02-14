@@ -187,7 +187,6 @@ use std::vec;
 use std::sync::arc::UnsafeArc;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
-use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::GreenTask;
 
@@ -303,7 +302,6 @@ pub struct SchedPool {
     priv next_friend: uint,
     priv stack_pool: StackPool,
     priv deque_pool: deque::BufferPool<~task::GreenTask>,
-    priv sleepers: SleeperList,
     priv factory: fn() -> ~rtio::EventLoop,
     priv task_state: TaskState,
     priv tasks_done: Port<()>,
@@ -340,7 +338,6 @@ impl SchedPool {
             handles: ~[],
             stealers: ~[],
             id: unsafe { POOL_ID.fetch_add(1, SeqCst) },
-            sleepers: SleeperList::new(),
             stack_pool: StackPool::new(),
             deque_pool: deque::BufferPool::new(),
             next_friend: 0,
@@ -358,15 +355,24 @@ impl SchedPool {
         // Now that we've got all our work queues, create one scheduler per
         // queue, spawn the scheduler into a thread, and be sure to keep a
         // handle to the scheduler and the thread to keep them alive.
+        let mut scheds = ~[];
         for worker in workers.move_iter() {
+            scheds.push(~Scheduler::new(pool.id,
+                                        (pool.factory)(),
+                                        worker,
+                                        pool.stealers.clone(),
+                                        pool.task_state.clone()));
+        }
+        // Assign left and right neighbors to each scheduler
+        for i in range(0, scheds.len()) {
+            let left = if i > 0 { i - 1 } else { scheds.len() - 1 };
+            let right = if (i + 1) < scheds.len() { i + 1 } else { 0 };
+            scheds[i].left_sched = Some(scheds[left].make_handle());
+            scheds[i].right_sched = Some(scheds[right].make_handle());
+        }
+        for sched in scheds.move_iter() {
+            let mut sched = sched;
             rtdebug!("inserting a regular scheduler");
-
-            let mut sched = ~Scheduler::new(pool.id,
-                                            (pool.factory)(),
-                                            worker,
-                                            pool.stealers.clone(),
-                                            pool.sleepers.clone(),
-                                            pool.task_state.clone());
             pool.handles.push(sched.make_handle());
             pool.threads.push(Thread::start(proc() { sched.bootstrap(); }));
         }
@@ -425,8 +431,8 @@ impl SchedPool {
                                         (self.factory)(),
                                         worker,
                                         self.stealers.clone(),
-                                        self.sleepers.clone(),
                                         self.task_state.clone());
+        // TODO(derekchiang): setup the scheduler's neighbors
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
         self.threads.push(Thread::start(proc() { sched.bootstrap() }));
@@ -445,7 +451,7 @@ impl SchedPool {
     /// native tasks or extern pools will not be waited on
     pub fn shutdown(mut self) {
         self.stealers = ~[];
-
+        rterrln!("BP1");
         // Wait for everyone to exit. We may have reached a 0-task count
         // multiple times in the past, meaning there could be several buffered
         // messages on the `tasks_done` port. We're guaranteed that after *some*
@@ -454,14 +460,16 @@ impl SchedPool {
         while self.task_state.active() {
             self.tasks_done.recv();
         }
-
+        rterrln!("BP2");
         // Now that everyone's gone, tell everything to shut down.
         for mut handle in replace(&mut self.handles, ~[]).move_iter() {
             handle.send(Shutdown);
         }
+        rterrln!("BP3");
         for thread in replace(&mut self.threads, ~[]).move_iter() {
             thread.join();
         }
+        rterrln!("BP4");
     }
 }
 
