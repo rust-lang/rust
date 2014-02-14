@@ -15,6 +15,8 @@
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;
+use fmt;
+use result::{Ok, Err};
 
 /// Method extensions to pairs where both types satisfy the `Clone` bound
 pub trait CloneableTuple<T, U> {
@@ -176,6 +178,12 @@ macro_rules! tuple_impls {
                     ($({ let x: $T = Default::default(); x},)+)
                 }
             }
+
+            impl<$($T: fmt::Show),+> fmt::Show for ($($T,)+) {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    write_tuple!(f.buf, $(self.$get_ref_fn()),+)
+                }
+            }
         )+
     }
 }
@@ -202,6 +210,17 @@ macro_rules! lexical_cmp {
     ($a:expr, $b:expr) => { ($a).cmp($b) };
 }
 
+macro_rules! write_tuple {
+    ($buf:expr, $x:expr) => (
+        write!($buf, "({},)", *$x)
+    );
+    ($buf:expr, $hd:expr, $($tl:expr),+) => ({
+        if_ok!(write!($buf, "("));
+        if_ok!(write!($buf, "{}", *$hd));
+        $(if_ok!(write!($buf, ", {}", *$tl));)+
+        write!($buf, ")")
+    });
+}
 
 tuple_impls! {
     (Tuple1, ImmutableTuple1) {
@@ -421,5 +440,12 @@ mod tests {
         assert_eq!(big.cmp(&big), Equal);
         assert_eq!(small.cmp(&big), Less);
         assert_eq!(big.cmp(&small), Greater);
+    }
+
+    #[test]
+    fn test_show() {
+        assert_eq!(format!("{}", (1,)), ~"(1,)");
+        assert_eq!(format!("{}", (1, true)), ~"(1, true)");
+        assert_eq!(format!("{}", (1, ~"hi", true)), ~"(1, hi, true)");
     }
 }
