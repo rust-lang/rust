@@ -196,42 +196,6 @@ impl Ord for f64 {
     fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
-impl Orderable for f64 {
-    /// Returns `NAN` if either of the numbers are `NAN`.
-    #[inline]
-    fn min(&self, other: &f64) -> f64 {
-        match () {
-            _ if self.is_nan()  => *self,
-            _ if other.is_nan() => *other,
-            _ if *self < *other => *self,
-            _                   => *other,
-        }
-    }
-
-    /// Returns `NAN` if either of the numbers are `NAN`.
-    #[inline]
-    fn max(&self, other: &f64) -> f64 {
-        match () {
-            _ if self.is_nan()  => *self,
-            _ if other.is_nan() => *other,
-            _ if *self > *other => *self,
-            _                   => *other,
-        }
-    }
-
-    /// Returns the number constrained within the range `mn <= self <= mx`.
-    /// If any of the numbers are `NAN` then `NAN` is returned.
-    #[inline]
-    fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
-        match () {
-            _ if self.is_nan()   => *self,
-            _ if !(*self <= *mx) => *mx,
-            _ if !(*self >= *mn) => *mn,
-            _                    => *self,
-        }
-    }
-}
-
 impl Default for f64 {
     #[inline]
     fn default() -> f64 { 0.0 }
@@ -913,38 +877,6 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10f64, 2f64);
-    }
-
-    #[test]
-    fn test_min() {
-        assert_eq!(1f64.min(&2f64), 1f64);
-        assert_eq!(2f64.min(&1f64), 1f64);
-
-        let nan: f64 = Float::nan();
-        assert!(1f64.min(&nan).is_nan());
-        assert!(nan.min(&1f64).is_nan());
-    }
-
-    #[test]
-    fn test_max() {
-        assert_eq!(1f64.max(&2f64), 2f64);
-        assert_eq!(2f64.max(&1f64), 2f64);
-
-        let nan: f64 = Float::nan();
-        assert!(1f64.max(&nan).is_nan());
-        assert!(nan.max(&1f64).is_nan());
-    }
-
-    #[test]
-    fn test_clamp() {
-        assert_eq!(1f64.clamp(&2f64, &4f64), 2f64);
-        assert_eq!(8f64.clamp(&2f64, &4f64), 4f64);
-        assert_eq!(3f64.clamp(&2f64, &4f64), 3f64);
-
-        let nan: f64 = Float::nan();
-        assert!(3f64.clamp(&nan, &4f64).is_nan());
-        assert!(3f64.clamp(&2f64, &nan).is_nan());
-        assert!(nan.clamp(&2f64, &4f64).is_nan());
     }
 
     #[test]

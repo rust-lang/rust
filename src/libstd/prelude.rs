@@ -59,7 +59,7 @@ pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Integer, Real, Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
-pub use num::{Orderable, Signed, Unsigned, Round};
+pub use num::{Signed, Unsigned, Round};
 pub use num::{Primitive, Int, Float, ToStrRadix, ToPrimitive, FromPrimitive};
 pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 pub use ptr::RawPtr;

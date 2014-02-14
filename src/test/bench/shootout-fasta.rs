@@ -16,7 +16,7 @@
 
 use std::io;
 use std::io::{BufferedWriter, File};
-use std::num::min;
+use std::cmp::min;
 use std::os;
 
 static LINE_LENGTH: uint = 60;

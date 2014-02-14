@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp;
 use std::hashmap::HashSet;
 use std::local_data;
-use std::num;
 use std::uint;
 use syntax::ast;
 
@@ -267,7 +267,7 @@ pub fn unindent(s: &str) -> ~str {
                     false
                 }
             });
-            num::min(min_indent, spaces)
+            cmp::min(min_indent, spaces)
         }
     });
 

@@ -17,7 +17,7 @@ use middle::trans::context::CrateContext;
 
 use middle::trans::type_::Type;
 
-use std::num;
+use std::cmp;
 use std::option::{None, Some};
 
 fn align_up_to(off: uint, a: uint) -> uint {
@@ -44,7 +44,7 @@ fn ty_align(ty: Type) -> uint {
                 1
             } else {
                 let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
+                str_tys.iter().fold(1, |a, t| cmp::max(a, ty_align(*t)))
             }
         }
         Array => {
