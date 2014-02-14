@@ -10,8 +10,6 @@
 
 //! Runtime environment settings
 
-// NOTE: remove `POISON_ON_FREE` after a snapshot
-
 use from_str::from_str;
 use option::{Some, None};
 use os;
@@ -23,7 +21,6 @@ static mut MIN_STACK: uint = 2 * 1024 * 1024;
 /// This default corresponds to 20M of cache per scheduler (at the default size).
 static mut MAX_CACHED_STACKS: uint = 10;
 static mut DEBUG_BORROW: bool = false;
-static mut POISON_ON_FREE: bool = false;
 
 pub fn init() {
     unsafe {
@@ -43,10 +40,6 @@ pub fn init() {
             Some(_) => DEBUG_BORROW = true,
             None => ()
         }
-        match os::getenv("RUST_POISON_ON_FREE") {
-            Some(_) => POISON_ON_FREE = true,
-            None => ()
-        }
     }
 }
 
@@ -60,8 +53,4 @@ pub fn max_cached_stacks() -> uint {
 
 pub fn debug_borrow() -> bool {
     unsafe { DEBUG_BORROW }
-}
-
-pub fn poison_on_free() -> bool {
-    unsafe { POISON_ON_FREE }
 }
