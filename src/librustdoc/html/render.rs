@@ -418,8 +418,10 @@ impl<'a> SourceCollector<'a> {
         // can't have the source to it anyway.
         let contents = match File::open(&p).read_to_end() {
             Ok(r) => r,
-            // eew macro hacks
-            Err(..) if filename == "<std-macros>" => return Ok(()),
+            // macros from other libraries get special filenames which we can
+            // safely ignore
+            Err(..) if filename.starts_with("<") &&
+                       filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
         let contents = str::from_utf8_owned(contents).unwrap();
