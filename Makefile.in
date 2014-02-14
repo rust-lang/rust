@@ -37,6 +37,7 @@
 #                          (may require `CFG_ENABLE_VALGRIND`)
 # * `NO_REBUILD=1` - Don't rebootstrap when testing std
 #                    (and possibly other crates)
+# * `NO_MKFILE_DEPS=1` - Don rebuild for modified .mk files
 # * `SAVE_TEMPS=1` - Use `--save-temps` flag on all `rustc` invocations
 # * `ASM_COMMENTS=1` - Use `-Z asm-comments`
 # * `TIME_PASSES=1` - Use `-Z time-passes`

@@ -12,7 +12,11 @@
 # and include all of the .d files in one fell swoop.
 ALL_OBJ_FILES :=
 
+ifneq ($(NO_MAKEFILE_DEPS),)
+MKFILE_DEPS :=
+else
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
+endif
 NON_BUILD_HOST = $(filter-out $(CFG_BUILD),$(CFG_HOST))
 NON_BUILD_TARGET = $(filter-out $(CFG_BUILD),$(CFG_TARGET))
 
