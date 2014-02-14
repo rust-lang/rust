@@ -219,12 +219,14 @@ pub fn run_tests(config: &config) {
             mode_debug_info => {
                 println!("arm-linux-androideabi debug-info \
                          test uses tcp 5039 port. please reserve it");
-                //arm-linux-androideabi debug-info test uses remote debugger
-                //so, we test 1 task at once
-                os::setenv("RUST_TEST_TASKS","1");
             }
             _ =>{}
         }
+
+        //arm-linux-androideabi debug-info test uses remote debugger
+        //so, we test 1 task at once.
+        // also trying to isolate problems with adb_run_wrapper.sh ilooping
+        os::setenv("RUST_TEST_TASKS","1");
     }
 
     let opts = test_opts(config);
