@@ -18,7 +18,7 @@ use std::cast;
 use std::rt::env;
 use std::rt::local::Local;
 use std::rt::rtio;
-use std::rt::task::{Task, BlockedTask};
+use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
@@ -68,10 +68,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     task.stderr = stderr;
     task.stdout = stdout;
     match notify_chan {
-        Some(chan) => {
-            let on_exit = proc(task_result) { chan.send(task_result) };
-            task.death.on_exit = Some(on_exit);
-        }
+        Some(chan) => { task.death.on_exit = Some(SendMessage(chan)); }
         None => {}
     }
 

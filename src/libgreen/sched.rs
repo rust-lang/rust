@@ -756,7 +756,7 @@ impl Scheduler {
 
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
-    pub fn terminate_current_task(mut ~self, cur: ~GreenTask) {
+    pub fn terminate_current_task(mut ~self, cur: ~GreenTask) -> ! {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();

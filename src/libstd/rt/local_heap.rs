@@ -23,6 +23,7 @@ use rt::local::Local;
 use rt::task::Task;
 use unstable::raw;
 use vec::ImmutableVector;
+use vec_ng::Vec;
 
 // This has no meaning with out rtdebug also turned on.
 #[cfg(rtdebug)]
@@ -33,7 +34,7 @@ static MAGIC: u32 = 0xbadc0ffe;
 pub type Box = raw::Box<()>;
 
 pub struct MemoryRegion {
-    priv allocations: ~[*AllocHeader],
+    priv allocations: Vec<*AllocHeader>,
     priv live_allocations: uint,
 }
 
@@ -48,7 +49,7 @@ impl LocalHeap {
     #[inline]
     pub fn new() -> LocalHeap {
         let region = MemoryRegion {
-            allocations: ~[],
+            allocations: Vec::new(),
             live_allocations: 0,
         };
         LocalHeap {
@@ -248,8 +249,8 @@ impl MemoryRegion {
     fn release(&mut self, alloc: &AllocHeader) {
         alloc.assert_sane();
         if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations[alloc.index] == alloc as *AllocHeader);
-            self.allocations[alloc.index] = ptr::null();
+            rtassert!(self.allocations.as_slice()[alloc.index] == alloc as *AllocHeader);
+            self.allocations.as_mut_slice()[alloc.index] = ptr::null();
         }
     }
     #[cfg(not(rtdebug))]
@@ -260,8 +261,8 @@ impl MemoryRegion {
     fn update(&mut self, alloc: &mut AllocHeader, orig: *AllocHeader) {
         alloc.assert_sane();
         if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations[alloc.index] == orig);
-            self.allocations[alloc.index] = &*alloc as *AllocHeader;
+            rtassert!(self.allocations.as_slice()[alloc.index] == orig);
+            self.allocations.as_mut_slice()[alloc.index] = &*alloc as *AllocHeader;
         }
     }
     #[cfg(not(rtdebug))]
@@ -274,7 +275,7 @@ impl Drop for MemoryRegion {
         if self.live_allocations != 0 {
             rtabort!("leaked managed memory ({} objects)", self.live_allocations);
         }
-        rtassert!(self.allocations.iter().all(|s| s.is_null()));
+        rtassert!(self.allocations.as_slice().iter().all(|s| s.is_null()));
     }
 }
 
