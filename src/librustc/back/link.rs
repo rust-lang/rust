@@ -1082,6 +1082,17 @@ fn link_args(sess: Session,
         args.push(metadata.as_str().unwrap().to_owned());
     }
 
+    // We want to prevent the compiler from accidentally leaking in any system
+    // libraries, so we explicitly ask gcc to not link to any libraries by
+    // default. Note that this does not happen for windows because windows pulls
+    // in some large number of libraries and I couldn't quite figure out which
+    // subset we wanted.
+    //
+    // FIXME(#11937) we should invoke the system linker directly
+    if sess.targ_cfg.os != abi::OsWin32 {
+        args.push(~"-nodefaultlibs");
+    }
+
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
