@@ -433,9 +433,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
     }
 
     pub fn cat_expr_unadjusted(&mut self, expr: &ast::Expr) -> McResult<cmt> {
-        debug!("cat_expr: id={} expr={}",
-               expr.id,
-               expr.repr(self.tcx()));
+        debug!("cat_expr: id={} expr={}", expr.id, expr.repr(self.tcx()));
 
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
@@ -1004,7 +1002,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
 
         let tcx = self.tcx();
         debug!("cat_pattern: id={} pat={} cmt={}",
-               pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
+               pat.id, pprust::pat_to_str(pat),
                cmt.repr(tcx));
 
         op(self, cmt, pat);
@@ -1374,8 +1372,7 @@ impl Repr for InteriorKind {
     fn repr(&self, _tcx: ty::ctxt) -> ~str {
         match *self {
             InteriorField(NamedField(fld)) => {
-                let string = token::get_ident(fld);
-                string.get().to_owned()
+                token::get_name(fld).get().to_str()
             }
             InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
             InteriorElement(_) => ~"[]",

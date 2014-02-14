@@ -67,7 +67,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         }
     };
 
-    let mut format_string = token::get_ident(name.name).get().to_owned();
+    let mut format_string = token::get_ident(name).get().to_owned();
     // the internal fields we're actually formatting
     let mut exprs = ~[];
 
@@ -99,7 +99,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 for (i, field) in fields.iter().enumerate() {
                     if i != 0 { format_string.push_str(","); }
 
-                    let name = token::get_ident(field.name.unwrap().name);
+                    let name = token::get_ident(field.name.unwrap());
                     format_string.push_str(" ");
                     format_string.push_str(name.get());
                     format_string.push_str(": {}");

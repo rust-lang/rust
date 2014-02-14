@@ -34,7 +34,7 @@ use middle::trans::type_::Type;
 use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::vec;
-use syntax::{ast, ast_util, ast_map};
+use syntax::{ast, ast_util};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
@@ -170,18 +170,11 @@ pub fn get_const_val(cx: @CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        let opt_item = cx.tcx.items.get(def_id.node);
-
-        match opt_item {
-            ast_map::NodeItem(item, _) => {
-                match item.node {
-                    ast::ItemStatic(_, ast::MutImmutable, _) => {
-                        trans_const(cx, ast::MutImmutable, def_id.node);
-                    }
-                    _ => {}
-                }
+        match cx.tcx.map.expect_item(def_id.node).node {
+            ast::ItemStatic(_, ast::MutImmutable, _) => {
+                trans_const(cx, ast::MutImmutable, def_id.node);
             }
-            _ => cx.tcx.sess.bug("expected a const to be an item")
+            _ => {}
         }
     }
 

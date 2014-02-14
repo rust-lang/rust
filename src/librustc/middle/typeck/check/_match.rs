@@ -308,7 +308,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             Some(&(_, true)) => {
                 tcx.sess.span_err(span,
                     format!("field `{}` bound twice in pattern",
-                            tcx.sess.str_of(field.ident)));
+                            token::get_ident(field.ident)));
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
@@ -321,14 +321,14 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 found_fields.insert(index);
             }
             None => {
-                let name = pprust::path_to_str(path, tcx.sess.intr());
+                let name = pprust::path_to_str(path);
                 // Check the pattern anyway, so that attempts to look
                 // up its type won't fail
                 check_pat(pcx, field.pat, ty::mk_err());
                 tcx.sess.span_err(span,
                     format!("struct `{}` does not have a field named `{}`",
                          name,
-                         tcx.sess.str_of(field.ident)));
+                         token::get_ident(field.ident)));
             }
         }
     }
@@ -340,10 +340,9 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 continue;
             }
 
-            let string = token::get_ident(field.name);
             tcx.sess.span_err(span,
                               format!("pattern does not mention field `{}`",
-                                      string.get()));
+                                  token::get_name(field.name)));
         }
     }
 }
@@ -366,7 +365,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
             // OK.
         }
         Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
-            let name = pprust::path_to_str(path, tcx.sess.intr());
+            let name = pprust::path_to_str(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but found `{}`",
                                    fcx.infcx().ty_to_str(expected),
@@ -405,7 +404,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
                                     variant_id, substitutions, etc);
         }
         Some(&ast::DefStruct(..)) | Some(&ast::DefVariant(..)) => {
-            let name = pprust::path_to_str(path, tcx.sess.intr());
+            let name = pprust::path_to_str(path);
             tcx.sess.span_err(span,
                               format!("mismatched types: expected `{}` but \
                                     found `{}`",

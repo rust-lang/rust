@@ -15,9 +15,7 @@ use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
 
-use std::vec;
 use syntax::ast;
-use syntax::ast_map::PathName;
 use syntax::ast_util::local_def;
 use syntax::attr;
 
@@ -45,9 +43,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
     let csearch_result =
         csearch::maybe_get_item_ast(
             ccx.tcx, fn_id,
-            |a,b,c,d| {
-                astencode::decode_inlined_item(a, b, ccx.maps, c.clone(), d)
-            });
+            |a,b,c,d| astencode::decode_inlined_item(a, b, ccx.maps, c, d));
     return match csearch_result {
         csearch::not_found => {
             let mut external = ccx.external.borrow_mut();
@@ -157,9 +153,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
 
           if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
-              let path = vec::append_one(
-                  ty::item_path(ccx.tcx, impl_did), PathName(mth.ident));
-              trans_fn(ccx, path, mth.decl, mth.body, llfn, None, mth.id, []);
+              trans_fn(ccx, mth.decl, mth.body, llfn, None, mth.id, []);
           }
           local_def(mth.id)
         }

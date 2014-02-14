@@ -24,8 +24,6 @@ use middle::trans::glue;
 use middle::trans::type_::Type;
 use middle::ty;
 use syntax::ast;
-use syntax::ast_map;
-use syntax::parse::token;
 use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 use util::ppaux::Repr;
@@ -89,8 +87,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("push_ast_cleanup_scope({})",
-               ast_map::node_id_to_str(self.ccx.tcx.items, id,
-                                       token::get_ident_interner()));
+               self.ccx.tcx.map.node_to_str(id));
 
         // FIXME(#2202) -- currently closure bodies have a parent
         // region, which messes up the assertion below, since there
@@ -114,8 +111,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                                id: ast::NodeId,
                                exits: [&'a Block<'a>, ..EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
-               ast_map::node_id_to_str(self.ccx.tcx.items, id,
-                                       token::get_ident_interner()));
+               self.ccx.tcx.map.node_to_str(id));
         assert_eq!(Some(id), self.top_ast_scope());
 
         self.push_scope(CleanupScope::new(LoopScopeKind(id, exits)));
@@ -139,8 +135,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_and_trans_ast_cleanup_scope({})",
-               ast_map::node_id_to_str(self.ccx.tcx.items, cleanup_scope,
-                                       token::get_ident_interner()));
+               self.ccx.tcx.map.node_to_str(cleanup_scope));
 
         assert!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
 
@@ -159,8 +154,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_loop_cleanup_scope({})",
-               ast_map::node_id_to_str(self.ccx.tcx.items, cleanup_scope,
-                                       token::get_ident_interner()));
+               self.ccx.tcx.map.node_to_str(cleanup_scope));
 
         assert!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
 
@@ -338,8 +332,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
 
         self.ccx.tcx.sess.bug(
             format!("no cleanup scope {} found",
-                    ast_map::node_id_to_str(self.ccx.tcx.items, cleanup_scope,
-                                            token::get_ident_interner())));
+                    self.ccx.tcx.map.node_to_str(cleanup_scope)));
     }
 
     fn schedule_clean_in_custom_scope(&self,

@@ -26,6 +26,7 @@ use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
+use syntax::parse::token;
 use syntax::print::pprust::*;
 
 macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
@@ -177,7 +178,7 @@ fn enc_region(w: &mut MemWriter, cx: @ctxt, r: ty::Region) {
             mywrite!(w, "B[{}|{}|{}]",
                      node_id,
                      index,
-                     cx.tcx.sess.str_of(ident));
+                     token::get_ident(ident));
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
@@ -208,7 +209,7 @@ fn enc_bound_region(w: &mut MemWriter, cx: @ctxt, br: ty::BoundRegion) {
         ty::BrNamed(d, s) => {
             mywrite!(w, "[{}|{}]",
                      (cx.ds)(d),
-                     cx.tcx.sess.str_of(s));
+                     token::get_ident(s));
         }
         ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);
@@ -420,7 +421,7 @@ fn enc_bounds(w: &mut MemWriter, cx: @ctxt, bs: &ty::ParamBounds) {
 }
 
 pub fn enc_type_param_def(w: &mut MemWriter, cx: @ctxt, v: &ty::TypeParameterDef) {
-    mywrite!(w, "{}:{}|", cx.tcx.sess.str_of(v.ident), (cx.ds)(v.def_id));
+    mywrite!(w, "{}:{}|", token::get_ident(v.ident), (cx.ds)(v.def_id));
     enc_bounds(w, cx, v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }

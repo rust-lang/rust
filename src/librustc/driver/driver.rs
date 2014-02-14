@@ -264,7 +264,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                 |_| middle::resolve_lifetime::krate(sess, krate));
 
     time(time_passes, "looking for entry point", (),
-         |_| middle::entry::find_entry_point(sess, krate, ast_map));
+         |_| middle::entry::find_entry_point(sess, krate, &ast_map));
 
     sess.macro_registrar_fn.with_mut(|r| *r =
         time(time_passes, "looking for macro registrar", (), |_|
@@ -288,7 +288,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
          middle::const_eval::process_crate(krate, ty_cx));
 
     time(time_passes, "const checking", (), |_|
-         middle::check_const::check_crate(sess, krate, ast_map, def_map,
+         middle::check_const::check_crate(sess, krate, def_map,
                                           method_map, ty_cx));
 
     let maps = (external_exports, last_private_map);
@@ -638,7 +638,6 @@ pub fn pretty_print_input(sess: Session,
     let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
-                        token::get_ident_interner(),
                         sess.span_diagnostic,
                         &krate,
                         source_name(input),
@@ -1135,7 +1134,6 @@ pub fn early_error(msg: &str) -> ! {
 pub fn list_metadata(sess: Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
     metadata::loader::list_file_metadata(
-        token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out)
 }
 

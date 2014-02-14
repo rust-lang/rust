@@ -22,9 +22,7 @@ use syntax::ast::{IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
-use syntax::{ast, codemap};
-use syntax::abi;
-use syntax::parse::token;
+use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
@@ -300,23 +298,6 @@ impl Session_ {
     }
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
-    }
-
-    // DEPRECATED. This function results in a lot of allocations when they
-    // are not necessary.
-    pub fn str_of(&self, id: ast::Ident) -> ~str {
-        let string = token::get_ident(id.name);
-        string.get().to_str()
-    }
-
-    // pointless function, now...
-    pub fn ident_of(&self, st: &str) -> ast::Ident {
-        token::str_to_ident(st)
-    }
-
-    // pointless function, now...
-    pub fn intr(&self) -> @syntax::parse::token::IdentInterner {
-        token::get_ident_interner()
     }
 }
 

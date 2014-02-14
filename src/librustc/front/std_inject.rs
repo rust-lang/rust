@@ -73,7 +73,7 @@ pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
 impl fold::Folder for StandardLibraryInjector {
     fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         let mut vis = ~[ast::ViewItem {
-            node: ast::ViewItemExternMod(self.sess.ident_of("std"),
+            node: ast::ViewItemExternMod(token::str_to_ident("std"),
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: ~[
@@ -90,7 +90,7 @@ impl fold::Folder for StandardLibraryInjector {
 
         if use_uv(&krate) && !self.sess.building_library.get() {
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternMod(self.sess.ident_of("green"),
+                node: ast::ViewItemExternMod(token::str_to_ident("green"),
                                              with_version("green"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
@@ -98,7 +98,7 @@ impl fold::Folder for StandardLibraryInjector {
                 span: DUMMY_SP
             });
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternMod(self.sess.ident_of("rustuv"),
+                node: ast::ViewItemExternMod(token::str_to_ident("rustuv"),
                                              with_version("rustuv"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
@@ -163,12 +163,12 @@ impl fold::Folder for PreludeInjector {
             global: false,
             segments: ~[
                 ast::PathSegment {
-                    identifier: self.sess.ident_of("std"),
+                    identifier: token::str_to_ident("std"),
                     lifetimes: opt_vec::Empty,
                     types: opt_vec::Empty,
                 },
                 ast::PathSegment {
-                    identifier: self.sess.ident_of("prelude"),
+                    identifier: token::str_to_ident("prelude"),
                     lifetimes: opt_vec::Empty,
                     types: opt_vec::Empty,
                 },

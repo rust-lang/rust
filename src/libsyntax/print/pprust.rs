@@ -83,18 +83,15 @@ pub fn end(s: &mut State) -> io::IoResult<()> {
     pp::end(&mut s.s)
 }
 
-pub fn rust_printer(writer: ~io::Writer, intr: @IdentInterner) -> State<'static> {
-    rust_printer_annotated(writer, intr, &NoAnn)
+pub fn rust_printer(writer: ~io::Writer) -> State<'static> {
+    rust_printer_annotated(writer, &NoAnn)
 }
 
-pub fn rust_printer_annotated<'a>(writer: ~io::Writer,
-                                  intr: @IdentInterner,
-                                  ann: &'a PpAnn)
-                                  -> State<'a> {
+pub fn rust_printer_annotated<'a>(writer: ~io::Writer, ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, default_columns),
         cm: None,
-        intr: intr,
+        intr: token::get_ident_interner(),
         comments: None,
         literals: None,
         cur_cmnt_and_lit: CurrentCommentAndLiteral {
@@ -114,7 +111,6 @@ pub static default_columns: uint = 78u;
 // it can scan the input text for comments and literals to
 // copy forward.
 pub fn print_crate(cm: @CodeMap,
-                   intr: @IdentInterner,
                    span_diagnostic: @diagnostic::SpanHandler,
                    krate: &ast::Crate,
                    filename: ~str,
@@ -130,7 +126,7 @@ pub fn print_crate(cm: @CodeMap,
     let mut s = State {
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
-        intr: intr,
+        intr: token::get_ident_interner(),
         comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
@@ -157,52 +153,51 @@ pub fn print_crate_(s: &mut State, krate: &ast::Crate) -> io::IoResult<()> {
     Ok(())
 }
 
-pub fn ty_to_str(ty: &ast::Ty, intr: @IdentInterner) -> ~str {
-    to_str(ty, print_type, intr)
+pub fn ty_to_str(ty: &ast::Ty) -> ~str {
+    to_str(ty, print_type)
 }
 
-pub fn pat_to_str(pat: &ast::Pat, intr: @IdentInterner) -> ~str {
-    to_str(pat, print_pat, intr)
+pub fn pat_to_str(pat: &ast::Pat) -> ~str {
+    to_str(pat, print_pat)
 }
 
-pub fn expr_to_str(e: &ast::Expr, intr: @IdentInterner) -> ~str {
-    to_str(e, print_expr, intr)
+pub fn expr_to_str(e: &ast::Expr) -> ~str {
+    to_str(e, print_expr)
 }
 
-pub fn lifetime_to_str(e: &ast::Lifetime, intr: @IdentInterner) -> ~str {
-    to_str(e, print_lifetime, intr)
+pub fn lifetime_to_str(e: &ast::Lifetime) -> ~str {
+    to_str(e, print_lifetime)
 }
 
-pub fn tt_to_str(tt: &ast::TokenTree, intr: @IdentInterner) -> ~str {
-    to_str(tt, print_tt, intr)
+pub fn tt_to_str(tt: &ast::TokenTree) -> ~str {
+    to_str(tt, print_tt)
 }
 
-pub fn tts_to_str(tts: &[ast::TokenTree], intr: @IdentInterner) -> ~str {
-    to_str(&tts, print_tts, intr)
+pub fn tts_to_str(tts: &[ast::TokenTree]) -> ~str {
+    to_str(&tts, print_tts)
 }
 
-pub fn stmt_to_str(s: &ast::Stmt, intr: @IdentInterner) -> ~str {
-    to_str(s, print_stmt, intr)
+pub fn stmt_to_str(s: &ast::Stmt) -> ~str {
+    to_str(s, print_stmt)
 }
 
-pub fn item_to_str(i: &ast::Item, intr: @IdentInterner) -> ~str {
-    to_str(i, print_item, intr)
+pub fn item_to_str(i: &ast::Item) -> ~str {
+    to_str(i, print_item)
 }
 
-pub fn generics_to_str(generics: &ast::Generics,
-                       intr: @IdentInterner) -> ~str {
-    to_str(generics, print_generics, intr)
+pub fn generics_to_str(generics: &ast::Generics) -> ~str {
+    to_str(generics, print_generics)
 }
 
-pub fn path_to_str(p: &ast::Path, intr: @IdentInterner) -> ~str {
-    to_str(p, |a,b| print_path(a, b, false), intr)
+pub fn path_to_str(p: &ast::Path) -> ~str {
+    to_str(p, |a,b| print_path(a, b, false))
 }
 
 pub fn fun_to_str(decl: &ast::FnDecl, purity: ast::Purity, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
-                  generics: &ast::Generics, intr: @IdentInterner) -> ~str {
+                  generics: &ast::Generics) -> ~str {
     let wr = ~MemWriter::new();
-    let mut s = rust_printer(wr as ~io::Writer, intr);
+    let mut s = rust_printer(wr as ~io::Writer);
     print_fn(&mut s, decl, Some(purity), AbiSet::Rust(),
              name, generics, opt_explicit_self, ast::Inherited).unwrap();
     end(&mut s).unwrap(); // Close the head box
@@ -213,9 +208,9 @@ pub fn fun_to_str(decl: &ast::FnDecl, purity: ast::Purity, name: ast::Ident,
     }
 }
 
-pub fn block_to_str(blk: &ast::Block, intr: @IdentInterner) -> ~str {
+pub fn block_to_str(blk: &ast::Block) -> ~str {
     let wr = ~MemWriter::new();
-    let mut s = rust_printer(wr as ~io::Writer, intr);
+    let mut s = rust_printer(wr as ~io::Writer);
     // containing cbox, will be closed by print-block at }
     cbox(&mut s, indent_unit).unwrap();
     // head-ibox, will be closed by print-block after {
@@ -227,16 +222,16 @@ pub fn block_to_str(blk: &ast::Block, intr: @IdentInterner) -> ~str {
     }
 }
 
-pub fn meta_item_to_str(mi: &ast::MetaItem, intr: @IdentInterner) -> ~str {
-    to_str(mi, print_meta_item, intr)
+pub fn meta_item_to_str(mi: &ast::MetaItem) -> ~str {
+    to_str(mi, print_meta_item)
 }
 
-pub fn attribute_to_str(attr: &ast::Attribute, intr: @IdentInterner) -> ~str {
-    to_str(attr, print_attribute, intr)
+pub fn attribute_to_str(attr: &ast::Attribute) -> ~str {
+    to_str(attr, print_attribute)
 }
 
-pub fn variant_to_str(var: &ast::Variant, intr: @IdentInterner) -> ~str {
-    to_str(var, print_variant, intr)
+pub fn variant_to_str(var: &ast::Variant) -> ~str {
+    to_str(var, print_variant)
 }
 
 pub fn cbox(s: &mut State, u: uint) -> io::IoResult<()> {
@@ -817,7 +812,7 @@ pub fn print_tt(s: &mut State, tt: &ast::TokenTree) -> io::IoResult<()> {
     match *tt {
         ast::TTDelim(ref tts) => print_tts(s, &(tts.as_slice())),
         ast::TTTok(_, ref tk) => {
-            word(&mut s.s, parse::token::to_str(s.intr, tk))
+            word(&mut s.s, parse::token::to_str(tk))
         }
         ast::TTSeq(_, ref tts, ref sep, zerok) => {
             if_ok!(word(&mut s.s, "$("));
@@ -827,7 +822,7 @@ pub fn print_tt(s: &mut State, tt: &ast::TokenTree) -> io::IoResult<()> {
             if_ok!(word(&mut s.s, ")"));
             match *sep {
                 Some(ref tk) => {
-                    if_ok!(word(&mut s.s, parse::token::to_str(s.intr, tk)));
+                    if_ok!(word(&mut s.s, parse::token::to_str(tk)));
                 }
                 None => ()
             }
@@ -1615,13 +1610,11 @@ pub fn print_decl(s: &mut State, decl: &ast::Decl) -> io::IoResult<()> {
 }
 
 pub fn print_ident(s: &mut State, ident: ast::Ident) -> io::IoResult<()> {
-    let string = token::get_ident(ident.name);
-    word(&mut s.s, string.get())
+    word(&mut s.s, token::get_ident(ident).get())
 }
 
 pub fn print_name(s: &mut State, name: ast::Name) -> io::IoResult<()> {
-    let string = token::get_ident(name);
-    word(&mut s.s, string.get())
+    word(&mut s.s, token::get_name(name).get())
 }
 
 pub fn print_for_decl(s: &mut State, loc: &ast::Local,
@@ -1692,15 +1685,14 @@ fn print_path_(s: &mut State,
     Ok(())
 }
 
-pub fn print_path(s: &mut State, path: &ast::Path,
-                  colons_before_params: bool) -> io::IoResult<()> {
+fn print_path(s: &mut State, path: &ast::Path,
+              colons_before_params: bool) -> io::IoResult<()> {
     print_path_(s, path, colons_before_params, &None)
 }
 
-pub fn print_bounded_path(s: &mut State, path: &ast::Path,
-                          bounds: &Option<OptVec<ast::TyParamBound>>)
-    -> io::IoResult<()>
-{
+fn print_bounded_path(s: &mut State, path: &ast::Path,
+                      bounds: &Option<OptVec<ast::TyParamBound>>)
+    -> io::IoResult<()> {
     print_path_(s, path, false, bounds)
 }
 
@@ -1818,11 +1810,10 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
     Ok(())
 }
 
-pub fn explicit_self_to_str(explicit_self: &ast::ExplicitSelf_,
-                            intr: @IdentInterner) -> ~str {
+pub fn explicit_self_to_str(explicit_self: &ast::ExplicitSelf_) -> ~str {
     to_str(explicit_self, |a, &b| {
         print_explicit_self(a, b, ast::MutImmutable).map(|_| ())
-    }, intr)
+    })
 }
 
 // Returns whether it printed anything
@@ -2346,7 +2337,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
 }
 
 pub fn lit_to_str(l: &ast::Lit) -> ~str {
-    return to_str(l, print_literal, parse::token::mk_fake_ident_interner());
+    to_str(l, print_literal)
 }
 
 pub fn next_lit(s: &mut State, pos: BytePos) -> Option<comments::Literal> {
@@ -2450,10 +2441,9 @@ unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {
     result
 }
 
-pub fn to_str<T>(t: &T, f: |&mut State, &T| -> io::IoResult<()>,
-                 intr: @IdentInterner) -> ~str {
+pub fn to_str<T>(t: &T, f: |&mut State, &T| -> io::IoResult<()>) -> ~str {
     let wr = ~MemWriter::new();
-    let mut s = rust_printer(wr as ~io::Writer, intr);
+    let mut s = rust_printer(wr as ~io::Writer);
     f(&mut s, t).unwrap();
     eof(&mut s.s).unwrap();
     unsafe {
@@ -2600,7 +2590,7 @@ mod test {
         };
         let generics = ast_util::empty_generics();
         assert_eq!(&fun_to_str(&decl, ast::ImpureFn, abba_ident,
-                               None, &generics, token::get_ident_interner()),
+                               None, &generics),
                    &~"fn abba()");
     }
 
@@ -2618,7 +2608,7 @@ mod test {
             vis: ast::Public,
         });
 
-        let varstr = variant_to_str(&var,token::get_ident_interner());
+        let varstr = variant_to_str(&var);
         assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }
