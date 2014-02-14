@@ -77,8 +77,11 @@ pub struct config {
     // for running under valgrind
     runtool: Option<~str>,
 
-    // Flags to pass to the compiler
-    rustcflags: Option<~str>,
+    // Flags to pass to the compiler when building for the host
+    host_rustcflags: Option<~str>,
+
+    // Flags to pass to the compiler when building for the target
+    target_rustcflags: Option<~str>,
 
     // Run tests using the JIT
     jit: bool,
