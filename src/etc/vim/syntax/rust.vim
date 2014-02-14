@@ -86,7 +86,7 @@ syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
 syn keyword rustTrait Bitwise Bounded Integer Fractional Real RealExt
-syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
+syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul CheckedDiv
 syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
