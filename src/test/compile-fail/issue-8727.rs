@@ -14,7 +14,11 @@
 
 struct Data(~Option<Data>);
 
-fn generic<T>( _ : ~[(Data,T)] ) {let rec : ~[(Data,(bool,T))] = ~[]; generic( rec ); } //~ ERROR overly deep expansion of inlined function
+fn generic<T>( _ : ~[(Data,T)] ) {
+    //~^ ERROR overly deep expansion of inlined function
+    let rec : ~[(Data,(bool,T))] = ~[];
+    generic( rec );
+}
 
 
 fn main () {

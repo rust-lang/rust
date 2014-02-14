@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast
+
 extern mod green;
 
 static mut DROP: int = 0i;
