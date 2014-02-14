@@ -15,7 +15,7 @@ use dl = std::unstable::dynamic_lib;
 
 pub type PluginJson = Option<(~str, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);
-pub type PluginCallback = extern fn (clean::Crate) -> PluginResult;
+pub type PluginCallback = fn (clean::Crate) -> PluginResult;
 
 /// Manages loading and running of plugins
 pub struct PluginManager {
