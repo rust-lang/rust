@@ -30,6 +30,8 @@ pub struct TestProps {
     check_lines: ~[~str],
     // Flag to force a crate to be built with the host architecture
     force_host: bool,
+    // Check stdout for error-pattern output as well as stderr
+    check_stdout: bool,
 }
 
 // Load any test directives embedded in the file
@@ -42,6 +44,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut debugger_cmds = ~[];
     let mut check_lines = ~[];
     let mut force_host = false;
+    let mut check_stdout = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -58,6 +61,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if !force_host {
             force_host = parse_force_host(ln);
+        }
+
+        if !check_stdout {
+            check_stdout = parse_check_stdout(ln);
         }
 
         match parse_aux_build(ln) {
@@ -91,6 +98,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         debugger_cmds: debugger_cmds,
         check_lines: check_lines,
         force_host: force_host,
+        check_stdout: check_stdout,
     };
 }
 
@@ -153,6 +161,10 @@ fn parse_check_line(line: &str) -> Option<~str> {
 
 fn parse_force_host(line: &str) -> bool {
     parse_name_directive(line, "force-host")
+}
+
+fn parse_check_stdout(line: &str) -> bool {
+    parse_name_directive(line, "check-stdout")
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {

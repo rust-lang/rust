@@ -96,6 +96,12 @@ impl ChanWriter {
     }
 }
 
+impl Clone for ChanWriter {
+    fn clone(&self) -> ChanWriter {
+        ChanWriter { chan: self.chan.clone() }
+    }
+}
+
 impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if !self.chan.try_send(buf.to_owned()) {

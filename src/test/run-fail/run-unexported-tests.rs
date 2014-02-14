@@ -10,6 +10,7 @@
 
 // error-pattern:runned an unexported test
 // compile-flags:--test
+// check-stdout
 
 extern mod extra;
 
