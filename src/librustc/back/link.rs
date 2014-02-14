@@ -369,8 +369,6 @@ pub mod write {
                 llvm_c_strs.push(s);
             };
             add("rustc"); // fake program name
-            add("-arm-enable-ehabi");
-            add("-arm-enable-ehabi-descriptors");
             if vectorize_loop { add("-vectorize-loops"); }
             if vectorize_slp  { add("-vectorize-slp");   }
             if sess.time_llvm_passes() { add("-time-passes"); }
