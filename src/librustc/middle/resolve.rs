@@ -5177,7 +5177,7 @@ impl Resolver {
                         let rib = label_ribs.get()[label_ribs.get().len() -
                                                    1];
                         let mut bindings = rib.bindings.borrow_mut();
-                        bindings.get().insert(label.name, def_like);
+                        bindings.get().insert(label, def_like);
                     }
 
                     visit::walk_expr(this, expr, ());

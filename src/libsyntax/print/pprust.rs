@@ -1312,7 +1312,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       ast::ExprForLoop(pat, iter, blk, opt_ident) => {
         for ident in opt_ident.iter() {
             if_ok!(word(&mut s.s, "'"));
-            if_ok!(print_ident(s, *ident));
+            if_ok!(print_name(s, *ident));
             if_ok!(word_space(s, ":"));
         }
         if_ok!(head(s, "for"));
@@ -1326,7 +1326,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       ast::ExprLoop(blk, opt_ident) => {
         for ident in opt_ident.iter() {
             if_ok!(word(&mut s.s, "'"));
-            if_ok!(print_ident(s, *ident));
+            if_ok!(print_name(s, *ident));
             if_ok!(word_space(s, ":"));
         }
         if_ok!(head(s, "loop"));

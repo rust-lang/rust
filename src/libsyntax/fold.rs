@@ -248,6 +248,10 @@ pub trait Folder {
         i
     }
 
+    fn fold_name(&mut self, n: Name) -> Name {
+        n
+    }
+
     fn fold_path(&mut self, p: &Path) -> Path {
         ast::Path {
             span: self.new_span(p.span),
@@ -763,15 +767,15 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprWhile(cond, body) => {
             ExprWhile(folder.fold_expr(cond), folder.fold_block(body))
         }
-        ExprForLoop(pat, iter, body, ref maybe_ident) => {
+        ExprForLoop(pat, iter, body, ref opt_name) => {
             ExprForLoop(folder.fold_pat(pat),
                         folder.fold_expr(iter),
                         folder.fold_block(body),
-                        maybe_ident.map(|i| folder.fold_ident(i)))
+                        opt_name.map(|x| folder.fold_name(x)))
         }
-        ExprLoop(body, opt_ident) => {
+        ExprLoop(body, opt_name) => {
             ExprLoop(folder.fold_block(body),
-                     opt_ident.map(|x| folder.fold_ident(x)))
+                     opt_name.map(|x| folder.fold_name(x)))
         }
         ExprMatch(expr, ref arms) => {
             ExprMatch(folder.fold_expr(expr),
