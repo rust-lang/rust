@@ -8,7 +8,54 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# An explanation of how the build is structured:
+# <help>
+#
+# # The Rust Build System
+#
+# Start with these these build targets:
+#
+# * all - The default rule. Builds a complete stage2 compiler, std,
+#           and extra for all hosts and targets
+# * docs - Generate HTML documentation for the std and extra libraries
+#            from source code comments
+# * rustc - The stage 2 compiler for the build platform with standard
+#             and extra libraries
+# * install
+# * uninstall
+# * check - Run tests
+# * check-stage1-$(crate) - Run tests for a crate, e.g. `check-stage1-std`
+# * check-stage1-rpass - Run the language tests
+# * check-docs - Run the doc tests
+#
+# Then mix in some of these environment variables to harness the
+# ultimate power of Rust Build System.
+#
+# * `VERBOSE=1` - Print all commands. Use this to see what's going on.
+# * `RUSTFLAGS=...` - Add compiler flags to all `rustc` invocations
+# * `CFG_ENABLE_VALGRIND=1` - Run tests under valgrind
+# * `VALGRIND_COMPILE=1` - Run the compiler itself under valgrind
+#                          (may require `CFG_ENABLE_VALGRIND`)
+# * `NO_REBUILD=1` - Don't rebootstrap when testing std
+#                    (and possibly other crates)
+# * `SAVE_TEMPS=1` - Use `--save-temps` flag on all `rustc` invocations
+# * `ASM_COMMENTS=1` - Use `-Z asm-comments`
+# * `TIME_PASSES=1` - Use `-Z time-passes`
+# * `TIME_LLVM_PASSES=1` - Use `-Z time-llvm-passes`
+# * `TRACE=1` - Use `-Z trace`
+#
+# This is hardly all there is to know of The Rust Build System's
+# mysteries. Your journey continues on the wiki[1][2].
+#
+# [1]: https://github.com/mozilla/rust/wiki/Note-build-system
+# [2]: https://github.com/mozilla/rust/wiki/Note-testsuite
+#
+# </help>
+#
+# # An (old) explanation of how the build is structured:
+#
+# *Note: Hey, like, this is probably inaccurate, and is definitely
+# an outdated and insufficient explanation of the remarkable
+# and discomfiting Rust Build System.*
 #
 # There are multiple build stages (0-3) needed to verify that the
 # compiler is properly self-hosting. Each stage is divided between
@@ -598,3 +645,9 @@ endif
 # header file dependencies.
 ALL_DEP_FILES := $(ALL_OBJ_FILES:%.o=%.d)
 -include $(ALL_DEP_FILES)
+
+help:
+# Show the comments from this file as "help"
+# pick everything between tags | remove first line | remove last line
+# | remove extra (?) line | strip leading `#` from lines
+	$(Q)awk '/<help>/,/<\/help>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^# \?//'
