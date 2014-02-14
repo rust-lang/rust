@@ -8,6 +8,39 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+######################################################################
+# Version numbers and strings
+######################################################################
+
+# The version number
+CFG_RELEASE = 0.10-pre
+
+# The version string plus commit information
+CFG_VERSION = $(CFG_RELEASE)
+CFG_GIT_DIR := $(CFG_SRC_DIR).git
+# since $(CFG_GIT) may contain spaces (especially on Windows),
+# we need to escape them. (" " to r"\ ")
+# Note that $(subst ...) ignores space after `subst`,
+# so we use a hack: define $(SPACE) which contains space character.
+SPACE :=
+SPACE +=
+ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT))),)
+ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
+    CFG_VERSION += $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 \
+                     --pretty=format:'(%h %ci)')
+    CFG_VER_HASH = $(shell git --git-dir='$(CFG_GIT_DIR)' rev-parse HEAD)
+endif
+endif
+
+# windows exe's need numeric versions - don't use anything but
+# numbers and dots here
+CFG_VERSION_WIN = $(subst -pre,,$(CFG_RELEASE))
+
+
+######################################################################
+# More configuration
+######################################################################
+
 # We track all of the object files we might build so that we can find
 # and include all of the .d files in one fell swoop.
 ALL_OBJ_FILES :=
@@ -95,28 +128,6 @@ ifdef VALGRIND_COMPILE
   CFG_VALGRIND_COMPILE :=$(CFG_VALGRIND)
 else
   CFG_VALGRIND_COMPILE :=
-endif
-
-# version-string calculation
-CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.10-pre
-CFG_VERSION = $(CFG_RELEASE)
-# windows exe's need numeric versions - don't use anything but
-# numbers and dots here
-CFG_VERSION_WIN = 0.10
-
-# since $(CFG_GIT) may contain spaces (especially on Windows),
-# we need to escape them. (" " to r"\ ")
-# Note that $(subst ...) ignores space after `subst`,
-# so we use a hack: define $(SPACE) which contains space character.
-SPACE :=
-SPACE +=
-ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT))),)
-ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
-    CFG_VERSION += $(shell git --git-dir='$(CFG_GIT_DIR)' log -1 \
-                     --pretty=format:'(%h %ci)')
-    CFG_VER_HASH = $(shell git --git-dir='$(CFG_GIT_DIR)' rev-parse HEAD)
-endif
 endif
 
 ifdef CFG_ENABLE_VALGRIND
