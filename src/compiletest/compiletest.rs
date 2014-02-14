@@ -64,7 +64,8 @@ pub fn parse_config(args: ~[~str]) -> config {
           optflag("", "ignored", "run tests marked as ignored"),
           optopt("", "runtool", "supervisor program to run tests under \
                                  (eg. emulator, valgrind)", "PROGRAM"),
-          optopt("", "rustcflags", "flags to pass to rustc", "FLAGS"),
+          optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
+          optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
           optopt("", "save-metrics", "file to save metrics to", "FILE"),
@@ -132,7 +133,8 @@ pub fn parse_config(args: ~[~str]) -> config {
         ratchet_noise_percent:
             matches.opt_str("ratchet-noise-percent").and_then(|s| from_str::<f64>(s)),
         runtool: matches.opt_str("runtool"),
-        rustcflags: matches.opt_str("rustcflags"),
+        host_rustcflags: matches.opt_str("host-rustcflags"),
+        target_rustcflags: matches.opt_str("target-rustcflags"),
         jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")).to_str(),
         host: opt_str2(matches.opt_str("host")).to_str(),
@@ -161,7 +163,8 @@ pub fn log_config(config: &config) {
     logv(c, format!("run_ignored: {}", config.run_ignored));
     logv(c, format!("filter: {}", opt_str(&config.filter)));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("rustcflags: {}", opt_str(&config.rustcflags)));
+    logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
+    logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
     logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));

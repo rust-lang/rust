@@ -300,7 +300,7 @@ CFG_PATH_MUNGE_arm-linux-androideabi := true
 CFG_LDPATH_arm-linux-androideabi :=
 CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
-RUSTC_FLAGS_arm-linux-androideabi :=-C android-cross-path=$(CFG_ANDROID_CROSS_PATH)
+RUSTC_FLAGS_arm-linux-androideabi :=
 RUSTC_CROSS_FLAGS_arm-linux-androideabi :=-C android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
 # arm-unknown-linux-gnueabihf configuration
@@ -331,7 +331,7 @@ CFG_LDPATH_arm-unknown-linux-gnueabihf :=
 CFG_RUN_arm-unknown-linux-gnueabihf=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabihf=$(call CFG_RUN_arm-unknown-linux-gnueabihf,,$(2))
 RUSTC_FLAGS_arm-unknown-linux-gnueabihf :=
-RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabihf)$(CXX_arm-unknown-linux-gnueabihf)
+RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabihf :=
 
 # arm-unknown-linux-gnueabi configuration
 CROSS_PREFIX_arm-unknown-linux-gnueabi=arm-linux-gnueabi-
@@ -343,7 +343,7 @@ CFG_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).a
 CFG_LIB_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__ -mfpu=vfp
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabi := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabi := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabi := -Wl,--export-dynamic,--dynamic-list=
@@ -361,7 +361,7 @@ CFG_LDPATH_arm-unknown-linux-gnueabi :=
 CFG_RUN_arm-unknown-linux-gnueabi=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabi=$(call CFG_RUN_arm-unknown-linux-gnueabi,,$(2))
 RUSTC_FLAGS_arm-unknown-linux-gnueabi :=
-RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi := --linker=$(CROSS_PREFIX_arm-unknown-linux-gnueabi)$(CXX_arm-unknown-linux-gnueabi)
+RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabi :=
 
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
@@ -389,7 +389,7 @@ CFG_PATH_MUNGE_mips-unknown-linux-gnu := true
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
-RUSTC_FLAGS_mips-unknown-linux-gnu := --linker=$(CXX_mips-unknown-linux-gnu) --target-cpu mips32r2 --target-feature +mips32r2,+o32 -Z soft-float
+RUSTC_FLAGS_mips-unknown-linux-gnu := -C target-cpu=mips32r2 -C target-feature="+mips32r2,+o32" -C soft-float
 
 # i686-pc-mingw32 configuration
 CC_i686-pc-mingw32=$(CC)
@@ -475,7 +475,7 @@ CFG_PATH_MUNGE_i686-w64-mingw32 :=
 CFG_LDPATH_i686-w64-mingw32 :=$(CFG_LDPATH_i686-w64-mingw32):$(PATH)
 CFG_RUN_i686-w64-mingw32=PATH="$(CFG_LDPATH_i686-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_i686-w64-mingw32=$(call CFG_RUN_i686-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
-RUSTC_CROSS_FLAGS_i686-w64-mingw32 := --linker=$(CROSS_PREFIX_i686-w64-mingw32)$(CXX_i686-w64-mingw32)
+RUSTC_CROSS_FLAGS_i686-w64-mingw32 :=
 
 # x86_64-w64-mingw32 configuration
 CROSS_PREFIX_x86_64-w64-mingw32=x86_64-w64-mingw32-
@@ -504,7 +504,7 @@ CFG_PATH_MUNGE_x86_64-w64-mingw32 :=
 CFG_LDPATH_x86_64-w64-mingw32 :=$(CFG_LDPATH_x86_64-w64-mingw32):$(PATH)
 CFG_RUN_x86_64-w64-mingw32=PATH="$(CFG_LDPATH_x86_64-w64-mingw32):$(1)" $(2)
 CFG_RUN_TARG_x86_64-w64-mingw32=$(call CFG_RUN_x86_64-w64-mingw32,$(HLIB$(1)_H_$(CFG_BUILD)),$(2))
-RUSTC_CROSS_FLAGS_x86_64-w64-mingw32 := --linker=$(CROSS_PREFIX_x86_64-w64-mingw32)$(CXX_x86_64-w64-mingw32)
+RUSTC_CROSS_FLAGS_x86_64-w64-mingw32 :=
 
 # x86_64-unknown-freebsd configuration
 CC_x86_64-unknown-freebsd=$(CC)
@@ -549,8 +549,9 @@ define CFG_MAKE_TOOLCHAIN
 	CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
 	CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
 	AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
+	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(CXX_$(1)) -C ar=$$(AR_$(1)) $(RUSTC_CROSS_FLAGS_$(1))
 
-	RUSTC_FLAGS_$(1)=$(RUSTC_CROSS_FLAGS_$(1))
+	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
   endif
 
   CFG_COMPILE_C_$(1) = $$(CC_$(1))  \
