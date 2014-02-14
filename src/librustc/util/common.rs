@@ -15,7 +15,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::local_data;
-use extra;
+use extra::time;
 
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     local_data_key!(depth: uint);
@@ -24,9 +24,9 @@ pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     let old = local_data::get(depth, |d| d.map(|a| *a).unwrap_or(0));
     local_data::set(depth, old + 1);
 
-    let start = extra::time::precise_time_s();
+    let start = time::precise_time_s();
     let rv = f(u);
-    let end = extra::time::precise_time_s();
+    let end = time::precise_time_s();
 
     println!("{}time: {:3.3f} s\t{}", "  ".repeat(old), end - start, what);
     local_data::set(depth, old);
