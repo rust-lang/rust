@@ -115,8 +115,9 @@ pub mod bench {
         // measure
         let mut i = 0;
         bh.iter(|| {
-            map.find(&i);
+            let x = map.find(&i);
             i = (i + 1) % n;
+            x
         })
      }
 }

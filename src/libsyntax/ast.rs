@@ -519,7 +519,7 @@ pub struct Expr {
 impl Expr {
     pub fn get_callee_id(&self) -> Option<NodeId> {
         match self.node {
-            ExprMethodCall(callee_id, _, _, _, _) |
+            ExprMethodCall(callee_id, _, _, _) |
             ExprIndex(callee_id, _, _) |
             ExprBinary(callee_id, _, _, _) |
             ExprAssignOp(callee_id, _, _, _) |
@@ -530,19 +530,13 @@ impl Expr {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum CallSugar {
-    NoSugar,
-    ForSugar
-}
-
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     // First expr is the place; second expr is the value.
     ExprBox(@Expr, @Expr),
     ExprVec(~[@Expr], Mutability),
-    ExprCall(@Expr, ~[@Expr], CallSugar),
-    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
+    ExprCall(@Expr, ~[@Expr]),
+    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr]),
     ExprTup(~[@Expr]),
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),

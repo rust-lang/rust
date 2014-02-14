@@ -203,52 +203,6 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     }
 }
 
-// This is a secondary mechanism for invoking syntax extensions on items:
-// "decorator" attributes, such as #[auto_encode]. These are invoked by an
-// attribute prefixing an item, and are interpreted by feeding the item
-// through the named attribute _as a syntax extension_ and splicing in the
-// resulting item vec into place in favour of the decorator. Note that
-// these do _not_ work for macro extensions, just ItemDecorator ones.
-//
-// NB: there is some redundancy between this and expand_item, below, and
-// they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(module_: &ast::Mod, fld: &mut MacroExpander) -> ast::Mod {
-    // Fold the contents first:
-    let module_ = noop_fold_mod(module_, fld);
-
-    // For each item, look through the attributes.  If any of them are
-    // decorated with "item decorators", then use that function to transform
-    // the item into a new set of items.
-    let mut new_items = module_.items.clone();
-    for item in module_.items.iter() {
-        for attr in item.attrs.rev_iter() {
-            let mname = attr.name();
-
-            match fld.extsbox.find(&intern(mname.get())) {
-              Some(&ItemDecorator(dec_fn)) => {
-                  fld.cx.bt_push(ExpnInfo {
-                      call_site: attr.span,
-                      callee: NameAndSpan {
-                          name: mname.get().to_str(),
-                          format: MacroAttribute,
-                          span: None
-                      }
-                  });
-                  dec_fn(fld.cx, attr.span, attr.node.value, *item,
-                         |item| new_items.push(item));
-                  fld.cx.bt_pop();
-              },
-              _ => {},
-            }
-        }
-    }
-
-    ast::Mod {
-        items: new_items,
-        ..module_
-    }
-}
-
 // eval $e with a new exts frame:
 macro_rules! with_exts_frame (
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
@@ -263,7 +217,35 @@ macro_rules! with_exts_frame (
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                    -> SmallVector<@ast::Item> {
-    match it.node {
+    let mut decorator_items = SmallVector::zero();
+    for attr in it.attrs.rev_iter() {
+        let mname = attr.name();
+
+        match fld.extsbox.find(&intern(mname.get())) {
+            Some(&ItemDecorator(dec_fn)) => {
+                fld.cx.bt_push(ExpnInfo {
+                    call_site: attr.span,
+                    callee: NameAndSpan {
+                        name: mname.get().to_str(),
+                        format: MacroAttribute,
+                        span: None
+                    }
+                });
+                // we'd ideally decorator_items.push_all(expand_item(item, fld)),
+                // but that double-mut-borrows fld
+                dec_fn(fld.cx, attr.span, attr.node.value, it,
+                       |item| decorator_items.push(item));
+                fld.cx.bt_pop();
+            }
+            _ => {}
+        }
+    }
+
+    let decorator_items = decorator_items.move_iter()
+        .flat_map(|item| expand_item(item, fld).move_iter())
+        .collect();
+
+    let mut new_items = match it.node {
         ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             fld.cx.mod_push(it.ident);
@@ -275,7 +257,10 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
             result
         },
         _ => noop_fold_item(it, fld)
-    }
+    };
+
+    new_items.push_all(decorator_items);
+    new_items
 }
 
 // does this attribute list contain "macro_escape" ?
@@ -776,10 +761,6 @@ pub struct MacroExpander<'a> {
 impl<'a> Folder for MacroExpander<'a> {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(expr, self)
-    }
-
-    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
-        expand_mod_items(module, self)
     }
 
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {

@@ -292,7 +292,7 @@ mod bench {
         let s = Struct { field: 10 };
         let t = &s as &Trait;
         bh.iter(|| {
-            t.method();
+            t.method()
         });
     }
 
@@ -300,7 +300,7 @@ mod bench {
     fn trait_static_method_call(bh: &mut BenchHarness) {
         let s = Struct { field: 10 };
         bh.iter(|| {
-            s.method();
+            s.method()
         });
     }
 
@@ -310,10 +310,10 @@ mod bench {
     fn match_option_some(bh: &mut BenchHarness) {
         let x = Some(10);
         bh.iter(|| {
-            let _q = match x {
+            match x {
                 Some(y) => y,
                 None => 11
-            };
+            }
         });
     }
 
@@ -321,10 +321,10 @@ mod bench {
     fn match_vec_pattern(bh: &mut BenchHarness) {
         let x = [1,2,3,4,5,6];
         bh.iter(|| {
-            let _q = match x {
+            match x {
                 [1,2,3,..] => 10,
                 _ => 11
-            };
+            }
         });
     }
 }

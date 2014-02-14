@@ -236,7 +236,7 @@ COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
-$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS)
+$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: compiler-rt)
 	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt" \
 		ProjSrcRoot="$(S)src/compiler-rt" \

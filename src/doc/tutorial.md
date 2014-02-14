@@ -57,8 +57,8 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-> **NOTE**: The tarball and installer links are for the most recent release,
-> not master.
+> **WARNING**: The tarball and installer links are for the most recent
+> release, not master. To use master, you **must** build from [git].
 
 The Rust compiler currently must be built from a [tarball] or [git], unless
 you are on Windows, in which case using the [installer][win-exe] is

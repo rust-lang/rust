@@ -777,11 +777,11 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
                    expr_to_str(expr), expr_ty.repr(tcx));
             closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
         }
-        ast::ExprCall(f, ref args, _) => {
+        ast::ExprCall(f, ref args) => {
             callee::trans_call(bcx, expr, f,
                                callee::ArgExprs(*args), expr.id, dest)
         }
-        ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+        ast::ExprMethodCall(callee_id, _, _, ref args) => {
             callee::trans_method_call(bcx, expr, callee_id, args[0],
                                       callee::ArgExprs(*args), dest)
         }

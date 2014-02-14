@@ -647,7 +647,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 }
             }
           }
-          ast::ExprCall(callee, ref args, _) => {
+          ast::ExprCall(callee, ref args) => {
               let tcx = cx.tcx;
               let opt_def = {
                   let def_map = tcx.def_map.borrow();
