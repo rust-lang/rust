@@ -43,6 +43,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
+    ("linkage", Active),
     ("phase", Active),
     ("macro_registrar", Active),
     ("log_syntax", Active),
@@ -186,6 +187,18 @@ impl Visitor<()> for Context {
         }
 
         visit::walk_item(self, i, ());
+    }
+
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+        match i.node {
+            ast::ForeignItemFn(..) | ast::ForeignItemStatic(..) => {
+                if attr::contains_name(i.attrs, "linkage") {
+                    self.gate_feature("linkage", i.span,
+                                      "the `linkage` attribute is experimental \
+                                       and not portable across platforms")
+                }
+            },
+        }
     }
 
     fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {

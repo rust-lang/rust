@@ -11,7 +11,7 @@
 
 use back::{link};
 use lib::llvm::llvm;
-use lib::llvm::{ValueRef, CallConv, StructRetAttribute};
+use lib::llvm::{ValueRef, CallConv, Linkage, StructRetAttribute};
 use lib;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
@@ -106,6 +106,34 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
 }
 
 
+pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
+    // Use the names from src/llvm/docs/LangRef.rst here.  Most types are only
+    // applicable to variable declarations and may not really make sense for
+    // Rust code in the first place but whitelist them anyway and trust that
+    // the user knows what s/he's doing.  Who knows, unanticipated use cases
+    // may pop up in the future.
+    //
+    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+    // and don't have to be, LLVM treats them as no-ops.
+    match name {
+        "appending" => Some(lib::llvm::AppendingLinkage),
+        "available_externally" => Some(lib::llvm::AvailableExternallyLinkage),
+        "common" => Some(lib::llvm::CommonLinkage),
+        "extern_weak" => Some(lib::llvm::ExternalWeakLinkage),
+        "external" => Some(lib::llvm::ExternalLinkage),
+        "internal" => Some(lib::llvm::InternalLinkage),
+        "linker_private" => Some(lib::llvm::LinkerPrivateLinkage),
+        "linker_private_weak" => Some(lib::llvm::LinkerPrivateWeakLinkage),
+        "linkonce" => Some(lib::llvm::LinkOnceAnyLinkage),
+        "linkonce_odr" => Some(lib::llvm::LinkOnceODRLinkage),
+        "private" => Some(lib::llvm::PrivateLinkage),
+        "weak" => Some(lib::llvm::WeakAnyLinkage),
+        "weak_odr" => Some(lib::llvm::WeakODRLinkage),
+        _ => None,
+    }
+}
+
+
 pub fn register_foreign_item_fn(ccx: @CrateContext,
                                 abis: AbiSet,
                                 path: &ast_map::Path,
@@ -158,6 +186,18 @@ pub fn register_foreign_item_fn(ccx: @CrateContext,
                                    llfn_ty,
                                    tys.fn_sig.output);
     };
+
+    match attr::first_attr_value_str_by_name(foreign_item.attrs, "linkage") {
+        Some(name) => {
+            match llvm_linkage_by_name(name.get()) {
+                Some(linkage) => lib::llvm::SetLinkage(llfn, linkage),
+                None => ccx.sess.span_fatal(foreign_item.span,
+                                            format!("Bad linkage `{}`", name)),
+            }
+        },
+        None => {},  // Default "external" linkage.
+    }
+
     add_argument_attributes(&tys, llfn);
 
     return llfn;
