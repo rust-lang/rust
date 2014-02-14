@@ -460,8 +460,18 @@ pub trait Shr<RHS,Result> {
  * ```
  */
 #[lang="index"]
-pub trait Index<Index,Result> {
-    fn index(&self, index: &Index) -> Result;
+pub trait Index<Element,Result> {
+    fn index(&self, element: &Element) -> Result;
+}
+
+#[lang="index_ref"]
+pub trait IndexRef<Element,Result> {
+    fn index<'a>(&'a self, element: &Element) -> &'a Result;
+}
+
+#[lang="index_mut"]
+pub trait IndexMut<Element,Result> {
+    fn index_mut<'a>(&'a mut self, element: &Element) -> &'a mut Result;
 }
 
 #[cfg(test)]
