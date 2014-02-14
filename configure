@@ -1103,3 +1103,5 @@ rm -f config.tmp
 touch config.stamp
 
 step_msg "complete"
+msg "type \`make help\`"
+msg
