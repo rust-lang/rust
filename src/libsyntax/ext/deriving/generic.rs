@@ -196,6 +196,8 @@ pub struct TraitDef<'a> {
     /// The span for the current #[deriving(Foo)] header.
     span: Span,
 
+    attributes: ~[ast::Attribute],
+
     /// Path of the trait, including any type parameters
     path: Path<'a>,
 
@@ -355,7 +357,8 @@ impl<'a> TraitDef<'a> {
      */
     fn create_derived_impl(&self,
                            cx: &mut ExtCtxt,
-                           type_ident: Ident, generics: &Generics,
+                           type_ident: Ident,
+                           generics: &Generics,
                            methods: ~[@ast::Method]) -> @ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
@@ -408,16 +411,16 @@ impl<'a> TraitDef<'a> {
         cx.item(
             self.span,
             ident,
-            ~[doc_attr],
+            vec::append(~[doc_attr], self.attributes),
             ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods.map(|x| *x)))
     }
 
-    fn expand_struct_def(&self,
-                         cx: &mut ExtCtxt,
-                         struct_def: &StructDef,
-                         type_ident: Ident,
-                         generics: &Generics) -> @ast::Item {
+    pub fn expand_struct_def(&self,
+                             cx: &mut ExtCtxt,
+                             struct_def: &StructDef,
+                             type_ident: Ident,
+                             generics: &Generics) -> @ast::Item {
         let methods = self.methods.map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(
@@ -447,7 +450,7 @@ impl<'a> TraitDef<'a> {
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
 
-    fn expand_enum_def(&self,
+    pub fn expand_enum_def(&self,
                        cx: &mut ExtCtxt,
                        enum_def: &EnumDef,
                        type_ident: Ident,
