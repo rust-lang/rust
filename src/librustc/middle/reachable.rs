@@ -25,7 +25,6 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, is_local};
 use syntax::attr;
-use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -66,8 +65,8 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
     }
     if is_local(impl_src) {
         {
-            match tcx.items.find(impl_src.node) {
-                Some(ast_map::NodeItem(item, _)) => {
+            match tcx.map.find(impl_src.node) {
+                Some(ast_map::NodeItem(item)) => {
                     item_might_be_inlined(item)
                 }
                 Some(..) | None => {
@@ -212,47 +211,33 @@ impl ReachableContext {
         }
 
         let node_id = def_id.node;
-        match tcx.items.find(node_id) {
-            Some(ast_map::NodeItem(item, _)) => {
+        match tcx.map.find(node_id) {
+            Some(ast_map::NodeItem(item)) => {
                 match item.node {
                     ast::ItemFn(..) => item_might_be_inlined(item),
                     _ => false,
                 }
             }
-            Some(ast_map::NodeTraitMethod(trait_method, _, _)) => {
+            Some(ast_map::NodeTraitMethod(trait_method)) => {
                 match *trait_method {
                     ast::Required(_) => false,
                     ast::Provided(_) => true,
                 }
             }
-            Some(ast_map::NodeMethod(method, impl_did, _)) => {
+            Some(ast_map::NodeMethod(method)) => {
                 if generics_require_inlining(&method.generics) ||
                         attributes_specify_inlining(method.attrs) {
                     true
                 } else {
+                    let impl_did = tcx.map.get_parent_did(node_id);
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
                     assert!(impl_did.krate == ast::LOCAL_CRATE);
-                    match tcx.items.find(impl_did.node) {
-                        Some(ast_map::NodeItem(item, _)) => {
-                            match item.node {
-                                ast::ItemImpl(ref generics, _, _, _) => {
-                                    generics_require_inlining(generics)
-                                }
-                                _ => false
-                            }
+                    match tcx.map.expect_item(impl_did.node).node {
+                        ast::ItemImpl(ref generics, _, _, _) => {
+                            generics_require_inlining(generics)
                         }
-                        Some(_) => {
-                            tcx.sess.span_bug(method.span,
-                                              "method is not inside an \
-                                               impl?!")
-                        }
-                        None => {
-                            tcx.sess.span_bug(method.span,
-                                              "the impl that this method is \
-                                               supposedly inside of doesn't \
-                                               exist in the AST map?!")
-                        }
+                        _ => false
                     }
                 }
             }
@@ -292,7 +277,7 @@ impl ReachableContext {
             };
 
             scanned.insert(search_item);
-            match self.tcx.items.find(search_item) {
+            match self.tcx.map.find(search_item) {
                 Some(ref item) => self.propagate_node(item, search_item,
                                                   &mut visitor),
                 None if search_item == ast::CRATE_NODE_ID => {}
@@ -315,7 +300,7 @@ impl ReachableContext {
             // but all other rust-only interfaces can be private (they will not
             // participate in linkage after this product is produced)
             match *node {
-                ast_map::NodeItem(item, _) => {
+                ast_map::NodeItem(item) => {
                     match item.node {
                         ast::ItemFn(_, ast::ExternFn, _, _, _) => {
                             let mut reachable_symbols =
@@ -337,7 +322,7 @@ impl ReachableContext {
         }
 
         match *node {
-            ast_map::NodeItem(item, _) => {
+            ast_map::NodeItem(item) => {
                 match item.node {
                     ast::ItemFn(_, _, _, _, search_block) => {
                         if item_might_be_inlined(item) {
@@ -371,7 +356,7 @@ impl ReachableContext {
                     }
                 }
             }
-            ast_map::NodeTraitMethod(trait_method, _, _) => {
+            ast_map::NodeTraitMethod(trait_method) => {
                 match *trait_method {
                     ast::Required(..) => {
                         // Keep going, nothing to get exported
@@ -381,23 +366,20 @@ impl ReachableContext {
                     }
                 }
             }
-            ast_map::NodeMethod(method, did, _) => {
+            ast_map::NodeMethod(method) => {
+                let did = self.tcx.map.get_parent_did(search_item);
                 if method_might_be_inlined(self.tcx, method, did) {
                     visit::walk_block(visitor, method.body, ())
                 }
             }
             // Nothing to recurse on for these
-            ast_map::NodeForeignItem(..) |
-            ast_map::NodeVariant(..) |
-            ast_map::NodeStructCtor(..) => {}
+            ast_map::NodeForeignItem(_) |
+            ast_map::NodeVariant(_) |
+            ast_map::NodeStructCtor(_) => {}
             _ => {
-                let ident_interner = token::get_ident_interner();
-                let desc = ast_map::node_id_to_str(self.tcx.items,
-                                                   search_item,
-                                                   ident_interner);
                 self.tcx.sess.bug(format!("found unexpected thingy in \
                                            worklist: {}",
-                                           desc))
+                                          self.tcx.map.node_to_str(search_item)))
             }
         }
     }

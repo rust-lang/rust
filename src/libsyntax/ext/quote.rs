@@ -71,14 +71,13 @@ pub mod rt {
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> ~str {
-            let this = get_ident(self.name);
-            this.get().to_owned()
+            get_ident(*self).get().to_str()
         }
     }
 
     impl ToSource for @ast::Item {
         fn to_source(&self) -> ~str {
-            pprust::item_to_str(*self, get_ident_interner())
+            pprust::item_to_str(*self)
         }
     }
 
@@ -90,7 +89,7 @@ pub mod rt {
 
     impl ToSource for ast::Ty {
         fn to_source(&self) -> ~str {
-            pprust::ty_to_str(self, get_ident_interner())
+            pprust::ty_to_str(self)
         }
     }
 
@@ -102,19 +101,19 @@ pub mod rt {
 
     impl ToSource for Generics {
         fn to_source(&self) -> ~str {
-            pprust::generics_to_str(self, get_ident_interner())
+            pprust::generics_to_str(self)
         }
     }
 
     impl ToSource for @ast::Expr {
         fn to_source(&self) -> ~str {
-            pprust::expr_to_str(*self, get_ident_interner())
+            pprust::expr_to_str(*self)
         }
     }
 
     impl ToSource for ast::Block {
         fn to_source(&self) -> ~str {
-            pprust::block_to_str(self, get_ident_interner())
+            pprust::block_to_str(self)
         }
     }
 
@@ -349,7 +348,7 @@ fn id_ext(str: &str) -> ast::Ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::Expr {
-    let e_str = cx.expr_str(sp, token::get_ident(ident.name));
+    let e_str = cx.expr_str(sp, token::get_ident(ident));
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),

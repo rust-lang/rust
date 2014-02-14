@@ -440,8 +440,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                let interned_str = token::get_ident(ident.name);
-                return Some(interned_str.get().to_str())
+                return Some(token::get_ident(ident).get().to_str())
             }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }

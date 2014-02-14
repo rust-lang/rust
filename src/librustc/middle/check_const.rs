@@ -22,7 +22,6 @@ use syntax::visit;
 
 struct CheckCrateVisitor {
     sess: Session,
-    ast_map: ast_map::Map,
     def_map: resolve::DefMap,
     method_map: typeck::method_map,
     tcx: ty::ctxt,
@@ -30,7 +29,7 @@ struct CheckCrateVisitor {
 
 impl Visitor<bool> for CheckCrateVisitor {
     fn visit_item(&mut self, i: &Item, env: bool) {
-        check_item(self, self.sess, self.ast_map, self.def_map, i, env);
+        check_item(self, self.sess, self.def_map, i, env);
     }
     fn visit_pat(&mut self, p: &Pat, env: bool) {
         check_pat(self, p, env);
@@ -43,13 +42,11 @@ impl Visitor<bool> for CheckCrateVisitor {
 
 pub fn check_crate(sess: Session,
                    krate: &Crate,
-                   ast_map: ast_map::Map,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
                    tcx: ty::ctxt) {
     let mut v = CheckCrateVisitor {
         sess: sess,
-        ast_map: ast_map,
         def_map: def_map,
         method_map: method_map,
         tcx: tcx,
@@ -60,14 +57,13 @@ pub fn check_crate(sess: Session,
 
 pub fn check_item(v: &mut CheckCrateVisitor,
                   sess: Session,
-                  ast_map: ast_map::Map,
                   def_map: resolve::DefMap,
                   it: &Item,
                   _is_const: bool) {
     match it.node {
         ItemStatic(_, _, ex) => {
             v.visit_expr(ex, true);
-            check_item_recursion(sess, ast_map, def_map, it);
+            check_item_recursion(sess, &v.tcx.map, def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
@@ -209,17 +205,17 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
 struct CheckItemRecursionVisitor<'a> {
     root_it: &'a Item,
     sess: Session,
-    ast_map: ast_map::Map,
+    ast_map: &'a ast_map::Map,
     def_map: resolve::DefMap,
     idstack: ~[NodeId]
 }
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
-pub fn check_item_recursion(sess: Session,
-                            ast_map: ast_map::Map,
-                            def_map: resolve::DefMap,
-                            it: &Item) {
+pub fn check_item_recursion<'a>(sess: Session,
+                                ast_map: &'a ast_map::Map,
+                                def_map: resolve::DefMap,
+                                it: &'a Item) {
 
     let mut visitor = CheckItemRecursionVisitor {
         root_it: it,
@@ -248,12 +244,7 @@ impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
                 match def_map.get().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
-                        match self.ast_map.get(def_id.node) {
-                            ast_map::NodeItem(it, _) => {
-                                self.visit_item(it, ());
-                            }
-                            _ => fail!("const not bound to an item")
-                        }
+                        self.visit_item(self.ast_map.expect_item(def_id.node), ());
                     }
                     _ => ()
                 }

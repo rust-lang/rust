@@ -121,7 +121,6 @@ use std::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::ast_util;
 use syntax::attr;
@@ -389,7 +388,7 @@ impl Visitor<()> for GatherLocalsVisitor {
                 {
                     let locals = self.fcx.inh.locals.borrow();
                     debug!("Pattern binding {} is assigned to {}",
-                           self.tcx.sess.str_of(path.segments[0].identifier),
+                           token::get_ident(path.segments[0].identifier),
                            self.fcx.infcx().ty_to_str(
                                locals.get().get_copy(&p.id)));
                 }
@@ -520,7 +519,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         match orig_sp {
             Some(orig_sp) => {
                 tcx.sess.span_err(sp, format!("duplicate field name {} in record type declaration",
-                                              tcx.sess.str_of(id)));
+                                              token::get_ident(id)));
                 tcx.sess.span_note(orig_sp, "first declaration of this field occurred here");
                 break;
             }
@@ -574,7 +573,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
         check_bare_fn(ccx, decl, body, it.id, fn_tpt.ty, param_env);
       }
       ast::ItemImpl(_, ref opt_trait_ref, _, ref ms) => {
-        debug!("ItemImpl {} with id {}", ccx.tcx.sess.str_of(it.ident), it.id);
+        debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         for m in ms.iter() {
@@ -723,9 +722,8 @@ fn check_impl_methods_against_trait(ccx: @CrateCtxt,
                 tcx.sess.span_err(
                     impl_method.span,
                     format!("method `{}` is not a member of trait `{}`",
-                            tcx.sess.str_of(impl_method_ty.ident),
-                            pprust::path_to_str(&ast_trait_ref.path,
-                                                tcx.sess.intr())));
+                            token::get_ident(impl_method_ty.ident),
+                            pprust::path_to_str(&ast_trait_ref.path)));
             }
         }
     }
@@ -743,7 +741,7 @@ fn check_impl_methods_against_trait(ccx: @CrateCtxt,
                 |m| m.ident.name == trait_method.ident.name);
         if !is_implemented && !is_provided {
             missing_methods.push(
-                format!("`{}`", ccx.tcx.sess.str_of(trait_method.ident)));
+                format!("`{}`", token::get_ident(trait_method.ident)));
         }
     }
 
@@ -794,9 +792,8 @@ fn compare_impl_method(tcx: ty::ctxt,
                 impl_m_span,
                 format!("method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
-                        tcx.sess.str_of(trait_m.ident),
-                        pprust::explicit_self_to_str(&impl_m.explicit_self,
-                                                     tcx.sess.intr())));
+                        token::get_ident(trait_m.ident),
+                        pprust::explicit_self_to_str(&impl_m.explicit_self)));
             return;
         }
         (_, &ast::SelfStatic) => {
@@ -804,9 +801,8 @@ fn compare_impl_method(tcx: ty::ctxt,
                 impl_m_span,
                 format!("method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
-                        tcx.sess.str_of(trait_m.ident),
-                        pprust::explicit_self_to_str(&trait_m.explicit_self,
-                                                     tcx.sess.intr())));
+                        token::get_ident(trait_m.ident),
+                        pprust::explicit_self_to_str(&trait_m.explicit_self)));
             return;
         }
         _ => {
@@ -821,7 +817,7 @@ fn compare_impl_method(tcx: ty::ctxt,
             impl_m_span,
             format!("method `{}` has {} type parameter(s), but its trait \
                     declaration has {} type parameter(s)",
-                    tcx.sess.str_of(trait_m.ident),
+                    token::get_ident(trait_m.ident),
                     num_impl_m_type_params,
                     num_trait_m_type_params));
         return;
@@ -832,7 +828,7 @@ fn compare_impl_method(tcx: ty::ctxt,
             impl_m_span,
             format!("method `{}` has {} parameter{} \
                   but the declaration in trait `{}` has {}",
-                 tcx.sess.str_of(trait_m.ident),
+                 token::get_ident(trait_m.ident),
                  impl_m.fty.sig.inputs.len(),
                  if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
                  ty::item_path_str(tcx, trait_m.def_id),
@@ -857,7 +853,7 @@ fn compare_impl_method(tcx: ty::ctxt,
                        which is not required by \
                        the corresponding type parameter \
                        in the trait declaration",
-                       tcx.sess.str_of(trait_m.ident),
+                       token::get_ident(trait_m.ident),
                        i,
                        extra_bounds.user_string(tcx)));
            return;
@@ -875,7 +871,7 @@ fn compare_impl_method(tcx: ty::ctxt,
                         type parameter {} has {} trait bound(s), but the \
                         corresponding type parameter in \
                         the trait declaration has {} trait bound(s)",
-                        tcx.sess.str_of(trait_m.ident),
+                        token::get_ident(trait_m.ident),
                         i, impl_param_def.bounds.trait_bounds.len(),
                         trait_param_def.bounds.trait_bounds.len()));
             return;
@@ -945,7 +941,7 @@ fn compare_impl_method(tcx: ty::ctxt,
             tcx.sess.span_err(
                 impl_m_span,
                 format!("method `{}` has an incompatible type: {}",
-                        tcx.sess.str_of(trait_m.ident),
+                        token::get_ident(trait_m.ident),
                         ty::type_err_to_str(tcx, terr)));
             ty::note_and_explain_type_err(tcx, terr);
         }
@@ -1102,9 +1098,7 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.bug(
                     format!("no type for node {}: {} in fcx {}",
-                            id, ast_map::node_id_to_str(
-                                self.tcx().items, id,
-                                token::get_ident_interner()),
+                            id, self.tcx().map.node_to_str(id),
                             self.tag()));
             }
         }
@@ -1117,8 +1111,7 @@ impl FnCtxt {
             None => {
                 self.tcx().sess.bug(
                     format!("no type substs for node {}: {} in fcx {}",
-                            id, ast_map::node_id_to_str(self.tcx().items, id,
-                                                        token::get_ident_interner()),
+                            id, self.tcx().map.node_to_str(id),
                             self.tag()));
             }
         }
@@ -1908,8 +1901,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                   |actual| {
                       format!("type `{}` does not implement any method in scope \
                             named `{}`",
-                           actual,
-                           fcx.ccx.tcx.sess.str_of(method_name))
+                           actual, token::get_ident(method_name))
                   },
                   expr_t,
                   None);
@@ -2336,11 +2328,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
-                        let string = token::get_ident(field);
                         format!("attempted to take value of method `{}` on type `{}` \
                                  (try writing an anonymous function)",
-                                string.get(),
-                                actual)
+                                token::get_name(field), actual)
                     },
                     expr_t, None);
             }
@@ -2349,11 +2339,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
-                        let string = token::get_ident(field);
                         format!("attempted access of field `{}` on type `{}`, \
                                  but no field with that name was found",
-                                string.get(),
-                                actual)
+                                token::get_name(field), actual)
                     },
                     expr_t, None);
             }
@@ -2392,7 +2380,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                       field.ident.span,
                       |actual| {
                           format!("structure `{}` has no field named `{}`",
-                                  actual, tcx.sess.str_of(field.ident.node))
+                                  actual, token::get_ident(field.ident.node))
                     }, struct_ty, None);
                     error_happened = true;
                 }
@@ -2400,7 +2388,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     tcx.sess.span_err(
                         field.ident.span,
                         format!("field `{}` specified more than once",
-                             tcx.sess.str_of(field.ident.node)));
+                            token::get_ident(field.ident.node)));
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -2433,8 +2421,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     let name = class_field.name;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
-                        let string = token::get_ident(name);
-                        missing_fields.push(~"`" + string.get() + "`");
+                        missing_fields.push(~"`" + token::get_name(name).get() + "`");
                     }
                 }
 
@@ -3201,7 +3188,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                       let resolved = structurally_resolved_type(fcx,
                                                                 expr.span,
                                                                 raw_base_t);
-                      let index_ident = tcx.sess.ident_of("index");
                       let error_message = || {
                         fcx.type_error_message(expr.span,
                                                |actual| {
@@ -3216,7 +3202,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                                     callee_id,
                                                     expr,
                                                     resolved,
-                                                    index_ident.name,
+                                                    token::intern("index"),
                                                     [base, idx],
                                                     DoDerefArgs,
                                                     AutoderefReceiver,
@@ -3230,7 +3216,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
     }
 
     debug!("type of expr({}) {} is...", expr.id,
-           syntax::print::pprust::expr_to_str(expr, tcx.sess.intr()));
+           syntax::print::pprust::expr_to_str(expr));
     debug!("... {}, expected is {}",
            ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
            match expected {
@@ -3576,7 +3562,7 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
 
             match v.node.disr_expr {
                 Some(e) => {
-                    debug!("disr expr, checking {}", pprust::expr_to_str(e, ccx.tcx.sess.intr()));
+                    debug!("disr expr, checking {}", pprust::expr_to_str(e));
 
                     let fcx = blank_fn_ctxt(ccx, rty, e.id);
                     let declty = ty::mk_int_var(ccx.tcx, fcx.infcx().next_int_var_id());
@@ -4013,7 +3999,7 @@ pub fn check_bounds_are_used(ccx: @CrateCtxt,
         if !*b {
             ccx.tcx.sess.span_err(
                 span, format!("type parameter `{}` is unused",
-                           ccx.tcx.sess.str_of(tps.get(i).ident)));
+                              token::get_ident(tps.get(i).ident)));
         }
     }
 }
@@ -4024,10 +4010,9 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
     }
 
     let tcx = ccx.tcx;
-    let nm = ccx.tcx.sess.str_of(it.ident);
-    let name = nm.as_slice();
-    let (n_tps, inputs, output) = if name.starts_with("atomic_") {
-        let split : ~[&str] = name.split('_').collect();
+    let name = token::get_ident(it.ident);
+    let (n_tps, inputs, output) = if name.get().starts_with("atomic_") {
+        let split : ~[&str] = name.get().split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here
@@ -4071,7 +4056,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
         }
 
     } else {
-        match name {
+        match name.get() {
             "abort" => (0, ~[], ty::mk_bot()),
             "breakpoint" => (0, ~[], ty::mk_nil()),
             "size_of" |

@@ -63,11 +63,10 @@ use util::ppaux::Repr;
 
 use std::vec;
 use syntax::abi::AbiSet;
-use syntax::{ast, ast_map, ast_util};
+use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
-use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
@@ -111,9 +110,8 @@ pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
     };
 
     debug!("ast_region_to_region(lifetime={} id={}) yields {}",
-            lifetime_to_str(lifetime, tcx.sess.intr()),
-            lifetime.id,
-            r.repr(tcx));
+            lifetime_to_str(lifetime),
+            lifetime.id, r.repr(tcx));
 
     r
 }
@@ -146,8 +144,7 @@ fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     };
 
     debug!("opt_ast_region_to_region(opt_lifetime={:?}) yields {}",
-            opt_lifetime.as_ref().map(
-                |e| lifetime_to_str(e, this.tcx().sess.intr())),
+            opt_lifetime.as_ref().map(|e| lifetime_to_str(e)),
             r.repr(this.tcx()));
 
     r
@@ -333,8 +330,7 @@ pub fn ast_ty_to_prim_ty(tcx: ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
             let def_map = tcx.def_map.borrow();
             let a_def = match def_map.get().find(&id) {
                 None => tcx.sess.span_fatal(
-                    ast_ty.span, format!("unbound path {}",
-                                         path_to_str(path, tcx.sess.intr()))),
+                    ast_ty.span, format!("unbound path {}", path_to_str(path))),
                 Some(&d) => d
             };
             match a_def {
@@ -564,8 +560,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 let def_map = tcx.def_map.borrow();
                 let a_def = match def_map.get().find(&id) {
                     None => tcx.sess.span_fatal(
-                        ast_ty.span, format!("unbound path {}",
-                                             path_to_str(path, tcx.sess.intr()))),
+                        ast_ty.span, format!("unbound path {}", path_to_str(path))),
                     Some(&d) => d
                 };
                 // Kind bounds on path types are only supported for traits.
@@ -579,7 +574,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 }
                 match a_def {
                     ast::DefTrait(_) => {
-                        let path_str = path_to_str(path, tcx.sess.intr());
+                        let path_str = path_to_str(path);
                         tcx.sess.span_err(
                             ast_ty.span,
                             format!("reference to trait `{}` where a type is expected; \
@@ -605,8 +600,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     ast::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
                             format!("found module name used as a type: {}",
-                                    ast_map::node_id_to_str(tcx.items, id.node,
-                                                            token::get_ident_interner())));
+                                    tcx.map.node_to_str(id.node)));
                     }
                     ast::DefPrimTy(_) => {
                         fail!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");

@@ -10,161 +10,93 @@
 
 use abi::AbiSet;
 use ast::*;
-use ast;
 use ast_util;
 use codemap::Span;
-use diagnostic::SpanHandler;
 use fold::Folder;
 use fold;
-use parse::token::{get_ident_interner, IdentInterner};
+use parse::token;
 use print::pprust;
 use util::small_vector::SmallVector;
 
 use std::logging;
 use std::cell::RefCell;
-use collections::SmallIntMap;
+use std::iter;
+use std::vec;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
-    PathMod(Ident),
-    PathName(Ident),
-
-    // A pretty name can come from an `impl` block. We attempt to select a
-    // reasonable name for debuggers to see, but to guarantee uniqueness with
-    // other paths the hash should also be taken into account during symbol
-    // generation.
-    PathPrettyName(Ident, u64),
+    PathMod(Name),
+    PathName(Name)
 }
 
 impl PathElem {
-    pub fn ident(&self) -> Ident {
+    pub fn name(&self) -> Name {
         match *self {
-            PathMod(ident)            |
-            PathName(ident)           |
-            PathPrettyName(ident, _) => ident
+            PathMod(name) | PathName(name) => name
         }
     }
 }
 
-pub type Path = ~[PathElem];
+impl ToStr for PathElem {
+    fn to_str(&self) -> ~str {
+        token::get_name(self.name()).get().to_str()
+    }
+}
 
-pub fn path_to_str_with_sep(p: &[PathElem], sep: &str, itr: @IdentInterner)
-                            -> ~str {
-    let strs = p.map(|e| {
-        match *e {
-            PathMod(s) | PathName(s) | PathPrettyName(s, _) => {
-                itr.get(s.name)
+#[deriving(Clone)]
+struct LinkedPathNode<'a> {
+    node: PathElem,
+    next: LinkedPath<'a>,
+}
+
+type LinkedPath<'a> = Option<&'a LinkedPathNode<'a>>;
+
+impl<'a> Iterator<PathElem> for LinkedPath<'a> {
+    fn next(&mut self) -> Option<PathElem> {
+        match *self {
+            Some(node) => {
+                *self = node.next;
+                Some(node.node)
             }
-        }
-    });
-    strs.connect(sep)
-}
-
-pub fn path_ident_to_str(p: &Path, i: Ident, itr: @IdentInterner) -> ~str {
-    if p.is_empty() {
-        itr.get(i.name).into_owned()
-    } else {
-        let string = itr.get(i.name);
-        format!("{}::{}", path_to_str(*p, itr), string.as_slice())
-    }
-}
-
-pub fn path_to_str(p: &[PathElem], itr: @IdentInterner) -> ~str {
-    path_to_str_with_sep(p, "::", itr)
-}
-
-pub fn path_elem_to_str(pe: PathElem, itr: @IdentInterner) -> ~str {
-    match pe {
-        PathMod(s) | PathName(s) | PathPrettyName(s, _) => {
-            itr.get(s.name).into_owned()
+            None => None
         }
     }
 }
 
-/// write a "pretty" version of `ty` to `out`. This is designed so
-/// that symbols of `impl`'d methods give some hint of where they came
-/// from, even if it's hard to read (previously they would all just be
-/// listed as `__extensions__::method_name::hash`, with no indication
-/// of the type).
-// FIXME: these dollar signs and the names in general are actually a
-//      relic of $ being one of the very few valid symbol names on
-//      unix. These kinds of details shouldn't be exposed way up here
-//      in the ast.
-fn pretty_ty(ty: &Ty, itr: @IdentInterner, out: &mut ~str) {
-    let (prefix, subty) = match ty.node {
-        TyUniq(ty) => ("$UP$", &*ty),
-        TyBox(ty) => ("$SP$", &*ty),
-        TyPtr(MutTy { ty, mutbl }) => (if mutbl == MutMutable {"$RPmut$"} else {"$RP$"},
-                                       &*ty),
-        TyRptr(_, MutTy { ty, mutbl }) => (if mutbl == MutMutable {"$BPmut$"} else {"$BP$"},
-                                           &*ty),
+// HACK(eddyb) move this into libstd (value wrapper for vec::Items).
+#[deriving(Clone)]
+pub struct Values<'a, T>(vec::Items<'a, T>);
 
-        TyVec(ty) => ("$VEC$", &*ty),
-        TyFixedLengthVec(ty, _) => ("$FIXEDVEC$", &*ty),
-
-        // these can't be represented as <prefix><contained ty>, so
-        // need custom handling.
-        TyNil => { out.push_str("$NIL$"); return }
-        TyPath(ref path, _, _) => {
-            out.push_str(itr.get(path.segments
-                                     .last()
-                                     .unwrap()
-                                     .identifier
-                                     .name).as_slice());
-            return
-        }
-        TyTup(ref tys) => {
-            out.push_str(format!("$TUP_{}$", tys.len()));
-            for subty in tys.iter() {
-                pretty_ty(*subty, itr, out);
-                out.push_char('$');
-            }
-            return
-        }
-
-        // meh, better than nothing.
-        TyBot => { out.push_str("$BOT$"); return }
-        TyClosure(..) => { out.push_str("$CLOSURE$"); return }
-        TyBareFn(..) => { out.push_str("$FN$"); return }
-        TyTypeof(..) => { out.push_str("$TYPEOF$"); return }
-        TyInfer(..) => { out.push_str("$INFER$"); return }
-
-    };
-
-    out.push_str(prefix);
-    pretty_ty(subty, itr, out);
+impl<'a, T: Pod> Iterator<T> for Values<'a, T> {
+    fn next(&mut self) -> Option<T> {
+        let &Values(ref mut items) = self;
+        items.next().map(|&x| x)
+    }
 }
 
-pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> PathElem {
-    let itr = get_ident_interner();
+/// The type of the iterator used by with_path.
+pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-    let hash = (trait_ref, ty).hash();
-    let mut pretty;
-    match *trait_ref {
-        None => pretty = ~"",
-        Some(ref trait_ref) => {
-            pretty = itr.get(trait_ref.path.segments.last().unwrap().identifier.name)
-                        .into_owned();
-            pretty.push_char('$');
+pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> ~str {
+    let itr = token::get_ident_interner();
+
+    path.fold(~"", |mut s, e| {
+        let e = itr.get(e.name());
+        if !s.is_empty() {
+            s.push_str("::");
         }
-    };
-    pretty_ty(ty, itr, &mut pretty);
-
-    PathPrettyName(Ident::new(itr.gensym(pretty)), hash)
+        s.push_str(e.as_slice());
+        s
+    })
 }
 
 #[deriving(Clone)]
 pub enum Node {
-    NodeItem(@Item, @Path),
-    NodeForeignItem(@ForeignItem, AbiSet, Visibility, @Path),
-    NodeTraitMethod(@TraitMethod, DefId /* trait did */,
-                    @Path /* path to the trait */),
-    NodeMethod(@Method, DefId /* impl did */, @Path /* path to the impl */),
-
-    /// NodeVariant represents a variant of an enum, e.g., for
-    /// `enum A { B, C, D }`, there would be a NodeItem for `A`, and a
-    /// NodeVariant item for each of `B`, `C`, and `D`.
-    NodeVariant(P<Variant>, @Item, @Path),
+    NodeItem(@Item),
+    NodeForeignItem(@ForeignItem),
+    NodeTraitMethod(@TraitMethod),
+    NodeMethod(@Method),
+    NodeVariant(P<Variant>),
     NodeExpr(@Expr),
     NodeStmt(@Stmt),
     NodeArg(@Pat),
@@ -172,27 +104,76 @@ pub enum Node {
     NodeBlock(P<Block>),
 
     /// NodeStructCtor represents a tuple struct.
-    NodeStructCtor(@StructDef, @Item, @Path),
-    NodeCalleeScope(@Expr)
+    NodeStructCtor(@StructDef),
+    NodeCalleeScope(@Expr),
 }
 
-impl Node {
-    pub fn with_attrs<T>(&self, f: |Option<&[Attribute]>| -> T) -> T {
-        let attrs = match *self {
-            NodeItem(i, _) => Some(i.attrs.as_slice()),
-            NodeForeignItem(fi, _, _, _) => Some(fi.attrs.as_slice()),
-            NodeTraitMethod(tm, _, _) => match *tm {
-                Required(ref type_m) => Some(type_m.attrs.as_slice()),
-                Provided(m) => Some(m.attrs.as_slice())
-            },
-            NodeMethod(m, _, _) => Some(m.attrs.as_slice()),
-            NodeVariant(ref v, _, _) => Some(v.node.attrs.as_slice()),
-            // unit/tuple structs take the attributes straight from
-            // the struct definition.
-            NodeStructCtor(_, strct, _) => Some(strct.attrs.as_slice()),
-            _ => None
-        };
-        f(attrs)
+// The odd layout is to bring down the total size.
+#[deriving(Clone)]
+enum MapEntry {
+    // Placeholder for holes in the map.
+    NotPresent,
+
+    // All the node types, with a parent ID.
+    EntryItem(NodeId, @Item),
+    EntryForeignItem(NodeId, @ForeignItem),
+    EntryTraitMethod(NodeId, @TraitMethod),
+    EntryMethod(NodeId, @Method),
+    EntryVariant(NodeId, P<Variant>),
+    EntryExpr(NodeId, @Expr),
+    EntryStmt(NodeId, @Stmt),
+    EntryArg(NodeId, @Pat),
+    EntryLocal(NodeId, @Pat),
+    EntryBlock(NodeId, P<Block>),
+    EntryStructCtor(NodeId, @StructDef),
+    EntryCalleeScope(NodeId, @Expr),
+
+    // Roots for node trees.
+    RootCrate,
+    RootInlinedParent(P<InlinedParent>)
+}
+
+struct InlinedParent {
+    path: ~[PathElem],
+    // Required by NodeTraitMethod and NodeMethod.
+    def_id: DefId
+}
+
+impl MapEntry {
+    fn parent(&self) -> Option<NodeId> {
+        Some(match *self {
+            EntryItem(id, _) => id,
+            EntryForeignItem(id, _) => id,
+            EntryTraitMethod(id, _) => id,
+            EntryMethod(id, _) => id,
+            EntryVariant(id, _) => id,
+            EntryExpr(id, _) => id,
+            EntryStmt(id, _) => id,
+            EntryArg(id, _) => id,
+            EntryLocal(id, _) => id,
+            EntryBlock(id, _) => id,
+            EntryStructCtor(id, _) => id,
+            EntryCalleeScope(id, _) => id,
+            _ => return None
+        })
+    }
+
+    fn to_node(&self) -> Option<Node> {
+        Some(match *self {
+            EntryItem(_, p) => NodeItem(p),
+            EntryForeignItem(_, p) => NodeForeignItem(p),
+            EntryTraitMethod(_, p) => NodeTraitMethod(p),
+            EntryMethod(_, p) => NodeMethod(p),
+            EntryVariant(_, p) => NodeVariant(p),
+            EntryExpr(_, p) => NodeExpr(p),
+            EntryStmt(_, p) => NodeStmt(p),
+            EntryArg(_, p) => NodeArg(p),
+            EntryLocal(_, p) => NodeLocal(p),
+            EntryBlock(_, p) => NodeBlock(p),
+            EntryStructCtor(_, p) => NodeStructCtor(p),
+            EntryCalleeScope(_, p) => NodeCalleeScope(p),
+            _ => return None
+        })
     }
 }
 
@@ -202,33 +183,201 @@ pub struct Map {
     /// a NodeId is in the map, but empirically the occupancy is about
     /// 75-80%, so there's not too much overhead (certainly less than
     /// a hashmap, since they (at the time of writing) have a maximum
-    /// of 75% occupancy). (The additional overhead of the Option<>
-    /// inside the SmallIntMap could be removed by adding an extra
-    /// empty variant to Node and storing a vector here, but that was
-    /// found to not make much difference.)
+    /// of 75% occupancy).
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    priv map: @RefCell<SmallIntMap<Node>>
+    priv map: RefCell<~[MapEntry]>
 }
 
 impl Map {
+    fn find_entry(&self, id: NodeId) -> Option<MapEntry> {
+        let map = self.map.borrow();
+        map.get().get(id as uint).map(|x| *x)
+    }
+
     /// Retrieve the Node corresponding to `id`, failing if it cannot
     /// be found.
-    pub fn get(&self, id: ast::NodeId) -> Node {
-        let map = self.map.borrow();
-        *map.get().get(&(id as uint))
+    pub fn get(&self, id: NodeId) -> Node {
+        match self.find(id) {
+            Some(node) => node,
+            None => fail!("couldn't find node id {} in the AST map", id)
+        }
     }
+
     /// Retrieve the Node corresponding to `id`, returning None if
     /// cannot be found.
-    pub fn find(&self, id: ast::NodeId) -> Option<Node> {
-        let map = self.map.borrow();
-        map.get().find(&(id as uint)).map(|&n| n)
+    pub fn find(&self, id: NodeId) -> Option<Node> {
+        self.find_entry(id).and_then(|x| x.to_node())
+    }
+
+    pub fn get_parent(&self, id: NodeId) -> NodeId {
+        self.find_entry(id).and_then(|x| x.parent()).unwrap_or(id)
+    }
+
+    pub fn get_parent_did(&self, id: NodeId) -> DefId {
+        let parent = self.get_parent(id);
+        match self.find_entry(parent) {
+            Some(RootInlinedParent(data)) => data.def_id,
+            _ => ast_util::local_def(parent)
+        }
+    }
+
+    pub fn get_foreign_abis(&self, id: NodeId) -> AbiSet {
+        let parent = self.get_parent(id);
+        let abis = match self.find_entry(parent) {
+            Some(EntryItem(_, i)) => match i.node {
+                ItemForeignMod(ref nm) => Some(nm.abis),
+                _ => None
+            },
+            // Wrong but OK, because the only inlined foreign items are intrinsics.
+            Some(RootInlinedParent(_)) => Some(AbiSet::Intrinsic()),
+            _ => None
+        };
+        match abis {
+            Some(abis) => abis,
+            None => fail!("expected foreign mod or inlined parent, found {}",
+                          self.node_to_str(parent))
+        }
+    }
+
+    pub fn get_foreign_vis(&self, id: NodeId) -> Visibility {
+        let vis = self.expect_foreign_item(id).vis;
+        match self.find(self.get_parent(id)) {
+            Some(NodeItem(i)) => vis.inherit_from(i.vis),
+            _ => vis
+        }
+    }
+
+    pub fn expect_item(&self, id: NodeId) -> @Item {
+        match self.find(id) {
+            Some(NodeItem(item)) => item,
+            _ => fail!("expected item, found {}", self.node_to_str(id))
+        }
+    }
+
+    pub fn expect_foreign_item(&self, id: NodeId) -> @ForeignItem {
+        match self.find(id) {
+            Some(NodeForeignItem(item)) => item,
+            _ => fail!("expected foreign item, found {}", self.node_to_str(id))
+        }
+    }
+
+    pub fn get_path_elem(&self, id: NodeId) -> PathElem {
+        match self.get(id) {
+            NodeItem(item) => {
+                match item.node {
+                    ItemMod(_) | ItemForeignMod(_) => {
+                        PathMod(item.ident.name)
+                    }
+                    _ => PathName(item.ident.name)
+                }
+            }
+            NodeForeignItem(i) => PathName(i.ident.name),
+            NodeMethod(m) => PathName(m.ident.name),
+            NodeTraitMethod(tm) => match *tm {
+                Required(ref m) => PathName(m.ident.name),
+                Provided(ref m) => PathName(m.ident.name)
+            },
+            NodeVariant(v) => PathName(v.node.name.name),
+            node => fail!("no path elem for {:?}", node)
+        }
+    }
+
+    pub fn with_path<T>(&self, id: NodeId, f: |PathElems| -> T) -> T {
+        self.with_path_next(id, None, f)
+    }
+
+    pub fn path_to_str(&self, id: NodeId) -> ~str {
+        self.with_path(id, |path| path_to_str(path))
+    }
+
+    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> ~str {
+        self.with_path(id, |path| {
+            path_to_str(path.chain(Some(PathName(i.name)).move_iter()))
+        })
+    }
+
+    fn with_path_next<T>(&self, id: NodeId, next: LinkedPath, f: |PathElems| -> T) -> T {
+        let parent = self.get_parent(id);
+        let parent = match self.find_entry(id) {
+            Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
+                // Anonymous extern items, enum variants and struct ctors
+                // go in the parent scope.
+                self.get_parent(parent)
+            }
+            // But tuple struct ctors don't have names, so use the path of its
+            // parent, the struct item. Similarly with closure expressions.
+            Some(EntryStructCtor(..)) | Some(EntryExpr(..)) => {
+                return self.with_path_next(parent, next, f);
+            }
+            _ => parent
+        };
+        if parent == id {
+            match self.find_entry(id) {
+                Some(RootInlinedParent(data)) => {
+                    f(Values(data.path.iter()).chain(next))
+                }
+                _ => f(Values([].iter()).chain(next))
+            }
+        } else {
+            self.with_path_next(parent, Some(&LinkedPathNode {
+                node: self.get_path_elem(id),
+                next: next
+            }), f)
+        }
+    }
+
+    pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
+        let attrs = match self.get(id) {
+            NodeItem(i) => Some(i.attrs.as_slice()),
+            NodeForeignItem(fi) => Some(fi.attrs.as_slice()),
+            NodeTraitMethod(tm) => match *tm {
+                Required(ref type_m) => Some(type_m.attrs.as_slice()),
+                Provided(m) => Some(m.attrs.as_slice())
+            },
+            NodeMethod(m) => Some(m.attrs.as_slice()),
+            NodeVariant(ref v) => Some(v.node.attrs.as_slice()),
+            // unit/tuple structs take the attributes straight from
+            // the struct definition.
+            // FIXME(eddyb) make this work again (requires access to the map).
+            NodeStructCtor(_) => {
+                return self.with_attrs(self.get_parent(id), f);
+            }
+            _ => None
+        };
+        f(attrs)
+    }
+
+    pub fn span(&self, id: NodeId) -> Span {
+        match self.find(id) {
+            Some(NodeItem(item)) => item.span,
+            Some(NodeForeignItem(foreign_item)) => foreign_item.span,
+            Some(NodeTraitMethod(trait_method)) => {
+                match *trait_method {
+                    Required(ref type_method) => type_method.span,
+                    Provided(ref method) => method.span,
+                }
+            }
+            Some(NodeMethod(method)) => method.span,
+            Some(NodeVariant(variant)) => variant.span,
+            Some(NodeExpr(expr)) => expr.span,
+            Some(NodeStmt(stmt)) => stmt.span,
+            Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
+            Some(NodeBlock(block)) => block.span,
+            Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
+            Some(NodeCalleeScope(expr)) => expr.span,
+            _ => fail!("node_span: could not find span for id {}", id),
+        }
+    }
+
+    pub fn node_to_str(&self, id: NodeId) -> ~str {
+        node_id_to_str(self, id)
     }
 }
 
 pub trait FoldOps {
-    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
+    fn new_id(&self, id: NodeId) -> NodeId {
         id
     }
     fn new_span(&self, span: Span) -> Span {
@@ -236,23 +385,28 @@ pub trait FoldOps {
     }
 }
 
-pub struct Ctx<F> {
-    map: Map,
-    path: Path,
-    diag: @SpanHandler,
+pub struct Ctx<'a, F> {
+    map: &'a Map,
+    // The node in which we are currently mapping (an item or a method).
+    // When equal to DUMMY_NODE_ID, the next mapped node becomes the parent.
+    parent: NodeId,
     fold_ops: F
 }
 
-impl<F> Ctx<F> {
-    fn insert(&self, id: ast::NodeId, node: Node) {
+impl<'a, F> Ctx<'a, F> {
+    fn insert(&self, id: NodeId, entry: MapEntry) {
         let mut map = self.map.map.borrow_mut();
-        map.get().insert(id as uint, node);
+        map.get().grow_set(id as uint, &NotPresent, entry);
     }
 }
 
-impl<F: FoldOps> Folder for Ctx<F> {
-    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
-        self.fold_ops.new_id(id)
+impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
+    fn new_id(&mut self, id: NodeId) -> NodeId {
+        let id = self.fold_ops.new_id(id);
+        if self.parent == DUMMY_NODE_ID {
+            self.parent = id;
+        }
+        id
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -260,75 +414,52 @@ impl<F: FoldOps> Folder for Ctx<F> {
     }
 
     fn fold_item(&mut self, i: @Item) -> SmallVector<@Item> {
-        // clone is FIXME #2543
-        let item_path = @self.path.clone();
-        self.path.push(match i.node {
-            ItemImpl(_, ref maybe_trait, ty, _) => {
-                // Right now the ident on impls is __extensions__ which isn't
-                // very pretty when debugging, so attempt to select a better
-                // name to use.
-                impl_pretty_name(maybe_trait, ty)
-            }
-            ItemMod(_) | ItemForeignMod(_) => PathMod(i.ident),
-            _ => PathName(i.ident)
-        });
+        let parent = self.parent;
+        self.parent = DUMMY_NODE_ID;
 
         let i = fold::noop_fold_item(i, self).expect_one("expected one item");
-        self.insert(i.id, NodeItem(i, item_path));
+        assert_eq!(self.parent, i.id);
 
         match i.node {
             ItemImpl(_, _, _, ref ms) => {
-                // clone is FIXME #2543
-                let p = @self.path.clone();
-                let impl_did = ast_util::local_def(i.id);
                 for &m in ms.iter() {
-                    self.insert(m.id, NodeMethod(m, impl_did, p));
+                    self.insert(m.id, EntryMethod(self.parent, m));
                 }
-
             }
             ItemEnum(ref enum_definition, _) => {
-                // clone is FIXME #2543
-                let p = @self.path.clone();
                 for &v in enum_definition.variants.iter() {
-                    self.insert(v.node.id, NodeVariant(v, i, p));
+                    self.insert(v.node.id, EntryVariant(self.parent, v));
                 }
             }
             ItemForeignMod(ref nm) => {
-                for nitem in nm.items.iter() {
-                    // Compute the visibility for this native item.
-                    let visibility = nitem.vis.inherit_from(i.vis);
-
-                    self.insert(nitem.id,
-                                // Anonymous extern mods go in the parent scope.
-                                NodeForeignItem(*nitem, nm.abis, visibility, item_path));
+                for &nitem in nm.items.iter() {
+                    self.insert(nitem.id, EntryForeignItem(self.parent, nitem));
                 }
             }
             ItemStruct(struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 match struct_def.ctor_id {
-                    None => {}
                     Some(ctor_id) => {
-                        // clone is FIXME #2543
-                        let p = @self.path.clone();
-                        self.insert(ctor_id, NodeStructCtor(struct_def, i, p));
+                        self.insert(ctor_id, EntryStructCtor(self.parent,
+                                                             struct_def));
                     }
+                    None => {}
                 }
             }
             ItemTrait(_, ref traits, ref methods) => {
                 for t in traits.iter() {
-                    self.insert(t.ref_id, NodeItem(i, item_path));
+                    self.insert(t.ref_id, EntryItem(self.parent, i));
                 }
 
-                // clone is FIXME #2543
-                let p = @self.path.clone();
                 for tm in methods.iter() {
-                    let d_id = ast_util::local_def(i.id);
                     match *tm {
                         Required(ref m) => {
-                            self.insert(m.id, NodeTraitMethod(@(*tm).clone(), d_id, p));
+                            self.insert(m.id, EntryTraitMethod(self.parent,
+                                                               @(*tm).clone()));
                         }
                         Provided(m) => {
-                            self.insert(m.id, NodeTraitMethod(@Provided(m), d_id, p));
+                            self.insert(m.id, EntryTraitMethod(self.parent,
+                                                               @Provided(m)));
                         }
                     }
                 }
@@ -336,7 +467,8 @@ impl<F: FoldOps> Folder for Ctx<F> {
             _ => {}
         }
 
-        self.path.pop().unwrap();
+        self.parent = parent;
+        self.insert(i.id, EntryItem(self.parent, i));
 
         SmallVector::one(i)
     }
@@ -346,7 +478,7 @@ impl<F: FoldOps> Folder for Ctx<F> {
         match pat.node {
             PatIdent(..) => {
                 // Note: this is at least *potentially* a pattern...
-                self.insert(pat.id, NodeLocal(pat));
+                self.insert(pat.id, EntryLocal(self.parent, pat));
             }
             _ => {}
         }
@@ -357,14 +489,11 @@ impl<F: FoldOps> Folder for Ctx<F> {
     fn fold_expr(&mut self, expr: @Expr) -> @Expr {
         let expr = fold::noop_fold_expr(expr, self);
 
-        self.insert(expr.id, NodeExpr(expr));
+        self.insert(expr.id, EntryExpr(self.parent, expr));
 
         // Expressions which are or might be calls:
-        {
-            let r = expr.get_callee_id();
-            for callee_id in r.iter() {
-                self.insert(*callee_id, NodeCalleeScope(expr));
-            }
+        for callee_id in expr.get_callee_id().iter() {
+            self.insert(*callee_id, EntryCalleeScope(self.parent, expr));
         }
 
         expr
@@ -372,196 +501,173 @@ impl<F: FoldOps> Folder for Ctx<F> {
 
     fn fold_stmt(&mut self, stmt: &Stmt) -> SmallVector<@Stmt> {
         let stmt = fold::noop_fold_stmt(stmt, self).expect_one("expected one statement");
-        self.insert(ast_util::stmt_id(stmt), NodeStmt(stmt));
+        self.insert(ast_util::stmt_id(stmt), EntryStmt(self.parent, stmt));
         SmallVector::one(stmt)
     }
 
     fn fold_method(&mut self, m: @Method) -> @Method {
-        self.path.push(PathName(m.ident));
+        let parent = self.parent;
+        self.parent = DUMMY_NODE_ID;
         let m = fold::noop_fold_method(m, self);
-        self.path.pop();
+        assert_eq!(self.parent, m.id);
+        self.parent = parent;
         m
     }
 
     fn fold_fn_decl(&mut self, decl: &FnDecl) -> P<FnDecl> {
         let decl = fold::noop_fold_fn_decl(decl, self);
         for a in decl.inputs.iter() {
-            self.insert(a.id, NodeArg(a.pat));
+            self.insert(a.id, EntryArg(self.parent, a.pat));
         }
         decl
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
         let block = fold::noop_fold_block(block, self);
-        self.insert(block.id, NodeBlock(block));
+        self.insert(block.id, EntryBlock(self.parent, block));
         block
     }
 }
 
-pub fn map_crate<F: 'static + FoldOps>(diag: @SpanHandler, c: Crate,
-                                       fold_ops: F) -> (Crate, Map) {
-    let mut cx = Ctx {
-        map: Map { map: @RefCell::new(SmallIntMap::new()) },
-        path: ~[],
-        diag: diag,
-        fold_ops: fold_ops
+pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
+    let map = Map { map: RefCell::new(~[]) };
+    let krate = {
+        let mut cx = Ctx {
+            map: &map,
+            parent: CRATE_NODE_ID,
+            fold_ops: fold_ops
+        };
+        cx.insert(CRATE_NODE_ID, RootCrate);
+        cx.fold_crate(krate)
     };
-    let krate = cx.fold_crate(c);
 
     if log_enabled!(logging::DEBUG) {
-        let map = cx.map.map.borrow();
-        // this only makes sense for ordered stores; note the
+        let map = map.map.borrow();
+        // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
-        let (entries_less_1, (largest_id, _)) =
-            map.get().iter().enumerate().last().expect("AST map was empty after folding?");
+        let (entries_less_1, _) = map.get().iter().filter(|&x| {
+            match *x {
+                NotPresent => false,
+                _ => true
+            }
+        }).enumerate().last().expect("AST map was empty after folding?");
 
         let entries = entries_less_1 + 1;
-        let vector_length = largest_id + 1;
+        let vector_length = map.get().len();
         debug!("The AST map has {} entries with a maximum of {}: occupancy {:.1}%",
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
-    (krate, cx.map)
+    (krate, map)
 }
 
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-pub fn map_decoded_item<F: 'static + FoldOps>(diag: @SpanHandler,
-                                              map: Map,
-                                              path: Path,
-                                              fold_ops: F,
-                                              fold_ii: |&mut Ctx<F>| -> InlinedItem)
-                                              -> InlinedItem {
-    // I believe it is ok for the local IDs of inlined items from other crates
-    // to overlap with the local ids from this crate, so just generate the ids
-    // starting from 0.
+pub fn map_decoded_item<F: FoldOps>(map: &Map,
+                                    path: ~[PathElem],
+                                    fold_ops: F,
+                                    fold: |&mut Ctx<F>| -> InlinedItem)
+                                    -> InlinedItem {
     let mut cx = Ctx {
         map: map,
-        path: path.clone(),
-        diag: diag,
+        parent: DUMMY_NODE_ID,
         fold_ops: fold_ops
     };
 
-    let ii = fold_ii(&mut cx);
+    // Generate a NodeId for the RootInlinedParent inserted below.
+    cx.new_id(DUMMY_NODE_ID);
 
     // Methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now. Likewise with foreign items.
+    let mut def_id = DefId { krate: LOCAL_CRATE, node: DUMMY_NODE_ID };
+    let ii = fold(&mut cx);
     match ii {
-        IIItem(..) => {} // fallthrough
-        IIForeign(i) => {
-            cx.insert(i.id, NodeForeignItem(i,
-                                            AbiSet::Intrinsic(),
-                                            i.vis,    // Wrong but OK
-                                            @path));
-        }
+        IIItem(_) => {}
         IIMethod(impl_did, is_provided, m) => {
             let entry = if is_provided {
-                NodeTraitMethod(@Provided(m), impl_did, @path)
+                EntryTraitMethod(cx.parent, @Provided(m))
             } else {
-                NodeMethod(m, impl_did, @path)
+                EntryMethod(cx.parent, m)
             };
             cx.insert(m.id, entry);
+            def_id = impl_did;
+        }
+        IIForeign(i) => {
+            cx.insert(i.id, EntryForeignItem(cx.parent, i));
         }
     }
+
+    cx.insert(cx.parent, RootInlinedParent(P(InlinedParent {
+        path: path,
+        def_id: def_id
+    })));
 
     ii
 }
 
-pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
+fn node_id_to_str(map: &Map, id: NodeId) -> ~str {
     match map.find(id) {
-      None => {
-        format!("unknown node (id={})", id)
-      }
-      Some(NodeItem(item, path)) => {
-        let path_str = path_ident_to_str(path, item.ident, itr);
-        let item_str = match item.node {
-            ItemStatic(..) => ~"static",
-            ItemFn(..) => ~"fn",
-            ItemMod(..) => ~"mod",
-            ItemForeignMod(..) => ~"foreign mod",
-            ItemTy(..) => ~"ty",
-            ItemEnum(..) => ~"enum",
-            ItemStruct(..) => ~"struct",
-            ItemTrait(..) => ~"trait",
-            ItemImpl(..) => ~"impl",
-            ItemMac(..) => ~"macro"
-        };
-        format!("{} {} (id={})", item_str, path_str, id)
-      }
-      Some(NodeForeignItem(item, abi, _, path)) => {
-        format!("foreign item {} with abi {:?} (id={})",
-             path_ident_to_str(path, item.ident, itr), abi, id)
-      }
-      Some(NodeMethod(m, _, path)) => {
-        let name = itr.get(m.ident.name);
-        format!("method {} in {} (id={})",
-             name.as_slice(), path_to_str(*path, itr), id)
-      }
-      Some(NodeTraitMethod(ref tm, _, path)) => {
-        let m = ast_util::trait_method_to_ty_method(&**tm);
-        let name = itr.get(m.ident.name);
-        format!("method {} in {} (id={})",
-             name.as_slice(), path_to_str(*path, itr), id)
-      }
-      Some(NodeVariant(ref variant, _, path)) => {
-        let name = itr.get(variant.node.name.name);
-        format!("variant {} in {} (id={})",
-             name.as_slice(),
-             path_to_str(*path, itr), id)
-      }
-      Some(NodeExpr(expr)) => {
-        format!("expr {} (id={})", pprust::expr_to_str(expr, itr), id)
-      }
-      Some(NodeCalleeScope(expr)) => {
-        format!("callee_scope {} (id={})", pprust::expr_to_str(expr, itr), id)
-      }
-      Some(NodeStmt(stmt)) => {
-        format!("stmt {} (id={})",
-             pprust::stmt_to_str(stmt, itr), id)
-      }
-      Some(NodeArg(pat)) => {
-        format!("arg {} (id={})", pprust::pat_to_str(pat, itr), id)
-      }
-      Some(NodeLocal(pat)) => {
-        format!("local {} (id={})", pprust::pat_to_str(pat, itr), id)
-      }
-      Some(NodeBlock(block)) => {
-        format!("block {} (id={})", pprust::block_to_str(block, itr), id)
-      }
-      Some(NodeStructCtor(_, _, path)) => {
-        format!("struct_ctor {} (id={})", path_to_str(*path, itr), id)
-      }
-    }
-}
-
-pub fn node_item_query<Result>(items: Map, id: NodeId, query: |@Item| -> Result, error_msg: ~str)
-                       -> Result {
-    match items.find(id) {
-        Some(NodeItem(it, _)) => query(it),
-        _ => fail!("{}", error_msg)
-    }
-}
-
-pub fn node_span(items: Map, id: ast::NodeId) -> Span {
-    match items.find(id) {
-        Some(NodeItem(item, _)) => item.span,
-        Some(NodeForeignItem(foreign_item, _, _, _)) => foreign_item.span,
-        Some(NodeTraitMethod(trait_method, _, _)) => {
-            match *trait_method {
-                Required(ref type_method) => type_method.span,
-                Provided(ref method) => method.span,
-            }
+        Some(NodeItem(item)) => {
+            let path_str = map.path_to_str_with_ident(id, item.ident);
+            let item_str = match item.node {
+                ItemStatic(..) => "static",
+                ItemFn(..) => "fn",
+                ItemMod(..) => "mod",
+                ItemForeignMod(..) => "foreign mod",
+                ItemTy(..) => "ty",
+                ItemEnum(..) => "enum",
+                ItemStruct(..) => "struct",
+                ItemTrait(..) => "trait",
+                ItemImpl(..) => "impl",
+                ItemMac(..) => "macro"
+            };
+            format!("{} {} (id={})", item_str, path_str, id)
         }
-        Some(NodeMethod(method, _, _)) => method.span,
-        Some(NodeVariant(variant, _, _)) => variant.span,
-        Some(NodeExpr(expr)) => expr.span,
-        Some(NodeStmt(stmt)) => stmt.span,
-        Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
-        Some(NodeBlock(block)) => block.span,
-        Some(NodeStructCtor(_, item, _)) => item.span,
-        Some(NodeCalleeScope(expr)) => expr.span,
-        None => fail!("node_span: could not find id {}", id),
+        Some(NodeForeignItem(item)) => {
+            let path_str = map.path_to_str_with_ident(id, item.ident);
+            format!("foreign item {} (id={})", path_str, id)
+        }
+        Some(NodeMethod(m)) => {
+            format!("method {} in {} (id={})",
+                    token::get_ident(m.ident),
+                    map.path_to_str(id), id)
+        }
+        Some(NodeTraitMethod(ref tm)) => {
+            let m = ast_util::trait_method_to_ty_method(&**tm);
+            format!("method {} in {} (id={})",
+                    token::get_ident(m.ident),
+                    map.path_to_str(id), id)
+        }
+        Some(NodeVariant(ref variant)) => {
+            format!("variant {} in {} (id={})",
+                    token::get_ident(variant.node.name),
+                    map.path_to_str(id), id)
+        }
+        Some(NodeExpr(expr)) => {
+            format!("expr {} (id={})", pprust::expr_to_str(expr), id)
+        }
+        Some(NodeCalleeScope(expr)) => {
+            format!("callee_scope {} (id={})", pprust::expr_to_str(expr), id)
+        }
+        Some(NodeStmt(stmt)) => {
+            format!("stmt {} (id={})", pprust::stmt_to_str(stmt), id)
+        }
+        Some(NodeArg(pat)) => {
+            format!("arg {} (id={})", pprust::pat_to_str(pat), id)
+        }
+        Some(NodeLocal(pat)) => {
+            format!("local {} (id={})", pprust::pat_to_str(pat), id)
+        }
+        Some(NodeBlock(block)) => {
+            format!("block {} (id={})", pprust::block_to_str(block), id)
+        }
+        Some(NodeStructCtor(_)) => {
+            format!("struct_ctor {} (id={})", map.path_to_str(id), id)
+        }
+        None => {
+            format!("unknown node (id={})", id)
+        }
     }
 }

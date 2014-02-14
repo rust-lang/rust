@@ -167,10 +167,10 @@ struct CrateInfo {
 
 fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
-        ast::ViewItemExternMod(ref ident, ref path_opt, id) => {
-            let ident = token::get_ident(ident.name);
+        ast::ViewItemExternMod(ident, ref path_opt, id) => {
+            let ident = token::get_ident(ident);
             debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
-                   ident.get(), path_opt);
+                   ident, path_opt);
             let (name, version) = match *path_opt {
                 Some((ref path_str, _)) => {
                     let crateid: Option<CrateId> = from_str(path_str.get());
@@ -282,16 +282,16 @@ fn visit_item(e: &Env, i: &ast::Item) {
     }
 }
 
-fn existing_match(e: &Env, name: ~str, version: ~str, hash: &str) -> Option<ast::CrateNum> {
+fn existing_match(e: &Env, name: &str, version: &str, hash: &str) -> Option<ast::CrateNum> {
     let crate_cache = e.crate_cache.borrow();
     for c in crate_cache.get().iter() {
         let crateid_version = match c.crateid.version {
             None => ~"0.0",
             Some(ref ver) => ver.to_str(),
         };
-        if (name.is_empty() || c.crateid.name == name) &&
-            (version.is_empty() || crateid_version == version) &&
-            (hash.is_empty() || c.hash.as_slice() == hash) {
+        if (name.is_empty() || name == c.crateid.name) &&
+            (version.is_empty() || version == crateid_version) &&
+            (hash.is_empty() || hash == c.hash) {
             return Some(c.cnum);
         }
     }
@@ -305,13 +305,13 @@ fn resolve_crate(e: &mut Env,
                  hash: ~str,
                  span: Span)
               -> ast::CrateNum {
-    match existing_match(e, name.clone(), version.clone(), hash.clone()) {
+    match existing_match(e, name, version, hash) {
       None => {
         let load_ctxt = loader::Context {
             sess: e.sess,
             span: span,
             ident: ident,
-            name: name.clone(),
+            name: name,
             version: version,
             hash: hash,
             os: e.os,
@@ -342,7 +342,7 @@ fn resolve_crate(e: &mut Env,
         let cnum_map = resolve_crate_deps(e, metadata.as_slice());
 
         let cmeta = @cstore::crate_metadata {
-            name: name,
+            name: load_ctxt.name,
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum
@@ -372,13 +372,13 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
     let r = decoder::get_crate_deps(cdata);
     for dep in r.iter() {
         let extrn_cnum = dep.cnum;
-        let cname_str = token::get_ident(dep.name.name);
+        let cname_str = token::get_ident(dep.name);
         debug!("resolving dep crate {} ver: {} hash: {}",
                cname_str, dep.vers, dep.hash);
         match existing_match(e,
-                             cname_str.get().to_str(),
-                             dep.vers.clone(),
-                             dep.hash.clone()) {
+                             cname_str.get(),
+                             dep.vers,
+                             dep.hash) {
           Some(local_cnum) => {
             debug!("already have it");
             // We've already seen this crate

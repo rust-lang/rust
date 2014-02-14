@@ -18,7 +18,7 @@ use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::attr::ParserAttr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
-use parse::token::{Token, EOF, to_str, Nonterminal, get_ident_interner};
+use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
 use std::hashmap::HashMap;
@@ -180,14 +180,15 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
             };
           }
           codemap::Spanned {
-                node: MatchNonterminal(ref bind_name, _, idx), span: sp
+                node: MatchNonterminal(bind_name, _, idx),
+                span
           } => {
-            if ret_val.contains_key(bind_name) {
-                let string = token::get_ident(bind_name.name);
+            if ret_val.contains_key(&bind_name) {
+                let string = token::get_ident(bind_name);
                 p_s.span_diagnostic
-                   .span_fatal(sp, "duplicated bind name: " + string.get())
+                   .span_fatal(span, "duplicated bind name: " + string.get())
             }
-            ret_val.insert(*bind_name, res[idx]);
+            ret_val.insert(bind_name, res[idx]);
           }
         }
     }
@@ -364,12 +365,10 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                 || bb_eis.len() > 1u {
                 let nts = bb_eis.map(|ei| {
                     match ei.elts[ei.idx].node {
-                      MatchNonterminal(ref bind,ref name,_) => {
-                        let bind_string = token::get_ident(bind.name);
-                        let name_string = token::get_ident(name.name);
+                      MatchNonterminal(bind, name, _) => {
                         format!("{} ('{}')",
-                                name_string.get(),
-                                bind_string.get())
+                                token::get_ident(name),
+                                token::get_ident(bind))
                       }
                       _ => fail!()
                     } }).connect(" or ");
@@ -379,7 +378,7 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                     nts, next_eis.len()));
             } else if bb_eis.len() == 0u && next_eis.len() == 0u {
                 return Failure(sp, format!("no rules expected the token `{}`",
-                            to_str(get_ident_interner(), &tok)));
+                            token::to_str(&tok)));
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {
@@ -391,8 +390,8 @@ pub fn parse<R: Reader>(sess: @ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.elts[ei.idx].node {
-                  MatchNonterminal(_, ref name, idx) => {
-                    let name_string = token::get_ident(name.name);
+                  MatchNonterminal(_, name, idx) => {
+                    let name_string = token::get_ident(name);
                     ei.matches[idx].push(@MatchedNonterminal(
                         parse_nt(&mut rust_parser, name_string.get())));
                     ei.idx += 1u;
@@ -426,7 +425,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "ident" => match p.token {
         token::IDENT(sn,b) => { p.bump(); token::NtIdent(~sn,b) }
         _ => {
-            let token_str = token::to_str(get_ident_interner(), &p.token);
+            let token_str = token::to_str(&p.token);
             p.fatal(~"expected ident, found " + token_str)
         }
       },

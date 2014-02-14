@@ -24,6 +24,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str};
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -261,7 +262,7 @@ impl LifetimeContext {
         self.sess.span_err(
             lifetime_ref.span,
             format!("use of undeclared lifetime name `'{}`",
-                    self.sess.str_of(lifetime_ref.ident)));
+                    token::get_ident(lifetime_ref.ident)));
     }
 
     fn check_lifetime_names(&self, lifetimes: &OptVec<ast::Lifetime>) {
@@ -274,7 +275,7 @@ impl LifetimeContext {
                     self.sess.span_err(
                         lifetime.span,
                         format!("illegal lifetime parameter name: `{}`",
-                                self.sess.str_of(lifetime.ident)));
+                                token::get_ident(lifetime.ident)));
                 }
             }
 
@@ -286,7 +287,7 @@ impl LifetimeContext {
                         lifetime_j.span,
                         format!("lifetime name `'{}` declared twice in \
                                 the same scope",
-                                self.sess.str_of(lifetime_j.ident)));
+                                token::get_ident(lifetime_j.ident)));
                 }
             }
         }
@@ -302,8 +303,7 @@ impl LifetimeContext {
         }
 
         debug!("lifetime_ref={} id={} resolved to {:?}",
-                lifetime_to_str(lifetime_ref,
-                                self.sess.intr()),
+                lifetime_to_str(lifetime_ref),
                 lifetime_ref.id,
                 def);
         let mut named_region_map = self.named_region_map.borrow_mut();

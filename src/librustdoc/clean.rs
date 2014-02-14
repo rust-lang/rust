@@ -13,7 +13,6 @@
 
 use syntax;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttributeMethods;
@@ -887,7 +886,7 @@ fn path_to_str(p: &ast::Path) -> ~str {
 
     let mut s = ~"";
     let mut first = true;
-    for i in p.segments.iter().map(|x| token::get_ident(x.identifier.name)) {
+    for i in p.segments.iter().map(|x| token::get_ident(x.identifier)) {
         if !first || p.global {
             s.push_str("::");
         } else {
@@ -900,8 +899,7 @@ fn path_to_str(p: &ast::Path) -> ~str {
 
 impl Clean<~str> for ast::Ident {
     fn clean(&self) -> ~str {
-        let string = token::get_ident(self.name);
-        string.get().to_owned()
+        token::get_ident(*self).get().to_owned()
     }
 }
 
@@ -1212,8 +1210,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
     let d = match def_map.get().find(&id) {
         Some(k) => k,
         None => {
-            debug!("could not find {:?} in defmap (`{}`)", id,
-                   syntax::ast_map::node_id_to_str(tycx.items, id, cx.sess.intr()));
+            debug!("could not find {:?} in defmap (`{}`)", id, tycx.map.node_to_str(id));
             fail!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
         }
     };
@@ -1243,12 +1240,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         ResolvedPath{ path: path, typarams: tpbs, id: def_id.node }
     } else {
         let fqn = csearch::get_item_path(tycx, def_id);
-        let fqn = fqn.move_iter().map(|i| {
-            match i {
-                ast_map::PathMod(id) | ast_map::PathName(id) |
-                ast_map::PathPrettyName(id, _) => id.clean()
-            }
-        }).to_owned_vec();
+        let fqn = fqn.move_iter().map(|i| i.to_str()).to_owned_vec();
         ExternalPath{ path: path, typarams: tpbs, fqn: fqn, kind: kind,
                       krate: def_id.krate }
     }

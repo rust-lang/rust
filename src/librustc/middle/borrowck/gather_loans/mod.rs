@@ -185,7 +185,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     let tcx = bccx.tcx;
 
     debug!("gather_loans_in_expr(expr={:?}/{})",
-           ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
+           ex.id, pprust::expr_to_str(ex));
 
     this.id_range.add(ex.id);
 

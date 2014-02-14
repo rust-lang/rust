@@ -198,9 +198,7 @@ use arena::Arena;
 use middle::ty;
 use std::vec;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util;
-use syntax::parse::token;
 use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -534,9 +532,7 @@ impl<'a> ConstraintContext<'a> {
             None => {
                 self.tcx().sess.bug(format!(
                         "No inferred index entry for {}",
-                        ast_map::node_id_to_str(self.tcx().items,
-                                                param_id,
-                                                token::get_ident_interner())));
+                        self.tcx().map.node_to_str(param_id)));
             }
         }
     }
@@ -940,7 +936,7 @@ impl<'a> SolveContext<'a> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(ast_map::node_span(tcx.items, item_id), found);
+                tcx.sess.span_err(tcx.map.span(item_id), found);
             }
 
             let mut item_variance_map = tcx.item_variance_map.borrow_mut();

@@ -14,6 +14,7 @@ use ast_util;
 use codemap::Span;
 use opt_vec;
 use parse::token;
+use print::pprust;
 use visit::Visitor;
 use visit;
 
@@ -26,8 +27,7 @@ use std::local_data;
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.map(|i| {
-        let string = token::get_ident(i.name);
-        string.get().to_str()
+        token::get_ident(*i).get().to_str()
     }).connect("::")
 }
 
@@ -244,6 +244,23 @@ pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
     } else {
         None
     }
+}
+
+/// Generate a "pretty" name for an `impl` from its type and trait.
+/// This is designed so that symbols of `impl`'d methods give some
+/// hint of where they came from, (previously they would all just be
+/// listed as `__extensions__::method_name::hash`, with no indication
+/// of the type).
+pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
+    let mut pretty = pprust::ty_to_str(ty);
+    match *trait_ref {
+        Some(ref trait_ref) => {
+            pretty.push_char('.');
+            pretty.push_str(pprust::path_to_str(&trait_ref.path));
+        }
+        None => {}
+    }
+    token::gensym_ident(pretty)
 }
 
 pub fn public_methods(ms: ~[@Method]) -> ~[@Method] {
