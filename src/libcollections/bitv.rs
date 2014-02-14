@@ -1561,6 +1561,7 @@ mod tests {
         let mut bitv = 0 as uint;
         b.iter(|| {
             bitv |= (1 << ((r.next_u32() as uint) % uint::BITS));
+            &bitv
         })
     }
 
@@ -1570,6 +1571,7 @@ mod tests {
         let mut bitv = SmallBitv::new(uint::BITS);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::BITS, true);
+            &bitv
         })
     }
 
@@ -1579,6 +1581,7 @@ mod tests {
         let mut bitv = BigBitv::new(~[0]);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::BITS, true);
+            &bitv
         })
     }
 
@@ -1590,6 +1593,7 @@ mod tests {
         let mut bitv = BigBitv::new(storage);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
+            &bitv
         })
     }
 
@@ -1599,6 +1603,7 @@ mod tests {
         let mut bitv = Bitv::new(BENCH_BITS, false);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
+            &bitv
         })
     }
 
@@ -1608,6 +1613,7 @@ mod tests {
         let mut bitv = Bitv::new(uint::BITS, false);
         b.iter(|| {
             bitv.set((r.next_u32() as uint) % uint::BITS, true);
+            &bitv
         })
     }
 
@@ -1617,6 +1623,7 @@ mod tests {
         let mut bitv = BitvSet::new();
         b.iter(|| {
             bitv.insert((r.next_u32() as uint) % uint::BITS);
+            &bitv
         })
     }
 
@@ -1626,6 +1633,7 @@ mod tests {
         let mut bitv = BitvSet::new();
         b.iter(|| {
             bitv.insert((r.next_u32() as uint) % BENCH_BITS);
+            &bitv
         })
     }
 

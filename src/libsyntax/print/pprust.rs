@@ -1141,33 +1141,10 @@ pub fn print_expr_vstore(s: &mut State, t: ast::ExprVstore) -> io::IoResult<()> 
     }
 }
 
-pub fn print_call_pre(s: &mut State,
-                      sugar: ast::CallSugar,
-                      base_args: &mut ~[@ast::Expr])
-                   -> io::IoResult<Option<@ast::Expr>> {
-    match sugar {
-        ast::ForSugar => {
-            if_ok!(head(s, "for"));
-            Ok(Some(base_args.pop().unwrap()))
-        }
-        ast::NoSugar => Ok(None)
-    }
-}
-
-pub fn print_call_post(s: &mut State,
-                       sugar: ast::CallSugar,
-                       blk: &Option<@ast::Expr>,
-                       base_args: &mut ~[@ast::Expr]) -> io::IoResult<()> {
-    if sugar == ast::NoSugar || !base_args.is_empty() {
-        if_ok!(popen(s));
-        if_ok!(commasep_exprs(s, Inconsistent, *base_args));
-        if_ok!(pclose(s));
-    }
-    if sugar != ast::NoSugar {
-        if_ok!(nbsp(s));
-        // not sure if this can happen
-        if_ok!(print_expr(s, blk.unwrap()));
-    }
+fn print_call_post(s: &mut State, args: &[@ast::Expr]) -> io::IoResult<()> {
+    if_ok!(popen(s));
+    if_ok!(commasep_exprs(s, Inconsistent, args));
+    if_ok!(pclose(s));
     Ok(())
 }
 
@@ -1254,15 +1231,12 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         }
         if_ok!(pclose(s));
       }
-      ast::ExprCall(func, ref args, sugar) => {
-        let mut base_args = (*args).clone();
-        let blk = if_ok!(print_call_pre(s, sugar, &mut base_args));
+      ast::ExprCall(func, ref args) => {
         if_ok!(print_expr(s, func));
-        if_ok!(print_call_post(s, sugar, &blk, &mut base_args));
+        if_ok!(print_call_post(s, *args));
       }
-      ast::ExprMethodCall(_, ident, ref tys, ref args, sugar) => {
-        let mut base_args = args.slice_from(1).to_owned();
-        let blk = if_ok!(print_call_pre(s, sugar, &mut base_args));
+      ast::ExprMethodCall(_, ident, ref tys, ref args) => {
+        let base_args = args.slice_from(1);
         if_ok!(print_expr(s, args[0]));
         if_ok!(word(&mut s.s, "."));
         if_ok!(print_ident(s, ident));
@@ -1271,7 +1245,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
             if_ok!(commasep(s, Inconsistent, *tys, print_type_ref));
             if_ok!(word(&mut s.s, ">"));
         }
-        if_ok!(print_call_post(s, sugar, &blk, &mut base_args));
+        if_ok!(print_call_post(s, base_args));
       }
       ast::ExprBinary(_, op, lhs, rhs) => {
         if_ok!(print_expr(s, lhs));

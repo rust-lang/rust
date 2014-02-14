@@ -23,15 +23,13 @@ use ast;
 // isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: @ast::Expr) -> bool {
     match e.node {
-      ast::ExprIf(..)
-      | ast::ExprMatch(..)
-      | ast::ExprBlock(_)
-      | ast::ExprWhile(..)
-      | ast::ExprLoop(..)
-      | ast::ExprForLoop(..)
-      | ast::ExprCall(_, _, ast::ForSugar)
-      | ast::ExprMethodCall(_, _, _, _, ast::ForSugar) => false,
-      _ => true
+        ast::ExprIf(..)
+        | ast::ExprMatch(..)
+        | ast::ExprBlock(_)
+        | ast::ExprWhile(..)
+        | ast::ExprLoop(..)
+        | ast::ExprForLoop(..) => false,
+        _ => true
     }
 }
 

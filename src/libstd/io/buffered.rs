@@ -565,14 +565,14 @@ mod test {
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {
         bh.iter(|| {
-            BufferedReader::new(NullStream);
+            BufferedReader::new(NullStream)
         });
     }
 
     #[bench]
     fn bench_buffered_writer(bh: &mut Harness) {
         bh.iter(|| {
-            BufferedWriter::new(NullStream);
+            BufferedWriter::new(NullStream)
         });
     }
 

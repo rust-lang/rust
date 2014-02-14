@@ -307,7 +307,7 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
             maybe_resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
-        ast::ExprMethodCall(callee_id, _, _, _, _) => {
+        ast::ExprMethodCall(callee_id, _, _, _) => {
             // We must always have written in a callee ID type for these.
             resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }

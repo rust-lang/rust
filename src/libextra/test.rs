@@ -26,12 +26,11 @@ use stats;
 use time::precise_time_ns;
 use collections::TreeMap;
 
-use std::clone::Clone;
 use std::cmp;
 use std::io;
-use std::io::File;
-use std::io::Writer;
+use std::io::{File, PortReader, ChanWriter};
 use std::io::stdio::StdWriter;
+use std::str;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -358,7 +357,7 @@ struct ConsoleTestState<T> {
     ignored: uint,
     measured: uint,
     metrics: MetricMap,
-    failures: ~[TestDesc],
+    failures: ~[(TestDesc, ~[u8])],
     max_name_len: uint, // number of columns to fill when aligning names
 }
 
@@ -498,9 +497,23 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_failures(&mut self) -> io::IoResult<()> {
         if_ok!(self.write_plain("\nfailures:\n"));
         let mut failures = ~[];
-        for f in self.failures.iter() {
+        let mut fail_out  = ~"";
+        for &(ref f, ref stdout) in self.failures.iter() {
             failures.push(f.name.to_str());
+            if stdout.len() > 0 {
+                fail_out.push_str(format!("---- {} stdout ----\n\t",
+                                  f.name.to_str()));
+                let output = str::from_utf8_lossy(*stdout);
+                fail_out.push_str(output.as_slice().replace("\n", "\n\t"));
+                fail_out.push_str("\n");
+            }
         }
+        if fail_out.len() > 0 {
+            if_ok!(self.write_plain("\n"));
+            if_ok!(self.write_plain(fail_out));
+        }
+
+        if_ok!(self.write_plain("\nfailures:\n"));
         failures.sort();
         for name in failures.iter() {
             if_ok!(self.write_plain(format!("    {}\n", name.to_str())));
@@ -632,7 +645,7 @@ pub fn run_tests_console(opts: &TestOpts,
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
-            TeResult(test, result) => {
+            TeResult(test, result, stdout) => {
                 if_ok!(st.write_log(&test, &result));
                 if_ok!(st.write_result(&result));
                 match result {
@@ -655,7 +668,7 @@ pub fn run_tests_console(opts: &TestOpts,
                     }
                     TrFailed => {
                         st.failed += 1;
-                        st.failures.push(test);
+                        st.failures.push((test, stdout));
                     }
                 }
                 Ok(())
@@ -717,17 +730,17 @@ fn should_sort_failures_before_printing_them() {
         measured: 0u,
         max_name_len: 10u,
         metrics: MetricMap::new(),
-        failures: ~[test_b, test_a]
+        failures: ~[(test_b, ~[]), (test_a, ~[])]
     };
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(m.get_ref()).unwrap(),
+        Raw(ref m) => str::from_utf8_lossy(m.get_ref()),
         Pretty(_) => unreachable!()
     };
 
-    let apos = s.find_str("a").unwrap();
-    let bpos = s.find_str("b").unwrap();
+    let apos = s.as_slice().find_str("a").unwrap();
+    let bpos = s.as_slice().find_str("b").unwrap();
     assert!(apos < bpos);
 }
 
@@ -737,11 +750,10 @@ fn use_color() -> bool { return get_concurrency() == 1; }
 enum TestEvent {
     TeFiltered(~[TestDesc]),
     TeWait(TestDesc, NamePadding),
-    TeResult(TestDesc, TestResult),
+    TeResult(TestDesc, TestResult, ~[u8] /* stdout */),
 }
 
-/// The message sent to the test monitor from the individual runners.
-pub type MonitorMsg = (TestDesc, TestResult);
+pub type MonitorMsg = (TestDesc, TestResult, ~[u8] /* stdout */);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
@@ -783,11 +795,11 @@ fn run_tests(opts: &TestOpts,
             pending += 1;
         }
 
-        let (desc, result) = p.recv();
+        let (desc, result, stdout) = p.recv();
         if concurrency != 1 {
             if_ok!(callback(TeWait(desc.clone(), PadNone)));
         }
-        if_ok!(callback(TeResult(desc, result)));
+        if_ok!(callback(TeResult(desc, result, stdout)));
         pending -= 1;
     }
 
@@ -796,8 +808,8 @@ fn run_tests(opts: &TestOpts,
     for b in filtered_benchs_and_metrics.move_iter() {
         if_ok!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(!opts.run_benchmarks, b, ch.clone());
-        let (test, result) = p.recv();
-        if_ok!(callback(TeResult(test, result)));
+        let (test, result, stdout) = p.recv();
+        if_ok!(callback(TeResult(test, result, stdout)));
     }
     Ok(())
 }
@@ -884,7 +896,7 @@ pub fn run_test(force_ignore: bool,
     let TestDescAndFn {desc, testfn} = test;
 
     if force_ignore || desc.ignore {
-        monitor_ch.send((desc, TrIgnored));
+        monitor_ch.send((desc, TrIgnored, ~[]));
         return;
     }
 
@@ -893,40 +905,47 @@ pub fn run_test(force_ignore: bool,
                       testfn: proc()) {
         spawn(proc() {
             let mut task = task::task();
-            task.name(match desc.name {
-                DynTestName(ref name) => name.to_owned().into_maybe_owned(),
-                StaticTestName(name) => name.into_maybe_owned()
-            });
+            let (p, c) = Chan::new();
+            let mut reader = PortReader::new(p);
+            let stdout = ChanWriter::new(c.clone());
+            let stderr = ChanWriter::new(c);
+            match desc.name {
+                DynTestName(ref name) => task.name(name.clone()),
+                StaticTestName(name) => task.name(name),
+            }
+            task.opts.stdout = Some(~stdout as ~Writer);
+            task.opts.stderr = Some(~stderr as ~Writer);
             let result_future = task.future_result();
             task.spawn(testfn);
 
+            let stdout = reader.read_to_end().unwrap();
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());
-            monitor_ch.send((desc.clone(), test_result));
-        });
+            monitor_ch.send((desc.clone(), test_result, stdout));
+        })
     }
 
     match testfn {
         DynBenchFn(bencher) => {
             let bs = ::test::bench::benchmark(|harness| bencher.run(harness));
-            monitor_ch.send((desc, TrBench(bs)));
+            monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
         StaticBenchFn(benchfn) => {
             let bs = ::test::bench::benchmark(|harness| benchfn(harness));
-            monitor_ch.send((desc, TrBench(bs)));
+            monitor_ch.send((desc, TrBench(bs), ~[]));
             return;
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm)));
+            monitor_ch.send((desc, TrMetrics(mm), ~[]));
             return;
         }
         StaticMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm)));
+            monitor_ch.send((desc, TrMetrics(mm), ~[]));
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
@@ -1264,7 +1283,7 @@ mod tests {
         };
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
-        let (_, res) = p.recv();
+        let (_, res, _) = p.recv();
         assert!(res != TrOk);
     }
 
@@ -1281,7 +1300,7 @@ mod tests {
         };
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
-        let (_, res) = p.recv();
+        let (_, res, _) = p.recv();
         assert_eq!(res, TrIgnored);
     }
 
@@ -1298,7 +1317,7 @@ mod tests {
         };
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
-        let (_, res) = p.recv();
+        let (_, res, _) = p.recv();
         assert_eq!(res, TrOk);
     }
 
@@ -1315,7 +1334,7 @@ mod tests {
         };
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
-        let (_, res) = p.recv();
+        let (_, res, _) = p.recv();
         assert_eq!(res, TrFailed);
     }
 

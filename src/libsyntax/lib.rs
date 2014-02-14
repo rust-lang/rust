@@ -32,7 +32,7 @@ This API is completely unstable and subject to change.
 
 #[deny(non_camel_case_types)];
 
-extern mod extra;
+#[cfg(test)] extern mod extra;
 extern mod serialize;
 extern mod term;
 extern mod collections;

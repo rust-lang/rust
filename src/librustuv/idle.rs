@@ -117,7 +117,10 @@ mod test {
                     match *slot.get() {
                         (ref mut task, ref mut val) => {
                             *val = n;
-                            task.take_unwrap()
+                            match task.take() {
+                                Some(t) => t,
+                                None => return
+                            }
                         }
                     }
                 }

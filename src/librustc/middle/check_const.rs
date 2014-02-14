@@ -160,7 +160,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
               }
             }
           }
-          ExprCall(callee, _, NoSugar) => {
+          ExprCall(callee, _) => {
             let def_map = def_map.borrow();
             match def_map.get().find(&callee.id) {
                 Some(&DefStruct(..)) => {}    // OK.
