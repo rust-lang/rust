@@ -428,8 +428,20 @@ ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET), \
 
 all: $(ALL_TARGET_RULES) $(GENERATED) docs
 
-help:
-# Show the comments from Makefile.in as "help"
+######################################################################
+# Build system documentation
+######################################################################
+
+# $(1) is the name of the doc <section> in Makefile.in
 # pick everything between tags | remove first line | remove last line
 # | remove extra (?) line | strip leading `#` from lines
-	$(Q)awk '/<help>/,/<\/help>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^# \?//'
+SHOW_DOCS = $(Q)awk '/$(1)/,/<\/$(1)>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^\# \?//'
+
+help:
+	$(call SHOW_DOCS,help)
+
+hot-tips:
+	$(call SHOW_DOCS,hottips)
+
+nitty-gritty:
+	$(call SHOW_DOCS,nittygritty)

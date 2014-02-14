@@ -8,55 +8,100 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# <help>
+# <help> \(^o^)/
 #
-# # The Rust Build System
+# Greetings, adventurer! The Rust Build System is at your service.
 #
-# Start with these these build targets:
+# Whether you want a genuine copy of `rustc`, access to the latest and
+# most authoritative Rust documentation, or even to investigate the
+# most intimate workings of the compiler itself, you've come to the
+# right place. Let's see what's on the menu.
 #
-# * all - The default rule. Builds a complete stage2 compiler, std,
-#           and extra for all hosts and targets
-# * docs - Generate HTML documentation for the std and extra libraries
-#            from source code comments
-# * rustc - The stage 2 compiler for the build platform with standard
-#             and extra libraries
-# * install
-# * uninstall
-# * check - Run tests
-# * check-stage1-$(crate) - Run tests for a crate, e.g. `check-stage1-std`
-# * check-stage1-rpass - Run the language tests
-# * check-docs - Run the doc tests
+# First, start with one of these build targets:
+#
+#   * all - The default. Builds a complete, bootstrapped compiler.
+#           `rustc` will be in `${target-triple}/stage2/bin/`. Run it
+#           directly from the build directory if you like. This also
+#           comes with docs in `doc/`.
+#
+#   * check - Run the complete test suite
+#
+#   * install - Install Rust. Note that installation is not necessary
+#               to use the compiler.
+#
+#   * uninstall - Uninstall the binaries
+#
+# For hot tips on working with The Rust Build System, just:
+#
+#     type `make hot-tips`
+#
+# Otherwise
+#
+#     type `make`
+#
+# </help>
+#
+# <hottips>
+#
+# # The Rust Build System Tip Line
+#
+# There are a bazillion different targets you might want to build. Here
+# are a few ideas.
+#
+#   * docs - Build gobs of HTML documentation and put it into `doc/`
+#   * check-$(crate) - Test a crate, e.g. `check-std`
+#   * check-ref - Run the language reference tests
+#   * check-docs - Test the documentation examples
+#
+# TODO: Lots more
 #
 # Then mix in some of these environment variables to harness the
-# ultimate power of Rust Build System.
+# ultimate power of The Rust Build System.
 #
-# * `VERBOSE=1` - Print all commands. Use this to see what's going on.
-# * `RUSTFLAGS=...` - Add compiler flags to all `rustc` invocations
-# * `CFG_ENABLE_VALGRIND=1` - Run tests under valgrind
-# * `VALGRIND_COMPILE=1` - Run the compiler itself under valgrind
-#                          (may require `CFG_ENABLE_VALGRIND`)
-# * `NO_REBUILD=1` - Don't rebootstrap when testing std
-#                    (and possibly other crates)
-# * `NO_MKFILE_DEPS=1` - Don rebuild for modified .mk files
-# * `SAVE_TEMPS=1` - Use `--save-temps` flag on all `rustc` invocations
-# * `ASM_COMMENTS=1` - Use `-Z asm-comments`
-# * `TIME_PASSES=1` - Use `-Z time-passes`
-# * `TIME_LLVM_PASSES=1` - Use `-Z time-llvm-passes`
-# * `TRACE=1` - Use `-Z trace`
+#   * `VERBOSE=1` - Print all commands. Use this to see what's going on.
+#   * `RUSTFLAGS=...` - Add compiler flags to all `rustc` invocations
+#
+#   * `TESTNAME=...` - Specify the name of tests to run
+#   * `CHECK_IGNORED=1` - Run normally-ignored tests
+#   * `NO_BENCH=1` - Don't run crate benchmarks (disable `--bench` flag)
+#
+#   * `CFG_ENABLE_VALGRIND=1` - Run tests under valgrind
+#   * `VALGRIND_COMPILE=1` - Run the compiler itself under valgrind
+#                            (may require `CFG_ENABLE_VALGRIND`)
+#
+#   * `NO_REBUILD=1` - Don't rebootstrap when testing std
+#                      (and possibly other crates)
+#   * `NO_MKFILE_DEPS=1` - Don rebuild for modified .mk files
+#
+#   * `SAVE_TEMPS=1` - Use `--save-temps` flag on all `rustc` invocations
+#   * `ASM_COMMENTS=1` - Use `-Z asm-comments`
+#   * `TIME_PASSES=1` - Use `-Z time-passes`
+#   * `TIME_LLVM_PASSES=1` - Use `-Z time-llvm-passes`
+#   * `TRACE=1` - Use `-Z trace`
 #
 # This is hardly all there is to know of The Rust Build System's
-# mysteries. Your journey continues on the wiki[1][2].
+# mysteries. The tale continues on the wiki[1][2].
 #
 # [1]: https://github.com/mozilla/rust/wiki/Note-build-system
 # [2]: https://github.com/mozilla/rust/wiki/Note-testsuite
 #
-# </help>
+# Unless you feel like getting your hands dirty, then:
+#
+#     don't type `make nitty-gritty`
+#
+# </hottips>
+#
+# <nittygritty>
+#
+# # The Rust Build System
+#
+# Gosh I wish there was something useful here (TODO).
 #
 # # An (old) explanation of how the build is structured:
 #
 # *Note: Hey, like, this is probably inaccurate, and is definitely
 # an outdated and insufficient explanation of the remarkable
-# and discomfiting Rust Build System.*
+# Rust Build System.*
 #
 # There are multiple build stages (0-3) needed to verify that the
 # compiler is properly self-hosting. Each stage is divided between
@@ -99,6 +144,9 @@
 # will just link against the libraries in the target lib directory.
 #
 # Admittedly this is a little convoluted.
+#
+# </nittygritty>
+#
 
 ######################################################################
 # Primary rules

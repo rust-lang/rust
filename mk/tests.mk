@@ -190,6 +190,10 @@ check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
+	check-stage2-rfail check-stage2-cfail check-stage2-rmake
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
+
 .PHONY: cleantmptestlogs cleantestlibs
 
 cleantmptestlogs:
