@@ -130,6 +130,7 @@
   '("as"
     "break"
     "continue"
+    "crate"
     "do"
     "else" "enum" "extern"
     "false" "fn" "for"
