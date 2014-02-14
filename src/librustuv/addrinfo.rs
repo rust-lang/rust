@@ -86,7 +86,7 @@ impl GetAddrInfoRequest {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { slot: None, status: 0, addrinfo: None };
 
-                wait_until_woken_after(&mut cx.slot, || {
+                wait_until_woken_after(&mut cx.slot, loop_, || {
                     req.set_data(&cx);
                 });
 

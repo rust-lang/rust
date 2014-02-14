@@ -9,13 +9,12 @@
 // except according to those terms.
 
 use std::libc::c_int;
-use std::mem::replace;
-use std::rt::local::Local;
+use std::mem;
 use std::rt::rtio::RtioTimer;
-use std::rt::task::{BlockedTask, Task};
+use std::rt::task::BlockedTask;
 
 use homing::{HomeHandle, HomingIO};
-use super::{UvHandle, ForbidUnwind, ForbidSwitch};
+use super::{UvHandle, ForbidUnwind, ForbidSwitch, wait_until_woken_after};
 use uvio::UvIoFactory;
 use uvll;
 
@@ -23,11 +22,12 @@ pub struct TimerWatcher {
     handle: *uvll::uv_timer_t,
     home: HomeHandle,
     action: Option<NextAction>,
+    blocker: Option<BlockedTask>,
     id: uint, // see comments in timer_cb
 }
 
 pub enum NextAction {
-    WakeTask(BlockedTask),
+    WakeTask,
     SendOnce(Chan<()>),
     SendMany(Chan<()>, uint),
 }
@@ -41,6 +41,7 @@ impl TimerWatcher {
         let me = ~TimerWatcher {
             handle: handle,
             action: None,
+            blocker: None,
             home: io.make_handle(),
             id: 0,
         };
@@ -76,7 +77,7 @@ impl RtioTimer for TimerWatcher {
         let missile = self.fire_homing_missile();
         self.id += 1;
         self.stop();
-        let _missile = match replace(&mut self.action, None) {
+        let _missile = match mem::replace(&mut self.action, None) {
             None => missile, // no need to do a homing dance
             Some(action) => {
                 drop(missile);      // un-home ourself
@@ -89,11 +90,9 @@ impl RtioTimer for TimerWatcher {
         // started, then we need to call stop on the timer.
         let _f = ForbidUnwind::new("timer");
 
-        let task: ~Task = Local::take();
-        task.deschedule(1, |task| {
-            self.action = Some(WakeTask(task));
+        self.action = Some(WakeTask);
+        wait_until_woken_after(&mut self.blocker, &self.uv_loop(), || {
             self.start(msecs, 0);
-            Ok(())
         });
         self.stop();
     }
@@ -108,7 +107,7 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, 0);
-            replace(&mut self.action, Some(SendOnce(chan)))
+            mem::replace(&mut self.action, Some(SendOnce(chan)))
         };
 
         return port;
@@ -124,7 +123,7 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, msecs);
-            replace(&mut self.action, Some(SendMany(chan, self.id)))
+            mem::replace(&mut self.action, Some(SendMany(chan, self.id)))
         };
 
         return port;
@@ -137,7 +136,8 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
     let timer: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
     match timer.action.take_unwrap() {
-        WakeTask(task) => {
+        WakeTask => {
+            let task = timer.blocker.take_unwrap();
             let _ = task.wake().map(|t| t.reawaken());
         }
         SendOnce(chan) => { let _ = chan.try_send(()); }

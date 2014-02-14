@@ -211,7 +211,7 @@ impl RtioProcess for Process {
                 // If there's no exit code previously listed, then the
                 // process's exit callback has yet to be invoked. We just
                 // need to deschedule ourselves and wait to be reawoken.
-                wait_until_woken_after(&mut self.to_wake, || {});
+                wait_until_woken_after(&mut self.to_wake, &self.uv_loop(), || {});
                 assert!(self.exit_status.is_some());
             }
         }
