@@ -79,6 +79,7 @@ use str;
 use vec::{ImmutableVector, MutableVector};
 use vec;
 use rt::global_heap::malloc_raw;
+use unstable::raw::Slice;
 
 /// The representation of a C String.
 ///
@@ -169,6 +170,7 @@ impl CString {
     }
 
     /// Converts the CString into a `&[u8]` without copying.
+    /// Includes the terminating NUL byte.
     ///
     /// # Failure
     ///
@@ -177,7 +179,21 @@ impl CString {
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            cast::transmute((self.buf, self.len() + 1))
+            cast::transmute(Slice { data: self.buf, len: self.len() + 1 })
+        }
+    }
+
+    /// Converts the CString into a `&[u8]` without copying.
+    /// Does not include the terminating NUL byte.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the CString is null.
+    #[inline]
+    pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
+        if self.buf.is_null() { fail!("CString is null!"); }
+        unsafe {
+            cast::transmute(Slice { data: self.buf, len: self.len() })
         }
     }
 
@@ -189,8 +205,7 @@ impl CString {
     /// Fails if the CString is null.
     #[inline]
     pub fn as_str<'a>(&'a self) -> Option<&'a str> {
-        let buf = self.as_bytes();
-        let buf = buf.slice_to(buf.len()-1); // chop off the trailing NUL
+        let buf = self.as_bytes_no_nul();
         str::from_utf8(buf)
     }
 
@@ -417,7 +432,7 @@ mod tests {
             let expected = ["zero", "one"];
             let mut it = expected.iter();
             let result = from_c_multistring(ptr as *libc::c_char, None, |c| {
-                let cbytes = c.as_bytes().slice_to(c.len());
+                let cbytes = c.as_bytes_no_nul();
                 assert_eq!(cbytes, it.next().unwrap().as_bytes());
             });
             assert_eq!(result, 2);
@@ -553,10 +568,28 @@ mod tests {
     }
 
     #[test]
+    fn test_as_bytes_no_nul() {
+        let c_str = "hello".to_c_str();
+        assert_eq!(c_str.as_bytes_no_nul(), bytes!("hello"));
+        let c_str = "".to_c_str();
+        let exp: &[u8] = [];
+        assert_eq!(c_str.as_bytes_no_nul(), exp);
+        let c_str = bytes!("foo", 0xff).to_c_str();
+        assert_eq!(c_str.as_bytes_no_nul(), bytes!("foo", 0xff));
+    }
+
+    #[test]
     #[should_fail]
     fn test_as_bytes_fail() {
         let c_str = unsafe { CString::new(ptr::null(), false) };
         c_str.as_bytes();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_as_bytes_no_nul_fail() {
+        let c_str = unsafe { CString::new(ptr::null(), false) };
+        c_str.as_bytes_no_nul();
     }
 
     #[test]
