@@ -229,7 +229,7 @@ impl<T: Send> Drop for Unique<T> {
             let x = mem::uninit(); // dummy value to swap in
             // We need to move the object out of the box, so that
             // the destructor is called (at the end of this scope.)
-            ptr::replace_ptr(self.ptr, x);
+            ptr::replace(self.ptr, x);
             free(self.ptr as *mut c_void)
         }
     }
@@ -306,7 +306,7 @@ which would call back to `callback()` in Rust.
 The former example showed how a global function can be called from C code.
 However it is often desired that the callback is targetted to a special
 Rust object. This could be the object that represents the wrapper for the
-respective C object. 
+respective C object.
 
 This can be achieved by passing an unsafe pointer to the object down to the
 C library. The C library can then include the pointer to the Rust object in
@@ -335,7 +335,7 @@ extern {
 fn main() {
     // Create the object that will be referenced in the callback
     let rust_object = ~RustObject{a: 5, ...};
-     
+
     unsafe {
         // Gets a raw pointer to the object
         let target_addr:*RustObject = ptr::to_unsafe_ptr(rust_object);
@@ -380,8 +380,8 @@ Rust is to use channels (in `std::comm`) to forward data from the C thread
 that invoked the callback into a Rust task.
 
 If an asychronous callback targets a special object in the Rust address space
-it is also absolutely necessary that no more callbacks are performed by the 
-C library after the respective Rust object gets destroyed. 
+it is also absolutely necessary that no more callbacks are performed by the
+C library after the respective Rust object gets destroyed.
 This can be achieved by unregistering the callback in the object's
 destructor and designing the library in a way that guarantees that no
 callback will be performed after unregistration.

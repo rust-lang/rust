@@ -83,7 +83,7 @@ impl<T> Rawlink<T> {
 
     /// Like Option::Some for Rawlink
     fn some(n: &mut T) -> Rawlink<T> {
-        Rawlink{p: ptr::to_mut_unsafe_ptr(n)}
+        Rawlink{p: n}
     }
 
     /// Convert the `Rawlink` into an Option value

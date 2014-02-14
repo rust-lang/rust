@@ -24,13 +24,13 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 */
 
 use cast::transmute;
-use ops::Drop;
-use cmp::{Eq, Ord};
 use clone::{Clone, DeepClone};
+use cmp::{Eq, Ord};
 use kinds::marker;
-use rt::global_heap::exchange_free;
-use ptr::read_ptr;
+use ops::Drop;
 use option::{Option, Some, None};
+use ptr;
+use rt::global_heap::exchange_free;
 
 struct RcBox<T> {
     value: T,
@@ -85,7 +85,7 @@ impl<T> Drop for Rc<T> {
             if self.ptr != 0 as *mut RcBox<T> {
                 (*self.ptr).strong -= 1;
                 if (*self.ptr).strong == 0 {
-                    read_ptr(self.borrow()); // destroy the contained object
+                    ptr::read(self.borrow()); // destroy the contained object
 
                     // remove the implicit "strong weak" pointer now
                     // that we've destroyed the contents.

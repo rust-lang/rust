@@ -10,9 +10,7 @@
 
 // Issue #2040
 
-use std::ptr;
-
 pub fn main() {
     let foo = 1;
-    assert_eq!(ptr::to_unsafe_ptr(&foo), ptr::to_unsafe_ptr(&foo));
+    assert_eq!(&foo as *int, &foo as *int);
 }
