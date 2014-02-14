@@ -862,11 +862,12 @@ impl Parser {
 
         */
 
-        let opt_abis = if self.eat_keyword(keywords::Extern) {
-            self.parse_opt_abis()
-        } else { None };
+        let abis = if self.eat_keyword(keywords::Extern) {
+            self.parse_opt_abis().unwrap_or(AbiSet::C())
+        } else {
+            AbiSet::Rust()
+        };
 
-        let abis = opt_abis.unwrap_or(AbiSet::Rust());
         let purity = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl(true);
