@@ -13,7 +13,6 @@ use codemap;
 use ext::base::*;
 use ext::base;
 use print;
-use parse::token::{get_ident_interner};
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt,
                          sp: codemap::Span,
@@ -21,10 +20,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt,
                       -> base::MacResult {
 
     cx.print_backtrace();
-    println!("{}",
-        print::pprust::tt_to_str(
-            &ast::TTDelim(@tt.to_owned()),
-            get_ident_interner()));
+    println!("{}", print::pprust::tt_to_str(&ast::TTDelim(@tt.to_owned())));
 
     //trivial expression
     MRExpr(@ast::Expr {

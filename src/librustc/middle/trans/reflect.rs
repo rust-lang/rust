@@ -31,7 +31,7 @@ use std::option::{Some,None};
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
-use syntax::ast_map::PathName;
+use syntax::ast_map;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 
@@ -94,7 +94,7 @@ impl<'a> Reflector<'a> {
         let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
-            tcx.sess.ident_of(~"visit_" + ty_name),
+            token::str_to_ident(~"visit_" + ty_name),
             *self.visitor_methods).expect(format!("couldn't find visit method \
                                                 for {}", ty_name));
         let mth_ty =
@@ -269,7 +269,7 @@ impl<'a> Reflector<'a> {
                   for (i, field) in fields.iter().enumerate() {
                       let extra = ~[
                         this.c_uint(i),
-                        this.c_slice(token::get_ident(field.ident.name)),
+                        this.c_slice(token::get_ident(field.ident)),
                         this.c_bool(named_fields)
                       ] + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
@@ -291,22 +291,13 @@ impl<'a> Reflector<'a> {
                                                            mutbl: ast::MutImmutable });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + &[PathName(special_idents::anon)];
-                let sym = mangle_internal_name_by_path_and_seq(ccx,
-                                                               sub_path,
-                                                               "get_disr");
+                let sym = mangle_internal_name_by_path_and_seq(
+                    ast_map::Values([].iter()).chain(None), "get_disr");
 
                 let llfdecl = decl_internal_rust_fn(ccx, false, [opaqueptrty], ty::mk_u64(), sym);
                 let arena = TypedArena::new();
-                let fcx = new_fn_ctxt(ccx,
-                                      ~[],
-                                      llfdecl,
-                                      -1, // id
-                                      false,
-                                      ty::mk_u64(),
-                                      None,
-                                      None,
-                                      &arena);
+                let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
+                                      ty::mk_u64(), None, None, &arena);
                 init_function(&fcx, false, ty::mk_u64(), None);
 
                 let arg = unsafe {
@@ -333,7 +324,7 @@ impl<'a> Reflector<'a> {
                 + self.c_size_and_align(t);
             self.bracketed("enum", enum_args, |this| {
                 for (i, v) in variants.iter().enumerate() {
-                    let name = token::get_ident(v.name.name);
+                    let name = token::get_ident(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          C_u64(v.disr_val),
                                          this.c_uint(v.args.len()),

@@ -27,7 +27,6 @@ use util::ppaux::ty_to_str;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
 use syntax::codemap::Span;
-use syntax::diagnostic::SpanHandler;
 use syntax::fold::Folder;
 use syntax::parse::token;
 use syntax;
@@ -80,17 +79,15 @@ trait tr_intern {
 
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
-                           path: &[ast_map::PathElem],
                            ii: e::InlinedItemRef,
                            maps: Maps) {
-    let ident = match ii {
-        e::IIItemRef(i) => i.ident,
-        e::IIForeignRef(i) => i.ident,
-        e::IIMethodRef(_, _, m) => m.ident,
+    let id = match ii {
+        e::IIItemRef(i) => i.id,
+        e::IIForeignRef(i) => i.id,
+        e::IIMethodRef(_, _, m) => m.id,
     };
-    debug!("> Encoding inlined item: {}::{} ({})",
-           ast_map::path_to_str(path, token::get_ident_interner()),
-           ecx.tcx.sess.str_of(ident),
+    debug!("> Encoding inlined item: {} ({})",
+           ecx.tcx.map.path_to_str(id),
            ebml_w.writer.tell());
 
     let ii = simplify_ast(ii);
@@ -102,9 +99,8 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     encode_side_tables_for_ii(ecx, maps, ebml_w, &ii);
     ebml_w.end_tag();
 
-    debug!("< Encoded inlined fn: {}::{} ({})",
-           ast_map::path_to_str(path, token::get_ident_interner()),
-           ecx.tcx.sess.str_of(ident),
+    debug!("< Encoded inlined fn: {} ({})",
+           ecx.tcx.map.path_to_str(id),
            ebml_w.writer.tell());
 }
 
@@ -118,19 +114,25 @@ pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: &[ast_map::PathElem],
+                           path: ~[ast_map::PathElem],
                            par_doc: ebml::Doc)
-                        -> Option<ast::InlinedItem> {
+                           -> Result<ast::InlinedItem, ~[ast_map::PathElem]> {
     let dcx = @DecodeContext {
         cdata: cdata,
         tcx: tcx,
         maps: maps
     };
     match par_doc.opt_child(c::tag_ast) {
-      None => None,
+      None => Err(path),
       Some(ast_doc) => {
+        let mut path_as_str = None;
         debug!("> Decoding inlined fn: {}::?",
-               ast_map::path_to_str(path, token::get_ident_interner()));
+        {
+            // Do an Option dance to use the path after it is moved below.
+            let s = ast_map::path_to_str(ast_map::Values(path.iter()));
+            path_as_str = Some(s);
+            path_as_str.as_ref().map(|x| x.as_slice())
+        });
         let mut ast_dsr = reader::Decoder(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
@@ -140,30 +142,26 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
             to_id_range: to_id_range
         };
         let raw_ii = decode_ast(ast_doc);
-        let ii = renumber_and_map_ast(xcx,
-                                      tcx.sess.diagnostic(),
-                                      dcx.tcx.items,
-                                      path.to_owned(),
-                                      raw_ii);
+        let ii = renumber_and_map_ast(xcx, &dcx.tcx.map, path, raw_ii);
         let ident = match ii {
             ast::IIItem(i) => i.ident,
             ast::IIForeign(i) => i.ident,
             ast::IIMethod(_, _, m) => m.ident,
         };
-        debug!("Fn named: {}", tcx.sess.str_of(ident));
+        debug!("Fn named: {}", token::get_ident(ident));
         debug!("< Decoded inlined fn: {}::{}",
-               ast_map::path_to_str(path, token::get_ident_interner()),
-               tcx.sess.str_of(ident));
+               path_as_str.unwrap(),
+               token::get_ident(ident));
         region::resolve_inlined_item(tcx.sess, &tcx.region_maps, &ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::IIItem(i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(i, tcx.sess.intr()));
+                   syntax::print::pprust::item_to_str(i));
           }
           _ => { }
         }
-        Some(ii)
+        Ok(ii)
       }
     }
 }
@@ -381,7 +379,12 @@ struct AstRenumberer {
 
 impl ast_map::FoldOps for AstRenumberer {
     fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
-        self.xcx.tr_id(id)
+        if id == ast::DUMMY_NODE_ID {
+            // Used by ast_map to map the NodeInlinedParent.
+            self.xcx.dcx.tcx.sess.next_node_id()
+        } else {
+            self.xcx.tr_id(id)
+        }
     }
     fn new_span(&self, span: Span) -> Span {
         self.xcx.tr_span(span)
@@ -389,11 +392,10 @@ impl ast_map::FoldOps for AstRenumberer {
 }
 
 fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
-                        diag: @SpanHandler,
-                        map: ast_map::Map,
-                        path: ast_map::Path,
+                        map: &ast_map::Map,
+                        path: ~[ast_map::PathElem],
                         ii: ast::InlinedItem) -> ast::InlinedItem {
-    ast_map::map_decoded_item(diag, map, path, AstRenumberer { xcx: xcx }, |fld| {
+    ast_map::map_decoded_item(map, path, AstRenumberer { xcx: xcx }, |fld| {
         match ii {
             ast::IIItem(i) => {
                 ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
@@ -1508,10 +1510,7 @@ fn test_simplification() {
     ).unwrap());
     match (item_out, item_exp) {
       (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
-        assert!(pprust::item_to_str(item_out,
-                                    token::get_ident_interner())
-                     == pprust::item_to_str(item_exp,
-                                            token::get_ident_interner()));
+        assert!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
       }
       _ => fail!()
     }

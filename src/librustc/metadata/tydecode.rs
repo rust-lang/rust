@@ -24,6 +24,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::opt_vec;
+use syntax::parse::token;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -96,10 +97,9 @@ pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
 }
 
 fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
-    let tcx = st.tcx;
     scan(st, is_last, |bytes| {
-            tcx.sess.ident_of(str::from_utf8(bytes).unwrap())
-        })
+        token::str_to_ident(str::from_utf8(bytes).unwrap())
+    })
 }
 
 pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
@@ -212,7 +212,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         }
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
-            let ident = st.tcx.sess.ident_of(parse_str(st, ']'));
+            let ident = token::str_to_ident(parse_str(st, ']'));
             ty::BrNamed(def, ident)
         }
         'f' => {
@@ -240,7 +240,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
-        let nm = st.tcx.sess.ident_of(parse_str(st, ']'));
+        let nm = token::str_to_ident(parse_str(st, ']'));
         ty::ReEarlyBound(node_id, index, nm)
       }
       'f' => {

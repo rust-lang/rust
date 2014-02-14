@@ -10,6 +10,7 @@
 
 use ast::*;
 use ast;
+use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
 use opt_vec::OptVec;
@@ -261,10 +262,10 @@ pub trait Folder {
 
     fn fold_local(&mut self, l: @Local) -> @Local {
         @Local {
+            id: self.new_id(l.id), // Needs to be first, for ast_map.
             ty: self.fold_ty(l.ty),
             pat: self.fold_pat(l.pat),
             init: l.init.map(|e| self.fold_expr(e)),
-            id: self.new_id(l.id),
             span: self.new_span(l.span),
         }
     }
@@ -344,9 +345,9 @@ fn fold_attribute_<T: Folder>(at: Attribute, fld: &mut T) -> Attribute {
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
     Arg {
+        id: fld.new_id(a.id), // Needs to be first, for ast_map.
         ty: fld.fold_ty(a.ty),
         pat: fld.fold_pat(a.pat),
-        id: fld.new_id(a.id),
     }
 }
 
@@ -514,10 +515,10 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     let view_items = b.view_items.map(|x| folder.fold_view_item(x));
     let stmts = b.stmts.iter().flat_map(|s| folder.fold_stmt(*s).move_iter()).collect();
     P(Block {
+        id: folder.new_id(b.id), // Needs to be first, for ast_map.
         view_items: view_items,
         stmts: stmts,
         expr: b.expr.map(|x| folder.fold_expr(x)),
-        id: folder.new_id(b.id),
         rules: b.rules,
         span: folder.new_span(b.span),
     })
@@ -579,13 +580,13 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
 
 pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMethod {
     TypeMethod {
+        id: fld.new_id(m.id), // Needs to be first, for ast_map.
         ident: fld.fold_ident(m.ident),
         attrs: m.attrs.map(|a| fold_attribute_(*a, fld)),
         purity: m.purity,
         decl: fld.fold_fn_decl(m.decl),
         generics: fold_generics(&m.generics, fld),
         explicit_self: fld.fold_explicit_self(&m.explicit_self),
-        id: fld.new_id(m.id),
         span: fld.new_span(m.span),
     }
 }
@@ -609,11 +610,21 @@ pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
 }
 
 pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item> {
+    let id = folder.new_id(i.id); // Needs to be first, for ast_map.
+    let node = folder.fold_item_underscore(&i.node);
+    let ident = match node {
+        // The node may have changed, recompute the "pretty" impl name.
+        ItemImpl(_, ref maybe_trait, ty, _) => {
+            ast_util::impl_pretty_name(maybe_trait, ty)
+        }
+        _ => i.ident
+    };
+
     SmallVector::one(@Item {
-        ident: folder.fold_ident(i.ident),
+        id: id,
+        ident: folder.fold_ident(ident),
         attrs: i.attrs.map(|e| fold_attribute_(*e, folder)),
-        id: folder.new_id(i.id),
-        node: folder.fold_item_underscore(&i.node),
+        node: node,
         vis: i.vis,
         span: folder.new_span(i.span)
     })
@@ -621,6 +632,7 @@ pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item>
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @ForeignItem {
     @ForeignItem {
+        id: folder.new_id(ni.id), // Needs to be first, for ast_map.
         ident: folder.fold_ident(ni.ident),
         attrs: ni.attrs.map(|x| fold_attribute_(*x, folder)),
         node: match ni.node {
@@ -636,7 +648,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @F
                 ForeignItemStatic(folder.fold_ty(t), m)
             }
         },
-        id: folder.new_id(ni.id),
         span: folder.new_span(ni.span),
         vis: ni.vis,
     }
@@ -644,6 +655,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @F
 
 pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
     @Method {
+        id: folder.new_id(m.id), // Needs to be first, for ast_map.
         ident: folder.fold_ident(m.ident),
         attrs: m.attrs.map(|a| fold_attribute_(*a, folder)),
         generics: fold_generics(&m.generics, folder),
@@ -651,7 +663,6 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
         purity: m.purity,
         decl: folder.fold_fn_decl(m.decl),
         body: folder.fold_block(m.body),
-        id: folder.new_id(m.id),
         span: folder.new_span(m.span),
         vis: m.vis
     }
@@ -894,8 +905,7 @@ mod test {
             ~"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,
-                                    token::get_ident_interner()),
+                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate),
                      ~"#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}");
     }
 
@@ -907,8 +917,7 @@ mod test {
               (g $(d $d $e)+))} ");
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate,
-                                    token::get_ident_interner()),
+                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
 }

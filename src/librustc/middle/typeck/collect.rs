@@ -53,10 +53,11 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::Span;
 use syntax::codemap;
+use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::print::pprust::{path_to_str};
 use syntax::visit;
 use syntax::opt_vec::OptVec;
-use syntax::parse::token::special_idents;
 
 struct CollectItemTypesVisitor {
     ccx: @CrateCtxt
@@ -111,14 +112,15 @@ impl AstConv for CrateCtxt {
             return csearch::get_type(self.tcx, id)
         }
 
-        match self.tcx.items.find(id.node) {
-            Some(ast_map::NodeItem(item, _)) => ty_of_item(self, item),
-            Some(ast_map::NodeForeignItem(foreign_item, abis, _, _)) => {
+        match self.tcx.map.find(id.node) {
+            Some(ast_map::NodeItem(item)) => ty_of_item(self, item),
+            Some(ast_map::NodeForeignItem(foreign_item)) => {
+                let abis = self.tcx.map.get_foreign_abis(id.node);
                 ty_of_foreign_item(self, foreign_item, abis)
             }
-            ref x => {
-                self.tcx.sess.bug(format!("unexpected sort of item \
-                                           in get_item_ty(): {:?}", (*x)));
+            x => {
+                self.tcx.sess.bug(format!("unexpected sort of node \
+                                           in get_item_ty(): {:?}", x));
             }
         }
     }
@@ -128,8 +130,7 @@ impl AstConv for CrateCtxt {
     }
 
     fn ty_infer(&self, span: Span) -> ty::t {
-        self.tcx.sess.span_bug(span,
-                               "found `ty_infer` in unexpected place");
+        self.tcx.sess.span_bug(span, "found `ty_infer` in unexpected place");
     }
 }
 
@@ -185,8 +186,8 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 
 pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
     let tcx = ccx.tcx;
-    match tcx.items.get(trait_id) {
-        ast_map::NodeItem(item, _) => {
+    match tcx.map.get(trait_id) {
+        ast_map::NodeItem(item) => {
             match item.node {
                 ast::ItemTrait(ref generics, _, ref ms) => {
                     let trait_ty_generics = ty_generics(ccx, generics, 0);
@@ -553,7 +554,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
     let tcx = ccx.tcx;
-    debug!("convert: item {} with id {}", tcx.sess.str_of(it.ident), it.id);
+    debug!("convert: item {} with id {}", token::get_ident(it.ident), it.id);
     match it.node {
       // These don't define types.
       ast::ItemForeignMod(_) | ast::ItemMod(_) | ast::ItemMac(_) => {}
@@ -716,13 +717,7 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     // map, and I regard each time that I use it as a personal and
     // moral failing, but at the moment it seems like the only
     // convenient way to extract the ABI. - ndm
-    let abis = match ccx.tcx.items.find(i.id) {
-        Some(ast_map::NodeForeignItem(_, abis, _, _)) => abis,
-        ref x => {
-            ccx.tcx.sess.bug(format!("unexpected sort of item \
-                                   in get_item_ty(): {:?}", (*x)));
-        }
-    };
+    let abis = ccx.tcx.map.get_foreign_abis(i.id);
 
     let tpt = ty_of_foreign_item(ccx, i, abis);
     write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
@@ -758,8 +753,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
                 format!("{} is not a trait",
-                    path_to_str(&ast_trait_ref.path,
-                                ccx.tcx.sess.intr())));
+                    path_to_str(&ast_trait_ref.path)));
         }
     }
 }
@@ -769,8 +763,8 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
         return ty::lookup_trait_def(ccx.tcx, trait_id)
     }
 
-    match ccx.tcx.items.get(trait_id.node) {
-        ast_map::NodeItem(item, _) => trait_def_of_item(ccx, item),
+    match ccx.tcx.map.get(trait_id.node) {
+        ast_map::NodeItem(item) => trait_def_of_item(ccx, item),
         _ => ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
                                    trait_id.node))
     }
@@ -845,7 +839,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
                 ty: ty::mk_bare_fn(ccx.tcx, tofd)
             };
             debug!("type of {} (id {}) is {}",
-                    tcx.sess.str_of(it.ident),
+                    token::get_ident(it.ident),
                     it.id,
                     ppaux::ty_to_str(tcx, tpt.ty));
 

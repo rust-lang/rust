@@ -357,28 +357,23 @@ pub fn trans_fn_ref_with_vtables(
     // intrinsic, or is a default method.  In particular, if we see an
     // intrinsic that is inlined from a different crate, we want to reemit the
     // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise;
-    if type_params.len() > 0 || is_default {
-        must_monomorphise = true;
+    let must_monomorphise = if type_params.len() > 0 || is_default {
+        true
     } else if def_id.krate == ast::LOCAL_CRATE {
-        {
-            let map_node = session::expect(
-                ccx.sess,
-                ccx.tcx.items.find(def_id.node),
-                || format!("local item should be in ast map"));
+        let map_node = session::expect(
+            ccx.sess,
+            ccx.tcx.map.find(def_id.node),
+            || format!("local item should be in ast map"));
 
-            match map_node {
-                ast_map::NodeForeignItem(_, abis, _, _) => {
-                    must_monomorphise = abis.is_intrinsic()
-                }
-                _ => {
-                    must_monomorphise = false;
-                }
+        match map_node {
+            ast_map::NodeForeignItem(_) => {
+                ccx.tcx.map.get_foreign_abis(def_id.node).is_intrinsic()
             }
+            _ => false
         }
     } else {
-        must_monomorphise = false;
-    }
+        false
+    };
 
     // Create a monomorphic verison of generic functions
     if must_monomorphise {

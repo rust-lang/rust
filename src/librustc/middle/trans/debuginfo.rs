@@ -176,7 +176,7 @@ pub struct CrateDebugContext {
     priv current_debug_location: Cell<DebugLocation>,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: RefCell<HashMap<~[ast::Ident], @NamespaceTreeNode>>,
+    priv namespace_map: RefCell<HashMap<~[ast::Name], @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     priv composite_types_completed: RefCell<HashSet<DIType>>,
@@ -332,7 +332,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
 
     let cx = bcx.ccx();
 
-    let ast_item = cx.tcx.items.find(node_id);
+    let ast_item = cx.tcx.map.find(node_id);
 
     let variable_ident = match ast_item {
         None => {
@@ -540,10 +540,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
-    let fnitem = cx.tcx.items.get(fn_ast_id);
+    let fnitem = cx.tcx.map.get(fn_ast_id);
 
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
-        ast_map::NodeItem(ref item, _) => {
+        ast_map::NodeItem(ref item) => {
             match item.node {
                 ast::ItemFn(fn_decl, _, _, ref generics, top_level_block) => {
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
@@ -554,7 +554,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 }
             }
         }
-        ast_map::NodeMethod(method, _, _) => {
+        ast_map::NodeMethod(method) => {
             (method.ident,
              method.decl,
              &method.generics,
@@ -581,7 +581,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::NodeTraitMethod(trait_method, _, _) => {
+        ast_map::NodeTraitMethod(trait_method) => {
             match *trait_method {
                 ast::Provided(method) => {
                     (method.ident,
@@ -622,8 +622,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
-    let function_name_string = token::get_ident(ident.name);
-    let mut function_name = function_name_string.get().to_owned();
+    let mut function_name = token::get_ident(ident).get().to_str();
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -634,7 +633,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     // into a namespace. In the future this could be improved somehow (storing a path in the
     // ast_map, or construct a path using the enclosing function).
     let (linkage_name, containing_scope) = if has_path {
-        let namespace_node = namespace_for_item(cx, ast_util::local_def(fn_ast_id), span);
+        let namespace_node = namespace_for_item(cx, ast_util::local_def(fn_ast_id));
         let linkage_name = namespace_node.mangled_name_of_contained_item(function_name);
         let containing_scope = namespace_node.scope;
         (linkage_name, containing_scope)
@@ -792,9 +791,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
                 let ident = special_idents::type_self;
 
-                let param_metadata_string = token::get_ident(ident.name);
-                let param_metadata = param_metadata_string.get()
-                                                          .with_c_str(|name| {
+                let param_metadata = token::get_ident(ident).get()
+                                                            .with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -832,9 +830,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
             // Again, only create type information if debuginfo is enabled
             if cx.sess.opts.debuginfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let param_metadata_string = token::get_ident(ident.name);
-                let param_metadata = param_metadata_string.get()
-                                                          .with_c_str(|name| {
+                let param_metadata = token::get_ident(ident).get()
+                                                            .with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
@@ -939,8 +936,7 @@ fn declare_local(bcx: &Block,
     let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, filename);
 
-    let variable_ident_string = token::get_ident(variable_ident.name);
-    let name: &str = variable_ident_string.get();
+    let name = token::get_ident(variable_ident);
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
 
@@ -950,7 +946,7 @@ fn declare_local(bcx: &Block,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
-    let (var_alloca, var_metadata) = name.with_c_str(|name| {
+    let (var_alloca, var_metadata) = name.get().with_c_str(|name| {
         match variable_access {
             DirectVariable { alloca } => (
                 alloca,
@@ -1056,7 +1052,7 @@ fn scope_metadata(fcx: &FunctionContext,
     match scope_map.get().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
-            let node = fcx.ccx.tcx.items.get(node_id);
+            let node = fcx.ccx.tcx.map.get(node_id);
 
             fcx.ccx.sess.span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}", node));
@@ -1169,8 +1165,7 @@ impl StructMemberDescriptionFactory {
             let name = if field.ident.name == special_idents::unnamed_field.name {
                 ~""
             } else {
-                let string = token::get_ident(field.ident.name);
-                string.get().to_str()
+                token::get_ident(field.ident).get().to_str()
             };
 
             MemberDescription {
@@ -1192,7 +1187,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
     let struct_name = ppaux::ty_to_str(cx.tcx, struct_type);
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
-    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id, span);
+    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
     let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
@@ -1391,26 +1386,13 @@ fn describe_enum_variant(cx: &CrateContext,
                          file_metadata: DIFile,
                          span: Span)
                       -> (DICompositeType, Type, MemberDescriptionFactory) {
-    let variant_info_string = token::get_ident(variant_info.name.name);
-    let variant_name = variant_info_string.get();
     let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
                                           struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
 
     // Find the source code location of the variant's definition
     let variant_definition_span = if variant_info.id.krate == ast::LOCAL_CRATE {
-        {
-            match cx.tcx.items.find(variant_info.id.node) {
-                Some(ast_map::NodeVariant(ref variant, _, _)) => variant.span,
-                ref node => {
-                    cx.sess.span_warn(span,
-                        format!("debuginfo::enum_metadata()::\
-                                 adt_struct_metadata() - Unexpected node \
-                                 type: {:?}. This is a bug.", node));
-                    codemap::DUMMY_SP
-                }
-            }
-        }
+        cx.tcx.map.span(variant_info.id.node)
     } else {
         // For definitions from other crates we have no location information available.
         codemap::DUMMY_SP
@@ -1418,7 +1400,7 @@ fn describe_enum_variant(cx: &CrateContext,
 
     let metadata_stub = create_struct_stub(cx,
                                            variant_llvm_type,
-                                           variant_name,
+                                           token::get_ident(variant_info.name).get(),
                                            containing_scope,
                                            file_metadata,
                                            variant_definition_span);
@@ -1426,10 +1408,7 @@ fn describe_enum_variant(cx: &CrateContext,
     // Get the argument names from the enum variant info
     let mut arg_names = match variant_info.arg_names {
         Some(ref names) => {
-            names.map(|ident| {
-                let string = token::get_ident(ident.name);
-                string.get().to_str()
-            })
+            names.map(|ident| token::get_ident(*ident).get().to_str())
         }
         None => variant_info.args.map(|_| ~"")
     };
@@ -1462,9 +1441,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                       -> RecursiveTypeDescription {
     let enum_name = ppaux::ty_to_str(cx.tcx, enum_type);
 
-    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx,
-                                                                              enum_def_id,
-                                                                              span);
+    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
@@ -1487,16 +1464,12 @@ fn prepare_enum_metadata(cx: &CrateContext,
     let enumerators_metadata: ~[DIDescriptor] = variants
         .iter()
         .map(|v| {
-            let string = token::get_ident(v.name.name);
-            let name: &str = string.get();
-            let discriminant_value = v.disr_val as c_ulonglong;
-
-            name.with_c_str(|name| {
+            token::get_ident(v.name).get().with_c_str(|name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateEnumerator(
                         DIB(cx),
                         name,
-                        discriminant_value)
+                        v.disr_val as c_ulonglong)
                 }
             })
         })
@@ -2007,15 +1980,13 @@ fn trait_metadata(cx: &CrateContext,
                   substs: &ty::substs,
                   trait_store: ty::TraitStore,
                   mutability: ast::Mutability,
-                  _: &ty::BuiltinBounds,
-                  usage_site_span: Span)
+                  _: &ty::BuiltinBounds)
                -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait type is
     // assigned the correct name, size, namespace, and source location. But it does not describe
     // the trait's methods.
-    let path = ty::item_path(cx.tcx, def_id);
-    let ident = path.last().unwrap().ident();
-    let ident_string = token::get_ident(ident.name);
+    let last = ty::with_path(cx.tcx, def_id, |mut path| path.last().unwrap());
+    let ident_string = token::get_name(last.name());
     let name = ppaux::trait_store_to_str(cx.tcx, trait_store) +
                ppaux::mutability_to_str(mutability) +
                ident_string.get();
@@ -2023,8 +1994,7 @@ fn trait_metadata(cx: &CrateContext,
     let name = ppaux::parameterized(cx.tcx, name, &substs.regions,
                                     substs.tps, def_id, true);
 
-    let (containing_scope, definition_span) =
-        get_namespace_and_span_for_item(cx, def_id, usage_site_span);
+    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
     let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
@@ -2138,7 +2108,7 @@ fn type_metadata(cx: &CrateContext,
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
         },
         ty::ty_trait(def_id, ref substs, trait_store, mutability, ref bounds) => {
-            trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds, usage_site_span)
+            trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {
             prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
@@ -2256,25 +2226,11 @@ fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: 
     }
 }
 
-fn get_namespace_and_span_for_item(cx: &CrateContext,
-                                   def_id: ast::DefId,
-                                   warning_span: Span)
-                                -> (DIScope, Span) {
-    let containing_scope = namespace_for_item(cx, def_id, warning_span).scope;
+fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: ast::DefId)
+                                   -> (DIScope, Span) {
+    let containing_scope = namespace_for_item(cx, def_id).scope;
     let definition_span = if def_id.krate == ast::LOCAL_CRATE {
-        {
-            let definition_span = match cx.tcx.items.find(def_id.node) {
-                Some(ast_map::NodeItem(item, _)) => item.span,
-                ref node => {
-                    cx.sess.span_warn(warning_span,
-                        format!("debuginfo::\
-                                 get_namespace_and_span_for_item() \
-                                 - Unexpected node type: {:?}", *node));
-                    codemap::DUMMY_SP
-                }
-            };
-            definition_span
-        }
+        cx.tcx.map.span(def_id.node)
     } else {
         // For external items there is no span information
         codemap::DUMMY_SP
@@ -2745,122 +2701,112 @@ fn populate_scope_map(cx: &CrateContext,
 //=-------------------------------------------------------------------------------------------------
 
 struct NamespaceTreeNode {
-    ident: ast::Ident,
+    name: ast::Name,
     scope: DIScope,
     parent: Option<@NamespaceTreeNode>,
 }
 
 impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
-        let mut name = ~"_ZN";
-        fill_nested(self, &mut name);
-
-        name.push_str(format!("{}{}", item_name.len(), item_name));
-        name.push_char('E');
-
-        return name;
-
         fn fill_nested(node: &NamespaceTreeNode, output: &mut ~str) {
             match node.parent {
-                Some(parent) => {
-                    fill_nested(parent, output);
-                }
+                Some(parent) => fill_nested(parent, output),
                 None => {}
             }
-            let string = token::get_ident(node.ident.name);
-            output.push_str(format!("{}{}",
-                                    string.get().len(),
-                                    string.get()));
+            let string = token::get_name(node.name);
+            output.push_str(format!("{}", string.get().len()));
+            output.push_str(string.get());
         }
+
+        let mut name = ~"_ZN";
+        fill_nested(self, &mut name);
+        name.push_str(format!("{}", item_name.len()));
+        name.push_str(item_name);
+        name.push_char('E');
+        name
     }
 }
 
-fn namespace_for_item(cx: &CrateContext,
-                      def_id: ast::DefId,
-                      warning_span: Span)
-                   -> @NamespaceTreeNode {
-    let namespace_path = {
-        let mut item_path = ty::item_path(cx.tcx, def_id);
-
-        if (def_id.krate == ast::LOCAL_CRATE && item_path.len() < 1) ||
-           (def_id.krate != ast::LOCAL_CRATE && item_path.len() < 2) {
-            cx.sess.bug(format!("debuginfo::namespace_for_item() - Item path too short: {}",
-                ast_map::path_to_str(item_path, token::get_ident_interner())));
-        }
-
-        // remove the name of the item
-        item_path.pop();
-
-        if def_id.krate == ast::LOCAL_CRATE {
-            // prepend crate name if not already present
+fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNode {
+    ty::with_path(cx.tcx, def_id, |path| {
+        // prepend crate name if not already present
+        let krate = if def_id.krate == ast::LOCAL_CRATE {
             let crate_namespace_ident = token::str_to_ident(cx.link_meta.crateid.name);
-            item_path.insert(0, ast_map::PathMod(crate_namespace_ident));
-        }
-
-        item_path
-    };
-
-    let mut current_key = vec::with_capacity(namespace_path.len());
-    let mut parent_node: Option<@NamespaceTreeNode> = None;
-    let last_index = namespace_path.len() - 1;
-
-    // Create/Lookup namespace for each element of the path.
-    for (i, &path_element) in namespace_path.iter().enumerate() {
-        let ident = path_element.ident();
-        current_key.push(ident);
-
-        let existing_node = {
-            let namespace_map = debug_context(cx).namespace_map.borrow();
-            namespace_map.get().find_copy(&current_key)
-        };
-        let current_node = match existing_node {
-            Some(existing_node) => existing_node,
-            None => {
-                // create and insert
-                let parent_scope = match parent_node {
-                    Some(node) => node.scope,
-                    None => ptr::null()
-                };
-                let namespace_name_string = token::get_ident(ident.name);
-                let namespace_name = namespace_name_string.get();
-
-                let namespace_metadata = unsafe {
-                    namespace_name.with_c_str(|namespace_name| {
-                        llvm::LLVMDIBuilderCreateNameSpace(
-                            DIB(cx),
-                            parent_scope,
-                            namespace_name,
-                            ptr::null(), // cannot reconstruct file ...
-                            0)           // ... or line information, but that's not so important.
-                    })
-                };
-
-                let node = @NamespaceTreeNode {
-                    ident: ident,
-                    scope: namespace_metadata,
-                    parent: parent_node,
-                };
-
-                {
-                    let mut namespace_map = debug_context(cx).namespace_map
-                                                             .borrow_mut();
-                    namespace_map.get().insert(current_key.clone(), node);
-                }
-
-                node
-            }
-        };
-
-        if i == last_index {
-            return current_node;
+            Some(ast_map::PathMod(crate_namespace_ident.name))
         } else {
+            None
+        };
+        let mut path = krate.move_iter().chain(path).peekable();
+
+        let mut current_key = ~[];
+        let mut parent_node: Option<@NamespaceTreeNode> = None;
+
+        // Create/Lookup namespace for each element of the path.
+        loop {
+            // Emulate a for loop so we can use peek below.
+            let path_element = match path.next() {
+                Some(e) => e,
+                None => break
+            };
+            // Ignore the name of the item (the last path element).
+            if path.peek().is_none() {
+                break;
+            }
+
+            let name = path_element.name();
+            current_key.push(name);
+
+            let existing_node = {
+                let namespace_map = debug_context(cx).namespace_map.borrow();
+                namespace_map.get().find_copy(&current_key)
+            };
+            let current_node = match existing_node {
+                Some(existing_node) => existing_node,
+                None => {
+                    // create and insert
+                    let parent_scope = match parent_node {
+                        Some(node) => node.scope,
+                        None => ptr::null()
+                    };
+                    let namespace_name = token::get_name(name);
+                    let scope = namespace_name.get().with_c_str(|namespace_name| {
+                        unsafe {
+                            llvm::LLVMDIBuilderCreateNameSpace(
+                                DIB(cx),
+                                parent_scope,
+                                namespace_name,
+                                // cannot reconstruct file ...
+                                ptr::null(),
+                                // ... or line information, but that's not so important.
+                                0)
+                        }
+                    });
+
+                    let node = @NamespaceTreeNode {
+                        name: name,
+                        scope: scope,
+                        parent: parent_node,
+                    };
+
+                    {
+                        let mut namespace_map = debug_context(cx).namespace_map
+                                                                 .borrow_mut();
+                        namespace_map.get().insert(current_key.clone(), node);
+                    }
+
+                    node
+                }
+            };
+
             parent_node = Some(current_node);
         }
-    }
 
-    // Should be unreachable:
-    let error_message = format!("debuginfo::namespace_for_item() - Code path should be \
-                                 unreachable. namespace_path was {}",
-                                 ast_map::path_to_str(namespace_path, token::get_ident_interner()));
-    cx.sess.span_bug(warning_span, error_message);
+        match parent_node {
+            Some(node) => node,
+            None => {
+                cx.sess.bug(format!("debuginfo::namespace_for_item(): \
+                    path too short for {:?}", def_id));
+            }
+        }
+    })
 }

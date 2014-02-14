@@ -57,10 +57,10 @@ fn to_str_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure)
                 name: ast::Ident,
                 fields: &[FieldInfo]| {
         if fields.len() == 0 {
-            cx.expr_str_uniq(span, token::get_ident(name.name))
+            cx.expr_str_uniq(span, token::get_ident(name))
         } else {
             let buf = cx.ident_of("buf");
-            let interned_str = token::get_ident(name.name);
+            let interned_str = token::get_ident(name);
             let start =
                 token::intern_and_get_ident(interned_str.get() + start);
             let init = cx.expr_str_uniq(span, start);
@@ -81,7 +81,7 @@ fn to_str_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure)
                     match name {
                         None => {}
                         Some(id) => {
-                            let interned_id = token::get_ident(id.name);
+                            let interned_id = token::get_ident(id);
                             let name = interned_id.get() + ": ";
                             push(cx.expr_str(span,
                                              token::intern_and_get_ident(name)));

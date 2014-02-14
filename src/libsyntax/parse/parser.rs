@@ -71,9 +71,9 @@ use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
-use parse::token::{INTERPOLATED, InternedString, can_begin_expr, get_ident};
-use parse::token::{get_ident_interner, is_ident, is_ident_or_path};
-use parse::token::{is_plain_ident, keywords, special_idents, token_to_binop};
+use parse::token::{INTERPOLATED, InternedString, can_begin_expr};
+use parse::token::{is_ident, is_ident_or_path, is_plain_ident};
+use parse::token::{keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
@@ -288,7 +288,6 @@ struct ParsedItemsAndViewItems {
 pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
               -> Parser {
     let tok0 = rdr.next_token();
-    let interner = get_ident_interner();
     let span = tok0.sp;
     let placeholder = TokenAndSpan {
         tok: token::UNDERSCORE,
@@ -297,7 +296,7 @@ pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
 
     Parser {
         reader: rdr,
-        interner: interner,
+        interner: token::get_ident_interner(),
         sess: sess,
         cfg: cfg,
         token: tok0.tok,
@@ -359,7 +358,7 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
 impl Parser {
     // convert a token to a string using self's reader
     pub fn token_to_str(token: &token::Token) -> ~str {
-        token::to_str(get_ident_interner(), token)
+        token::to_str(token)
     }
 
     // convert the current token to a string using self's reader
@@ -531,12 +530,10 @@ impl Parser {
     // otherwise, eat it.
     pub fn expect_keyword(&mut self, kw: keywords::Keyword) {
         if !self.eat_keyword(kw) {
-            let id_ident = kw.to_ident();
-            let id_interned_str = token::get_ident(id_ident.name);
+            let id_interned_str = token::get_ident(kw.to_ident());
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `{}`, found `{}`",
-                               id_interned_str.get(),
-                               token_str))
+                               id_interned_str, token_str))
         }
     }
 
@@ -804,7 +801,7 @@ impl Parser {
     }
 
     pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
-        get_ident(id.name)
+        token::get_ident(id)
     }
 
     // Is the current token one of the keywords that signals a bare function
@@ -3425,8 +3422,7 @@ impl Parser {
         loop {
             match self.token {
                 token::LIFETIME(lifetime) => {
-                    let lifetime_interned_string =
-                        token::get_ident(lifetime.name);
+                    let lifetime_interned_string = token::get_ident(lifetime);
                     if lifetime_interned_string.equiv(&("static")) {
                         result.push(RegionTyParamBound);
                     } else {
@@ -3876,10 +3872,6 @@ impl Parser {
         // First, parse type parameters if necessary.
         let generics = self.parse_generics();
 
-        // This is a new-style impl declaration.
-        // FIXME: clownshoes
-        let ident = special_idents::clownshoes_extensions;
-
         // Special case: if the next identifier that follows is '(', don't
         // allow this to be parsed as a trait.
         let could_be_trait = self.token != token::LPAREN;
@@ -3923,6 +3915,8 @@ impl Parser {
             method_attrs = None;
         }
 
+        let ident = ast_util::impl_pretty_name(&opt_trait, ty);
+
         (ident, ItemImpl(generics, opt_trait, ty, meths), Some(inner_attrs))
     }
 
@@ -3959,9 +3953,8 @@ impl Parser {
                 fields.push(self.parse_struct_decl_field());
             }
             if fields.len() == 0 {
-                let string = get_ident_interner().get(class_name.name);
                 self.fatal(format!("unit-like struct definition should be written as `struct {};`",
-                                   string.as_slice()));
+                                   token::get_ident(class_name)));
             }
             self.bump();
         } else if self.token == token::LPAREN {
@@ -4159,7 +4152,7 @@ impl Parser {
                 outer_attrs, "path") {
             Some(d) => dir_path.join(d),
             None => {
-                let mod_string = token::get_ident(id.name);
+                let mod_string = token::get_ident(id);
                 let mod_name = mod_string.get().to_owned();
                 let default_path_str = mod_name + ".rs";
                 let secondary_path_str = mod_name + "/mod.rs";
@@ -4378,7 +4371,7 @@ impl Parser {
 
         let item = self.mk_item(lo,
                                 self.last_span.hi,
-                                special_idents::clownshoes_foreign_mod,
+                                special_idents::invalid,
                                 ItemForeignMod(m),
                                 visibility,
                                 maybe_append(attrs, Some(inner)));
@@ -4498,7 +4491,7 @@ impl Parser {
             token::LIT_STR(s)
             | token::LIT_STR_RAW(s, _) => {
                 self.bump();
-                let identifier_string = token::get_ident(s.name);
+                let identifier_string = token::get_ident(s);
                 let the_string = identifier_string.get();
                 let mut abis = AbiSet::empty();
                 for word in the_string.words() {

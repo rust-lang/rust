@@ -552,7 +552,7 @@ impl BorrowckCtxt {
             move_data::Declared => {}
 
             move_data::MoveExpr => {
-                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
@@ -570,8 +570,7 @@ impl BorrowckCtxt {
 
             move_data::MovePat => {
                 let pat_ty = ty::node_id_to_type(self.tcx, move.id);
-                self.tcx.sess.span_note(
-                    ast_map::node_span(self.tcx.items, move.id),
+                self.tcx.sess.span_note(self.tcx.map.span(move.id),
                     format!("`{}` moved here because it has type `{}`, \
                           which is moved by default (use `ref` to override)",
                          self.loan_path_to_str(moved_lp),
@@ -579,7 +578,7 @@ impl BorrowckCtxt {
             }
 
             move_data::Captured => {
-                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
@@ -793,10 +792,9 @@ impl BorrowckCtxt {
             LpExtend(lp_base, _, LpInterior(mc::InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_str(lp_base, out);
                 match fname {
-                    mc::NamedField(ref fname) => {
-                        let string = token::get_ident(*fname);
+                    mc::NamedField(fname) => {
                         out.push_char('.');
-                        out.push_str(string.get());
+                        out.push_str(token::get_name(fname).get());
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here
@@ -892,10 +890,7 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match self {
             &LpVar(id) => {
-                format!("$({})",
-                        ast_map::node_id_to_str(tcx.items,
-                                                id,
-                                                token::get_ident_interner()))
+                format!("$({})", tcx.map.node_to_str(id))
             }
 
             &LpExtend(lp, _, LpDeref(_)) => {
