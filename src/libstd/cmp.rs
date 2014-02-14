@@ -169,6 +169,8 @@ pub trait Ord {
     fn gt(&self, other: &Self) -> bool {  other.lt(self) }
     #[inline]
     fn ge(&self, other: &Self) -> bool { !self.lt(other) }
+
+    // FIXME (#12068): Add min/max/clamp default methods
 }
 
 /// The equivalence relation. Two values may be equivalent even if they are

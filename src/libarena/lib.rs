@@ -33,6 +33,7 @@ use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::mem;
+use std::cmp;
 use std::num;
 use std::kinds::marker;
 use std::rc::Rc;
@@ -183,7 +184,7 @@ impl Arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
-        let new_min_chunk_size = num::max(n_bytes, self.chunk_size());
+        let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
         self.pod_head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
@@ -223,7 +224,7 @@ impl Arena {
     fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
                          -> (*u8, *u8) {
         // Allocate a new chunk.
-        let new_min_chunk_size = num::max(n_bytes, self.chunk_size());
+        let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
         self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
         self.head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);

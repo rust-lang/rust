@@ -33,23 +33,6 @@ pub trait Num: Eq + Zero + One
              + Div<Self,Self>
              + Rem<Self,Self> {}
 
-pub trait Orderable: Ord {
-    // These should be methods on `Ord`, with overridable default implementations. We don't want
-    // to encumber all implementors of Ord by requiring them to implement these functions, but at
-    // the same time we want to be able to take advantage of the speed of the specific numeric
-    // functions (like the `fmin` and `fmax` intrinsics).
-    fn min(&self, other: &Self) -> Self;
-    fn max(&self, other: &Self) -> Self;
-    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
-}
-
-/// Return the smaller number.
-#[inline(always)] pub fn min<T: Orderable>(x: T, y: T) -> T { x.min(&y) }
-/// Return the larger number.
-#[inline(always)] pub fn max<T: Orderable>(x: T, y: T) -> T { x.max(&y) }
-/// Returns the number constrained within the range `mn <= self <= mx`.
-#[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
-
 /// Defines an additive identity element for `Self`.
 ///
 /// # Deriving
@@ -140,7 +123,7 @@ pub trait Signed: Num
 pub trait Unsigned: Num {}
 
 pub trait Integer: Num
-                 + Orderable
+                 + Ord
                  + Div<Self,Self>
                  + Rem<Self,Self> {
     fn div_rem(&self, other: &Self) -> (Self,Self);
@@ -185,7 +168,7 @@ pub trait Round {
 
 /// Defines constants and methods common to real numbers
 pub trait Real: Signed
-              + Orderable
+              + Ord
               + Round
               + Div<Self,Self> {
     // Common Constants
@@ -434,7 +417,7 @@ pub trait Primitive: Clone
                    + DeepClone
                    + Num
                    + NumCast
-                   + Orderable
+                   + Ord
                    + Bounded {}
 
 /// A collection of traits relevant to primitive signed and unsigned integers
