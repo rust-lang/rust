@@ -382,7 +382,7 @@ impl VisitContext {
                 }
             }
 
-            ExprCall(callee, ref args, _) => {    // callee(args)
+            ExprCall(callee, ref args) => {    // callee(args)
                 // Figure out whether the called function is consumed.
                 let mode = match ty::get(ty::expr_ty(self.tcx, callee)).sty {
                     ty::ty_closure(ref cty) => {
@@ -412,7 +412,7 @@ impl VisitContext {
                 self.use_fn_args(callee.id, *args);
             }
 
-            ExprMethodCall(callee_id, _, _, ref args, _) => { // callee.m(args)
+            ExprMethodCall(callee_id, _, _, ref args) => { // callee.m(args)
                 self.use_fn_args(callee_id, *args);
             }
 

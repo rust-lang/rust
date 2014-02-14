@@ -60,9 +60,9 @@ DEPS_extra := std term sync serialize getopts collections
 DEPS_green := std native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std extra term serialize collections
+DEPS_syntax := std term serialize collections
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections
+              collections extra
 DEPS_rustdoc := rustc native:sundown serialize sync getopts collections
 DEPS_flate := std native:miniz
 DEPS_arena := std collections

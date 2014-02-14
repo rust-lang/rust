@@ -1205,7 +1205,7 @@ impl Liveness {
             })
           }
 
-          ExprCall(f, ref args, _) => {
+          ExprCall(f, ref args) => {
             // calling a fn with bot return type means that the fn
             // will fail, and hence the successors can be ignored
             let t_ret = ty::ty_fn_ret(ty::expr_ty(self.tcx, f));
@@ -1215,7 +1215,7 @@ impl Liveness {
             self.propagate_through_expr(f, succ)
           }
 
-          ExprMethodCall(callee_id, _, _, ref args, _) => {
+          ExprMethodCall(callee_id, _, _, ref args) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
             let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx, callee_id));

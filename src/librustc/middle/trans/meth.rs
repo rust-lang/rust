@@ -353,17 +353,24 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
     // converting to an rvalue.
     let self_datum = unpack_datum!(
         bcx, expr::trans(bcx, self_expr));
-    let self_datum = unpack_datum!(
-        bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
-    // Convert to by-ref since `trans_trait_callee_from_llval` wants it
-    // that way.
-    let self_datum = unpack_datum!(
-        bcx, self_datum.to_ref_datum(bcx));
+    let llval = if ty::type_needs_drop(bcx.tcx(), self_datum.ty) {
+        let self_datum = unpack_datum!(
+            bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
-    // Arrange cleanup in case something should go wrong before the
-    // actual call occurs.
-    let llval = self_datum.add_clean(bcx.fcx, arg_cleanup_scope);
+        // Convert to by-ref since `trans_trait_callee_from_llval` wants it
+        // that way.
+        let self_datum = unpack_datum!(
+            bcx, self_datum.to_ref_datum(bcx));
+
+        // Arrange cleanup in case something should go wrong before the
+        // actual call occurs.
+        self_datum.add_clean(bcx.fcx, arg_cleanup_scope)
+    } else {
+        // We don't have to do anything about cleanups for &Trait and &mut Trait.
+        assert!(self_datum.kind.is_by_ref());
+        self_datum.val
+    };
 
     let callee_ty = node_id_type(bcx, callee_id);
     trans_trait_callee_from_llval(bcx, callee_ty, n_method, llval)
