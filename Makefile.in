@@ -518,18 +518,6 @@ rustc-H-all: $(foreach host,$(CFG_HOST),rustc-H-$(host))
 
 .DEFAULT_GOAL := all
 
-ifneq ($(CFG_IN_TRANSITION),)
-
-CFG_INFO := $(info cfg:)
-CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
-CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
-CFG_INFO := $(info cfg:)
-
-#FIXME This is surely busted
-all: $(SREQ1$(CFG_BUILD)) $(GENERATED) docs
-
-else
-
 define ALL_TARGET_N
 ifneq ($$(findstring $(1),$$(CFG_HOST)),)
 # This is a host
@@ -549,8 +537,6 @@ ALL_TARGET_RULES = $(foreach target,$(CFG_TARGET), \
  all-target-$(target)-host-$(host)))
 
 all: $(ALL_TARGET_RULES) $(GENERATED) docs
-
-endif
 
 
 ######################################################################
