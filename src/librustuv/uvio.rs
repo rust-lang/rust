@@ -99,6 +99,10 @@ impl rtio::EventLoop for UvEventLoop {
         let factory = &mut self.uvio as &mut rtio::IoFactory;
         Some(factory)
     }
+
+    fn has_active_io(&self) -> bool {
+        self.uvio.loop_.get_blockers() > 0
+    }
 }
 
 #[cfg(not(test))]

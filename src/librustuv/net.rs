@@ -216,7 +216,7 @@ impl TcpWatcher {
             0 => {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { status: 0, task: None };
-                wait_until_woken_after(&mut cx.task, || {
+                wait_until_woken_after(&mut cx.task, &io.loop_, || {
                     req.set_data(&cx);
                 });
                 match cx.status {
@@ -498,6 +498,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             buf: Option<Buf>,
             result: Option<(ssize_t, Option<ip::SocketAddr>)>,
         }
+        let loop_ = self.uv_loop();
         let m = self.fire_homing_missile();
         let _g = self.read_access.grant(m);
 
@@ -511,7 +512,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                     result: None,
                 };
                 let handle = self.handle;
-                wait_until_woken_after(&mut cx.task, || {
+                wait_until_woken_after(&mut cx.task, &loop_, || {
                     unsafe { uvll::set_data_for_uv_handle(handle, &cx) }
                 });
                 match cx.result.take_unwrap() {
@@ -571,6 +572,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         struct Ctx { task: Option<BlockedTask>, result: c_int }
 
         let m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
         let _g = self.write_access.grant(m);
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
@@ -586,7 +588,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             0 => {
                 req.defuse(); // uv callback now owns this request
                 let mut cx = Ctx { task: None, result: 0 };
-                wait_until_woken_after(&mut cx.task, || {
+                wait_until_woken_after(&mut cx.task, &loop_, || {
                     req.set_data(&cx);
                 });
                 match cx.result {
