@@ -37,10 +37,10 @@ use serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ast;
 use syntax::codemap;
-use syntax::parse::token;
 
 type Cmd = @crate_metadata;
 
@@ -96,7 +96,7 @@ fn find_item<'a>(item_id: ast::NodeId, items: ebml::Doc<'a>) -> ebml::Doc<'a> {
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
-pub fn lookup_item<'a>(item_id: ast::NodeId, data: &'a [u8]) -> ebml::Doc<'a> {
+fn lookup_item<'a>(item_id: ast::NodeId, data: &'a [u8]) -> ebml::Doc<'a> {
     let items = reader::get_doc(reader::Doc(data), tag_items);
     find_item(item_id, items)
 }
@@ -258,15 +258,13 @@ fn item_ty_param_defs(item: ebml::Doc,
     Rc::new(bounds)
 }
 
-fn item_region_param_defs(item_doc: ebml::Doc,
-                          tcx: ty::ctxt,
-                          cdata: Cmd)
+fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
                           -> Rc<~[ty::RegionParameterDef]> {
     let mut v = ~[];
     reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
             let ident_str_doc = reader::get_doc(rp_doc,
                                                 tag_region_param_def_ident);
-            let ident = item_name(tcx.sess.intr(), ident_str_doc);
+            let ident = item_name(token::get_ident_interner(), ident_str_doc);
             let def_id_doc = reader::get_doc(rp_doc,
                                              tag_region_param_def_def_id);
             let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
@@ -296,7 +294,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> ~[ast::DefId] {
     return ids;
 }
 
-pub fn item_path(item_doc: ebml::Doc) -> ast_map::Path {
+fn item_path(item_doc: ebml::Doc) -> ~[ast_map::PathElem] {
     let path_doc = reader::get_doc(item_doc, tag_path);
 
     let len_doc = reader::get_doc(path_doc, tag_path_len);
@@ -305,30 +303,21 @@ pub fn item_path(item_doc: ebml::Doc) -> ast_map::Path {
     let mut result = vec::with_capacity(len);
     reader::docs(path_doc, |tag, elt_doc| {
         if tag == tag_path_elem_mod {
-            let str = elt_doc.as_str_slice();
-            result.push(ast_map::PathMod(token::str_to_ident(str)));
+            let s = elt_doc.as_str_slice();
+            result.push(ast_map::PathMod(token::intern(s)));
         } else if tag == tag_path_elem_name {
-            let str = elt_doc.as_str_slice();
-            result.push(ast_map::PathName(token::str_to_ident(str)));
-        } else if tag == tag_path_elem_pretty_name {
-            let name_doc = reader::get_doc(elt_doc,
-                                           tag_path_elem_pretty_name_ident);
-            let extra_doc = reader::get_doc(elt_doc,
-                                            tag_path_elem_pretty_name_extra);
-            let str = name_doc.as_str_slice();
-            let extra = reader::doc_as_u64(extra_doc);
-            result.push(ast_map::PathPrettyName(token::str_to_ident(str),
-                                                extra));
+            let s = elt_doc.as_str_slice();
+            result.push(ast_map::PathName(token::intern(s)));
         } else {
             // ignore tag_path_len element
         }
         true
     });
 
-    return result;
+    result
 }
 
-fn item_name(intr: @IdentInterner, item: ebml::Doc) -> ast::Ident {
+fn item_name(intr: &IdentInterner, item: ebml::Doc) -> ast::Ident {
     let name = reader::get_doc(item, tag_paths_data_name);
     let string = name.as_str_slice();
     match intr.find_equiv(&string) {
@@ -337,7 +326,7 @@ fn item_name(intr: @IdentInterner, item: ebml::Doc) -> ast::Ident {
     }
 }
 
-pub fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
+fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     -> DefLike {
     let fam = item_family(item);
     match fam {
@@ -383,14 +372,6 @@ pub fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
     }
 }
 
-pub fn lookup_def(cnum: ast::CrateNum, data: &[u8], did_: ast::DefId) ->
-   ast::Def {
-    let item = lookup_item(did_.node, data);
-    let did = ast::DefId { krate: cnum, node: did_.node };
-    // We treat references to enums as references to types.
-    return def_like_to_def(item_to_def_like(item, did, cnum));
-}
-
 pub fn get_trait_def(cdata: Cmd,
                      item_id: ast::NodeId,
                      tcx: ty::ctxt) -> ty::TraitDef
@@ -398,7 +379,7 @@ pub fn get_trait_def(cdata: Cmd,
     let item_doc = lookup_item(item_id, cdata.data());
     let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
                                      tag_items_data_item_ty_param_bounds);
-    let rp_defs = item_region_param_defs(item_doc, tcx, cdata);
+    let rp_defs = item_region_param_defs(item_doc, cdata);
     let mut bounds = ty::EmptyBuiltinBounds();
     // Collect the builtin bounds from the encoded supertraits.
     // FIXME(#8559): They should be encoded directly.
@@ -427,7 +408,7 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
                       cdata);
 
     let tp_defs = item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds);
-    let rp_defs = item_region_param_defs(item, tcx, cdata);
+    let rp_defs = item_region_param_defs(item, cdata);
 
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: tp_defs,
@@ -682,41 +663,37 @@ pub fn each_top_level_item_of_crate(intr: @IdentInterner,
                                 callback)
 }
 
-pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> ast_map::Path {
+pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> ~[ast_map::PathElem] {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type decode_inlined_item<'a> = 'a |cdata: @cstore::crate_metadata,
-                                             tcx: ty::ctxt,
-                                             path: ast_map::Path,
-                                             par_doc: ebml::Doc|
-                                             -> Option<ast::InlinedItem>;
+pub type DecodeInlinedItem<'a> = 'a |cdata: @cstore::crate_metadata,
+                                     tcx: ty::ctxt,
+                                     path: ~[ast_map::PathElem],
+                                     par_doc: ebml::Doc|
+                                     -> Result<ast::InlinedItem, ~[ast_map::PathElem]>;
 
-pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt,
-                          id: ast::NodeId,
-                          decode_inlined_item: decode_inlined_item)
-                       -> csearch::found_ast {
+pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
+                          decode_inlined_item: DecodeInlinedItem)
+                          -> csearch::found_ast {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
-    let path = {
-        let item_path = item_path(item_doc);
-        item_path.init().to_owned()
-    };
-    match decode_inlined_item(cdata, tcx, /*bad*/path.clone(), item_doc) {
-      Some(ref ii) => csearch::found(*ii),
-      None => {
-        match item_parent_item(item_doc) {
-          Some(did) => {
-            let did = translate_def_id(cdata, did);
-            let parent_item = lookup_item(did.node, cdata.data());
-            match decode_inlined_item(cdata, tcx, path, parent_item) {
-              Some(ref ii) => csearch::found_parent(did, *ii),
-              None => csearch::not_found
+    let path = item_path(item_doc).init().to_owned();
+    match decode_inlined_item(cdata, tcx, path, item_doc) {
+        Ok(ref ii) => csearch::found(*ii),
+        Err(path) => {
+            match item_parent_item(item_doc) {
+                Some(did) => {
+                    let did = translate_def_id(cdata, did);
+                    let parent_item = lookup_item(did.node, cdata.data());
+                    match decode_inlined_item(cdata, tcx, path, parent_item) {
+                        Ok(ref ii) => csearch::found_parent(did, *ii),
+                        Err(_) => csearch::not_found
+                    }
+                }
+                None => csearch::not_found
             }
-          }
-          None => csearch::not_found
         }
-      }
     }
 }
 
@@ -835,7 +812,7 @@ pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
     let name = item_name(intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
-    let rp_defs = item_region_param_defs(method_doc, tcx, cdata);
+    let rp_defs = item_region_param_defs(method_doc, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let explicit_self = get_explicit_self(method_doc);
@@ -1109,13 +1086,13 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
     return attrs;
 }
 
-fn list_crate_attributes(intr: @IdentInterner, md: ebml::Doc, hash: &str,
+fn list_crate_attributes(md: ebml::Doc, hash: &str,
                          out: &mut io::Writer) -> io::IoResult<()> {
     if_ok!(write!(out, "=Crate Attributes ({})=\n", hash));
 
     let r = get_attributes(md);
     for attr in r.iter() {
-        if_ok!(write!(out, "{}\n", pprust::attribute_to_str(attr, intr)));
+        if_ok!(write!(out, "{}\n", pprust::attribute_to_str(attr)));
     }
 
     write!(out, "\n\n")
@@ -1158,11 +1135,10 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
-        let string = token::get_ident(dep.name.name);
         if_ok!(write!(out,
                       "{} {}-{}-{}\n",
                       dep.cnum,
-                      string.get(),
+                      token::get_ident(dep.name),
                       dep.hash,
                       dep.vers));
     }
@@ -1185,11 +1161,10 @@ pub fn get_crate_vers(data: &[u8]) -> ~str {
     }
 }
 
-pub fn list_crate_metadata(intr: @IdentInterner, bytes: &[u8],
-                           out: &mut io::Writer) -> io::IoResult<()> {
+pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    if_ok!(list_crate_attributes(intr, md, hash, out));
+    if_ok!(list_crate_attributes(md, hash, out));
     list_crate_deps(bytes, out)
 }
 

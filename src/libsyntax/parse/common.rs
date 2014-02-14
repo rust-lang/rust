@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use parse::token;
-use parse::token::{get_ident_interner};
 
 // SeqSep : a sequence separator (token)
 // and whether a trailing separator is allowed.
@@ -36,10 +35,3 @@ pub fn seq_sep_none() -> SeqSep {
         trailing_sep_allowed: false,
     }
 }
-
-// maps any token back to a string. not necessary if you know it's
-// an identifier....
-pub fn token_to_str(token: &token::Token) -> ~str {
-    token::to_str(get_ident_interner(), token)
-}
-

@@ -70,10 +70,11 @@ use middle::trans::type_::Type;
 
 use std::hashmap::HashMap;
 use std::vec;
-use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
-use syntax::ast_map::PathMod;
+use syntax::ast_map;
 use syntax::codemap;
+use syntax::parse::token;
+use syntax::print::pprust::{expr_to_str};
 
 // Destinations
 
@@ -773,10 +774,8 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             let expr_ty = expr_ty(bcx, expr);
             let sigil = ty::ty_closure_sigil(expr_ty);
             debug!("translating block function {} with type {}",
-                   expr_to_str(expr, tcx.sess.intr()),
-                   expr_ty.repr(tcx));
-            closure::trans_expr_fn(bcx, sigil, decl, body,
-                                   expr.id, expr.id, dest)
+                   expr_to_str(expr), expr_ty.repr(tcx));
+            closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args, _) => {
             callee::trans_call(bcx, expr, f,
@@ -1699,31 +1698,32 @@ fn trans_assign_op<'a>(
     return result_datum.store_to(bcx, dst_datum.val);
 }
 
-fn trans_log_level<'a>(bcx: &'a Block<'a>)
-                       -> DatumBlock<'a, Expr> {
+fn trans_log_level<'a>(bcx: &'a Block<'a>) -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_log_level");
     let ccx = bcx.ccx();
 
     let (modpath, modname) = {
-        let srccrate;
-        {
+        let srccrate = {
             let external_srcs = ccx.external_srcs.borrow();
-            srccrate = match external_srcs.get().find(&bcx.fcx.id) {
+            match external_srcs.get().find(&bcx.fcx.id) {
                 Some(&src) => {
                     ccx.sess.cstore.get_crate_data(src.krate).name.clone()
                 }
                 None => ccx.link_meta.crateid.name.to_str(),
-            };
-        };
-        let mut modpath = ~[PathMod(ccx.sess.ident_of(srccrate))];
-        for e in bcx.fcx.path.iter() {
-            match *e {
-                PathMod(_) => { modpath.push(*e) }
-                _ => {}
             }
-        }
-        let modname = path_str(ccx.sess, modpath);
-        (modpath, modname)
+        };
+        bcx.tcx().map.with_path(bcx.fcx.id, |path| {
+            let first = ast_map::PathMod(token::intern(srccrate));
+            let mut path = Some(first).move_iter().chain(path).filter(|e| {
+                match *e {
+                    ast_map::PathMod(_) => true,
+                    _ => false
+                }
+            });
+            let modpath: ~[ast_map::PathElem] = path.collect();
+            let modname = ast_map::path_to_str(ast_map::Values(modpath.iter()));
+            (modpath, modname)
+        })
     };
 
     let module_data_exists;
@@ -1737,7 +1737,7 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>)
         module_data.get().get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, "loglevel");
+            ast_map::Values(modpath.iter()).chain(None), "loglevel");
         let global;
         unsafe {
             global = s.with_c_str(|buf| {

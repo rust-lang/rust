@@ -125,10 +125,9 @@ pub type Name = u32;
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
-impl<S:Encoder> Encodable<S> for Ident {
+impl<S: Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
-        let string = token::get_ident(self.name);
-        s.emit_str(string.get());
+        s.emit_str(token::get_ident(*self).get());
     }
 }
 

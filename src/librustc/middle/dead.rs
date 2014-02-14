@@ -38,7 +38,7 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
         return false;
     }
 
-    match tcx.items.find(def_id.node) {
+    match tcx.map.find(def_id.node) {
         Some(ast_map::NodeItem(..))
         | Some(ast_map::NodeMethod(..))
         | Some(ast_map::NodeForeignItem(..))
@@ -135,7 +135,7 @@ impl MarkSymbolVisitor {
             }
             scanned.insert(id);
 
-            match self.tcx.items.find(id) {
+            match self.tcx.map.find(id) {
                 Some(ref node) => {
                     self.live_symbols.insert(id);
                     self.visit_node(node);
@@ -147,7 +147,7 @@ impl MarkSymbolVisitor {
 
     fn visit_node(&mut self, node: &ast_map::Node) {
         match *node {
-            ast_map::NodeItem(item, _) => {
+            ast_map::NodeItem(item) => {
                 match item.node {
                     ast::ItemFn(..)
                     | ast::ItemTy(..)
@@ -159,13 +159,13 @@ impl MarkSymbolVisitor {
                     _ => ()
                 }
             }
-            ast_map::NodeTraitMethod(trait_method, _, _) => {
+            ast_map::NodeTraitMethod(trait_method) => {
                 visit::walk_trait_method(self, trait_method, ());
             }
-            ast_map::NodeMethod(method, _, _) => {
+            ast_map::NodeMethod(method) => {
                 visit::walk_block(self, method.body, ());
             }
-            ast_map::NodeForeignItem(foreign_item, _, _, _) => {
+            ast_map::NodeForeignItem(foreign_item) => {
                 visit::walk_foreign_item(self, foreign_item, ());
             }
             _ => ()
@@ -359,11 +359,10 @@ impl DeadVisitor {
     }
 
     fn warn_dead_code(&mut self, id: ast::NodeId,
-                      span: codemap::Span, ident: &ast::Ident) {
-        let string = token::get_ident(ident.name);
+                      span: codemap::Span, ident: ast::Ident) {
         self.tcx.sess.add_lint(DeadCode, id, span,
                                format!("code is never used: `{}`",
-                                       string.get()));
+                                       token::get_ident(ident)));
     }
 }
 
@@ -371,14 +370,14 @@ impl Visitor<()> for DeadVisitor {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
-            self.warn_dead_code(item.id, item.span, &item.ident);
+            self.warn_dead_code(item.id, item.span, item.ident);
         }
         visit::walk_item(self, item, ());
     }
 
     fn visit_foreign_item(&mut self, fi: &ast::ForeignItem, _: ()) {
         if !self.symbol_is_live(fi.id, None) {
-            self.warn_dead_code(fi.id, fi.span, &fi.ident);
+            self.warn_dead_code(fi.id, fi.span, fi.ident);
         }
         visit::walk_foreign_item(self, fi, ());
     }
@@ -391,7 +390,7 @@ impl Visitor<()> for DeadVisitor {
             visit::FkMethod(..) => {
                 let ident = visit::name_of_fn(fk);
                 if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, &ident);
+                    self.warn_dead_code(id, span, ident);
                 }
             }
             _ => ()

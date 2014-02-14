@@ -24,6 +24,7 @@ use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{DUMMY_SP, Span};
+use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 
@@ -189,7 +190,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                     let variants = ty::enum_variants(cx.tcx, id);
 
                     match variants.iter().find(|v| v.id == vid) {
-                        Some(v) => Some(cx.tcx.sess.str_of(v.name)),
+                        Some(v) => Some(token::get_ident(v.name).get().to_str()),
                         None => {
                             fail!("check_exhaustive: bad variant in ctor")
                         }

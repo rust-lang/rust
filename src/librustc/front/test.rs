@@ -289,7 +289,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
-    let id_extra = cx.sess.ident_of("extra");
+    let id_extra = token::str_to_ident("extra");
     let vi = if cx.is_extra {
         ast::ViewItemUse(
             ~[@nospan(ast::ViewPathSimple(id_extra,
@@ -337,7 +337,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
         attr::mk_attr(attr::mk_word_item(resolve_unexported_str));
 
     let item = ast::Item {
-        ident: cx.sess.ident_of("__test"),
+        ident: token::str_to_ident("__test"),
         attrs: ~[resolve_unexported_attr],
         id: ast::DUMMY_NODE_ID,
         node: item_,
@@ -345,8 +345,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
         span: DUMMY_SP,
      };
 
-    debug!("Synthetic test module:\n{}\n",
-           pprust::item_to_str(&item, cx.sess.intr()));
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_str(&item));
 
     return @item;
 }

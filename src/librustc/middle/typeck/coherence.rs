@@ -43,6 +43,7 @@ use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::Span;
 use syntax::opt_vec;
+use syntax::parse::token;
 use syntax::visit;
 
 use std::cell::RefCell;
@@ -155,8 +156,7 @@ struct CoherenceCheckVisitor<'a> {
 impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
-//      debug!("(checking coherence) item '{}'",
-//             self.cc.crate_context.tcx.sess.str_of(item.ident));
+        //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
         match item.node {
             ItemImpl(_, ref opt_trait, _, _) => {
@@ -267,9 +267,8 @@ impl CoherenceChecker {
         // base type.
 
         if associated_traits.len() == 0 {
-            debug!("(checking implementation) no associated traits for item \
-                    '{}'",
-                   self.crate_context.tcx.sess.str_of(item.ident));
+            debug!("(checking implementation) no associated traits for item '{}'",
+                   token::get_ident(item.ident));
 
             match get_base_type_def_id(&self.inference_context,
                                        item.span,
@@ -293,7 +292,7 @@ impl CoherenceChecker {
                 self.crate_context.tcx, associated_trait.ref_id);
             debug!("(checking implementation) adding impl for trait '{}', item '{}'",
                    trait_ref.repr(self.crate_context.tcx),
-                   self.crate_context.tcx.sess.str_of(item.ident));
+                   token::get_ident(item.ident));
 
             self.add_trait_impl(trait_ref.def_id, implementation);
         }
@@ -584,13 +583,13 @@ impl CoherenceChecker {
 
                         // Make sure that this type precisely names a nominal
                         // type.
-                        match self.crate_context.tcx.items.find(def_id.node) {
+                        match self.crate_context.tcx.map.find(def_id.node) {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
                                     "resolve didn't resolve this type?!");
                             }
-                            Some(NodeItem(item, _)) => {
+                            Some(NodeItem(item)) => {
                                 match item.node {
                                     ItemStruct(..) | ItemEnum(..) => true,
                                     _ => false,
@@ -641,15 +640,7 @@ impl CoherenceChecker {
 
     fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.krate, LOCAL_CRATE);
-        match self.crate_context.tcx.items.find(implementation.did.node) {
-            Some(NodeItem(item, _)) => {
-                return item.span;
-            }
-            _ => {
-                self.crate_context.tcx.sess.bug("span_of_impl() called on something that \
-                                                 wasn't an impl!");
-            }
-        }
+        self.crate_context.tcx.map.span(implementation.did.node)
     }
 
     // External crate handling
@@ -746,8 +737,8 @@ impl CoherenceChecker {
                     // Destructors only work on nominal types.
                     if impl_info.did.krate == ast::LOCAL_CRATE {
                         {
-                            match tcx.items.find(impl_info.did.node) {
-                                Some(ast_map::NodeItem(item, _)) => {
+                            match tcx.map.find(impl_info.did.node) {
+                                Some(ast_map::NodeItem(item)) => {
                                     tcx.sess.span_err((*item).span,
                                                       "the Drop trait may \
                                                        only be implemented \

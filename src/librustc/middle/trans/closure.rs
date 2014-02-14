@@ -26,11 +26,8 @@ use util::ppaux::Repr;
 use util::ppaux::ty_to_str;
 
 use arena::TypedArena;
-use std::vec;
 use syntax::ast;
-use syntax::ast_map::PathName;
 use syntax::ast_util;
-use syntax::parse::token::special_idents;
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -353,8 +350,7 @@ pub fn trans_expr_fn<'a>(
                      sigil: ast::Sigil,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
-                     outer_id: ast::NodeId,
-                     user_id: ast::NodeId,
+                     id: ast::NodeId,
                      dest: expr::Dest)
                      -> &'a Block<'a> {
     /*!
@@ -364,13 +360,7 @@ pub fn trans_expr_fn<'a>(
      * - `sigil`
      * - `decl`
      * - `body`
-     * - `outer_id`: The id of the closure expression with the correct
-     *   type.  This is usually the same as `user_id`, but in the
-     *   case of a `for` loop, the `outer_id` will have the return
-     *   type of boolean, and the `user_id` will have the return type
-     *   of `nil`.
-     * - `user_id`: The id of the closure as the user expressed it.
-         Generally the same as `outer_id`
+     * - `id`: The id of the closure expression.
      * - `cap_clause`: information about captured variables, if any.
      * - `dest`: where to write the closure value, which must be a
          (fn ptr, env) pair
@@ -386,18 +376,16 @@ pub fn trans_expr_fn<'a>(
     };
 
     let ccx = bcx.ccx();
-    let fty = node_id_type(bcx, outer_id);
+    let fty = node_id_type(bcx, id);
     let f = match ty::get(fty).sty {
         ty::ty_closure(ref f) => f,
         _ => fail!("expected closure")
     };
 
-    let sub_path = vec::append_one(bcx.fcx.path.clone(),
-                                   PathName(special_idents::anon));
-    // FIXME: Bad copy.
-    let s = mangle_internal_name_by_path_and_seq(ccx,
-                                                 sub_path.clone(),
-                                                 "expr_fn");
+    let tcx = bcx.tcx();
+    let s = tcx.map.with_path(id, |path| {
+        mangle_internal_name_by_path_and_seq(path, "closure")
+    });
     let llfn = decl_internal_rust_fn(ccx, true, f.sig.inputs, f.sig.output, s);
 
     // set an inline hint for all closures
@@ -405,11 +393,11 @@ pub fn trans_expr_fn<'a>(
 
     let cap_vars = {
         let capture_map = ccx.maps.capture_map.borrow();
-        capture_map.get().get_copy(&user_id)
+        capture_map.get().get_copy(&id)
     };
     let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, *cap_vars.borrow(), sigil);
-    trans_closure(ccx, sub_path, decl, body, llfn,
-                  bcx.fcx.param_substs, user_id,
+    trans_closure(ccx, decl, body, llfn,
+                  bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),
                   |bcx| load_environment(bcx, cdata_ty, *cap_vars.borrow(), sigil));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
@@ -454,8 +442,9 @@ pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
         }
     };
 
-    let path = ty::item_path(tcx, def_id);
-    let name = mangle_internal_name_by_path_and_seq(ccx, path, "as_closure");
+    let name = ty::with_path(tcx, def_id, |path| {
+        mangle_internal_name_by_path_and_seq(path, "as_closure")
+    });
     let llfn = if is_local {
         decl_internal_rust_fn(ccx, true, f.sig.inputs, f.sig.output, name)
     } else {
@@ -476,8 +465,7 @@ pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
     let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
 
     let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, -1, true, f.sig.output, None, None,
-                          &arena);
+    let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output, None, None, &arena);
     init_function(&fcx, true, f.sig.output, None);
     let bcx = fcx.entry_bcx.get().unwrap();
 
