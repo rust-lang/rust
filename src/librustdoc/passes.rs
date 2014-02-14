@@ -22,30 +22,62 @@ use fold::DocFolder;
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
-    struct Stripper;
-    impl fold::DocFolder for Stripper {
-        fn fold_item(&mut self, i: Item) -> Option<Item> {
-            for attr in i.attrs.iter() {
-                match attr {
-                    &clean::List(~"doc", ref l) => {
-                        for innerattr in l.iter() {
-                            match innerattr {
-                                &clean::Word(ref s) if "hidden" == *s => {
-                                    debug!("found one in strip_hidden; removing");
-                                    return None;
-                                },
-                                _ => (),
+    let mut stripped = HashSet::new();
+
+    // strip all #[doc(hidden)] items
+    let krate = {
+        struct Stripper<'a> {
+            stripped: &'a mut HashSet<ast::NodeId>
+        };
+        impl<'a> fold::DocFolder for Stripper<'a> {
+            fn fold_item(&mut self, i: Item) -> Option<Item> {
+                for attr in i.attrs.iter() {
+                    match attr {
+                        &clean::List(~"doc", ref l) => {
+                            for innerattr in l.iter() {
+                                match innerattr {
+                                    &clean::Word(ref s) if "hidden" == *s => {
+                                        debug!("found one in strip_hidden; removing");
+                                        self.stripped.insert(i.id);
+                                        return None;
+                                    },
+                                    _ => (),
+                                }
                             }
-                        }
-                    },
-                    _ => ()
+                        },
+                        _ => ()
+                    }
                 }
+                self.fold_item_recur(i)
             }
-            self.fold_item_recur(i)
         }
-    }
-    let mut stripper = Stripper;
-    let krate = stripper.fold_crate(krate);
+        let mut stripper = Stripper{ stripped: &mut stripped };
+        stripper.fold_crate(krate)
+    };
+
+    // strip any traits implemented on stripped items
+    let krate = {
+        struct ImplStripper<'a> {
+            stripped: &'a mut HashSet<ast::NodeId>
+        };
+        impl<'a> fold::DocFolder for ImplStripper<'a> {
+            fn fold_item(&mut self, i: Item) -> Option<Item> {
+                match i.inner {
+                    clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: for_id, .. },
+                                                 .. }) => {
+                        if self.stripped.contains(&for_id) {
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
+                self.fold_item_recur(i)
+            }
+        }
+        let mut stripper = ImplStripper{ stripped: &mut stripped };
+        stripper.fold_crate(krate)
+    };
+
     (krate, None)
 }
 
@@ -110,8 +142,16 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled below
             clean::ModuleItem(..) => {}
 
-            // impls/tymethods have no control over privacy
-            clean::ImplItem(..) | clean::TyMethodItem(..) => {}
+            // trait impls for private items should be stripped
+            clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: ref for_id, .. }, .. }) => {
+                if !self.exported_items.contains(for_id) {
+                    return None;
+                }
+            }
+            clean::ImplItem(..) => {}
+
+            // tymethods have no control over privacy
+            clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {
