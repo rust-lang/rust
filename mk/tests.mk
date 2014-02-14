@@ -554,7 +554,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --host $(3)                                       \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
-        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+        --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+        --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
