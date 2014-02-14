@@ -24,7 +24,8 @@ use parse::token;
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
-                                 in_items: ~[@Item]) -> ~[@Item] {
+                                 item: @Item,
+                                 push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new_(~["serialize", "Decodable"], None,
@@ -49,7 +50,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,

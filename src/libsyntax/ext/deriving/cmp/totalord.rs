@@ -19,7 +19,8 @@ use std::cmp::{Ordering, Equal, Less, Greater};
 pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 span: Span,
                                 mitem: @MetaItem,
-                                in_items: ~[@Item]) -> ~[@Item] {
+                                item: @Item,
+                                push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "cmp", "TotalOrd"]),
@@ -39,7 +40,7 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 

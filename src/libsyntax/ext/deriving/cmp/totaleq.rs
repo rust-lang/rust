@@ -17,7 +17,8 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: @MetaItem,
-                               in_items: ~[@Item]) -> ~[@Item] {
+                               item: @Item,
+                               push: |@Item|) {
     fn cs_equals(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                cx, span, substr)
@@ -41,5 +42,5 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
