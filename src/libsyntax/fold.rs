@@ -727,19 +727,16 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count), mutt)
         }
         ExprTup(ref elts) => ExprTup(elts.map(|x| folder.fold_expr(*x))),
-        ExprCall(f, ref args, blk) => {
+        ExprCall(f, ref args) => {
             ExprCall(folder.fold_expr(f),
-                     args.map(|&x| folder.fold_expr(x)),
-                     blk)
+                     args.map(|&x| folder.fold_expr(x)))
         }
-        ExprMethodCall(callee_id, i, ref tps, ref args, blk) => {
+        ExprMethodCall(callee_id, i, ref tps, ref args) => {
             ExprMethodCall(
                 folder.new_id(callee_id),
                 folder.fold_ident(i),
                 tps.map(|&x| folder.fold_ty(x)),
-                args.map(|&x| folder.fold_expr(x)),
-                blk
-            )
+                args.map(|&x| folder.fold_expr(x)))
         }
         ExprBinary(callee_id, binop, lhs, rhs) => {
             ExprBinary(folder.new_id(callee_id),

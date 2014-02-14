@@ -2624,7 +2624,7 @@ fn populate_scope_map(cx: &CrateContext,
                 })
             }
 
-            ast::ExprCall(fn_exp, ref args, _) => {
+            ast::ExprCall(fn_exp, ref args) => {
                 walk_expr(cx, fn_exp, scope_stack, scope_map);
 
                 for arg_exp in args.iter() {
@@ -2632,7 +2632,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprMethodCall(node_id, _, _, ref args, _) => {
+            ast::ExprMethodCall(node_id, _, _, ref args) => {
                 scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
 
                 for arg_exp in args.iter() {

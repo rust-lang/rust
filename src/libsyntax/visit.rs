@@ -652,13 +652,13 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
                 visitor.visit_expr(*subexpression, env.clone())
             }
         }
-        ExprCall(callee_expression, ref arguments, _) => {
+        ExprCall(callee_expression, ref arguments) => {
             for argument in arguments.iter() {
                 visitor.visit_expr(*argument, env.clone())
             }
             visitor.visit_expr(callee_expression, env.clone())
         }
-        ExprMethodCall(_, _, ref types, ref arguments, _) => {
+        ExprMethodCall(_, _, ref types, ref arguments) => {
             walk_exprs(visitor, *arguments, env.clone());
             for &typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())
