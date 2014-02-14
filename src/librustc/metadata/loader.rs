@@ -28,7 +28,6 @@ use std::c_str::ToCStr;
 use std::cast;
 use std::cmp;
 use std::io;
-use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::vec;
@@ -377,16 +376,10 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(intr: @IdentInterner,
-                          os: Os,
-                          path: &Path,
+pub fn list_file_metadata(os: Os, path: &Path,
                           out: &mut io::Writer) -> io::IoResult<()> {
     match get_metadata_section(os, path) {
-      option::Some(bytes) => decoder::list_crate_metadata(intr,
-                                                          bytes.as_slice(),
-                                                          out),
-      option::None => {
-          write!(out, "could not find metadata in {}.\n", path.display())
-      }
+      Some(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
+      None => write!(out, "could not find metadata in {}.\n", path.display())
     }
 }

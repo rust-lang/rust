@@ -75,10 +75,9 @@ use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::c_uint;
-use std::vec;
 use std::local_data;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
-use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
+use syntax::ast_map::PathName;
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -131,16 +130,15 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     _InsnCtxt { _x: () }
 }
 
-pub struct StatRecorder<'a> {
+pub struct StatRecorder {
     ccx: @CrateContext,
-    name: &'a str,
+    name: Option<~str>,
     start: u64,
     istart: uint,
 }
 
-impl<'a> StatRecorder<'a> {
-    pub fn new(ccx: @CrateContext,
-               name: &'a str) -> StatRecorder<'a> {
+impl StatRecorder {
+    pub fn new(ccx: @CrateContext, name: ~str) -> StatRecorder {
         let start = if ccx.sess.trans_stats() {
             time::precise_time_ns()
         } else {
@@ -149,7 +147,7 @@ impl<'a> StatRecorder<'a> {
         let istart = ccx.stats.n_llvm_insns.get();
         StatRecorder {
             ccx: ccx,
-            name: name,
+            name: Some(name),
             start: start,
             istart: istart,
         }
@@ -157,7 +155,7 @@ impl<'a> StatRecorder<'a> {
 }
 
 #[unsafe_destructor]
-impl<'a> Drop for StatRecorder<'a> {
+impl Drop for StatRecorder {
     fn drop(&mut self) {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
@@ -165,7 +163,7 @@ impl<'a> Drop for StatRecorder<'a> {
             let iend = self.ccx.stats.n_llvm_insns.get();
             {
                 let mut fn_stats = self.ccx.stats.fn_stats.borrow_mut();
-                fn_stats.get().push((self.name.to_owned(),
+                fn_stats.get().push((self.name.take_unwrap(),
                                      elapsed,
                                      iend - self.istart));
             }
@@ -589,15 +587,14 @@ pub fn compare_scalar_types<'a>(
                             t: ty::t,
                             op: ast::BinOp)
                             -> Result<'a> {
-    let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
+    let f = |a| rslt(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
     match ty::get(t).sty {
-        ty::ty_nil => rslt(cx, f(nil_type)),
-        ty::ty_bool | ty::ty_ptr(_) => rslt(cx, f(unsigned_int)),
-        ty::ty_char => rslt(cx, f(unsigned_int)),
-        ty::ty_int(_) => rslt(cx, f(signed_int)),
-        ty::ty_uint(_) => rslt(cx, f(unsigned_int)),
-        ty::ty_float(_) => rslt(cx, f(floating_point)),
+        ty::ty_nil => f(nil_type),
+        ty::ty_bool | ty::ty_ptr(_) |
+        ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
+        ty::ty_int(_) => f(signed_int),
+        ty::ty_float(_) => f(floating_point),
             // Should never get here, because t is scalar.
         _ => cx.sess().bug("non-scalar type passed to compare_scalar_types")
     }
@@ -914,10 +911,7 @@ pub fn invoke<'a>(
             debug!("invoke at ???");
         }
         Some(id) => {
-            debug!("invoke at {}",
-                   ast_map::node_id_to_str(bcx.tcx().items,
-                                           id,
-                                           token::get_ident_interner()));
+            debug!("invoke at {}", bcx.tcx().map.node_to_str(id));
         }
     }
 
@@ -1219,7 +1213,6 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
 pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
-                       path: ast_map::Path,
                        llfndecl: ValueRef,
                        id: ast::NodeId,
                        has_env: bool,
@@ -1230,12 +1223,9 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
                        -> FunctionContext<'a> {
     for p in param_substs.iter() { p.validate(); }
 
-    debug!("new_fn_ctxt(path={},
-           id={:?}, \
-           param_substs={})",
-           path_str(ccx.sess, path),
-           id,
-           param_substs.repr(ccx.tcx));
+    debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
+           if id == -1 { ~"" } else { ccx.tcx.map.path_to_str(id) },
+           id, param_substs.repr(ccx.tcx));
 
     let substd_output_type = match param_substs {
         None => output_type,
@@ -1261,7 +1251,6 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
           id: id,
           param_substs: param_substs,
           span: sp,
-          path: path,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
@@ -1439,7 +1428,6 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block) {
 // If the function closes over its environment a closure will be
 // returned.
 pub fn trans_closure<'a>(ccx: @CrateContext,
-                         path: ast_map::Path,
                          decl: &ast::FnDecl,
                          body: &ast::Block,
                          llfndecl: ValueRef,
@@ -1463,7 +1451,6 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx,
-                          path,
                           llfndecl,
                           id,
                           has_env,
@@ -1537,19 +1524,17 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 pub fn trans_fn(ccx: @CrateContext,
-                path: ast_map::Path,
                 decl: &ast::FnDecl,
                 body: &ast::Block,
                 llfndecl: ValueRef,
                 param_substs: Option<@param_substs>,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
-    let the_path_str = path_str(ccx.sess, path);
-    let _s = StatRecorder::new(ccx, the_path_str);
+    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id));
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
-    trans_closure(ccx, path.clone(), decl, body, llfndecl,
+    trans_closure(ccx, decl, body, llfndecl,
                   param_substs, id, attrs, output_type, |bcx| bcx);
 }
 
@@ -1616,15 +1601,8 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
     };
 
     let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx,
-                          ~[],
-                          llfndecl,
-                          ctor_id,
-                          false,
-                          result_ty,
-                          param_substs,
-                          None,
-                          &arena);
+    let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
+                          param_substs, None, &arena);
     init_function(&fcx, false, result_ty, param_substs);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
@@ -1684,29 +1662,15 @@ impl Visitor<()> for TransItemVisitor {
 
 pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
-    let path = {
-        match ccx.tcx.items.get(item.id) {
-            ast_map::NodeItem(_, p) => p,
-            // tjc: ?
-            _ => fail!("trans_item"),
-        }
-    };
     match item.node {
       ast::ItemFn(decl, purity, _abis, ref generics, body) => {
         if purity == ast::ExternFn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
-                ccx,
-                &vec::append_one((*path).clone(), PathName(item.ident)),
-                decl,
-                body,
-                item.attrs,
-                llfndecl,
-                item.id);
+                ccx, decl, body, item.attrs, llfndecl, item.id);
         } else if !generics.is_type_parameterized() {
-            let path = vec::append_one((*path).clone(), PathName(item.ident));
             let llfn = get_item_val(ccx, item.id);
-            trans_fn(ccx, path, decl, body, llfn, None, item.id, item.attrs);
+            trans_fn(ccx, decl, body, llfn, None, item.id, item.attrs);
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
@@ -1715,12 +1679,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
         }
       }
       ast::ItemImpl(ref generics, _, _, ref ms) => {
-        meth::trans_impl(ccx,
-                         (*path).clone(),
-                         item.ident,
-                         *ms,
-                         generics,
-                         item.id);
+        meth::trans_impl(ccx, item.ident, *ms, generics, item.id);
       }
       ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
@@ -1844,9 +1803,7 @@ pub fn register_fn_llvmty(ccx: @CrateContext,
                           cc: lib::llvm::CallConv,
                           fn_ty: Type,
                           output: ty::t) -> ValueRef {
-    debug!("register_fn_fuller creating fn for item {} with path {}",
-           node_id,
-           ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
+    debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
     let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty, output);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
@@ -1934,22 +1891,21 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
     }
 }
 
-pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> ast_map::Path {
-    ty::item_path(ccx.tcx, ast_util::local_def(*id))
-}
-
-fn exported_name(ccx: &CrateContext, path: ast_map::Path,
+fn exported_name(ccx: &CrateContext, id: ast::NodeId,
                  ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.get().to_owned(),
 
-        // Don't mangle
-        _ if attr::contains_name(attrs, "no_mangle")
-            => path_elem_to_str(*path.last().unwrap(), token::get_ident_interner()),
-
-        // Usual name mangling
-        _ => mangle_exported_name(ccx, path, ty)
+        _ => ccx.tcx.map.with_path(id, |mut path| {
+            if attr::contains_name(attrs, "no_mangle") {
+                // Don't mangle
+                path.last().unwrap().to_str()
+            } else {
+                // Usual name mangling
+                mangle_exported_name(ccx, path, ty, id)
+            }
+        })
     }
 }
 
@@ -1965,14 +1921,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
         Some(v) => v,
         None => {
             let mut foreign = false;
-            let item = ccx.tcx.items.get(id);
+            let item = ccx.tcx.map.get(id);
             let val = match item {
-                ast_map::NodeItem(i, pth) => {
-
-                    let elt = PathPrettyName(i.ident, id as u64);
-                    let my_path = vec::append_one((*pth).clone(), elt);
+                ast_map::NodeItem(i) => {
                     let ty = ty::node_id_to_type(ccx.tcx, i.id);
-                    let sym = exported_name(ccx, my_path, ty, i.attrs);
+                    let sym = exported_name(ccx, id, ty, i.attrs);
 
                     let v = match i.node {
                         ast::ItemStatic(_, _, expr) => {
@@ -2100,7 +2053,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     v
                 }
 
-                ast_map::NodeTraitMethod(trait_method, _, pth) => {
+                ast_map::NodeTraitMethod(trait_method) => {
                     debug!("get_item_val(): processing a NodeTraitMethod");
                     match *trait_method {
                         ast::Required(_) => {
@@ -2108,23 +2061,23 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                          get_item_val()");
                         }
                         ast::Provided(m) => {
-                            register_method(ccx, id, pth, m)
+                            register_method(ccx, id, m)
                         }
                     }
                 }
 
-                ast_map::NodeMethod(m, _, pth) => {
-                    register_method(ccx, id, pth, m)
+                ast_map::NodeMethod(m) => {
+                    register_method(ccx, id, m)
                 }
 
-                ast_map::NodeForeignItem(ni, abis, _, pth) => {
+                ast_map::NodeForeignItem(ni) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     foreign = true;
 
                     match ni.node {
                         ast::ForeignItemFn(..) => {
-                            let path = vec::append_one((*pth).clone(), PathName(ni.ident));
-                            foreign::register_foreign_item_fn(ccx, abis, &path, ni)
+                            let abis = ccx.tcx.map.get_foreign_abis(id);
+                            foreign::register_foreign_item_fn(ccx, abis, ni)
                         }
                         ast::ForeignItemStatic(..) => {
                             // Treat the crate map static specially in order to
@@ -2165,16 +2118,15 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     }
                 }
 
-                ast_map::NodeVariant(ref v, enm, pth) => {
+                ast_map::NodeVariant(ref v) => {
                     let llfn;
                     match v.node.kind {
                         ast::TupleVariantKind(ref args) => {
                             assert!(args.len() != 0u);
-                            let pth = vec::append((*pth).clone(),
-                                                  [PathName(enm.ident),
-                                                   PathName((*v).node.name)]);
                             let ty = ty::node_id_to_type(ccx.tcx, id);
-                            let sym = exported_name(ccx, pth, ty, enm.attrs);
+                            let parent = ccx.tcx.map.get_parent(id);
+                            let enm = ccx.tcx.map.expect_item(parent);
+                            let sym = exported_name(ccx, id, ty, enm.attrs);
 
                             llfn = match enm.node {
                                 ast::ItemEnum(_, _) => {
@@ -2191,7 +2143,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     llfn
                 }
 
-                ast_map::NodeStructCtor(struct_def, struct_item, struct_path) => {
+                ast_map::NodeStructCtor(struct_def) => {
                     // Only register the constructor if this is a tuple-like struct.
                     match struct_def.ctor_id {
                         None => {
@@ -2199,9 +2151,10 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                               a non-tuple-like struct")
                         }
                         Some(ctor_id) => {
+                            let parent = ccx.tcx.map.get_parent(id);
+                            let struct_item = ccx.tcx.map.expect_item(parent);
                             let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
-                            let sym = exported_name(ccx, (*struct_path).clone(), ty,
-                                                    struct_item.attrs);
+                            let sym = exported_name(ccx, id, ty, struct_item.attrs);
                             let llfn = register_fn(ccx, struct_item.span,
                                                    sym, ctor_id, ty);
                             set_inline_hint(llfn);
@@ -2233,16 +2186,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
     }
 }
 
-fn register_method(ccx: @CrateContext,
-                   id: ast::NodeId,
-                   path: @ast_map::Path,
+fn register_method(ccx: @CrateContext, id: ast::NodeId,
                    m: &ast::Method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
-    let mut path = (*path).clone();
-    path.push(PathPrettyName(m.ident, token::gensym("meth") as u64));
-
-    let sym = exported_name(ccx, path, mty, m.attrs);
+    let sym = exported_name(ccx, id, mty, m.attrs);
 
     let llfn = register_fn(ccx, m.span, sym, id, mty);
     set_llvm_fn_attrs(m.attrs, llfn);
@@ -2489,10 +2437,9 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
     return (map, keys.len())
 }
 
-pub fn symname(sess: session::Session, name: &str,
-               hash: &str, vers: &str) -> ~str {
-    let elt = PathName(sess.ident_of(name));
-    link::exported_name(sess, ~[elt], hash, vers)
+pub fn symname(name: &str, hash: &str, vers: &str) -> ~str {
+    let path = [PathName(token::intern(name))];
+    link::exported_name(ast_map::Values(path.iter()).chain(None), hash, vers)
 }
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
@@ -2506,7 +2453,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {
-        symname(sess, "_rust_crate_map_" + mapmeta.crateid.name, mapmeta.crate_hash,
+        symname("_rust_crate_map_" + mapmeta.crateid.name, mapmeta.crate_hash,
                 mapmeta.crateid.version_or_default())
     };
 
@@ -2539,7 +2486,7 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     let cstore = ccx.sess.cstore;
     while cstore.have_crate_data(i) {
         let cdata = cstore.get_crate_data(i);
-        let nm = symname(ccx.sess, format!("_rust_crate_map_{}", cdata.name),
+        let nm = symname(format!("_rust_crate_map_{}", cdata.name),
                          cstore.get_crate_hash(i),
                          cstore.get_crate_vers(i));
         let cr = nm.with_c_str(|buf| {
@@ -2590,7 +2537,7 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     }
 }
 
-pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_inlined_item<'r>)
+pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeInlinedItem<'r>)
     -> encoder::EncodeParams<'r> {
 
         let diag = cx.sess.diagnostic();
@@ -2617,9 +2564,8 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
         return ~[]
     }
 
-    let encode_inlined_item: encoder::encode_inlined_item =
-        |ecx, ebml_w, path, ii|
-        astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
+    let encode_inlined_item: encoder::EncodeInlinedItem =
+        |ecx, ebml_w, ii| astencode::encode_inlined_item(ecx, ebml_w, ii, cx.maps);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);

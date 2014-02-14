@@ -178,7 +178,7 @@ StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span 
 
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
-
+use ast_util;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
@@ -405,11 +405,13 @@ impl<'a> TraitDef<'a> {
                                ast::LitStr(token::intern_and_get_ident(
                                                "Automatically derived."),
                                            ast::CookedStr)));
+        let opt_trait_ref = Some(trait_ref);
+        let ident = ast_util::impl_pretty_name(&opt_trait_ref, self_type);
         cx.item(
             self.span,
-            ::parse::token::special_idents::clownshoes_extensions,
+            ident,
             ~[doc_attr],
-            ast::ItemImpl(trait_generics, Some(trait_ref),
+            ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods.map(|x| *x)))
     }
 

@@ -43,7 +43,7 @@ pub enum FnKind<'a> {
 pub fn name_of_fn(fk: &FnKind) -> Ident {
     match *fk {
         FkItemFn(name, _, _, _) | FkMethod(name, _, _) => name,
-        FkFnBlock(..) => parse::token::special_idents::anon
+        FkFnBlock(..) => parse::token::special_idents::invalid
     }
 }
 

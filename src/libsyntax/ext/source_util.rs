@@ -16,7 +16,6 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use parse;
-use parse::token::get_ident_interner;
 use parse::token;
 use print::pprust;
 
@@ -64,7 +63,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
-    let s = pprust::tts_to_str(tts, get_ident_interner());
+    let s = pprust::tts_to_str(tts);
     base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(s)))
 }
 
@@ -72,10 +71,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
-                   .map(|x| {
-                        let interned_str = token::get_ident(x.name);
-                        interned_str.get().to_str()
-                    })
+                   .map(|x| token::get_ident(*x).get().to_str())
                    .connect("::");
     base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(string)))
 }

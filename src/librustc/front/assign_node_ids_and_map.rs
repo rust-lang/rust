@@ -25,5 +25,5 @@ impl ast_map::FoldOps for NodeIdAssigner {
 }
 
 pub fn assign_node_ids_and_map(sess: Session, krate: ast::Crate) -> (ast::Crate, ast_map::Map) {
-    ast_map::map_crate(sess.diagnostic(), krate, NodeIdAssigner { sess: sess })
+    ast_map::map_crate(krate, NodeIdAssigner { sess: sess })
 }

@@ -10,8 +10,6 @@
 
 //! Code that is useful in various trans modules.
 
-
-use driver::session;
 use driver::session::Session;
 use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
@@ -37,12 +35,12 @@ use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
-use syntax::ast::{Ident};
-use syntax::ast_map::{Path, PathElem, PathPrettyName};
+use syntax::ast::Ident;
+use syntax::ast;
+use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
@@ -102,10 +100,8 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
     ty::type_is_nil(ty) || ty::type_is_bot(ty) || ty::type_is_empty(ccx.tcx, ty)
 }
 
-pub fn gensym_name(name: &str) -> (Ident, PathElem) {
-    let name = token::gensym(name);
-    let ident = Ident::new(name);
-    (ident, PathPrettyName(ident, name as u64))
+pub fn gensym_name(name: &str) -> PathElem {
+    PathName(token::gensym(name))
 }
 
 pub struct tydesc_info {
@@ -277,7 +273,6 @@ pub struct FunctionContext<'a> {
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
     span: Option<Span>,
-    path: Path,
 
     // The arena that blocks are allocated from.
     block_arena: &'a TypedArena<Block<'a>>,
@@ -446,12 +441,11 @@ impl<'a> Block<'a> {
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
     pub fn ident(&self, ident: Ident) -> ~str {
-        let string = token::get_ident(ident.name);
-        string.get().to_str()
+        token::get_ident(ident).get().to_str()
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
-        ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
+        self.tcx().map.node_to_str(id)
     }
 
     pub fn expr_to_str(&self, e: &ast::Expr) -> ~str {
@@ -783,25 +777,6 @@ pub fn align_to(cx: &Block, off: ValueRef, align: ValueRef) -> ValueRef {
     let mask = build::Sub(cx, align, C_int(cx.ccx(), 1));
     let bumped = build::Add(cx, off, mask);
     return build::And(cx, bumped, build::Not(cx, mask));
-}
-
-pub fn path_str(sess: session::Session, p: &[PathElem]) -> ~str {
-    let mut r = ~"";
-    let mut first = true;
-    for e in p.iter() {
-        match *e {
-            ast_map::PathName(s) | ast_map::PathMod(s) |
-            ast_map::PathPrettyName(s, _) => {
-                if first {
-                    first = false
-                } else {
-                    r.push_str("::")
-                }
-                r.push_str(sess.str_of(s));
-            }
-        }
-    }
-    r
 }
 
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {

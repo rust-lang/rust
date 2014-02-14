@@ -23,6 +23,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
+use syntax::parse::token;
 
 pub struct StaticMethodInfo {
     ident: ast::Ident,
@@ -84,15 +85,14 @@ pub fn each_top_level_item_of_crate(cstore: @cstore::CStore,
                                           callback)
 }
 
-pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> ast_map::Path {
+pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> ~[ast_map::PathElem] {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     let path = decoder::get_item_path(cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::PathMod(tcx.sess.ident_of(
-        cdata.name))], path)
+    vec::append(~[ast_map::PathMod(token::intern(cdata.name))], path)
 }
 
 pub enum found_ast {
@@ -105,12 +105,11 @@ pub enum found_ast {
 // not marked for inlining, then the AST will not be present and hence none
 // will be returned.
 pub fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::DefId,
-                          decode_inlined_item: decoder::decode_inlined_item)
+                          decode_inlined_item: decoder::DecodeInlinedItem)
                        -> found_ast {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::maybe_get_item_ast(cdata, tcx, def.node,
-                                decode_inlined_item)
+    decoder::maybe_get_item_ast(cdata, tcx, def.node, decode_inlined_item)
 }
 
 pub fn get_enum_variants(tcx: ty::ctxt, def: ast::DefId)

@@ -261,7 +261,7 @@ fn check_fn(
 }
 
 pub fn check_expr(cx: &mut Context, e: &Expr) {
-    debug!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
+    debug!("kind::check_expr({})", expr_to_str(e));
 
     // Handle any kind bounds on type parameters
     let type_parameter_id = match e.get_callee_id() {

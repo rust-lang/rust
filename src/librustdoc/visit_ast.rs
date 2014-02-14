@@ -188,9 +188,9 @@ impl<'a> RustdocVisitor<'a> {
         };
         if analysis.public_items.contains(&def.node) { return false }
 
-        let item = self.cx.tycx.unwrap().items.get(def.node);
+        let item = self.cx.tycx.unwrap().map.get(def.node);
         match item {
-            ast_map::NodeItem(it, _) => {
+            ast_map::NodeItem(it) => {
                 if glob {
                     match it.node {
                         ast::ItemMod(ref m) => {

@@ -23,10 +23,8 @@ use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 use util::ppaux::Repr;
@@ -336,8 +334,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 old_loan.span,
                 format!("{}; {}", borrow_summary, rule_summary));
 
-            let old_loan_span = ast_map::node_span(self.tcx().items,
-                                                   old_loan.kill_scope);
+            let old_loan_span = self.tcx().map.span(old_loan.kill_scope);
             self.bccx.span_end_note(old_loan_span,
                                     "previous borrow ends here");
 
@@ -759,9 +756,7 @@ impl<'a> CheckLoanCtxt<'a> {
                                  mut move_path: @LoanPath)
                                  -> MoveError {
         debug!("analyze_move_out_from(expr_id={:?}, move_path={})",
-               ast_map::node_id_to_str(self.tcx().items,
-                                       expr_id,
-                                       token::get_ident_interner()),
+               self.tcx().map.node_to_str(expr_id),
                move_path.repr(self.tcx()));
 
         // We must check every element of a move path. See

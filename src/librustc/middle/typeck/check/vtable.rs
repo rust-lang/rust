@@ -561,7 +561,7 @@ pub fn location_info_for_item(item: &ast::Item) -> LocationInfo {
 
 pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
-           ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
+           ex.id, is_early, expr_to_str(ex));
     let _indent = indenter();
 
     let cx = fcx.ccx;

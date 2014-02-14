@@ -112,7 +112,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span,
                     return (extra, None);
                 }
             };
-            let interned_name = token::get_ident(ident.name);
+            let interned_name = token::get_ident(ident);
             let name = interned_name.get();
             p.expect(&token::EQ);
             let e = p.parse_expr();

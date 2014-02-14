@@ -337,8 +337,7 @@ impl IrMaps {
         let var_kinds = self.var_kinds.borrow();
         match var_kinds.get()[var.get()] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
-                let string = token::get_ident(nm.name);
-                string.get().to_str()
+                token::get_ident(nm).get().to_str()
             },
             ImplicitRet => ~"<implicit-ret>"
         }
@@ -929,8 +928,7 @@ impl Liveness {
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
 
-        debug!("compute: using id for block, {}", block_to_str(body,
-                      self.tcx.sess.intr()));
+        debug!("compute: using id for block, {}", block_to_str(body));
 
         let entry_ln: LiveNode =
             self.with_loop_nodes(body.id, self.s.exit_ln, self.s.exit_ln,
@@ -1034,8 +1032,7 @@ impl Liveness {
 
     pub fn propagate_through_expr(&self, expr: @Expr, succ: LiveNode)
                                   -> LiveNode {
-        debug!("propagate_through_expr: {}",
-             expr_to_str(expr, self.tcx.sess.intr()));
+        debug!("propagate_through_expr: {}", expr_to_str(expr));
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
@@ -1049,8 +1046,7 @@ impl Liveness {
           }
 
           ExprFnBlock(_, blk) | ExprProc(_, blk) => {
-              debug!("{} is an ExprFnBlock or ExprProc",
-                   expr_to_str(expr, self.tcx.sess.intr()));
+              debug!("{} is an ExprFnBlock or ExprProc", expr_to_str(expr));
 
               /*
               The next-node for a break is the successor of the entire
@@ -1412,7 +1408,7 @@ impl Liveness {
             first_merge = false;
         }
         debug!("propagate_through_loop: using id for loop body {} {}",
-               expr.id, block_to_str(body, self.tcx.sess.intr()));
+               expr.id, block_to_str(body));
 
         let cond_ln = self.propagate_through_opt_expr(cond, ln);
         let body_ln = self.with_loop_nodes(expr.id, succ, ln, || {

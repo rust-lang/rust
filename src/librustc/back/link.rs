@@ -38,11 +38,12 @@ use serialize::hex::ToHex;
 use extra::tempfile::TempDir;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map::{PathMod, PathName, PathPrettyName};
+use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::crateid::CrateId;
+use syntax::parse::token;
 
 #[deriving(Clone, Eq, TotalOrd, TotalEq)]
 pub enum OutputType {
@@ -531,11 +532,8 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
 
 
 // This calculates STH for a symbol, as defined above
-pub fn symbol_hash(tcx: ty::ctxt,
-                   symbol_hasher: &mut Sha256,
-                   t: ty::t,
-                   link_meta: &LinkMeta)
-                   -> ~str {
+fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &mut Sha256,
+               t: ty::t, link_meta: &LinkMeta) -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -551,13 +549,10 @@ pub fn symbol_hash(tcx: ty::ctxt,
     hash
 }
 
-pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
-    {
-        let type_hashcodes = ccx.type_hashcodes.borrow();
-        match type_hashcodes.get().find(&t) {
-            Some(h) => return h.to_str(),
-            None => {}
-        }
+fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
+    match ccx.type_hashcodes.borrow().get().find(&t) {
+        Some(h) => return h.to_str(),
+        None => {}
     }
 
     let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
@@ -615,8 +610,9 @@ pub fn sanitize(s: &str) -> ~str {
     return result;
 }
 
-pub fn mangle(sess: Session, ss: ast_map::Path,
-              hash: Option<&str>, vers: Option<&str>) -> ~str {
+pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
+                                      hash: Option<&str>,
+                                      vers: Option<&str>) -> ~str {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
@@ -625,7 +621,7 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
     // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is
     // that it seriously limits the available characters. For example we can't
-    // have things like @T or ~[T] in symbol names when one would theoretically
+    // have things like &T or ~[T] in symbol names when one would theoretically
     // want them for things like impls of traits on that type.
     //
     // To be able to work on all platforms and get *some* reasonable output, we
@@ -633,41 +629,19 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
 
     let mut n = ~"_ZN"; // _Z == Begin name-sequence, N == nested
 
-    let push = |n: &mut ~str, s: &str| {
+    fn push(n: &mut ~str, s: &str) {
         let sani = sanitize(s);
         n.push_str(format!("{}{}", sani.len(), sani));
-    };
+    }
 
     // First, connect each component with <len, name> pairs.
-    for s in ss.iter() {
-        match *s {
-            PathName(s) | PathMod(s) | PathPrettyName(s, _) => {
-                push(&mut n, sess.str_of(s))
-            }
-        }
+    for e in path {
+        push(&mut n, token::get_name(e.name()).get().as_slice())
     }
 
-    // next, if any identifiers are "pretty" and need extra information tacked
-    // on, then use the hash to generate two unique characters. For now
-    // hopefully 2 characters is enough to avoid collisions.
-    static EXTRA_CHARS: &'static str =
-        "abcdefghijklmnopqrstuvwxyz\
-         ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-         0123456789";
-    let mut hash = match hash { Some(s) => s.to_owned(), None => ~"" };
-    for s in ss.iter() {
-        match *s {
-            PathPrettyName(_, extra) => {
-                let hi = (extra >> 32) as u32 as uint;
-                let lo = extra as u32 as uint;
-                hash.push_char(EXTRA_CHARS[hi % EXTRA_CHARS.len()] as char);
-                hash.push_char(EXTRA_CHARS[lo % EXTRA_CHARS.len()] as char);
-            }
-            _ => {}
-        }
-    }
-    if hash.len() > 0 {
-        push(&mut n, hash);
+    match hash {
+        Some(s) => push(&mut n, s),
+        None => {}
     }
     match vers {
         Some(s) => push(&mut n, s),
@@ -678,10 +652,7 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
     n
 }
 
-pub fn exported_name(sess: Session,
-                     path: ast_map::Path,
-                     hash: &str,
-                     vers: &str) -> ~str {
+pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> ~str {
     // The version will get mangled to have a leading '_', but it makes more
     // sense to lead with a 'v' b/c this is a version...
     let vers = if vers.len() > 0 && !char::is_XID_start(vers.char_at(0)) {
@@ -690,53 +661,56 @@ pub fn exported_name(sess: Session,
         vers.to_owned()
     };
 
-    mangle(sess, path, Some(hash), Some(vers.as_slice()))
+    mangle(path, Some(hash), Some(vers.as_slice()))
 }
 
-pub fn mangle_exported_name(ccx: &CrateContext,
-                            path: ast_map::Path,
-                            t: ty::t) -> ~str {
-    let hash = get_symbol_hash(ccx, t);
-    return exported_name(ccx.sess, path,
-                         hash,
-                         ccx.link_meta.crateid.version_or_default());
+pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
+                            t: ty::t, id: ast::NodeId) -> ~str {
+    let mut hash = get_symbol_hash(ccx, t);
+
+    // Paths can be completely identical for different nodes,
+    // e.g. `fn foo() { { fn a() {} } { fn a() {} } }`, so we
+    // generate unique characters from the node id. For now
+    // hopefully 3 characters is enough to avoid collisions.
+    static EXTRA_CHARS: &'static str =
+        "abcdefghijklmnopqrstuvwxyz\
+         ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+         0123456789";
+    let id = id as uint;
+    let extra1 = id % EXTRA_CHARS.len();
+    let id = id / EXTRA_CHARS.len();
+    let extra2 = id % EXTRA_CHARS.len();
+    let id = id / EXTRA_CHARS.len();
+    let extra3 = id % EXTRA_CHARS.len();
+    hash.push_char(EXTRA_CHARS[extra1] as char);
+    hash.push_char(EXTRA_CHARS[extra2] as char);
+    hash.push_char(EXTRA_CHARS[extra3] as char);
+
+    exported_name(path, hash, ccx.link_meta.crateid.version_or_default())
 }
 
 pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
+    let path = [PathName(token::intern(name)),
+                PathName(token::intern(s))];
     let hash = get_symbol_hash(ccx, t);
-    return mangle(ccx.sess,
-                  ~[PathName(ccx.sess.ident_of(name)),
-                    PathName(ccx.sess.ident_of(s))],
-                  Some(hash.as_slice()),
-                  None);
+    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()), None)
 }
 
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
+    let path = [PathName(token::intern(s)),
+                gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
-    let (_, name) = gensym_name(name);
-    return mangle(ccx.sess,
-                  ~[PathName(ccx.sess.ident_of(s)), name],
-                  Some(hash.as_slice()),
-                  None);
+    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()), None)
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: &CrateContext,
-                                            mut path: ast_map::Path,
-                                            flav: &str) -> ~str {
-    let (_, name) = gensym_name(flav);
-    path.push(name);
-    mangle(ccx.sess, path, None, None)
-}
-
-pub fn mangle_internal_name_by_path(ccx: &CrateContext,
-                                    path: ast_map::Path) -> ~str {
-    mangle(ccx.sess, path, None, None)
+pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> ~str {
+    mangle(path.chain(Some(gensym_name(flav)).move_iter()), None, None)
 }
 
 pub fn output_lib_filename(lm: &LinkMeta) -> ~str {
