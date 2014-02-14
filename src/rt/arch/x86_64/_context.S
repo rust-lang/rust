@@ -157,3 +157,36 @@ SWAP_REGISTERS:
         // Jump to the instruction pointer
         // found in regs:
         jmp *(RUSTRT_IP*8)(ARG1)
+
+// This function below, rust_bootstrap_green_task, is used to initialize a green
+// task. This code is the very first code that is run whenever a green task
+// starts. The only assumptions that this code makes is that it has a register
+// context previously set up by Context::new() and some values are in some
+// special registers.
+//
+// In theory the register context could be set up and then the context switching
+// would plop us directly into some 'extern "C" fn', but not all platforms have
+// the argument registers saved throughout a context switch (linux doesn't save
+// rdi/rsi, the first two argument registers). Instead of modifying all context
+// switches, instead the initial data for starting a green thread is shoved into
+// unrelated registers (r12/13, etc) which always need to be saved on context
+// switches anyway.
+//
+// With this strategy we get the benefit of being able to pass a fair bit of
+// contextual data from the start of a green task to its init function, as well
+// as not hindering any context switches.
+//
+// If you alter this code in any way, you likely need to update
+// src/libgreen/context.rs as well.
+
+#if defined(__APPLE__)
+#define BOOTSTRAP _rust_bootstrap_green_task
+#else
+#define BOOTSTRAP rust_bootstrap_green_task
+#endif
+.globl BOOTSTRAP
+BOOTSTRAP:
+    mov %r12, RUSTRT_ARG0_S
+    mov %r13, RUSTRT_ARG1_S
+    mov %r14, RUSTRT_ARG2_S
+    jmpq *%r15

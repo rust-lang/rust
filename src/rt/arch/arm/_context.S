@@ -51,3 +51,11 @@ rust_swap_registers:
 	msr cpsr_cxsf, r2
 
 	mov pc, lr
+
+// For reasons of this existence, see the comments in x86_64/_context.S
+.globl rust_bootstrap_green_task
+rust_bootstrap_green_task:
+        mov r0, r0
+        mov r1, r3
+        mov r2, r4
+        mov pc, r5

@@ -17,6 +17,7 @@ use any::AnyOwnExt;
 use cast;
 use cleanup;
 use clone::Clone;
+use comm::Chan;
 use io::Writer;
 use iter::{Iterator, Take};
 use local_data;
@@ -67,11 +68,17 @@ pub enum BlockedTask {
     Shared(UnsafeArc<AtomicUint>),
 }
 
+pub enum DeathAction {
+    /// Action to be done with the exit code. If set, also makes the task wait
+    /// until all its watched children exit before collecting the status.
+    Execute(proc(TaskResult)),
+    /// A channel to send the result of the task on when the task exits
+    SendMessage(Chan<TaskResult>),
+}
+
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
-    // Action to be done with the exit code. If set, also makes the task wait
-    // until all its watched children exit before collecting the status.
-    on_exit: Option<proc(TaskResult)>,
+    on_exit: Option<DeathAction>,
 }
 
 pub struct BlockedTasks {
@@ -381,7 +388,8 @@ impl Death {
     /// Collect failure exit codes from children and propagate them to a parent.
     pub fn collect_failure(&mut self, result: TaskResult) {
         match self.on_exit.take() {
-            Some(f) => f(result),
+            Some(Execute(f)) => f(result),
+            Some(SendMessage(ch)) => { ch.try_send(result); }
             None => {}
         }
     }

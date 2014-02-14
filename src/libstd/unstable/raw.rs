@@ -41,6 +41,12 @@ pub struct Closure {
     env: *(),
 }
 
+/// The representation of a Rust procedure (`proc()`)
+pub struct Procedure {
+    code: *(),
+    env: *(),
+}
+
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
 pub trait Repr<T> {
