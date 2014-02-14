@@ -10,14 +10,13 @@
 
 use std::cast;
 use std::libc::funcs::posix88::unistd;
-use std::num;
 use std::ptr;
 use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
-use std::sync::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst};
+use std::sync::atomics::{AtomicBool, SeqCst};
 use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
@@ -68,7 +67,7 @@ pub struct Scheduler {
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
-    /// We only go to sleep when backoff_counter hits 0.
+    /// We only go to sleep when backoff_counter hits EXPONENTIAL_BACKOFF_FACTOR.
     backoff_counter: uint,
     /// A scheduler only ever tries to wake up its two neighboring neighbors
     left_sched: Option<SchedHandle>,
@@ -110,20 +109,6 @@ pub struct Scheduler {
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: ~EventLoop,
 }
-
-macro_rules! wakeup_if_sleepy(
-    ($expr:expr) => {
-        unsafe {
-            match $expr {
-                Some(ref mut sched) if (*sched.sleepy).load(SeqCst) => {
-                    sched.send(Wake);
-                    true
-                },
-                _ => false
-            }
-        }
-    }
-)
 
 /// An indication of how hard to work on a given operation, the difference
 /// mainly being whether memory is synchronized or not
@@ -170,7 +155,7 @@ impl Scheduler {
             pool_id: pool_id,
             message_queue: consumer,
             message_producer: producer,
-            sleepy: INIT_ATOMIC_BOOL,
+            sleepy: AtomicBool::new(false),
             no_sleep: false,
             backoff_counter: 0,
             left_sched: None,
@@ -351,15 +336,16 @@ impl Scheduler {
         if !sched.no_sleep && !sched.sleepy.load(SeqCst) {
             if sched.backoff_counter == EXPONENTIAL_BACKOFF_FACTOR {
                 sched.backoff_counter = 0;
-                rterrln!("scheduler has no work to do, going to sleep");
+                rtdebug!("scheduler has no work to do, going to sleep");
                 sched.sleepy.store(true, SeqCst);
                 // Since we are sleeping, deactivate the idle callback.
                 sched.idle_callback.get_mut_ref().pause();
+            } else {
+                unsafe { unistd::usleep((1 << sched.backoff_counter) * 1000u as u32); }
+                sched.backoff_counter += 1;
             }
-            unsafe { unistd::usleep(num::pow(2, sched.backoff_counter) as u32); }
-            sched.backoff_counter += 1;
         } else {
-            rterrln!("not sleeping, already doing so or no_sleep set");
+            rtdebug!("not sleeping, already doing so or no_sleep set");
             // We may not be sleeping, but we still need to deactivate
             // the idle callback.
             sched.idle_callback.get_mut_ref().pause();
@@ -429,12 +415,15 @@ impl Scheduler {
             }
             Some(Shutdown) => {
                 rtdebug!("shutting down");
-                rterrln!("receiving shutdown");
                 if self.sleepy.load(SeqCst) {
-                    wakeup_if_sleepy!(self.left_sched);
-                    wakeup_if_sleepy!(self.right_sched);
-                    self.left_sched = None;
-                    self.right_sched = None;
+                    match self.left_sched.take() {
+                        Some(mut sched) => sched.wakeup_if_sleepy(),
+                        None => ()
+                    };
+                    match self.right_sched.take() {
+                        Some(mut sched) => sched.wakeup_if_sleepy(),
+                        None => ()
+                    };
                 }
                 // No more sleeping. After there are no outstanding
                 // event loop references we will shut down.
@@ -606,8 +595,8 @@ impl Scheduler {
 
         // We've made work available. Notify a
         // sleeping scheduler.
-        if !wakeup_if_sleepy!(self.left_sched) {
-            wakeup_if_sleepy!(self.right_sched);
+        if !self.left_sched.mutate(|mut sched| { sched.wakeup_if_sleepy(); sched }) {
+            self.right_sched.mutate(|mut sched| { sched.wakeup_if_sleepy(); sched });
         }
     }
 
@@ -903,6 +892,8 @@ pub enum SchedMessage {
 pub struct SchedHandle {
     priv remote: ~RemoteCallback,
     priv queue: msgq::Producer<SchedMessage>,
+    // Under the current design, a scheduler always outlives the handles
+    // pointing to it, so it's safe to use an unsafe pointer here
     priv sleepy: *AtomicBool,
     sched_id: uint
 }
@@ -911,6 +902,14 @@ impl SchedHandle {
     pub fn send(&mut self, msg: SchedMessage) {
         self.queue.push(msg);
         self.remote.fire();
+    }
+
+    fn wakeup_if_sleepy(&mut self) {
+        unsafe {
+            if (*self.sleepy).load(SeqCst) {
+                self.send(Wake);
+            }
+        }
     }
 }
 
