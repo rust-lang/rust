@@ -466,8 +466,8 @@ pub trait Index<Index,Result> {
 
 #[cfg(test)]
 mod bench {
-
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use ops::Drop;
 
     // Overhead of dtors

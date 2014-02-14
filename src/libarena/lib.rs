@@ -503,10 +503,10 @@ impl<T> Drop for TypedArena<T> {
 }
 
 #[cfg(test)]
-mod test {
-    extern crate extra;
+mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use super::{Arena, TypedArena};
-    use self::extra::test::BenchHarness;
 
     struct Point {
         x: int,

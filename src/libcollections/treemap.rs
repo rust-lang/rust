@@ -1494,9 +1494,9 @@ mod test_treemap {
 
 #[cfg(test)]
 mod bench {
-
+    extern crate test;
+    use self::test::BenchHarness;
     use super::TreeMap;
-    use extra::test::BenchHarness;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     // Find seq

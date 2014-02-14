@@ -1196,8 +1196,9 @@ pub enum InlinedItem {
 
 #[cfg(test)]
 mod test {
+    extern crate extra;
+    use self::extra::json;
     use serialize;
-    use extra;
     use codemap::*;
     use super::*;
 
@@ -1223,6 +1224,6 @@ mod test {
             },
         };
         // doesn't matter which encoder we use....
-        let _f = (&e as &serialize::Encodable<extra::json::Encoder>);
+        let _f = (&e as &serialize::Encodable<json::Encoder>);
     }
 }

@@ -107,7 +107,8 @@ pub unsafe fn exchange_free(ptr: *u8) {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
 
     #[bench]
     fn alloc_owned_small(bh: &mut BenchHarness) {

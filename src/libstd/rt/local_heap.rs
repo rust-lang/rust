@@ -308,7 +308,8 @@ pub fn live_allocs() -> *mut Box {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
 
     #[bench]
     fn alloc_managed_small(bh: &mut BenchHarness) {

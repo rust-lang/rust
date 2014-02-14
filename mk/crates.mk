@@ -50,7 +50,7 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections num
+                 uuid serialize sync getopts collections num test
 HOST_CRATES := syntax rustc rustdoc fourcc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -63,7 +63,8 @@ DEPS_native := std
 DEPS_syntax := std term serialize collections
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
               collections extra
-DEPS_rustdoc := rustc native:sundown serialize sync getopts collections
+DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
+                test
 DEPS_flate := std native:miniz
 DEPS_arena := std collections
 DEPS_glob := std
@@ -76,8 +77,9 @@ DEPS_getopts := std
 DEPS_collections := std serialize
 DEPS_fourcc := syntax std
 DEPS_num := std extra
+DEPS_test := std extra collections getopts serialize term
 
-TOOL_DEPS_compiletest := extra green rustuv getopts
+TOOL_DEPS_compiletest := test green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc green rustuv
 TOOL_DEPS_rustc := rustc green rustuv
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs

@@ -10,10 +10,10 @@
 
 use clean;
 
-use extra;
+use extra::json;
 use dl = std::unstable::dynamic_lib;
 
-pub type PluginJson = Option<(~str, extra::json::Json)>;
+pub type PluginJson = Option<(~str, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);
 pub type plugin_callback = extern fn (clean::Crate) -> PluginResult;
 

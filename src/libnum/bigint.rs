@@ -2546,11 +2546,12 @@ mod bigint_tests {
 
 #[cfg(test)]
 mod bench {
-    use super::{BigInt, BigUint};
+    extern crate test;
+    use self::test::BenchHarness;
+    use super::BigUint;
     use std::iter;
     use std::mem::replace;
     use std::num::{FromPrimitive, Zero, One};
-    use extra::test::BenchHarness;
 
     fn factorial(n: uint) -> BigUint {
         let mut f: BigUint = One::one();

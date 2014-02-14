@@ -902,10 +902,11 @@ mod test_map {
 
 #[cfg(test)]
 mod bench_map {
+    extern crate test;
+    use self::test::BenchHarness;
     use super::*;
     use prelude::*;
     use rand::{weak_rng, Rng};
-    use extra::test::BenchHarness;
 
     #[bench]
     fn bench_iter_small(bh: &mut BenchHarness) {

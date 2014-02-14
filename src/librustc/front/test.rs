@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -46,7 +46,7 @@ struct TestCtxt<'a> {
     path: RefCell<~[ast::Ident]>,
     ext_cx: ExtCtxt<'a>,
     testfns: RefCell<~[Test]>,
-    is_extra: bool,
+    is_test_crate: bool,
     config: ast::CrateConfig,
 }
 
@@ -164,7 +164,7 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: RefCell::new(~[]),
         testfns: RefCell::new(~[]),
-        is_extra: is_extra(&krate),
+        is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
 
@@ -275,13 +275,12 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
   #[!resolve_unexported]
-  extern crate extra (name = "extra", vers = "...");
+  extern crate test (name = "test", vers = "...");
   fn main() {
-    #[main];
-    extra::test::test_main_static(::os::args(), tests)
+    test::test_main_static(::os::args(), tests)
   }
 
-  static tests : &'static [extra::test::TestDescAndFn] = &[
+  static tests : &'static [test::TestDescAndFn] = &[
     ... the list of tests in the crate ...
   ];
 }
@@ -289,15 +288,15 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
-    let id_extra = token::str_to_ident("extra");
-    let vi = if cx.is_extra {
+    let id_test = token::str_to_ident("test");
+    let vi = if cx.is_test_crate {
         ast::ViewItemUse(
-            ~[@nospan(ast::ViewPathSimple(id_extra,
-                                          path_node(~[id_extra]),
+            ~[@nospan(ast::ViewPathSimple(id_test,
+                                          path_node(~[id_test]),
                                           ast::DUMMY_NODE_ID))])
     } else {
-        ast::ViewItemExternMod(id_extra,
-                               with_version("extra"),
+        ast::ViewItemExternMod(id_test,
+                               with_version("test"),
                                ast::DUMMY_NODE_ID)
     };
     ast::ViewItem {
@@ -310,7 +309,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
 
 fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
 
-    // Link to extra
+    // Link to test crate
     let view_items = ~[mk_std(cx)];
 
     // A constant vector of test descriptors.
@@ -321,7 +320,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #[main];
-            extra::test::test_main_static(::std::os::args(), TESTS);
+            test::test_main_static(::std::os::args(), TESTS);
         }
     )).unwrap();
 
@@ -383,15 +382,15 @@ fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(&cx.ext_cx,
-        pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
+        pub static TESTS : &'static [self::test::TestDescAndFn] =
             $test_descs
         ;
     )).unwrap()
 }
 
-fn is_extra(krate: &ast::Crate) -> bool {
+fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crateid(krate.attrs) {
-        Some(ref s) if "extra" == s.name => true,
+        Some(ref s) if "test" == s.name => true,
         _ => false
     }
 }
@@ -444,9 +443,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let t_expr = if test.bench {
-        quote_expr!(&cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::test::StaticBenchFn($fn_expr) )
     } else {
-        quote_expr!(&cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::test::StaticTestFn($fn_expr) )
     };
 
     let ignore_expr = if test.ignore {
@@ -462,9 +461,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let e = quote_expr!(&cx.ext_cx,
-        self::extra::test::TestDescAndFn {
-            desc: self::extra::test::TestDesc {
-                name: self::extra::test::StaticTestName($name_expr),
+        self::test::TestDescAndFn {
+            desc: self::test::TestDesc {
+                name: self::test::StaticTestName($name_expr),
                 ignore: $ignore_expr,
                 should_fail: $fail_expr
             },
