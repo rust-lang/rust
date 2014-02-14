@@ -53,6 +53,8 @@ use ptr::RawPtr;
 
 #[cfg(unix)]
 use c_str::ToCStr;
+#[cfg(windows)]
+use str::OwnedStr;
 
 /// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: int) -> int {
@@ -722,10 +724,12 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
+unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~[u8]] {
+    use c_str::CString;
+
     let mut args = ~[];
     for i in range(0u, argc as uint) {
-        args.push(str::raw::from_c_str(*argv.offset(i as int)));
+        args.push(CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_owned())
     }
     args
 }
@@ -736,7 +740,7 @@ unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-fn real_args() -> ~[~str] {
+fn real_args_as_bytes() -> ~[~[u8]] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as int,
                             *_NSGetArgv() as **c_char);
@@ -747,13 +751,18 @@ fn real_args() -> ~[~str] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
-fn real_args() -> ~[~str] {
+fn real_args_as_bytes() -> ~[~[u8]] {
     use rt;
 
     match rt::args::clone() {
         Some(args) => args,
         None => fail!("process arguments not initialized")
     }
+}
+
+#[cfg(not(windows))]
+fn real_args() -> ~[~str] {
+    real_args_as_bytes().move_iter().map(|v| str::from_utf8_lossy(v).into_owned()).collect()
 }
 
 #[cfg(windows)]
@@ -786,6 +795,11 @@ fn real_args() -> ~[~str] {
     return args;
 }
 
+#[cfg(windows)]
+fn real_args_as_bytes() -> ~[~[u8]] {
+    real_args().move_iter().map(|s| s.into_bytes()).collect()
+}
+
 type LPCWSTR = *u16;
 
 #[cfg(windows)]
@@ -803,8 +817,17 @@ extern "system" {
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
+///
+/// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
+/// See `str::from_utf8_lossy` for details.
 pub fn args() -> ~[~str] {
     real_args()
+}
+
+/// Returns the arguments which this program was started with (normally passed
+/// via the command line) as byte vectors.
+pub fn args_as_bytes() -> ~[~[u8]] {
+    real_args_as_bytes()
 }
 
 #[cfg(target_os = "macos")]
