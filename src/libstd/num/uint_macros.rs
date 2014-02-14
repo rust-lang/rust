@@ -44,28 +44,6 @@ impl Eq for $T {
     fn eq(&self, other: &$T) -> bool { return (*self) == (*other); }
 }
 
-impl Orderable for $T {
-    #[inline]
-    fn min(&self, other: &$T) -> $T {
-        if *self < *other { *self } else { *other }
-    }
-
-    #[inline]
-    fn max(&self, other: &$T) -> $T {
-        if *self > *other { *self } else { *other }
-    }
-
-    /// Returns the number constrained within the range `mn <= self <= mx`.
-    #[inline]
-    fn clamp(&self, mn: &$T, mx: &$T) -> $T {
-        match () {
-            _ if (*self > *mx) => *mx,
-            _ if (*self < *mn) => *mn,
-            _                  => *self,
-        }
-    }
-}
-
 impl Default for $T {
     #[inline]
     fn default() -> $T { 0 }
@@ -327,17 +305,6 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);
-    }
-
-    #[test]
-    fn test_orderable() {
-        assert_eq!((1 as $T).min(&(2 as $T)), 1 as $T);
-        assert_eq!((2 as $T).min(&(1 as $T)), 1 as $T);
-        assert_eq!((1 as $T).max(&(2 as $T)), 2 as $T);
-        assert_eq!((2 as $T).max(&(1 as $T)), 2 as $T);
-        assert_eq!((1 as $T).clamp(&(2 as $T), &(4 as $T)), 2 as $T);
-        assert_eq!((8 as $T).clamp(&(2 as $T), &(4 as $T)), 4 as $T);
-        assert_eq!((3 as $T).clamp(&(2 as $T), &(4 as $T)), 3 as $T);
     }
 
     #[test]

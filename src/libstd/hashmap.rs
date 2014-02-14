@@ -54,7 +54,7 @@
 
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
-use cmp::{Eq, Equiv};
+use cmp::{Eq, Equiv, max};
 use default::Default;
 #[cfg(not(stage0))] use fmt;
 use hash::Hash;
@@ -376,7 +376,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// cause many collisions and very poor performance. Setting them
     /// manually using this function can expose a DoS attack vector.
     pub fn with_capacity_and_keys(k0: u64, k1: u64, capacity: uint) -> HashMap<K, V> {
-        let cap = num::max(INITIAL_CAPACITY, capacity);
+        let cap = max(INITIAL_CAPACITY, capacity);
         HashMap {
             k0: k0, k1: k1,
             resize_at: resize_at(cap),
