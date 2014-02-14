@@ -10,7 +10,7 @@
 
 // ignore-test FIXME: #3907
 // aux-build:trait_typedef_cc.rs
-extern mod trait_typedef_cc;
+extern crate trait_typedef_cc;
 
 type Foo = trait_typedef_cc::Foo;
 

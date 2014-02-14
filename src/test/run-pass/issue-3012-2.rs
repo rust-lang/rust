@@ -13,7 +13,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod socketlib;
+extern crate socketlib;
 
 use socketlib::socket;
 use std::libc;

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // aux-build:reexport-should-still-link.rs
-// ignore-fast check-fast doesn't like extern mod
+// ignore-fast check-fast doesn't like extern crate
 
-extern mod foo = "reexport-should-still-link";
+extern crate foo = "reexport-should-still-link";
 
 pub fn main() {
     foo::bar();

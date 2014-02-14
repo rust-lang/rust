@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod pub_use_xcrate1;
+extern crate pub_use_xcrate1;
 
 pub use pub_use_xcrate1::Foo;

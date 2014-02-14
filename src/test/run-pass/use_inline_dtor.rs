@@ -11,7 +11,7 @@
 // aux-build:inline_dtor.rs
 // ignore-fast
 
-extern mod inline_dtor;
+extern crate inline_dtor;
 
 pub fn main() {
     let _x = inline_dtor::Foo;

@@ -12,7 +12,7 @@
 
 #[allow(unused_imports)];
 
-extern mod extra;
+extern crate extra;
 use extra::json::Object;
 
 pub fn main() {

@@ -10,7 +10,7 @@
 
 // chameneos
 
-extern mod extra;
+extern crate extra;
 
 use std::option;
 use std::os;

@@ -11,7 +11,7 @@
 // aux-build:issue_2472_b.rs
 // ignore-fast
 
-extern mod issue_2472_b;
+extern crate issue_2472_b;
 
 use issue_2472_b::{S, T};
 

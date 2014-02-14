@@ -11,7 +11,7 @@
 // compile-flags: --test --cfg ignorecfg
 // ignore-fast
 
-extern mod extra;
+extern crate extra;
 
 #[test]
 #[ignore(cfg(ignorecfg))]

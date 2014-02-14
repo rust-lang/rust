@@ -31,14 +31,14 @@ This API is completely unstable and subject to change.
 #[allow(unknown_features)]; // Note: remove it after a snapshot.
 #[feature(quote)];
 
-extern mod extra;
-extern mod flate;
-extern mod arena;
-extern mod syntax;
-extern mod serialize;
-extern mod sync;
-extern mod getopts;
-extern mod collections;
+extern crate extra;
+extern crate flate;
+extern crate arena;
+extern crate syntax;
+extern crate serialize;
+extern crate sync;
+extern crate getopts;
+extern crate collections;
 
 use back::link;
 use driver::session;

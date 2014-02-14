@@ -13,8 +13,8 @@
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
-extern mod extra;
-extern mod serialize;
+extern crate extra;
+extern crate serialize;
 use extra::json;
 use serialize::Decodable;
 

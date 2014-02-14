@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:privacy_reexport.rs
 
-extern mod privacy_reexport;
+extern crate privacy_reexport;
 
 pub fn main() {
     privacy_reexport::bar::frob();

@@ -10,7 +10,7 @@
 
 // ignore-test
 
-extern mod extra;
+extern crate extra;
 
 use std::cast::transmute;
 use std::i32::range;

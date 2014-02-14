@@ -10,7 +10,7 @@
 
 // error-pattern:explicit failure
 
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 
 enum e<T> { e(Arc<T>) }

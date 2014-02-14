@@ -15,7 +15,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
     let val = fourcc!(45f32); //~ ERROR unsupported literal in fourcc!

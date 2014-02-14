@@ -12,7 +12,7 @@
 
 #[feature(macro_rules)];
 
-extern mod extra;
+extern crate extra;
 
 use extra::time::precise_time_s;
 use std::mem::swap;

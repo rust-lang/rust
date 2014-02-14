@@ -10,7 +10,7 @@
 
 #[crate_type = "lib"];
 
-extern mod issue2378a;
+extern crate issue2378a;
 
 use issue2378a::maybe;
 

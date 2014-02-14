@@ -15,7 +15,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_export_inner_module;
+extern crate macro_export_inner_module;
 
 pub fn main() {
     assert_eq!(1, foo!());

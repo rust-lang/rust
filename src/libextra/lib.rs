@@ -34,10 +34,10 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-extern mod sync;
-extern mod serialize;
+extern crate sync;
+extern crate serialize;
 
-extern mod collections;
+extern crate collections;
 
 // Utility modules
 

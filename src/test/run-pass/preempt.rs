@@ -12,7 +12,7 @@
 // This checks that preemption works.
 
 // note: halfway done porting to modern rust
-extern mod extra;
+extern crate extra;
 
 use std::comm;
 use extra::comm;

@@ -18,7 +18,7 @@
 #[allow(dead_code)];
 
 mod cross_crate {
-    extern mod lint_stability;
+    extern crate lint_stability;
     use self::lint_stability::*;
 
     fn test() {

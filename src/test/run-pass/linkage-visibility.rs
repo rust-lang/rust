@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // aux-build:linkage-visibility.rs
-// ignore-fast check-fast doesn't like 'extern mod'
+// ignore-fast check-fast doesn't like 'extern crate'
 // ignore-android: FIXME(#10379)
 // ignore-win32: std::unstable::dynamic_lib does not work on win32 well
 
-extern mod foo = "linkage-visibility";
+extern crate foo = "linkage-visibility";
 
 pub fn main() {
     foo::test();

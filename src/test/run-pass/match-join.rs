@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-extern mod extra;
+extern crate extra;
 
 fn foo<T>(y: Option<T>) {
     let mut x: int;

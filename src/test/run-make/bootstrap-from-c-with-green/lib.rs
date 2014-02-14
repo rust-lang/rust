@@ -12,8 +12,8 @@
 #[crate_type="dylib"];
 #[no_uv];
 
-extern mod rustuv;
-extern mod green;
+extern crate rustuv;
+extern crate green;
 
 #[no_mangle] // this needs to get called from C
 pub extern "C" fn foo(argc: int, argv: **u8) -> int {

@@ -169,7 +169,7 @@ fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
         ast::ViewItemExternMod(ident, ref path_opt, id) => {
             let ident = token::get_ident(ident);
-            debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
+            debug!("resolving extern crate stmt. ident: {:?} path_opt: {:?}",
                    ident, path_opt);
             let (name, version) = match *path_opt {
                 Some((ref path_str, _)) => {

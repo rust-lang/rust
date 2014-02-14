@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue_3907.rs
-extern mod issue_3907;
+extern crate issue_3907;
 
 type Foo = issue_3907::Foo; //~ ERROR: reference to trait
 

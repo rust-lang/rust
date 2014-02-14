@@ -140,7 +140,7 @@ mod test_attr_inner_then_outer_multi {
 }
 
 mod test_distinguish_syntax_ext {
-    extern mod extra;
+    extern crate extra;
 
     pub fn f() {
         format!("test{}", "s");

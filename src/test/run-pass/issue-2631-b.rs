@@ -13,7 +13,7 @@
 // ignore-fast
 // aux-build:issue-2631-a.rs
 
-extern mod req;
+extern crate req;
 
 use req::request;
 use std::cell::RefCell;

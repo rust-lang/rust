@@ -11,7 +11,7 @@
 // aux-build:issue-4208-cc.rs
 // ignore-fast - check-fast hates cross-crate tests
 
-extern mod numeric;
+extern crate numeric;
 use numeric::{sin, Angle};
 
 fn foo<T, A:Angle<T>>(theta: A) -> T { sin(&theta) }

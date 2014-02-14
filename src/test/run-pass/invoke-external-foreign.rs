@@ -16,7 +16,7 @@
 // successfully (and safely) invoke external, cdecl
 // functions from outside the crate.
 
-extern mod foreign_lib;
+extern crate foreign_lib;
 
 pub fn main() {
     unsafe {

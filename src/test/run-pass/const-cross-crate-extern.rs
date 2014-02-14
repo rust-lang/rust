@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:cci_const.rs
 
-extern mod cci_const;
+extern crate cci_const;
 use cci_const::bar;
 static foo: extern "C" fn() = bar;
 

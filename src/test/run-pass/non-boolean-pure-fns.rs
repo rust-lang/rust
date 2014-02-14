@@ -12,7 +12,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod collections;
+extern crate collections;
 
 use collections::list::{List, Cons, Nil, head, is_empty};
 

@@ -28,7 +28,7 @@ impl<'a> ToHex for &'a [u8] {
      * # Example
      *
      * ```rust
-     * extern mod serialize;
+     * extern crate serialize;
      * use serialize::hex::ToHex;
      *
      * fn main () {
@@ -89,7 +89,7 @@ impl<'a> FromHex for &'a str {
      * This converts a string literal to hexadecimal and back.
      *
      * ```rust
-     * extern mod serialize;
+     * extern crate serialize;
      * use serialize::hex::{FromHex, ToHex};
      * use std::str;
      *

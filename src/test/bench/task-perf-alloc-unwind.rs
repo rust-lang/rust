@@ -10,8 +10,8 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
-extern mod collections;
+extern crate extra;
+extern crate collections;
 
 use collections::list::{List, Cons, Nil};
 use extra::time::precise_time_s;

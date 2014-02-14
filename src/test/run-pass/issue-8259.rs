@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:issue-8259.rs
 
-extern mod other = "issue-8259";
+extern crate other = "issue-8259";
 static a: other::Foo<'static> = other::A;
 
 pub fn main() {}

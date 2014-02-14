@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like extern mod
+// ignore-fast check-fast doesn't like extern crate
 // aux-build:issue-9968.rs
 
-extern mod lib = "issue-9968";
+extern crate lib = "issue-9968";
 
 use lib::{Trait, Struct};
 

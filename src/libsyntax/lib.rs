@@ -32,10 +32,10 @@ This API is completely unstable and subject to change.
 
 #[deny(non_camel_case_types)];
 
-#[cfg(test)] extern mod extra;
-extern mod serialize;
-extern mod term;
-extern mod collections;
+#[cfg(test)] extern crate extra;
+extern crate serialize;
+extern crate term;
+extern crate collections;
 
 pub mod util {
     pub mod interner;

@@ -13,10 +13,10 @@
 // aux-build:crateresolve2-3.rs
 // error-pattern:using multiple versions of crate `crateresolve2`
 
-extern mod crateresolve2 = "crateresolve2#0.1";
+extern crate crateresolve2 = "crateresolve2#0.1";
 
 mod m {
-    pub extern mod crateresolve2 = "crateresolve2#0.2";
+    pub extern crate crateresolve2 = "crateresolve2#0.2";
 }
 
 fn main() {

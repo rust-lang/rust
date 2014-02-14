@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod foo;
+extern crate foo;
 
 fn main() {
     foo::rsfoo();
