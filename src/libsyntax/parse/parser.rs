@@ -4566,13 +4566,12 @@ impl Parser {
             let next_is_mod = self.eat_keyword(keywords::Mod);
 
             if next_is_mod || self.eat_keyword(keywords::Crate) {
-                // NOTE(flaper87): Uncomment this when this changes gets into stage0
-                //
-                // if next_is_mod {
-                //    self.span_err(self.span,
-                //                   format!("`extern mod` is obsolete, use `extern crate` instead \
-                //                           to refer to external crates."))
-                // }
+                if next_is_mod {
+                   self.span_err(self.span,
+                                  format!("`extern mod` is obsolete, use \
+                                           `extern crate` instead \
+                                           to refer to external crates."))
+                }
                 return self.parse_item_extern_crate(lo, visibility, attrs);
             }
 
