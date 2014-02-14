@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -61,6 +61,12 @@ impl<T> SmallVector<T> {
                 };
             }
             Many(ref mut vs) => vs.push(v)
+        }
+    }
+
+    pub fn push_all(&mut self, other: SmallVector<T>) {
+        for v in other.move_iter() {
+            self.push(v);
         }
     }
 
