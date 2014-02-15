@@ -3240,7 +3240,6 @@ guides on individual topics.
 * [Macros][macros]
 * [The foreign function interface][ffi]
 * [Containers and iterators][container]
-* [Error-handling and Conditions][conditions]
 * [Documenting Rust code][rustdoc]
 * [Testing Rust code][testing]
 * [The Rust Runtime][runtime]
@@ -3253,7 +3252,6 @@ There is further documentation on the [wiki], however those tend to be even more
 [macros]: guide-macros.html
 [ffi]: guide-ffi.html
 [container]: guide-container.html
-[conditions]: guide-conditions.html
 [testing]: guide-testing.html
 [runtime]: guide-runtime.html
 [rustdoc]: rustdoc.html
