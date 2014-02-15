@@ -3256,10 +3256,10 @@ An example of a *recursive* type and its use:
 ~~~~
 enum List<T> {
   Nil,
-  Cons(T, @List<T>)
+  Cons(T, ~List<T>)
 }
 
-let a: List<int> = Cons(7, @Cons(13, @Nil));
+let a: List<int> = Cons(7, ~Cons(13, ~Nil));
 ~~~~
 
 ### Pointer types
