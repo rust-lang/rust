@@ -1122,13 +1122,6 @@ fn link_args(sess: Session,
         args.push(~"-Wl,--allow-multiple-definition");
     }
 
-    // Stack growth requires statically linking a __morestack function
-    args.push(~"-lmorestack");
-    // compiler-rt contains implementations of low-level LLVM helpers
-    // It should go before platform and user libraries, so it has first dibs
-    // at resolving symbols that also appear in libgcc.
-    args.push(~"-lcompiler-rt");
-
     add_local_native_libraries(&mut args, sess);
     add_upstream_rust_crates(&mut args, sess, dylib, tmpdir);
     add_upstream_native_libraries(&mut args, sess);
@@ -1162,6 +1155,13 @@ fn link_args(sess: Session,
     if !sess.opts.cg.no_rpath {
         args.push_all(rpath::get_rpath_flags(sess, out_filename));
     }
+
+    // Stack growth requires statically linking a __morestack function
+    args.push(~"-lmorestack");
+    // compiler-rt contains implementations of low-level LLVM helpers
+    // It should go before platform and user libraries, so it has first dibs
+    // at resolving symbols that also appear in libgcc.
+    args.push(~"-lcompiler-rt");
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
