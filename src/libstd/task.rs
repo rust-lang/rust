@@ -65,7 +65,6 @@ use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
-#[cfg(test)] use ptr;
 #[cfg(test)] use result;
 
 /// Indicates the manner in which a task exited.
