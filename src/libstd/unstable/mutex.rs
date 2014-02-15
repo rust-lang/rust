@@ -27,31 +27,34 @@
 //!
 //! It is not recommended to use this type for idiomatic rust use. These types
 //! are appropriate where no other options are available, but other rust
-//! concurrency primitives should be used before them.
+//! concurrency primitives should be used before them: the `sync` crate defines
+//! `StaticMutex` and `Mutex` types.
 //!
 //! # Example
 //!
-//!     use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+//! ```rust
+//! use std::unstable::mutex::{NativeMutex, StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
-//!     // Use a statically initialized mutex
-//!     static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+//! // Use a statically initialized mutex
+//! static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 //!
-//!     unsafe {
-//!         let _guard = LOCK.lock();
-//!     } // automatically unlocked here
+//! unsafe {
+//!     let _guard = LOCK.lock();
+//! } // automatically unlocked here
 //!
-//!     // Use a normally initialized mutex
-//!     unsafe {
-//!         let mut lock = NativeMutex::new();
+//! // Use a normally initialized mutex
+//! unsafe {
+//!     let mut lock = NativeMutex::new();
 //!
-//!         {
-//!             let _guard = lock.lock();
-//!         } // unlocked here
+//!     {
+//!         let _guard = lock.lock();
+//!     } // unlocked here
 //!
-//!         // sometimes the RAII guard isn't appropriate
-//!         lock.lock_noguard();
-//!         lock.unlock_noguard();
-//!     } // `lock` is deallocated here
+//!     // sometimes the RAII guard isn't appropriate
+//!     lock.lock_noguard();
+//!     lock.unlock_noguard();
+//! } // `lock` is deallocated here
+//! ```
 
 #[allow(non_camel_case_types)];
 
@@ -61,7 +64,8 @@ use ops::Drop;
 /// A native mutex suitable for storing in statics (that is, it has
 /// the `destroy` method rather than a destructor).
 ///
-/// Prefer the `NativeMutex` type where possible.
+/// Prefer the `NativeMutex` type where possible, since that does not
+/// require manual deallocation.
 pub struct StaticNativeMutex {
     priv inner: imp::Mutex,
 }
@@ -128,14 +132,16 @@ impl StaticNativeMutex {
 
     /// Acquire the lock without creating a `LockGuard`.
     ///
-    /// Prefer using `.lock`.
+    /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
+    /// `.lock`.
     pub unsafe fn lock_noguard(&mut self) { self.inner.lock() }
 
     /// Attempts to acquire the lock without creating a
     /// `LockGuard`. The value returned is whether the lock was
     /// acquired or not.
     ///
-    /// Prefer using `.trylock`.
+    /// If `true` is returned, this needs to be paired with a call to
+    /// `.unlock_noguard`. Prefer using `.trylock`.
     pub unsafe fn trylock_noguard(&mut self) -> bool {
         self.inner.trylock()
     }
@@ -175,11 +181,14 @@ impl NativeMutex {
     /// # Example
     /// ```rust
     /// use std::unstable::mutex::NativeMutex;
-    /// let mut lock = NativeMutex::new();
     /// unsafe {
-    ///     let _guard = lock.lock();
-    ///     // critical section...
-    /// } // automatically unlocked in `_guard`'s destructor
+    ///     let mut lock = NativeMutex::new();
+    ///
+    ///     {
+    ///         let _guard = lock.lock();
+    ///         // critical section...
+    ///     } // automatically unlocked in `_guard`'s destructor
+    /// }
     /// ```
     pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
         self.inner.lock()
@@ -193,14 +202,16 @@ impl NativeMutex {
 
     /// Acquire the lock without creating a `LockGuard`.
     ///
-    /// Prefer using `.lock`.
+    /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
+    /// `.lock`.
     pub unsafe fn lock_noguard(&mut self) { self.inner.lock_noguard() }
 
     /// Attempts to acquire the lock without creating a
     /// `LockGuard`. The value returned is whether the lock was
     /// acquired or not.
     ///
-    /// Prefer using `.trylock`.
+    /// If `true` is returned, this needs to be paired with a call to
+    /// `.unlock_noguard`. Prefer using `.trylock`.
     pub unsafe fn trylock_noguard(&mut self) -> bool {
         self.inner.trylock_noguard()
     }
