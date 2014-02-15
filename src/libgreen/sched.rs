@@ -15,7 +15,7 @@ use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
-use std::unstable::mutex::StaticNativeMutex;
+use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
 
 use TaskState;
@@ -764,7 +764,7 @@ impl Scheduler {
         // to it, but we're guaranteed that the task won't exit until we've
         // unlocked the lock so there's no worry of this memory going away.
         let cur = self.change_task_context(cur, next, |sched, mut task| {
-            let lock: *mut StaticNativeMutex = &mut task.nasty_deschedule_lock;
+            let lock: *mut NativeMutex = &mut task.nasty_deschedule_lock;
             unsafe {
                 let _guard = (*lock).lock();
                 f(sched, BlockedTask::block(task.swap()));

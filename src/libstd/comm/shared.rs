@@ -28,7 +28,7 @@ use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics;
-use unstable::mutex::StaticNativeMutex;
+use unstable::mutex::NativeMutex;
 use vec::OwnedVector;
 
 use mpsc = sync::mpsc_queue;
@@ -53,7 +53,7 @@ pub struct Packet<T> {
 
     // this lock protects various portions of this implementation during
     // select()
-    select_lock: StaticNativeMutex,
+    select_lock: NativeMutex,
 }
 
 pub enum Failure {
@@ -72,7 +72,7 @@ impl<T: Send> Packet<T> {
             channels: atomics::AtomicInt::new(2),
             port_dropped: atomics::AtomicBool::new(false),
             sender_drain: atomics::AtomicInt::new(0),
-            select_lock: unsafe { StaticNativeMutex::new() },
+            select_lock: unsafe { NativeMutex::new() },
         };
         // see comments in inherit_blocker about why we grab this lock
         unsafe { p.select_lock.lock_noguard() }
@@ -486,7 +486,6 @@ impl<T: Send> Drop for Packet<T> {
             assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
             assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
             assert_eq!(self.channels.load(atomics::SeqCst), 0);
-            self.select_lock.destroy();
         }
     }
 }
