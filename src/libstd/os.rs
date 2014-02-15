@@ -53,6 +53,8 @@ use ptr::RawPtr;
 
 #[cfg(unix)]
 use c_str::ToCStr;
+#[cfg(windows)]
+use str::OwnedStr;
 
 /// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: int) -> int {
@@ -158,10 +160,23 @@ fn with_env_lock<T>(f: || -> T) -> T {
 
 /// Returns a vector of (variable, value) pairs for all the environment
 /// variables of the current process.
+///
+/// Invalid UTF-8 bytes are replaced with \uFFFD. See `str::from_utf8_lossy()`
+/// for details.
 pub fn env() -> ~[(~str,~str)] {
+    env_as_bytes().move_iter().map(|(k,v)| {
+        let k = str::from_utf8_lossy(k).into_owned();
+        let v = str::from_utf8_lossy(v).into_owned();
+        (k,v)
+    }).collect()
+}
+
+/// Returns a vector of (variable, value) byte-vector pairs for all the
+/// environment variables of the current process.
+pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
     unsafe {
         #[cfg(windows)]
-        unsafe fn get_env_pairs() -> ~[~str] {
+        unsafe fn get_env_pairs() -> ~[~[u8]] {
             use c_str;
             use str::StrSlice;
 
@@ -176,13 +191,15 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let mut result = ~[];
             c_str::from_c_multistring(ch as *c_char, None, |cstr| {
-                result.push(cstr.as_str().unwrap().to_owned());
+                result.push(cstr.as_bytes_no_nul().to_owned());
             });
             FreeEnvironmentStringsA(ch);
             result
         }
         #[cfg(unix)]
-        unsafe fn get_env_pairs() -> ~[~str] {
+        unsafe fn get_env_pairs() -> ~[~[u8]] {
+            use c_str::CString;
+
             extern {
                 fn rust_env_pairs() -> **c_char;
             }
@@ -193,20 +210,19 @@ pub fn env() -> ~[(~str,~str)] {
             }
             let mut result = ~[];
             ptr::array_each(environ, |e| {
-                let env_pair = str::raw::from_c_str(e);
-                debug!("get_env_pairs: {}", env_pair);
+                let env_pair = CString::new(e, false).as_bytes_no_nul().to_owned();
                 result.push(env_pair);
             });
             result
         }
 
-        fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
+        fn env_convert(input: ~[~[u8]]) -> ~[(~[u8], ~[u8])] {
             let mut pairs = ~[];
             for p in input.iter() {
-                let vs: ~[&str] = p.splitn('=', 1).collect();
-                debug!("splitting: len: {}", vs.len());
-                assert_eq!(vs.len(), 2);
-                pairs.push((vs[0].to_owned(), vs[1].to_owned()));
+                let vs: ~[&[u8]] = p.splitn(1, |b| *b == '=' as u8).collect();
+                let key = vs[0].to_owned();
+                let val = (if vs.len() < 2 { ~[] } else { vs[1].to_owned() });
+                pairs.push((key, val));
             }
             pairs
         }
@@ -220,14 +236,34 @@ pub fn env() -> ~[(~str,~str)] {
 #[cfg(unix)]
 /// Fetches the environment variable `n` from the current process, returning
 /// None if the variable isn't set.
+///
+/// Any invalid UTF-8 bytes in the value are replaced by \uFFFD. See
+/// `str::from_utf8_lossy()` for details.
+///
+/// # Failure
+///
+/// Fails if `n` has any interior NULs.
 pub fn getenv(n: &str) -> Option<~str> {
+    getenv_as_bytes(n).map(|v| str::from_utf8_lossy(v).into_owned())
+}
+
+#[cfg(unix)]
+/// Fetches the environment variable `n` byte vector from the current process,
+/// returning None if the variable isn't set.
+///
+/// # Failure
+///
+/// Fails if `n` has any interior NULs.
+pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
+    use c_str::CString;
+
     unsafe {
         with_env_lock(|| {
             let s = n.with_c_str(|buf| libc::getenv(buf));
             if s.is_null() {
                 None
             } else {
-                Some(str::raw::from_c_str(s))
+                Some(CString::new(s, false).as_bytes_no_nul().to_owned())
             }
         })
     }
@@ -249,10 +285,21 @@ pub fn getenv(n: &str) -> Option<~str> {
     }
 }
 
+#[cfg(windows)]
+/// Fetches the environment variable `n` byte vector from the current process,
+/// returning None if the variable isn't set.
+pub fn getenv_as_bytes(n: &str) -> Option<~[u8]> {
+    getenv(n).map(|s| s.into_bytes())
+}
+
 
 #[cfg(unix)]
 /// Sets the environment variable `n` to the value `v` for the currently running
 /// process
+///
+/// # Failure
+///
+/// Fails if `n` or `v` have any interior NULs.
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         with_env_lock(|| {
@@ -283,6 +330,10 @@ pub fn setenv(n: &str, v: &str) {
 }
 
 /// Remove a variable from the environment entirely
+///
+/// # Failure
+///
+/// Fails (on unix) if `n` has any interior NULs.
 pub fn unsetenv(n: &str) {
     #[cfg(unix)]
     fn _unsetenv(n: &str) {
@@ -722,10 +773,12 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
+unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~[u8]] {
+    use c_str::CString;
+
     let mut args = ~[];
     for i in range(0u, argc as uint) {
-        args.push(str::raw::from_c_str(*argv.offset(i as int)));
+        args.push(CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_owned())
     }
     args
 }
@@ -736,7 +789,7 @@ unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
  * Returns a list of the command line arguments.
  */
 #[cfg(target_os = "macos")]
-fn real_args() -> ~[~str] {
+fn real_args_as_bytes() -> ~[~[u8]] {
     unsafe {
         let (argc, argv) = (*_NSGetArgc() as int,
                             *_NSGetArgv() as **c_char);
@@ -747,13 +800,18 @@ fn real_args() -> ~[~str] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
-fn real_args() -> ~[~str] {
+fn real_args_as_bytes() -> ~[~[u8]] {
     use rt;
 
     match rt::args::clone() {
         Some(args) => args,
         None => fail!("process arguments not initialized")
     }
+}
+
+#[cfg(not(windows))]
+fn real_args() -> ~[~str] {
+    real_args_as_bytes().move_iter().map(|v| str::from_utf8_lossy(v).into_owned()).collect()
 }
 
 #[cfg(windows)]
@@ -786,6 +844,11 @@ fn real_args() -> ~[~str] {
     return args;
 }
 
+#[cfg(windows)]
+fn real_args_as_bytes() -> ~[~[u8]] {
+    real_args().move_iter().map(|s| s.into_bytes()).collect()
+}
+
 type LPCWSTR = *u16;
 
 #[cfg(windows)]
@@ -803,8 +866,17 @@ extern "system" {
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
+///
+/// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
+/// See `str::from_utf8_lossy` for details.
 pub fn args() -> ~[~str] {
     real_args()
+}
+
+/// Returns the arguments which this program was started with (normally passed
+/// via the command line) as byte vectors.
+pub fn args_as_bytes() -> ~[~[u8]] {
+    real_args_as_bytes()
 }
 
 #[cfg(target_os = "macos")]
