@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:xcrate-trait-lifetime-param.rs
 
 extern crate other = "xcrate-trait-lifetime-param";

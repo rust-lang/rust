@@ -13,7 +13,6 @@
 // Tests that a heterogeneous list of existential types can be put inside an Arc
 // and shared between tasks as long as all types fulfill Send.
 
-// ignore-fast
 
 extern crate sync;
 

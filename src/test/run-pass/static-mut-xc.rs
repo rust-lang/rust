@@ -12,7 +12,6 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-// ignore-fast
 // aux-build:static_mut_xc.rs
 
 extern crate static_mut_xc;

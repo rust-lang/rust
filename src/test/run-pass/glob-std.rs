@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like 'extern crate extra'
 // ignore-win32 TempDir may cause IoError on windows: #10462
 
 #[feature(macro_rules)];

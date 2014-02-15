@@ -10,7 +10,6 @@
 
 // aux-build:issue2378a.rs
 // aux-build:issue2378b.rs
-// ignore-fast - check-fast doesn't understand aux-build
 
 extern crate issue2378a;
 extern crate issue2378b;

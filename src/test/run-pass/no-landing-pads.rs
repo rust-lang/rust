@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: -Z no-landing-pads
-// ignore-fast
 
 use std::task;
 

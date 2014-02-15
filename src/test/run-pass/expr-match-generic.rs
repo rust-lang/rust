@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 
 type compare<T> = extern "Rust" fn(T, T) -> bool;
 

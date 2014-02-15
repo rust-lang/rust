@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:lang-item-public.rs
-// ignore-fast
 // ignore-android
 
 #[no_std];

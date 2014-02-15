@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:inner_static.rs
-// ignore-fast
 
 extern crate inner_static;
 

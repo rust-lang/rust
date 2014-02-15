@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast Does not work with main in a submodule
 
 mod rusti {
     extern "rust-intrinsic" {

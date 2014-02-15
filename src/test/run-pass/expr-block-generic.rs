@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// ignore-fast
 
 // Tests for standalone blocks as expressions with dynamic type sizes
 type compare<'a, T> = |T, T|: 'a -> bool;

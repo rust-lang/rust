@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like compile-flags
 // compile-flags: --cfg foo
 
 #[feature(macro_rules)];
