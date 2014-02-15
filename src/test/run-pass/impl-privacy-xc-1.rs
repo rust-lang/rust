@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:impl_privacy_xc_1.rs
-// ignore-fast
 
 extern crate impl_privacy_xc_1;
 

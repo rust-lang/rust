@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-win32 FIXME #13259
-// ignore-fast this is executing itself
 #![no_uv]
 
 extern crate native;

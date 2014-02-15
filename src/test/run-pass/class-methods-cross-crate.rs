@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:cci_class_3.rs
 extern crate cci_class_3;
 use cci_class_3::kitties::cat;

@@ -10,7 +10,6 @@
 
 //aux-build:macro_export_inner_module.rs
 //ignore-stage1
-//ignore-fast
 
 #![feature(phase)]
 

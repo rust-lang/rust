@@ -11,7 +11,6 @@
 // This actually tests a lot more than just encodable/decodable, but it gets the
 // job done at least
 
-// ignore-fast
 // ignore-test FIXME(#5121)
 
 #[feature(struct_variant, managed_boxes)];

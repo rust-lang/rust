@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast: check-fast screws up repr paths
 
 #[feature(macro_rules)];
 #![deny(warnings)]

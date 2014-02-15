@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:inline_dtor.rs
-// ignore-fast
 
 extern crate inline_dtor;
 

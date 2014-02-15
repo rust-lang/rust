@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue-4208-cc.rs
-// ignore-fast - check-fast hates cross-crate tests
 
 extern crate numeric;
 use numeric::{sin, Angle};

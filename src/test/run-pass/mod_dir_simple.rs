@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-pretty
-// ignore-fast
 
 mod mod_dir_simple {
     pub mod test;
