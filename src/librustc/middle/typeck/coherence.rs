@@ -725,6 +725,7 @@ impl CoherenceChecker {
 
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
+                ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) => {
                     let mut destructor_for_type = tcx.destructor_for_type
                                                      .borrow_mut();
