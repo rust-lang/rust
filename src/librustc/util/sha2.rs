@@ -338,12 +338,12 @@ impl Engine256State {
         let mut g = self.H6;
         let mut h = self.H7;
 
-        let mut W = [0u32, ..64];
+        let mut w = [0u32, ..64];
 
         // Sha-512 and Sha-256 use basically the same calculations which are implemented
         // by these macros. Inlining the calculations seems to result in better generated code.
         macro_rules! schedule_round( ($t:expr) => (
-                W[$t] = sigma1(W[$t - 2]) + W[$t - 7] + sigma0(W[$t - 15]) + W[$t - 16];
+                w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
                 )
         )
 
@@ -351,14 +351,14 @@ impl Engine256State {
             ($A:ident, $B:ident, $C:ident, $D:ident,
              $E:ident, $F:ident, $G:ident, $H:ident, $K:ident, $t:expr) => (
                 {
-                    $H += sum1($E) + ch($E, $F, $G) + $K[$t] + W[$t];
+                    $H += sum1($E) + ch($E, $F, $G) + $K[$t] + w[$t];
                     $D += $H;
                     $H += sum0($A) + maj($A, $B, $C);
                 }
              )
         )
 
-        read_u32v_be(W.mut_slice(0, 16), data);
+        read_u32v_be(w.mut_slice(0, 16), data);
 
         // Putting the message schedule inside the same loop as the round calculations allows for
         // the compiler to generate better code.

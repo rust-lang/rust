@@ -68,15 +68,15 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
 
 pub fn WriteOutputFile(
         sess: Session,
-        Target: lib::llvm::TargetMachineRef,
-        PM: lib::llvm::PassManagerRef,
-        M: ModuleRef,
-        Output: &Path,
-        FileType: lib::llvm::FileType) {
+        target: lib::llvm::TargetMachineRef,
+        pm: lib::llvm::PassManagerRef,
+        m: ModuleRef,
+        output: &Path,
+        file_type: lib::llvm::FileType) {
     unsafe {
-        Output.with_c_str(|Output| {
+        output.with_c_str(|output| {
             let result = llvm::LLVMRustWriteOutputFile(
-                    Target, PM, M, Output, FileType);
+                    target, pm, m, output, file_type);
             if !result {
                 llvm_err(sess, ~"could not write output");
             }
@@ -138,7 +138,7 @@ pub mod write {
                 })
             }
 
-            let OptLevel = match sess.opts.optimize {
+            let opt_level = match sess.opts.optimize {
               session::No => lib::llvm::CodeGenLevelNone,
               session::Less => lib::llvm::CodeGenLevelLess,
               session::Default => lib::llvm::CodeGenLevelDefault,
@@ -152,14 +152,14 @@ pub mod write {
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
-            let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
-                sess.opts.cg.target_cpu.with_c_str(|CPU| {
-                    target_feature(&sess).with_c_str(|Features| {
+            let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|t| {
+                sess.opts.cg.target_cpu.with_c_str(|cpu| {
+                    target_feature(&sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
-                            T, CPU, Features,
+                            t, cpu, features,
                             lib::llvm::CodeModelDefault,
                             lib::llvm::RelocPIC,
-                            OptLevel,
+                            opt_level,
                             true,
                             use_softfp,
                             no_fp_elim
@@ -185,7 +185,7 @@ pub mod write {
             if !sess.opts.cg.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                populate_llvm_passes(fpm, mpm, llmod, OptLevel);
+                populate_llvm_passes(fpm, mpm, llmod, opt_level);
             }
 
             for pass in sess.opts.cg.passes.iter() {

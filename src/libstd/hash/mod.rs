@@ -181,7 +181,7 @@ macro_rules! impl_hash_tuple(
     );
 )
 
-impl_hash_tuple!(A0 A1 A2 A3 A4 A5 A6 A7)
+impl_hash_tuple!(a0 a1 a2 a3 a4 a5 a6 a7)
 
 impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a [T] {
     #[inline]

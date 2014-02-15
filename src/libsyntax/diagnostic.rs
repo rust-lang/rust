@@ -339,12 +339,12 @@ fn highlight_lines(err: &mut EmitterWriter,
         for _ in range(0, skip) { s.push_char(' '); }
         let orig = fm.get_line(*lines.lines.get(0) as int);
         for pos in range(0u, left-skip) {
-            let curChar = orig[pos] as char;
+            let cur_char = orig[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
             // That way the squiggly line will usually appear in the correct
             // position.
-            match curChar {
+            match cur_char {
                 '\t' => s.push_char('\t'),
                 _ => s.push_char(' '),
             };
