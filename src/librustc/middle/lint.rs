@@ -80,6 +80,7 @@ pub enum Lint {
     NonCamelCaseTypes,
     NonUppercaseStatics,
     NonUppercasePatternStatics,
+    UppercaseVariables,
     UnnecessaryParens,
     TypeLimits,
     TypeOverflow,
@@ -208,7 +209,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          default: warn
      }),
 
-    ("unnecessary_parens",
+    ("uppercase_variables",
+     LintSpec {
+         lint: UppercaseVariables,
+         desc: "variable names should start with a lowercase character",
+         default: warn
+     }),
+
+     ("unnecessary_parens",
      LintSpec {
         lint: UnnecessaryParens,
         desc: "`if`, `match`, `while` and `return` do not need parentheses",
@@ -1169,6 +1177,30 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     }
 }
 
+fn check_pat_uppercase_variable(cx: &Context, p: &ast::Pat) {
+    let def_map = cx.tcx.def_map.borrow();
+    match &p.node {
+        &ast::PatIdent(_, ref path, _) => {
+            match def_map.get().find(&p.id) {
+                Some(&ast::DefLocal(_, _)) | Some(&ast::DefBinding(_, _)) |
+                        Some(&ast::DefArg(_, _)) => {
+                    // last identifier alone is right choice for this lint.
+                    let ident = path.segments.last().unwrap().identifier;
+                    let s = token::get_ident(ident);
+                    if s.get().char_at(0).is_uppercase() {
+                        cx.span_lint(
+                            UppercaseVariables,
+                            path.span,
+                            "variable names should start with a lowercase character");
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
+
 fn check_unnecessary_parens_core(cx: &Context, value: &ast::Expr, msg: &str) {
     match value.node {
         ast::ExprParen(_) => {
@@ -1553,6 +1585,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
         check_pat_non_uppercase_statics(self, p);
+        check_pat_uppercase_variable(self, p);
         check_unused_mut_pat(self, p);
 
         visit::walk_pat(self, p, ());
