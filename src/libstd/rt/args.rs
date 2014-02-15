@@ -68,11 +68,11 @@ mod imp {
     use option::{Option, Some, None};
     use ptr::RawPtr;
     use iter::Iterator;
-    use unstable::mutex::{Mutex, MUTEX_INIT};
+    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
 
     static mut global_args_ptr: uint = 0;
-    static mut lock: Mutex = MUTEX_INIT;
+    static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
     #[cfg(not(test))]
     pub unsafe fn init(argc: int, argv: **u8) {

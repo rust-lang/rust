@@ -133,7 +133,7 @@ pub struct StaticMutex {
     /// uint-cast of the native thread waiting for this mutex
     priv native_blocker: uint,
     /// an OS mutex used by native threads
-    priv lock: mutex::Mutex,
+    priv lock: mutex::StaticNativeMutex,
 
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
@@ -150,7 +150,7 @@ pub struct Guard<'a> {
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
-    lock: mutex::MUTEX_INIT,
+    lock: mutex::NATIVE_MUTEX_INIT,
     state: atomics::INIT_ATOMIC_UINT,
     flavor: Unlocked,
     green_blocker: 0,
@@ -441,7 +441,7 @@ impl Mutex {
                 native_blocker: 0,
                 green_cnt: atomics::AtomicUint::new(0),
                 q: q::Queue::new(),
-                lock: unsafe { mutex::Mutex::new() },
+                lock: unsafe { mutex::StaticNativeMutex::new() },
             }
         }
     }

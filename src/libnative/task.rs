@@ -22,7 +22,7 @@ use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::StaticNativeMutex;
 use std::unstable::stack;
 
 use io;
@@ -40,7 +40,7 @@ pub fn new(stack_bounds: (uint, uint)) -> ~Task {
 
 fn ops() -> ~Ops {
     ~Ops {
-        lock: unsafe { Mutex::new() },
+        lock: unsafe { StaticNativeMutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
         // these *should* get overwritten
@@ -109,7 +109,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 // This structure is the glue between channels and the 1:1 scheduling mode. This
 // structure is allocated once per task.
 struct Ops {
-    lock: Mutex,       // native synchronization
+    lock: StaticNativeMutex,       // native synchronization
     awoken: bool,      // used to prevent spurious wakeups
     io: io::IoFactory, // local I/O factory
 

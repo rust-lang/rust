@@ -13,10 +13,10 @@ use kinds::Send;
 use ops::Drop;
 use option::Option;
 use sync::arc::UnsafeArc;
-use unstable::mutex::{Mutex, LockGuard};
+use unstable::mutex::{StaticNativeMutex, LockGuard};
 
 pub struct LittleLock {
-    priv l: Mutex,
+    priv l: StaticNativeMutex,
 }
 
 pub struct LittleGuard<'a> {
@@ -31,7 +31,7 @@ impl Drop for LittleLock {
 
 impl LittleLock {
     pub fn new() -> LittleLock {
-        unsafe { LittleLock { l: Mutex::new() } }
+        unsafe { LittleLock { l: StaticNativeMutex::new() } }
     }
 
     pub unsafe fn lock<'a>(&'a mut self) -> LittleGuard<'a> {
