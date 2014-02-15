@@ -10,51 +10,11 @@
 
 use clone::Clone;
 use kinds::Send;
-use ops::Drop;
-use option::Option;
 use sync::arc::UnsafeArc;
-use unstable::mutex::{StaticNativeMutex, LockGuard};
-
-pub struct LittleLock {
-    priv l: StaticNativeMutex,
-}
-
-pub struct LittleGuard<'a> {
-    priv l: LockGuard<'a>
-}
-
-impl Drop for LittleLock {
-    fn drop(&mut self) {
-        unsafe { self.l.destroy(); }
-    }
-}
-
-impl LittleLock {
-    pub fn new() -> LittleLock {
-        unsafe { LittleLock { l: StaticNativeMutex::new() } }
-    }
-
-    pub unsafe fn lock<'a>(&'a mut self) -> LittleGuard<'a> {
-        LittleGuard { l: self.l.lock() }
-    }
-
-    pub unsafe fn try_lock<'a>(&'a mut self) -> Option<LittleGuard<'a>> {
-        self.l.trylock().map(|guard| LittleGuard { l: guard })
-    }
-
-    pub unsafe fn signal(&mut self) {
-        self.l.signal_noguard();
-    }
-}
-
-impl<'a> LittleGuard<'a> {
-    pub unsafe fn wait(&mut self) {
-        self.l.wait();
-    }
-}
+use unstable::mutex::NativeMutex;
 
 struct ExData<T> {
-    lock: LittleLock,
+    lock: NativeMutex,
     failed: bool,
     data: T,
 }
@@ -83,7 +43,7 @@ impl<T:Send> Clone for Exclusive<T> {
 impl<T:Send> Exclusive<T> {
     pub fn new(user_data: T) -> Exclusive<T> {
         let data = ExData {
-            lock: LittleLock::new(),
+            lock: unsafe {NativeMutex::new()},
             failed: false,
             data: user_data
         };
@@ -92,8 +52,8 @@ impl<T:Send> Exclusive<T> {
         }
     }
 
-    // Exactly like std::arc::MutexArc,access(), but with the LittleLock
-    // instead of a proper mutex. Same reason for being unsafe.
+    // Exactly like sync::MutexArc.access(). Same reason for being
+    // unsafe.
     //
     // Currently, scheduling operations (i.e., descheduling, receiving on a pipe,
     // accessing the provided condition variable) are prohibited while inside
@@ -119,14 +79,14 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn hold_and_signal(&self, f: |x: &mut T|) {
         let rec = self.x.get();
-        let _l = (*rec).lock.lock();
+        let mut guard = (*rec).lock.lock();
         if (*rec).failed {
             fail!("Poisoned Exclusive::new - another task failed inside!");
         }
         (*rec).failed = true;
         f(&mut (*rec).data);
         (*rec).failed = false;
-        (*rec).lock.signal();
+        guard.signal();
     }
 
     #[inline]

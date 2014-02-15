@@ -8,44 +8,50 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A native mutex and condition variable type
+//! A native mutex and condition variable type.
 //!
 //! This module contains bindings to the platform's native mutex/condition
-//! variable primitives. It provides a single type, `StaticNativeMutex`, which can be
-//! statically initialized via the `NATIVE_MUTEX_INIT` value. This object serves as
-//! both a mutex and a condition variable simultaneously.
+//! variable primitives. It provides two types: `StaticNativeMutex`, which can
+//! be statically initialized via the `NATIVE_MUTEX_INIT` value, and a simple
+//! wrapper `NativeMutex` that has a destructor to clean up after itself. These
+//! objects serve as both mutexes and condition variables simultaneously.
 //!
-//! The lock is lazily initialized, but it can only be unsafely destroyed. A
-//! statically initialized lock doesn't necessarily have a time at which it can
-//! get deallocated. For this reason, there is no `Drop` implementation of the
-//! mutex, but rather the `destroy()` method must be invoked manually if
-//! destruction of the mutex is desired.
+//! The static lock is lazily initialized, but it can only be unsafely
+//! destroyed. A statically initialized lock doesn't necessarily have a time at
+//! which it can get deallocated. For this reason, there is no `Drop`
+//! implementation of the static mutex, but rather the `destroy()` method must
+//! be invoked manually if destruction of the mutex is desired.
 //!
-//! It is not recommended to use this type for idiomatic rust use. This type is
-//! appropriate where no other options are available, but other rust concurrency
-//! primitives should be used before this type.
+//! The non-static `NativeMutex` type does have a destructor, but cannot be
+//! statically initialized.
+//!
+//! It is not recommended to use this type for idiomatic rust use. These types
+//! are appropriate where no other options are available, but other rust
+//! concurrency primitives should be used before them.
 //!
 //! # Example
 //!
 //!     use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //!     // Use a statically initialized mutex
-//!     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
+//!     static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 //!
 //!     unsafe {
-//!         let _guard = lock.lock();
+//!         let _guard = LOCK.lock();
 //!     } // automatically unlocked here
 //!
 //!     // Use a normally initialized mutex
 //!     unsafe {
-//!         let mut lock = StaticNativeMutex::new();
+//!         let mut lock = NativeMutex::new();
+//!
+//!         {
+//!             let _guard = lock.lock();
+//!         } // unlocked here
 //!
 //!         // sometimes the RAII guard isn't appropriate
 //!         lock.lock_noguard();
 //!         lock.unlock_noguard();
-//!
-//!         lock.destroy();
-//!     }
+//!     } // `lock` is deallocated here
 
 #[allow(non_camel_case_types)];
 
@@ -54,8 +60,18 @@ use ops::Drop;
 
 /// A native mutex suitable for storing in statics (that is, it has
 /// the `destroy` method rather than a destructor).
+///
+/// Prefer the `NativeMutex` type where possible.
 pub struct StaticNativeMutex {
     priv inner: imp::Mutex,
+}
+
+/// A native mutex with a destructor for clean-up.
+///
+/// See `StaticNativeMutex` for a version that is suitable for storing in
+/// statics.
+pub struct NativeMutex {
+    priv inner: StaticNativeMutex
 }
 
 /// Automatically unlocks the mutex that it was created from on
@@ -142,6 +158,72 @@ impl StaticNativeMutex {
     /// that no other thread is currently holding the lock or waiting on the
     /// condition variable contained inside.
     pub unsafe fn destroy(&mut self) { self.inner.destroy() }
+}
+
+impl NativeMutex {
+    /// Creates a new mutex.
+    ///
+    /// The user must be careful to ensure the mutex is not locked when its is
+    /// being destroyed.
+    pub unsafe fn new() -> NativeMutex {
+        NativeMutex { inner: StaticNativeMutex::new() }
+    }
+
+    /// Acquires this lock. This assumes that the current thread does not
+    /// already hold the lock.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::unstable::mutex::NativeMutex;
+    /// let mut lock = NativeMutex::new();
+    /// unsafe {
+    ///     let _guard = lock.lock();
+    ///     // critical section...
+    /// } // automatically unlocked in `_guard`'s destructor
+    /// ```
+    pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
+        self.inner.lock()
+    }
+
+    /// Attempts to acquire the lock. The value returned is `Some` if
+    /// the attempt succeeded.
+    pub unsafe fn trylock<'a>(&'a mut self) -> Option<LockGuard<'a>> {
+        self.inner.trylock()
+    }
+
+    /// Acquire the lock without creating a `LockGuard`.
+    ///
+    /// Prefer using `.lock`.
+    pub unsafe fn lock_noguard(&mut self) { self.inner.lock_noguard() }
+
+    /// Attempts to acquire the lock without creating a
+    /// `LockGuard`. The value returned is whether the lock was
+    /// acquired or not.
+    ///
+    /// Prefer using `.trylock`.
+    pub unsafe fn trylock_noguard(&mut self) -> bool {
+        self.inner.trylock_noguard()
+    }
+
+    /// Unlocks the lock. This assumes that the current thread already holds the
+    /// lock.
+    pub unsafe fn unlock_noguard(&mut self) { self.inner.unlock_noguard() }
+
+    /// Block on the internal condition variable.
+    ///
+    /// This function assumes that the lock is already held. Prefer
+    /// using `LockGuard.wait` since that guarantees that the lock is
+    /// held.
+    pub unsafe fn wait_noguard(&mut self) { self.inner.wait_noguard() }
+
+    /// Signals a thread in `wait` to wake up
+    pub unsafe fn signal_noguard(&mut self) { self.inner.signal_noguard() }
+}
+
+impl Drop for NativeMutex {
+    fn drop(&mut self) {
+        unsafe {self.inner.destroy()}
+    }
 }
 
 impl<'a> LockGuard<'a> {
