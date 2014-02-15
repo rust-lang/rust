@@ -5206,13 +5206,13 @@ impl Resolver {
             ExprLoop(_, Some(label)) => {
                 self.with_label_rib(|this| {
                     let def_like = DlDef(DefLabel(expr.id));
-                    // plain insert (no renaming)
                     {
                         let mut label_ribs = this.label_ribs.borrow_mut();
                         let rib = label_ribs.get()[label_ribs.get().len() -
                                                    1];
                         let mut bindings = rib.bindings.borrow_mut();
-                        bindings.get().insert(label.name, def_like);
+                        let renamed = mtwt_resolve(label);
+                        bindings.get().insert(renamed, def_like);
                     }
 
                     visit::walk_expr(this, expr, ());
@@ -5223,11 +5223,12 @@ impl Resolver {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let mut label_ribs = self.label_ribs.borrow_mut();
-                match self.search_ribs(label_ribs.get(), label, expr.span) {
+                let renamed = mtwt_resolve(label);
+                match self.search_ribs(label_ribs.get(), renamed, expr.span) {
                     None =>
                         self.resolve_error(expr.span,
                                               format!("use of undeclared label `{}`",
-                                                   token::get_name(label))),
+                                                   token::get_ident(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
                         self.record_def(expr.id, (def, LastMod(AllPublic)))
