@@ -102,10 +102,10 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
 
 /**
  * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
+ * deinitialising either. They may overlap.
  */
 #[inline]
-pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = mem::uninit();
     let t: *mut T = &mut tmp;
@@ -122,19 +122,19 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
 
 /**
  * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising or copying either one.
+ * value, without deinitialising either.
  */
 #[inline]
-pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     mem::swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
 
 /**
- * Reads the value from `*src` and returns it. Does not copy `*src`.
+ * Reads the value from `*src` and returns it.
  */
 #[inline(always)]
-pub unsafe fn read_ptr<T>(src: *T) -> T {
+pub unsafe fn read<T>(src: *T) -> T {
     let mut tmp: T = mem::uninit();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
     tmp
@@ -145,26 +145,14 @@ pub unsafe fn read_ptr<T>(src: *T) -> T {
  * This currently prevents destructors from executing.
  */
 #[inline(always)]
-pub unsafe fn read_and_zero_ptr<T>(dest: *mut T) -> T {
+pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
-    let tmp = read_ptr(&*dest);
+    let tmp = read(&*dest);
 
     // Now zero out `dest`:
     zero_memory(dest, 1);
 
     tmp
-}
-
-/// Transform a region pointer - &T - to an unsafe pointer - *T.
-#[inline]
-pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
-    thing as *T
-}
-
-/// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
-#[inline]
-pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
-    thing as *mut T
 }
 
 /**
@@ -176,7 +164,7 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
 */
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     debug!("array_each_with_len: before iterate");
-    if arr as uint == 0 {
+    if arr.is_null() {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     //let start_ptr = *arr;
@@ -197,7 +185,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
   Dragons be here.
 */
 pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
-    if arr as uint == 0 {
+    if arr.is_null()  {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);
@@ -205,100 +193,74 @@ pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
     array_each_with_len(arr, len, cb);
 }
 
-#[allow(missing_doc)]
+/// Extension methods for raw pointers.
 pub trait RawPtr<T> {
+    /// Returns the null pointer.
     fn null() -> Self;
+    /// Returns true if the pointer is equal to the null pointer.
     fn is_null(&self) -> bool;
-    fn is_not_null(&self) -> bool;
+    /// Returns true if the pointer is not equal to the null pointer.
+    fn is_not_null(&self) -> bool { !self.is_null() }
+    /// Returns the value of this pointer (ie, the address it points to)
     fn to_uint(&self) -> uint;
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
     unsafe fn to_option(&self) -> Option<&T>;
+    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
+    /// the object, or one-byte-past-the-end.
     unsafe fn offset(self, count: int) -> Self;
 }
 
-/// Extension methods for immutable pointers
 impl<T> RawPtr<T> for *T {
-    /// Returns the null pointer.
     #[inline]
     fn null() -> *T { null() }
 
-    /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { *self == RawPtr::null() }
 
-    /// Returns true if the pointer is not equal to the null pointer.
-    #[inline]
-    fn is_not_null(&self) -> bool { *self != RawPtr::null() }
-
-    /// Returns the address of this pointer.
     #[inline]
     fn to_uint(&self) -> uint { *self as uint }
 
-    ///
-    /// Returns `None` if the pointer is null, or else returns the value wrapped
-    /// in `Some`.
-    ///
-    /// # Safety Notes
-    ///
-    /// While this method is useful for null-safety, it is important to note
-    /// that this is still an unsafe operation because the returned value could
-    /// be pointing to invalid memory.
-    ///
+    #[inline]
+    unsafe fn offset(self, count: int) -> *T { intrinsics::offset(self, count) }
+
     #[inline]
     unsafe fn to_option(&self) -> Option<&T> {
-        if self.is_null() { None } else {
+        if self.is_null() {
+            None
+        } else {
             Some(cast::transmute(*self))
         }
     }
-
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end.
-    #[inline]
-    unsafe fn offset(self, count: int) -> *T { intrinsics::offset(self, count) }
 }
 
-/// Extension methods for mutable pointers
 impl<T> RawPtr<T> for *mut T {
-    /// Returns the null pointer.
     #[inline]
     fn null() -> *mut T { mut_null() }
 
-    /// Returns true if the pointer is equal to the null pointer.
     #[inline]
     fn is_null(&self) -> bool { *self == RawPtr::null() }
 
-    /// Returns true if the pointer is not equal to the null pointer.
-    #[inline]
-    fn is_not_null(&self) -> bool { *self != RawPtr::null() }
-
-    /// Returns the address of this pointer.
     #[inline]
     fn to_uint(&self) -> uint { *self as uint }
 
-    ///
-    /// Returns `None` if the pointer is null, or else returns the value wrapped
-    /// in `Some`.
-    ///
-    /// # Safety Notes
-    ///
-    /// While this method is useful for null-safety, it is important to note
-    /// that this is still an unsafe operation because the returned value could
-    /// be pointing to invalid memory.
-    ///
+    #[inline]
+    unsafe fn offset(self, count: int) -> *mut T { intrinsics::offset(self as *T, count) as *mut T }
+
     #[inline]
     unsafe fn to_option(&self) -> Option<&T> {
-        if self.is_null() { None } else {
+        if self.is_null() {
+            None
+        } else {
             Some(cast::transmute(*self))
         }
     }
-
-    /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end. An arithmetic overflow is also
-    /// undefined behaviour.
-    ///
-    /// This method should be preferred over `offset` when the guarantee can be
-    /// satisfied, to enable better optimization.
-    #[inline]
-    unsafe fn offset(self, count: int) -> *mut T { intrinsics::offset(self as *T, count) as *mut T }
 }
 
 // Equality for pointers

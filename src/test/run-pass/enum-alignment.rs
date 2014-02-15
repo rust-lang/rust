@@ -9,12 +9,10 @@
 // except according to those terms.
 
 use std::cast;
-use std::ptr;
 use std::mem;
 
 fn addr_of<T>(ptr: &T) -> uint {
-    let ptr = ptr::to_unsafe_ptr(ptr);
-    ptr as uint
+    ptr as *T as uint
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {

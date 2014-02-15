@@ -155,7 +155,7 @@ mod darwin_fd_limit {
     pub unsafe fn raise_fd_limit() {
         // The strategy here is to fetch the current resource limits, read the kern.maxfilesperproc
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
-        use ptr::{to_unsafe_ptr, to_mut_unsafe_ptr, mut_null};
+        use ptr::mut_null;
         use mem::size_of_val;
         use os::last_os_error;
 
@@ -163,9 +163,7 @@ mod darwin_fd_limit {
         let mut mib: [libc::c_int, ..2] = [CTL_KERN, KERN_MAXFILESPERPROC];
         let mut maxfiles: libc::c_int = 0;
         let mut size: libc::size_t = size_of_val(&maxfiles) as libc::size_t;
-        if sysctl(to_mut_unsafe_ptr(&mut mib[0]), 2,
-                  to_mut_unsafe_ptr(&mut maxfiles) as *mut libc::c_void,
-                  to_mut_unsafe_ptr(&mut size),
+        if sysctl(&mut mib[0], 2, &mut maxfiles as *mut libc::c_int as *mut libc::c_void, &mut size,
                   mut_null(), 0) != 0 {
             let err = last_os_error();
             error!("raise_fd_limit: error calling sysctl: {}", err);
@@ -174,7 +172,7 @@ mod darwin_fd_limit {
 
         // Fetch the current resource limits
         let mut rlim = rlimit{rlim_cur: 0, rlim_max: 0};
-        if getrlimit(RLIMIT_NOFILE, to_mut_unsafe_ptr(&mut rlim)) != 0 {
+        if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
             let err = last_os_error();
             error!("raise_fd_limit: error calling getrlimit: {}", err);
             return;
@@ -184,7 +182,7 @@ mod darwin_fd_limit {
         rlim.rlim_cur = ::cmp::min(maxfiles as rlim_t, rlim.rlim_max);
 
         // Set our newly-increased resource limit
-        if setrlimit(RLIMIT_NOFILE, to_unsafe_ptr(&rlim)) != 0 {
+        if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
             let err = last_os_error();
             error!("raise_fd_limit: error calling setrlimit: {}", err);
             return;

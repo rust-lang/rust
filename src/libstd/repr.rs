@@ -22,7 +22,6 @@ use container::Container;
 use io;
 use iter::Iterator;
 use option::{Some, None, Option};
-use ptr;
 use ptr::RawPtr;
 use reflect;
 use reflect::{MovePtr, align};
@@ -230,7 +229,7 @@ impl<'a> ReprVisitor<'a> {
     }
 
     pub fn write_unboxed_vec_repr(&mut self, _: uint, v: &raw::Vec<()>, inner: *TyDesc) -> bool {
-        self.write_vec_range(ptr::to_unsafe_ptr(&v.data), v.fill, inner)
+        self.write_vec_range(&v.data, v.fill, inner)
     }
 
     fn write_escaped_char(&mut self, ch: char, is_str: bool) -> bool {
@@ -319,7 +318,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         if_ok!(self, self.writer.write(['@' as u8]));
         self.write_mut_qualifier(mtbl);
         self.get::<&raw::Box<()>>(|this, b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *u8;
+            let p = &b.data as *() as *u8;
             this.visit_ptr_inner(p, inner)
         })
     }
@@ -387,7 +386,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                         _: uint, inner: *TyDesc) -> bool {
         let assumed_size = if sz == 0 { n } else { sz };
         self.get::<()>(|this, b| {
-            this.write_vec_range(ptr::to_unsafe_ptr(b), assumed_size, inner)
+            this.write_vec_range(b, assumed_size, inner)
         })
     }
 
@@ -606,7 +605,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
 pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
     unsafe {
-        let ptr = ptr::to_unsafe_ptr(object) as *u8;
+        let ptr = object as *T as *u8;
         let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
         let mut v = reflect::MovePtrAdaptor(u);

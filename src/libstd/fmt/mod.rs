@@ -1200,7 +1200,17 @@ impl<T> Pointer for *T {
 }
 impl<T> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer(&(*self as *T), f)
+        secret_pointer::<*T>(&(*self as *T), f)
+    }
+}
+impl<'a, T> Pointer for &'a T {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_pointer::<*T>(&(&**self as *T), f)
+    }
+}
+impl<'a, T> Pointer for &'a mut T {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_pointer::<*T>(&(&**self as *T), f)
     }
 }
 

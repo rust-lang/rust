@@ -14,8 +14,6 @@
 
 #[feature(managed_boxes)];
 
-use std::ptr;
-
 fn borrow(x: &int, f: |x: &int|) {
     let before = *x;
     f(x);
@@ -27,12 +25,11 @@ pub fn main() {
     let mut x = @3;
     borrow(x, |b_x| {
         assert_eq!(*b_x, 3);
-        assert_eq!(ptr::to_unsafe_ptr(&(*x)), ptr::to_unsafe_ptr(&(*b_x)));
+        assert_eq!(&(*x) as *int, &(*b_x) as *int);
         x = @22;
 
-        info!("ptr::to_unsafe_ptr(*b_x) = {:x}",
-               ptr::to_unsafe_ptr(&(*b_x)) as uint);
+        info!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);
-        assert!(ptr::to_unsafe_ptr(&(*x)) != ptr::to_unsafe_ptr(&(*b_x)));
+        assert!(&(*x) as *int != &(*b_x) as *int);
     })
 }
