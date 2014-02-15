@@ -867,7 +867,6 @@ impl num::FromStrRadix for f32 {
 #[cfg(test)]
 mod tests {
     use f32::*;
-    use prelude::*;
 
     use num::*;
     use num;
