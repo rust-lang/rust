@@ -113,7 +113,7 @@
 //! # Starting with libgreen
 //!
 //! ```rust
-//! extern mod green;
+//! extern crate green;
 //!
 //! #[start]
 //! fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }

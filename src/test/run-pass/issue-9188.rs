@@ -11,7 +11,7 @@
 // aux-build:issue_9188.rs
 // ignore-fast check-fast doesn't like aux-build
 
-extern mod issue_9188;
+extern crate issue_9188;
 
 pub fn main() {
     let a = issue_9188::bar();

@@ -10,7 +10,7 @@
 
 // ignore-fast aux-build
 // aux-build:ambig_impl_2_lib.rs
-extern mod ambig_impl_2_lib;
+extern crate ambig_impl_2_lib;
 use ambig_impl_2_lib::me;
 trait me {
     fn me(&self) -> uint;

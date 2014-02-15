@@ -129,8 +129,7 @@
 (defconst rust-mode-keywords
   '("as"
     "break"
-    "continue"
-    "crate"
+    "continue" "crate"
     "do"
     "else" "enum" "extern"
     "false" "fn" "for"
@@ -368,7 +367,7 @@ With argument, do it that many times.
 Negative argument -N means move back to Nth preceding end of defun.
 
 Assume that this is called after beginning-of-defun. So point is
-at the beginning of the defun body. 
+at the beginning of the defun body.
 
 This is written mainly to be used as `end-of-defun-function' for Rust."
   (interactive "p")

@@ -275,7 +275,7 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
   #[!resolve_unexported]
-  extern mod extra (name = "extra", vers = "...");
+  extern crate extra (name = "extra", vers = "...");
   fn main() {
     #[main];
     extra::test::test_main_static(::os::args(), tests)

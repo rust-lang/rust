@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:cci_const.rs
 
-extern mod cci_const;
+extern crate cci_const;
 static foo: &'static str = cci_const::foopy;
 static a: uint = cci_const::uint_val;
 static b: uint = cci_const::uint_expr + 5;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-fast
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 fn dispose(_x: Arc<bool>) { }
 

@@ -16,7 +16,7 @@
 
 // Tests that metadata serialization works for the `Pod` kind.
 
-extern mod kinds_in_metadata;
+extern crate kinds_in_metadata;
 
 use kinds_in_metadata::f;
 

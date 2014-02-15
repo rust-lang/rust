@@ -14,7 +14,7 @@
 //
 // I *think* it's the same, more or less.
 
-extern mod extra;
+extern crate extra;
 
 use std::os;
 use std::task;

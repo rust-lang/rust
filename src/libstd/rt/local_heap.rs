@@ -17,7 +17,6 @@ use ops::Drop;
 use option::{Option, None, Some};
 use ptr;
 use ptr::RawPtr;
-use rt::env;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
@@ -41,7 +40,6 @@ pub struct MemoryRegion {
 pub struct LocalHeap {
     priv memory_region: MemoryRegion,
 
-    priv poison_on_free: bool,
     priv live_allocs: *mut raw::Box<()>,
 }
 
@@ -54,7 +52,6 @@ impl LocalHeap {
         };
         LocalHeap {
             memory_region: region,
-            poison_on_free: env::poison_on_free(),
             live_allocs: ptr::mut_null(),
         }
     }

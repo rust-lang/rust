@@ -13,8 +13,8 @@
 
 #[feature(quote)];
 
-extern mod extra;
-extern mod syntax;
+extern crate extra;
+extern crate syntax;
 
 use std::io::*;
 

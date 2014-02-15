@@ -11,7 +11,7 @@
 // aux-build:static_fn_trait_xc_aux.rs
 // ignore-fast
 
-extern mod mycore = "static_fn_trait_xc_aux";
+extern crate mycore = "static_fn_trait_xc_aux";
 
 use mycore::num;
 

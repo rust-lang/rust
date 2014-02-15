@@ -10,7 +10,7 @@
 
 // aux-build:trait_default_method_xc_aux.rs
 
-extern mod aux = "trait_default_method_xc_aux";
+extern crate aux = "trait_default_method_xc_aux";
 use aux::A;
 
 pub struct a_struct { x: int }

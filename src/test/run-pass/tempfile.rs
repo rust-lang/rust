@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like 'extern mod'
+// ignore-fast check-fast doesn't like 'extern crate'
 // ignore-win32 TempDir may cause IoError on windows: #10463
 
 // These tests are here to exercise the functionality of the `tempfile` module.
@@ -19,7 +19,7 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
-extern mod extra;
+extern crate extra;
 
 use extra::tempfile::TempDir;
 use std::io::fs;

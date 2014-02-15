@@ -16,7 +16,7 @@
 
 #[feature(struct_variant, managed_boxes)];
 
-extern mod serialize;
+extern crate serialize;
 
 use std::io::MemWriter;
 use std::rand::{random, Rand};

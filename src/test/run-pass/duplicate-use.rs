@@ -10,7 +10,7 @@
 
 // ignore-test
 
-extern mod extra;
+extern crate extra;
 
 use list = extra::oldmap::chained;
 use extra::list;

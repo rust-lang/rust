@@ -11,7 +11,7 @@
 #[allow(unused_imports)];
 #[feature(globs)];
 
-extern mod issue_2316_a;
+extern crate issue_2316_a;
 
 pub mod cloth {
     use issue_2316_a::*;

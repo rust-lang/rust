@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:static_fn_inline_xc_aux.rs
 
-extern mod mycore = "static_fn_inline_xc_aux";
+extern crate mycore = "static_fn_inline_xc_aux";
 
 use mycore::num;
 

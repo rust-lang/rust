@@ -13,7 +13,7 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

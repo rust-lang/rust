@@ -13,7 +13,7 @@
 
 // Just testing unwinding
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

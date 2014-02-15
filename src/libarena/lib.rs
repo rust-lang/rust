@@ -22,9 +22,7 @@
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
 
-extern mod collections;
-
-#[cfg(test)] extern mod extra;
+extern crate collections;
 
 use collections::list::{List, Cons, Nil};
 use collections::list;
@@ -506,8 +504,9 @@ impl<T> Drop for TypedArena<T> {
 
 #[cfg(test)]
 mod test {
+    extern crate extra;
     use super::{Arena, TypedArena};
-    use extra::test::BenchHarness;
+    use self::extra::test::BenchHarness;
 
     struct Point {
         x: int,

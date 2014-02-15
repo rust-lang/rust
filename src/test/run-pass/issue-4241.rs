@@ -11,7 +11,7 @@
 // ignore-fast
 // ignore-test needs networking
 
-extern mod extra;
+extern crate extra;
 
 use extra::net::tcp::TcpSocketBuf;
 

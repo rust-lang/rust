@@ -12,8 +12,8 @@
 // aux-build:issue2378b.rs
 // ignore-fast - check-fast doesn't understand aux-build
 
-extern mod issue2378a;
-extern mod issue2378b;
+extern crate issue2378a;
+extern crate issue2378b;
 
 use issue2378a::{just};
 use issue2378b::{two_maybes};

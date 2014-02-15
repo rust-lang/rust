@@ -18,8 +18,8 @@
 
 */
 
-extern mod extra;
-extern mod getopts;
+extern crate extra;
+extern crate getopts;
 
 use extra::time;
 use std::os;

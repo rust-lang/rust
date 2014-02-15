@@ -12,8 +12,8 @@
 // aux-build:crateresolve5-1.rs
 // aux-build:crateresolve5-2.rs
 
-extern mod cr5_1 = "crateresolve5#0.1";
-extern mod cr5_2 = "crateresolve5#0.2";
+extern crate cr5_1 = "crateresolve5#0.1";
+extern crate cr5_2 = "crateresolve5#0.2";
 
 
 fn main() {

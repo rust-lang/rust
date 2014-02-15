@@ -12,6 +12,6 @@
 
 #[phase(syntax)]
 //~^ ERROR compile time crate loading is experimental and possibly buggy
-extern mod macro_crate_test;
+extern crate macro_crate_test;
 
 fn main() {}

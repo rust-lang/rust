@@ -11,7 +11,7 @@
 // ignore-fast
 //aux-build:extern-crosscrate-source.rs
 
-extern mod externcallback = "externcallback#0.1";
+extern crate externcallback = "externcallback#0.1";
 
 fn fact(n: uint) -> uint {
     unsafe {

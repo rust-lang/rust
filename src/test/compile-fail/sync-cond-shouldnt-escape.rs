@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern: lifetime of variable does not enclose its declaration
-extern mod sync;
+extern crate sync;
 use sync::Mutex;
 
 fn main() {

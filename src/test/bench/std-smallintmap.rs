@@ -10,8 +10,8 @@
 
 // Microbenchmark for the smallintmap library
 
-extern mod extra;
-extern mod collections;
+extern crate extra;
+extern crate collections;
 
 use collections::SmallIntMap;
 use std::os;

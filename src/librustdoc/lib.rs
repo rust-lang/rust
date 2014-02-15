@@ -15,13 +15,13 @@
 
 #[feature(globs, struct_variant, managed_boxes)];
 
-extern mod syntax;
-extern mod rustc;
-extern mod extra;
-extern mod serialize;
-extern mod sync;
-extern mod getopts;
-extern mod collections;
+extern crate syntax;
+extern crate rustc;
+extern crate extra;
+extern crate serialize;
+extern crate sync;
+extern crate getopts;
+extern crate collections;
 
 use std::local_data;
 use std::io;

@@ -11,6 +11,6 @@
 // aux-build:issue_8401.rs
 // ignore-fast
 
-extern mod issue_8401;
+extern crate issue_8401;
 
 pub fn main() {}

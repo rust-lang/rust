@@ -16,7 +16,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 static static_val: u32 = fourcc!("foo ");
 static static_val_be: u32 = fourcc!("foo ", big);

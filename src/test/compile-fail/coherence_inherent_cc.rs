@@ -14,7 +14,7 @@
 // Tests that methods that implement a trait cannot be invoked
 // unless the trait is imported.
 
-extern mod coherence_inherent_cc_lib;
+extern crate coherence_inherent_cc_lib;
 
 mod Import {
     // Trait is in scope here:

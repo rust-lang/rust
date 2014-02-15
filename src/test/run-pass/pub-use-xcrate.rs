@@ -12,7 +12,7 @@
 // aux-build:pub_use_xcrate1.rs
 // aux-build:pub_use_xcrate2.rs
 
-extern mod pub_use_xcrate2;
+extern crate pub_use_xcrate2;
 
 use pub_use_xcrate2::Foo;
 

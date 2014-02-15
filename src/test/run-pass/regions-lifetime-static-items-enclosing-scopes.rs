@@ -11,7 +11,7 @@
 // This test verifies that temporary lifetime is correctly computed
 // for static objects in enclosing scopes.
 
-extern mod extra;
+extern crate extra;
 use std::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {

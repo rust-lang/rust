@@ -1021,7 +1021,7 @@ fn item_module(w: &mut Writer, cx: &Context,
             clean::ViewItemItem(ref item) => {
                 match item.inner {
                     clean::ExternMod(ref name, ref src, _) => {
-                        if_ok!(write!(w, "<tr><td><code>extern mod {}",
+                        if_ok!(write!(w, "<tr><td><code>extern crate {}",
                                       name.as_slice()));
                         match *src {
                             Some(ref src) => if_ok!(write!(w, " = \"{}\"",

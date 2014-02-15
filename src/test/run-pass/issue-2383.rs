@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod collections;
+extern crate collections;
 use collections::RingBuf;
 use collections::Deque;
 

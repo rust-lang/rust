@@ -63,7 +63,7 @@ impl<'a> ToBase64 for &'a [u8] {
      * # Example
      *
      * ```rust
-     * extern mod serialize;
+     * extern crate serialize;
      * use serialize::base64::{ToBase64, STANDARD};
      *
      * fn main () {
@@ -189,7 +189,7 @@ impl<'a> FromBase64 for &'a str {
      * This converts a string literal to base64 and back.
      *
      * ```rust
-     * extern mod serialize;
+     * extern crate serialize;
      * use serialize::base64::{ToBase64, FromBase64, STANDARD};
      * use std::str;
      *
