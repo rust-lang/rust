@@ -14,19 +14,20 @@ use io;
 use vec::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
-pub struct LimitReader<'a, R> {
+pub struct LimitReader<R> {
     priv limit: uint,
-    priv inner: &'a mut R
+    priv inner: R
 }
 
-impl<'a, R: Reader> LimitReader<'a, R> {
+impl<R: Reader> LimitReader<R> {
     /// Creates a new `LimitReader`
-    pub fn new<'a>(r: &'a mut R, limit: uint) -> LimitReader<'a, R> {
+    pub fn new(r: R, limit: uint) -> LimitReader<R> {
         LimitReader { limit: limit, inner: r }
     }
+    pub fn unwrap(self) -> R { self.inner }
 }
 
-impl<'a, R: Reader> Reader for LimitReader<'a, R> {
+impl<R: Reader> Reader for LimitReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         if self.limit == 0 {
             return Err(io::standard_error(io::EndOfFile));
@@ -192,7 +193,7 @@ mod test {
     fn test_bounded_reader_unlimited() {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
-            let mut r = LimitReader::new(&mut r, 4);
+            let mut r = LimitReader::new(r.by_ref(), 4);
             assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
         }
     }
@@ -201,7 +202,7 @@ mod test {
     fn test_bound_reader_limited() {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
-            let mut r = LimitReader::new(&mut r, 2);
+            let mut r = LimitReader::new(r.by_ref(), 2);
             assert_eq!(~[0, 1], r.read_to_end().unwrap());
         }
         assert_eq!(~[2], r.read_to_end().unwrap());
