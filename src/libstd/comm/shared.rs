@@ -18,6 +18,7 @@
 /// module. You'll also note that the implementation of the shared and stream
 /// channels are quite similar, and this is no coincidence!
 
+use cmp;
 use int;
 use iter::Iterator;
 use kinds::Send;
@@ -35,6 +36,9 @@ use mpsc = sync::mpsc_queue;
 
 static DISCONNECTED: int = int::MIN;
 static FUDGE: int = 1024;
+#[cfg(test)]
+static MAX_STEALS: int = 5;
+#[cfg(not(test))]
 static MAX_STEALS: int = 1 << 20;
 
 pub struct Packet<T> {
@@ -307,7 +311,11 @@ impl<T: Send> Packet<T> {
                         DISCONNECTED => {
                             self.cnt.store(DISCONNECTED, atomics::SeqCst);
                         }
-                        n => { self.steals -= n; }
+                        n => {
+                            let m = cmp::min(n, self.steals);
+                            self.steals -= m;
+                            self.cnt.fetch_add(n - m, atomics::SeqCst);
+                        }
                     }
                     assert!(self.steals >= 0);
                 }
