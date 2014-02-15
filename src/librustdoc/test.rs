@@ -94,7 +94,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
+fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) {
     let test = maketest(test, cratename);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
@@ -130,9 +130,10 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     match out {
         Err(e) => fail!("couldn't run the test: {}", e),
         Ok(out) => {
-            if !out.status.success() {
-                fail!("test executable failed:\n{}",
-                      str::from_utf8(out.error));
+            if should_fail && out.status.success() {
+                fail!("test executable succeeded when it should have failed");
+            } else if !should_fail && !out.status.success() {
+                fail!("test executable failed:\n{}", str::from_utf8(out.error));
             }
         }
     }
@@ -169,7 +170,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn add_test(&mut self, test: &str, ignore: bool, should_fail: bool) {
+    pub fn add_test(&mut self, test: &str, should_fail: bool) {
         let test = test.to_owned();
         let name = format!("{}_{}", self.names.connect("::"), self.cnt);
         self.cnt += 1;
@@ -180,11 +181,11 @@ impl Collector {
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
-                ignore: ignore,
-                should_fail: should_fail,
+                ignore: false,
+                should_fail: false, // compiler failures are test failures
             },
             testfn: test::DynTestFn(proc() {
-                runtest(test, cratename, libs);
+                runtest(test, cratename, libs, should_fail);
             }),
         });
     }
