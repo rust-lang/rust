@@ -15,7 +15,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
     let val = fourcc!("foo"); //~ ERROR string literal with len != 4 in fourcc!

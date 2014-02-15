@@ -15,7 +15,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
     let v = fourcc!("fooλ"); //~ ERROR fourcc! literal character out of range 0-255

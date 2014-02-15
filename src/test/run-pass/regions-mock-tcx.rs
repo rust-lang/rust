@@ -16,7 +16,7 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-extern mod arena;
+extern crate arena;
 
 use arena::Arena;
 use std::hashmap::HashMap;

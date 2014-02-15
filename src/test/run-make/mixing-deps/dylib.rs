@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[crate_type = "dylib"];
-extern mod both;
+extern crate both;
 
 use std::cast;
 

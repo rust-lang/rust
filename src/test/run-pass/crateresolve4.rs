@@ -15,12 +15,12 @@
 // aux-build:crateresolve4b-2.rs
 
 pub mod a {
-    extern mod crateresolve4b = "crateresolve4b#0.1";
+    extern crate crateresolve4b = "crateresolve4b#0.1";
     pub fn f() { assert!(crateresolve4b::f() == 20); }
 }
 
 pub mod b {
-    extern mod crateresolve4b = "crateresolve4b#0.2";
+    extern crate crateresolve4b = "crateresolve4b#0.2";
     pub fn f() { assert!(crateresolve4b::g() == 10); }
 }
 

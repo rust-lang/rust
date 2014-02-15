@@ -9,6 +9,6 @@
 // except according to those terms.
 
 #[crate_type = "dylib"];
-extern mod rlib;
+extern crate rlib;
 
 pub fn dylib() { rlib::rlib() }

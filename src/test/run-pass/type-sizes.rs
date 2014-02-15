@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern crate std;
 use std::mem::size_of;
 
 struct t {a: u8, b: i8}

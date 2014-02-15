@@ -10,7 +10,7 @@
 
 // ignore-test linked failure
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

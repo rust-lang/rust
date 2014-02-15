@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like 'extern mod extra'
+// ignore-fast check-fast doesn't like 'extern crate extra'
 // ignore-win32 TempDir may cause IoError on windows: #10462
 
-extern mod extra;
-extern mod glob;
+extern crate extra;
+extern crate glob;
 
 use glob::glob;
 use extra::tempfile::TempDir;

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:struct_destructuring_cross_crate.rs
 
-extern mod struct_destructuring_cross_crate;
+extern crate struct_destructuring_cross_crate;
 
 pub fn main() {
     let x = struct_destructuring_cross_crate::S { x: 1, y: 2 };

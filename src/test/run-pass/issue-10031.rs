@@ -10,7 +10,7 @@
 
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:issue_10031_aux.rs
-extern mod issue_10031_aux;
+extern crate issue_10031_aux;
 
 pub fn main() {
     let _ = issue_10031_aux::Wrap(());

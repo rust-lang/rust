@@ -10,7 +10,7 @@
 
 // ignore-test arcs no longer unwrap
 
-extern mod sync;
+extern crate sync;
 
 use std::from_str::FromStr;
 use std::iter::count;

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:priv-impl-prim-ty.rs
 
-extern mod bar = "priv-impl-prim-ty";
+extern crate bar = "priv-impl-prim-ty";
 
 pub fn main() {
     bar::frob(1i);

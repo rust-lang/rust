@@ -418,7 +418,7 @@ struct Module {
     imports: RefCell<~[@ImportDirective]>,
 
     // The external module children of this node that were declared with
-    // `extern mod`.
+    // `extern crate`.
     external_module_children: RefCell<HashMap<Name, @Module>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -2679,7 +2679,7 @@ impl Resolver {
                         };
                         self.resolve_error(span,
                                               format!("unresolved import. maybe \
-                                                    a missing `extern mod \
+                                                    a missing `extern crate \
                                                     {}`?",
                                                     segment_name));
                         return Failed;

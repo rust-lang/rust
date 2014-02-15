@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod collections;
+extern crate collections;
 
 use std::clone::{Clone, DeepClone};
 use std::cmp::{TotalEq, Ord, TotalOrd, Equiv};

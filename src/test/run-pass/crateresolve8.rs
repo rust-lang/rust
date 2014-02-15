@@ -13,8 +13,8 @@
 
 #[crate_id="crateresolve8#0.1"];
 
-extern mod crateresolve8 = "crateresolve8#0.1";
-//extern mod crateresolve8(vers = "0.1");
+extern crate crateresolve8 = "crateresolve8#0.1";
+//extern crate crateresolve8(vers = "0.1");
 
 pub fn main() {
     assert_eq!(crateresolve8::f(), 20);

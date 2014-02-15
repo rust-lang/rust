@@ -11,7 +11,7 @@
 #[crate_id="c#0.1"];
 #[crate_type = "lib"];
 
-extern mod a;
+extern crate a;
 
 use a::to_strz;
 

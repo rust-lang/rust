@@ -13,7 +13,7 @@
 #[feature(quote)];
 #[feature(managed_boxes)];
 
-extern mod syntax;
+extern crate syntax;
 
 use syntax::ext::base::ExtCtxt;
 

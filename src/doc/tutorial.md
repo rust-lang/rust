@@ -2581,7 +2581,7 @@ As you can see, your module hierarchy is now three modules deep: There is the cr
 function, and the module `farm`. The module `farm` also contains two functions and a third module `barn`,
 which contains a function `hay`.
 
-(In case you already stumbled over `extern mod`: It isn't directly related to a bare `mod`, we'll get to it later. )
+(In case you already stumbled over `extern crate`: It isn't directly related to a bare `mod`, we'll get to it later. )
 
 ## Paths and visibility
 
@@ -3018,10 +3018,10 @@ as there really is no reason to start from scratch each time you start a new pro
 
 In Rust terminology, we need a way to refer to other crates.
 
-For that, Rust offers you the `extern mod` declaration:
+For that, Rust offers you the `extern crate` declaration:
 
 ~~~
-extern mod num;
+extern crate num;
 // `num` ships with Rust (much like `extra`; more details further down).
 
 fn main() {
@@ -3030,8 +3030,8 @@ fn main() {
 }
 ~~~
 
-Despite its name, `extern mod` is a distinct construct from regular `mod` declarations:
-A statement of the form `extern mod foo;` will cause `rustc` to search for the crate `foo`,
+Despite its name, `extern crate` is a distinct construct from regular `mod` declarations:
+A statement of the form `extern crate foo;` will cause `rustc` to search for the crate `foo`,
 and if it finds a matching binary it lets you use it from inside your crate.
 
 The effect it has on your module hierarchy mirrors aspects of both `mod` and `use`:
@@ -3039,19 +3039,19 @@ The effect it has on your module hierarchy mirrors aspects of both `mod` and `us
 - Like `mod`, it causes `rustc` to actually emit code:
   The linkage information the binary needs to use the library `foo`.
 
-- But like `use`, all `extern mod` statements that refer to the same library are interchangeable,
+- But like `use`, all `extern crate` statements that refer to the same library are interchangeable,
   as each one really just presents an alias to an external module (the crate root of the library
   you're linking against).
 
 Remember how `use`-statements have to go before local declarations because the latter shadows the former?
-Well, `extern mod` statements also have their own rules in that regard:
-Both `use` and local declarations can shadow them, so the rule is that `extern mod` has to go in front
+Well, `extern crate` statements also have their own rules in that regard:
+Both `use` and local declarations can shadow them, so the rule is that `extern crate` has to go in front
 of both `use` and local declarations.
 
 Which can result in something like this:
 
 ~~~
-extern mod num;
+extern crate num;
 
 use farm::dog;
 use num::rational::Ratio;
@@ -3071,7 +3071,7 @@ they model most closely what people expect to shadow.
 
 ## Package ids
 
-If you use `extern mod`, per default `rustc` will look for libraries in the library search path (which you can
+If you use `extern crate`, per default `rustc` will look for libraries in the library search path (which you can
 extend with the `-L` switch).
 
 ## Crate metadata and settings
@@ -3098,14 +3098,14 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 # fn farm() {}
 ~~~~
 
-You can also specify package ID information in a `extern mod` statement.  For
-example, these `extern mod` statements would both accept and select the
+You can also specify package ID information in a `extern crate` statement.  For
+example, these `extern crate` statements would both accept and select the
 crate define above:
 
 ~~~~ {.ignore}
-extern mod farm;
-extern mod farm = "farm#2.5";
-extern mod my_farm = "farm";
+extern crate farm;
+extern crate farm = "farm#2.5";
+extern crate my_farm = "farm";
 ~~~~
 
 Other crate settings and metadata include things like enabling/disabling certain errors or warnings,
@@ -3133,14 +3133,14 @@ We define two crates, and use one of them as a library in the other.
 ~~~~
 // `world.rs`
 #[crate_id = "world#0.42"];
-# extern mod extra;
+# extern crate extra;
 pub fn explore() -> &'static str { "world" }
 # fn main() {}
 ~~~~
 
 ~~~~ {.ignore}
 // `main.rs`
-extern mod world;
+extern crate world;
 fn main() { println!("hello {}", world::explore()); }
 ~~~~
 
@@ -3169,7 +3169,7 @@ in the `std` library, which is a crate that ships with Rust.
 The only magical thing that happens is that `rustc` automatically inserts this line into your crate root:
 
 ~~~ {.ignore}
-extern mod std;
+extern crate std;
 ~~~
 
 As well as this line into every module body:
@@ -3221,7 +3221,7 @@ See the [API documentation][stddoc] for details.
 
 Rust ships with crates such as the [extra library], an accumulation of useful things,
 that are however not important enough to deserve a place in the standard
-library.  You can link to a library such as `extra` with an `extern mod extra;`.
+library.  You can link to a library such as `extra` with an `extern crate extra;`.
 
 [extra library]: extra/index.html
 

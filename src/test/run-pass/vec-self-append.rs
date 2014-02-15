@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern crate extra;
 
 fn test_heap_to_heap() {
     // a spills onto the heap

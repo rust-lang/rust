@@ -11,7 +11,7 @@
 // aux-build:nested_item.rs
 // ignore-fast
 
-extern mod nested_item;
+extern crate nested_item;
 
 pub fn main() {
     assert_eq!(2, nested_item::foo::<()>());

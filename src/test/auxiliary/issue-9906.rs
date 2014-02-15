@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast windows doesn't like extern mod
+// ignore-fast windows doesn't like extern crate
 // aux-build:issue-9906.rs
 
 pub use other::FooBar;

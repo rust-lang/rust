@@ -154,7 +154,7 @@ msgstr ""
 #: src/doc/guide-pointers.md:141 src/doc/guide-pointers.md:221
 #: src/doc/guide-pointers.md:238 src/doc/guide-pointers.md:300
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "~~~rust\n"
 "struct Point {\n"
@@ -164,7 +164,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -222,7 +222,7 @@ msgstr "# データ構造"
 #. type: Plain text
 #: src/doc/guide-pointers.md:189
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "~~~rust\n"
 "enum List<T> {\n"
@@ -232,7 +232,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -304,7 +304,7 @@ msgstr "## マネージドボックス"
 #. type: Plain text
 #: src/doc/guide-pointers.md:269
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "~~~rust{.ignore}\n"
 "struct Point {\n"
@@ -314,7 +314,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -372,7 +372,7 @@ msgstr ""
 #. type: Plain text
 #: src/doc/guide-pointers.md:341
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "struct Point {\n"
 "    x: f32,\n"
@@ -381,7 +381,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -402,7 +402,7 @@ msgstr ""
 #. type: Plain text
 #: src/doc/guide-pointers.md:378
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "~~~rust{.ignore}\n"
 "fn main() {\n"
@@ -413,7 +413,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -499,7 +499,7 @@ msgstr ""
 #. type: Plain text
 #: src/doc/guide-pointers.md:450
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "fn main() {\n"
 "    let x = ~5;\n"
@@ -509,7 +509,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
@@ -530,7 +530,7 @@ msgstr ""
 #. type: Plain text
 #: src/doc/guide-pointers.md:463
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "fn main() {\n"
 "    let x = ~5;\n"
@@ -540,14 +540,14 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 
 #. type: Plain text
 #: src/doc/guide-pointers.md:477
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "fn main() {\n"
 "    let x = ~5;\n"
@@ -557,7 +557,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 

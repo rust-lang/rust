@@ -16,6 +16,6 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_crate_outlive_expansion_phase;
+extern crate macro_crate_outlive_expansion_phase;
 
 pub fn main() {}

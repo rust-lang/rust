@@ -18,7 +18,7 @@
 
 #[no_std];
 
-extern mod no_std_crate;
+extern crate no_std_crate;
 
 // This is an unfortunate thing to have to do on linux :(
 #[cfg(target_os = "linux")]

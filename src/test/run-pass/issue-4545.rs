@@ -11,5 +11,5 @@
 // ignore-fast check-fast doesn't like aux-build
 // aux-build:issue-4545.rs
 
-extern mod somelib = "issue-4545";
+extern crate somelib = "issue-4545";
 pub fn main() { somelib::mk::<int>(); }

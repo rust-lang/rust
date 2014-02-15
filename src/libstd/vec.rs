@@ -109,14 +109,14 @@ use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
-#[cfg(not(stage0))] use fmt;
+use fmt;
 use iter::*;
 use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
-#[cfg(not(stage0))] use result::{Ok, Err};
+use result::{Ok, Err};
 use mem;
 use mem::size_of;
 use kinds::marker;
@@ -2643,7 +2643,6 @@ impl<A: DeepClone> DeepClone for ~[A] {
     }
 }
 
-#[cfg(not(stage0))]
 impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if_ok!(write!(f.buf, "["));
@@ -2660,7 +2659,6 @@ impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T: fmt::Show> fmt::Show for ~[T] {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)

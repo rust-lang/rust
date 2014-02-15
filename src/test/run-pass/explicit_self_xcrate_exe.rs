@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:explicit_self_xcrate.rs
 
-extern mod explicit_self_xcrate;
+extern crate explicit_self_xcrate;
 use explicit_self_xcrate::{Foo, Bar};
 
 pub fn main() {

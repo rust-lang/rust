@@ -10,7 +10,7 @@
 
 // ignore-fast
 // aux-build:static-function-pointer-aux.rs
-extern mod aux = "static-function-pointer-aux";
+extern crate aux = "static-function-pointer-aux";
 
 fn f(x: int) -> int { x }
 

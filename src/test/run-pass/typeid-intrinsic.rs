@@ -12,8 +12,8 @@
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
-extern mod other1 = "typeid-intrinsic";
-extern mod other2 = "typeid-intrinsic2";
+extern crate other1 = "typeid-intrinsic";
+extern crate other2 = "typeid-intrinsic2";
 
 use std::unstable::intrinsics;
 use std::unstable::intrinsics::TypeId;

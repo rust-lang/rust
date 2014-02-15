@@ -11,8 +11,8 @@
 
 // ignore-fast
 
-extern mod extra;
-extern mod serialize;
+extern crate extra;
+extern crate serialize;
 
 use extra::json;
 use serialize::Decodable;

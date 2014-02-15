@@ -13,7 +13,7 @@
 
 #[no_uv];
 
-extern mod native;
+extern crate native;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {

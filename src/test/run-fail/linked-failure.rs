@@ -11,7 +11,7 @@
 // ignore-test linked failure
 // error-pattern:1 == 2
 
-extern mod extra;
+extern crate extra;
 
 use std::comm;
 use std::task;

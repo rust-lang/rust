@@ -10,7 +10,7 @@
 
 // ignore-fast
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

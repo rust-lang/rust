@@ -11,7 +11,7 @@
 // ignore-fast
 // ignore-pretty
 // aux-build:anon-extern-mod-cross-crate-1.rs
-extern mod anonexternmod;
+extern crate anonexternmod;
 
 use anonexternmod::rust_get_test_int;
 

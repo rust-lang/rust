@@ -13,7 +13,7 @@
 // exec-env:RUST_LOG=info
 
 #[no_uv];
-extern mod native;
+extern crate native;
 
 use std::fmt;
 use std::io::{PortReader, ChanWriter};

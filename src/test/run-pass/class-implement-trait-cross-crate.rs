@@ -10,7 +10,7 @@
 
 // ignore-fast
 // aux-build:cci_class_trait.rs
-extern mod cci_class_trait;
+extern crate cci_class_trait;
 use cci_class_trait::animals::noisy;
 
 struct cat {

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:issue-2380.rs
 
-extern mod a;
+extern crate a;
 
 pub fn main() {
     a::f::<()>();

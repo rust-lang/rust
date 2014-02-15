@@ -10,7 +10,7 @@
 
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:struct_variant_xc_aux.rs
-extern mod struct_variant_xc_aux;
+extern crate struct_variant_xc_aux;
 
 use struct_variant_xc_aux::Variant;
 

@@ -495,7 +495,7 @@ impl Drop for Mutex {
 
 #[cfg(test)]
 mod test {
-    extern mod native;
+    extern crate native;
     use super::{Mutex, StaticMutex, MUTEX_INIT};
 
     #[test]

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:issue-7178.rs
 
-extern mod cross_crate_self = "issue-7178";
+extern crate cross_crate_self = "issue-7178";
 
 pub fn main() {
     let _ = cross_crate_self::Foo::new(&1i);

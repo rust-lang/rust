@@ -19,9 +19,8 @@
 
 #[feature(macro_rules, managed_boxes)];
 
-#[cfg(test)] extern mod extra;
-
-extern mod serialize;
+extern crate serialize;
+#[cfg(test)] extern crate extra; // benchmark tests need this
 
 pub use bitv::Bitv;
 pub use btree::BTree;

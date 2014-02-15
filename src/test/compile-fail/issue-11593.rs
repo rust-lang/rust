@@ -10,7 +10,7 @@
 
 // aux-build:private_trait_xc.rs
 
-extern mod private_trait_xc;
+extern crate private_trait_xc;
 
 struct Bar;
 

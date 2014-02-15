@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern: lifetime of method receiver does not outlive the method call
-extern mod sync;
+extern crate sync;
 use sync::RWLock;
 fn main() {
     let x = ~RWLock::new();

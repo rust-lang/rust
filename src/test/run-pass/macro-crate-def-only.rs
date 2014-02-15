@@ -14,7 +14,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_crate_def_only;
+extern crate macro_crate_def_only;
 
 pub fn main() {
     assert_eq!(5, make_a_5!());

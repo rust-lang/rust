@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like extern mod
+// ignore-fast check-fast doesn't like extern crate
 // aux-build:issue-9906.rs
 
-extern mod testmod = "issue-9906";
+extern crate testmod = "issue-9906";
 
 pub fn main() {
     testmod::foo();

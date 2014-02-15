@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern crate extra;
 
 use std::cmp::{Eq, Ord};
 use std::num::NumCast;

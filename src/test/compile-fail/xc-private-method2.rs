@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:xc_private_method_lib.rs
 
-extern mod xc_private_method_lib;
+extern crate xc_private_method_lib;
 
 fn main() {
     let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();

@@ -13,7 +13,7 @@
 #[feature(quote)];
 #[deny(unused_variable)];
 
-extern mod syntax;
+extern crate syntax;
 
 use syntax::ext::base::ExtCtxt;
 

@@ -13,8 +13,8 @@
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
 
-extern mod extra;
-extern mod getopts;
+extern crate extra;
+extern crate getopts;
 
 use std::os;
 use std::io;

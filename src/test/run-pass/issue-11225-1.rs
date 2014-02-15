@@ -11,7 +11,7 @@
 // aux-build:issue-11225-1.rs
 // ignore-fast
 
-extern mod foo = "issue-11225-1";
+extern crate foo = "issue-11225-1";
 
 pub fn main() {
     foo::foo(1);

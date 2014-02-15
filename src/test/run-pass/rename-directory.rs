@@ -12,7 +12,7 @@
 // because it needs TempDir, which is in extra
 
 // ignore-fast
-extern mod extra;
+extern crate extra;
 
 use extra::tempfile::TempDir;
 use std::os;

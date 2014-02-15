@@ -12,7 +12,7 @@
 
 // A more complex example of numeric extensions
 
-extern mod extra;
+extern crate extra;
 
 use std::cmp::{Eq, Ord};
 

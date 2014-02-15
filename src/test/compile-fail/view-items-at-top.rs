@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+extern crate extra;
 
 fn f() {
 }
 
-use extra::net;    //~ ERROR `use` and `extern mod` declarations must precede items
+use extra::net;    //~ ERROR `use` and `extern crate` declarations must precede items
 
 fn main() {
 }
