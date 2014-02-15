@@ -426,7 +426,7 @@ pub trait Int: Integer
              + Bitwise
              + CheckedAdd
              + CheckedSub
-             // + CheckedMul // FIXME #8849: currently not impled on 32-bit
+             + CheckedMul
              + CheckedDiv {}
 
 /// Returns the smallest power of 2 greater than or equal to `n`.
