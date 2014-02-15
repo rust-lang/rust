@@ -102,6 +102,7 @@ There are a number of free functions that create or take vectors, for example:
 #[warn(non_camel_case_types)];
 
 use cast;
+use cast::transmute;
 use ops::Drop;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
@@ -112,7 +113,6 @@ use default::Default;
 use iter::*;
 use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
-use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
@@ -188,7 +188,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
         let ptr = malloc_raw(size) as *mut Vec<()>;
         (*ptr).alloc = alloc;
         (*ptr).fill = 0;
-        cast::transmute(ptr)
+        transmute(ptr)
     }
 }
 
@@ -216,7 +216,7 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
  */
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
-        cast::transmute(Slice { data: s, len: 1 })
+        transmute(Slice { data: s, len: 1 })
     }
 }
 
@@ -225,8 +225,8 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
  */
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
-        let ptr: *A = cast::transmute(s);
-        cast::transmute(Slice { data: ptr, len: 1 })
+        let ptr: *A = transmute(s);
+        transmute(Slice { data: ptr, len: 1 })
     }
 }
 
@@ -991,7 +991,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            cast::transmute(Slice {
+            transmute(Slice {
                     data: self.as_ptr().offset(start as int),
                     len: (end - start)
                 })
@@ -1109,7 +1109,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
-        cast::transmute(self.repr().data.offset(index as int))
+        transmute(self.repr().data.offset(index as int))
     }
 
     #[inline]
@@ -1144,7 +1144,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     fn shift_ref(&mut self) -> Option<&'a T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(&*raw::shift_ptr(s))
         }
     }
@@ -1152,7 +1152,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     fn pop_ref(&mut self) -> Option<&'a T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(&*raw::pop_ptr(s))
         }
     }
@@ -1417,8 +1417,8 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn move_iter(self) -> MoveItems<T> {
         unsafe {
-            let iter = cast::transmute(self.iter());
-            let ptr = cast::transmute(self);
+            let iter = transmute(self.iter());
+            let ptr = transmute(self);
             MoveItems { allocation: ptr, iter: iter }
         }
     }
@@ -1432,7 +1432,7 @@ impl<T> OwnedVector<T> for ~[T] {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
-                let ptr: *mut *mut Vec<()> = cast::transmute(self);
+                let ptr: *mut *mut Vec<()> = transmute(self);
                 let alloc = n * mem::nonzero_size_of::<T>();
                 let size = alloc + mem::size_of::<Vec<()>>();
                 if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
@@ -1463,14 +1463,14 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
-            let repr: **Vec<()> = cast::transmute(self);
+            let repr: **Vec<()> = transmute(self);
             (**repr).alloc / mem::nonzero_size_of::<T>()
         }
     }
 
     fn shrink_to_fit(&mut self) {
         unsafe {
-            let ptr: *mut *mut Vec<()> = cast::transmute(self);
+            let ptr: *mut *mut Vec<()> = transmute(self);
             let alloc = (**ptr).fill;
             let size = alloc + mem::size_of::<Vec<()>>();
             *ptr = realloc_raw(*ptr as *mut u8, size) as *mut Vec<()>;
@@ -1481,7 +1481,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push(&mut self, t: T) {
         unsafe {
-            let repr: **Vec<()> = cast::transmute(&mut *self);
+            let repr: **Vec<()> = transmute(&mut *self);
             let fill = (**repr).fill;
             if (**repr).alloc <= fill {
                 self.reserve_additional(1);
@@ -1493,10 +1493,10 @@ impl<T> OwnedVector<T> for ~[T] {
         // This doesn't bother to make sure we have space.
         #[inline] // really pretty please
         unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
-            let repr: **mut Vec<u8> = cast::transmute(this);
+            let repr: **mut Vec<u8> = transmute(this);
             let fill = (**repr).fill;
             (**repr).fill += mem::nonzero_size_of::<T>();
-            let p = to_unsafe_ptr(&((**repr).data));
+            let p = &((**repr).data) as *u8;
             let p = p.offset(fill as int) as *mut T;
             mem::move_val_init(&mut(*p), t);
         }
@@ -1521,10 +1521,10 @@ impl<T> OwnedVector<T> for ~[T] {
         match self.len() {
             0  => None,
             ln => {
-                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+                let valptr = &mut self[ln - 1u] as *mut T;
                 unsafe {
                     self.set_len(ln - 1u);
-                    Some(ptr::read_ptr(&*valptr))
+                    Some(ptr::read(&*valptr))
                 }
             }
         }
@@ -1568,7 +1568,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ptr = self.as_mut_ptr().offset(i as int);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
-                let ret = Some(ptr::read_ptr(ptr as *T));
+                let ret = Some(ptr::read(ptr as *T));
 
                 // Shift everything down to fill in that spot.
                 ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
@@ -1598,7 +1598,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let p = self.as_mut_ptr();
             // This loop is optimized out for non-drop types.
             for i in range(newlen, oldlen) {
-                ptr::read_and_zero_ptr(p.offset(i as int));
+                ptr::read_and_zero(p.offset(i as int));
             }
         }
         unsafe { self.set_len(newlen); }
@@ -1648,7 +1648,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     #[inline]
     unsafe fn set_len(&mut self, new_len: uint) {
-        let repr: **mut Vec<()> = cast::transmute(self);
+        let repr: **mut Vec<()> = transmute(self);
         (**repr).fill = new_len * mem::nonzero_size_of::<T>();
     }
 }
@@ -1844,7 +1844,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
             // `.offset(j)` is always in bounds.
 
             if i != j {
-                let tmp = ptr::read_ptr(read_ptr);
+                let tmp = ptr::read(read_ptr);
                 ptr::copy_memory(buf_v.offset(j + 1),
                                  &*buf_v.offset(j),
                                  (i - j) as uint);
@@ -2269,7 +2269,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            cast::transmute(Slice {
+            transmute(Slice {
                     data: self.as_mut_ptr().offset(start as int) as *T,
                     len: (end - start)
                 })
@@ -2338,7 +2338,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(cast::transmute_mut(&*raw::shift_ptr(s)))
         }
     }
@@ -2346,7 +2346,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(cast::transmute_mut(&*raw::pop_ptr(s)))
         }
     }
@@ -2357,7 +2357,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             // them to their raw pointers to do the swap
             let pa: *mut T = &mut self[a];
             let pb: *mut T = &mut self[b];
-            ptr::swap_ptr(pa, pb);
+            ptr::swap(pa, pb);
         }
     }
 
@@ -2385,7 +2385,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
-        cast::transmute((self.repr().data as *mut T).offset(index as int))
+        transmute((self.repr().data as *mut T).offset(index as int))
     }
 
     #[inline]
@@ -2484,7 +2484,7 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 
 /// Unsafe operations
 pub mod raw {
-    use cast;
+    use cast::transmute;
     use ptr;
     use ptr::RawPtr;
     use vec::{with_capacity, MutableVector, OwnedVector};
@@ -2497,7 +2497,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn buf_as_slice<T,U>(p: *T, len: uint, f: |v: &[T]| -> U)
                                -> U {
-        f(cast::transmute(Slice {
+        f(transmute(Slice {
             data: p,
             len: len
         }))
@@ -2514,7 +2514,7 @@ pub mod raw {
                                    len: uint,
                                    f: |v: &mut [T]| -> U)
                                    -> U {
-        f(cast::transmute(Slice {
+        f(transmute(Slice {
             data: p as *T,
             len: len
         }))
@@ -2698,12 +2698,12 @@ macro_rules! iterator {
                             // purposefully don't use 'ptr.offset' because for
                             // vectors with 0-size elements this would return the
                             // same pointer.
-                            cast::transmute(self.ptr as uint + 1)
+                            transmute(self.ptr as uint + 1)
                         } else {
                             self.ptr.offset(1)
                         };
 
-                        Some(cast::transmute(old))
+                        Some(transmute(old))
                     }
                 }
             }
@@ -2726,11 +2726,11 @@ macro_rules! iterator {
                     } else {
                         self.end = if mem::size_of::<T>() == 0 {
                             // See above for why 'ptr.offset' isn't used
-                            cast::transmute(self.end as uint - 1)
+                            transmute(self.end as uint - 1)
                         } else {
                             self.end.offset(-1)
                         };
-                        Some(cast::transmute(self.end))
+                        Some(transmute(self.end))
                     }
                 }
             }
@@ -2749,7 +2749,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     fn idx(&self, index: uint) -> Option<&'a T> {
         unsafe {
             if index < self.indexable() {
-                cast::transmute(self.ptr.offset(index as int))
+                transmute(self.ptr.offset(index as int))
             } else {
                 None
             }
@@ -2895,7 +2895,7 @@ impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next().map(|x| ptr::read_ptr(x))
+            self.iter.next().map(|x| ptr::read(x))
         }
     }
 
@@ -2909,7 +2909,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next_back().map(|x| ptr::read_ptr(x))
+            self.iter.next_back().map(|x| ptr::read(x))
         }
     }
 }
