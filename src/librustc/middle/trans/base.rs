@@ -273,7 +273,15 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
             }
-            _ => {}
+            _ => {
+                // For non-immediate arguments the callee gets its own copy of
+                // the value on the stack, so there are no aliases
+                if !type_is_immediate(ccx, arg_ty) {
+                    unsafe {
+                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    }
+                }
+            }
         }
     }
 
