@@ -24,10 +24,10 @@ PKG_FILES := \
     $(S)RELEASES.txt                           \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
-    $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.md                                \
       compiletest                              \
+      doc                                      \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
