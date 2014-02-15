@@ -575,9 +575,9 @@ fn canonical_sort(comb: &mut [(char, u8)]) {
     for i in range(0, len) {
         let mut swapped = false;
         for j in range(1, len-i) {
-            let classA = *comb[j-1].ref1();
-            let classB = *comb[j].ref1();
-            if classA != 0 && classB != 0 && classA > classB {
+            let class_a = *comb[j-1].ref1();
+            let class_b = *comb[j].ref1();
+            if class_a != 0 && class_b != 0 && class_a > class_b {
                 comb.swap(j-1, j);
                 swapped = true;
             }
@@ -3427,8 +3427,8 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let a = ~"ประเ";
-        let A = ~"دولة الكويتทศไทย中华";
-        assert_eq!(data.replace(a, repl), A);
+        let a2 = ~"دولة الكويتทศไทย中华";
+        assert_eq!(data.replace(a, repl), a2);
     }
 
     #[test]
@@ -3437,8 +3437,8 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let b = ~"ะเ";
-        let B = ~"ปรدولة الكويتทศไทย中华";
-        assert_eq!(data.replace(b,   repl), B);
+        let b2 = ~"ปรدولة الكويتทศไทย中华";
+        assert_eq!(data.replace(b, repl), b2);
     }
 
     #[test]
@@ -3447,8 +3447,8 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let c = ~"中华";
-        let C = ~"ประเทศไทยدولة الكويت";
-        assert_eq!(data.replace(c, repl), C);
+        let c2 = ~"ประเทศไทยدولة الكويت";
+        assert_eq!(data.replace(c, repl), c2);
     }
 
     #[test]

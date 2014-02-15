@@ -217,7 +217,7 @@ impl<'a> Condvar<'a> {
      * wait() is equivalent to wait_on(0).
      */
     pub fn wait_on(&self, condvar_id: uint) {
-        let mut WaitEnd = None;
+        let mut wait_end = None;
         let mut out_of_bounds = None;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
@@ -230,7 +230,7 @@ impl<'a> Condvar<'a> {
                     }
                     // Create waiter nobe, and enqueue ourself to
                     // be woken up by a signaller.
-                    WaitEnd = Some(state.blocked[condvar_id].wait_end());
+                    wait_end = Some(state.blocked[condvar_id].wait_end());
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -244,7 +244,7 @@ impl<'a> Condvar<'a> {
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = WaitEnd.take_unwrap().recv();
+                let _ = wait_end.take_unwrap().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {

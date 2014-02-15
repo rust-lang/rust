@@ -124,10 +124,10 @@ pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
-    let mut L = lim;
+    let mut l = lim;
     let mut s = ~"[";
-    while i != right && L != 0u {
-        L -= 1u;
+    while i != right && l != 0u {
+        l -= 1u;
         if i != left {
             s.push_str(", ");
         }
@@ -427,15 +427,15 @@ impl Printer {
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
-    pub fn advance_left(&mut self, x: Token, L: int) -> io::IoResult<()> {
+    pub fn advance_left(&mut self, x: Token, l: int) -> io::IoResult<()> {
         debug!("advnce_left ~[{},{}], sizeof({})={}", self.left, self.right,
-               self.left, L);
-        if L >= 0 {
-            let ret = self.print(x.clone(), L);
+               self.left, l);
+        if l >= 0 {
+            let ret = self.print(x.clone(), l);
             match x {
               Break(b) => self.left_total += b.blank_space,
               String(_, len) => {
-                assert_eq!(len, L); self.left_total += len;
+                assert_eq!(len, l); self.left_total += len;
               }
               _ => ()
             }
@@ -510,8 +510,8 @@ impl Printer {
         }
         write!(self.out, "{}", s)
     }
-    pub fn print(&mut self, x: Token, L: int) -> io::IoResult<()> {
-        debug!("print {} {} (remaining line space={})", tok_str(x.clone()), L,
+    pub fn print(&mut self, x: Token, l: int) -> io::IoResult<()> {
+        debug!("print {} {} (remaining line space={})", tok_str(x.clone()), l,
                self.space);
         debug!("{}", buf_str(self.token.clone(),
                              self.size.clone(),
@@ -520,7 +520,7 @@ impl Printer {
                              6));
         match x {
           Begin(b) => {
-            if L > self.space {
+            if l > self.space {
                 let col = self.margin - self.space + b.offset;
                 debug!("print Begin -> push broken block at col {}", col);
                 self.print_stack.push(PrintStackElem {
@@ -560,7 +560,7 @@ impl Printer {
                 ret
               }
               Broken(Inconsistent) => {
-                if L > self.space {
+                if l > self.space {
                     debug!("print Break({}+{}) w/ newline in inconsistent",
                            top.offset, b.offset);
                     let ret = self.print_newline(top.offset + b.offset);
@@ -578,8 +578,8 @@ impl Printer {
           }
           String(s, len) => {
             debug!("print String({})", s);
-            assert_eq!(L, len);
-            // assert!(L <= space);
+            assert_eq!(l, len);
+            // assert!(l <= space);
             self.space -= len;
             self.print_str(s)
           }

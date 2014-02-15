@@ -803,11 +803,11 @@ mod test {
 
     #[test]
     fn test_sample() {
-        let MIN_VAL = 1;
-        let MAX_VAL = 100;
+        let min_val = 1;
+        let max_val = 100;
 
         let mut r = rng();
-        let vals = range(MIN_VAL, MAX_VAL).to_owned_vec();
+        let vals = range(min_val, max_val).to_owned_vec();
         let small_sample = r.sample(vals.iter(), 5);
         let large_sample = r.sample(vals.iter(), vals.len() + 5);
 
@@ -815,7 +815,7 @@ mod test {
         assert_eq!(large_sample.len(), vals.len());
 
         assert!(small_sample.iter().all(|e| {
-            **e >= MIN_VAL && **e <= MAX_VAL
+            **e >= min_val && **e <= max_val
         }));
     }
 
