@@ -424,9 +424,13 @@ pub trait Primitive: Clone
 pub trait Int: Integer
              + Primitive
              + Bitwise
+             + Add<Self, Self>
              + CheckedAdd
+             + Sub<Self, Self>
              + CheckedSub
+             + Mul<Self, Self>
              // + CheckedMul // FIXME #8849: currently not impled on 32-bit
+             + Div<Self, Self>
              + CheckedDiv {}
 
 /// Returns the smallest power of 2 greater than or equal to `n`.
@@ -1054,19 +1058,19 @@ impl<T: CheckedAdd + CheckedSub + Zero + Ord + Bounded> Saturating for T {
     }
 }
 
-pub trait CheckedAdd: Add<Self, Self> {
+pub trait CheckedAdd {
     fn checked_add(&self, v: &Self) -> Option<Self>;
 }
 
-pub trait CheckedSub: Sub<Self, Self> {
+pub trait CheckedSub {
     fn checked_sub(&self, v: &Self) -> Option<Self>;
 }
 
-pub trait CheckedMul: Mul<Self, Self> {
+pub trait CheckedMul {
     fn checked_mul(&self, v: &Self) -> Option<Self>;
 }
 
-pub trait CheckedDiv: Div<Self, Self> {
+pub trait CheckedDiv {
     fn checked_div(&self, v: &Self) -> Option<Self>;
 }
 
