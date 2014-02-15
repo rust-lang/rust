@@ -143,6 +143,7 @@ pub struct StaticMutex {
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
+#[must_use]
 pub struct Guard<'a> {
     priv lock: &'a mut StaticMutex,
 }
