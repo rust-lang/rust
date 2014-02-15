@@ -1071,12 +1071,6 @@ then
     putvar CFG_PANDOC
 fi
 
-if head -n 1 ${CFG_SRC_DIR}src/snapshots.txt | grep -q '^T'
-then
-    CFG_IN_TRANSITION=1
-    putvar CFG_IN_TRANSITION
-fi
-
 # Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
 # on the Mac the dynamic linker causes Valgrind to emit a huge stream of
 # errors.
@@ -1109,3 +1103,5 @@ rm -f config.tmp
 touch config.stamp
 
 step_msg "complete"
+msg "run \`make help\`"
+msg

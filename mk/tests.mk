@@ -190,6 +190,13 @@ check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
+	check-stage2-rfail check-stage2-cfail check-stage2-rmake
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
+
+check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
+
 .PHONY: cleantmptestlogs cleantestlibs
 
 cleantmptestlogs:
@@ -822,6 +829,23 @@ $(foreach stage,$(STAGES), \
  $(foreach host,$(CFG_HOST), \
   $(foreach group,$(TEST_GROUPS), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
+
+define DEF_CHECK_DOC_FOR_STAGE
+check-stage$(1)-docs: $$(foreach docname,$$(DOC_TEST_NAMES),\
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
+                     $$(foreach crate,$$(DOC_CRATE_NAMES),\
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(crate))
+endef
+
+$(foreach stage,$(STAGES), \
+ $(eval $(call DEF_CHECK_DOC_FOR_STAGE,$(stage))))
+
+define DEF_CHECK_CRATE
+check-$(1): check-stage2-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-$(1)-exec
+endef
+
+$(foreach crate,$(TEST_CRATES), \
+ $(eval $(call DEF_CHECK_CRATE,$(crate))))
 
 ######################################################################
 # check-fast rules
