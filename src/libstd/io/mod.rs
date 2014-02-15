@@ -779,6 +779,13 @@ pub trait Reader {
         self.read_byte().map(|i| i as i8)
     }
 
+    /// Creates a wrapper around a mutable reference to the reader.
+    ///
+    /// This is useful to allow applying adaptors while still
+    /// retaining ownership of the original value.
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self> {
+        RefReader { inner: self }
+    }
 }
 
 impl Reader for ~Reader {
@@ -787,6 +794,14 @@ impl Reader for ~Reader {
 
 impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
+}
+
+pub struct RefReader<'a, R> {
+    priv inner: &'a mut R
+}
+
+impl<'a, R: Reader> Reader for RefReader<'a, R> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
 }
 
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
@@ -969,6 +984,14 @@ pub trait Writer {
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
+
+    /// Creates a wrapper around a mutable reference to the writer.
+    ///
+    /// This is useful to allow applying wrappers while still
+    /// retaining ownership of the original value.
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self> {
+        RefWriter { inner: self }
+    }
 }
 
 impl Writer for ~Writer {
@@ -980,6 +1003,16 @@ impl<'a> Writer for &'a mut Writer {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
+
+pub struct RefWriter<'a, W> {
+    inner: &'a mut W
+}
+
+impl<'a, W: Writer> Writer for RefWriter<'a, W> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
+    fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
+}
+
 
 pub trait Stream: Reader + Writer { }
 
