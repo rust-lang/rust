@@ -218,9 +218,9 @@ pub fn init() {
     }
 
     unsafe {
-        use std::unstable::mutex::{Mutex, MUTEX_INIT};
+        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut INITIALIZED: bool = false;
-        static mut LOCK: Mutex = MUTEX_INIT;
+        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
         let _guard = LOCK.lock();
         if !INITIALIZED {

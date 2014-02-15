@@ -17,10 +17,10 @@
 //! The green counterpart for this is bookkeeping on sched pools.
 
 use std::sync::atomics;
-use std::unstable::mutex::{Mutex, MUTEX_INIT};
+use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-static mut TASK_LOCK: Mutex = MUTEX_INIT;
+static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
 pub fn increment() {
     let _ = unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst) };

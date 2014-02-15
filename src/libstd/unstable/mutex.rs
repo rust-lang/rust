@@ -11,9 +11,9 @@
 //! A native mutex and condition variable type
 //!
 //! This module contains bindings to the platform's native mutex/condition
-//! variable primitives. It provides a single type, `Mutex`, which can be
-//! statically initialized via the `MUTEX_INIT` value. This object serves as both a
-//! mutex and a condition variable simultaneously.
+//! variable primitives. It provides a single type, `StaticNativeMutex`, which can be
+//! statically initialized via the `NATIVE_MUTEX_INIT` value. This object serves as
+//! both a mutex and a condition variable simultaneously.
 //!
 //! The lock is lazily initialized, but it can only be unsafely destroyed. A
 //! statically initialized lock doesn't necessarily have a time at which it can
@@ -27,21 +27,23 @@
 //!
 //! # Example
 //!
-//!     use std::unstable::mutex::{Mutex, MUTEX_INIT};
+//!     use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 //!
 //!     // Use a statically initialized mutex
-//!     static mut lock: Mutex = MUTEX_INIT;
+//!     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 //!
 //!     unsafe {
-//!         lock.lock();
-//!         lock.unlock();
-//!     }
+//!         let _guard = lock.lock();
+//!     } // automatically unlocked here
 //!
 //!     // Use a normally initialized mutex
-//!     let mut lock = Mutex::new();
 //!     unsafe {
-//!         lock.lock();
-//!         lock.unlock();
+//!         let mut lock = StaticNativeMutex::new();
+//!
+//!         // sometimes the RAII guard isn't appropriate
+//!         lock.lock_noguard();
+//!         lock.unlock_noguard();
+//!
 //!         lock.destroy();
 //!     }
 
@@ -50,7 +52,9 @@
 use option::{Option, None, Some};
 use ops::Drop;
 
-pub struct Mutex {
+/// A native mutex suitable for storing in statics (that is, it has
+/// the `destroy` method rather than a destructor).
+pub struct StaticNativeMutex {
     priv inner: imp::Mutex,
 }
 
@@ -62,33 +66,33 @@ pub struct Mutex {
 /// then.
 #[must_use]
 pub struct LockGuard<'a> {
-    priv lock: &'a mut Mutex
+    priv lock: &'a mut StaticNativeMutex
 }
 
-pub static MUTEX_INIT: Mutex = Mutex {
+pub static NATIVE_MUTEX_INIT: StaticNativeMutex = StaticNativeMutex {
     inner: imp::MUTEX_INIT,
 };
 
-impl Mutex {
-    /// Creates a new mutex
-    pub unsafe fn new() -> Mutex {
-        Mutex { inner: imp::Mutex::new() }
+impl StaticNativeMutex {
+    /// Creates a new mutex.
+    ///
+    /// Note that a mutex created in this way needs to be explicit
+    /// freed with a call to `destroy` or it will leak.
+    pub unsafe fn new() -> StaticNativeMutex {
+        StaticNativeMutex { inner: imp::Mutex::new() }
     }
 
     /// Acquires this lock. This assumes that the current thread does not
     /// already hold the lock.
     ///
     /// # Example
-    /// ```
-    /// use std::unstable::mutex::Mutex;
+    /// ```rust
+    /// use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    /// static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     /// unsafe {
-    ///     let mut lock = Mutex::new();
-    ///
-    ///     {
-    ///         let _guard = lock.lock();
-    ///         // critical section...
-    ///     } // automatically unlocked in `_guard`'s destructor
-    /// }
+    ///     let _guard = LOCK.lock();
+    ///     // critical section...
+    /// } // automatically unlocked in `_guard`'s destructor
     /// ```
     pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
         self.inner.lock();
@@ -455,12 +459,12 @@ mod test {
     use prelude::*;
 
     use mem::drop;
-    use super::{Mutex, MUTEX_INIT};
+    use super::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use rt::thread::Thread;
 
     #[test]
     fn smoke_lock() {
-        static mut lock: Mutex = MUTEX_INIT;
+        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             let _guard = lock.lock();
         }
@@ -468,7 +472,7 @@ mod test {
 
     #[test]
     fn smoke_cond() {
-        static mut lock: Mutex = MUTEX_INIT;
+        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             let mut guard = lock.lock();
             let t = Thread::start(proc() {
@@ -484,7 +488,7 @@ mod test {
 
     #[test]
     fn smoke_lock_noguard() {
-        static mut lock: Mutex = MUTEX_INIT;
+        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             lock.lock_noguard();
             lock.unlock_noguard();
@@ -493,7 +497,7 @@ mod test {
 
     #[test]
     fn smoke_cond_noguard() {
-        static mut lock: Mutex = MUTEX_INIT;
+        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             lock.lock_noguard();
             let t = Thread::start(proc() {
@@ -511,7 +515,7 @@ mod test {
     #[test]
     fn destroy_immediately() {
         unsafe {
-            let mut m = Mutex::new();
+            let mut m = StaticNativeMutex::new();
             m.destroy();
         }
     }
