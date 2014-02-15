@@ -133,7 +133,7 @@ pub struct StaticMutex {
     /// uint-cast of the native thread waiting for this mutex
     priv native_blocker: uint,
     /// an OS mutex used by native threads
-    priv lock: mutex::Mutex,
+    priv lock: mutex::StaticNativeMutex,
 
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
@@ -143,6 +143,7 @@ pub struct StaticMutex {
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
+#[must_use]
 pub struct Guard<'a> {
     priv lock: &'a mut StaticMutex,
 }
@@ -150,7 +151,7 @@ pub struct Guard<'a> {
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
-    lock: mutex::MUTEX_INIT,
+    lock: mutex::NATIVE_MUTEX_INIT,
     state: atomics::INIT_ATOMIC_UINT,
     flavor: Unlocked,
     green_blocker: 0,
@@ -288,11 +289,11 @@ impl StaticMutex {
     // `lock()` function on an OS mutex
     fn native_lock(&mut self, t: ~Task) {
         Local::put(t);
-        unsafe { self.lock.lock(); }
+        unsafe { self.lock.lock_noguard(); }
     }
 
     fn native_unlock(&mut self) {
-        unsafe { self.lock.unlock(); }
+        unsafe { self.lock.unlock_noguard(); }
     }
 
     fn green_lock(&mut self, t: ~Task) {
@@ -441,7 +442,7 @@ impl Mutex {
                 native_blocker: 0,
                 green_cnt: atomics::AtomicUint::new(0),
                 q: q::Queue::new(),
-                lock: unsafe { mutex::Mutex::new() },
+                lock: unsafe { mutex::StaticNativeMutex::new() },
             }
         }
     }

@@ -22,7 +22,7 @@
 
 use std::cast;
 use std::rt;
-use std::unstable::mutex::{Mutex, MUTEX_INIT};
+use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 use bookkeeping;
 use io::timer::{Req, Shutdown};
@@ -37,11 +37,11 @@ static mut HELPER_CHAN: *mut Chan<Req> = 0 as *mut Chan<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
 
 pub fn boot(helper: fn(imp::signal, Port<Req>)) {
-    static mut LOCK: Mutex = MUTEX_INIT;
+    static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     static mut INITIALIZED: bool = false;
 
     unsafe {
-        LOCK.lock();
+        let mut _guard = LOCK.lock();
         if !INITIALIZED {
             let (msgp, msgc) = Chan::new();
             // promote this to a shared channel
@@ -58,7 +58,6 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
             rt::at_exit(proc() { shutdown() });
             INITIALIZED = true;
         }
-        LOCK.unlock();
     }
 }
 

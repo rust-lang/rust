@@ -25,7 +25,7 @@ use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
 
 use context::Context;
@@ -65,7 +65,7 @@ pub struct GreenTask {
     pool_id: uint,
 
     // See the comments in the scheduler about why this is necessary
-    nasty_deschedule_lock: Mutex,
+    nasty_deschedule_lock: NativeMutex,
 }
 
 pub enum TaskType {
@@ -163,7 +163,7 @@ impl GreenTask {
             task_type: task_type,
             sched: None,
             handle: None,
-            nasty_deschedule_lock: unsafe { Mutex::new() },
+            nasty_deschedule_lock: unsafe { NativeMutex::new() },
             task: Some(~Task::new()),
         }
     }
@@ -322,11 +322,10 @@ impl GreenTask {
     // uncontended except for when the task is rescheduled).
     fn reawaken_remotely(mut ~self) {
         unsafe {
-            let mtx = &mut self.nasty_deschedule_lock as *mut Mutex;
+            let mtx = &mut self.nasty_deschedule_lock as *mut NativeMutex;
             let handle = self.handle.get_mut_ref() as *mut SchedHandle;
-            (*mtx).lock();
+            let _guard = (*mtx).lock();
             (*handle).send(RunOnce(self));
-            (*mtx).unlock();
         }
     }
 }
@@ -477,12 +476,6 @@ impl Runtime for GreenTask {
     fn can_block(&self) -> bool { false }
 
     fn wrap(~self) -> ~Any { self as ~Any }
-}
-
-impl Drop for GreenTask {
-    fn drop(&mut self) {
-        unsafe { self.nasty_deschedule_lock.destroy(); }
-    }
 }
 
 #[cfg(test)]
