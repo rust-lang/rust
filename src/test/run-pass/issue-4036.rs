@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.

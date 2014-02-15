@@ -12,6 +12,11 @@ import subprocess
 import os
 import sys
 
+# FIXME #12303 these tests are broken on windows
+if os.name == 'nt':
+    print 'ignoring make tests on windows'
+    sys.exit(0)
+
 os.putenv('RUSTC', os.path.abspath(sys.argv[2]))
 os.putenv('TMPDIR', os.path.abspath(sys.argv[3]))
 os.putenv('CC', sys.argv[4])

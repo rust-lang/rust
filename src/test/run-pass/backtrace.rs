@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast this is executing itself
 #[no_uv];
 
 extern crate native;

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast feature doesn't work.
 
 fn main() {
     trace_macros!(true); //~ ERROR: `trace_macros` is not stable

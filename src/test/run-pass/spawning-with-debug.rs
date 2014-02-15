@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-win32
 // exec-env:RUST_LOG=debug
-// ignore-fast
 
 // regression test for issue #10405, make sure we don't call println! too soon.
 

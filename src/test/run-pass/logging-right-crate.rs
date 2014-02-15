@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:logging_right_crate.rs
-// ignore-fast
 // exec-env:RUST_LOG=logging-right-crate=debug
 
 // This is a test for issue #3046 to make sure that when we monomorphize a

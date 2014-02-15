@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:reexport-should-still-link.rs
-// ignore-fast check-fast doesn't like extern crate
 
 extern crate foo = "reexport-should-still-link";
 

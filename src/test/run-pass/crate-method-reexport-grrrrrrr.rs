@@ -14,7 +14,6 @@
 // name_pool::methods impl in the other crate is reachable from this
 // crate.
 
-// ignore-fast
 // aux-build:crate-method-reexport-grrrrrrr2.rs
 
 extern crate crate_method_reexport_grrrrrrr2;

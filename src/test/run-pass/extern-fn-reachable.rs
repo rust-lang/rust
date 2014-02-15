@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
+// ignore-win32
 // ignore-linux apparently dlsym doesn't work on program symbols?
 // ignore-android apparently dlsym doesn't work on program symbols?
 // ignore-freebsd apparently dlsym doesn't work on program symbols?

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast - Somehow causes check-fast to livelock?? Probably because we're
 // calling pin_task and that's having wierd side-effects.
 
 mod rustrt1 {

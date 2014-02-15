@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast `use` standards don't resolve
 
 // Test a sample usage pattern for regions. Makes use of the
 // following features:

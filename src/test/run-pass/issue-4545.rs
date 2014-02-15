@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like aux-build
 // aux-build:issue-4545.rs
 
 extern crate somelib = "issue-4545";

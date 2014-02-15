@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:issue_3979_traits.rs
 extern crate issue_3979_traits;
 use issue_3979_traits::{Positioned, Movable};

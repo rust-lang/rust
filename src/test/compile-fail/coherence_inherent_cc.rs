@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:coherence_inherent_cc_lib.rs
 
 // Tests that methods that implement a trait cannot be invoked
