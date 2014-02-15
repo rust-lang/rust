@@ -28,7 +28,7 @@ use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics;
-use unstable::mutex::Mutex;
+use unstable::mutex::NativeMutex;
 use vec::OwnedVector;
 
 use mpsc = sync::mpsc_queue;
@@ -53,7 +53,7 @@ pub struct Packet<T> {
 
     // this lock protects various portions of this implementation during
     // select()
-    select_lock: Mutex,
+    select_lock: NativeMutex,
 }
 
 pub enum Failure {
@@ -72,10 +72,10 @@ impl<T: Send> Packet<T> {
             channels: atomics::AtomicInt::new(2),
             port_dropped: atomics::AtomicBool::new(false),
             sender_drain: atomics::AtomicInt::new(0),
-            select_lock: unsafe { Mutex::new() },
+            select_lock: unsafe { NativeMutex::new() },
         };
         // see comments in inherit_blocker about why we grab this lock
-        unsafe { p.select_lock.lock() }
+        unsafe { p.select_lock.lock_noguard() }
         return p;
     }
 
@@ -124,7 +124,7 @@ impl<T: Send> Packet<T> {
         // interfere with this method. After we unlock this lock, we're
         // signifying that we're done modifying self.cnt and self.to_wake and
         // the port is ready for the world to continue using it.
-        unsafe { self.select_lock.unlock() }
+        unsafe { self.select_lock.unlock_noguard() }
     }
 
     pub fn send(&mut self, t: T) -> bool {
@@ -438,8 +438,7 @@ impl<T: Send> Packet<T> {
         // about looking at and dealing with to_wake. Once we have acquired the
         // lock, we are guaranteed that inherit_blocker is done.
         unsafe {
-            self.select_lock.lock();
-            self.select_lock.unlock();
+            let _guard = self.select_lock.lock();
         }
 
         // Like the stream implementation, we want to make sure that the count
@@ -487,7 +486,6 @@ impl<T: Send> Drop for Packet<T> {
             assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
             assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
             assert_eq!(self.channels.load(atomics::SeqCst), 0);
-            self.select_lock.destroy();
         }
     }
 }

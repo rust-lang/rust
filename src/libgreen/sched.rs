@@ -15,7 +15,7 @@ use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
 
 use TaskState;
@@ -669,8 +669,7 @@ impl Scheduler {
         // is acquired here. This is the resumption points and the "bounce"
         // that it is referring to.
         unsafe {
-            current_task.nasty_deschedule_lock.lock();
-            current_task.nasty_deschedule_lock.unlock();
+            let _guard = current_task.nasty_deschedule_lock.lock();
         }
         return current_task;
     }
@@ -765,10 +764,11 @@ impl Scheduler {
         // to it, but we're guaranteed that the task won't exit until we've
         // unlocked the lock so there's no worry of this memory going away.
         let cur = self.change_task_context(cur, next, |sched, mut task| {
-            let lock: *mut Mutex = &mut task.nasty_deschedule_lock;
-            unsafe { (*lock).lock() }
-            f(sched, BlockedTask::block(task.swap()));
-            unsafe { (*lock).unlock() }
+            let lock: *mut NativeMutex = &mut task.nasty_deschedule_lock;
+            unsafe {
+                let _guard = (*lock).lock();
+                f(sched, BlockedTask::block(task.swap()));
+            }
         });
         cur.put();
     }
@@ -1453,8 +1453,8 @@ mod test {
 
     #[test]
     fn test_spawn_sched_blocking() {
-        use std::unstable::mutex::{Mutex, MUTEX_INIT};
-        static mut LOCK: Mutex = MUTEX_INIT;
+        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
@@ -1466,12 +1466,11 @@ mod test {
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 unsafe {
-                    LOCK.lock();
+                    let mut guard = LOCK.lock();
 
                     start_ch.send(());
-                    LOCK.wait();   // block the scheduler thread
-                    LOCK.signal(); // let them know we have the lock
-                    LOCK.unlock();
+                    guard.wait();   // block the scheduler thread
+                    guard.signal(); // let them know we have the lock
                 }
 
                 fin_ch.send(());
@@ -1503,10 +1502,9 @@ mod test {
                 child_ch.send(20);
                 pingpong(&parent_po, &child_ch);
                 unsafe {
-                    LOCK.lock();
-                    LOCK.signal();   // wakeup waiting scheduler
-                    LOCK.wait();     // wait for them to grab the lock
-                    LOCK.unlock();
+                    let mut guard = LOCK.lock();
+                    guard.signal();   // wakeup waiting scheduler
+                    guard.wait();     // wait for them to grab the lock
                 }
             })));
             drop(handle);
