@@ -23,7 +23,7 @@
 use std::cast;
 use std::libc::{c_void, c_int};
 use std::rt::task::BlockedTask;
-use std::unstable::sync::LittleLock;
+use std::unstable::mutex::NativeMutex;
 use std::sync::arc::UnsafeArc;
 use mpsc = std::sync::mpsc_queue;
 
@@ -39,7 +39,7 @@ enum Message {
 
 struct State {
     handle: *uvll::uv_async_t,
-    lock: LittleLock, // see comments in async_cb for why this is needed
+    lock: NativeMutex, // see comments in async_cb for why this is needed
     queue: mpsc::Queue<Message>,
 }
 
@@ -112,7 +112,7 @@ impl QueuePool {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         let state = UnsafeArc::new(State {
             handle: handle,
-            lock: LittleLock::new(),
+            lock: unsafe {NativeMutex::new()},
             queue: mpsc::Queue::new(),
         });
         let q = ~QueuePool {

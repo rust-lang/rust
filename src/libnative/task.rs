@@ -22,7 +22,7 @@ use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::NativeMutex;
 use std::unstable::stack;
 
 use io;
@@ -40,7 +40,7 @@ pub fn new(stack_bounds: (uint, uint)) -> ~Task {
 
 fn ops() -> ~Ops {
     ~Ops {
-        lock: unsafe { Mutex::new() },
+        lock: unsafe { NativeMutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
         // these *should* get overwritten
@@ -109,7 +109,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 // This structure is the glue between channels and the 1:1 scheduling mode. This
 // structure is allocated once per task.
 struct Ops {
-    lock: Mutex,       // native synchronization
+    lock: NativeMutex,       // native synchronization
     awoken: bool,      // used to prevent spurious wakeups
     io: io::IoFactory, // local I/O factory
 
@@ -191,20 +191,19 @@ impl rt::Runtime for Ops {
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {
-                (*me).lock.lock();
+                let mut guard = (*me).lock.lock();
                 (*me).awoken = false;
                 match f(task) {
                     Ok(()) => {
                         while !(*me).awoken {
-                            (*me).lock.wait();
+                            guard.wait();
                         }
                     }
                     Err(task) => { cast::forget(task.wake()); }
                 }
-                (*me).lock.unlock();
             } else {
                 let mut iter = task.make_selectable(times);
-                (*me).lock.lock();
+                let mut guard = (*me).lock.lock();
                 (*me).awoken = false;
                 let success = iter.all(|task| {
                     match f(task) {
@@ -216,9 +215,8 @@ impl rt::Runtime for Ops {
                     }
                 });
                 while success && !(*me).awoken {
-                    (*me).lock.wait();
+                    guard.wait();
                 }
-                (*me).lock.unlock();
             }
             // re-acquire ownership of the task
             cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
@@ -235,10 +233,9 @@ impl rt::Runtime for Ops {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self as ~rt::Runtime);
             cast::forget(to_wake);
-            (*me).lock.lock();
+            let mut guard = (*me).lock.lock();
             (*me).awoken = true;
-            (*me).lock.signal();
-            (*me).lock.unlock();
+            guard.signal();
         }
     }
 
@@ -251,12 +248,6 @@ impl rt::Runtime for Ops {
 
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
         Some(rtio::LocalIo::new(&mut self.io as &mut rtio::IoFactory))
-    }
-}
-
-impl Drop for Ops {
-    fn drop(&mut self) {
-        unsafe { self.lock.destroy() }
     }
 }
 

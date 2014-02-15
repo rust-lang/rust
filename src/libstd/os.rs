@@ -44,7 +44,6 @@ use ptr;
 use str;
 use str::{Str, StrSlice};
 use fmt;
-use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use path::{Path, GenericPath};
 use iter::Iterator;
@@ -145,16 +144,13 @@ Accessing environment variables is not generally threadsafe.
 Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: || -> T) -> T {
-    use unstable::mutex::{Mutex, MUTEX_INIT};
-    use unstable::finally::Finally;
+    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-    static mut lock: Mutex = MUTEX_INIT;
+    static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
     unsafe {
-        return (|| {
-            lock.lock();
-            f()
-        }).finally(|| lock.unlock());
+        let _guard = lock.lock();
+        f()
     }
 }
 

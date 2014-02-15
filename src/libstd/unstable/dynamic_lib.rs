@@ -152,12 +152,12 @@ pub mod dl {
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
-        use unstable::mutex::{Mutex, MUTEX_INIT};
-        static mut lock: Mutex = MUTEX_INIT;
+        use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
-            lock.lock();
+            let _guard = lock.lock();
             let _old_error = dlerror();
 
             let result = f();
@@ -168,7 +168,7 @@ pub mod dl {
             } else {
                 Err(str::raw::from_c_str(last_error))
             };
-            lock.unlock();
+
             ret
         }
     }
