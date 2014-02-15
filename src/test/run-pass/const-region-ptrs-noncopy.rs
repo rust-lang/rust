@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ptr;
-
 type Big = [u64, ..8];
 struct Pair<'a> { a: int, b: &'a Big }
 static x: &'static Big = &([13, 14, 10, 13, 11, 14, 14, 15]);
 static y: &'static Pair<'static> = &Pair {a: 15, b: x};
 
 pub fn main() {
-    assert_eq!(ptr::to_unsafe_ptr(x), ptr::to_unsafe_ptr(y.b));
+    assert_eq!(x as *Big, y.b as *Big);
 }

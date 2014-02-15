@@ -25,7 +25,7 @@ pub fn main() {
 
 fn do_swap(test: &mut TestDescAndFn) {
     unsafe {
-        ptr::swap_ptr(test, test);
+        ptr::swap(test, test);
     }
 }
 

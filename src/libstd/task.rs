@@ -509,10 +509,10 @@ fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     let (p, ch) = Chan::<uint>::new();
 
     let x = ~1;
-    let x_in_parent = ptr::to_unsafe_ptr(&*x) as uint;
+    let x_in_parent = (&*x) as *int as uint;
 
     spawnfn(proc() {
-        let x_in_child = ptr::to_unsafe_ptr(&*x) as uint;
+        let x_in_child = (&*x) as *int as uint;
         ch.send(x_in_child);
     });
 

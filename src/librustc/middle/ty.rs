@@ -33,7 +33,6 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::hashmap::{HashMap, HashSet};
 use std::ops;
-use std::ptr::to_unsafe_ptr;
 use std::rc::Rc;
 use std::to_bytes;
 use std::to_str::ToStr;
@@ -1137,7 +1136,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         _ => {}
     };
 
-    let key = intern_key { sty: to_unsafe_ptr(&st) };
+    let key = intern_key { sty: &st };
 
     {
         let mut interner = cx.interner.borrow_mut();
@@ -1234,7 +1233,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         flags: flags,
     };
 
-    let sty_ptr = to_unsafe_ptr(&t.sty);
+    let sty_ptr = &t.sty as *sty;
 
     let key = intern_key {
         sty: sty_ptr,
