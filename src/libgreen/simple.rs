@@ -17,10 +17,10 @@ use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask};
 use std::task::TaskOpts;
-use std::unstable::sync::LittleLock;
+use std::unstable::mutex::NativeMutex;
 
 struct SimpleTask {
-    lock: LittleLock,
+    lock: NativeMutex,
     awoken: bool,
 }
 
@@ -59,9 +59,9 @@ impl Runtime for SimpleTask {
         to_wake.put_runtime(self as ~Runtime);
         unsafe {
             cast::forget(to_wake);
-            let _l = (*me).lock.lock();
+            let mut guard = (*me).lock.lock();
             (*me).awoken = true;
-            (*me).lock.signal();
+            guard.signal();
         }
     }
 
@@ -83,7 +83,7 @@ impl Runtime for SimpleTask {
 pub fn task() -> ~Task {
     let mut task = ~Task::new();
     task.put_runtime(~SimpleTask {
-        lock: LittleLock::new(),
+        lock: unsafe {NativeMutex::new()},
         awoken: false,
     } as ~Runtime);
     return task;
