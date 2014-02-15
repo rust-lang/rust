@@ -139,6 +139,8 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
             let src_expr = fld.fold_expr(src_expr).clone();
+            // Rename label before expansion.
+            let (opt_ident, src_loop_block) = rename_loop_label(opt_ident, src_loop_block, fld);
             let src_loop_block = fld.fold_block(src_loop_block);
 
             let span = e.span;
@@ -165,8 +167,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
             // `None => break ['<ident>];`
             let none_arm = {
-                // FIXME #6993: this map goes away:
-                let break_expr = fld.cx.expr(span, ast::ExprBreak(opt_ident.map(|x| x.name)));
+                let break_expr = fld.cx.expr(span, ast::ExprBreak(opt_ident));
                 let none_pat = fld.cx.pat_ident(span, none_ident);
                 fld.cx.arm(span, ~[none_pat], break_expr)
             };
@@ -199,7 +200,33 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             fld.cx.expr_match(span, discrim, ~[arm])
         }
 
+        ast::ExprLoop(loop_block, opt_ident) => {
+            let (opt_ident, loop_block) =
+                rename_loop_label(opt_ident, loop_block, fld);
+            let loop_block = fld.fold_block(loop_block);
+            fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))
+        }
+
         _ => noop_fold_expr(e, fld)
+    }
+}
+
+// Rename loop label and its all occurrences inside the loop body
+fn rename_loop_label(opt_ident: Option<Ident>,
+                     loop_block: P<Block>,
+                     fld: &mut MacroExpander) -> (Option<Ident>, P<Block>) {
+    match opt_ident {
+        Some(label) => {
+            // Generate fresh label and add to the existing pending renames
+            let new_label = fresh_name(&label);
+            let rename = (label, new_label);
+            fld.extsbox.info().pending_renames.push(rename);
+            let mut pending_renames = ~[rename];
+            let mut rename_fld = renames_to_fold(&mut pending_renames);
+            (Some(rename_fld.fold_ident(label)),
+             rename_fld.fold_block(loop_block))
+        }
+        None => (None, loop_block)
     }
 }
 
