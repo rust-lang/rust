@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:static-methods-crate.rs
 
-extern mod static_methods_crate;
+extern crate static_methods_crate;
 
 use static_methods_crate::read;
 

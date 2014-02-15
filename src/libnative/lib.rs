@@ -17,7 +17,7 @@
 //! # Starting with libnative
 //!
 //! ```rust
-//! extern mod native;
+//! extern crate native;
 //!
 //! #[start]
 //! fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
@@ -30,7 +30,7 @@
 //! # Force spawning a native task
 //!
 //! ```rust
-//! extern mod native;
+//! extern crate native;
 //!
 //! fn main() {
 //!     // We're not sure whether this main function is run in 1:1 or M:N mode.

@@ -13,4 +13,4 @@
 #[crate_id="b#0.1"];
 #[crate_type = "lib"];
 
-extern mod a;
+extern crate a;

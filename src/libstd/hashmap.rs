@@ -56,7 +56,7 @@ use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
 use cmp::{Eq, Equiv, max};
 use default::Default;
-#[cfg(not(stage0))] use fmt;
+use fmt;
 use hash::Hash;
 use iter;
 use iter::{Iterator, FromIterator, Extendable};
@@ -66,7 +66,7 @@ use num;
 use option::{None, Option, Some};
 use rand::Rng;
 use rand;
-#[cfg(not(stage0))] use result::{Ok, Err};
+use result::{Ok, Err};
 use vec::{ImmutableVector, MutableVector, OwnedVector, Items, MutItems};
 use vec_ng;
 use vec_ng::Vec;
@@ -597,7 +597,6 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if_ok!(write!(f.buf, r"\{"))
@@ -876,7 +875,6 @@ impl<T:Hash + Eq + Clone> Clone for HashSet<T> {
     }
 }
 
-#[cfg(not(stage0))]
 impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if_ok!(write!(f.buf, r"\{"))

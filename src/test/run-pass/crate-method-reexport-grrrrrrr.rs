@@ -17,7 +17,7 @@
 // ignore-fast
 // aux-build:crate-method-reexport-grrrrrrr2.rs
 
-extern mod crate_method_reexport_grrrrrrr2;
+extern crate crate_method_reexport_grrrrrrr2;
 
 pub fn main() {
     use crate_method_reexport_grrrrrrr2::rust::add;

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod dylib;
-extern mod both;
+extern crate dylib;
+extern crate both;
 
 use std::cast;
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod argparse {
-    extern mod extra;
+    extern crate extra;
 
     pub struct Flag<'a> {
         name: &'a str,

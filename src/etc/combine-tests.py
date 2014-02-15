@@ -71,8 +71,8 @@ d.write(
 """
 // AUTO-GENERATED FILE: DO NOT EDIT
 #[feature(globs, managed_boxes)];
-extern mod extra;
-extern mod run_pass_stage2;
+extern crate extra;
+extern crate run_pass_stage2;
 use run_pass_stage2::*;
 use std::io;
 use std::io::Writer;

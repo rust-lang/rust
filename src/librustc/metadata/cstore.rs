@@ -69,7 +69,7 @@ pub struct CStore {
     intr: @IdentInterner
 }
 
-// Map from NodeId's of local extern mod statements to crate numbers
+// Map from NodeId's of local extern crate statements to crate numbers
 type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 impl CStore {

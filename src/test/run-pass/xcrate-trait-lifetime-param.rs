@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:xcrate-trait-lifetime-param.rs
 
-extern mod other = "xcrate-trait-lifetime-param";
+extern crate other = "xcrate-trait-lifetime-param";
 
 struct Reader<'a> {
     b : &'a [u8]

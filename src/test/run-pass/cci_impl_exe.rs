@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_impl_lib.rs
 
-extern mod cci_impl_lib;
+extern crate cci_impl_lib;
 use cci_impl_lib::uint_helpers;
 
 pub fn main() {

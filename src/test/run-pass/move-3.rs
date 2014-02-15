@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern crate extra;
 
 struct Triple { x: int, y: int, z: int }
 

@@ -27,7 +27,7 @@
 #[feature(phase)];
 
 #[phase(syntax, link)]
-extern mod macro_crate_test;
+extern crate macro_crate_test;
 
 fn main() {
     assert_eq!(1, make_a_1!());

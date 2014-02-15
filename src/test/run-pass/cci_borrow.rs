@@ -13,7 +13,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod cci_borrow_lib;
+extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;
 
 pub fn main() {

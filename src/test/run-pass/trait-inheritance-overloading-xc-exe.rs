@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:trait_inheritance_overloading_xc.rs
 
-extern mod trait_inheritance_overloading_xc;
+extern crate trait_inheritance_overloading_xc;
 use trait_inheritance_overloading_xc::{MyNum, MyInt};
 
 fn f<T:MyNum>(x: T, y: T) -> (T, T, T) {

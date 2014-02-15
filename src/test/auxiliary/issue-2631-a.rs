@@ -12,7 +12,7 @@
 #[crate_id="req"];
 #[crate_type = "lib"];
 
-extern mod extra;
+extern crate extra;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;

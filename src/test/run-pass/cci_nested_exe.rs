@@ -13,7 +13,7 @@
 
 #[feature(globs, managed_boxes)];
 
-extern mod cci_nested_lib;
+extern crate cci_nested_lib;
 use cci_nested_lib::*;
 
 pub fn main() {

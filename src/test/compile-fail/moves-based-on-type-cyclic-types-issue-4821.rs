@@ -12,7 +12,7 @@
 // temporary kinds wound up being stored in a cache and used later.
 // See middle::ty::type_contents() for more information.
 
-extern mod extra;
+extern crate extra;
 
 struct List { key: int, next: Option<~List> }
 

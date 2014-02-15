@@ -15,7 +15,7 @@
 // ignore-fast
 // aux-build:static_mut_xc.rs
 
-extern mod static_mut_xc;
+extern crate static_mut_xc;
 
 unsafe fn static_bound(_: &'static int) {}
 

@@ -12,7 +12,7 @@
 // This program would segfault if it were legal.
 
 #[feature(once_fns)];
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 
 fn foo(blk: once ||) {

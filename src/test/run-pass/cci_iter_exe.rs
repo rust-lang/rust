@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_iter_lib.rs
 
-extern mod cci_iter_lib;
+extern crate cci_iter_lib;
 
 pub fn main() {
     //let bt0 = sys::rusti::frame_address(1u32);

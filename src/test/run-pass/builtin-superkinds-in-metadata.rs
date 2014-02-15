@@ -14,7 +14,7 @@
 
 // Tests (correct) usage of trait super-builtin-kinds cross-crate.
 
-extern mod trait_superkinds_in_metadata;
+extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresFreezeAndSend, RequiresFreeze};
 use trait_superkinds_in_metadata::{RequiresPod};
 

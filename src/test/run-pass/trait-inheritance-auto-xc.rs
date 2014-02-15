@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:trait_inheritance_auto_xc_aux.rs
 
-extern mod aux = "trait_inheritance_auto_xc_aux";
+extern crate aux = "trait_inheritance_auto_xc_aux";
 
 use aux::{Foo, Bar, Baz, Quux};
 

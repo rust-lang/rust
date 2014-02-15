@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:trait_inheritance_auto_xc_2_aux.rs
 
-extern mod aux = "trait_inheritance_auto_xc_2_aux";
+extern crate aux = "trait_inheritance_auto_xc_2_aux";
 
 // aux defines impls of Foo, Bar and Baz for A
 use aux::{Foo, Bar, Baz, A};

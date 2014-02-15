@@ -14,7 +14,7 @@
 
 /// Map representation
 
-extern mod extra;
+extern crate extra;
 
 use std::io;
 use std::to_str;

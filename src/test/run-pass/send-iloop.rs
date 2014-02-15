@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-test linked failure
-extern mod extra;
+extern crate extra;
 
 use std::comm;
 use std::task;

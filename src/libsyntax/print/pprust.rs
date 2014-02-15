@@ -2061,7 +2061,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> 
     if_ok!(print_visibility(s, item.vis));
     match item.node {
         ast::ViewItemExternMod(id, ref optional_path, _) => {
-            if_ok!(head(s, "extern mod"));
+            if_ok!(head(s, "extern crate"));
             if_ok!(print_ident(s, id));
             for &(ref p, style) in optional_path.iter() {
                 if_ok!(space(&mut s.s));

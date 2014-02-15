@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern: lifetime of return value does not outlive the function call
-extern mod sync;
+extern crate sync;
 use sync::RWArc;
 fn main() {
     let x = ~RWArc::new(1);

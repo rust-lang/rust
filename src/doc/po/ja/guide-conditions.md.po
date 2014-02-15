@@ -79,13 +79,13 @@ msgstr "# 関数"
 #: src/doc/guide-conditions.md:262
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello "
+#| "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello "
 #| "\" + world::explore()); } ~~~~"
 msgid "fn main() {"
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 

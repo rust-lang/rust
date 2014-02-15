@@ -9,6 +9,6 @@
 // except according to those terms.
 
 extern crate extra;
-extern mod mystd = "std";
+extern crate mystd = "std";
 
 pub fn main() {}

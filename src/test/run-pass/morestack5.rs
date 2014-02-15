@@ -12,7 +12,7 @@
 
 // This test will call __morestack with various minimum stack sizes
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 

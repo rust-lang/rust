@@ -11,6 +11,6 @@
 // ignore-fast check-fast doesn't like aux-build
 // aux-build:issue_9123.rs
 
-extern mod issue_9123;
+extern crate issue_9123;
 
 pub fn main() {}

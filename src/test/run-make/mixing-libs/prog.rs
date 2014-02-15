@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod dylib;
-extern mod rlib;
+extern crate dylib;
+extern crate rlib;
 
 fn main() {
     dylib::dylib();

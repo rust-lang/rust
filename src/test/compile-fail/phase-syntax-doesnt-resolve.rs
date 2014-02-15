@@ -15,7 +15,7 @@
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_crate_test;
+extern crate macro_crate_test;
 
 fn main() {
     macro_crate_test::foo();

@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-extern mod collections;
+extern crate extra;
+extern crate collections;
 
 use collections::bitv::BitvSet;
 use collections::TreeSet;

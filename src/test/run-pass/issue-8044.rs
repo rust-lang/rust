@@ -11,7 +11,7 @@
 // ignore-fast check-fast doesn't like aux-build
 // aux-build:issue-8044.rs
 
-extern mod minimal = "issue-8044";
+extern crate minimal = "issue-8044";
 use minimal::{BTree, leaf};
 
 pub fn main() {

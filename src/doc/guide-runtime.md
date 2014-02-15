@@ -232,7 +232,7 @@ fn main() {}
 Whereas this program explicitly opts into using a particular runtime
 
 ~~~{.rust}
-extern mod green;
+extern crate green;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {

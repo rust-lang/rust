@@ -11,7 +11,7 @@
 // aux-build:impl_privacy_xc_2.rs
 // ignore-fast
 
-extern mod impl_privacy_xc_2;
+extern crate impl_privacy_xc_2;
 
 pub fn main() {
     let fish1 = impl_privacy_xc_2::Fish { x: 1 };

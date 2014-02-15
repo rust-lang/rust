@@ -11,7 +11,7 @@
 // ignore-fast
 // ignore-android (FIXME #11419)
 
-extern mod native;
+extern crate native;
 
 static mut set: bool = false;
 

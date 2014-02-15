@@ -11,7 +11,7 @@
 // ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_intrinsic.rs
 
-extern mod cci_intrinsic;
+extern crate cci_intrinsic;
 use cci_intrinsic::atomic_xchg;
 
 pub fn main() {

@@ -11,7 +11,7 @@
 // ignore-fast
 // aux-build:anon-extern-mod-cross-crate-1.rs
 // aux-build:anon-extern-mod-cross-crate-1.rs
-extern mod anonexternmod;
+extern crate anonexternmod;
 
 pub fn main() { }
 

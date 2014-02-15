@@ -13,7 +13,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern crate extra;
 
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.

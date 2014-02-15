@@ -12,7 +12,7 @@
 // ignore-fast
 // ignore-win32 #10872
 
-extern mod extra;
+extern crate extra;
 
 // Building as a test runner means that a synthetic main will be run,
 // not ours
