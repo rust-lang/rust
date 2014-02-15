@@ -45,7 +45,7 @@ pub trait Zero: Add<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~
+    /// ~~~ignore
     /// a + 0 = a       ∀ a ∈ Self
     /// 0 + a = a       ∀ a ∈ Self
     /// ~~~
@@ -71,7 +71,7 @@ pub trait One: Mul<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~
+    /// ~~~ignore
     /// a * 1 = a       ∀ a ∈ Self
     /// 1 * a = a       ∀ a ∈ Self
     /// ~~~
@@ -964,6 +964,8 @@ impl_from_primitive!(f64, n.to_f64())
 /// # Example
 ///
 /// ```
+/// use std::num;
+///
 /// let twenty: f32 = num::cast(0x14).unwrap();
 /// assert_eq!(twenty, 20f32);
 /// ```
