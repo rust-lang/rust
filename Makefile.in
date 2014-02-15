@@ -31,17 +31,17 @@
 #
 #   * uninstall - Uninstall the binaries
 #
-# For hot tips on working with The Rust Build System, just:
+# For tips on working with The Rust Build System, just:
 #
-#     type `make hot-tips`
+#     run `make tips`
 #
 # Otherwise
 #
-#     type `make`
+#     run `make`
 #
 # </help>
 #
-# <hottips>
+# <tips>
 #
 # # The Rust Build System Tip Line
 #
@@ -52,8 +52,9 @@
 #   * check-$(crate) - Test a crate, e.g. `check-std`
 #   * check-ref - Run the language reference tests
 #   * check-docs - Test the documentation examples
-#
-# TODO: Lots more
+#   * check-stage$(stage)-$(crate) - Test a crate in a specific stage
+#   * check-stage$(stage)-{rpass,rfail,cfail,rmake,...} - Run tests in src/test/
+#   * check-stage1-T-$(target)-H-$(host) - Run cross-compiled-tests
 #
 # Then mix in some of these environment variables to harness the
 # ultimate power of The Rust Build System.
@@ -71,7 +72,7 @@
 #
 #   * `NO_REBUILD=1` - Don't rebootstrap when testing std
 #                      (and possibly other crates)
-#   * `NO_MKFILE_DEPS=1` - Don rebuild for modified .mk files
+#   * `NO_MKFILE_DEPS=1` - Don't rebuild for modified .mk files
 #
 #   * `SAVE_TEMPS=1` - Use `--save-temps` flag on all `rustc` invocations
 #   * `ASM_COMMENTS=1` - Use `-Z asm-comments`
@@ -79,17 +80,28 @@
 #   * `TIME_LLVM_PASSES=1` - Use `-Z time-llvm-passes`
 #   * `TRACE=1` - Use `-Z trace`
 #
+# # Rust recipes for build system success
+#
+#     // Modifying libstd? Use this comment to run unit tests just on your change
+#     make check-stage1-std NO_REBUILD=1 NO_BENCH=1
+#
+#     // Added a run-pass test? Use this to test running your test
+#     make check-stage1-rpass TESTNAME=my-shiny-new-test
+#
+#     // Having trouble figuring out which test is failing? Turn off parallel tests
+#     make check-stage1-std RUST_TEST_TASKS=1
+#
 # This is hardly all there is to know of The Rust Build System's
 # mysteries. The tale continues on the wiki[1][2].
 #
 # [1]: https://github.com/mozilla/rust/wiki/Note-build-system
 # [2]: https://github.com/mozilla/rust/wiki/Note-testsuite
 #
-# Unless you feel like getting your hands dirty, then:
+# If you really feel like getting your hands dirty, then:
 #
-#     don't type `make nitty-gritty`
+#     run `make nitty-gritty`
 #
-# </hottips>
+# </tips>
 #
 # <nittygritty>
 #

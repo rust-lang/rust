@@ -16,13 +16,5 @@ else
   E = echo $(1)
 endif
 
-ifdef VERBOSE
-  Q :=
-  E =
-else
-  Q := @
-  E = echo $(1)
-endif
-
 S := $(CFG_SRC_DIR)
 
