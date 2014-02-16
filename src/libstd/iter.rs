@@ -2611,7 +2611,7 @@ mod tests {
         assert_eq!(vi.size_hint(), (10, Some(10)));
 
         assert_eq!(c.take(5).size_hint(), (5, Some(5)));
-        assert_eq!(c.skip(5).size_hint().second(), None);
+        assert_eq!(c.skip(5).size_hint().val1(), None);
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));

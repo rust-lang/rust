@@ -529,7 +529,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*c_void| -> T) -> T {
             let mut tmps = vec::with_capacity(env.len());
 
             for pair in env.iter() {
-                let kv = format!("{}={}", pair.first(), pair.second());
+                let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
                 tmps.push(kv.to_c_str());
             }
 
@@ -553,7 +553,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
             let mut blk = ~[];
 
             for pair in env.iter() {
-                let kv = format!("{}={}", pair.first(), pair.second());
+                let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
                 blk.push_all(kv.as_bytes());
                 blk.push(0);
             }
