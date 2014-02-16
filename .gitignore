@@ -60,7 +60,7 @@ config.mk
 /rt/
 /rustllvm/
 /test/
-/build/
+/build
 /inst/
 /mingw-build/
 src/.DS_Store
