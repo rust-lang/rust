@@ -955,7 +955,7 @@ pub trait ImmutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None }
      *     let head = &self[0];
      *     *self = self.slice_from(1);
@@ -973,7 +973,7 @@ pub trait ImmutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let tail = &self[self.len() - 1];
      *     *self = self.slice_to(self.len() - 1);
@@ -2075,7 +2075,7 @@ pub trait MutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let head = &mut self[0];
      *     *self = self.mut_slice_from(1);
@@ -2093,7 +2093,7 @@ pub trait MutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let tail = &mut self[self.len() - 1];
      *     *self = self.mut_slice_to(self.len() - 1);

@@ -46,7 +46,7 @@
  *
  * ```
  * spawn(proc() {
- *     log(error, "Hello, World!");
+ *     println!("Hello, World!");
  * })
  * ```
  */

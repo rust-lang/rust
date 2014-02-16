@@ -341,7 +341,7 @@ pub fn write_5_number_summary(w: &mut io::Writer,
 /// As an example, the summary with 5-number-summary `(min=15, q1=17, med=20, q3=24, max=31)` might
 /// display as:
 ///
-/// ~~~~
+/// ~~~~ignore
 ///   10 |        [--****#******----------]          | 40
 /// ~~~~
 

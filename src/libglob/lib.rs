@@ -67,7 +67,7 @@ pub struct Paths {
 ///
 /// The above code will print:
 ///
-/// ```
+/// ```ignore
 /// /media/pictures/kittens.jpg
 /// /media/pictures/puppies.jpg
 /// ```
