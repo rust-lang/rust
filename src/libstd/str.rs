@@ -826,50 +826,142 @@ pub fn is_utf16(v: &[u16]) -> bool {
 
 /// An iterator that decodes UTF-16 encoded codepoints from a vector
 /// of `u16`s.
-///
-/// Fails when it encounters invalid UTF-16 data.
-pub struct UTF16Chars<'a> {
+#[deriving(Clone)]
+pub struct UTF16Items<'a> {
     priv iter: vec::Items<'a, u16>
 }
-impl<'a> Iterator<char> for UTF16Chars<'a> {
-    fn next(&mut self) -> Option<char> {
+/// The possibilities for values decoded from a `u16` stream.
+#[deriving(Eq, TotalEq, Clone)]
+pub enum UTF16Item {
+    /// A valid codepoint.
+    ScalarValue(char),
+    /// An invalid surrogate without its pair.
+    LoneSurrogate(u16)
+}
+
+impl UTF16Item {
+    /// Convert `self` to a `char`, taking `LoneSurrogate`s to the
+    /// replacement character (U+FFFD).
+    #[inline]
+    pub fn to_char_lossy(&self) -> char {
+        match *self {
+            ScalarValue(c) => c,
+            LoneSurrogate(_) => '\uFFFD'
+        }
+    }
+}
+
+impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
+    fn next(&mut self) -> Option<UTF16Item> {
         let u = match self.iter.next() {
             Some(u) => *u,
             None => return None
         };
-        match char::from_u32(u as u32) {
-            Some(c) => Some(c),
-            None => {
-                let u2 = *self.iter.next().expect("UTF16Chars: unmatched lead surrogate");
-                if u < 0xD7FF || u > 0xDBFF ||
-                    u2 < 0xDC00 || u2 > 0xDFFF {
-                    fail!("UTF16Chars: invalid surrogate pair")
-                }
 
-                let mut c = (u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32 | 0x1_0000;
-                char::from_u32(c)
+        if u < 0xD800 || 0xDFFF < u {
+            // not a surrogate
+            Some(ScalarValue(unsafe {cast::transmute(u as u32)}))
+        } else if u >= 0xDC00 {
+            // a trailing surrogate
+            Some(LoneSurrogate(u))
+        } else {
+            // preserve state for rewinding.
+            let old = self.iter;
+
+            let u2 = match self.iter.next() {
+                Some(u2) => *u2,
+                // eof
+                None => return Some(LoneSurrogate(u))
+            };
+            if u2 < 0xDC00 || u2 > 0xDFFF {
+                // not a trailing surrogate so we're not a valid
+                // surrogate pair, so rewind to redecode u2 next time.
+                self.iter = old;
+                return Some(LoneSurrogate(u))
             }
+
+            // all ok, so lets decode it.
+            let c = (u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32 | 0x1_0000;
+            Some(ScalarValue(unsafe {cast::transmute(c)}))
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (low, high) = self.iter.size_hint();
-        // we could be entirely surrogates (2 elements per char), or
-        // entirely non-surrogates (1 element per char)
+        // we could be entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char)
         (low / 2, high)
     }
 }
 
-/// Create an iterator over the UTF-16 encoded codepoints in `v`.
+/// Create an iterator over the UTF-16 encoded codepoints in `v`,
+/// returning invalid surrogates as `LoneSurrogate`s.
 ///
-/// The iterator fails if it attempts to decode invalid UTF-16 data.
-pub fn utf16_chars<'a>(v: &'a [u16]) -> UTF16Chars<'a> {
-    UTF16Chars { iter : v.iter() }
+/// # Example
+///
+/// ```rust
+/// use std::str;
+/// use std::str::{ScalarValue, LoneSurrogate};
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///          0x0073, 0xDD1E, 0x0069, 0x0063,
+///          0xD834];
+///
+/// assert_eq!(str::utf16_items(v).to_owned_vec(),
+///            ~[ScalarValue('𝄞'),
+///              ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
+///              LoneSurrogate(0xDD1E),
+///              ScalarValue('i'), ScalarValue('c'),
+///              LoneSurrogate(0xD834)]);
+/// ```
+pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
+    UTF16Items { iter : v.iter() }
 }
 
-/// Allocates a new string from the utf-16 slice provided
+/// Decode a UTF-16 encoded vector `v` into a string.
+///
+/// # Failure
+///
+/// Fails on invalid UTF-16 data.
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+///
+/// // 𝄞music
+/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///          0x0073, 0x0069, 0x0063];
+/// assert_eq!(str::from_utf16(v), ~"𝄞music");
+/// ```
 pub fn from_utf16(v: &[u16]) -> ~str {
-    utf16_chars(v).collect()
+    utf16_items(v).map(|c| {
+            match c {
+                ScalarValue(c) => c,
+                LoneSurrogate(u) => fail!("from_utf16: found lone surrogate {}", u)
+            }
+        }).collect()
+}
+
+/// Decode a UTF-16 encoded vector `v` into a string, replacing
+/// invalid data with the replacement character (U+FFFD).
+///
+/// # Example
+/// ```rust
+/// use std::str;
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///          0x0073, 0xDD1E, 0x0069, 0x0063,
+///          0xD834];
+///
+/// assert_eq!(str::from_utf16_lossy(v),
+///            ~"𝄞mus\uFFFDic\uFFFD");
+/// ```
+pub fn from_utf16_lossy(v: &[u16]) -> ~str {
+    utf16_items(v).map(|c| c.to_char_lossy()).collect()
 }
 
 /// Allocates a new string with the specified capacity. The string returned is
@@ -3738,10 +3830,28 @@ mod tests {
             let (s, u) = (*p).clone();
             assert!(is_utf16(u));
             assert_eq!(s.to_utf16(), u);
+
             assert_eq!(from_utf16(u), s);
+            assert_eq!(from_utf16_lossy(u), s);
+
             assert_eq!(from_utf16(s.to_utf16()), s);
             assert_eq!(from_utf16(u).to_utf16(), u);
         }
+    }
+
+    #[test]
+    fn test_utf16_lossy() {
+        // completely positive cases tested above.
+        // lead + eof
+        assert_eq!(from_utf16_lossy([0xD800]), ~"\uFFFD");
+        // lead + lead
+        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), ~"\uFFFD\uFFFD");
+
+        // isolated trail
+        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), ~"a\uFFFD");
+
+        // general
+        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), ~"\uFFFD𐒋\uFFFD");
     }
 
     #[test]
