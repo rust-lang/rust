@@ -805,23 +805,23 @@ fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
 
 /// Determines if a vector of `u16` contains valid UTF-16
 pub fn is_utf16(v: &[u16]) -> bool {
-    let len = v.len();
-    let mut i = 0u;
-    while i < len {
-        let u = v[i];
+    let mut it = v.iter();
+    macro_rules! next ( ($ret:expr) => {
+            match it.next() { Some(u) => *u, None => return $ret }
+        }
+    )
+    loop {
+        let u = next!(true);
 
-        if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
-            i += 1u;
-
-        } else {
-            if i+1u < len { return false; }
-            let u2 = v[i+1u];
-            if u < 0xD7FF_u16 || u > 0xDBFF_u16 { return false; }
-            if u2 < 0xDC00_u16 || u2 > 0xDFFF_u16 { return false; }
-            i += 2u;
+        match char::from_u32(u as u32) {
+            Some(_) => {}
+            None => {
+                let u2 = next!(false);
+                if u < 0xD7FF || u > 0xDBFF ||
+                    u2 < 0xDC00 || u2 > 0xDFFF { return false; }
+            }
         }
     }
-    return true;
 }
 
 /// Iterates over the utf-16 characters in the specified slice, yielding each
@@ -3512,6 +3512,65 @@ mod tests {
     }
 
     #[test]
+    fn test_is_utf16() {
+        macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
+
+        // non-surrogates
+        pos!([0x0000],
+             [0x0001, 0x0002],
+             [0xD7FF],
+             [0xE000]);
+
+        // surrogate pairs (randomly generated with Python 3's
+        // .encode('utf-16be'))
+        pos!([0xdb54, 0xdf16, 0xd880, 0xdee0, 0xdb6a, 0xdd45],
+             [0xd91f, 0xdeb1, 0xdb31, 0xdd84, 0xd8e2, 0xde14],
+             [0xdb9f, 0xdc26, 0xdb6f, 0xde58, 0xd850, 0xdfae]);
+
+        // mixtures (also random)
+        pos!([0xd921, 0xdcc2, 0x002d, 0x004d, 0xdb32, 0xdf65],
+             [0xdb45, 0xdd2d, 0x006a, 0xdacd, 0xddfe, 0x0006],
+             [0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
+
+        // negative tests
+        macro_rules! neg ( ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } });
+
+        neg!(
+            // surrogate + regular unit
+            [0xdb45, 0x0000],
+            // surrogate + lead surrogate
+            [0xd900, 0xd900],
+            // unterminated surrogate
+            [0xd8ff],
+            // trail surrogate without a lead
+            [0xddb7]);
+
+        // random byte sequences that Python 3's .decode('utf-16be')
+        // failed on
+        neg!([0x5b3d, 0x0141, 0xde9e, 0x8fdc, 0xc6e7],
+             [0xdf5a, 0x82a5, 0x62b9, 0xb447, 0x92f3],
+             [0xda4e, 0x42bc, 0x4462, 0xee98, 0xc2ca],
+             [0xbe00, 0xb04a, 0x6ecb, 0xdd89, 0xe278],
+             [0x0465, 0xab56, 0xdbb6, 0xa893, 0x665e],
+             [0x6b7f, 0x0a19, 0x40f4, 0xa657, 0xdcc5],
+             [0x9b50, 0xda5e, 0x24ec, 0x03ad, 0x6dee],
+             [0x8d17, 0xcaa7, 0xf4ae, 0xdf6e, 0xbed7],
+             [0xdaee, 0x2584, 0x7d30, 0xa626, 0x121a],
+             [0xd956, 0x4b43, 0x7570, 0xccd6, 0x4f4a],
+             [0x9dcf, 0x1b49, 0x4ba5, 0xfce9, 0xdffe],
+             [0x6572, 0xce53, 0xb05a, 0xf6af, 0xdacf],
+             [0x1b90, 0x728c, 0x9906, 0xdb68, 0xf46e],
+             [0x1606, 0xbeca, 0xbe76, 0x860f, 0xdfa5],
+             [0x8b4f, 0xde7a, 0xd220, 0x9fac, 0x2b6f],
+             [0xb8fe, 0xebbe, 0xda32, 0x1a5f, 0x8b8b],
+             [0x934b, 0x8956, 0xc434, 0x1881, 0xddf7],
+             [0x5a95, 0x13fc, 0xf116, 0xd89b, 0x93f9],
+             [0xd640, 0x71f1, 0xdd7d, 0x77eb, 0x1cd8],
+             [0x348b, 0xaef0, 0xdb2c, 0xebf1, 0x1282],
+             [0x50d7, 0xd824, 0x5010, 0xb369, 0x22ea]);
+    }
+
+    #[test]
     fn test_raw_from_c_str() {
         unsafe {
             let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
@@ -3666,10 +3725,11 @@ mod tests {
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
-            assert!(s.to_utf16() == u);
-            assert!(from_utf16(u) == s);
-            assert!(from_utf16(s.to_utf16()) == s);
-            assert!(from_utf16(u).to_utf16() == u);
+            assert!(is_utf16(u));
+            assert_eq!(s.to_utf16(), u);
+            assert_eq!(from_utf16(u), s);
+            assert_eq!(from_utf16(s.to_utf16()), s);
+            assert_eq!(from_utf16(u).to_utf16(), u);
         }
     }
 
