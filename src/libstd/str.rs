@@ -881,7 +881,7 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
             }
 
             // all ok, so lets decode it.
-            let c = (u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32 | 0x1_0000;
+            let c = ((u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
             Some(ScalarValue(unsafe {cast::transmute(c)}))
         }
     }
@@ -3824,7 +3824,10 @@ mod tests {
                 0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
                 0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
-                0x000a_u16 ]) ];
+                0x000a_u16 ]),
+             // Issue #12318, even-numbered non-BMP planes
+             (~"\U00020000",
+              ~[0xD840, 0xDC00])];
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
