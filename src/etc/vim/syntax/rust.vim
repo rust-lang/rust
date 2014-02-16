@@ -95,13 +95,9 @@ syn keyword rustTrait Buffer Writer Reader Seek
 syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr IntoStr
-syn keyword rustTrait CloneableTuple ImmutableTuple
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait ImmutableTuple1 ImmutableTuple2 ImmutableTuple3 ImmutableTuple4
-syn keyword rustTrait ImmutableTuple5 ImmutableTuple6 ImmutableTuple7 ImmutableTuple8
-syn keyword rustTrait ImmutableTuple9 ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
 syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector

@@ -4604,7 +4604,7 @@ pub fn determine_inherited_purity(parent: (ast::Purity, ast::NodeId),
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own
     match child_sigil {
-        ast::BorrowedSigil if child.first() == ast::ImpureFn => parent,
+        ast::BorrowedSigil if child.val0() == ast::ImpureFn => parent,
         _ => child
     }
 }
