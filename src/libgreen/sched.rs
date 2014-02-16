@@ -16,7 +16,7 @@ use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
-use std::unstable::raw;
+use std::raw;
 
 use TaskState;
 use context::Context;

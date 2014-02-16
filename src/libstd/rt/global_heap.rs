@@ -11,7 +11,7 @@
 use libc::{c_void, size_t, free, malloc, realloc};
 use ptr::{RawPtr, mut_null};
 use intrinsics::abort;
-use unstable::raw;
+use raw;
 use mem::size_of;
 
 #[inline]

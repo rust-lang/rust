@@ -177,7 +177,7 @@ impl Unwinder {
     }
 
     pub fn try(&mut self, f: ||) {
-        use unstable::raw::Closure;
+        use raw::Closure;
         use libc::{c_void};
 
         unsafe {

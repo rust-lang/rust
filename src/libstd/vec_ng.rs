@@ -24,7 +24,7 @@ use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
-use unstable::raw::Slice;
+use raw::Slice;
 use vec::{ImmutableVector, Items, MutItems, MutableVector, RevItems};
 
 pub struct Vec<T> {

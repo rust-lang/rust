@@ -113,7 +113,7 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 #[cfg(test)]
 mod tests {
     use cast::{bump_box_refcount, transmute};
-    use unstable::raw;
+    use raw;
 
     #[test]
     fn test_transmute_copy() {

@@ -30,7 +30,7 @@ use str::StrSlice;
 use to_str::ToStr;
 use vec::OwnedVector;
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
-use unstable::raw;
+use raw;
 
 macro_rules! try( ($me:expr, $e:expr) => (
     match $e {

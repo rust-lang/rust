@@ -18,7 +18,7 @@ Runtime type reflection
 
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;
-use unstable::raw;
+use raw;
 
 /**
  * Trait for visitor that wishes to reflect on data. To use this, create a
