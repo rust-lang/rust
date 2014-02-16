@@ -731,9 +731,84 @@ pub fn eq(a: &~str, b: &~str) -> bool {
 Section: Misc
 */
 
-/// Determines if a vector of bytes contains valid UTF-8
+/// Walk through `iter` checking that it's a valid UTF-8 sequence,
+/// returning `true` in that case, or, if it is invalid, `false` with
+/// `iter` reset such that it is pointing at the first byte in the
+/// invalid sequence.
+#[inline(always)]
+fn run_utf8_validation_iterator(iter: &mut vec::Items<u8>) -> bool {
+    loop {
+        // save the current thing we're pointing at.
+        let old = *iter;
+
+        // restore the iterator we had at the start of this codepoint.
+        macro_rules! err ( () => { {*iter = old; return false} });
+        macro_rules! next ( () => {
+                match iter.next() {
+                    Some(a) => *a,
+                    // we needed data, but there was none: error!
+                    None => err!()
+                }
+            });
+
+        let first = match iter.next() {
+            Some(&b) => b,
+            // we're at the end of the iterator and a codepoint
+            // boundary at the same time, so this string is valid.
+            None => return true
+        };
+
+        // ASCII characters are always valid, so only large
+        // bytes need more examination.
+        if first >= 128 {
+            let w = utf8_char_width(first);
+            let second = next!();
+            // 2-byte encoding is for codepoints  \u0080 to  \u07ff
+            //        first  C2 80        last DF BF
+            // 3-byte encoding is for codepoints  \u0800 to  \uffff
+            //        first  E0 A0 80     last EF BF BF
+            //   excluding surrogates codepoints  \ud800 to  \udfff
+            //               ED A0 80 to       ED BF BF
+            // 4-byte encoding is for codepoints \u10000 to \u10ffff
+            //        first  F0 90 80 80  last F4 8F BF BF
+            //
+            // Use the UTF-8 syntax from the RFC
+            //
+            // https://tools.ietf.org/html/rfc3629
+            // UTF8-1      = %x00-7F
+            // UTF8-2      = %xC2-DF UTF8-tail
+            // UTF8-3      = %xE0 %xA0-BF UTF8-tail / %xE1-EC 2( UTF8-tail ) /
+            //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
+            // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
+            //               %xF4 %x80-8F 2( UTF8-tail )
+            match w {
+                2 => if second & 192 != TAG_CONT_U8 {err!()},
+                3 => {
+                    match (first, second, next!() & 192) {
+                        (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
+                        (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
+                        (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
+                        (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => {}
+                        _ => err!()
+                    }
+                }
+                4 => {
+                    match (first, second, next!() & 192, next!() & 192) {
+                        (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
+                        _ => err!()
+                    }
+                }
+                _ => err!()
+            }
+        }
+    }
+}
+
+/// Determines if a vector of bytes contains valid UTF-8.
 pub fn is_utf8(v: &[u8]) -> bool {
-    first_non_utf8_index(v).is_none()
+    run_utf8_validation_iterator(&mut v.iter())
 }
 
 #[inline(always)]
