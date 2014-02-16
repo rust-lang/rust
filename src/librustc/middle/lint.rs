@@ -212,7 +212,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("uppercase_variables",
      LintSpec {
          lint: UppercaseVariables,
-         desc: "variable names should start with a lowercase character",
+         desc: "variable and structure field names should start with a lowercase character",
          default: warn
      }),
 
@@ -1201,6 +1201,23 @@ fn check_pat_uppercase_variable(cx: &Context, p: &ast::Pat) {
     }
 }
 
+fn check_struct_uppercase_variable(cx: &Context, s: &ast::StructDef) {
+    for sf in s.fields.iter() {
+        match sf.node {
+            ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
+                let s = token::get_ident(ident);
+                if s.get().char_at(0).is_uppercase() {
+                    cx.span_lint(
+                        UppercaseVariables,
+                        sf.span,
+                        "structure field names should start with a lowercase character");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 fn check_unnecessary_parens_core(cx: &Context, value: &ast::Expr, msg: &str) {
     match value.node {
         ast::ExprParen(_) => {
@@ -1665,6 +1682,8 @@ impl<'a> Visitor<()> for Context<'a> {
                         g: &ast::Generics,
                         id: ast::NodeId,
                         _: ()) {
+        check_struct_uppercase_variable(self, s);
+
         let old_id = self.cur_struct_def_id;
         self.cur_struct_def_id = id;
         visit::walk_struct_def(self, s, i, g, id, ());

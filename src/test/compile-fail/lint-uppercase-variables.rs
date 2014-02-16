@@ -13,6 +13,10 @@
 use std::io::File;
 use std::io::IoError;
 
+struct Something {
+    X: uint //~ ERROR structure field names should start with a lowercase character
+}
+
 fn test(Xx: uint) { //~ ERROR variable names should start with a lowercase character
     println!("{}", Xx);
 }
@@ -30,5 +34,7 @@ fn main() {
     }
 
     test(1);
+
+    let _ = Something { X: 0 };
 }
 
