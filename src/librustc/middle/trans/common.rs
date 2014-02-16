@@ -164,20 +164,20 @@ pub struct Stats {
 }
 
 pub struct BuilderRef_res {
-    B: BuilderRef,
+    b: BuilderRef,
 }
 
 impl Drop for BuilderRef_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeBuilder(self.B);
+            llvm::LLVMDisposeBuilder(self.b);
         }
     }
 }
 
 pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     BuilderRef_res {
-        B: b
+        b: b
     }
 }
 

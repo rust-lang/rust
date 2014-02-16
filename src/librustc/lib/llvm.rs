@@ -1868,20 +1868,20 @@ impl TypeNames {
 /* Memory-managed interface to target data. */
 
 pub struct target_data_res {
-    TD: TargetDataRef,
+    td: TargetDataRef,
 }
 
 impl Drop for target_data_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeTargetData(self.TD);
+            llvm::LLVMDisposeTargetData(self.td);
         }
     }
 }
 
 pub fn target_data_res(td: TargetDataRef) -> target_data_res {
     target_data_res {
-        TD: td
+        td: td
     }
 }
 
@@ -1904,20 +1904,20 @@ pub fn mk_target_data(string_rep: &str) -> TargetData {
 /* Memory-managed interface to pass managers. */
 
 pub struct pass_manager_res {
-    PM: PassManagerRef,
+    pm: PassManagerRef,
 }
 
 impl Drop for pass_manager_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposePassManager(self.PM);
+            llvm::LLVMDisposePassManager(self.pm);
         }
     }
 }
 
 pub fn pass_manager_res(pm: PassManagerRef) -> pass_manager_res {
     pass_manager_res {
-        PM: pm
+        pm: pm
     }
 }
 
@@ -1971,20 +1971,20 @@ impl Drop for ObjectFile {
 /* Memory-managed interface to section iterators. */
 
 pub struct section_iter_res {
-    SI: SectionIteratorRef,
+    si: SectionIteratorRef,
 }
 
 impl Drop for section_iter_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeSectionIterator(self.SI);
+            llvm::LLVMDisposeSectionIterator(self.si);
         }
     }
 }
 
 pub fn section_iter_res(si: SectionIteratorRef) -> section_iter_res {
     section_iter_res {
-        SI: si
+        si: si
     }
 }
 
