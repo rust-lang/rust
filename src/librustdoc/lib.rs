@@ -262,7 +262,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut pm = plugins::PluginManager::new(Path::new(path));
     for pass in passes.iter() {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
-            Some(i) => PASSES[i].n1(),
+            Some(i) => PASSES[i].val1(),
             None => {
                 error!("unknown pass {}, skipping", *pass);
                 continue
