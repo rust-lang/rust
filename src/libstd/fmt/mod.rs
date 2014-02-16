@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -158,7 +158,7 @@ library as well. If no format is specified (as in `{}` or `{:6}`), then the
 format trait used is the `Show` trait. This is one of the more commonly
 implemented traits when formatting a custom type.
 
-When implementing a format trait for your own time, you will have to implement a
+When implementing a format trait for your own type, you will have to implement a
 method of the signature:
 
 ```rust
@@ -196,7 +196,7 @@ struct Vector2D {
 
 impl fmt::Show for Vector2D {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // The `f.buf` value is of the type `&mut io::Writer`, which is what th
+        // The `f.buf` value is of the type `&mut io::Writer`, which is what the
         // write! macro is expecting. Note that this formatting ignores the
         // various flags provided to format strings.
         write!(f.buf, "({}, {})", self.x, self.y)
