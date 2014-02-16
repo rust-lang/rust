@@ -198,6 +198,8 @@ pub mod reflect;
 pub mod unstable;
 #[experimental]
 pub mod intrinsics;
+#[experimental]
+pub mod raw;
 
 /* For internal use, not exported */
 

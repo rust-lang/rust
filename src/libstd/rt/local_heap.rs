@@ -20,7 +20,7 @@ use ptr::RawPtr;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
-use unstable::raw;
+use raw;
 use vec::ImmutableVector;
 use vec_ng::Vec;
 
