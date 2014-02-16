@@ -77,7 +77,7 @@ impl<T: Clone + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Real> Cmplx<T> {
+impl<T: Clone + Float> Cmplx<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -85,7 +85,7 @@ impl<T: Clone + Real> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Real> Cmplx<T> {
+impl<T: Clone + Float> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
@@ -192,7 +192,7 @@ mod test {
     #[allow(non_uppercase_statics)];
 
     use super::{Complex64, Cmplx};
-    use std::num::{Zero,One,Real};
+    use std::num::{Zero,One,Float};
 
     pub static _0_0i : Complex64 = Cmplx { re: 0.0, im: 0.0 };
     pub static _1_0i : Complex64 = Cmplx { re: 1.0, im: 0.0 };
@@ -270,9 +270,9 @@ mod test {
             assert!((c.arg() - arg).abs() < 1.0e-6)
         }
         test(_1_0i, 0.0);
-        test(_1_1i, 0.25 * Real::pi());
-        test(_neg1_1i, 0.75 * Real::pi());
-        test(_05_05i, 0.25 * Real::pi());
+        test(_1_1i, 0.25 * Float::pi());
+        test(_neg1_1i, 0.75 * Float::pi());
+        test(_05_05i, 0.25 * Float::pi());
     }
 
     #[test]
