@@ -731,29 +731,39 @@ pub fn eq(a: &~str, b: &~str) -> bool {
 Section: Misc
 */
 
-/// Determines if a vector of bytes contains valid UTF-8
+/// Determines if a vector of bytes contains valid UTF-8.
 pub fn is_utf8(v: &[u8]) -> bool {
-    first_non_utf8_index(v).is_none()
+    let mut ptr = v.as_ptr();
+    unsafe {
+        let end = ptr.offset(v.len() as int);
+
+        while ptr < end {
+            ptr = utf8_next_start(ptr, end);
+            if ptr.is_null() { return false }
+        }
+    }
+    true
 }
 
+/// Find the starting byte of the next UTF-8-encoded codepoint after
+/// `start`, or null if the current byte is an invalid character.
+///
+/// Assumes (without checking) `start < end`.
 #[inline(always)]
-fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
-    let mut i = 0u;
-    let total = v.len();
-    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-        unsafe { *xs.unsafe_ref(i) }
-    }
-    while i < total {
-        let v_i = unsafe_get(v, i);
-        if v_i < 128u8 {
-            i += 1u;
-        } else {
-            let w = utf8_char_width(v_i);
-            if w == 0u { return Some(i); }
+unsafe fn utf8_next_start(start: *u8, end: *u8) -> *u8 {
+    let null = ptr::null();
+    let first = *start;
+    let ptr1 = start.offset(1);
 
-            let nexti = i + w;
-            if nexti > total { return Some(i); }
-
+    // ascii
+    if first < 128 {
+        ptr1
+    } else {
+        let w = utf8_char_width(first);
+        // check that there's enough space for this codepoint to fit,
+        // so that all accesses are inbounds.
+        if end as uint - start as uint >= w as uint {
+            let second = *ptr1;
             // 2-byte encoding is for codepoints  \u0080 to  \u07ff
             //        first  C2 80        last DF BF
             // 3-byte encoding is for codepoints  \u0800 to  \uffff
@@ -772,32 +782,52 @@ fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
             //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
-            // UTF8-tail   = %x80-BF
             match w {
-                2 => if unsafe_get(v, i + 1) & 192u8 != TAG_CONT_U8 {
-                    return Some(i)
-                },
-                3 => match (v_i,
-                            unsafe_get(v, i + 1),
-                            unsafe_get(v, i + 2) & 192u8) {
-                    (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) => (),
-                    (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) => (),
-                    (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    _ => return Some(i),
-                },
-                _ => match (v_i,
-                            unsafe_get(v, i + 1),
-                            unsafe_get(v, i + 2) & 192u8,
-                            unsafe_get(v, i + 3) & 192u8) {
-                    (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    _ => return Some(i)
-                },
-            }
+                2 => if second & 192 == TAG_CONT_U8 {ptr1.offset(1)} else {null},
+                3 => {
+                    let ptr2 = ptr1.offset(1);
 
-            i = nexti;
+                    match (first, second, *ptr2 & 192) {
+                        (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
+                        (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
+                        (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
+                        (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => {
+                            ptr2.offset(1)
+                        }
+                        _ => null
+                    }
+                }
+                4 => {
+                    let ptr2 = ptr1.offset(1);
+                    let ptr3 = ptr2.offset(1);
+                    match (first, second, *ptr2 & 192, *ptr3 & 192) {
+                        (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {
+                            ptr3.offset(1)
+                        }
+                        _ => null
+                    }
+                }
+                _ => null
+            }
+        } else {
+            null
+        }
+    }
+}
+
+#[inline(always)]
+fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
+    let mut ptr = v.as_ptr();
+    let start = ptr;
+    unsafe {
+        let end = ptr.offset(v.len() as int);
+
+        while ptr < end {
+            let next = utf8_next_start(ptr, end);
+            if next.is_null() { return Some(ptr as uint - start as uint); }
+            ptr = next;
         }
     }
     None
