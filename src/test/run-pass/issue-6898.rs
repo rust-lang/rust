@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::unstable::intrinsics;
+use std::intrinsics;
 
 /// Returns the size of a type
 pub fn size_of<T>() -> uint {

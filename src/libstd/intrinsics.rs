@@ -41,9 +41,11 @@ A quick refresher on memory ordering:
 
 */
 
+#[allow(missing_doc)];
+
 // This is needed to prevent duplicate lang item definitions.
 #[cfg(test)]
-pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
+pub use realstd::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 

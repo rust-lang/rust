@@ -10,7 +10,7 @@
 
 use libc::{c_void, size_t, free, malloc, realloc};
 use ptr::{RawPtr, mut_null};
-use unstable::intrinsics::abort;
+use intrinsics::abort;
 use unstable::raw;
 use mem::size_of;
 

@@ -17,8 +17,8 @@
 
 use cast;
 use ptr;
-use unstable::intrinsics;
-use unstable::intrinsics::{bswap16, bswap32, bswap64};
+use intrinsics;
+use intrinsics::{bswap16, bswap32, bswap64};
 
 /// Returns the size of a type in bytes.
 #[inline]

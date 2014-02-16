@@ -10,7 +10,7 @@
 
 // ignore-fast: check-fast screws up repr paths
 
-use std::unstable::intrinsics::get_tydesc;
+use std::intrinsics::get_tydesc;
 
 struct Foo<T> {
     x: T

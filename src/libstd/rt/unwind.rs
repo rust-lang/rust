@@ -69,7 +69,7 @@ use rt::local::Local;
 use rt::task::Task;
 use str::Str;
 use task::TaskResult;
-use unstable::intrinsics;
+use intrinsics;
 
 use uw = self::libunwind;
 

@@ -23,7 +23,7 @@ use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
 use str;
-use unstable::intrinsics;
+use intrinsics;
 
 uint_module!(u64, i64, 64)
 
