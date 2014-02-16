@@ -36,7 +36,7 @@ pub fn noname() -> *c_char {
 impl<'a> Builder<'a> {
     pub fn new(ccx: &'a CrateContext) -> Builder<'a> {
         Builder {
-            llbuilder: ccx.builder.B,
+            llbuilder: ccx.builder.b,
             ccx: ccx,
         }
     }
