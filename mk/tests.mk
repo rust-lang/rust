@@ -174,16 +174,6 @@ endif
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
-check-notidy: cleantestlibs cleantmptestlogs all check-stage2
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
-check-full: cleantestlibs cleantmptestlogs tidy \
-            all check-stage1 check-stage2 check-stage3
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
-check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
 check-lite: cleantestlibs cleantmptestlogs \
 	$(foreach crate,$(TARGET_CRATES),check-stage2-$(crate)) \
 	check-stage2-rpass \
