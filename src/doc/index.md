@@ -24,27 +24,24 @@ li {list-style-type: none; }
 
 # Libraries
 
-* [The standard library, `libstd`](std/index.html)
-* [The extra library, `libextra`](extra/index.html)
-
-* [The M:N runtime library, `libgreen`](green/index.html)
-* [The 1:1 runtime library, `libnative`](native/index.html)
-
-* [The Rust libuv library, `librustuv`](rustuv/index.html)
-
-* [The Rust parser, `libsyntax`](syntax/index.html)
-* [The Rust compiler, `librustc`](rustc/index.html)
+* [The standard library, `std`](std/index.html)
 
 * [The `arena` allocation library](arena/index.html)
-* [The `num` arbitrary precision numerics library](num/index.html)
 * [The `collections` library](collections/index.html)
+* [The `extra` library of extra stuff](extra/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `fourcc` four-character code library](fourcc/index.html)
 * [The `getopts` argument parsing library](getopts/index.html)
 * [The `glob` file path matching library](glob/index.html)
+* [The `green` M:N runtime library](green/index.html)
+* [The `native` 1:1 threading runtime](native/index.html)
+* [The `num` arbitrary precision numerics library](num/index.html)
+* [The `rustc` compiler](rustc/index.html)
+* [The `rustuv` M:N I/O library](rustuv/index.html)
 * [The `semver` version collation library](semver/index.html)
 * [The `serialize` value encoding/decoding library](serialize/index.html)
 * [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
+* [The `syntax` library, the Rust parser](syntax/index.html)
 * [The `term` terminal-handling library](term/index.html)
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 
