@@ -22,12 +22,16 @@ use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
 /// # Example
 ///
 /// ```
-/// let reader = PortReader::new(port);
+/// use std::io::PortReader;
+///
+/// let (port, chan) = Chan::new();
+/// # drop(chan);
+/// let mut reader = PortReader::new(port);
 ///
 /// let mut buf = ~[0u8, ..100];
 /// match reader.read(buf) {
-///     Some(nread) => println!("Read {} bytes", nread),
-///     None => println!("At the end of the stream!")
+///     Ok(nread) => println!("Read {} bytes", nread),
+///     Err(e) => println!("read error: {}", e),
 /// }
 /// ```
 pub struct PortReader {
@@ -83,7 +87,12 @@ impl Reader for PortReader {
 /// # Example
 ///
 /// ```
-/// let writer = ChanWriter::new(chan);
+/// # #[allow(unused_must_use)];
+/// use std::io::ChanWriter;
+///
+/// let (port, chan) = Chan::new();
+/// # drop(port);
+/// let mut writer = ChanWriter::new(chan);
 /// writer.write("hello, world".as_bytes());
 /// ```
 pub struct ChanWriter {
