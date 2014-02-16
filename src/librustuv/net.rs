@@ -857,7 +857,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                     result: None,
                     socket: Some(self.socket),
                 };
-                wait_until_woken_after(&mut cx.task, || {
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
                 });
                 match cx.result.take_unwrap() {
@@ -936,7 +936,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                     socket: Some(self.socket),
                     addr: dst
                 };
-                wait_until_woken_after(&mut cx.task, || {
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
                 });
                 match cx.result.take_unwrap() {
