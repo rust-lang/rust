@@ -567,14 +567,14 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
     use iter::range;
-    use tuple::CloneableTuple;
+    use tuple::Tuple2;
 
     let len = comb.len();
     for i in range(0, len) {
         let mut swapped = false;
         for j in range(1, len-i) {
-            let classA = comb[j-1].second();
-            let classB = comb[j].second();
+            let classA = *comb[j-1].ref1();
+            let classB = *comb[j].ref1();
             if classA != 0 && classB != 0 && classA > classB {
                 comb.swap(j-1, j);
                 swapped = true;

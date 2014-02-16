@@ -19,66 +19,6 @@ use fmt;
 use result::{Ok, Err};
 use to_str::ToStr;
 
-/// Method extensions to pairs where both types satisfy the `Clone` bound
-pub trait CloneableTuple<T, U> {
-    /// Return the first element of self
-    fn first(&self) -> T;
-    /// Return the second element of self
-    fn second(&self) -> U;
-    /// Return the results of swapping the two elements of self
-    fn swap(&self) -> (U, T);
-}
-
-impl<T:Clone,U:Clone> CloneableTuple<T, U> for (T, U) {
-    /// Return the first element of self
-    #[inline]
-    fn first(&self) -> T {
-        match *self {
-            (ref t, _) => (*t).clone(),
-        }
-    }
-
-    /// Return the second element of self
-    #[inline]
-    fn second(&self) -> U {
-        match *self {
-            (_, ref u) => (*u).clone(),
-        }
-    }
-
-    /// Return the results of swapping the two elements of self
-    #[inline]
-    fn swap(&self) -> (U, T) {
-        match (*self).clone() {
-            (t, u) => (u, t),
-        }
-    }
-}
-
-/// Method extensions for pairs where the types don't necessarily satisfy the
-/// `Clone` bound
-pub trait ImmutableTuple<T, U> {
-    /// Return a reference to the first element of self
-    fn first_ref<'a>(&'a self) -> &'a T;
-    /// Return a reference to the second element of self
-    fn second_ref<'a>(&'a self) -> &'a U;
-}
-
-impl<T, U> ImmutableTuple<T, U> for (T, U) {
-    #[inline]
-    fn first_ref<'a>(&'a self) -> &'a T {
-        match *self {
-            (ref t, _) => t,
-        }
-    }
-    #[inline]
-    fn second_ref<'a>(&'a self) -> &'a U {
-        match *self {
-            (_, ref u) => u,
-        }
-    }
-}
-
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
     ($(
@@ -340,25 +280,10 @@ mod tests {
     use cmp::*;
 
     #[test]
-    fn test_tuple_ref() {
-        let x = (~"foo", ~"bar");
-        assert_eq!(x.first_ref(), &~"foo");
-        assert_eq!(x.second_ref(), &~"bar");
-    }
-
-    #[test]
-    fn test_tuple() {
-        assert_eq!((948, 4039.48).first(), 948);
-        assert_eq!((34.5, ~"foo").second(), ~"foo");
-        assert_eq!(('a', 2).swap(), (2, 'a'));
-    }
-
-    #[test]
     fn test_clone() {
         let a = (1, ~"2");
         let b = a.clone();
-        assert_eq!(a.first(), b.first());
-        assert_eq!(a.second(), b.second());
+        assert_eq!(a, b);
     }
 
     #[test]
