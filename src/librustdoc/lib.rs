@@ -12,6 +12,7 @@
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
+#[crate_type = "rlib"];
 
 #[feature(globs, struct_variant, managed_boxes)];
 
