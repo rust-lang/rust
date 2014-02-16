@@ -920,11 +920,8 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
     UTF16Items { iter : v.iter() }
 }
 
-/// Decode a UTF-16 encoded vector `v` into a string.
-///
-/// # Failure
-///
-/// Fails on invalid UTF-16 data.
+/// Decode a UTF-16 encoded vector `v` into a string, returning `None`
+/// if `v` contains any invalid data.
 ///
 /// # Example
 ///
@@ -932,17 +929,23 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
 /// use std::str;
 ///
 /// // 𝄞music
-/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///          0x0073, 0x0069, 0x0063];
-/// assert_eq!(str::from_utf16(v), ~"𝄞music");
+/// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///              0x0073, 0x0069, 0x0063];
+/// assert_eq!(str::from_utf16(v), Some(~"𝄞music"));
+///
+/// // 𝄞mu<invalid>ic
+/// v[4] = 0xD800;
+/// assert_eq!(str::from_utf16(v), None);
 /// ```
-pub fn from_utf16(v: &[u16]) -> ~str {
-    utf16_items(v).map(|c| {
-            match c {
-                ScalarValue(c) => c,
-                LoneSurrogate(u) => fail!("from_utf16: found lone surrogate {}", u)
-            }
-        }).collect()
+pub fn from_utf16(v: &[u16]) -> Option<~str> {
+    let mut s = with_capacity(v.len() / 2);
+    for c in utf16_items(v) {
+        match c {
+            ScalarValue(c) => s.push_char(c),
+            LoneSurrogate(_) => return None
+        }
+    }
+    Some(s)
 }
 
 /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -3834,12 +3837,27 @@ mod tests {
             assert!(is_utf16(u));
             assert_eq!(s.to_utf16(), u);
 
-            assert_eq!(from_utf16(u), s);
+            assert_eq!(from_utf16(u).unwrap(), s);
             assert_eq!(from_utf16_lossy(u), s);
 
-            assert_eq!(from_utf16(s.to_utf16()), s);
-            assert_eq!(from_utf16(u).to_utf16(), u);
+            assert_eq!(from_utf16(s.to_utf16()).unwrap(), s);
+            assert_eq!(from_utf16(u).unwrap().to_utf16(), u);
         }
+    }
+
+    #[test]
+    fn test_utf16_invalid() {
+        // completely positive cases tested above.
+        // lead + eof
+        assert_eq!(from_utf16([0xD800]), None);
+        // lead + lead
+        assert_eq!(from_utf16([0xD800, 0xD800]), None);
+
+        // isolated trail
+        assert_eq!(from_utf16([0x0061, 0xDC00]), None);
+
+        // general
+        assert_eq!(from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
     }
 
     #[test]
