@@ -61,7 +61,7 @@
 //! let (port, chan) = Chan::new();
 //! spawn(proc() {
 //!     chan.send(10);
-//! })
+//! });
 //! assert_eq!(port.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks

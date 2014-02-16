@@ -82,7 +82,7 @@ function, but the `format!` macro is a syntax extension which allows it to
 leverage named parameters. Named parameters are listed at the end of the
 argument list and have the syntax:
 
-```
+```ignore
 identifier '=' expression
 ```
 
@@ -107,7 +107,7 @@ and if all references to one argument do not provide a type, then the format `?`
 is used (the type's rust-representation is printed). For example, this is an
 invalid format string:
 
-```
+```ignore
 {0:d} {0:s}
 ```
 
@@ -123,7 +123,7 @@ must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
 illegal to reference an argument as such. For example, this is another invalid
 format string:
 
-```
+```ignore
 {:.*s} {0:u}
 ```
 
@@ -334,7 +334,7 @@ This example is the equivalent of `{0:s}` essentially.
 The select method is a switch over a `&str` parameter, and the parameter *must*
 be of the type `&str`. An example of the syntax is:
 
-```
+```ignore
 {0, select, male{...} female{...} other{...}}
 ```
 
@@ -353,7 +353,7 @@ The plural method is a switch statement over a `uint` parameter, and the
 parameter *must* be a `uint`. A plural method in its full glory can be specified
 as:
 
-```
+```ignore
 {0, plural, offset=1 =1{...} two{...} many{...} other{...}}
 ```
 
@@ -381,7 +381,7 @@ should not be too alien. Arguments are formatted with python-like syntax,
 meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
 actual grammar for the formatting syntax is:
 
-```
+```ignore
 format_string := <text> [ format <text> ] *
 format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
 argument := integer | identifier

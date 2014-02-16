@@ -2011,7 +2011,7 @@ pub trait StrSlice<'a> {
     ///
     /// ## Output
     ///
-    /// ```
+    /// ```ignore
     /// 0: 中
     /// 3: 华
     /// 6: V

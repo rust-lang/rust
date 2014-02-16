@@ -100,34 +100,29 @@ rustdoc --test crate.rs
 
 ## Defining tests
 
-Rust documentation currently uses the markdown format, and code blocks can refer
-to any piece of code-related documentation, which isn't always rust. Because of
-this, only code blocks with the language of "rust" will be considered for
-testing.
+Rust documentation currently uses the markdown format, and rustdoc treats all
+code blocks as testable-by-default. In order to not run a test over a block of
+code, the `ignore` string can be added to the three-backtick form of markdown
+code block.
 
 ~~~
-```rust
+```
 // This is a testable code block
 ```
 
-```
+```ignore
 // This is not a testable code block
 ```
 
-    // This is not a testable code block (4-space indent)
+    // This is a testable code block (4-space indent)
 ~~~
 
-In addition to only testing "rust"-language code blocks, there are additional
-specifiers that can be used to dictate how a code block is tested:
+In addition to the `ignore` directive, you can specify that the test's execution
+should fail with the `should_fail` directive.
 
 ~~~
-```rust,ignore
-// This code block is ignored by rustdoc, but is passed through to the test
-// harness
-```
-
-```rust,should_fail
-// This code block is expected to generate a failure
+```should_fail
+// This code block is expected to generate a failure when run
 ```
 ~~~
 
@@ -143,7 +138,7 @@ that one can still write things like `#[deriving(Eq)]`).
 # the doc-generating tool.  In order to display them anyway in this particular
 # case, the character following the leading '#' is not a usual space like in
 # these first five lines but a non breakable one.
-# 
+#
 # // showing 'fib' in this documentation would just be tedious and detracts from
 # // what's actualy being documented.
 # fn fib(n: int) { n + 2 }
@@ -169,9 +164,6 @@ rustdoc --test lib.rs --test-args 'foo'
 
 // See what's possible when running tests
 rustdoc --test lib.rs --test-args '--help'
-
-// Run all ignored tests
-rustdoc --test lib.rs --test-args '--ignored'
 ~~~
 
 When testing a library, code examples will often show how functions are used,

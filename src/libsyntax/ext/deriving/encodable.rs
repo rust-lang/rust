@@ -17,8 +17,10 @@ Decodable)].
 
 For example, a type like:
 
+```ignore
     #[deriving(Encodable, Decodable)]
     struct Node {id: uint}
+```
 
 would generate two implementations like:
 
@@ -43,11 +45,14 @@ impl<D:Decoder> Decodable for node_id {
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
+```ignore
     #[deriving(Encodable, Decodable)]
     struct spanned<T> {node: T, span: Span}
+```
 
 would yield functions like:
 
+```ignore
     impl<
         S: Encoder,
         T: Encodable<S>
@@ -73,6 +78,7 @@ would yield functions like:
             })
         }
     }
+```
 */
 
 use ast::{MetaItem, Item, Expr, MutMutable};

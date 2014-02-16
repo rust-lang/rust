@@ -19,13 +19,16 @@ also be used. See that function for more details.
 
 # Example
 
- ```
+```
+use std::unstable::finally::Finally;
+# fn always_run_this() {}
+
 (|| {
-    ...
+    // ...
 }).finally(|| {
     always_run_this();
 })
- ```
+```
 */
 
 use ops::Drop;
@@ -69,13 +72,16 @@ impl<T> Finally<T> for fn() -> T {
  * # Example
  *
  * ```
+ * use std::unstable::finally::try_finally;
+ *
  * struct State<'a> { buffer: &'a mut [u8], len: uint }
+ * # let mut buf = [];
  * let mut state = State { buffer: buf, len: 0 };
  * try_finally(
  *     &mut state, (),
  *     |state, ()| {
  *         // use state.buffer, state.len
- *     }
+ *     },
  *     |state| {
  *         // use state.buffer, state.len to cleanup
  *     })
