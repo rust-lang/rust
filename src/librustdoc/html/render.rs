@@ -1379,11 +1379,11 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
         match c.impls.find(&it.id) {
             Some(v) => {
                 let mut non_trait = v.iter().filter(|p| {
-                    p.n0_ref().trait_.is_none()
+                    p.ref0().trait_.is_none()
                 });
                 let non_trait = non_trait.to_owned_vec();
                 let mut traits = v.iter().filter(|p| {
-                    p.n0_ref().trait_.is_some()
+                    p.ref0().trait_.is_some()
                 });
                 let traits = traits.to_owned_vec();
 

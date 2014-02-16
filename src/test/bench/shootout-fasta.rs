@@ -51,7 +51,7 @@ impl<'a> Iterator<u8> for AAGen<'a> {
     fn next(&mut self) -> Option<u8> {
         let r = self.rng.gen();
         self.data.iter()
-            .skip_while(|pc| pc.n0() < r)
+            .skip_while(|pc| pc.val0() < r)
             .map(|&(_, c)| c)
             .next()
     }
