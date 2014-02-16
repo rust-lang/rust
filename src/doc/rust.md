@@ -319,11 +319,13 @@ r##"foo #"# bar"##;                // foo #"# bar
 #### Number literals
 
 ~~~~ {.ebnf .gram}
-num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
-        | '0' [       [ dec_digit | '_' ] * num_suffix ?
-              | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
-              | 'o'   [ oct_digit | '_' ] + int_suffix ?
-              | 'x'   [ hex_digit | '_' ] + int_suffix ? ] ;
+num_lit : radix_lit num_suffix ; 
+
+radix_lit : nonzero_dec [ dec_digit | '_' ] *
+        | '0' [         [ dec_digit | '_' ] *
+               | 'b'    [ '1' | '0' | '_' ] +
+               | 'o'    [ oct_digit | '_' ] +
+               | 'x'    [ hex_digit | '_' ] + ] ;
 
 num_suffix : int_suffix | float_suffix ;
 
@@ -331,9 +333,9 @@ int_suffix : 'u' int_suffix_size ?
            | 'i' int_suffix_size ? ;
 int_suffix_size : [ '8' | '1' '6' | '3' '2' | '6' '4' ] ;
 
-float_suffix : [ exponent | '.' dec_lit exponent ? ] ? float_suffix_ty ? ;
+float_suffix : [ exponent | '.' radix_lit exponent ? ] ? float_suffix_ty ? ;
 float_suffix_ty : 'f' [ '3' '2' | '6' '4' ] ;
-exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
+exponent : ['E' | 'e' | 'p' | 'P'] ['-' | '+' ] ? dec_lit ;
 dec_lit : [ dec_digit | '_' ] + ;
 ~~~~
 
@@ -343,7 +345,7 @@ as they are differentiated by suffixes.
 
 ##### Integer literals
 
-An _integer literal_ has one of four forms:
+An _radix literal_ has one of four forms:
 
   * A _decimal literal_ starts with a *decimal digit* and continues with any
     mixture of *decimal digits* and _underscores_.
@@ -354,9 +356,9 @@ An _integer literal_ has one of four forms:
   * A _binary literal_ starts with the character sequence `U+0030` `U+0062`
     (`0b`) and continues as any mixture binary digits and underscores.
 
-An integer literal may be followed (immediately, without any spaces) by an
-_integer suffix_, which changes the type of the literal. There are two kinds
-of integer literal suffix:
+An integer literal consists of a radix literal and  may be followed 
+(immediately, without any spaces) by an _integer suffix_, which changes the
+type of the literal. There are two kinds of integer literal suffix:
 
   * The `i` and `u` suffixes give the literal type `int` or `uint`,
     respectively.
@@ -389,10 +391,11 @@ Examples of integer literals of various forms:
 
 A _floating-point literal_ has one of two forms:
 
-* Two _decimal literals_ separated by a period
+* Two _radix literals_ separated by a period
   character `U+002E` (`.`), with an optional _exponent_ trailing after the
-  second decimal literal.
-* A single _decimal literal_ followed by an _exponent_.
+  second decimal literal. Both radix literals must have the same base.
+* A single _radix literal_ followed by an _exponent_.
+* If the float literal is hexadecimal, an _exponent_ must be supplied.
 
 By default, a floating-point literal has a generic type, but will fall back to
 `f64`. A floating-point literal may be followed (immediately, without any
@@ -406,6 +409,8 @@ Examples of floating-point literals of various forms:
 123.0;                             // type f64
 0.1;                               // type f64
 0.1f32;                            // type f32
+0x4.0x432p-4_f32;                  // type f32
+0b1.0b10111011011000;              // type f64
 12E+99_f64;                        // type f64
 ~~~~
 
