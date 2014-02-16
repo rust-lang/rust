@@ -45,7 +45,7 @@ CFG_VERSION_WIN = $(subst -pre,,$(CFG_RELEASE))
 # and include all of the .d files in one fell swoop.
 ALL_OBJ_FILES :=
 
-ifneq ($(NO_MAKEFILE_DEPS),)
+ifneq ($(NO_MKFILE_DEPS),)
 MKFILE_DEPS :=
 else
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
