@@ -19,13 +19,16 @@
 //! values.
 
 use std::cast;
+use std::rt::env;
 use std::rt::Runtime;
-use std::rt::rtio;
 use std::rt::local::Local;
-use std::rt::task::{Task, BlockedTask};
+use std::rt::rtio;
+use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::NativeMutex;
+use std::unstable::raw;
 
+use context::Context;
 use coroutine::Coroutine;
 use sched::{Scheduler, SchedHandle, RunOnce};
 use stack::StackPool;
@@ -62,7 +65,7 @@ pub struct GreenTask {
     pool_id: uint,
 
     // See the comments in the scheduler about why this is necessary
-    nasty_deschedule_lock: Mutex,
+    nasty_deschedule_lock: NativeMutex,
 }
 
 pub enum TaskType {
@@ -73,6 +76,50 @@ pub enum TaskType {
 pub enum Home {
     AnySched,
     HomeSched(SchedHandle),
+}
+
+/// Trampoline code for all new green tasks which are running around. This
+/// function is passed through to Context::new as the initial rust landing pad
+/// for all green tasks. This code is actually called after the initial context
+/// switch onto a green thread.
+///
+/// The first argument to this function is the `~GreenTask` pointer, and the
+/// next two arguments are the user-provided procedure for running code.
+///
+/// The goal for having this weird-looking function is to reduce the number of
+/// allocations done on a green-task startup as much as possible.
+extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
+    // Acquire ownership of the `proc()`
+    let start: proc() = unsafe {
+        cast::transmute(raw::Procedure { code: code, env: env })
+    };
+
+    // Acquire ownership of the `~GreenTask`
+    let mut task: ~GreenTask = unsafe { cast::transmute(task) };
+
+    // First code after swap to this new context. Run our cleanup job
+    task.pool_id = {
+        let sched = task.sched.get_mut_ref();
+        sched.run_cleanup_job();
+        sched.task_state.increment();
+        sched.pool_id
+    };
+
+    // Convert our green task to a libstd task and then execute the code
+    // requested. This is the "try/catch" block for this green task and
+    // is the wrapper for *all* code run in the task.
+    let mut start = Some(start);
+    let task = task.swap().run(|| start.take_unwrap()());
+
+    // Once the function has exited, it's time to run the termination
+    // routine. This means we need to context switch one more time but
+    // clean ourselves up on the other end. Since we have no way of
+    // preserving a handle to the GreenTask down to this point, this
+    // unfortunately must call `GreenTask::convert`. In order to avoid
+    // this we could add a `terminate` function to the `Runtime` trait
+    // in libstd, but that seems less appropriate since the coversion
+    // method exists.
+    GreenTask::convert(task).terminate()
 }
 
 impl GreenTask {
@@ -89,9 +136,20 @@ impl GreenTask {
                      stack_size: Option<uint>,
                      home: Home,
                      start: proc()) -> ~GreenTask {
+        // Allocate ourselves a GreenTask structure
         let mut ops = GreenTask::new_typed(None, TypeGreen(Some(home)));
-        let start = GreenTask::build_start_wrapper(start, ops.as_uint());
-        ops.coroutine = Some(Coroutine::new(stack_pool, stack_size, start));
+
+        // Allocate a stack for us to run on
+        let stack_size = stack_size.unwrap_or_else(|| env::min_stack());
+        let mut stack = stack_pool.take_stack(stack_size);
+        let context = Context::new(bootstrap_green_task, ops.as_uint(), start,
+                                   &mut stack);
+
+        // Package everything up in a coroutine and return
+        ops.coroutine = Some(Coroutine {
+            current_stack_segment: stack,
+            saved_context: context,
+        });
         return ops;
     }
 
@@ -105,7 +163,7 @@ impl GreenTask {
             task_type: task_type,
             sched: None,
             handle: None,
-            nasty_deschedule_lock: unsafe { Mutex::new() },
+            nasty_deschedule_lock: unsafe { NativeMutex::new() },
             task: Some(~Task::new()),
         }
     }
@@ -131,8 +189,7 @@ impl GreenTask {
             task.stdout = stdout;
             match notify_chan {
                 Some(chan) => {
-                    let on_exit = proc(task_result) { chan.send(task_result) };
-                    task.death.on_exit = Some(on_exit);
+                    task.death.on_exit = Some(SendMessage(chan));
                 }
                 None => {}
             }
@@ -154,46 +211,6 @@ impl GreenTask {
                 green
             }
             None => rtabort!("not a green task any more?"),
-        }
-    }
-
-    /// Builds a function which is the actual starting execution point for a
-    /// rust task. This function is the glue necessary to execute the libstd
-    /// task and then clean up the green thread after it exits.
-    ///
-    /// The second argument to this function is actually a transmuted copy of
-    /// the `GreenTask` pointer. Context switches in the scheduler silently
-    /// transfer ownership of the `GreenTask` to the other end of the context
-    /// switch, so because this is the first code that is running in this task,
-    /// it must first re-acquire ownership of the green task.
-    pub fn build_start_wrapper(start: proc(), ops: uint) -> proc() {
-        proc() {
-            // First code after swap to this new context. Run our
-            // cleanup job after we have re-acquired ownership of the green
-            // task.
-            let mut task: ~GreenTask = unsafe { GreenTask::from_uint(ops) };
-            task.pool_id = {
-                let sched = task.sched.get_mut_ref();
-                sched.run_cleanup_job();
-                sched.task_state.increment();
-                sched.pool_id
-            };
-
-            // Convert our green task to a libstd task and then execute the code
-            // requested. This is the "try/catch" block for this green task and
-            // is the wrapper for *all* code run in the task.
-            let mut start = Some(start);
-            let task = task.swap().run(|| start.take_unwrap()());
-
-            // Once the function has exited, it's time to run the termination
-            // routine. This means we need to context switch one more time but
-            // clean ourselves up on the other end. Since we have no way of
-            // preserving a handle to the GreenTask down to this point, this
-            // unfortunately must call `GreenTask::convert`. In order to avoid
-            // this we could add a `terminate` function to the `Runtime` trait
-            // in libstd, but that seems less appropriate since the coversion
-            // method exists.
-            GreenTask::convert(task).terminate();
         }
     }
 
@@ -279,9 +296,9 @@ impl GreenTask {
         Local::put(self.swap());
     }
 
-    fn terminate(mut ~self) {
+    fn terminate(mut ~self) -> ! {
         let sched = self.sched.take_unwrap();
-        sched.terminate_current_task(self);
+        sched.terminate_current_task(self)
     }
 
     // This function is used to remotely wakeup this green task back on to its
@@ -305,11 +322,10 @@ impl GreenTask {
     // uncontended except for when the task is rescheduled).
     fn reawaken_remotely(mut ~self) {
         unsafe {
-            let mtx = &mut self.nasty_deschedule_lock as *mut Mutex;
+            let mtx = &mut self.nasty_deschedule_lock as *mut NativeMutex;
             let handle = self.handle.get_mut_ref() as *mut SchedHandle;
-            (*mtx).lock();
+            let _guard = (*mtx).lock();
             (*handle).send(RunOnce(self));
-            (*mtx).unlock();
         }
     }
 }
@@ -460,12 +476,6 @@ impl Runtime for GreenTask {
     fn can_block(&self) -> bool { false }
 
     fn wrap(~self) -> ~Any { self as ~Any }
-}
-
-impl Drop for GreenTask {
-    fn drop(&mut self) {
-        unsafe { self.nasty_deschedule_lock.destroy(); }
-    }
 }
 
 #[cfg(test)]

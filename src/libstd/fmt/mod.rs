@@ -82,7 +82,7 @@ function, but the `format!` macro is a syntax extension which allows it to
 leverage named parameters. Named parameters are listed at the end of the
 argument list and have the syntax:
 
-```
+```ignore
 identifier '=' expression
 ```
 
@@ -107,7 +107,7 @@ and if all references to one argument do not provide a type, then the format `?`
 is used (the type's rust-representation is printed). For example, this is an
 invalid format string:
 
-```
+```ignore
 {0:d} {0:s}
 ```
 
@@ -123,7 +123,7 @@ must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
 illegal to reference an argument as such. For example, this is another invalid
 format string:
 
-```
+```ignore
 {:.*s} {0:u}
 ```
 
@@ -334,7 +334,7 @@ This example is the equivalent of `{0:s}` essentially.
 The select method is a switch over a `&str` parameter, and the parameter *must*
 be of the type `&str`. An example of the syntax is:
 
-```
+```ignore
 {0, select, male{...} female{...} other{...}}
 ```
 
@@ -353,7 +353,7 @@ The plural method is a switch statement over a `uint` parameter, and the
 parameter *must* be a `uint`. A plural method in its full glory can be specified
 as:
 
-```
+```ignore
 {0, plural, offset=1 =1{...} two{...} many{...} other{...}}
 ```
 
@@ -381,7 +381,7 @@ should not be too alien. Arguments are formatted with python-like syntax,
 meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
 actual grammar for the formatting syntax is:
 
-```
+```ignore
 format_string := <text> [ format <text> ] *
 format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
 argument := integer | identifier
@@ -477,6 +477,7 @@ will look like `"\\{"`.
 
 */
 
+use any;
 use cast;
 use char::Char;
 use container::Container;
@@ -489,7 +490,6 @@ use repr;
 use result::{Ok, Err};
 use str::StrSlice;
 use str;
-use util;
 use vec::ImmutableVector;
 use vec;
 
@@ -524,8 +524,8 @@ pub struct Formatter<'a> {
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 pub struct Argument<'a> {
-    priv formatter: extern "Rust" fn(&util::Void, &mut Formatter) -> Result,
-    priv value: &'a util::Void,
+    priv formatter: extern "Rust" fn(&any::Void, &mut Formatter) -> Result,
+    priv value: &'a any::Void,
 }
 
 impl<'a> Arguments<'a> {
@@ -794,11 +794,11 @@ impl<'a> Formatter<'a> {
             rt::CountImplied => { None }
             rt::CountIsParam(i) => {
                 let v = self.args[i].value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
+                unsafe { Some(*(v as *any::Void as *uint)) }
             }
             rt::CountIsNextParam => {
                 let v = self.curarg.next().unwrap().value;
-                unsafe { Some(*(v as *util::Void as *uint)) }
+                unsafe { Some(*(v as *any::Void as *uint)) }
             }
         }
     }
@@ -1200,7 +1200,17 @@ impl<T> Pointer for *T {
 }
 impl<T> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        secret_pointer(&(*self as *T), f)
+        secret_pointer::<*T>(&(*self as *T), f)
+    }
+}
+impl<'a, T> Pointer for &'a T {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_pointer::<*T>(&(&**self as *T), f)
+    }
+}
+impl<'a, T> Pointer for &'a mut T {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_pointer::<*T>(&(&**self as *T), f)
     }
 }
 

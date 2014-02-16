@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod sync;
-extern mod arena;
+extern crate sync;
+extern crate arena;
 
 use std::iter::range_step;
 use sync::Future;

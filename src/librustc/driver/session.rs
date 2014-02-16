@@ -22,9 +22,7 @@ use syntax::ast::{IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
-use syntax::{ast, codemap};
-use syntax::abi;
-use syntax::parse::token;
+use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
@@ -132,7 +130,6 @@ pub struct Options {
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
     cfg: ast::CrateConfig,
-    binary: ~str,
     test: bool,
     parse_only: bool,
     no_trans: bool,
@@ -302,23 +299,6 @@ impl Session_ {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
     }
-
-    // DEPRECATED. This function results in a lot of allocations when they
-    // are not necessary.
-    pub fn str_of(&self, id: ast::Ident) -> ~str {
-        let string = token::get_ident(id.name);
-        string.get().to_str()
-    }
-
-    // pointless function, now...
-    pub fn ident_of(&self, st: &str) -> ast::Ident {
-        token::str_to_ident(st)
-    }
-
-    // pointless function, now...
-    pub fn intr(&self) -> @syntax::parse::token::IdentInterner {
-        token::get_ident_interner()
-    }
 }
 
 /// Some reasonable defaults
@@ -334,7 +314,6 @@ pub fn basic_options() -> @Options {
         maybe_sysroot: None,
         target_triple: host_triple(),
         cfg: ~[],
-        binary: ~"rustc",
         test: false,
         parse_only: false,
         no_trans: false,
@@ -458,7 +437,7 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
+pub fn building_library(options: &Options, krate: &ast::Crate) -> bool {
     if options.test { return false }
     for output in options.crate_types.iter() {
         match *output {
@@ -466,7 +445,7 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
             CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
-    match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
+    match syntax::attr::first_attr_value_str_by_name(krate.attrs, "crate_type") {
         Some(s) => {
             s.equiv(&("lib")) ||
             s.equiv(&("rlib")) ||

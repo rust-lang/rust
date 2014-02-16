@@ -138,6 +138,12 @@ $$(TBIN$(1)_T_$(2)_H_$(3))/:
 $$(TLIB$(1)_T_$(2)_H_$(3))/:
 	mkdir -p $$@
 
+$$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a: \
+	    $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),compiler-rt) \
+	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 	    $$(RT_OUTPUT_DIR_$(2))/$$(call CFG_STATIC_LIB_NAME_$(2),morestack) \
 	    | $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)

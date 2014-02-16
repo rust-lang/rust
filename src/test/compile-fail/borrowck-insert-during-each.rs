@@ -23,9 +23,10 @@ impl Foo {
 }
 
 fn bar(f: &mut Foo) {
-  f.foo(|a| {
-    f.n.insert(*a); //~ ERROR cannot borrow
-  })
+  f.foo(
+        |a| { //~ ERROR closure requires unique access to `f`
+            f.n.insert(*a);
+        })
 }
 
 fn main() {

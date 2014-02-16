@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:pub_use_mods_xcrate.rs
 
 #[allow(unused_imports)];
 
-extern mod pub_use_mods_xcrate;
+extern crate pub_use_mods_xcrate;
 use pub_use_mods_xcrate::a::c;
 
 pub fn main(){}

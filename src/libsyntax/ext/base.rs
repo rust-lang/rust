@@ -20,7 +20,6 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
-use std::unstable::dynamic_lib::DynamicLibrary;
 
 // new-style macro! tt code:
 //
@@ -36,7 +35,7 @@ pub struct MacroDef {
 }
 
 pub type ItemDecorator =
-    fn(&mut ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
+    fn(&mut ExtCtxt, Span, @ast::MetaItem, @ast::Item, |@ast::Item|);
 
 pub struct BasicMacroExpander {
     expander: MacroExpanderFn,
@@ -143,8 +142,6 @@ pub struct BlockInfo {
     macros_escape : bool,
     // what are the pending renames?
     pending_renames : RenameList,
-    // references for crates loaded in this scope
-    macro_crates: ~[DynamicLibrary],
 }
 
 impl BlockInfo {
@@ -152,7 +149,6 @@ impl BlockInfo {
         BlockInfo {
             macros_escape: false,
             pending_renames: ~[],
-            macro_crates: ~[],
         }
     }
 }
@@ -268,7 +264,7 @@ pub struct MacroCrate {
 }
 
 pub trait CrateLoader {
-    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate;
+    fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate;
     fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> ~[~str];
     fn get_registrar_symbol(&mut self, crate_num: ast::CrateNum) -> Option<~str>;
 }
@@ -444,8 +440,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                let interned_str = token::get_ident(ident.name);
-                return Some(interned_str.get().to_str())
+                return Some(token::get_ident(ident).get().to_str())
             }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }
@@ -549,10 +544,6 @@ impl SyntaxEnv {
 
     pub fn insert(&mut self, k: Name, v: SyntaxExtension) {
         self.find_escape_frame().map.insert(k, v);
-    }
-
-    pub fn insert_macro_crate(&mut self, lib: DynamicLibrary) {
-        self.find_escape_frame().info.macro_crates.push(lib);
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {

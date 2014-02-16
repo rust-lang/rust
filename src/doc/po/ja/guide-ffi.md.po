@@ -70,7 +70,7 @@ msgstr "## 最小限の例"
 #. type: Plain text
 #: src/doc/guide-ffi.md:323
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern crate world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "struct RustObject {\n"
 "    a: i32,\n"
@@ -79,7 +79,7 @@ msgid ""
 msgstr ""
 "~~~~ {.ignore}\n"
 "// main.rs\n"
-"extern mod world;\n"
+"extern crate world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
 "~~~~"
 

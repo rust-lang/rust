@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 
 struct complainer {
-  c: SharedChan<bool>,
+  c: Chan<bool>,
 }
 
 impl Drop for complainer {
@@ -26,20 +26,20 @@ impl Drop for complainer {
     }
 }
 
-fn complainer(c: SharedChan<bool>) -> complainer {
+fn complainer(c: Chan<bool>) -> complainer {
     error!("Hello!");
     complainer {
         c: c
     }
 }
 
-fn f(c: SharedChan<bool>) {
+fn f(c: Chan<bool>) {
     let _c = complainer(c);
     fail!();
 }
 
 pub fn main() {
-    let (p, c) = SharedChan::new();
+    let (p, c) = Chan::new();
     task::spawn(proc() f(c.clone()));
     error!("hiiiiiiiii");
     assert!(p.recv());

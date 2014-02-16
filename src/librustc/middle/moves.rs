@@ -209,7 +209,7 @@ impl visit::Visitor<()> for VisitContext {
 
 pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
-                     crate: &Crate) -> MoveMaps
+                     krate: &Crate) -> MoveMaps
 {
     let mut visit_cx = VisitContext {
         tcx: tcx,
@@ -221,7 +221,7 @@ pub fn compute_moves(tcx: ty::ctxt,
         }
     };
     let visit_cx = &mut visit_cx;
-    visit::walk_crate(visit_cx, crate, ());
+    visit::walk_crate(visit_cx, krate, ());
     return visit_cx.move_maps;
 }
 
@@ -382,7 +382,7 @@ impl VisitContext {
                 }
             }
 
-            ExprCall(callee, ref args, _) => {    // callee(args)
+            ExprCall(callee, ref args) => {    // callee(args)
                 // Figure out whether the called function is consumed.
                 let mode = match ty::get(ty::expr_ty(self.tcx, callee)).sty {
                     ty::ty_closure(ref cty) => {
@@ -412,7 +412,7 @@ impl VisitContext {
                 self.use_fn_args(callee.id, *args);
             }
 
-            ExprMethodCall(callee_id, _, _, ref args, _) => { // callee.m(args)
+            ExprMethodCall(callee_id, _, _, ref args) => { // callee.m(args)
                 self.use_fn_args(callee_id, *args);
             }
 

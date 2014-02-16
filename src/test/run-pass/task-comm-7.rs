@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 
 #[allow(dead_assignment)];
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &SharedChan<int>, start: int,
+fn test00_start(c: &Chan<int>, start: int,
                 number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
@@ -27,7 +27,7 @@ fn test00_start(c: &SharedChan<int>, start: int,
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
     let number_of_messages: int = 10;
 
     let c = ch.clone();

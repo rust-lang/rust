@@ -277,7 +277,7 @@ use str::{StrSlice, OwnedStr};
 use str;
 use to_str::ToStr;
 use uint;
-use unstable::finally::Finally;
+use unstable::finally::try_finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
 use vec;
 
@@ -473,25 +473,33 @@ pub trait Reader {
     /// pushed on to the vector, otherwise the amount `len` bytes couldn't be
     /// read (an error was encountered), and the error is returned.
     fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
+        struct State<'a> {
+            buf: &'a mut ~[u8],
+            total_read: uint
+        }
+
         let start_len = buf.len();
-        let mut total_read = 0;
+        let mut s = State { buf: buf, total_read: 0 };
 
-        buf.reserve_additional(len);
-        unsafe { buf.set_len(start_len + len); }
+        s.buf.reserve_additional(len);
+        unsafe { s.buf.set_len(start_len + len); }
 
-        (|| {
-            while total_read < len {
-                let len = buf.len();
-                let slice = buf.mut_slice(start_len + total_read, len);
-                match self.read(slice) {
-                    Ok(nread) => {
-                        total_read += nread;
+        try_finally(
+            &mut s, (),
+            |s, _| {
+                while s.total_read < len {
+                    let len = s.buf.len();
+                    let slice = s.buf.mut_slice(start_len + s.total_read, len);
+                    match self.read(slice) {
+                        Ok(nread) => {
+                            s.total_read += nread;
+                        }
+                        Err(e) => return Err(e)
                     }
-                    Err(e) => return Err(e)
                 }
-            }
-            Ok(())
-        }).finally(|| unsafe { buf.set_len(start_len + total_read) })
+                Ok(())
+            },
+            |s| unsafe { s.buf.set_len(start_len + s.total_read) })
     }
 
     /// Reads `len` bytes and gives you back a new vector of length `len`
@@ -771,6 +779,13 @@ pub trait Reader {
         self.read_byte().map(|i| i as i8)
     }
 
+    /// Creates a wrapper around a mutable reference to the reader.
+    ///
+    /// This is useful to allow applying adaptors while still
+    /// retaining ownership of the original value.
+    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self> {
+        RefReader { inner: self }
+    }
 }
 
 impl Reader for ~Reader {
@@ -779,6 +794,14 @@ impl Reader for ~Reader {
 
 impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
+}
+
+pub struct RefReader<'a, R> {
+    priv inner: &'a mut R
+}
+
+impl<'a, R: Reader> Reader for RefReader<'a, R> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
 }
 
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
@@ -961,6 +984,14 @@ pub trait Writer {
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
+
+    /// Creates a wrapper around a mutable reference to the writer.
+    ///
+    /// This is useful to allow applying wrappers while still
+    /// retaining ownership of the original value.
+    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self> {
+        RefWriter { inner: self }
+    }
 }
 
 impl Writer for ~Writer {
@@ -972,6 +1003,16 @@ impl<'a> Writer for &'a mut Writer {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
+
+pub struct RefWriter<'a, W> {
+    inner: &'a mut W
+}
+
+impl<'a, W: Writer> Writer for RefWriter<'a, W> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
+    fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
+}
+
 
 pub trait Stream: Reader + Writer { }
 
@@ -1192,19 +1233,21 @@ pub enum SeekStyle {
     SeekCur,
 }
 
-/// # FIXME
-/// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     /// Return position of file cursor in the stream
     fn tell(&self) -> IoResult<u64>;
 
     /// Seek to an offset in a stream
     ///
-    /// A successful seek clears the EOF indicator.
+    /// A successful seek clears the EOF indicator. Seeking beyond EOF is
+    /// allowed, but seeking before position 0 is not allowed.
     ///
-    /// # FIXME
+    /// # Errors
     ///
-    /// * What is the behavior when seeking past the end of a stream?
+    /// * Seeking to a negative offset is considered an error
+    /// * Seeking past the end of the stream does not modify the underlying
+    ///   stream, but the next write may cause the previous data to be filled in
+    ///   with a bit pattern.
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()>;
 }
 

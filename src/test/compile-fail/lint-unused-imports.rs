@@ -14,8 +14,8 @@
 
 use cal = bar::c::cc;
 
-use std::util::*;              // shouldn't get errors for not using
-                                // everything imported
+use std::mem::*;            // shouldn't get errors for not using
+                            // everything imported
 
 // Should get errors for both 'Some' and 'None'
 use std::option::{Some, None}; //~ ERROR unused import
@@ -61,8 +61,9 @@ mod bar {
 
 fn main() {
     cal(foo::Point{x:3, y:9});
-    let a = 3;
-    id(a);
+    let mut a = 3;
+    let mut b = 4;
+    swap(&mut a, &mut b);
     test::C.b();
     let _a = from_elem(0, 0);
 }

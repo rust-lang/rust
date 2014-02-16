@@ -59,7 +59,7 @@ This `for` loop syntax can be applied to any iterator over any type.
 ## Iteration protocol and more
 
 More detailed information about iterators can be found in the [container
-tutorial](http://static.rust-lang.org/doc/master/tutorial-container.html) with
+guide](http://static.rust-lang.org/doc/master/guide-container.html) with
 the rest of the rust manuals.
 
 */
@@ -71,7 +71,7 @@ use ops::{Add, Mul, Sub};
 use cmp::{Eq, Ord};
 use clone::Clone;
 use uint;
-use util;
+use mem;
 
 /// Conversion from an `Iterator`
 pub trait FromIterator<A> {
@@ -701,7 +701,7 @@ impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T 
     fn reverse_(&mut self) {
         loop {
             match (self.next(), self.next_back()) {
-                (Some(x), Some(y)) => util::swap(x, y),
+                (Some(x), Some(y)) => mem::swap(x, y),
                 _ => break
             }
         }
@@ -2611,7 +2611,7 @@ mod tests {
         assert_eq!(vi.size_hint(), (10, Some(10)));
 
         assert_eq!(c.take(5).size_hint(), (5, Some(5)));
-        assert_eq!(c.skip(5).size_hint().second(), None);
+        assert_eq!(c.skip(5).size_hint().val1(), None);
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));

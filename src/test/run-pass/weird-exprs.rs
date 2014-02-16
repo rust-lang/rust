@@ -11,7 +11,7 @@
 #[feature(managed_boxes)];
 
 use std::cell::Cell;
-use std::util;
+use std::mem::swap;
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
@@ -59,7 +59,7 @@ fn notsure() {
     let mut _y = (_x = 0) == (_x = 0);
     let mut _z = (_x = 0) < (_x = 0);
     let _a = (_x += 0) == (_x = 0);
-    let _b = util::swap(&mut _y, &mut _z) == util::swap(&mut _y, &mut _z);
+    let _b = swap(&mut _y, &mut _z) == swap(&mut _y, &mut _z);
 }
 
 fn canttouchthis() -> uint {

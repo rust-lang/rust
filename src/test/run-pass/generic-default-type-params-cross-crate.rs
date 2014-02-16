@@ -10,12 +10,12 @@
 
 // aux-build:default_type_params_xc.rs
 
-// xfail-fast #[feature] doesn't work with check-fast
+// ignore-fast #[feature] doesn't work with check-fast
 #[feature(default_type_params)];
 
 #[allow(default_type_param_usage)];
 
-extern mod default_type_params_xc;
+extern crate default_type_params_xc;
 
 struct Vec<T, A = default_type_params_xc::Heap>;
 

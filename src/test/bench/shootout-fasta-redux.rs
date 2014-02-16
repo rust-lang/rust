@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test reading from os::args()[1] - bogus!
+// ignore-test reading from os::args()[1] - bogus!
 
 use std::cast::transmute;
 use std::from_str::FromStr;

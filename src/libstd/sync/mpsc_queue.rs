@@ -39,12 +39,10 @@
 //                         /queues/non-intrusive-mpsc-node-based-queue
 
 use cast;
-use clone::Clone;
 use kinds::Send;
 use ops::Drop;
 use option::{Option, None, Some};
 use ptr::RawPtr;
-use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
 /// A result of the `pop` function.
@@ -65,40 +63,12 @@ struct Node<T> {
     value: Option<T>,
 }
 
-struct State<T, P> {
-    head: AtomicPtr<Node<T>>,
-    tail: *mut Node<T>,
-    packet: P,
-}
-
-/// The consumer half of this concurrent queue. This half is used to receive
-/// data from the producers.
-pub struct Consumer<T, P> {
-    priv state: UnsafeArc<State<T, P>>,
-}
-
-/// The production half of the concurrent queue. This handle may be cloned in
-/// order to make handles for new producers.
-pub struct Producer<T, P> {
-    priv state: UnsafeArc<State<T, P>>,
-}
-
-impl<T: Send, P: Send> Clone for Producer<T, P> {
-    fn clone(&self) -> Producer<T, P> {
-        Producer { state: self.state.clone() }
-    }
-}
-
-/// Creates a new MPSC queue. The given argument `p` is a user-defined "packet"
-/// of information which will be shared by the consumer and the producer which
-/// can be re-acquired via the `packet` function. This is helpful when extra
-/// state is shared between the producer and consumer, but note that there is no
-/// synchronization performed of this data.
-pub fn queue<T: Send, P: Send>(p: P) -> (Consumer<T, P>, Producer<T, P>) {
-    unsafe {
-        let (a, b) = UnsafeArc::new2(State::new(p));
-        (Consumer { state: a }, Producer { state: b })
-    }
+/// The multi-producer single-consumer structure. This is not cloneable, but it
+/// may be safely shared so long as it is guaranteed that there is only one
+/// popper at a time (many pushers are allowed).
+pub struct Queue<T> {
+    priv head: AtomicPtr<Node<T>>,
+    priv tail: *mut Node<T>,
 }
 
 impl<T> Node<T> {
@@ -110,41 +80,66 @@ impl<T> Node<T> {
     }
 }
 
-impl<T: Send, P: Send> State<T, P> {
-    unsafe fn new(p: P) -> State<T, P> {
-        let stub = Node::new(None);
-        State {
+impl<T: Send> Queue<T> {
+    /// Creates a new queue that is safe to share among multiple producers and
+    /// one consumer.
+    pub fn new() -> Queue<T> {
+        let stub = unsafe { Node::new(None) };
+        Queue {
             head: AtomicPtr::new(stub),
             tail: stub,
-            packet: p,
         }
     }
 
-    unsafe fn push(&mut self, t: T) {
-        let n = Node::new(Some(t));
-        let prev = self.head.swap(n, AcqRel);
-        (*prev).next.store(n, Release);
+    /// Pushes a new value onto this queue.
+    pub fn push(&mut self, t: T) {
+        unsafe {
+            let n = Node::new(Some(t));
+            let prev = self.head.swap(n, AcqRel);
+            (*prev).next.store(n, Release);
+        }
     }
 
-    unsafe fn pop(&mut self) -> PopResult<T> {
-        let tail = self.tail;
-        let next = (*tail).next.load(Acquire);
+    /// Pops some data from this queue.
+    ///
+    /// Note that the current implementation means that this function cannot
+    /// return `Option<T>`. It is possible for this queue to be in an
+    /// inconsistent state where many pushes have suceeded and completely
+    /// finished, but pops cannot return `Some(t)`. This inconsistent state
+    /// happens when a pusher is pre-empted at an inopportune moment.
+    ///
+    /// This inconsistent state means that this queue does indeed have data, but
+    /// it does not currently have access to it at this time.
+    pub fn pop(&mut self) -> PopResult<T> {
+        unsafe {
+            let tail = self.tail;
+            let next = (*tail).next.load(Acquire);
 
-        if !next.is_null() {
-            self.tail = next;
-            assert!((*tail).value.is_none());
-            assert!((*next).value.is_some());
-            let ret = (*next).value.take_unwrap();
-            let _: ~Node<T> = cast::transmute(tail);
-            return Data(ret);
+            if !next.is_null() {
+                self.tail = next;
+                assert!((*tail).value.is_none());
+                assert!((*next).value.is_some());
+                let ret = (*next).value.take_unwrap();
+                let _: ~Node<T> = cast::transmute(tail);
+                return Data(ret);
+            }
+
+            if self.head.load(Acquire) == tail {Empty} else {Inconsistent}
         }
+    }
 
-        if self.head.load(Acquire) == tail {Empty} else {Inconsistent}
+    /// Attempts to pop data from this queue, but doesn't attempt too hard. This
+    /// will canonicalize inconsistent states to a `None` value.
+    pub fn casual_pop(&mut self) -> Option<T> {
+        match self.pop() {
+            Data(t) => Some(t),
+            Empty | Inconsistent => None,
+        }
     }
 }
 
 #[unsafe_destructor]
-impl<T: Send, P: Send> Drop for State<T, P> {
+impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = self.tail;
@@ -157,80 +152,39 @@ impl<T: Send, P: Send> Drop for State<T, P> {
     }
 }
 
-impl<T: Send, P: Send> Producer<T, P> {
-    /// Pushes a new value onto this queue.
-    pub fn push(&mut self, value: T) {
-        unsafe { (*self.state.get()).push(value) }
-    }
-    /// Gets an unsafe pointer to the user-defined packet shared by the
-    /// producers and the consumer. Note that care must be taken to ensure that
-    /// the lifetime of the queue outlives the usage of the returned pointer.
-    pub unsafe fn packet(&self) -> *mut P {
-        &mut (*self.state.get()).packet as *mut P
-    }
-}
-
-impl<T: Send, P: Send> Consumer<T, P> {
-    /// Pops some data from this queue.
-    ///
-    /// Note that the current implementation means that this function cannot
-    /// return `Option<T>`. It is possible for this queue to be in an
-    /// inconsistent state where many pushes have suceeded and completely
-    /// finished, but pops cannot return `Some(t)`. This inconsistent state
-    /// happens when a pusher is pre-empted at an inopportune moment.
-    ///
-    /// This inconsistent state means that this queue does indeed have data, but
-    /// it does not currently have access to it at this time.
-    pub fn pop(&mut self) -> PopResult<T> {
-        unsafe { (*self.state.get()).pop() }
-    }
-    /// Attempts to pop data from this queue, but doesn't attempt too hard. This
-    /// will canonicalize inconsistent states to a `None` value.
-    pub fn casual_pop(&mut self) -> Option<T> {
-        match self.pop() {
-            Data(t) => Some(t),
-            Empty | Inconsistent => None,
-        }
-    }
-    /// Gets an unsafe pointer to the underlying user-defined packet. See
-    /// `Producer.packet` for more information.
-    pub unsafe fn packet(&self) -> *mut P {
-        &mut (*self.state.get()).packet as *mut P
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use prelude::*;
 
-    use super::{queue, Data, Empty, Inconsistent};
     use native;
+    use super::{Queue, Data, Empty, Inconsistent};
+    use sync::arc::UnsafeArc;
 
     #[test]
     fn test_full() {
-        let (_, mut p) = queue(());
-        p.push(~1);
-        p.push(~2);
+        let mut q = Queue::new();
+        q.push(~1);
+        q.push(~2);
     }
 
     #[test]
     fn test() {
         let nthreads = 8u;
         let nmsgs = 1000u;
-        let (mut c, p) = queue(());
-        match c.pop() {
+        let mut q = Queue::new();
+        match q.pop() {
             Empty => {}
             Inconsistent | Data(..) => fail!()
         }
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
+        let q = UnsafeArc::new(q);
 
         for _ in range(0, nthreads) {
-            let q = p.clone();
             let chan = chan.clone();
+            let q = q.clone();
             native::task::spawn(proc() {
-                let mut q = q;
                 for i in range(0, nmsgs) {
-                    q.push(i);
+                    unsafe { (*q.get()).push(i); }
                 }
                 chan.send(());
             });
@@ -238,11 +192,12 @@ mod tests {
 
         let mut i = 0u;
         while i < nthreads * nmsgs {
-            match c.pop() {
+            match unsafe { (*q.get()).pop() } {
                 Empty | Inconsistent => {},
                 Data(_) => { i += 1 }
             }
         }
+        drop(chan);
         for _ in range(0, nthreads) {
             port.recv();
         }

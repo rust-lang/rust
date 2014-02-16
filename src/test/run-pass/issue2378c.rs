@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,10 @@
 
 // aux-build:issue2378a.rs
 // aux-build:issue2378b.rs
-// xfail-fast - check-fast doesn't understand aux-build
+// ignore-fast - check-fast doesn't understand aux-build
 
-extern mod issue2378a;
-extern mod issue2378b;
+extern crate issue2378a;
+extern crate issue2378b;
 
 use issue2378a::{just};
 use issue2378b::{two_maybes};

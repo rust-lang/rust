@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:crateresolve8-1.rs
 
 #[crate_id="crateresolve8#0.1"];
 
-extern mod crateresolve8 = "crateresolve8#0.1";
-//extern mod crateresolve8(vers = "0.1");
+extern crate crateresolve8 = "crateresolve8#0.1";
+//extern crate crateresolve8(vers = "0.1");
 
 pub fn main() {
     assert_eq!(crateresolve8::f(), 20);

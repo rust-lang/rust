@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// xfail-android (FIXME #11419)
+// ignore-fast
+// ignore-android (FIXME #11419)
 // exec-env:RUST_LOG=info
 
 #[no_uv];
-extern mod native;
+extern crate native;
 
 use std::fmt;
 use std::io::{PortReader, ChanWriter};

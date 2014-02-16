@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast: aux-build not compatible with fast
+// ignore-fast: aux-build not compatible with fast
 // aux-build:extern_calling_convention.rs
 
-extern mod extern_calling_convention;
+extern crate extern_calling_convention;
 
 use extern_calling_convention::foo;
 

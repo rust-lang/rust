@@ -137,7 +137,7 @@ mod test {
         static mut o: Once = ONCE_INIT;
         static mut run: bool = false;
 
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         for _ in range(0, 10) {
             let c = c.clone();
             spawn(proc() {

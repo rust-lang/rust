@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast Feature gating doesn't work
-// xfail-stage1
-// xfail-pretty
-// xfail-android
+// ignore-fast Feature gating doesn't work
+// ignore-stage1
+// ignore-pretty
+// ignore-cross-compile
 
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 static static_val: u32 = fourcc!("foo ");
 static static_val_be: u32 = fourcc!("foo ", big);

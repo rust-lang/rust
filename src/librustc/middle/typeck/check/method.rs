@@ -105,7 +105,6 @@ use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic, NodeId};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::parse::token;
 
 #[deriving(Eq)]
@@ -556,9 +555,8 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        let method_name = token::get_ident(self.m_name);
         debug!("push_candidates_from_impl: {} {} {}",
-               method_name.get(),
+               token::get_name(self.m_name),
                impl_info.ident.repr(self.tcx()),
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
@@ -788,7 +786,7 @@ impl<'a> LookupContext<'a> {
 
             ty_err => None,
 
-            ty_unboxed_vec(_) | ty_type | ty_infer(TyVar(_)) => {
+            ty_unboxed_vec(_) | ty_infer(TyVar(_)) => {
                 self.bug(format!("unexpected type: {}",
                               self.ty_to_str(self_ty)));
             }
@@ -1297,22 +1295,8 @@ impl<'a> LookupContext<'a> {
     }
 
     fn report_static_candidate(&self, idx: uint, did: DefId) {
-        let span = if did.crate == ast::LOCAL_CRATE {
-            {
-                match self.tcx().items.find(did.node) {
-                  Some(ast_map::NodeMethod(m, _, _)) => m.span,
-                  Some(ast_map::NodeTraitMethod(trait_method, _, _)) => {
-                      match *trait_method {
-                          ast::Provided(m) => m.span,
-                          _ => {
-                              fail!("report_static_candidate, bad item {:?}",
-                                    did)
-                          }
-                      }
-                  }
-                  _ => fail!("report_static_candidate: bad item {:?}", did)
-                }
-            }
+        let span = if did.krate == ast::LOCAL_CRATE {
+            self.tcx().map.span(did.node)
         } else {
             self.expr.span
         };

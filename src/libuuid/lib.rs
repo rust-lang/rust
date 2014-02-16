@@ -61,8 +61,8 @@ Examples of string representations:
 
 // test harness access
 #[cfg(test)]
-extern mod extra;
-extern mod serialize;
+extern crate extra;
+extern crate serialize;
 
 use std::str;
 use std::vec;

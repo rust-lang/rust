@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// xfail-android (FIXME #11419)
+// ignore-fast
+// ignore-android (FIXME #11419)
 
-extern mod native;
+extern crate native;
 
 static mut set: bool = false;
 

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,8 @@
 // This test can't be a unit test in std,
 // because it needs TempDir, which is in extra
 
-// xfail-fast
-extern mod extra;
+// ignore-fast
+extern crate extra;
 
 use extra::tempfile::TempDir;
 use std::os;

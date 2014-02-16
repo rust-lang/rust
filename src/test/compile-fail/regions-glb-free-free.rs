@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod argparse {
-    extern mod extra;
+    extern crate extra;
 
     pub struct Flag<'a> {
         name: &'a str,
@@ -24,7 +24,7 @@ mod argparse {
 
     impl<'a> Flag<'a> {
         pub fn set_desc(self, s: &str) -> Flag<'a> {
-            Flag { //~ ERROR cannot infer an appropriate lifetime
+            Flag { //~ ERROR cannot infer
                 name: self.name,
                 desc: s,
                 max_count: self.max_count,

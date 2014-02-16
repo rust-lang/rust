@@ -13,8 +13,8 @@
 use std::cmp;
 use std::hashmap;
 use std::io;
+use std::mem;
 use std::num;
-use std::util;
 
 // NB: this can probably be rewritten in terms of num::Num
 // to be less f64-specific.
@@ -178,7 +178,7 @@ impl<'a> Stats for &'a [f64] {
             for i in range(0, partials.len()) {
                 let mut y = partials[i];
                 if num::abs(x) < num::abs(y) {
-                    util::swap(&mut x, &mut y);
+                    mem::swap(&mut x, &mut y);
                 }
                 // Rounded `x+y` is stored in `hi` with round-off stored in
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
@@ -341,7 +341,7 @@ pub fn write_5_number_summary(w: &mut io::Writer,
 /// As an example, the summary with 5-number-summary `(min=15, q1=17, med=20, q3=24, max=31)` might
 /// display as:
 ///
-/// ~~~~
+/// ~~~~ignore
 ///   10 |        [--****#******----------]          | 40
 /// ~~~~
 

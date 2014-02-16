@@ -40,17 +40,6 @@ impl ToStr for () {
     fn to_str(&self) -> ~str { ~"()" }
 }
 
-impl<A:ToStr> ToStr for (A,) {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        match *self {
-            (ref a,) => {
-                format!("({},)", (*a).to_str())
-            }
-        }
-    }
-}
-
 impl<A:ToStr+Hash+Eq, B:ToStr> ToStr for HashMap<A, B> {
     #[inline]
     fn to_str(&self) -> ~str {
@@ -88,36 +77,6 @@ impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
         }
         acc.push_char('}');
         acc
-    }
-}
-
-impl<A:ToStr,B:ToStr> ToStr for (A, B) {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        // FIXME(#4653): this causes an llvm assertion
-        //let &(ref a, ref b) = self;
-        match *self {
-            (ref a, ref b) => {
-                format!("({}, {})", (*a).to_str(), (*b).to_str())
-            }
-        }
-    }
-}
-
-impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        // FIXME(#4653): this causes an llvm assertion
-        //let &(ref a, ref b, ref c) = self;
-        match *self {
-            (ref a, ref b, ref c) => {
-                format!("({}, {}, {})",
-                    (*a).to_str(),
-                    (*b).to_str(),
-                    (*c).to_str()
-                )
-            }
-        }
     }
 }
 
@@ -176,13 +135,6 @@ mod tests {
         assert_eq!(false.to_str(), ~"false");
         assert_eq!(().to_str(), ~"()");
         assert_eq!((~"hi").to_str(), ~"hi");
-    }
-
-    #[test]
-    fn test_tuple_types() {
-        assert_eq!((1, 2).to_str(), ~"(1, 2)");
-        assert_eq!((~"a", ~"b", false).to_str(), ~"(a, b, false)");
-        assert_eq!(((), ((), 100)).to_str(), ~"((), ((), 100))");
     }
 
     #[test]

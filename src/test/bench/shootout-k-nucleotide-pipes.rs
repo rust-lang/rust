@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-android: FIXME(#10393)
+// ignore-android: FIXME(#10393)
 
-// xfail-pretty the `let to_child` line gets an extra newline
+// ignore-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
-extern mod extra;
+extern crate extra;
 
 use std::cmp::Ord;
 use std::comm;
 use std::hashmap::HashMap;
+use std::mem::replace;
 use std::option;
 use std::os;
 use std::io;
 use std::str;
 use std::task;
-use std::util;
 use std::vec;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
@@ -161,7 +161,7 @@ fn main() {
     let mut from_child = ~[];
     let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
-        let stream = util::replace(stream_ref, None);
+        let stream = replace(stream_ref, None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);

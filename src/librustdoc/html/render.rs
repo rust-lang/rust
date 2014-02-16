@@ -195,7 +195,7 @@ local_data_key!(pub cache_key: Arc<Cache>)
 local_data_key!(pub current_location_key: ~[~str])
 
 /// Generates the documentation for `crate` into the directory `dst`
-pub fn run(mut crate: clean::Crate, dst: Path) -> io::IoResult<()> {
+pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
         current: ~[],
@@ -204,13 +204,13 @@ pub fn run(mut crate: clean::Crate, dst: Path) -> io::IoResult<()> {
         layout: layout::Layout {
             logo: ~"",
             favicon: ~"",
-            crate: crate.name.clone(),
+            krate: krate.name.clone(),
         },
         include_sources: true,
     };
     if_ok!(mkdir(&cx.dst));
 
-    match crate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
+    match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(&[])) {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
@@ -243,11 +243,11 @@ pub fn run(mut crate: clean::Crate, dst: Path) -> io::IoResult<()> {
         extern_locations: HashMap::new(),
         privmod: false,
     };
-    cache.stack.push(crate.name.clone());
-    crate = cache.fold_crate(crate);
+    cache.stack.push(krate.name.clone());
+    krate = cache.fold_crate(krate);
 
     // Add all the static files
-    let mut dst = cx.dst.join(crate.name.as_slice());
+    let mut dst = cx.dst.join(krate.name.as_slice());
     if_ok!(mkdir(&dst));
     if_ok!(write(dst.join("jquery.js"),
                  include_str!("static/jquery-2.1.0.min.js")));
@@ -295,22 +295,22 @@ pub fn run(mut crate: clean::Crate, dst: Path) -> io::IoResult<()> {
         info!("emitting source files");
         let dst = cx.dst.join("src");
         if_ok!(mkdir(&dst));
-        let dst = dst.join(crate.name.as_slice());
+        let dst = dst.join(krate.name.as_slice());
         if_ok!(mkdir(&dst));
         let mut folder = SourceCollector {
             dst: dst,
             seen: HashSet::new(),
             cx: &mut cx,
         };
-        crate = folder.fold_crate(crate);
+        krate = folder.fold_crate(krate);
     }
 
-    for (&n, e) in crate.externs.iter() {
+    for (&n, e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
     }
 
     // And finally render the whole crate's documentation
-    cx.crate(crate, cache)
+    cx.krate(krate, cache)
 }
 
 /// Writes the entire contents of a string to a destination, not attempting to
@@ -418,8 +418,10 @@ impl<'a> SourceCollector<'a> {
         // can't have the source to it anyway.
         let contents = match File::open(&p).read_to_end() {
             Ok(r) => r,
-            // eew macro hacks
-            Err(..) if filename == "<std-macros>" => return Ok(()),
+            // macros from other libraries get special filenames which we can
+            // safely ignore
+            Err(..) if filename.starts_with("<") &&
+                       filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
         let contents = str::from_utf8_owned(contents).unwrap();
@@ -677,12 +679,12 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn crate(self, mut crate: clean::Crate, cache: Cache) -> io::IoResult<()> {
-        let mut item = match crate.module.take() {
+    fn krate(self, mut krate: clean::Crate, cache: Cache) -> io::IoResult<()> {
+        let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
         };
-        item.name = Some(crate.name);
+        item.name = Some(krate.name);
 
         // using a rwarc makes this parallelizable in the future
         local_data::set(cache_key, Arc::new(cache));
@@ -827,10 +829,10 @@ impl<'a> fmt::Show for Item<'a> {
             };
             if_ok!(write!(fmt.buf,
                           "<a class='source'
-                              href='{root}src/{crate}/{path}.html\\#{href}'>\
+                              href='{root}src/{krate}/{path}.html\\#{href}'>\
                               [src]</a>",
                           root = self.cx.root_path,
-                          crate = self.cx.layout.crate,
+                          krate = self.cx.layout.krate,
                           path = path.connect("/"),
                           href = href));
         }
@@ -1019,7 +1021,7 @@ fn item_module(w: &mut Writer, cx: &Context,
             clean::ViewItemItem(ref item) => {
                 match item.inner {
                     clean::ExternMod(ref name, ref src, _) => {
-                        if_ok!(write!(w, "<tr><td><code>extern mod {}",
+                        if_ok!(write!(w, "<tr><td><code>extern crate {}",
                                       name.as_slice()));
                         match *src {
                             Some(ref src) => if_ok!(write!(w, " = \"{}\"",
@@ -1377,11 +1379,11 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
         match c.impls.find(&it.id) {
             Some(v) => {
                 let mut non_trait = v.iter().filter(|p| {
-                    p.n0_ref().trait_.is_none()
+                    p.ref0().trait_.is_none()
                 });
                 let non_trait = non_trait.to_owned_vec();
                 let mut traits = v.iter().filter(|p| {
-                    p.n0_ref().trait_.is_some()
+                    p.ref0().trait_.is_some()
                 });
                 let traits = traits.to_owned_vec();
 

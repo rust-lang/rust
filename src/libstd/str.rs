@@ -567,14 +567,14 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
     use iter::range;
-    use tuple::CloneableTuple;
+    use tuple::Tuple2;
 
     let len = comb.len();
     for i in range(0, len) {
         let mut swapped = false;
         for j in range(1, len-i) {
-            let classA = comb[j-1].second();
-            let classB = comb[j].second();
+            let classA = *comb[j-1].ref1();
+            let classB = *comb[j].ref1();
             if classA != 0 && classB != 0 && classA > classB {
                 comb.swap(j-1, j);
                 swapped = true;
@@ -625,15 +625,17 @@ impl<'a> Iterator<char> for Normalizations<'a> {
 
         if !self.sorted {
             for ch in self.iter {
+                let buffer = &mut self.buffer;
+                let sorted = &mut self.sorted;
                 decomposer(ch, |d| {
                     let class = canonical_combining_class(d);
-                    if class == 0 && !self.sorted {
-                        canonical_sort(self.buffer);
-                        self.sorted = true;
+                    if class == 0 && !*sorted {
+                        canonical_sort(*buffer);
+                        *sorted = true;
                     }
-                    self.buffer.push((d, class));
+                    buffer.push((d, class));
                 });
-                if self.sorted { break }
+                if *sorted { break }
             }
         }
 
@@ -1240,7 +1242,7 @@ pub mod raw {
         let mut i = 0;
         while *curr != 0 {
             i += 1;
-            curr = ptr::offset(buf, i);
+            curr = buf.offset(i);
         }
         from_buf_len(buf as *u8, i as uint)
     }
@@ -1270,7 +1272,7 @@ pub mod raw {
         let mut len = 0u;
         while *curr != 0u8 {
             len += 1u;
-            curr = ptr::offset(s, len as int);
+            curr = s.offset(len as int);
         }
         let v = Slice { data: s, len: len };
         assert!(is_utf8(::cast::transmute(v)));
@@ -2009,7 +2011,7 @@ pub trait StrSlice<'a> {
     ///
     /// ## Output
     ///
-    /// ```
+    /// ```ignore
     /// 0: 中
     /// 3: 华
     /// 6: V
@@ -2919,7 +2921,6 @@ impl Default for ~str {
 mod tests {
     use iter::AdditiveIterator;
     use prelude::*;
-    use ptr;
     use str::*;
 
     #[test]
@@ -3547,11 +3548,11 @@ mod tests {
     fn test_as_ptr() {
         let buf = "hello".as_ptr();
         unsafe {
-            assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
-            assert_eq!(*ptr::offset(buf, 1), 'e' as u8);
-            assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
-            assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
-            assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
+            assert_eq!(*buf.offset(0), 'h' as u8);
+            assert_eq!(*buf.offset(1), 'e' as u8);
+            assert_eq!(*buf.offset(2), 'l' as u8);
+            assert_eq!(*buf.offset(3), 'l' as u8);
+            assert_eq!(*buf.offset(4), 'o' as u8);
         }
     }
 
@@ -4162,6 +4163,7 @@ mod tests {
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
         assert_eq!(s.to_str(), ~"abcde");
+        assert_eq!(format!("{}", s), ~"abcde");
         assert!(s.lt(&Owned(~"bcdef")));
         assert_eq!(Slice(""), Default::default());
 
@@ -4169,6 +4171,7 @@ mod tests {
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
         assert_eq!(o.to_str(), ~"abcde");
+        assert_eq!(format!("{}", o), ~"abcde");
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned(~""), Default::default());
 
@@ -4354,7 +4357,7 @@ mod bench {
 
         assert_eq!(100, s.len());
         bh.iter(|| {
-            let _ = is_utf8(s);
+            is_utf8(s)
         });
     }
 
@@ -4363,7 +4366,7 @@ mod bench {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
         bh.iter(|| {
-            let _ = is_utf8(s);
+            is_utf8(s)
         });
     }
 
@@ -4406,7 +4409,7 @@ mod bench {
     #[bench]
     fn bench_with_capacity(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _ = with_capacity(100);
+            with_capacity(100)
         });
     }
 

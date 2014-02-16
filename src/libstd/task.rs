@@ -46,7 +46,7 @@
  *
  * ```
  * spawn(proc() {
- *     log(error, "Hello, World!");
+ *     println!("Hello, World!");
  * })
  * ```
  */
@@ -65,8 +65,6 @@ use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
-#[cfg(test)] use comm::SharedChan;
-#[cfg(test)] use ptr;
 #[cfg(test)] use result;
 
 /// Indicates the manner in which a task exited.
@@ -474,9 +472,9 @@ fn test_try_fail() {
 fn test_spawn_sched() {
     use clone::Clone;
 
-    let (po, ch) = SharedChan::new();
+    let (po, ch) = Chan::new();
 
-    fn f(i: int, ch: SharedChan<()>) {
+    fn f(i: int, ch: Chan<()>) {
         let ch = ch.clone();
         spawn(proc() {
             if i == 0 {
@@ -510,10 +508,10 @@ fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     let (p, ch) = Chan::<uint>::new();
 
     let x = ~1;
-    let x_in_parent = ptr::to_unsafe_ptr(&*x) as uint;
+    let x_in_parent = (&*x) as *int as uint;
 
     spawnfn(proc() {
-        let x_in_child = ptr::to_unsafe_ptr(&*x) as uint;
+        let x_in_child = (&*x) as *int as uint;
         ch.send(x_in_child);
     });
 

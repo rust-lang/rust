@@ -53,24 +53,6 @@ impl Eq for $T {
     fn eq(&self, other: &$T) -> bool { return (*self) == (*other); }
 }
 
-impl Orderable for $T {
-    #[inline]
-    fn min(&self, other: &$T) -> $T {
-        if *self < *other { *self } else { *other }
-    }
-
-    #[inline]
-    fn max(&self, other: &$T) -> $T {
-        if *self > *other { *self } else { *other }
-    }
-
-    #[inline]
-    fn clamp(&self, mn: &$T, mx: &$T) -> $T {
-        if *self > *mx { *mx } else
-        if *self < *mn { *mn } else { *self }
-    }
-}
-
 impl Default for $T {
     #[inline]
     fn default() -> $T { 0 }
@@ -137,6 +119,8 @@ impl Rem<$T,$T> for $T {
     /// Returns the integer remainder after division, satisfying:
     ///
     /// ```
+    /// # let n = 1;
+    /// # let d = 2;
     /// assert!((n / d) * d + (n % d) == n)
     /// ```
     ///
@@ -212,15 +196,15 @@ impl Integer for $T {
     /// # Examples
     ///
     /// ```
-    /// assert!(( 8).div_floor( 3) ==  2);
-    /// assert!(( 8).div_floor(-3) == -3);
-    /// assert!((-8).div_floor( 3) == -3);
-    /// assert!((-8).div_floor(-3) ==  2);
+    /// assert!(( 8i).div_floor(& 3) ==  2);
+    /// assert!(( 8i).div_floor(&-3) == -3);
+    /// assert!((-8i).div_floor(& 3) == -3);
+    /// assert!((-8i).div_floor(&-3) ==  2);
     ///
-    /// assert!(( 1).div_floor( 2) ==  0);
-    /// assert!(( 1).div_floor(-2) == -1);
-    /// assert!((-1).div_floor( 2) == -1);
-    /// assert!((-1).div_floor(-2) ==  0);
+    /// assert!(( 1i).div_floor(& 2) ==  0);
+    /// assert!(( 1i).div_floor(&-2) == -1);
+    /// assert!((-1i).div_floor(& 2) == -1);
+    /// assert!((-1i).div_floor(&-2) ==  0);
     /// ```
     ///
     #[inline]
@@ -238,21 +222,22 @@ impl Integer for $T {
     /// Integer modulo, satisfying:
     ///
     /// ```
-    /// assert!(n.div_floor(d) * d + n.mod_floor(d) == n)
+    /// # let n = 1i; let d = 1i;
+    /// assert!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
     /// ```
     ///
     /// # Examples
     ///
     /// ```
-    /// assert!(( 8).mod_floor( 3) ==  2);
-    /// assert!(( 8).mod_floor(-3) == -1);
-    /// assert!((-8).mod_floor( 3) ==  1);
-    /// assert!((-8).mod_floor(-3) == -2);
+    /// assert!(( 8i).mod_floor(& 3) ==  2);
+    /// assert!(( 8i).mod_floor(&-3) == -1);
+    /// assert!((-8i).mod_floor(& 3) ==  1);
+    /// assert!((-8i).mod_floor(&-3) == -2);
     ///
-    /// assert!(( 1).mod_floor( 2) ==  1);
-    /// assert!(( 1).mod_floor(-2) == -1);
-    /// assert!((-1).mod_floor( 2) ==  1);
-    /// assert!((-1).mod_floor(-2) == -1);
+    /// assert!(( 1i).mod_floor(& 2) ==  1);
+    /// assert!(( 1i).mod_floor(&-2) == -1);
+    /// assert!((-1i).mod_floor(& 2) ==  1);
+    /// assert!((-1i).mod_floor(&-2) == -1);
     /// ```
     ///
     #[inline]
@@ -455,17 +440,6 @@ mod tests {
     #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);
-    }
-
-    #[test]
-    fn test_orderable() {
-        assert_eq!((1 as $T).min(&(2 as $T)), 1 as $T);
-        assert_eq!((2 as $T).min(&(1 as $T)), 1 as $T);
-        assert_eq!((1 as $T).max(&(2 as $T)), 2 as $T);
-        assert_eq!((2 as $T).max(&(1 as $T)), 2 as $T);
-        assert_eq!((1 as $T).clamp(&(2 as $T), &(4 as $T)), 2 as $T);
-        assert_eq!((8 as $T).clamp(&(2 as $T), &(4 as $T)), 4 as $T);
-        assert_eq!((3 as $T).clamp(&(2 as $T), &(4 as $T)), 3 as $T);
     }
 
     #[test]

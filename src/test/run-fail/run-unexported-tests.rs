@@ -10,8 +10,9 @@
 
 // error-pattern:runned an unexported test
 // compile-flags:--test
+// check-stdout
 
-extern mod extra;
+extern crate extra;
 
 mod m {
     pub fn exported() { }

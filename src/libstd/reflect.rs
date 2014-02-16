@@ -441,9 +441,4 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         self.align_to::<&'static u8>();
         true
     }
-
-    fn visit_type(&mut self) -> bool {
-        if ! self.inner.visit_type() { return false; }
-        true
-    }
 }

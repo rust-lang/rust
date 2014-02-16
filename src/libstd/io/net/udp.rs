@@ -83,7 +83,8 @@ impl Reader for UdpStream {
 
 impl Writer for UdpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.as_socket(|sock| sock.sendto(buf, self.connectedTo))
+        let connectedTo = self.connectedTo;
+        self.as_socket(|sock| sock.sendto(buf, connectedTo))
     }
 }
 
@@ -300,7 +301,7 @@ mod test {
         let addr2 = next_test_ip4();
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let c2 = c.clone();
 
         spawn(proc() {
@@ -334,7 +335,7 @@ mod test {
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
 
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let (serv_port, serv_chan) = Chan::new();
 
         spawn(proc() {

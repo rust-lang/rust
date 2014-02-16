@@ -21,12 +21,15 @@
 //! extension traits (`*Ext`) for the full details.
 
 use cast::transmute;
+use fmt;
 use option::{Option, Some, None};
 use result::{Result, Ok, Err};
 use to_str::ToStr;
 use unstable::intrinsics::TypeId;
 use unstable::intrinsics;
-use util::Void;
+
+/// A type with no inhabitants
+pub enum Void { }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -154,6 +157,18 @@ impl ToStr for ~Any {
 
 impl<'a> ToStr for &'a Any {
     fn to_str(&self) -> ~str { ~"&Any" }
+}
+
+impl fmt::Show for ~Any {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("~Any")
+    }
+}
+
+impl<'a> fmt::Show for &'a Any {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("&Any")
+    }
 }
 
 #[cfg(test)]
@@ -374,5 +389,18 @@ mod tests {
 
         assert!(a.move::<~Test>().is_err());
         assert!(b.move::<~uint>().is_err());
+    }
+
+    #[test]
+    fn test_show() {
+        let a = ~8u as ~Any;
+        let b = ~Test as ~Any;
+        assert_eq!(format!("{}", a), ~"~Any");
+        assert_eq!(format!("{}", b), ~"~Any");
+
+        let a = &8u as &Any;
+        let b = &Test as &Any;
+        assert_eq!(format!("{}", a), ~"&Any");
+        assert_eq!(format!("{}", b), ~"&Any");
     }
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:kinds_in_metadata.rs
 
 /* Any copyright is dedicated to the Public Domain.
@@ -16,7 +16,7 @@
 
 // Tests that metadata serialization works for the `Pod` kind.
 
-extern mod kinds_in_metadata;
+extern crate kinds_in_metadata;
 
 use kinds_in_metadata::f;
 

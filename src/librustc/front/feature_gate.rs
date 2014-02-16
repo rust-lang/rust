@@ -99,10 +99,7 @@ impl Context {
 
 impl Visitor<()> for Context {
     fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
-        let string = token::get_ident(id.name);
-        let s = string.get();
-
-        if !s.is_ascii() {
+        if !token::get_ident(id).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
@@ -196,29 +193,29 @@ impl Visitor<()> for Context {
         let msg = " is not stable enough for use and are subject to change";
 
 
-        if id == self.sess.ident_of("macro_rules") {
+        if id == token::str_to_ident("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
                 not stable enough for use and are subject to change");
         }
 
-        else if id == self.sess.ident_of("asm") {
+        else if id == token::str_to_ident("asm") {
             self.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }
 
-        else if id == self.sess.ident_of("log_syntax") {
+        else if id == token::str_to_ident("log_syntax") {
             self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }
 
-        else if id == self.sess.ident_of("trace_macros") {
+        else if id == token::str_to_ident("trace_macros") {
             self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
                 stable enough for use and is subject to change");
         }
 
         else {
             for &quote in quotes.iter() {
-                if id == self.sess.ident_of(quote) {
+                if id == token::str_to_ident(quote) {
                   self.gate_feature("quote", path.span, quote + msg);
                 }
             }
@@ -266,13 +263,13 @@ impl Visitor<()> for Context {
     }
 }
 
-pub fn check_crate(sess: Session, crate: &ast::Crate) {
+pub fn check_crate(sess: Session, krate: &ast::Crate) {
     let mut cx = Context {
         features: ~[],
         sess: sess,
     };
 
-    for attr in crate.attrs.iter() {
+    for attr in krate.attrs.iter() {
         if !attr.name().equiv(&("feature")) {
             continue
         }
@@ -315,7 +312,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
         }
     }
 
-    visit::walk_crate(&mut cx, crate, ());
+    visit::walk_crate(&mut cx, krate, ());
 
     sess.abort_if_errors();
 }

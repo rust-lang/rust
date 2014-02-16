@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:crateresolve2-1.rs
 // aux-build:crateresolve2-2.rs
 // aux-build:crateresolve2-3.rs
 
 mod a {
-    extern mod crateresolve2 = "crateresolve2#0.1";
+    extern crate crateresolve2 = "crateresolve2#0.1";
     pub fn f() { assert!(crateresolve2::f() == 10); }
 }
 
 mod b {
-    extern mod crateresolve2 = "crateresolve2#0.2";
+    extern crate crateresolve2 = "crateresolve2#0.2";
     pub fn f() { assert!(crateresolve2::f() == 20); }
 }
 
 mod c {
-    extern mod crateresolve2 = "crateresolve2#0.3";
+    extern crate crateresolve2 = "crateresolve2#0.3";
     pub fn f() { assert!(crateresolve2::f() == 30); }
 }
 

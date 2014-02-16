@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast aux-build
+// ignore-fast aux-build
 // aux-build:ambig_impl_2_lib.rs
-extern mod ambig_impl_2_lib;
+extern crate ambig_impl_2_lib;
 use ambig_impl_2_lib::me;
 trait me {
     fn me(&self) -> uint;
 }
-impl me for uint { fn me(&self) -> uint { *self } } //~ NOTE is `me$uint::me`
+impl me for uint { fn me(&self) -> uint { *self } } //~ NOTE is `uint.me::me`
 fn main() { 1u.me(); } //~ ERROR multiple applicable methods in scope
-//~^ NOTE is `ambig_impl_2_lib::me$uint::me`
+//~^ NOTE is `ambig_impl_2_lib::uint.me::me`

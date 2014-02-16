@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast check-fast doesn't like aux-build
+// ignore-fast check-fast doesn't like aux-build
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
-extern mod other1 = "typeid-intrinsic";
-extern mod other2 = "typeid-intrinsic2";
+extern crate other1 = "typeid-intrinsic";
+extern crate other2 = "typeid-intrinsic2";
 
 use std::unstable::intrinsics;
 use std::unstable::intrinsics::TypeId;

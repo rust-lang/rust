@@ -30,6 +30,8 @@ pub struct TestProps {
     check_lines: ~[~str],
     // Flag to force a crate to be built with the host architecture
     force_host: bool,
+    // Check stdout for error-pattern output as well as stderr
+    check_stdout: bool,
 }
 
 // Load any test directives embedded in the file
@@ -42,6 +44,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut debugger_cmds = ~[];
     let mut check_lines = ~[];
     let mut force_host = false;
+    let mut check_stdout = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -58,6 +61,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if !force_host {
             force_host = parse_force_host(ln);
+        }
+
+        if !check_stdout {
+            check_stdout = parse_check_stdout(ln);
         }
 
         match parse_aux_build(ln) {
@@ -91,23 +98,26 @@ pub fn load_props(testfile: &Path) -> TestProps {
         debugger_cmds: debugger_cmds,
         check_lines: check_lines,
         force_host: force_host,
+        check_stdout: check_stdout,
     };
 }
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
-    fn xfail_target(config: &config) -> ~str {
-        ~"xfail-" + util::get_os(config.target)
+    fn ignore_target(config: &config) -> ~str {
+        ~"ignore-" + util::get_os(config.target)
     }
-    fn xfail_stage(config: &config) -> ~str {
-        ~"xfail-" + config.stage_id.split('-').next().unwrap()
+    fn ignore_stage(config: &config) -> ~str {
+        ~"ignore-" + config.stage_id.split('-').next().unwrap()
     }
 
     let val = iter_header(testfile, |ln| {
-        if parse_name_directive(ln, "xfail-test") { false }
-        else if parse_name_directive(ln, xfail_target(config)) { false }
-        else if parse_name_directive(ln, xfail_stage(config)) { false }
+        if parse_name_directive(ln, "ignore-test") { false }
+        else if parse_name_directive(ln, ignore_target(config)) { false }
+        else if parse_name_directive(ln, ignore_stage(config)) { false }
         else if config.mode == common::mode_pretty &&
-            parse_name_directive(ln, "xfail-pretty") { false }
+            parse_name_directive(ln, "ignore-pretty") { false }
+        else if config.target != config.host &&
+            parse_name_directive(ln, "ignore-cross-compile") { false }
         else { true }
     });
 
@@ -151,6 +161,10 @@ fn parse_check_line(line: &str) -> Option<~str> {
 
 fn parse_force_host(line: &str) -> bool {
     parse_name_directive(line, "force-host")
+}
+
+fn parse_check_stdout(line: &str) -> bool {
+    parse_name_directive(line, "check-stdout")
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {

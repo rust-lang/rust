@@ -26,11 +26,9 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
+use std::cmp;
 use std::io;
-use std::num;
-use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
-use std::ptr;
 use std::str;
 use std::vec;
 use flate;
@@ -332,7 +330,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
-                let minsz = num::min(vlen, csz);
+                let minsz = cmp::min(vlen, csz);
                 let mut version_ok = false;
                 vec::raw::buf_as_slice(cvbuf, minsz, |buf0| {
                     version_ok = (buf0 ==
@@ -340,7 +338,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 });
                 if !version_ok { return None; }
 
-                let cvbuf1 = ptr::offset(cvbuf, vlen as int);
+                let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
                 vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
@@ -378,16 +376,10 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(intr: @IdentInterner,
-                          os: Os,
-                          path: &Path,
+pub fn list_file_metadata(os: Os, path: &Path,
                           out: &mut io::Writer) -> io::IoResult<()> {
     match get_metadata_section(os, path) {
-      option::Some(bytes) => decoder::list_crate_metadata(intr,
-                                                          bytes.as_slice(),
-                                                          out),
-      option::None => {
-          write!(out, "could not find metadata in {}.\n", path.display())
-      }
+      Some(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
+      None => write!(out, "could not find metadata in {}.\n", path.display())
     }
 }

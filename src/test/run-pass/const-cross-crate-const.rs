@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:cci_const.rs
 
-extern mod cci_const;
+extern crate cci_const;
 static foo: &'static str = cci_const::foopy;
 static a: uint = cci_const::uint_val;
 static b: uint = cci_const::uint_expr + 5;

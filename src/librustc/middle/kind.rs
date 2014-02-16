@@ -77,12 +77,12 @@ impl Visitor<()> for Context {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   crate: &Crate) {
+                   krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
         method_map: method_map,
     };
-    visit::walk_crate(&mut ctx, crate, ());
+    visit::walk_crate(&mut ctx, krate, ());
     tcx.sess.abort_if_errors();
 }
 
@@ -261,7 +261,7 @@ fn check_fn(
 }
 
 pub fn check_expr(cx: &mut Context, e: &Expr) {
-    debug!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
+    debug!("kind::check_expr({})", expr_to_str(e));
 
     // Handle any kind bounds on type parameters
     let type_parameter_id = match e.get_callee_id() {

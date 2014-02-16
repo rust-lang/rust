@@ -34,7 +34,7 @@ ifdef TESTNAME
   TESTARGS += $(TESTNAME)
 endif
 
-ifdef CHECK_XFAILS
+ifdef CHECK_IGNORED
   TESTARGS += --ignored
 endif
 
@@ -174,20 +174,17 @@ endif
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
-check-notidy: cleantestlibs cleantmptestlogs all check-stage2
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
-check-full: cleantestlibs cleantmptestlogs tidy \
-            all check-stage1 check-stage2 check-stage3
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
-check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
 check-lite: cleantestlibs cleantmptestlogs \
 	$(foreach crate,$(TARGET_CRATES),check-stage2-$(crate)) \
 	check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
+
+check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
+	check-stage2-rfail check-stage2-cfail check-stage2-rmake
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
+
+check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 .PHONY: cleantmptestlogs cleantestlibs
@@ -262,6 +259,7 @@ tidy:
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
 		| grep '^$(S)src/doc' -v \
+		| grep '^$(S)src/compiler-rt' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
@@ -332,21 +330,22 @@ $(foreach host,$(CFG_HOST), \
 
 define TEST_RUNNER
 
-# If NO_REBUILD is set then break the dependencies on extra so we can
-# test crates without rebuilding std and extra first
+# If NO_REBUILD is set then break the dependencies on everything but
+# the source files so we can test crates without rebuilding any of the
+# parent crates.
 ifeq ($(NO_REBUILD),)
-STDTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
+TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
 			    $$(foreach crate,$$(TARGET_CRATES),\
-				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))
+				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
+				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
 else
-STDTESTDEP_$(1)_$(2)_$(3)_$(4) =
+TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER = $(2)
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
-		$$(CRATEFILE_$(4))					\
-		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
-		$$(STDTESTDEP_$(1)_$(2)_$(3)_$(4))
+		$$(CRATEFILE_$(4)) \
+		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, oxidize: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
 		-L "$$(RT_OUTPUT_DIR_$(2))"		\
@@ -552,7 +551,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --host $(3)                                       \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
-        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+        --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+        --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
@@ -683,13 +683,22 @@ $(foreach host,$(CFG_HOST), \
 
 define DEF_CRATE_DOC_TEST
 
+# If NO_REBUILD is set then break the dependencies on everything but
+# the source files so we can test crate documentation without
+# rebuilding any of the parent crates.
+ifeq ($(NO_REBUILD),)
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
+	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
+	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
+	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+else
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
+endif
+
 check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
 ifeq ($(2),$$(CFG_BUILD))
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):				\
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
-		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
-		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-$(4) [$(2)])
 	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
 	    $$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
@@ -810,6 +819,23 @@ $(foreach stage,$(STAGES), \
  $(foreach host,$(CFG_HOST), \
   $(foreach group,$(TEST_GROUPS), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
+
+define DEF_CHECK_DOC_FOR_STAGE
+check-stage$(1)-docs: $$(foreach docname,$$(DOC_TEST_NAMES),\
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
+                     $$(foreach crate,$$(DOC_CRATE_NAMES),\
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(crate))
+endef
+
+$(foreach stage,$(STAGES), \
+ $(eval $(call DEF_CHECK_DOC_FOR_STAGE,$(stage))))
+
+define DEF_CHECK_CRATE
+check-$(1): check-stage2-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-$(1)-exec
+endef
+
+$(foreach crate,$(TEST_CRATES), \
+ $(eval $(call DEF_CHECK_CRATE,$(crate))))
 
 ######################################################################
 # check-fast rules

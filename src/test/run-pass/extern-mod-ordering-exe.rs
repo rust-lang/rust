@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // aux-build:extern_mod_ordering_lib.rs
-// xfail-fast
+// ignore-fast
 
-extern mod extern_mod_ordering_lib;
+extern crate extern_mod_ordering_lib;
 
 use extern_mod_ordering_lib::extern_mod_ordering_lib;
 

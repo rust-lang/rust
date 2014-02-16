@@ -18,7 +18,7 @@ fn env<'a>(_: &'a uint, blk: |p: 'a |||) {
 
     let mut state = 0;
     let statep = &mut state;
-    blk(|| *statep = 1); //~ ERROR cannot infer an appropriate lifetime
+    blk(|| *statep = 1); //~ ERROR cannot infer
 }
 
 fn no_env_no_for<'a>(_: &'a uint, blk: |p: 'a |||) {
@@ -40,7 +40,7 @@ fn repeating_loop() {
     let state = 0;
 
     loop {
-        closure = || state; //~ ERROR cannot infer an appropriate lifetime
+        closure = || state; //~ ERROR cannot infer
         break;
     }
 
@@ -56,7 +56,7 @@ fn repeating_while() {
     let state = 0;
 
     while true {
-        closure = || state; //~ ERROR cannot infer an appropriate lifetime
+        closure = || state; //~ ERROR cannot infer
         break;
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test newsched transition
+// ignore-test newsched transition
 // error-pattern:explicit failure
 
 // This time we're testing that the stack limits are restored
@@ -16,7 +16,7 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
-extern mod extra;
+extern crate extra;
 
 use std::libc;
 use std::task;

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod sync;
+extern crate sync;
 use sync::RWArc;
 fn main() {
     let x = ~RWArc::new(1);
     let mut y = None;
     x.write_downgrade(|write_mode| {
         y = Some(x.downgrade(write_mode));
-        //~^ ERROR cannot infer an appropriate lifetime
+        //~^ ERROR cannot infer
     });
     y.unwrap();
     // Adding this line causes a method unification failure instead

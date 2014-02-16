@@ -35,16 +35,16 @@ impl Visitor<()> for MacroRegistrarContext {
 }
 
 pub fn find_macro_registrar(diagnostic: @diagnostic::SpanHandler,
-                            crate: &ast::Crate) -> Option<ast::DefId> {
+                            krate: &ast::Crate) -> Option<ast::DefId> {
     let mut ctx = MacroRegistrarContext { registrars: ~[] };
-    visit::walk_crate(&mut ctx, crate, ());
+    visit::walk_crate(&mut ctx, krate, ());
 
     match ctx.registrars.len() {
         0 => None,
         1 => {
             let (node_id, _) = ctx.registrars.pop().unwrap();
             Some(ast::DefId {
-                crate: ast::LOCAL_CRATE,
+                krate: ast::LOCAL_CRATE,
                 node: node_id
             })
         },

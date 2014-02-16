@@ -60,6 +60,7 @@ use c_str::CString;
 use cast;
 use fmt;
 use kinds::Send;
+use mem;
 use option::{Some, None, Option};
 use prelude::drop;
 use ptr::RawPtr;
@@ -69,10 +70,10 @@ use rt::task::Task;
 use str::Str;
 use task::TaskResult;
 use unstable::intrinsics;
-use util;
 
 use uw = self::libunwind;
 
+#[allow(dead_code)]
 mod libunwind {
     //! Unwind library interface
 
@@ -141,6 +142,16 @@ mod libunwind {
 
     pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
                                                           exception: *_Unwind_Exception);
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "freebsd")]
+    #[cfg(target_os = "win32")]
+    #[link(name = "gcc_s")]
+    extern {}
+
+    #[cfg(target_os = "android")]
+    #[link(name = "gcc")]
+    extern {}
 
     extern "C" {
         pub fn _Unwind_RaiseException(exception: *_Unwind_Exception) -> _Unwind_Reason_Code;
@@ -470,7 +481,7 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                                             n, msg_s, file, line);
                     task = Local::take();
 
-                    match util::replace(&mut task.stderr, Some(stderr)) {
+                    match mem::replace(&mut task.stderr, Some(stderr)) {
                         Some(prev) => {
                             Local::put(task);
                             drop(prev);

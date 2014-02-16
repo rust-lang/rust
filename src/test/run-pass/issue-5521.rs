@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // aux-build:issue-5521.rs
-// xfail-fast
+// ignore-fast
 
 #[feature(managed_boxes)];
 
-extern mod foo = "issue-5521";
+extern crate foo = "issue-5521";
 
 fn foo(a: foo::map) {
     if false {

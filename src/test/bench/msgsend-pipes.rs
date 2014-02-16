@@ -14,7 +14,7 @@
 //
 // I *think* it's the same, more or less.
 
-extern mod extra;
+extern crate extra;
 
 use std::os;
 use std::task;
@@ -67,7 +67,7 @@ fn run(args: &[~str]) {
         });
         from_parent
     } else {
-        let (from_parent, to_child) = SharedChan::new();
+        let (from_parent, to_child) = Chan::new();
         for _ in range(0u, workers) {
             let to_child = to_child.clone();
             let mut builder = task::task();

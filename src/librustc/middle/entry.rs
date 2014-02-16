@@ -11,18 +11,21 @@
 
 use driver::session;
 use driver::session::Session;
-use syntax::ast::{Crate, NodeId, Item, ItemFn};
+use syntax::ast::{Crate, Name, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-struct EntryContext {
+struct EntryContext<'a> {
     session: Session,
 
-    ast_map: ast_map::Map,
+    ast_map: &'a ast_map::Map,
+
+    // The interned Name for "main".
+    main_name: Name,
 
     // The top-level function called 'main'
     main_fn: Option<(NodeId, Span)>,
@@ -38,26 +41,27 @@ struct EntryContext {
     non_main_fns: ~[(NodeId, Span)],
 }
 
-impl Visitor<()> for EntryContext {
+impl<'a> Visitor<()> for EntryContext<'a> {
     fn visit_item(&mut self, item: &Item, _:()) {
         find_item(item, self);
     }
 }
 
-pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) {
+pub fn find_entry_point(session: Session, krate: &Crate, ast_map: &ast_map::Map) {
     if session.building_library.get() {
         // No need to find a main function
         return;
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(crate.attrs, "no_main") {
+    if attr::contains_name(krate.attrs, "no_main") {
         session.entry_type.set(Some(session::EntryNone));
         return
     }
 
     let mut ctxt = EntryContext {
         session: session,
+        main_name: token::intern("main"),
         ast_map: ast_map,
         main_fn: None,
         attr_main_fn: None,
@@ -65,7 +69,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) 
         non_main_fns: ~[],
     };
 
-    visit::walk_crate(&mut ctxt, crate, ());
+    visit::walk_crate(&mut ctxt, krate, ());
 
     configure_main(&mut ctxt);
 }
@@ -73,27 +77,22 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) 
 fn find_item(item: &Item, ctxt: &mut EntryContext) {
     match item.node {
         ItemFn(..) => {
-            if item.ident.name == special_idents::main.name {
-                {
-                    match ctxt.ast_map.find(item.id) {
-                        Some(ast_map::NodeItem(_, path)) => {
-                            if path.len() == 0 {
-                                // This is a top-level function so can be 'main'
-                                if ctxt.main_fn.is_none() {
-                                    ctxt.main_fn = Some((item.id, item.span));
-                                } else {
-                                    ctxt.session.span_err(
-                                        item.span,
-                                        "multiple 'main' functions");
-                                }
+            if item.ident.name == ctxt.main_name {
+                 ctxt.ast_map.with_path(item.id, |mut path| {
+                        if path.len() == 1 {
+                            // This is a top-level function so can be 'main'
+                            if ctxt.main_fn.is_none() {
+                                ctxt.main_fn = Some((item.id, item.span));
                             } else {
-                                // This isn't main
-                                ctxt.non_main_fns.push((item.id, item.span));
+                                ctxt.session.span_err(
+                                    item.span,
+                                    "multiple 'main' functions");
                             }
+                        } else {
+                            // This isn't main
+                            ctxt.non_main_fns.push((item.id, item.span));
                         }
-                        _ => unreachable!()
-                    }
-                }
+                });
             }
 
             if attr::contains_name(item.attrs, "main") {

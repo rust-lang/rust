@@ -34,7 +34,7 @@ use middle::trans::type_::Type;
 use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::vec;
-use syntax::{ast, ast_util, ast_map};
+use syntax::{ast, ast_util};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
@@ -170,18 +170,11 @@ pub fn get_const_val(cx: @CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        let opt_item = cx.tcx.items.get(def_id.node);
-
-        match opt_item {
-            ast_map::NodeItem(item, _) => {
-                match item.node {
-                    ast::ItemStatic(_, ast::MutImmutable, _) => {
-                        trans_const(cx, ast::MutImmutable, def_id.node);
-                    }
-                    _ => {}
-                }
+        match cx.tcx.map.expect_item(def_id.node).node {
+            ast::ItemStatic(_, ast::MutImmutable, _) => {
+                trans_const(cx, ast::MutImmutable, def_id.node);
             }
-            _ => cx.tcx.sess.bug("expected a const to be an item")
+            _ => {}
         }
     }
 
@@ -606,7 +599,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess.span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = vec::from_elem(n, const_expr(cx, elem, is_local).first());
+            let vs = vec::from_elem(n, const_expr(cx, elem, is_local).val0());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
                 C_struct(vs, false)
             } else {
@@ -654,7 +647,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 }
             }
           }
-          ast::ExprCall(callee, ref args, _) => {
+          ast::ExprCall(callee, ref args) => {
               let tcx = cx.tcx;
               let opt_def = {
                   let def_map = tcx.def_map.borrow();

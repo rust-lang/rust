@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,9 +15,8 @@ use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::NativeMutex;
 use std::unstable::raw;
-use mpsc = std::sync::mpsc_queue;
 
 use TaskState;
 use context::Context;
@@ -25,6 +24,7 @@ use coroutine::Coroutine;
 use sleeper_list::SleeperList;
 use stack::StackPool;
 use task::{TypeSched, GreenTask, HomeSched, AnySched};
+use msgq = message_queue;
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified
@@ -47,9 +47,9 @@ pub struct Scheduler {
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    message_queue: mpsc::Consumer<SchedMessage, ()>,
+    message_queue: msgq::Consumer<SchedMessage>,
     /// Producer used to clone sched handles from
-    message_producer: mpsc::Producer<SchedMessage, ()>,
+    message_producer: msgq::Producer<SchedMessage>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
     sleeper_list: SleeperList,
@@ -143,7 +143,7 @@ impl Scheduler {
                        state: TaskState)
         -> Scheduler {
 
-        let (consumer, producer) = mpsc::queue(());
+        let (consumer, producer) = msgq::queue();
         let mut sched = Scheduler {
             pool_id: pool_id,
             sleeper_list: sleeper_list,
@@ -215,7 +215,7 @@ impl Scheduler {
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
-        rtassert!(match message { mpsc::Empty => true, _ => false });
+        rtassert!(match message { msgq::Empty => true, _ => false });
 
         stask.task.get_mut_ref().destroyed = true;
     }
@@ -252,12 +252,23 @@ impl Scheduler {
 
     // * Execution Functions - Core Loop Logic
 
-    // The model for this function is that you continue through it
-    // until you either use the scheduler while performing a schedule
-    // action, in which case you give it away and return early, or
-    // you reach the end and sleep. In the case that a scheduler
-    // action is performed the loop is evented such that this function
-    // is called again.
+    // This function is run from the idle callback on the uv loop, indicating
+    // that there are no I/O events pending. When this function returns, we will
+    // fall back to epoll() in the uv event loop, waiting for more things to
+    // happen. We may come right back off epoll() if the idle callback is still
+    // active, in which case we're truly just polling to see if I/O events are
+    // complete.
+    //
+    // The model for this function is to execute as much work as possible while
+    // still fairly considering I/O tasks. Falling back to epoll() frequently is
+    // often quite expensive, so we attempt to avoid it as much as possible. If
+    // we have any active I/O on the event loop, then we're forced to fall back
+    // to epoll() in order to provide fairness, but as long as we're doing work
+    // and there's no active I/O, we can continue to do work.
+    //
+    // If we try really hard to do some work, but no work is available to be
+    // done, then we fall back to epoll() to block this thread waiting for more
+    // work (instead of busy waiting).
     fn run_sched_once(mut ~self, stask: ~GreenTask) {
         // Make sure that we're not lying in that the `stask` argument is indeed
         // the scheduler task for this scheduler.
@@ -269,26 +280,46 @@ impl Scheduler {
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
-        let (sched, stask) =
-            match self.interpret_message_queue(stask, DontTryTooHard) {
-                Some(pair) => pair,
-                None => return
-            };
+        let (mut sched, mut stask, mut did_work) =
+            self.interpret_message_queue(stask, DontTryTooHard);
 
-        // This helper will use a randomized work-stealing algorithm
-        // to find work.
-        let (sched, stask) = match sched.do_work(stask) {
-            Some(pair) => pair,
-            None => return
-        };
-
-        // Now, before sleeping we need to find out if there really
-        // were any messages. Give it your best!
-        let (mut sched, stask) =
-            match sched.interpret_message_queue(stask, GiveItYourBest) {
-                Some(pair) => pair,
-                None => return
+        // After processing a message, we consider doing some more work on the
+        // event loop. The "keep going" condition changes after the first
+        // iteration becase we don't want to spin here infinitely.
+        //
+        // Once we start doing work we can keep doing work so long as the
+        // iteration does something. Note that we don't want to starve the
+        // message queue here, so each iteration when we're done working we
+        // check the message queue regardless of whether we did work or not.
+        let mut keep_going = !did_work || !sched.event_loop.has_active_io();
+        while keep_going {
+            let (a, b, c) = match sched.do_work(stask) {
+                (sched, task, false) => {
+                    sched.interpret_message_queue(task, GiveItYourBest)
+                }
+                (sched, task, true) => {
+                    let (sched, task, _) =
+                        sched.interpret_message_queue(task, GiveItYourBest);
+                    (sched, task, true)
+                }
             };
+            sched = a;
+            stask = b;
+            did_work = c;
+
+            // We only keep going if we managed to do something productive and
+            // also don't have any active I/O. If we didn't do anything, we
+            // should consider going to sleep, and if we have active I/O we need
+            // to poll for completion.
+            keep_going = did_work && !sched.event_loop.has_active_io();
+        }
+
+        // If we ever did some work, then we shouldn't put our scheduler
+        // entirely to sleep just yet. Leave the idle callback active and fall
+        // back to epoll() to see what's going on.
+        if did_work {
+            return stask.put_with_sched(sched);
+        }
 
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
@@ -318,7 +349,7 @@ impl Scheduler {
     // return None.
     fn interpret_message_queue(mut ~self, stask: ~GreenTask,
                                effort: EffortLevel)
-        -> Option<(~Scheduler, ~GreenTask)>
+            -> (~Scheduler, ~GreenTask, bool)
     {
 
         let msg = if effort == DontTryTooHard {
@@ -340,8 +371,8 @@ impl Scheduler {
             //
             // I have chosen to take route #2.
             match self.message_queue.pop() {
-                mpsc::Data(t) => Some(t),
-                mpsc::Empty | mpsc::Inconsistent => None
+                msgq::Data(t) => Some(t),
+                msgq::Empty | msgq::Inconsistent => None
             }
         };
 
@@ -349,25 +380,25 @@ impl Scheduler {
             Some(PinnedTask(task)) => {
                 let mut task = task;
                 task.give_home(HomeSched(self.make_handle()));
-                self.resume_task_immediately(stask, task).put();
-                return None;
+                let (sched, task) = self.resume_task_immediately(stask, task);
+                (sched, task, true)
             }
             Some(TaskFromFriend(task)) => {
                 rtdebug!("got a task from a friend. lovely!");
-                self.process_task(stask, task,
-                                  Scheduler::resume_task_immediately_cl);
-                return None;
+                let (sched, task) =
+                    self.process_task(stask, task,
+                                      Scheduler::resume_task_immediately_cl);
+                (sched, task, true)
             }
             Some(RunOnce(task)) => {
                 // bypass the process_task logic to force running this task once
                 // on this home scheduler. This is often used for I/O (homing).
-                self.resume_task_immediately(stask, task).put();
-                return None;
+                let (sched, task) = self.resume_task_immediately(stask, task);
+                (sched, task, true)
             }
             Some(Wake) => {
                 self.sleepy = false;
-                stask.put_with_sched(self);
-                return None;
+                (self, stask, true)
             }
             Some(Shutdown) => {
                 rtdebug!("shutting down");
@@ -389,31 +420,30 @@ impl Scheduler {
                 // event loop references we will shut down.
                 self.no_sleep = true;
                 self.sleepy = false;
-                stask.put_with_sched(self);
-                return None;
+                (self, stask, true)
             }
             Some(NewNeighbor(neighbor)) => {
                 self.work_queues.push(neighbor);
-                return Some((self, stask));
+                (self, stask, false)
             }
-            None => {
-                return Some((self, stask));
-            }
+            None => (self, stask, false)
         }
     }
 
-    fn do_work(mut ~self, stask: ~GreenTask) -> Option<(~Scheduler, ~GreenTask)> {
+    fn do_work(mut ~self,
+               stask: ~GreenTask) -> (~Scheduler, ~GreenTask, bool) {
         rtdebug!("scheduler calling do work");
         match self.find_work() {
             Some(task) => {
                 rtdebug!("found some work! running the task");
-                self.process_task(stask, task,
-                                  Scheduler::resume_task_immediately_cl);
-                return None;
+                let (sched, task) =
+                    self.process_task(stask, task,
+                                      Scheduler::resume_task_immediately_cl);
+                (sched, task, true)
             }
             None => {
                 rtdebug!("no work was found, returning the scheduler struct");
-                return Some((self, stask));
+                (self, stask, false)
             }
         }
     }
@@ -486,7 +516,8 @@ impl Scheduler {
     // place.
 
     fn process_task(mut ~self, cur: ~GreenTask,
-                    mut next: ~GreenTask, schedule_fn: SchedulingFn) {
+                    mut next: ~GreenTask,
+                    schedule_fn: SchedulingFn) -> (~Scheduler, ~GreenTask) {
         rtdebug!("processing a task");
 
         match next.take_unwrap_home() {
@@ -495,23 +526,23 @@ impl Scheduler {
                     rtdebug!("sending task home");
                     next.give_home(HomeSched(home_handle));
                     Scheduler::send_task_home(next);
-                    cur.put_with_sched(self);
+                    (self, cur)
                 } else {
                     rtdebug!("running task here");
                     next.give_home(HomeSched(home_handle));
-                    schedule_fn(self, cur, next);
+                    schedule_fn(self, cur, next)
                 }
             }
             AnySched if self.run_anything => {
                 rtdebug!("running anysched task here");
                 next.give_home(AnySched);
-                schedule_fn(self, cur, next);
+                schedule_fn(self, cur, next)
             }
             AnySched => {
                 rtdebug!("sending task to friend");
                 next.give_home(AnySched);
                 self.send_to_friend(next);
-                cur.put_with_sched(self);
+                (self, cur)
             }
         }
     }
@@ -638,8 +669,7 @@ impl Scheduler {
         // is acquired here. This is the resumption points and the "bounce"
         // that it is referring to.
         unsafe {
-            current_task.nasty_deschedule_lock.lock();
-            current_task.nasty_deschedule_lock.unlock();
+            let _guard = current_task.nasty_deschedule_lock.lock();
         }
         return current_task;
     }
@@ -664,18 +694,19 @@ impl Scheduler {
     // * Context Swapping Helpers - Here be ugliness!
 
     pub fn resume_task_immediately(~self, cur: ~GreenTask,
-                                   next: ~GreenTask) -> ~GreenTask {
+                                   next: ~GreenTask) -> (~Scheduler, ~GreenTask) {
         assert!(cur.is_sched());
-        self.change_task_context(cur, next, |sched, stask| {
+        let mut cur = self.change_task_context(cur, next, |sched, stask| {
             assert!(sched.sched_task.is_none());
             sched.sched_task = Some(stask);
-        })
+        });
+        (cur.sched.take_unwrap(), cur)
     }
 
     fn resume_task_immediately_cl(sched: ~Scheduler,
                                   cur: ~GreenTask,
-                                  next: ~GreenTask) {
-        sched.resume_task_immediately(cur, next).put()
+                                  next: ~GreenTask) -> (~Scheduler, ~GreenTask) {
+        sched.resume_task_immediately(cur, next)
     }
 
     /// Block a running task, context switch to the scheduler, then pass the
@@ -733,30 +764,33 @@ impl Scheduler {
         // to it, but we're guaranteed that the task won't exit until we've
         // unlocked the lock so there's no worry of this memory going away.
         let cur = self.change_task_context(cur, next, |sched, mut task| {
-            let lock: *mut Mutex = &mut task.nasty_deschedule_lock;
-            unsafe { (*lock).lock() }
-            f(sched, BlockedTask::block(task.swap()));
-            unsafe { (*lock).unlock() }
+            let lock: *mut NativeMutex = &mut task.nasty_deschedule_lock;
+            unsafe {
+                let _guard = (*lock).lock();
+                f(sched, BlockedTask::block(task.swap()));
+            }
         });
         cur.put();
     }
 
-    fn switch_task(sched: ~Scheduler, cur: ~GreenTask, next: ~GreenTask) {
-        sched.change_task_context(cur, next, |sched, last_task| {
+    fn switch_task(sched: ~Scheduler, cur: ~GreenTask,
+                   next: ~GreenTask) -> (~Scheduler, ~GreenTask) {
+        let mut cur = sched.change_task_context(cur, next, |sched, last_task| {
             if last_task.is_sched() {
                 assert!(sched.sched_task.is_none());
                 sched.sched_task = Some(last_task);
             } else {
                 sched.enqueue_task(last_task);
             }
-        }).put()
+        });
+        (cur.sched.take_unwrap(), cur)
     }
 
     // * Task Context Helpers
 
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
-    pub fn terminate_current_task(mut ~self, cur: ~GreenTask) {
+    pub fn terminate_current_task(mut ~self, cur: ~GreenTask) -> ! {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
@@ -769,7 +803,9 @@ impl Scheduler {
     }
 
     pub fn run_task(~self, cur: ~GreenTask, next: ~GreenTask) {
-        self.process_task(cur, next, Scheduler::switch_task);
+        let (sched, task) =
+            self.process_task(cur, next, Scheduler::switch_task);
+        task.put_with_sched(sched);
     }
 
     pub fn run_task_later(mut cur: ~GreenTask, next: ~GreenTask) {
@@ -836,7 +872,8 @@ impl Scheduler {
 
 // Supporting types
 
-type SchedulingFn = extern "Rust" fn (~Scheduler, ~GreenTask, ~GreenTask);
+type SchedulingFn = fn (~Scheduler, ~GreenTask, ~GreenTask)
+                            -> (~Scheduler, ~GreenTask);
 
 pub enum SchedMessage {
     Wake,
@@ -849,7 +886,7 @@ pub enum SchedMessage {
 
 pub struct SchedHandle {
     priv remote: ~RemoteCallback,
-    priv queue: mpsc::Producer<SchedMessage, ()>,
+    priv queue: msgq::Producer<SchedMessage>,
     sched_id: uint
 }
 
@@ -1364,7 +1401,7 @@ mod test {
         });
     }
 
-    // FIXME: #9407: xfail-test
+    // FIXME: #9407: ignore-test
     #[ignore]
     #[test]
     fn dont_starve_1() {
@@ -1416,8 +1453,8 @@ mod test {
 
     #[test]
     fn test_spawn_sched_blocking() {
-        use std::unstable::mutex::{Mutex, MUTEX_INIT};
-        static mut LOCK: Mutex = MUTEX_INIT;
+        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
@@ -1429,12 +1466,11 @@ mod test {
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 unsafe {
-                    LOCK.lock();
+                    let mut guard = LOCK.lock();
 
                     start_ch.send(());
-                    LOCK.wait();   // block the scheduler thread
-                    LOCK.signal(); // let them know we have the lock
-                    LOCK.unlock();
+                    guard.wait();   // block the scheduler thread
+                    guard.signal(); // let them know we have the lock
                 }
 
                 fin_ch.send(());
@@ -1466,10 +1502,9 @@ mod test {
                 child_ch.send(20);
                 pingpong(&parent_po, &child_ch);
                 unsafe {
-                    LOCK.lock();
-                    LOCK.signal();   // wakeup waiting scheduler
-                    LOCK.wait();     // wait for them to grab the lock
-                    LOCK.unlock();
+                    let mut guard = LOCK.lock();
+                    guard.signal();   // wakeup waiting scheduler
+                    guard.wait();     // wait for them to grab the lock
                 }
             })));
             drop(handle);

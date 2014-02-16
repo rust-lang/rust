@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2014 Jan 4
+" Last Change:  2014 Feb 14
 
 if version < 600
   syntax clear
@@ -18,7 +18,8 @@ syn keyword   rustOperator    as
 
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
-syn keyword   rustKeyword     break continue do extern
+syn keyword   rustKeyword     break continue do
+syn keyword   rustKeyword     extern nextgroup=rustExternCrate skipwhite
 syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once priv pub
 syn keyword   rustKeyword     return
@@ -30,6 +31,10 @@ syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 syn keyword   rustKeyword     proc
 syn keyword   rustStorage     mut ref static
 syn keyword   rustObsoleteStorage const
+
+syn keyword   rustInvalidBareKeyword crate
+
+syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier skipwhite
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -81,7 +86,7 @@ syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
 syn keyword rustTrait Bitwise Bounded Integer Fractional Real RealExt
-syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
+syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul CheckedDiv
 syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
@@ -90,13 +95,9 @@ syn keyword rustTrait Buffer Writer Reader Seek
 syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr IntoStr
-syn keyword rustTrait CloneableTuple ImmutableTuple
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait ImmutableTuple1 ImmutableTuple2 ImmutableTuple3 ImmutableTuple4
-syn keyword rustTrait ImmutableTuple5 ImmutableTuple6 ImmutableTuple7 ImmutableTuple8
-syn keyword rustTrait ImmutableTuple9 ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
 syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
@@ -245,6 +246,8 @@ hi def link rustDeriving      PreProc
 hi def link rustStorage       StorageClass
 hi def link rustObsoleteStorage Error
 hi def link rustLifetime      Special
+hi def link rustInvalidBareKeyword Error
+hi def link rustExternCrate   rustKeyword
 
 " Other Suggestions:
 " hi rustAttribute ctermfg=cyan

@@ -91,15 +91,18 @@ impl UnixListener {
     /// # Example
     ///
     /// ```
+    /// # fn main() {}
+    /// # fn foo() {
+    /// # #[allow(unused_must_use)];
     /// use std::io::net::unix::UnixListener;
-    /// use std::io::Listener;
+    /// use std::io::{Listener, Acceptor};
     ///
-    /// let server = Path::new("path/to/my/socket");
-    /// let mut stream = UnixListener::bind(&server);
-    /// for client in stream.incoming() {
-    ///     let mut client = client;
+    /// let server = Path::new("/path/to/my/socket");
+    /// let stream = UnixListener::bind(&server);
+    /// for mut client in stream.listen().incoming() {
     ///     client.write([1, 2, 3, 4]);
     /// }
+    /// # }
     /// ```
     pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
         LocalIo::maybe_raise(|io| {
@@ -270,7 +273,7 @@ mod tests {
     fn unix_clone_two_read() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         let c2 = c.clone();
 
         spawn(proc() {

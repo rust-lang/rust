@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ptr;
-
 enum bottom { }
 
 fn main() {
-    let x = ptr::to_unsafe_ptr(&()) as *bottom;
+    let x = &() as *() as *bottom;
     match x { } //~ ERROR non-exhaustive patterns
 }

@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-extern mod extra;
+extern crate extra;
 
 enum Token {
     Text(@~str),

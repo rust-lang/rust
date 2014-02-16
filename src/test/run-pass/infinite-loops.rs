@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,9 +12,9 @@
   A simple way to make sure threading works. This should use all the
   CPU cycles an any machines that we're likely to see for a while.
 */
-// xfail-test
+// ignore-test
 
-extern mod extra;
+extern crate extra;
 
 fn loopy(n: int) {
     if n > 0 { spawn(proc() { loopy(n - 1) }); spawn(proc() { loopy(n - 1) }); }

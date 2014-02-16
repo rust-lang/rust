@@ -10,7 +10,6 @@
 
 use std::c_str::CString;
 use std::cast;
-use std::comm::SharedChan;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
 use std::io::process::ProcessConfig;
@@ -99,6 +98,10 @@ impl rtio::EventLoop for UvEventLoop {
     fn io<'a>(&'a mut self) -> Option<&'a mut rtio::IoFactory> {
         let factory = &mut self.uvio as &mut rtio::IoFactory;
         Some(factory)
+    }
+
+    fn has_active_io(&self) -> bool {
+        self.uvio.loop_.get_blockers() > 0
     }
 }
 
@@ -310,7 +313,7 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn signal(&mut self, signum: Signum, channel: SharedChan<Signum>)
+    fn signal(&mut self, signum: Signum, channel: Chan<Signum>)
         -> Result<~rtio::RtioSignal, IoError> {
         match SignalWatcher::new(self, signum, channel) {
             Ok(s) => Ok(s as ~rtio::RtioSignal),

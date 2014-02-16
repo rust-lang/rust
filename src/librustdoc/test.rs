@@ -41,7 +41,6 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let libs = @RefCell::new(libs.move_iter().collect());
 
     let sessopts = @session::Options {
-        binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
         crate_types: ~[session::CrateTypeDylib],
@@ -59,31 +58,31 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(sess);
-    let crate = driver::phase_1_parse_input(sess, cfg, &input);
+    let krate = driver::phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (crate, _) = driver::phase_2_configure_and_expand(sess, loader, crate);
+    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate);
 
     let ctx = @core::DocContext {
-        crate: crate,
+        krate: krate,
         tycx: None,
         sess: sess,
     };
     local_data::set(super::ctxtkey, ctx);
 
     let mut v = RustdocVisitor::new(ctx, None);
-    v.visit(&ctx.crate);
-    let crate = v.clean();
-    let (crate, _) = passes::unindent_comments(crate);
-    let (crate, _) = passes::collapse_docs(crate);
+    v.visit(&ctx.krate);
+    let krate = v.clean();
+    let (krate, _) = passes::unindent_comments(krate);
+    let (krate, _) = passes::collapse_docs(krate);
 
     let mut collector = Collector {
         tests: ~[],
         names: ~[],
         cnt: 0,
         libs: libs,
-        cratename: crate.name.to_owned(),
+        cratename: krate.name.to_owned(),
     };
-    collector.fold_crate(crate);
+    collector.fold_crate(krate);
 
     let args = matches.opt_strs("test-args");
     let mut args = args.iter().flat_map(|s| s.words()).map(|s| s.to_owned());
@@ -95,13 +94,12 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
+fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) {
     let test = maketest(test, cratename);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
     let sessopts = @session::Options {
-        binary: ~"rustdoctest",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
         crate_types: ~[session::CrateTypeExecutable],
@@ -132,9 +130,10 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     match out {
         Err(e) => fail!("couldn't run the test: {}", e),
         Ok(out) => {
-            if !out.status.success() {
-                fail!("test executable failed:\n{}",
-                      str::from_utf8(out.error));
+            if should_fail && out.status.success() {
+                fail!("test executable succeeded when it should have failed");
+            } else if !should_fail && !out.status.success() {
+                fail!("test executable failed:\n{}", str::from_utf8(out.error));
             }
         }
     }
@@ -146,10 +145,10 @@ fn maketest(s: &str, cratename: &str) -> ~str {
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
 ";
     if s.contains("extra") {
-        prog.push_str("extern mod extra;\n");
+        prog.push_str("extern crate extra;\n");
     }
     if s.contains(cratename) {
-        prog.push_str(format!("extern mod {};\n", cratename));
+        prog.push_str(format!("extern crate {};\n", cratename));
     }
     if s.contains("fn main") {
         prog.push_str(s);
@@ -171,7 +170,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn add_test(&mut self, test: &str, ignore: bool, should_fail: bool) {
+    pub fn add_test(&mut self, test: &str, should_fail: bool) {
         let test = test.to_owned();
         let name = format!("{}_{}", self.names.connect("::"), self.cnt);
         self.cnt += 1;
@@ -182,11 +181,11 @@ impl Collector {
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
-                ignore: ignore,
-                should_fail: should_fail,
+                ignore: false,
+                should_fail: false, // compiler failures are test failures
             },
             testfn: test::DynTestFn(proc() {
-                runtest(test, cratename, libs);
+                runtest(test, cratename, libs, should_fail);
             }),
         });
     }

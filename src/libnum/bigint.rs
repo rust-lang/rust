@@ -16,12 +16,9 @@ A `BigUint` is represented as an array of `BigDigit`s.
 A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
-#[allow(missing_doc)];
-#[allow(non_uppercase_statics)];
-
+use std::cmp;
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use std::num;
-use std::num::{Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::rand::Rng;
 use std::str;
@@ -48,7 +45,7 @@ pub type BigDigit = u32;
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
 
 pub mod BigDigit {
-    use bigint::BigDigit;
+    use super::BigDigit;
 
     #[cfg(target_word_size = "32")]
     pub static bits: uint = 16;
@@ -136,27 +133,9 @@ impl FromStr for BigUint {
 
 impl Num for BigUint {}
 
-impl Orderable for BigUint {
-    #[inline]
-    fn min(&self, other: &BigUint) -> BigUint {
-        if self < other { self.clone() } else { other.clone() }
-    }
-
-    #[inline]
-    fn max(&self, other: &BigUint) -> BigUint {
-        if self > other { self.clone() } else { other.clone() }
-    }
-
-    #[inline]
-    fn clamp(&self, mn: &BigUint, mx: &BigUint) -> BigUint {
-        if self > mx { mx.clone() } else
-        if self < mn { mn.clone() } else { self.clone() }
-    }
-}
-
 impl BitAnd<BigUint, BigUint> for BigUint {
     fn bitand(&self, other: &BigUint) -> BigUint {
-        let new_len = num::min(self.data.len(), other.data.len());
+        let new_len = cmp::min(self.data.len(), other.data.len());
         let anded = vec::from_fn(new_len, |i| {
             // i will never be less than the size of either data vector
             let ai = self.data[i];
@@ -169,7 +148,7 @@ impl BitAnd<BigUint, BigUint> for BigUint {
 
 impl BitOr<BigUint, BigUint> for BigUint {
     fn bitor(&self, other: &BigUint) -> BigUint {
-        let new_len = num::max(self.data.len(), other.data.len());
+        let new_len = cmp::max(self.data.len(), other.data.len());
         let ored = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
@@ -181,7 +160,7 @@ impl BitOr<BigUint, BigUint> for BigUint {
 
 impl BitXor<BigUint, BigUint> for BigUint {
     fn bitxor(&self, other: &BigUint) -> BigUint {
-        let new_len = num::max(self.data.len(), other.data.len());
+        let new_len = cmp::max(self.data.len(), other.data.len());
         let xored = vec::from_fn(new_len, |i| {
             let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
             let bi = if i < other.data.len() { other.data[i] } else { 0 };
@@ -226,7 +205,7 @@ impl Unsigned for BigUint {}
 
 impl Add<BigUint, BigUint> for BigUint {
     fn add(&self, other: &BigUint) -> BigUint {
-        let new_len = num::max(self.data.len(), other.data.len());
+        let new_len = cmp::max(self.data.len(), other.data.len());
 
         let mut carry = 0;
         let mut sum = vec::from_fn(new_len, |i| {
@@ -245,7 +224,7 @@ impl Add<BigUint, BigUint> for BigUint {
 
 impl Sub<BigUint, BigUint> for BigUint {
     fn sub(&self, other: &BigUint) -> BigUint {
-        let new_len = num::max(self.data.len(), other.data.len());
+        let new_len = cmp::max(self.data.len(), other.data.len());
 
         let mut borrow = 0;
         let diff = vec::from_fn(new_len, |i| {
@@ -281,7 +260,7 @@ impl Mul<BigUint, BigUint> for BigUint {
         // = a1*b1 * base^2 +
         //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
         //   a0*b0
-        let half_len = num::max(s_len, o_len) / 2;
+        let half_len = cmp::max(s_len, o_len) / 2;
         let (sHi, sLo) = cut_at(self,  half_len);
         let (oHi, oLo) = cut_at(other, half_len);
 
@@ -318,7 +297,7 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         #[inline]
         fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
-            let mid = num::min(a.data.len(), n);
+            let mid = cmp::min(a.data.len(), n);
             return (BigUint::from_slice(a.data.slice(mid, a.data.len())),
                     BigUint::from_slice(a.data.slice(0, mid)));
         }
@@ -723,7 +702,7 @@ impl BigUint {
         let mut n: BigUint      = Zero::zero();
         let mut power: BigUint  = One::one();
         loop {
-            let start = num::max(end, unit_len) - unit_len;
+            let start = cmp::max(end, unit_len) - unit_len;
             match uint::parse_bytes(buf.slice(start, end), radix) {
                 Some(d) => {
                     let d: Option<BigUint> = FromPrimitive::from_uint(d);
@@ -787,11 +766,12 @@ impl BigUint {
         if n_bits == 0 || self.data.is_empty() { return (*self).clone(); }
 
         let mut borrow = 0;
-        let mut shifted = ~[];
+        let mut shifted_rev = vec::with_capacity(self.data.len());
         for elem in self.data.rev_iter() {
-            shifted = ~[(*elem >> n_bits) | borrow] + shifted;
+            shifted_rev.push((*elem >> n_bits) | borrow);
             borrow = *elem << (BigDigit::bits - n_bits);
         }
+        let shifted = { shifted_rev.reverse(); shifted_rev };
         return BigUint::new(shifted);
     }
 
@@ -942,24 +922,6 @@ impl FromStr for BigInt {
 }
 
 impl Num for BigInt {}
-
-impl Orderable for BigInt {
-    #[inline]
-    fn min(&self, other: &BigInt) -> BigInt {
-        if self < other { self.clone() } else { other.clone() }
-    }
-
-    #[inline]
-    fn max(&self, other: &BigInt) -> BigInt {
-        if self > other { self.clone() } else { other.clone() }
-    }
-
-    #[inline]
-    fn clamp(&self, mn: &BigInt, mx: &BigInt) -> BigInt {
-        if self > mx { mx.clone() } else
-        if self < mn { mn.clone() } else { self.clone() }
-    }
-}
 
 impl Shl<uint, BigInt> for BigInt {
     #[inline]
@@ -1433,8 +1395,8 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
-    use super::*;
-    use super::RandBigInt;
+    use super::{BigDigit, BigUint, ToBigUint};
+    use super::{Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2090,8 +2052,8 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
-    use super::*;
-    use super::RandBigInt;
+    use super::{BigDigit, BigUint, ToBigUint};
+    use super::{Sign, Minus, Zero, Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2591,8 +2553,9 @@ mod bigint_tests {
 
 #[cfg(test)]
 mod bench {
-    use super::*;
-    use std::{iter, util};
+    use super::{BigInt, BigUint};
+    use std::iter;
+    use std::mem::replace;
     use std::num::{FromPrimitive, Zero, One};
     use extra::test::BenchHarness;
 
@@ -2609,7 +2572,7 @@ mod bench {
         let mut f1: BigUint = One::one();
         for _ in range(0, n) {
             let f2 = f0 + f1;
-            f0 = util::replace(&mut f1, f2);
+            f0 = replace(&mut f1, f2);
         }
         f0
     }
@@ -2638,5 +2601,16 @@ mod bench {
         bh.iter(|| {
             fib.to_str();
         });
+    }
+
+    #[bench]
+    fn shr(bh: &mut BenchHarness) {
+        let n = { let one : BigUint = One::one(); one << 1000 };
+        bh.iter(|| {
+            let mut m = n.clone();
+            for _ in range(0, 10) {
+                m = m >> 1;
+            }
+        })
     }
 }

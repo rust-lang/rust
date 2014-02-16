@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,10 +9,10 @@
 // except according to those terms.
 
 // aux-build:iss.rs
-// xfail-fast
+// ignore-fast
 
 #[crate_id="issue-6919"];
-extern mod issue6919_3;
+extern crate issue6919_3;
 
 pub fn main() {
     issue6919_3::D.k;

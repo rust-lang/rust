@@ -32,6 +32,7 @@ use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter};
 use libc;
+use mem::replace;
 use option::{Option, Some, None};
 use prelude::drop;
 use result::{Ok, Err};
@@ -39,7 +40,6 @@ use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use rt::task::Task;
 use str::StrSlice;
-use util;
 use vec::ImmutableVector;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
@@ -132,7 +132,7 @@ fn reset_helper(w: ~Writer,
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
 pub fn set_stdout(stdout: ~Writer) -> Option<~Writer> {
-    reset_helper(stdout, |t, w| util::replace(&mut t.stdout, Some(w)))
+    reset_helper(stdout, |t, w| replace(&mut t.stdout, Some(w)))
 }
 
 /// Resets the task-local stderr handle to the specified writer
@@ -144,7 +144,7 @@ pub fn set_stdout(stdout: ~Writer) -> Option<~Writer> {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
 pub fn set_stderr(stderr: ~Writer) -> Option<~Writer> {
-    reset_helper(stderr, |t, w| util::replace(&mut t.stderr, Some(w)))
+    reset_helper(stderr, |t, w| replace(&mut t.stderr, Some(w)))
 }
 
 // Helper to access the local task's stdout handle
@@ -183,7 +183,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
             // temporarily take the task, swap the handles, put the task in TLS,
             // and only then drop the previous handle.
             let mut t = Local::borrow(None::<Task>);
-            let prev = util::replace(&mut t.get().stdout, my_stdout);
+            let prev = replace(&mut t.get().stdout, my_stdout);
             drop(t);
             drop(prev);
             ret

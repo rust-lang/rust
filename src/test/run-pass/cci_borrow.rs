@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast - check-fast doesn't understand aux-build
+// ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_borrow_lib.rs
 
 #[feature(managed_boxes)];
 
-extern mod cci_borrow_lib;
+extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;
 
 pub fn main() {

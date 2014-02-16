@@ -24,8 +24,8 @@ struct CheckLoopVisitor {
     tcx: ty::ctxt,
 }
 
-pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
-    visit::walk_crate(&mut CheckLoopVisitor { tcx: tcx }, crate, Normal)
+pub fn check_crate(tcx: ty::ctxt, krate: &ast::Crate) {
+    visit::walk_crate(&mut CheckLoopVisitor { tcx: tcx }, krate, Normal)
 }
 
 impl Visitor<Context> for CheckLoopVisitor {

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 
-extern mod extra;
+extern crate extra;
 
 use std::task;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: &SharedChan<int>, message: int, count: int) {
+fn test00_start(ch: &Chan<int>, message: int, count: int) {
     info!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
@@ -33,7 +33,7 @@ fn test00() {
 
     info!("Creating tasks");
 
-    let (po, ch) = SharedChan::new();
+    let (po, ch) = Chan::new();
 
     let mut i: int = 0;
 

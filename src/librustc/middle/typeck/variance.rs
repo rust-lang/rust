@@ -198,19 +198,17 @@ use arena::Arena;
 use middle::ty;
 use std::vec;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util;
-use syntax::parse::token;
 use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
 
 pub fn infer_variance(tcx: ty::ctxt,
-                      crate: &ast::Crate) {
+                      krate: &ast::Crate) {
     let mut arena = arena::Arena::new();
-    let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, crate);
-    let constraints_cx = add_constraints_from_crate(terms_cx, crate);
+    let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, krate);
+    let constraints_cx = add_constraints_from_crate(terms_cx, krate);
     solve_constraints(constraints_cx);
 }
 
@@ -278,7 +276,7 @@ struct InferredInfo<'a> {
 
 fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
                                            arena: &'a mut Arena,
-                                           crate: &ast::Crate)
+                                           krate: &ast::Crate)
                                            -> TermsContext<'a> {
     let mut terms_cx = TermsContext {
         tcx: tcx,
@@ -293,7 +291,7 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
                                               region_params: opt_vec::Empty }
     };
 
-    visit::walk_crate(&mut terms_cx, crate, ());
+    visit::walk_crate(&mut terms_cx, krate, ());
 
     terms_cx
 }
@@ -423,7 +421,7 @@ struct Constraint<'a> {
 }
 
 fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
-                                  crate: &ast::Crate)
+                                  krate: &ast::Crate)
                                   -> ConstraintContext<'a> {
     let mut invariant_lang_items = [None, ..3];
     let mut covariant_lang_items = [None, ..3];
@@ -461,7 +459,7 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
         bivariant: bivariant,
         constraints: ~[],
     };
-    visit::walk_crate(&mut constraint_cx, crate, ());
+    visit::walk_crate(&mut constraint_cx, krate, ());
     constraint_cx
 }
 
@@ -496,7 +494,7 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
             ast::ItemStruct(..) => {
                 let struct_fields = ty::lookup_struct_fields(tcx, did);
                 for field_info in struct_fields.iter() {
-                    assert_eq!(field_info.id.crate, ast::LOCAL_CRATE);
+                    assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
                     let field_ty = ty::node_id_to_type(tcx, field_info.id.node);
                     self.add_constraints_from_ty(field_ty, self.covariant);
                 }
@@ -534,9 +532,7 @@ impl<'a> ConstraintContext<'a> {
             None => {
                 self.tcx().sess.bug(format!(
                         "No inferred index entry for {}",
-                        ast_map::node_id_to_str(self.tcx().items,
-                                                param_id,
-                                                token::get_ident_interner())));
+                        self.tcx().map.node_to_str(param_id)));
             }
         }
     }
@@ -552,7 +548,7 @@ impl<'a> ConstraintContext<'a> {
          * the type/region parameter with the given id.
          */
 
-        assert_eq!(param_def_id.crate, item_def_id.crate);
+        assert_eq!(param_def_id.krate, item_def_id.krate);
 
         if self.invariant_lang_items[kind as uint] == Some(item_def_id) {
             self.invariant
@@ -560,7 +556,7 @@ impl<'a> ConstraintContext<'a> {
             self.covariant
         } else if self.contravariant_lang_items[kind as uint] == Some(item_def_id) {
             self.contravariant
-        } else if param_def_id.crate == ast::LOCAL_CRATE {
+        } else if param_def_id.krate == ast::LOCAL_CRATE {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
@@ -686,7 +682,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_param(ty::param_ty { def_id: ref def_id, .. }) => {
-                assert_eq!(def_id.crate, ast::LOCAL_CRATE);
+                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.find(&def_id.node) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
@@ -700,7 +696,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_self(ref def_id) => {
-                assert_eq!(def_id.crate, ast::LOCAL_CRATE);
+                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 let index = self.inferred_index(def_id.node);
                 self.add_constraint(index, variance);
             }
@@ -715,8 +711,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_infer(..) | ty::ty_err |
-            ty::ty_type | ty::ty_unboxed_vec(..) => {
+            ty::ty_infer(..) | ty::ty_err | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
@@ -941,7 +936,7 @@ impl<'a> SolveContext<'a> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(ast_map::node_span(tcx.items, item_id), found);
+                tcx.sess.span_err(tcx.map.span(item_id), found);
             }
 
             let mut item_variance_map = tcx.item_variance_map.borrow_mut();

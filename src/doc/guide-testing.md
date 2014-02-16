@@ -185,7 +185,7 @@ amount.
 For example:
 
 ~~~
-extern mod extra;
+extern crate extra;
 use std::vec;
 use extra::test::BenchHarness;
 
@@ -243,7 +243,7 @@ recognize that some calculation has no external effects and remove
 it entirely.
 
 ~~~
-extern mod extra;
+extern crate extra;
 use extra::test::BenchHarness;
 
 #[bench]

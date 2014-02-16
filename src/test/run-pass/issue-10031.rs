@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast - check-fast doesn't understand aux-build
+// ignore-fast - check-fast doesn't understand aux-build
 // aux-build:issue_10031_aux.rs
-extern mod issue_10031_aux;
+extern crate issue_10031_aux;
 
 pub fn main() {
     let _ = issue_10031_aux::Wrap(());

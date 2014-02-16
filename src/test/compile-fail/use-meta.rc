@@ -10,4 +10,4 @@
 
 // error-pattern:can't find crate for `std`
 
-extern mod std = "std#bogus";
+extern crate std = "std#bogus";

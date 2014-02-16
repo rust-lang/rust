@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rustrt sundown uv_support morestack miniz
+NATIVE_LIBS := rustrt sundown uv_support morestack miniz context_switch
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -54,9 +54,10 @@ NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
 			rust_android_dummy.c \
 			rust_test_helpers.c \
 			rust_try.ll \
-			arch/$$(HOST_$(1))/_context.S \
 			arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
+NATIVE_DEPS_context_switch_$(1) := \
+			arch/$$(HOST_$(1))/_context.S
 
 ################################################################################
 # You shouldn't find it that necessary to edit anything below this line.
@@ -216,6 +217,37 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		V=$$(VERBOSE)
 
 endif
+
+################################################################################
+# compiler-rt
+################################################################################
+
+ifdef CFG_ENABLE_FAST_MAKE
+COMPRT_DEPS := $(S)/.gitmodules
+else
+COMPRT_DEPS := $(wildcard \
+              $(S)src/compiler-rt/* \
+              $(S)src/compiler-rt/*/* \
+              $(S)src/compiler-rt/*/*/* \
+              $(S)src/compiler-rt/*/*/*/*)
+endif
+
+COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
+COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
+
+$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
+	@$$(call E, make: compiler-rt)
+	$$(Q)$$(MAKE) -C "$(S)src/compiler-rt" \
+		ProjSrcRoot="$(S)src/compiler-rt" \
+		ProjObjRoot="$$(abspath $$(COMPRT_BUILD_DIR_$(1)))" \
+		CC="$$(CC_$(1))" \
+		AR="$$(AR_$(1))" \
+		RANLIB="$$(AR_$(1)) s" \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1))" \
+		TargetTriple=$(1) \
+		triple-runtime
+	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/runtime/libcompiler_rt.a $$(COMPRT_LIB_$(1))
 
 endef
 

@@ -9,13 +9,13 @@
 // except according to those terms.
 
 //aux-build:macro_export_inner_module.rs
-//xfail-stage1
-//xfail-fast
+//ignore-stage1
+//ignore-fast
 
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_export_inner_module;
+extern crate macro_export_inner_module;
 
 pub fn main() {
     assert_eq!(1, foo!());

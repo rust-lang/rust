@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,7 @@
 
 // Test for concurrent tasks
 
-// xfail-test OOM on linux-32 without opts
+// ignore-test OOM on linux-32 without opts
 
 use std::os;
 use std::task;

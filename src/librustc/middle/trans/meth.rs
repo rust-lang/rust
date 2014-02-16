@@ -35,9 +35,8 @@ use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
 use std::vec;
-use syntax::ast_map::{Path, PathMod, PathName, PathPrettyName};
 use syntax::parse::token;
-use syntax::{ast, ast_map, ast_util, visit};
+use syntax::{ast, ast_map, visit};
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -46,7 +45,6 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: @CrateContext,
-                  path: Path,
                   name: ast::Ident,
                   methods: &[@ast::Method],
                   generics: &ast::Generics,
@@ -54,8 +52,7 @@ pub fn trans_impl(ccx: @CrateContext,
     let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx;
 
-    debug!("trans_impl(path={}, name={}, id={:?})",
-           path.repr(tcx), name.repr(tcx), id);
+    debug!("trans_impl(name={}, id={:?})", name.repr(tcx), id);
 
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
@@ -66,14 +63,10 @@ pub fn trans_impl(ccx: @CrateContext,
         }
         return;
     }
-    let sub_path = vec::append_one(path, PathName(name));
     for method in methods.iter() {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
-            let path = vec::append_one(sub_path.clone(),
-                                       PathName(method.ident));
-
-            trans_fn(ccx, path, method.decl, method.body,
+            trans_fn(ccx, method.decl, method.body,
                      llfn, None, method.id, []);
         } else {
             let mut v = TransItemVisitor{ ccx: ccx };
@@ -85,17 +78,15 @@ pub fn trans_impl(ccx: @CrateContext,
 /// Translates a (possibly monomorphized) method body.
 ///
 /// Parameters:
-/// * `path`: the path to the method
 /// * `method`: the AST node for the method
 /// * `param_substs`: if this is a generic method, the current values for
 ///   type parameters and so forth, else None
 /// * `llfn`: the LLVM ValueRef for the method
 ///
-/// FIXME(pcwalton) Can we take `path` by reference?
-pub fn trans_method(ccx: @CrateContext, path: Path, method: &ast::Method,
+pub fn trans_method(ccx: @CrateContext, method: &ast::Method,
                     param_substs: Option<@param_substs>,
                     llfn: ValueRef) -> ValueRef {
-    trans_fn(ccx, path, method.decl, method.body,
+    trans_fn(ccx, method.decl, method.body,
              llfn, param_substs, method.id, []);
     llfn
 }
@@ -184,24 +175,22 @@ pub fn trans_static_method_callee(bcx: &Block,
     let bound_index = ty::lookup_trait_def(bcx.tcx(), trait_id).
         generics.type_param_defs().len();
 
-    let mname = if method_id.crate == ast::LOCAL_CRATE {
-        {
-            match bcx.tcx().items.get(method_id.node) {
-                ast_map::NodeTraitMethod(trait_method, _, _) => {
-                    ast_util::trait_method_to_ty_method(trait_method).ident
-                }
-                _ => fail!("callee is not a trait method")
+    let mname = if method_id.krate == ast::LOCAL_CRATE {
+        match bcx.tcx().map.get(method_id.node) {
+            ast_map::NodeTraitMethod(method) => {
+                let ident = match *method {
+                    ast::Required(ref m) => m.ident,
+                    ast::Provided(ref m) => m.ident
+                };
+                ident.name
             }
+            _ => fail!("callee is not a trait method")
         }
     } else {
-        let path = csearch::get_item_path(bcx.tcx(), method_id);
-        match path[path.len()-1] {
-            PathPrettyName(s, _) | PathName(s) => { s }
-            PathMod(_) => { fail!("path doesn't have a name?") }
-        }
+        csearch::get_item_path(bcx.tcx(), method_id).last().unwrap().name()
     };
     debug!("trans_static_method_callee: method_id={:?}, callee_id={:?}, \
-            name={}", method_id, callee_id, ccx.sess.str_of(mname));
+            name={}", method_id, callee_id, token::get_name(mname));
 
     let vtbls = {
         let vtable_map = ccx.maps.vtable_map.borrow();
@@ -213,7 +202,7 @@ pub fn trans_static_method_callee(bcx: &Block,
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
-            let mth_id = method_with_name(ccx, impl_did, mname.name);
+            let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
                     bcx, mth_id, callee_id,
@@ -364,17 +353,24 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
     // converting to an rvalue.
     let self_datum = unpack_datum!(
         bcx, expr::trans(bcx, self_expr));
-    let self_datum = unpack_datum!(
-        bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
-    // Convert to by-ref since `trans_trait_callee_from_llval` wants it
-    // that way.
-    let self_datum = unpack_datum!(
-        bcx, self_datum.to_ref_datum(bcx));
+    let llval = if ty::type_needs_drop(bcx.tcx(), self_datum.ty) {
+        let self_datum = unpack_datum!(
+            bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
-    // Arrange cleanup in case something should go wrong before the
-    // actual call occurs.
-    let llval = self_datum.add_clean(bcx.fcx, arg_cleanup_scope);
+        // Convert to by-ref since `trans_trait_callee_from_llval` wants it
+        // that way.
+        let self_datum = unpack_datum!(
+            bcx, self_datum.to_ref_datum(bcx));
+
+        // Arrange cleanup in case something should go wrong before the
+        // actual call occurs.
+        self_datum.add_clean(bcx.fcx, arg_cleanup_scope)
+    } else {
+        // We don't have to do anything about cleanups for &Trait and &mut Trait.
+        assert!(self_datum.kind.is_by_ref());
+        self_datum.val
+    };
 
     let callee_ty = node_id_type(bcx, callee_id);
     trans_trait_callee_from_llval(bcx, callee_ty, n_method, llval)
@@ -542,7 +538,7 @@ fn emit_vtable_methods(bcx: &Block,
         if m.generics.has_type_params() ||
            ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
             debug!("(making impl vtable) method has self or type params: {}",
-                   tcx.sess.str_of(ident));
+                   token::get_ident(ident));
             C_null(Type::nil().ptr_to())
         } else {
             trans_fn_ref_with_vtables(bcx, m_id, 0, substs, Some(vtables))

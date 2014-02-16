@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub extern mod std; //~ ERROR: `pub` visibility is not allowed
-priv extern mod std; //~ ERROR: unnecessary visibility qualifier
-extern mod std;
+pub extern crate std; //~ ERROR: `pub` visibility is not allowed
+priv extern crate std; //~ ERROR: unnecessary visibility qualifier
+extern crate std;
 
 pub use std::bool;
 priv use std::bool; //~ ERROR: unnecessary visibility qualifier

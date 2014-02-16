@@ -160,10 +160,10 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
 /// will invoke `path` with proper linking-style arguments.
 fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
                  fqn: &[~str], kind: clean::TypeKind,
-                 crate: ast::CrateNum) -> fmt::Result {
+                 krate: ast::CrateNum) -> fmt::Result {
     path(w, p, print_all,
         |cache, loc| {
-            match *cache.extern_locations.get(&crate) {
+            match *cache.extern_locations.get(&krate) {
                 render::Remote(ref s) => Some(s.clone()),
                 render::Local => Some("../".repeat(loc.len())),
                 render::Unknown => None,
@@ -310,9 +310,9 @@ impl fmt::Show for clean::Type {
                 typarams(f.buf, tp)
             }
             clean::ExternalPath{path: ref path, typarams: ref tp,
-                                fqn: ref fqn, kind, crate} => {
+                                fqn: ref fqn, kind, krate} => {
                 if_ok!(external_path(f.buf, path, false, fqn.as_slice(), kind,
-                                     crate))
+                                     krate))
                 typarams(f.buf, tp)
             }
             clean::Self(..) => f.buf.write("Self".as_bytes()),
@@ -404,26 +404,25 @@ impl fmt::Show for clean::Type {
     }
 }
 
+impl fmt::Show for clean::Arguments {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, input) in self.values.iter().enumerate() {
+            if i > 0 { if_ok!(write!(f.buf, ", ")); }
+            if input.name.len() > 0 {
+                if_ok!(write!(f.buf, "{}: ", input.name));
+            }
+            if_ok!(write!(f.buf, "{}", input.type_));
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Show for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = self.inputs,
                arrow = match self.output { clean::Unit => "no", _ => "yes" },
                ret = self.output)
-    }
-}
-
-impl fmt::Show for ~[clean::Argument] {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut args = ~"";
-        for (i, input) in self.iter().enumerate() {
-            if i > 0 { args.push_str(", "); }
-            if input.name.len() > 0 {
-                args.push_str(format!("{}: ", input.name));
-            }
-            args.push_str(format!("{}", input.type_));
-        }
-        f.buf.write(args.as_bytes())
     }
 }
 
@@ -448,7 +447,7 @@ impl<'a> fmt::Show for Method<'a> {
                 args.push_str("&amp;self");
             }
         }
-        for (i, input) in d.inputs.iter().enumerate() {
+        for (i, input) in d.inputs.values.iter().enumerate() {
             if i > 0 || args.len() > 0 { args.push_str(", "); }
             if input.name.len() > 0 {
                 args.push_str(format!("{}: ", input.name));

@@ -113,7 +113,7 @@
 //! # Starting with libgreen
 //!
 //! ```rust
-//! extern mod green;
+//! extern crate green;
 //!
 //! #[start]
 //! fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
@@ -174,6 +174,7 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 
+use std::mem::replace;
 use std::os;
 use std::rt::crate_map;
 use std::rt::rtio;
@@ -182,7 +183,6 @@ use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
 use std::sync::deque;
 use std::task::TaskOpts;
-use std::util;
 use std::vec;
 use std::sync::arc::UnsafeArc;
 
@@ -193,6 +193,7 @@ use task::GreenTask;
 
 mod macros;
 mod simple;
+mod message_queue;
 
 pub mod basic;
 pub mod context;
@@ -314,7 +315,7 @@ pub struct SchedPool {
 #[deriving(Clone)]
 struct TaskState {
     cnt: UnsafeArc<AtomicUint>,
-    done: SharedChan<()>,
+    done: Chan<()>,
 }
 
 impl SchedPool {
@@ -457,10 +458,10 @@ impl SchedPool {
         }
 
         // Now that everyone's gone, tell everything to shut down.
-        for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
+        for mut handle in replace(&mut self.handles, ~[]).move_iter() {
             handle.send(Shutdown);
         }
-        for thread in util::replace(&mut self.threads, ~[]).move_iter() {
+        for thread in replace(&mut self.threads, ~[]).move_iter() {
             thread.join();
         }
     }
@@ -468,7 +469,7 @@ impl SchedPool {
 
 impl TaskState {
     fn new() -> (Port<()>, TaskState) {
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         (p, TaskState {
             cnt: UnsafeArc::new(AtomicUint::new(0)),
             done: c,

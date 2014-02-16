@@ -16,7 +16,6 @@ use parse::lexer::{StringReader, bump, is_eof, nextch_is, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
-use parse::token::{get_ident_interner};
 
 use std::io;
 use std::str;
@@ -385,7 +384,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
                 literals.push(Literal {lit: s.to_owned(), pos: sp.lo});
             })
         } else {
-            debug!("tok: {}", token::to_str(get_ident_interner(), &tok));
+            debug!("tok: {}", token::to_str(&tok));
         }
         first_read = false;
     }

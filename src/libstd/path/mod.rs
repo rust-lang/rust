@@ -578,8 +578,7 @@ impl BytesContainer for ~[u8] {
 impl BytesContainer for CString {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        let s = self.as_bytes();
-        s.slice_to(s.len()-1)
+        self.as_bytes_no_nul()
     }
 }
 

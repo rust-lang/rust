@@ -61,7 +61,7 @@ msgstr "## 最小限の例"
 #: src/doc/guide-testing.md:131
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~ extern mod extra; use std::vec;"
+msgid "~~~ extern crate extra; use std::vec;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"

@@ -20,8 +20,8 @@ use parse::token;
 pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
                               span: Span,
                               mitem: @MetaItem,
-                              in_items: ~[@Item])
-                              -> ~[@Item] {
+                              item: @Item,
+                              push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
         path: Path::new(~["std", "to_str", "ToStr"]),
@@ -40,7 +40,7 @@ pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 // It used to be the case that this deriving implementation invoked
@@ -57,41 +57,42 @@ fn to_str_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure)
                 name: ast::Ident,
                 fields: &[FieldInfo]| {
         if fields.len() == 0 {
-            cx.expr_str_uniq(span, token::get_ident(name.name))
+            cx.expr_str_uniq(span, token::get_ident(name))
         } else {
             let buf = cx.ident_of("buf");
-            let interned_str = token::get_ident(name.name);
+            let interned_str = token::get_ident(name);
             let start =
                 token::intern_and_get_ident(interned_str.get() + start);
             let init = cx.expr_str_uniq(span, start);
             let mut stmts = ~[cx.stmt_let(span, true, buf, init)];
             let push_str = cx.ident_of("push_str");
 
-            let push = |s: @Expr| {
-                let ebuf = cx.expr_ident(span, buf);
-                let call = cx.expr_method_call(span, ebuf, push_str, ~[s]);
-                stmts.push(cx.stmt_expr(call));
-            };
+            {
+                let push = |s: @Expr| {
+                    let ebuf = cx.expr_ident(span, buf);
+                    let call = cx.expr_method_call(span, ebuf, push_str, ~[s]);
+                    stmts.push(cx.stmt_expr(call));
+                };
 
-            for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
-                if i > 0 {
-                    push(cx.expr_str(span, InternedString::new(", ")));
-                }
-                match name {
-                    None => {}
-                    Some(id) => {
-                        let interned_id = token::get_ident(id.name);
-                        let name = interned_id.get() + ": ";
-                        push(cx.expr_str(span,
-                                         token::intern_and_get_ident(name)));
+                for (i, &FieldInfo {name, span, self_, .. }) in fields.iter().enumerate() {
+                    if i > 0 {
+                        push(cx.expr_str(span, InternedString::new(", ")));
                     }
+                    match name {
+                        None => {}
+                        Some(id) => {
+                            let interned_id = token::get_ident(id);
+                            let name = interned_id.get() + ": ";
+                            push(cx.expr_str(span,
+                                             token::intern_and_get_ident(name)));
+                        }
+                    }
+                    push(cx.expr_method_call(span, self_, to_str, ~[]));
                 }
-                push(cx.expr_method_call(span, self_, to_str, ~[]));
+                push(cx.expr_str(span, end));
             }
-            push(cx.expr_str(span, end));
 
-            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span,
-                                                                   buf))))
+            cx.expr_block(cx.block(span, stmts, Some(cx.expr_ident(span, buf))))
         }
     };
 

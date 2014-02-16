@@ -8,24 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//xfail-test
 
-// Creating a stack closure which references an owned pointer and then
-// transferring ownership of the owned box before invoking the stack
-// closure results in a crash.
+// Verify the compiler fails with an error on infinite function
+// recursions.
 
-fn twice(x: ~uint) -> uint {
-     *x * 2
+struct Data(~Option<Data>);
+
+fn generic<T>( _ : ~[(Data,T)] ) {
+    //~^ ERROR overly deep expansion of inlined function
+    let rec : ~[(Data,(bool,T))] = ~[];
+    generic( rec );
 }
 
-fn invoke(f: || -> uint) {
-     f();
-}
 
-fn main() {
-      let x  : ~uint         = ~9;
-      let sq : || -> uint =  || { *x * *x };
-
-      twice(x);
-      invoke(sq);
+fn main () {
+    // Use generic<T> at least once to trigger instantiation.
+    let input : ~[(Data,())] = ~[];
+    generic(input);
 }

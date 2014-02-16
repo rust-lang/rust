@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // aux-build:impl_privacy_xc_1.rs
-// xfail-fast
+// ignore-fast
 
-extern mod impl_privacy_xc_1;
+extern crate impl_privacy_xc_1;
 
 pub fn main() {
     let fish = impl_privacy_xc_1::Fish { x: 1 };

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: cannot infer an appropriate lifetime
-extern mod sync;
+// error-pattern: cannot infer
+extern crate sync;
 use sync::RWLock;
 fn main() {
     let x = ~RWLock::new();

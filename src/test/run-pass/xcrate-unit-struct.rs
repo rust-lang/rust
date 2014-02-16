@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // aux-build:xcrate_unit_struct.rs
-// xfail-fast
-extern mod xcrate_unit_struct;
+// ignore-fast
+extern crate xcrate_unit_struct;
 
 static s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;
 static s2: xcrate_unit_struct::Unit = xcrate_unit_struct::Unit;

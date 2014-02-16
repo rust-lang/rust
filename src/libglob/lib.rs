@@ -28,7 +28,8 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
-use std::{os, path};
+use std::cell::Cell;
+use std::{cmp, os, path};
 use std::io::fs;
 use std::path::is_sep;
 
@@ -66,7 +67,7 @@ pub struct Paths {
 ///
 /// The above code will print:
 ///
-/// ```
+/// ```ignore
 /// /media/pictures/kittens.jpg
 /// /media/pictures/puppies.jpg
 /// ```
@@ -105,7 +106,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     }
 
     let root_len = pat_root.map_or(0u, |p| p.as_vec().len());
-    let dir_patterns = pattern.slice_from(root_len.min(&pattern.len()))
+    let dir_patterns = pattern.slice_from(cmp::min(root_len, pattern.len()))
                        .split_terminator(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
 
     let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
@@ -342,22 +343,24 @@ impl Pattern {
     }
 
     fn matches_from(&self,
-                    mut prev_char: Option<char>,
+                    prev_char: Option<char>,
                     mut file: &str,
                     i: uint,
                     options: MatchOptions) -> MatchResult {
 
+        let prev_char = Cell::new(prev_char);
+
         let require_literal = |c| {
             (options.require_literal_separator && is_sep(c)) ||
             (options.require_literal_leading_dot && c == '.'
-             && is_sep(prev_char.unwrap_or('/')))
+             && is_sep(prev_char.get().unwrap_or('/')))
         };
 
         for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
             match *token {
                 AnySequence => {
                     loop {
-                        match self.matches_from(prev_char, file, i + ti + 1, options) {
+                        match self.matches_from(prev_char.get(), file, i + ti + 1, options) {
                             SubPatternDoesntMatch => (), // keep trying
                             m => return m,
                         }
@@ -370,7 +373,7 @@ impl Pattern {
                         if require_literal(c) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char = Some(c);
+                        prev_char.set(Some(c));
                         file = next;
                     }
                 }
@@ -400,7 +403,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char = Some(c);
+                    prev_char.set(Some(c));
                     file = next;
                 }
             }

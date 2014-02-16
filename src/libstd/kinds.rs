@@ -69,7 +69,9 @@ pub mod marker {
     /// Given a struct `S` that includes a type parameter `T`
     /// but does not actually *reference* that type parameter:
     ///
-    /// ```
+    /// ```ignore
+    /// use std::cast;
+    ///
     /// struct S<T> { x: *() }
     /// fn get<T>(s: &S<T>) -> T {
     ///    unsafe {
@@ -109,6 +111,8 @@ pub mod marker {
     /// but does not actually *reference* that type parameter:
     ///
     /// ```
+    /// use std::cast;
+    ///
     /// struct S<T> { x: *() }
     /// fn get<T>(s: &S<T>, v: T) {
     ///    unsafe {
@@ -147,7 +151,8 @@ pub mod marker {
     /// "interior" mutability:
     ///
     /// ```
-    /// struct Cell<T> { priv value: T }
+    /// pub struct Cell<T> { priv value: T }
+    /// # fn main() {}
     /// ```
     ///
     /// The type system would infer that `value` is only read here and

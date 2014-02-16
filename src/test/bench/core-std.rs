@@ -12,14 +12,14 @@
 
 #[feature(macro_rules)];
 
-extern mod extra;
+extern crate extra;
 
 use extra::time::precise_time_s;
+use std::mem::swap;
 use std::os;
 use std::rand::Rng;
 use std::rand;
 use std::str;
-use std::util;
 use std::vec;
 use std::io::File;
 
@@ -125,7 +125,7 @@ fn vec_push_all() {
             v.push_all(rv);
         }
         else {
-            util::swap(&mut v, &mut rv);
+            swap(&mut v, &mut rv);
             v.push_all(rv);
         }
     }

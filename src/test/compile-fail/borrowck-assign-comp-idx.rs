@@ -32,9 +32,9 @@ fn b() {
 
     let mut p = ~[1];
 
-    borrow(p, || {
-        p[0] = 5; //~ ERROR cannot assign to
-    });
+    borrow(
+        p,
+        || p[0] = 5); //~ ERROR cannot borrow `p` as mutable
 }
 
 fn c() {

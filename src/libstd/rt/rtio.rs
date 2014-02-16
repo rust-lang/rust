@@ -10,8 +10,8 @@
 
 use c_str::CString;
 use cast;
-use comm::{SharedChan, Port};
-use libc::{c_int};
+use comm::{Chan, Port};
+use libc::c_int;
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
@@ -41,6 +41,7 @@ pub trait EventLoop {
 
     /// The asynchronous I/O services. Not all event loops may provide one.
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
+    fn has_active_io(&self) -> bool;
 }
 
 pub trait RemoteCallback {
@@ -150,8 +151,6 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
-    fn raw_socket_new(&mut self, domain: i32, protocol: i32,
-                      includeIpHeader: bool) -> Result<~RtioRawSocket, IoError>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
@@ -183,7 +182,7 @@ pub trait IoFactory {
     fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
-    fn signal(&mut self, signal: Signum, channel: SharedChan<Signum>)
+    fn signal(&mut self, signal: Signum, channel: Chan<Signum>)
         -> Result<~RtioSignal, IoError>;
 }
 

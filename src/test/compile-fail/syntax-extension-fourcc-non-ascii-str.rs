@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-stage1
-// xfail-pretty
-// xfail-android
+// ignore-stage1
+// ignore-pretty
+// ignore-cross-compile #12102
 
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
     let v = fourcc!("fooλ"); //~ ERROR fourcc! literal character out of range 0-255

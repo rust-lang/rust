@@ -23,7 +23,7 @@ use middle::ty::{substs, t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
-use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
+use middle::ty::{ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_unboxed_vec, type_is_ty_var};
 use middle::subst::Subst;
 use middle::ty;
@@ -43,6 +43,7 @@ use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::Span;
 use syntax::opt_vec;
+use syntax::parse::token;
 use syntax::visit;
 
 use std::cell::RefCell;
@@ -82,7 +83,7 @@ fn get_base_type(inference_context: &InferCtxt,
 
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
-        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
+        ty_infer(..) | ty_param(..) | ty_self(..) |
         ty_unboxed_vec(..) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {:?}",
@@ -107,7 +108,7 @@ fn type_is_defined_in_local_crate(original_type: t) -> bool {
             ty_enum(def_id, _) |
             ty_trait(def_id, _, _, _, _) |
             ty_struct(def_id, _) => {
-                if def_id.crate == ast::LOCAL_CRATE {
+                if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
                 }
             }
@@ -155,8 +156,7 @@ struct CoherenceCheckVisitor<'a> {
 impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
-//      debug!("(checking coherence) item '{}'",
-//             self.cc.crate_context.tcx.sess.str_of(item.ident));
+        //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
         match item.node {
             ItemImpl(_, ref opt_trait, _, _) => {
@@ -209,7 +209,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                     let trait_def_id =
                         self.cc.trait_ref_to_trait_def_id(trait_ref);
 
-                    if trait_def_id.crate != LOCAL_CRATE {
+                    if trait_def_id.krate != LOCAL_CRATE {
                         let session = self.cc.crate_context.tcx.sess;
                         session.span_err(item.span,
                                 "cannot provide an extension implementation \
@@ -234,18 +234,18 @@ impl CoherenceChecker {
         }
     }
 
-    fn check(&self, crate: &Crate) {
+    fn check(&self, krate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
         let mut visitor = CoherenceCheckVisitor { cc: self };
-        visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, krate, ());
 
         // Check that there are no overlapping trait instances
         self.check_implementation_coherence();
 
         // Check whether traits with base types are in privileged scopes.
-        self.check_privileged_scopes(crate);
+        self.check_privileged_scopes(krate);
 
         // Bring in external crates. It's fine for this to happen after the
         // coherence checks, because we ensure by construction that no errors
@@ -267,9 +267,8 @@ impl CoherenceChecker {
         // base type.
 
         if associated_traits.len() == 0 {
-            debug!("(checking implementation) no associated traits for item \
-                    '{}'",
-                   self.crate_context.tcx.sess.str_of(item.ident));
+            debug!("(checking implementation) no associated traits for item '{}'",
+                   token::get_ident(item.ident));
 
             match get_base_type_def_id(&self.inference_context,
                                        item.span,
@@ -293,7 +292,7 @@ impl CoherenceChecker {
                 self.crate_context.tcx, associated_trait.ref_id);
             debug!("(checking implementation) adding impl for trait '{}', item '{}'",
                    trait_ref.repr(self.crate_context.tcx),
-                   self.crate_context.tcx.sess.str_of(item.ident));
+                   token::get_ident(item.ident));
 
             self.add_trait_impl(trait_ref.def_id, implementation);
         }
@@ -453,12 +452,12 @@ impl CoherenceChecker {
                             format!("conflicting implementations for trait `{}`",
                                  ty::item_path_str(self.crate_context.tcx,
                                                    trait_def_id)));
-                        if implementation_b.did.crate == LOCAL_CRATE {
+                        if implementation_b.did.krate == LOCAL_CRATE {
                             session.span_note(self.span_of_impl(implementation_b),
                                               "note conflicting implementation here");
                         } else {
                             let crate_store = self.crate_context.tcx.sess.cstore;
-                            let cdata = crate_store.get_crate_data(implementation_b.did.crate);
+                            let cdata = crate_store.get_crate_data(implementation_b.did.krate);
                             session.note(
                                 "conflicting implementation in crate `" + cdata.name + "`");
                         }
@@ -471,7 +470,7 @@ impl CoherenceChecker {
     fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
         self.iter_impls_of_trait_local(trait_def_id, |x| f(x));
 
-        if trait_def_id.crate == LOCAL_CRATE {
+        if trait_def_id.krate == LOCAL_CRATE {
             return;
         }
 
@@ -556,9 +555,9 @@ impl CoherenceChecker {
     }
 
     // Privileged scope checking
-    fn check_privileged_scopes(&self, crate: &Crate) {
-        let mut visitor = PrivilegedScopeVisitor { cc: self };
-        visit::walk_crate(&mut visitor, crate, ());
+    fn check_privileged_scopes(&self, krate: &Crate) {
+        let mut visitor = PrivilegedScopeVisitor{ cc: self };
+        visit::walk_crate(&mut visitor, krate, ());
     }
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
@@ -578,19 +577,19 @@ impl CoherenceChecker {
                 let def_map = self.crate_context.tcx.def_map.borrow();
                 match def_map.get().get_copy(&path_id) {
                     DefTy(def_id) | DefStruct(def_id) => {
-                        if def_id.crate != LOCAL_CRATE {
+                        if def_id.krate != LOCAL_CRATE {
                             return false;
                         }
 
                         // Make sure that this type precisely names a nominal
                         // type.
-                        match self.crate_context.tcx.items.find(def_id.node) {
+                        match self.crate_context.tcx.map.find(def_id.node) {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
                                     "resolve didn't resolve this type?!");
                             }
-                            Some(NodeItem(item, _)) => {
+                            Some(NodeItem(item)) => {
                                 match item.node {
                                     ItemStruct(..) | ItemEnum(..) => true,
                                     _ => false,
@@ -640,16 +639,8 @@ impl CoherenceChecker {
     }
 
     fn span_of_impl(&self, implementation: @Impl) -> Span {
-        assert_eq!(implementation.did.crate, LOCAL_CRATE);
-        match self.crate_context.tcx.items.find(implementation.did.node) {
-            Some(NodeItem(item, _)) => {
-                return item.span;
-            }
-            _ => {
-                self.crate_context.tcx.sess.bug("span_of_impl() called on something that \
-                                                 wasn't an impl!");
-            }
-        }
+        assert_eq!(implementation.did.krate, LOCAL_CRATE);
+        self.crate_context.tcx.map.span(implementation.did.node)
     }
 
     // External crate handling
@@ -700,7 +691,7 @@ impl CoherenceChecker {
         let crate_store = self.crate_context.tcx.sess.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_impl(crate_store, crate_number, |def_id| {
-                assert_eq!(crate_number, def_id.crate);
+                assert_eq!(crate_number, def_id.krate);
                 self.add_external_impl(&mut impls_seen, def_id)
             })
         })
@@ -744,10 +735,10 @@ impl CoherenceChecker {
                 }
                 _ => {
                     // Destructors only work on nominal types.
-                    if impl_info.did.crate == ast::LOCAL_CRATE {
+                    if impl_info.did.krate == ast::LOCAL_CRATE {
                         {
-                            match tcx.items.find(impl_info.did.node) {
-                                Some(ast_map::NodeItem(item, _)) => {
+                            match tcx.map.find(impl_info.did.node) {
+                                Some(ast_map::NodeItem(item)) => {
                                     tcx.sess.span_err((*item).span,
                                                       "the Drop trait may \
                                                        only be implemented \
@@ -845,6 +836,6 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @CrateCtxt, crate: &Crate) {
-    CoherenceChecker::new(crate_context).check(crate);
+pub fn check_coherence(crate_context: @CrateCtxt, krate: &Crate) {
+    CoherenceChecker::new(crate_context).check(krate);
 }

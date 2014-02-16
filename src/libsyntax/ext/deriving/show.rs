@@ -23,8 +23,8 @@ use std::hashmap::HashMap;
 pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
-                            in_items: ~[@Item])
-                            -> ~[@Item] {
+                            item: @Item,
+                            push: |@Item|) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(~Literal(Path::new(~["std", "fmt", "Formatter"])),
                    Borrowed(None, ast::MutMutable));
@@ -47,7 +47,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
             }
         ]
     };
-    trait_def.expand(cx, mitem, in_items)
+    trait_def.expand(cx, mitem, item, push)
 }
 
 // we construct a format string and then defer to std::fmt, since that
@@ -67,7 +67,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         }
     };
 
-    let mut format_string = token::get_ident(name.name).get().to_owned();
+    let mut format_string = token::get_ident(name).get().to_owned();
     // the internal fields we're actually formatting
     let mut exprs = ~[];
 
@@ -99,7 +99,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 for (i, field) in fields.iter().enumerate() {
                     if i != 0 { format_string.push_str(","); }
 
-                    let name = token::get_ident(field.name.unwrap().name);
+                    let name = token::get_ident(field.name.unwrap());
                     format_string.push_str(" ");
                     format_string.push_str(name.get());
                     format_string.push_str(": {}");

@@ -43,7 +43,7 @@ pub enum FnKind<'a> {
 pub fn name_of_fn(fk: &FnKind) -> Ident {
     match *fk {
         FkItemFn(name, _, _, _) | FkMethod(name, _, _) => name,
-        FkFnBlock(..) => parse::token::special_idents::anon
+        FkFnBlock(..) => parse::token::special_idents::invalid
     }
 }
 
@@ -132,8 +132,8 @@ pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
 }
 
 
-pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, crate: &Crate, env: E) {
-    visitor.visit_mod(&crate.module, crate.span, CRATE_NODE_ID, env)
+pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, krate: &Crate, env: E) {
+    visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID, env)
 }
 
 pub fn walk_mod<E: Clone, V: Visitor<E>>(visitor: &mut V, module: &Mod, env: E) {
@@ -652,13 +652,13 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
                 visitor.visit_expr(*subexpression, env.clone())
             }
         }
-        ExprCall(callee_expression, ref arguments, _) => {
+        ExprCall(callee_expression, ref arguments) => {
             for argument in arguments.iter() {
                 visitor.visit_expr(*argument, env.clone())
             }
             visitor.visit_expr(callee_expression, env.clone())
         }
-        ExprMethodCall(_, _, ref types, ref arguments, _) => {
+        ExprMethodCall(_, _, ref types, ref arguments) => {
             walk_exprs(visitor, *arguments, env.clone());
             for &typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())

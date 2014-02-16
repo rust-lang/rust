@@ -102,26 +102,27 @@ There are a number of free functions that create or take vectors, for example:
 #[warn(non_camel_case_types)];
 
 use cast;
+use cast::transmute;
 use ops::Drop;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
+use fmt;
 use iter::*;
 use num::{Integer, CheckedAdd, Saturating, checked_next_power_of_two};
 use option::{None, Option, Some};
-use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
+use result::{Ok, Err};
 use mem;
 use mem::size_of;
 use kinds::marker;
 use uint;
-use unstable::finally::Finally;
+use unstable::finally::try_finally;
 use unstable::raw::{Repr, Slice, Vec};
-use util;
 
 /**
  * Creates and initializes an owned vector.
@@ -133,15 +134,16 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
-        let mut i: uint = 0u;
-        (|| {
-            while i < n_elts {
-                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), op(i));
-                i += 1u;
-            }
-        }).finally(|| {
-            v.set_len(i);
-        });
+        let mut i = 0;
+        try_finally(
+            &mut i, (),
+            |i, ()| while *i < n_elts {
+                mem::move_val_init(
+                    &mut(*p.offset(*i as int)),
+                    op(*i));
+                *i += 1u;
+            },
+            |i| v.set_len(*i));
         v
     }
 }
@@ -161,14 +163,15 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
         let mut i = 0u;
-        (|| {
-            while i < n_elts {
-                mem::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
-                i += 1u;
-            }
-        }).finally(|| {
-            v.set_len(i);
-        });
+        try_finally(
+            &mut i, (),
+            |i, ()| while *i < n_elts {
+                mem::move_val_init(
+                    &mut(*p.offset(*i as int)),
+                    t.clone());
+                *i += 1u;
+            },
+            |i| v.set_len(*i));
         v
     }
 }
@@ -185,7 +188,7 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
         let ptr = malloc_raw(size) as *mut Vec<()>;
         (*ptr).alloc = alloc;
         (*ptr).fill = 0;
-        cast::transmute(ptr)
+        transmute(ptr)
     }
 }
 
@@ -213,7 +216,7 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
  */
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
-        cast::transmute(Slice { data: s, len: 1 })
+        transmute(Slice { data: s, len: 1 })
     }
 }
 
@@ -222,8 +225,8 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
  */
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
-        let ptr: *A = cast::transmute(s);
-        cast::transmute(Slice { data: ptr, len: 1 })
+        let ptr: *A = transmute(s);
+        transmute(Slice { data: ptr, len: 1 })
     }
 }
 
@@ -295,7 +298,8 @@ impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
             return Some(self.v);
         }
 
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
+        let pred = &mut self.pred;
+        match self.v.iter().rposition(|x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
@@ -951,7 +955,7 @@ pub trait ImmutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None }
      *     let head = &self[0];
      *     *self = self.slice_from(1);
@@ -969,7 +973,7 @@ pub trait ImmutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let tail = &self[self.len() - 1];
      *     *self = self.slice_to(self.len() - 1);
@@ -987,7 +991,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            cast::transmute(Slice {
+            transmute(Slice {
                     data: self.as_ptr().offset(start as int),
                     len: (end - start)
                 })
@@ -1105,7 +1109,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
-        cast::transmute(self.repr().data.offset(index as int))
+        transmute(self.repr().data.offset(index as int))
     }
 
     #[inline]
@@ -1140,7 +1144,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     fn shift_ref(&mut self) -> Option<&'a T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(&*raw::shift_ptr(s))
         }
     }
@@ -1148,7 +1152,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     fn pop_ref(&mut self) -> Option<&'a T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(&*raw::pop_ptr(s))
         }
     }
@@ -1413,8 +1417,8 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn move_iter(self) -> MoveItems<T> {
         unsafe {
-            let iter = cast::transmute(self.iter());
-            let ptr = cast::transmute(self);
+            let iter = transmute(self.iter());
+            let ptr = transmute(self);
             MoveItems { allocation: ptr, iter: iter }
         }
     }
@@ -1428,7 +1432,7 @@ impl<T> OwnedVector<T> for ~[T] {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
             unsafe {
-                let ptr: *mut *mut Vec<()> = cast::transmute(self);
+                let ptr: *mut *mut Vec<()> = transmute(self);
                 let alloc = n * mem::nonzero_size_of::<T>();
                 let size = alloc + mem::size_of::<Vec<()>>();
                 if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
@@ -1459,14 +1463,14 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
-            let repr: **Vec<()> = cast::transmute(self);
+            let repr: **Vec<()> = transmute(self);
             (**repr).alloc / mem::nonzero_size_of::<T>()
         }
     }
 
     fn shrink_to_fit(&mut self) {
         unsafe {
-            let ptr: *mut *mut Vec<()> = cast::transmute(self);
+            let ptr: *mut *mut Vec<()> = transmute(self);
             let alloc = (**ptr).fill;
             let size = alloc + mem::size_of::<Vec<()>>();
             *ptr = realloc_raw(*ptr as *mut u8, size) as *mut Vec<()>;
@@ -1477,7 +1481,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push(&mut self, t: T) {
         unsafe {
-            let repr: **Vec<()> = cast::transmute(&mut *self);
+            let repr: **Vec<()> = transmute(&mut *self);
             let fill = (**repr).fill;
             if (**repr).alloc <= fill {
                 self.reserve_additional(1);
@@ -1489,11 +1493,11 @@ impl<T> OwnedVector<T> for ~[T] {
         // This doesn't bother to make sure we have space.
         #[inline] // really pretty please
         unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
-            let repr: **mut Vec<u8> = cast::transmute(this);
+            let repr: **mut Vec<u8> = transmute(this);
             let fill = (**repr).fill;
             (**repr).fill += mem::nonzero_size_of::<T>();
-            let p = to_unsafe_ptr(&((**repr).data));
-            let p = ptr::offset(p, fill as int) as *mut T;
+            let p = &((**repr).data) as *u8;
+            let p = p.offset(fill as int) as *mut T;
             mem::move_val_init(&mut(*p), t);
         }
     }
@@ -1507,7 +1511,7 @@ impl<T> OwnedVector<T> for ~[T] {
         unsafe { // Note: infallible.
             let self_p = self.as_mut_ptr();
             let rhs_p = rhs.as_ptr();
-            ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
+            ptr::copy_memory(self_p.offset(self_len as int), rhs_p, rhs_len);
             self.set_len(new_len);
             rhs.set_len(0);
         }
@@ -1517,10 +1521,10 @@ impl<T> OwnedVector<T> for ~[T] {
         match self.len() {
             0  => None,
             ln => {
-                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+                let valptr = &mut self[ln - 1u] as *mut T;
                 unsafe {
                     self.set_len(ln - 1u);
-                    Some(ptr::read_ptr(&*valptr))
+                    Some(ptr::read(&*valptr))
                 }
             }
         }
@@ -1564,7 +1568,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let ptr = self.as_mut_ptr().offset(i as int);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
-                let ret = Some(ptr::read_ptr(ptr as *T));
+                let ret = Some(ptr::read(ptr as *T));
 
                 // Shift everything down to fill in that spot.
                 ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
@@ -1594,7 +1598,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let p = self.as_mut_ptr();
             // This loop is optimized out for non-drop types.
             for i in range(newlen, oldlen) {
-                ptr::read_and_zero_ptr(p.offset(i as int));
+                ptr::read_and_zero(p.offset(i as int));
             }
         }
         unsafe { self.set_len(newlen); }
@@ -1644,7 +1648,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     #[inline]
     unsafe fn set_len(&mut self, new_len: uint) {
-        let repr: **mut Vec<()> = cast::transmute(self);
+        let repr: **mut Vec<()> = transmute(self);
         (**repr).fill = new_len * mem::nonzero_size_of::<T>();
     }
 }
@@ -1794,12 +1798,12 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             let mut w = 1;
 
             while r < ln {
-                let p_r = ptr::mut_offset(p, r as int);
-                let p_wm1 = ptr::mut_offset(p, (w - 1) as int);
+                let p_r = p.offset(r as int);
+                let p_wm1 = p.offset((w - 1) as int);
                 if *p_r != *p_wm1 {
                     if r != w {
-                        let p_w = ptr::mut_offset(p_wm1, 1);
-                        util::swap(&mut *p_r, &mut *p_w);
+                        let p_w = p_wm1.offset(1);
+                        mem::swap(&mut *p_r, &mut *p_w);
                     }
                     w += 1;
                 }
@@ -1840,7 +1844,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
             // `.offset(j)` is always in bounds.
 
             if i != j {
-                let tmp = ptr::read_ptr(read_ptr);
+                let tmp = ptr::read(read_ptr);
                 ptr::copy_memory(buf_v.offset(j + 1),
                                  &*buf_v.offset(j),
                                  (i - j) as uint);
@@ -1994,7 +1998,7 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
             }
         }
 
-        util::swap(&mut buf_dat, &mut buf_tmp);
+        mem::swap(&mut buf_dat, &mut buf_tmp);
 
         width *= 2;
     }
@@ -2071,7 +2075,7 @@ pub trait MutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let head = &mut self[0];
      *     *self = self.mut_slice_from(1);
@@ -2089,7 +2093,7 @@ pub trait MutableVector<'a, T> {
      *
      * Equivalent to:
      *
-     * ```
+     * ```ignore
      *     if self.len() == 0 { return None; }
      *     let tail = &mut self[self.len() - 1];
      *     *self = self.mut_slice_to(self.len() - 1);
@@ -2265,7 +2269,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            cast::transmute(Slice {
+            transmute(Slice {
                     data: self.as_mut_ptr().offset(start as int) as *T,
                     len: (end - start)
                 })
@@ -2334,7 +2338,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(cast::transmute_mut(&*raw::shift_ptr(s)))
         }
     }
@@ -2342,7 +2346,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
         if self.len() == 0 { return None; }
         unsafe {
-            let s: &mut Slice<T> = cast::transmute(self);
+            let s: &mut Slice<T> = transmute(self);
             Some(cast::transmute_mut(&*raw::pop_ptr(s)))
         }
     }
@@ -2353,7 +2357,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             // them to their raw pointers to do the swap
             let pa: *mut T = &mut self[a];
             let pb: *mut T = &mut self[b];
-            ptr::swap_ptr(pa, pb);
+            ptr::swap(pa, pb);
         }
     }
 
@@ -2374,14 +2378,14 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn move_from(self, mut src: ~[T], start: uint, end: uint) -> uint {
         for (a, b) in self.mut_iter().zip(src.mut_slice(start, end).mut_iter()) {
-            util::swap(a, b);
+            mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
     }
 
     #[inline]
     unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
-        cast::transmute(ptr::mut_offset(self.repr().data as *mut T, index as int))
+        transmute((self.repr().data as *mut T).offset(index as int))
     }
 
     #[inline]
@@ -2480,8 +2484,9 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 
 /// Unsafe operations
 pub mod raw {
-    use cast;
+    use cast::transmute;
     use ptr;
+    use ptr::RawPtr;
     use vec::{with_capacity, MutableVector, OwnedVector};
     use unstable::raw::Slice;
 
@@ -2492,7 +2497,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn buf_as_slice<T,U>(p: *T, len: uint, f: |v: &[T]| -> U)
                                -> U {
-        f(cast::transmute(Slice {
+        f(transmute(Slice {
             data: p,
             len: len
         }))
@@ -2509,7 +2514,7 @@ pub mod raw {
                                    len: uint,
                                    f: |v: &mut [T]| -> U)
                                    -> U {
-        f(cast::transmute(Slice {
+        f(transmute(Slice {
             data: p as *T,
             len: len
         }))
@@ -2540,7 +2545,7 @@ pub mod raw {
     pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> *T {
         if slice.len == 0 { fail!("shift on empty slice"); }
         let head: *T = slice.data;
-        slice.data = ptr::offset(slice.data, 1);
+        slice.data = slice.data.offset(1);
         slice.len -= 1;
         head
     }
@@ -2552,7 +2557,7 @@ pub mod raw {
      */
     pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> *T {
         if slice.len == 0 { fail!("pop on empty slice"); }
-        let tail: *T = ptr::offset(slice.data, (slice.len - 1) as int);
+        let tail: *T = slice.data.offset((slice.len - 1) as int);
         slice.len -= 1;
         tail
     }
@@ -2638,6 +2643,28 @@ impl<A: DeepClone> DeepClone for ~[A] {
     }
 }
 
+impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if_ok!(write!(f.buf, "["));
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                if_ok!(write!(f.buf, ", "));
+            }
+            if_ok!(write!(f.buf, "{}", *x))
+        }
+        write!(f.buf, "]")
+    }
+}
+
+impl<T: fmt::Show> fmt::Show for ~[T] {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+
 // This works because every lifetime is a sub-lifetime of 'static
 impl<'a, A> Default for &'a [A] {
     fn default() -> &'a [A] { &'a [] }
@@ -2669,12 +2696,12 @@ macro_rules! iterator {
                             // purposefully don't use 'ptr.offset' because for
                             // vectors with 0-size elements this would return the
                             // same pointer.
-                            cast::transmute(self.ptr as uint + 1)
+                            transmute(self.ptr as uint + 1)
                         } else {
                             self.ptr.offset(1)
                         };
 
-                        Some(cast::transmute(old))
+                        Some(transmute(old))
                     }
                 }
             }
@@ -2697,11 +2724,11 @@ macro_rules! iterator {
                     } else {
                         self.end = if mem::size_of::<T>() == 0 {
                             // See above for why 'ptr.offset' isn't used
-                            cast::transmute(self.end as uint - 1)
+                            transmute(self.end as uint - 1)
                         } else {
                             self.end.offset(-1)
                         };
-                        Some(cast::transmute(self.end))
+                        Some(transmute(self.end))
                     }
                 }
             }
@@ -2720,7 +2747,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     fn idx(&self, index: uint) -> Option<&'a T> {
         unsafe {
             if index < self.indexable() {
-                cast::transmute(self.ptr.offset(index as int))
+                transmute(self.ptr.offset(index as int))
             } else {
                 None
             }
@@ -2757,14 +2784,14 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let len = tmp.len();
                 let (head, tail) = tmp.mut_split_at(len);
                 self.v = tail;
                 Some(head)
             }
             Some(idx) => {
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.mut_split_at(idx);
                 self.v = tail.mut_slice_from(1);
                 Some(head)
@@ -2792,11 +2819,11 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 Some(tmp)
             }
             Some(idx) => {
-                let tmp = util::replace(&mut self.v, &mut []);
+                let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.mut_split_at(idx);
                 self.v = head;
                 Some(tail.mut_slice_from(1))
@@ -2820,7 +2847,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
             None
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
-            let tmp = util::replace(&mut self.v, &mut []);
+            let tmp = mem::replace(&mut self.v, &mut []);
             let (head, tail) = tmp.mut_split_at(sz);
             self.v = tail;
             Some(head)
@@ -2847,7 +2874,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
-            let tmp = util::replace(&mut self.v, &mut []);
+            let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
             let (head, tail) = tmp.mut_split_at(tmp_len - sz);
             self.v = head;
@@ -2866,7 +2893,7 @@ impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next().map(|x| ptr::read_ptr(x))
+            self.iter.next().map(|x| ptr::read(x))
         }
     }
 
@@ -2880,7 +2907,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next_back().map(|x| ptr::read_ptr(x))
+            self.iter.next_back().map(|x| ptr::read(x))
         }
     }
 }
@@ -4048,6 +4075,22 @@ mod tests {
     }
 
     #[test]
+    fn test_show() {
+        macro_rules! test_show_vec(
+            ($x:expr, $x_str:expr) => ({
+                let (x, x_str) = ($x, $x_str);
+                assert_eq!(format!("{}", x), x_str);
+                assert_eq!(format!("{}", x.as_slice()), x_str);
+            })
+        )
+        let empty: ~[int] = ~[];
+        test_show_vec!(empty, ~"[]");
+        test_show_vec!(~[1], ~"[1]");
+        test_show_vec!(~[1, 2, 3], ~"[1, 2, 3]");
+        test_show_vec!(~[~[], ~[1u], ~[1u, 1u]], ~"[[], [1], [1, 1]]");
+    }
+
+    #[test]
     fn test_vec_default() {
         use default::Default;
         macro_rules! t (
@@ -4383,6 +4426,7 @@ mod bench {
         let mut vec: ~[uint] = ~[0u];
         bh.iter(|| {
             vec.push(0);
+            &vec
         })
     }
 
@@ -4390,7 +4434,7 @@ mod bench {
     fn starts_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-            vec.starts_with(vec);
+            vec.starts_with(vec)
         })
     }
 
@@ -4398,7 +4442,7 @@ mod bench {
     fn starts_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
         bh.iter(|| {
-            vec.starts_with(vec);
+            vec.starts_with(vec)
         })
     }
 
@@ -4408,7 +4452,7 @@ mod bench {
         let mut match_vec: ~[uint] = vec::from_fn(99, |i| i);
         match_vec.push(0);
         bh.iter(|| {
-            vec.starts_with(match_vec);
+            vec.starts_with(match_vec)
         })
     }
 
@@ -4416,7 +4460,7 @@ mod bench {
     fn ends_with_same_vector(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-            vec.ends_with(vec);
+            vec.ends_with(vec)
         })
     }
 
@@ -4424,7 +4468,7 @@ mod bench {
     fn ends_with_single_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = ~[0u];
         bh.iter(|| {
-            vec.ends_with(vec);
+            vec.ends_with(vec)
         })
     }
 
@@ -4434,7 +4478,7 @@ mod bench {
         let mut match_vec: ~[uint] = vec::from_fn(100, |i| i);
         match_vec[0] = 200;
         bh.iter(|| {
-            vec.starts_with(match_vec);
+            vec.starts_with(match_vec)
         })
     }
 
@@ -4442,7 +4486,7 @@ mod bench {
     fn contains_last_element(bh: &mut BenchHarness) {
         let vec: ~[uint] = vec::from_fn(100, |i| i);
         bh.iter(|| {
-                vec.contains(&99u);
+            vec.contains(&99u)
         })
     }
 
@@ -4462,13 +4506,14 @@ mod bench {
                 ptr::set_memory(vp, 0, 1024);
                 v.set_len(1024);
             }
+            v
         });
     }
 
     #[bench]
     fn zero_1kb_fixed_repeat(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _v: ~[u8] = ~[0u8, ..1024];
+            ~[0u8, ..1024]
         });
     }
 
@@ -4497,6 +4542,7 @@ mod bench {
             for x in v.mut_iter() {
                 *x = 0;
             }
+            v
         });
     }
 

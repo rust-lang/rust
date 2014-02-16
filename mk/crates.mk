@@ -50,19 +50,19 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections fourcc
-HOST_CRATES := syntax rustc rustdoc
+                 uuid serialize sync getopts collections num
+HOST_CRATES := syntax rustc rustdoc fourcc
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
-DEPS_std := native:rustrt
+DEPS_std := native:rustrt native:compiler-rt
 DEPS_extra := std term sync serialize getopts collections
-DEPS_green := std
+DEPS_green := std native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std extra term serialize collections
+DEPS_syntax := std term serialize collections
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections
+              collections extra
 DEPS_rustdoc := rustc native:sundown serialize sync getopts collections
 DEPS_flate := std native:miniz
 DEPS_arena := std collections
@@ -75,6 +75,7 @@ DEPS_sync := std
 DEPS_getopts := std
 DEPS_collections := std serialize
 DEPS_fourcc := syntax std
+DEPS_num := std extra
 
 TOOL_DEPS_compiletest := extra green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc green rustuv

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast - check-fail fast doesn't under aux-build
+// ignore-fast - check-fail fast doesn't under aux-build
 // aux-build:issue2170lib.rs
-extern mod issue2170lib;
+extern crate issue2170lib;
 
 pub fn main() {
    // let _ = issue2170lib::rsrc(2i32);

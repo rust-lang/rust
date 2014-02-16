@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast #7103 `extern mod` does not work on check-fast
-// xfail-pretty - does not converge
+// ignore-fast #7103 `extern crate` does not work on check-fast
+// ignore-pretty - does not converge
 
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,7 +21,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod serialize; // {En,De}codable
+extern crate serialize; // {En,De}codable
 mod submod {
     // if any of these are implemented without global calls for any
     // function calls, then being in a submodule will (correctly)

@@ -53,16 +53,16 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: session::Session,
-                          crate: ast::Crate) -> ast::Crate {
+                          krate: ast::Crate) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(crate.config, "test");
+    let should_test = attr::contains_name(krate.config, "test");
 
     if should_test {
-        generate_test_harness(sess, crate)
+        generate_test_harness(sess, krate)
     } else {
-        strip_test_functions(crate)
+        strip_test_functions(krate)
     }
 }
 
@@ -156,7 +156,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 }
 
-fn generate_test_harness(sess: session::Session, crate: ast::Crate)
+fn generate_test_harness(sess: session::Session, krate: ast::Crate)
                          -> ast::Crate {
     let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
@@ -164,8 +164,8 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: RefCell::new(~[]),
         testfns: RefCell::new(~[]),
-        is_extra: is_extra(&crate),
-        config: crate.config.clone(),
+        is_extra: is_extra(&krate),
+        config: krate.config.clone(),
     };
 
     cx.ext_cx.bt_push(ExpnInfo {
@@ -180,15 +180,15 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
     let mut fold = TestHarnessGenerator {
         cx: cx
     };
-    let res = fold.fold_crate(crate);
+    let res = fold.fold_crate(krate);
     fold.cx.ext_cx.bt_pop();
     return res;
 }
 
-fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
+fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
-    config::strip_items(crate, |attrs| {
+    config::strip_items(krate, |attrs| {
         !attr::contains_name(attrs, "test") &&
         !attr::contains_name(attrs, "bench")
     })
@@ -275,7 +275,7 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
   #[!resolve_unexported]
-  extern mod extra (name = "extra", vers = "...");
+  extern crate extra (name = "extra", vers = "...");
   fn main() {
     #[main];
     extra::test::test_main_static(::os::args(), tests)
@@ -289,7 +289,7 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
-    let id_extra = cx.sess.ident_of("extra");
+    let id_extra = token::str_to_ident("extra");
     let vi = if cx.is_extra {
         ast::ViewItemUse(
             ~[@nospan(ast::ViewPathSimple(id_extra,
@@ -337,7 +337,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
         attr::mk_attr(attr::mk_word_item(resolve_unexported_str));
 
     let item = ast::Item {
-        ident: cx.sess.ident_of("__test"),
+        ident: token::str_to_ident("__test"),
         attrs: ~[resolve_unexported_attr],
         id: ast::DUMMY_NODE_ID,
         node: item_,
@@ -345,8 +345,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
         span: DUMMY_SP,
      };
 
-    debug!("Synthetic test module:\n{}\n",
-           pprust::item_to_str(&item, cx.sess.intr()));
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_str(&item));
 
     return @item;
 }
@@ -390,8 +389,8 @@ fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     )).unwrap()
 }
 
-fn is_extra(crate: &ast::Crate) -> bool {
-    match attr::find_crateid(crate.attrs) {
+fn is_extra(krate: &ast::Crate) -> bool {
+    match attr::find_crateid(krate.attrs) {
         Some(ref s) if "extra" == s.name => true,
         _ => false
     }

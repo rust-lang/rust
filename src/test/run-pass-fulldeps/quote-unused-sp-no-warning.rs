@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// xfail-android
+// ignore-fast
+// ignore-android
 #[feature(quote)];
 #[deny(unused_variable)];
 
-extern mod syntax;
+extern crate syntax;
 
 use syntax::ext::base::ExtCtxt;
 

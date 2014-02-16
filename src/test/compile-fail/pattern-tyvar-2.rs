@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-extern mod extra;
+extern crate extra;
 
 enum bar { t1((), Option<~[int]>), t2, }
 

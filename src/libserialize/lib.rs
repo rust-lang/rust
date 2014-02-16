@@ -24,10 +24,14 @@ Core encoding and decoding interfaces.
 
 // test harness access
 #[cfg(test)]
-extern mod extra;
+extern crate extra;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
     DecoderHelpers, EncoderHelpers};
 
 mod serialize;
+
+pub mod base64;
 pub mod ebml;
+pub mod hex;
+

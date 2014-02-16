@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
+// ignore-fast
 // aux-build:trait_default_method_xc_aux.rs
 // aux-build:trait_default_method_xc_aux_2.rs
 
 
-extern mod aux = "trait_default_method_xc_aux";
-extern mod aux2 = "trait_default_method_xc_aux_2";
+extern crate aux = "trait_default_method_xc_aux";
+extern crate aux2 = "trait_default_method_xc_aux_2";
 use aux::A;
 use aux2::{a_struct, welp};
 

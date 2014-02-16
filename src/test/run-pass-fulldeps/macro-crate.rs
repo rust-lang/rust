@@ -9,14 +9,14 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
-// xfail-stage1
-// xfail-fast
-// xfail-android
+// ignore-stage1
+// ignore-fast
+// ignore-android
 
 #[feature(phase)];
 
 #[phase(syntax)]
-extern mod macro_crate_test;
+extern crate macro_crate_test;
 
 pub fn main() {
     assert_eq!(1, make_a_1!());

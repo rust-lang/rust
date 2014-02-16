@@ -10,7 +10,7 @@
 
 
 
-extern mod extra;
+extern crate extra;
 
 pub fn main() {
     let a: ~str = ~"this \

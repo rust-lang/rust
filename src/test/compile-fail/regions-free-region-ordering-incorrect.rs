@@ -24,7 +24,7 @@ impl<'b, T> Node<'b, T> {
   fn get<'a>(&'a self) -> &'b T {
     match self.next {
       Some(ref next) => next.get(),
-      None => &self.val //~ ERROR cannot infer an appropriate lifetime
+      None => &self.val //~ ERROR cannot infer
     }
   }
 }

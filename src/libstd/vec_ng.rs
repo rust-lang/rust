@@ -22,7 +22,8 @@ use cast::{forget, transmute};
 use rt::global_heap::{malloc_raw, realloc_raw};
 use vec::{ImmutableVector, Items, MutableVector};
 use unstable::raw::Slice;
-use ptr::{offset, read_ptr};
+use ptr;
+use ptr::RawPtr;
 use libc::{free, c_void};
 
 pub struct Vec<T> {
@@ -116,7 +117,7 @@ impl<T> Vec<T> {
         } else {
             unsafe {
                 self.len -= 1;
-                Some(read_ptr(self.as_slice().unsafe_ref(self.len())))
+                Some(ptr::read(self.as_slice().unsafe_ref(self.len())))
             }
         }
     }
@@ -135,7 +136,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = offset(self.ptr as *T, self.len as int) as *mut T;
+            let end = (self.ptr as *T).offset(self.len as int) as *mut T;
             move_val_init(&mut *end, value);
             self.len += 1;
         }
@@ -146,7 +147,7 @@ impl<T> Vec<T> {
             let mut i = len;
             // drop any extra elements
             while i < self.len {
-                read_ptr(self.as_slice().unsafe_ref(i));
+                ptr::read(self.as_slice().unsafe_ref(i));
                 i += 1;
             }
         }
@@ -187,7 +188,7 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         unsafe {
             for x in self.as_mut_slice().iter() {
-                read_ptr(x);
+                ptr::read(x);
             }
             free(self.ptr as *mut c_void)
         }
@@ -203,7 +204,7 @@ impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next().map(|x| read_ptr(x))
+            self.iter.next().map(|x| ptr::read(x))
         }
     }
 
@@ -217,7 +218,7 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
-            self.iter.next_back().map(|x| read_ptr(x))
+            self.iter.next_back().map(|x| ptr::read(x))
         }
     }
 }

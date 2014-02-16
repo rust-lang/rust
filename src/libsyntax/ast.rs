@@ -125,10 +125,9 @@ pub type Name = u32;
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
-impl<S:Encoder> Encodable<S> for Ident {
+impl<S: Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
-        let string = token::get_ident(self.name);
-        s.emit_str(string.get());
+        s.emit_str(token::get_ident(*self).get());
     }
 }
 
@@ -181,7 +180,7 @@ pub type NodeId = u32;
 
 #[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
 pub struct DefId {
-    crate: CrateNum,
+    krate: CrateNum,
     node: NodeId,
 }
 
@@ -520,7 +519,7 @@ pub struct Expr {
 impl Expr {
     pub fn get_callee_id(&self) -> Option<NodeId> {
         match self.node {
-            ExprMethodCall(callee_id, _, _, _, _) |
+            ExprMethodCall(callee_id, _, _, _) |
             ExprIndex(callee_id, _, _) |
             ExprBinary(callee_id, _, _, _) |
             ExprAssignOp(callee_id, _, _, _) |
@@ -531,19 +530,13 @@ impl Expr {
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum CallSugar {
-    NoSugar,
-    ForSugar
-}
-
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     // First expr is the place; second expr is the value.
     ExprBox(@Expr, @Expr),
     ExprVec(~[@Expr], Mutability),
-    ExprCall(@Expr, ~[@Expr], CallSugar),
-    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
+    ExprCall(@Expr, ~[@Expr]),
+    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr]),
     ExprTup(~[@Expr]),
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),
@@ -1065,7 +1058,7 @@ pub enum ViewItem_ {
     // ident: name used to refer to this crate in the code
     // optional (InternedString,StrStyle): if present, this is a location
     // (containing arbitrary characters) from which to fetch the crate sources
-    // For example, extern mod whatever = "github.com/mozilla/rust"
+    // For example, extern crate whatever = "github.com/mozilla/rust"
     ViewItemExternMod(Ident, Option<(InternedString,StrStyle)>, NodeId),
     ViewItemUse(~[@ViewPath]),
 }

@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod m3;
+extern crate m3;
 
 fn main() { m3::m3() }

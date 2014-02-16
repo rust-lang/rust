@@ -250,7 +250,7 @@ actual:\n\
                          ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
                          aux_dir.as_str().unwrap().to_owned()];
-        args.push_all_move(split_maybe_args(&config.rustcflags));
+        args.push_all_move(split_maybe_args(&config.target_rustcflags));
         args.push_all_move(split_maybe_args(&props.compile_flags));
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
@@ -260,9 +260,9 @@ actual:\n\
 fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
     // do not optimize debuginfo tests
-    let mut config = match config.rustcflags {
+    let mut config = match config.target_rustcflags {
         Some(ref flags) => config {
-            rustcflags: Some(flags.replace("-O", "")),
+            target_rustcflags: Some(flags.replace("-O", "")),
             .. (*config).clone()
         },
         None => (*config).clone()
@@ -329,7 +329,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 break;
             }
 
-            let args = split_maybe_args(&config.rustcflags);
+            let args = split_maybe_args(&config.target_rustcflags);
             let mut tool_path:~str = ~"";
             for arg in args.iter() {
                 if arg.contains("android-cross-path=") {
@@ -452,7 +452,12 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for line in ProcRes.stderr.lines() {
+    let output_to_check = if props.check_stdout {
+        ProcRes.stdout + ProcRes.stderr
+    } else {
+        ProcRes.stderr.clone()
+    };
+    for line in output_to_check.lines() {
         if line.contains(*next_err_pat) {
             debug!("found error pattern {}", *next_err_pat);
             next_err_idx += 1u;
@@ -770,7 +775,11 @@ fn make_compile_args(config: &config,
         ThisDirectory(path) => { args.push(~"--out-dir"); path }
     };
     args.push(path.as_str().unwrap().to_owned());
-    args.push_all_move(split_maybe_args(&config.rustcflags));
+    if props.force_host {
+        args.push_all_move(split_maybe_args(&config.host_rustcflags));
+    } else {
+        args.push_all_move(split_maybe_args(&config.target_rustcflags));
+    }
     args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
 }

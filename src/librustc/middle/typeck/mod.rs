@@ -337,8 +337,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
         ty::ty_bare_fn(..) => {
-            match tcx.items.find(main_id) {
-                Some(ast_map::NodeItem(it,_)) => {
+            match tcx.map.find(main_id) {
+                Some(ast_map::NodeItem(it)) => {
                     match it.node {
                         ast::ItemFn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
@@ -382,8 +382,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     let start_t = ty::node_id_to_type(tcx, start_id);
     match ty::get(start_t).sty {
         ty::ty_bare_fn(_) => {
-            match tcx.items.find(start_id) {
-                Some(ast_map::NodeItem(it,_)) => {
+            match tcx.map.find(start_id) {
+                Some(ast_map::NodeItem(it)) => {
                     match it.node {
                         ast::ItemFn(_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
@@ -441,7 +441,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
-                   crate: &ast::Crate)
+                   krate: &ast::Crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
@@ -452,20 +452,20 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(ccx, crate));
+        collect::collect_item_types(ccx, krate));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.abort_if_errors();
 
     time(time_passes, "variance inference", (), |_|
-         variance::infer_variance(tcx, crate));
+         variance::infer_variance(tcx, krate));
 
     time(time_passes, "coherence checking", (), |_|
-        coherence::check_coherence(ccx, crate));
+        coherence::check_coherence(ccx, krate));
 
     time(time_passes, "type checking", (), |_|
-        check::check_item_types(ccx, crate));
+        check::check_item_types(ccx, krate));
 
     check_for_entry_fn(ccx);
     tcx.sess.abort_if_errors();

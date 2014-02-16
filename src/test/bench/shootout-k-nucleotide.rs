@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// ignore-test
 
-extern mod extra;
+extern crate extra;
 
 use std::cast::transmute;
 use std::i32::range;

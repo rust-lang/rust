@@ -23,13 +23,13 @@ To load the extension and use it:
 
 ```rust,ignore
 #[phase(syntax)]
-extern mod fourcc;
+extern crate fourcc;
 
 fn main() {
-    let val = fourcc!("\xC0\xFF\xEE!")
-    // val is 0xC0FFEE21
-    let big_val = fourcc!("foo ", big);
-    // big_val is 0x21EEFFC0
+    let val = fourcc!("\xC0\xFF\xEE!");
+    assert_eq!(val, 0xC0FFEE21u32);
+    let little_val = fourcc!("foo ", little);
+    assert_eq!(little_val, 0x21EEFFC0u32);
 }
  ```
 
@@ -46,7 +46,7 @@ fn main() {
 
 #[feature(macro_registrar, managed_boxes)];
 
-extern mod syntax;
+extern crate syntax;
 
 use syntax::ast;
 use syntax::ast::Name;
@@ -60,7 +60,6 @@ use syntax::parse::token;
 use syntax::parse::token::InternedString;
 
 #[macro_registrar]
-#[cfg(not(test))]
 pub fn macro_registrar(register: |Name, SyntaxExtension|) {
     register(token::intern("fourcc"),
         NormalTT(~BasicMacroExpander {
@@ -75,7 +74,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
 
     let little = match endian {
         None => false,
-        Some(Ident{ident, span}) => match token::get_ident(ident.name).get() {
+        Some(Ident{ident, span}) => match token::get_ident(ident).get() {
             "little" => true,
             "big" => false,
             "target" => target_endian_little(cx, sp),
@@ -155,6 +154,6 @@ fn target_endian_little(cx: &ExtCtxt, sp: Span) -> bool {
     contains(cx.cfg(), meta)
 }
 
-// Fixes LLVM assert on Windows
+// FIXME (10872): This is required to prevent an LLVM assert on Windows
 #[test]
 fn dummy_test() { }

@@ -47,8 +47,6 @@ impl CheckedSub for u64 {
     }
 }
 
-// FIXME: #8449: should not be disabled on 32-bit
-#[cfg(target_word_size = "64")]
 impl CheckedMul for u64 {
     #[inline]
     fn checked_mul(&self, v: &u64) -> Option<u64> {

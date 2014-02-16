@@ -31,14 +31,14 @@ This API is completely unstable and subject to change.
 #[allow(unknown_features)]; // Note: remove it after a snapshot.
 #[feature(quote)];
 
-extern mod extra;
-extern mod flate;
-extern mod arena;
-extern mod syntax;
-extern mod serialize;
-extern mod sync;
-extern mod getopts;
-extern mod collections;
+extern crate extra;
+extern crate flate;
+extern crate arena;
+extern crate syntax;
+extern crate serialize;
+extern crate sync;
+extern crate getopts;
+extern crate collections;
 
 use back::link;
 use driver::session;
@@ -46,8 +46,8 @@ use middle::lint;
 
 use d = driver::driver;
 
+use std::cmp;
 use std::io;
-use std::num;
 use std::os;
 use std::str;
 use std::task;
@@ -141,6 +141,7 @@ pub fn usage(argv0: &str) {
     let message = format!("Usage: {} [OPTIONS] INPUT", argv0);
     println!("{}\n\
 Additional help:
+    -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
               getopts::usage(message, d::optgroups()));
@@ -163,7 +164,7 @@ Available lint options:
 
     let mut max_key = 0;
     for &(_, name) in lint_dict.iter() {
-        max_key = num::max(name.len(), max_key);
+        max_key = cmp::max(name.len(), max_key);
     }
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
@@ -273,7 +274,7 @@ pub fn run_compiler(args: &[~str]) {
       _ => d::early_error("multiple input filenames provided")
     };
 
-    let sopts = d::build_session_options(binary, matches);
+    let sopts = d::build_session_options(matches);
     let sess = d::build_session(sopts, input_file_path);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));

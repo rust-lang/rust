@@ -17,14 +17,12 @@ use ops::Drop;
 use option::{Option, None, Some};
 use ptr;
 use ptr::RawPtr;
-use rt::env;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
-#[cfg(stage0)]
-use unstable::intrinsics::TyDesc;
 use unstable::raw;
 use vec::ImmutableVector;
+use vec_ng::Vec;
 
 // This has no meaning with out rtdebug also turned on.
 #[cfg(rtdebug)]
@@ -35,14 +33,13 @@ static MAGIC: u32 = 0xbadc0ffe;
 pub type Box = raw::Box<()>;
 
 pub struct MemoryRegion {
-    priv allocations: ~[*AllocHeader],
+    priv allocations: Vec<*AllocHeader>,
     priv live_allocations: uint,
 }
 
 pub struct LocalHeap {
     priv memory_region: MemoryRegion,
 
-    priv poison_on_free: bool,
     priv live_allocs: *mut raw::Box<()>,
 }
 
@@ -50,40 +47,16 @@ impl LocalHeap {
     #[inline]
     pub fn new() -> LocalHeap {
         let region = MemoryRegion {
-            allocations: ~[],
+            allocations: Vec::new(),
             live_allocations: 0,
         };
         LocalHeap {
             memory_region: region,
-            poison_on_free: env::poison_on_free(),
             live_allocs: ptr::mut_null(),
         }
     }
 
     #[inline]
-    #[cfg(stage0)]
-    pub fn alloc(&mut self, td: *TyDesc, size: uint) -> *mut Box {
-        let total_size = global_heap::get_box_size(size, unsafe { (*td).align });
-        let alloc = self.memory_region.malloc(total_size);
-        {
-            // Make sure that we can't use `mybox` outside of this scope
-            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
-            // Clear out this box, and move it to the front of the live
-            // allocations list
-            mybox.type_desc = td;
-            mybox.ref_count = 1;
-            mybox.prev = ptr::mut_null();
-            mybox.next = self.live_allocs;
-            if !self.live_allocs.is_null() {
-                unsafe { (*self.live_allocs).prev = alloc; }
-            }
-            self.live_allocs = alloc;
-        }
-        return alloc;
-    }
-
-    #[inline]
-    #[cfg(not(stage0))]
     pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
         let total_size = global_heap::get_box_size(size, align);
         let alloc = self.memory_region.malloc(total_size);
@@ -126,41 +99,6 @@ impl LocalHeap {
     }
 
     #[inline]
-    #[cfg(stage0)]
-    pub fn free(&mut self, alloc: *mut Box) {
-        {
-            // Make sure that we can't use `mybox` outside of this scope
-            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
-            assert!(!mybox.type_desc.is_null());
-
-            // Unlink it from the linked list
-            if !mybox.prev.is_null() {
-                unsafe { (*mybox.prev).next = mybox.next; }
-            }
-            if !mybox.next.is_null() {
-                unsafe { (*mybox.next).prev = mybox.prev; }
-            }
-            if self.live_allocs == alloc {
-                self.live_allocs = mybox.next;
-            }
-
-            // Destroy the box memory-wise
-            if self.poison_on_free {
-                unsafe {
-                    let ptr: *mut u8 = cast::transmute(&mybox.data);
-                    ptr::set_memory(ptr, 0xab, (*mybox.type_desc).size);
-                }
-            }
-            mybox.prev = ptr::mut_null();
-            mybox.next = ptr::mut_null();
-            mybox.type_desc = ptr::null();
-        }
-
-        self.memory_region.free(alloc);
-    }
-
-    #[inline]
-    #[cfg(not(stage0))]
     pub fn free(&mut self, alloc: *mut Box) {
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -308,8 +246,8 @@ impl MemoryRegion {
     fn release(&mut self, alloc: &AllocHeader) {
         alloc.assert_sane();
         if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations[alloc.index] == alloc as *AllocHeader);
-            self.allocations[alloc.index] = ptr::null();
+            rtassert!(self.allocations.as_slice()[alloc.index] == alloc as *AllocHeader);
+            self.allocations.as_mut_slice()[alloc.index] = ptr::null();
         }
     }
     #[cfg(not(rtdebug))]
@@ -320,8 +258,8 @@ impl MemoryRegion {
     fn update(&mut self, alloc: &mut AllocHeader, orig: *AllocHeader) {
         alloc.assert_sane();
         if TRACK_ALLOCATIONS > 1 {
-            rtassert!(self.allocations[alloc.index] == orig);
-            self.allocations[alloc.index] = &*alloc as *AllocHeader;
+            rtassert!(self.allocations.as_slice()[alloc.index] == orig);
+            self.allocations.as_mut_slice()[alloc.index] = &*alloc as *AllocHeader;
         }
     }
     #[cfg(not(rtdebug))]
@@ -334,25 +272,11 @@ impl Drop for MemoryRegion {
         if self.live_allocations != 0 {
             rtabort!("leaked managed memory ({} objects)", self.live_allocations);
         }
-        rtassert!(self.allocations.iter().all(|s| s.is_null()));
+        rtassert!(self.allocations.as_slice().iter().all(|s| s.is_null()));
     }
 }
 
 #[inline]
-#[cfg(stage0)]
-pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
-    // FIXME: Unsafe borrow for speed. Lame.
-    let task: Option<*mut Task> = Local::try_unsafe_borrow();
-    match task {
-        Some(task) => {
-            (*task).heap.alloc(td as *TyDesc, size) as *u8
-        }
-        None => rtabort!("local malloc outside of task")
-    }
-}
-
-#[inline]
-#[cfg(not(stage0))]
 pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
     // FIXME: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();

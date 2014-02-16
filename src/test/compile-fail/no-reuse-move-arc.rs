@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod sync;
+extern crate sync;
 use sync::Arc;
 
 use std::task;
