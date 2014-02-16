@@ -196,7 +196,8 @@ pub mod reflect;
 // Private APIs
 #[unstable]
 pub mod unstable;
-
+#[experimental]
+pub mod intrinsics;
 
 /* For internal use, not exported */
 

@@ -90,7 +90,7 @@ use std::os::win32::as_utf16_p;
 use std::ptr;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
+use std::intrinsics;
 
 use super::IoResult;
 

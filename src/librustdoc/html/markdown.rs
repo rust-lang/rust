@@ -32,7 +32,7 @@ use std::io;
 use std::libc;
 use std::mem;
 use std::str;
-use std::unstable::intrinsics;
+use std::intrinsics;
 use std::vec;
 
 /// A unit struct which has the `fmt::Show` trait implemented. When

@@ -11,7 +11,7 @@
 //! Unsafe casting functions
 
 use mem;
-use unstable::intrinsics;
+use intrinsics;
 use ptr::copy_nonoverlapping_memory;
 
 /// Casts the value at `src` to U. The two types must have the same length.

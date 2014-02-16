@@ -16,7 +16,7 @@ Runtime type reflection
 
 #[allow(missing_doc)];
 
-use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
+use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;
 use unstable::raw;
 
