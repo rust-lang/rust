@@ -16,6 +16,8 @@ A `BigUint` is represented as an array of `BigDigit`s.
 A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
+use Integer;
+
 use std::cmp;
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
@@ -461,7 +463,7 @@ impl Integer for BigUint {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline]
-    fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+    fn divides(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
@@ -1118,7 +1120,7 @@ impl Integer for BigInt {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline]
-    fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
+    fn divides(&self, other: &BigInt) -> bool { self.data.divides(&other.data) }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
@@ -1388,6 +1390,7 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
+    use Integer;
     use super::{BigDigit, BigUint, ToBigUint};
     use super::{Plus, BigInt, RandBigInt, ToBigInt};
 
@@ -2045,6 +2048,7 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
+    use Integer;
     use super::{BigDigit, BigUint, ToBigUint};
     use super::{Sign, Minus, Zero, Plus, BigInt, RandBigInt, ToBigInt};
 

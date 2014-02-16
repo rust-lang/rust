@@ -21,7 +21,7 @@ use str;
 use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num;
-use num::{NumCast, Zero, One, cast, Integer};
+use num::{NumCast, Zero, One, cast, Int};
 use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
 pub enum ExponentFormat {
@@ -133,19 +133,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
-pub fn int_to_str_bytes_common<T:NumCast
-                                +Zero
-                                +Eq
-                                +Ord
-                                +Integer
-                                +Div<T,T>
-                                +Neg<T>
-                                +Rem<T,T>
-                                +Mul<T,T>>(
-                                num: T,
-                                radix: uint,
-                                sign: SignFormat,
-                                f: |u8|) {
+pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
     let _0: T = Zero::zero();
