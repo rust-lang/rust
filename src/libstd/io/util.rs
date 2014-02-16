@@ -24,7 +24,18 @@ impl<R: Reader> LimitReader<R> {
     pub fn new(r: R, limit: uint) -> LimitReader<R> {
         LimitReader { limit: limit, inner: r }
     }
+
+    /// Consumes the `LimitReader`, returning the underlying `Reader`.
     pub fn unwrap(self) -> R { self.inner }
+
+    /// Returns the number of bytes that can be read before the `LimitReader`
+    /// will return EOF.
+    ///
+    /// # Note
+    ///
+    /// The reader may reach EOF after reading fewer bytes than indicated by
+    /// this method if the underlying reader reaches EOF.
+    pub fn limit(&self) -> uint { self.limit }
 }
 
 impl<R: Reader> Reader for LimitReader<R> {
@@ -190,7 +201,7 @@ mod test {
     use prelude::*;
 
     #[test]
-    fn test_bounded_reader_unlimited() {
+    fn test_limit_reader_unlimited() {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(r.by_ref(), 4);
@@ -199,13 +210,24 @@ mod test {
     }
 
     #[test]
-    fn test_bound_reader_limited() {
+    fn test_limit_reader_limited() {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(r.by_ref(), 2);
             assert_eq!(~[0, 1], r.read_to_end().unwrap());
         }
         assert_eq!(~[2], r.read_to_end().unwrap());
+    }
+
+    #[test]
+    fn test_limit_reader_limit() {
+        let r = MemReader::new(~[0, 1, 2]);
+        let mut r = LimitReader::new(r, 3);
+        assert_eq!(3, r.limit());
+        assert_eq!(0, r.read_byte().unwrap());
+        assert_eq!(2, r.limit());
+        assert_eq!(~[1, 2], r.read_to_end().unwrap());
+        assert_eq!(0, r.limit());
     }
 
     #[test]
