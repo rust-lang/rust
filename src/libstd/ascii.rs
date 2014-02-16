@@ -168,10 +168,7 @@ impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
 
     #[inline]
     fn is_ascii(&self) -> bool {
-        for b in self.iter() {
-            if !b.is_ascii() { return false; }
-        }
-        true
+        self.iter().all(|b| b.is_ascii())
     }
 }
 
