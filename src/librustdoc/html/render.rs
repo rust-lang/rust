@@ -565,8 +565,15 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) | clean::VariantItem(..) => {
+            clean::ForeignFunctionItem(..) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
+            }
+            // link variants to their parent enum because pages aren't emitted
+            // for each variant
+            clean::VariantItem(..) => {
+                let mut stack = self.stack.clone();
+                stack.pop();
+                self.paths.insert(item.id, (stack, "enum"));
             }
             _ => {}
         }
