@@ -500,15 +500,15 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
                     let new_outcome = self.clone().rightmost_child.insert(k.clone(),
                                                                        v.clone(),
                                                                        ub.clone());
-                    new_branch = new_outcome.clone().n0();
-                    outcome = new_outcome.n1();
+                    new_branch = new_outcome.clone().val0();
+                    outcome = new_outcome.val1();
                 }
                 else {
                     let new_outcome = self.clone().elts[index.unwrap()].left.insert(k.clone(),
                                                                                  v.clone(),
                                                                                  ub.clone());
-                    new_branch = new_outcome.clone().n0();
-                    outcome = new_outcome.n1();
+                    new_branch = new_outcome.clone().val0();
+                    outcome = new_outcome.val1();
                 }
                 //Check to see whether a branch or a leaf was returned from the
                 //tree traversal.
