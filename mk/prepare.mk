@@ -47,9 +47,9 @@ DEFAULT_PREPARE_MAN_CMD = install -m755
 # Because of the way these rules are organized, preparing from any
 # stage requires all these stages to be built
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
-PREPARE_STAGES=1 2 3
+PREPARE_STAGES=3
 else
-PREPARE_STAGES=1 2
+PREPARE_STAGES=2
 endif
 
 # Create a directory
@@ -98,25 +98,26 @@ endef
 
 PREPARE_TOOLS = $(filter-out compiletest, $(TOOLS))
 
-prepare-host: prepare-host-dirs prepare-host-tools
+prepare-host: prepare-host-tools
+
+prepare-host-tools: \
+        $(foreach tool, $(PREPARE_TOOLS),\
+          $(foreach stage,$(PREPARE_STAGES),\
+            $(foreach host,$(CFG_HOST),\
+              prepare-host-tool-$(tool)-$(stage)-$(host))))
 
 prepare-host-dirs:
 	$(call PREPARE_DIR,$(PREPARE_DEST_BIN_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_LIB_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_MAN_DIR))
 
-prepare-host-tools:\
-        $(foreach tool, $(PREPARE_TOOLS),\
-          $(foreach stage,$(PREPARE_STAGES),\
-            $(foreach host,$(CFG_HOST),\
-              prepare-host-tool-$(tool)-$(stage)-$(host))))
-
 # $(1) is tool
 # $(2) is stage
 # $(3) is host
 define DEF_PREPARE_HOST_TOOL
 prepare-host-tool-$(1)-$(2)-$(3): $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
-                                  $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3))
+                                  $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
+                                  prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
         $$(call PREPARE_BIN,$(1)$$(X_$$(PREPARE_HOST))),),)
@@ -130,6 +131,9 @@ $(foreach tool,$(PREPARE_TOOLS),\
     $(foreach host,$(CFG_HOST),\
         $(eval $(call DEF_PREPARE_HOST_TOOL,$(tool),$(stage),$(host))))))
 
+# For host libraries only install dylibs, not rlibs since the host libs are only
+# used to support rustc and rustc uses dynamic linking
+#
 # $(1) is tool
 # $(2) is stage
 # $(3) is host
@@ -137,7 +141,8 @@ define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3): $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
-                                 $$(HLIB$(2)_H_$(3))/stamp.$(1)
+                                 $$(HLIB$(2)_H_$(3))/stamp.$(1) \
+                                 prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
         $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$$(PREPARE_HOST),$(1))),),)
@@ -154,30 +159,36 @@ prepare-targets:\
              $(foreach stage,$(PREPARE_STAGES),\
                prepare-target-$(target)-host-$(host)-$(stage))))
 
-# $(1) is target
-# $(2) is host
-# $(3) is stage
+# $(1) is stage
+# $(2) is target
+# $(3) is host
 define DEF_PREPARE_TARGET_N
 # Rebind PREPARE_*_LIB_DIR to point to rustlib, then install the libs for the targets
-prepare-target-$(1)-host-$(2)-$(3): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/rustlib/$(1)/lib
-prepare-target-$(1)-host-$(2)-$(3): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(1)/lib
-prepare-target-$(1)-host-$(2)-$(3): \
+prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
+prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
+prepare-target-$(2)-host-$(3)-$(1): \
         $$(foreach crate,$$(TARGET_CRATES), \
-          $$(TLIB$(3)_T_$(1)_H_$(2))/stamp.$$(crate))
+          $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
+        $$(if $$(findstring $(2),$$(CFG_HOST)), \
+          $$(foreach crate,$$(HOST_CRATES), \
+            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)),)
 # Only install if this host and target combo is being prepared
-	$$(if $$(findstring $(2), $$(PREPARE_HOST)),\
-      $$(if $$(findstring $(1), $$(PREPARE_TARGETS)),\
-        $$(if $$(findstring $(3), $$(PREPARE_STAGE)),\
+	$$(if $$(findstring $(1), $$(PREPARE_STAGE)),\
+      $$(if $$(findstring $(2), $$(PREPARE_TARGETS)),\
+        $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
           $$(call PREPARE_DIR,$$(PREPARE_WORKING_DEST_LIB_DIR))\
           $$(foreach crate,$$(TARGET_CRATES),\
-            $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(1),$$(crate))))\
-          $$(foreach crate,$$(TARGET_CRATES),\
+            $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))\
             $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate))))\
-          $$(call PREPARE_LIB,libmorestack.a)
+          $$(if $$(findstring $(2),$$(CFG_HOST)),\
+            $$(foreach crate,$$(HOST_CRATES),\
+              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))\
+              $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate)))),)\
+          $$(call PREPARE_LIB,libmorestack.a) \
           $$(call PREPARE_LIB,libcompiler-rt.a),),),)
 endef
 
 $(foreach host,$(CFG_HOST),\
   $(foreach target,$(CFG_TARGET), \
     $(foreach stage,$(PREPARE_STAGES),\
-      $(eval $(call DEF_PREPARE_TARGET_N,$(target),$(host),$(stage))))))
+      $(eval $(call DEF_PREPARE_TARGET_N,$(stage),$(target),$(host))))))
