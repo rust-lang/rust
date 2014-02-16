@@ -17,6 +17,7 @@ use clone::Clone;
 #[cfg(not(test))] use default::Default;
 use fmt;
 use result::{Ok, Err};
+use to_str::ToStr;
 
 /// Method extensions to pairs where both types satisfy the `Clone` bound
 pub trait CloneableTuple<T, U> {
@@ -176,6 +177,12 @@ macro_rules! tuple_impls {
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)
+                }
+            }
+
+            impl<$($T: fmt::Show),+> ToStr for ($($T,)+) {
+                fn to_str(&self) -> ~str {
+                    format!("{}", *self)
                 }
             }
 
