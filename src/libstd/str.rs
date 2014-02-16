@@ -824,41 +824,52 @@ pub fn is_utf16(v: &[u16]) -> bool {
     }
 }
 
-/// Iterates over the utf-16 characters in the specified slice, yielding each
-/// decoded unicode character to the function provided.
+/// An iterator that decodes UTF-16 encoded codepoints from a vector
+/// of `u16`s.
 ///
-/// # Failures
-///
-/// * Fails on invalid utf-16 data
-pub fn utf16_chars(v: &[u16], f: |char|) {
-    let len = v.len();
-    let mut i = 0u;
-    while i < len && v[i] != 0u16 {
-        let u = v[i];
+/// Fails when it encounters invalid UTF-16 data.
+pub struct UTF16Chars<'a> {
+    priv iter: vec::Items<'a, u16>
+}
+impl<'a> Iterator<char> for UTF16Chars<'a> {
+    fn next(&mut self) -> Option<char> {
+        let u = match self.iter.next() {
+            Some(u) => *u,
+            None => return None
+        };
+        match char::from_u32(u as u32) {
+            Some(c) => Some(c),
+            None => {
+                let u2 = *self.iter.next().expect("UTF16Chars: unmatched lead surrogate");
+                if u < 0xD7FF || u > 0xDBFF ||
+                    u2 < 0xDC00 || u2 > 0xDFFF {
+                    fail!("UTF16Chars: invalid surrogate pair")
+                }
 
-        if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
-            f(unsafe { cast::transmute(u as u32) });
-            i += 1u;
-
-        } else {
-            let u2 = v[i+1u];
-            assert!(u >= 0xD800_u16 && u <= 0xDBFF_u16);
-            assert!(u2 >= 0xDC00_u16 && u2 <= 0xDFFF_u16);
-            let mut c: u32 = (u - 0xD800_u16) as u32;
-            c = c << 10;
-            c |= (u2 - 0xDC00_u16) as u32;
-            c |= 0x1_0000_u32;
-            f(unsafe { cast::transmute(c) });
-            i += 2u;
+                let mut c = (u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32 | 0x1_0000;
+                char::from_u32(c)
+            }
         }
     }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let (low, high) = self.iter.size_hint();
+        // we could be entirely surrogates (2 elements per char), or
+        // entirely non-surrogates (1 element per char)
+        (low / 2, high)
+    }
+}
+
+/// Create an iterator over the UTF-16 encoded codepoints in `v`.
+///
+/// The iterator fails if it attempts to decode invalid UTF-16 data.
+pub fn utf16_chars<'a>(v: &'a [u16]) -> UTF16Chars<'a> {
+    UTF16Chars { iter : v.iter() }
 }
 
 /// Allocates a new string from the utf-16 slice provided
 pub fn from_utf16(v: &[u16]) -> ~str {
-    let mut buf = with_capacity(v.len());
-    utf16_chars(v, |ch| buf.push_char(ch));
-    buf
+    utf16_chars(v).collect()
 }
 
 /// Allocates a new string with the specified capacity. The string returned is
