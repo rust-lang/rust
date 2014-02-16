@@ -754,7 +754,7 @@ pub fn build_session_options(matches: &getopts::Matches)
         let level_name = lint::level_to_str(*level);
 
         let level_short = level_name.slice_chars(0, 1);
-        let level_short = level_short.to_ascii().to_upper().into_str();
+        let level_short = level_short.to_ascii().unwrap().to_upper().into_str();
         let flags = vec::append(matches.opt_strs(level_short),
                                 matches.opt_strs(level_name));
         for lint_name in flags.iter() {

@@ -49,7 +49,7 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     while idx < len && line[idx] != (' ' as u8) { idx += 1u; }
 
     let kind = line.slice(start_kind, idx);
-    let kind = kind.to_ascii().to_lower().into_str();
+    let kind = kind.to_ascii().unwrap().to_lower().into_str();
 
     // Extract msg:
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }

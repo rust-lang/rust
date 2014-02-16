@@ -143,16 +143,9 @@ impl<'a> fmt::Show for Ascii {
 
 /// Trait for converting into an ascii type.
 pub trait AsciiCast<T> {
-    /// Convert to an ascii type, fail on non-ASCII input.
-    #[inline]
-    fn to_ascii(&self) -> T {
-        assert!(self.is_ascii());
-        unsafe {self.to_ascii_nocheck()}
-    }
-
     /// Convert to an ascii type, return None on non-ASCII input.
     #[inline]
-    fn to_ascii_opt(&self) -> Option<T> {
+    fn to_ascii(&self) -> Option<T> {
         if self.is_ascii() {
             Some(unsafe { self.to_ascii_nocheck() })
         } else {
@@ -223,16 +216,9 @@ pub trait OwnedAsciiCast {
     /// Check if convertible to ascii
     fn is_ascii(&self) -> bool;
 
-    /// Take ownership and cast to an ascii vector. Fail on non-ASCII input.
-    #[inline]
-    fn into_ascii(self) -> ~[Ascii] {
-        assert!(self.is_ascii());
-        unsafe {self.into_ascii_nocheck()}
-    }
-
     /// Take ownership and cast to an ascii vector. Return None on non-ASCII input.
     #[inline]
-    fn into_ascii_opt(self) -> Option<~[Ascii]> {
+    fn into_ascii(self) -> Option<~[Ascii]> {
         if self.is_ascii() {
             Some(unsafe { self.into_ascii_nocheck() })
         } else {
@@ -498,29 +484,29 @@ mod tests {
 
     #[test]
     fn test_ascii() {
-        assert_eq!(65u8.to_ascii().to_byte(), 65u8);
-        assert_eq!(65u8.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().unwrap().to_byte(), 65u8);
+        assert_eq!(65u8.to_ascii().unwrap().to_char(), 'A');
+        assert_eq!('A'.to_ascii().unwrap().to_char(), 'A');
+        assert_eq!('A'.to_ascii().unwrap().to_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        assert_eq!('A'.to_ascii().unwrap().to_lower().to_char(), 'a');
+        assert_eq!('Z'.to_ascii().unwrap().to_lower().to_char(), 'z');
+        assert_eq!('a'.to_ascii().unwrap().to_upper().to_char(), 'A');
+        assert_eq!('z'.to_ascii().unwrap().to_upper().to_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        assert_eq!('@'.to_ascii().unwrap().to_lower().to_char(), '@');
+        assert_eq!('['.to_ascii().unwrap().to_lower().to_char(), '[');
+        assert_eq!('`'.to_ascii().unwrap().to_upper().to_char(), '`');
+        assert_eq!('{'.to_ascii().unwrap().to_upper().to_char(), '{');
 
-        assert!('0'.to_ascii().is_digit());
-        assert!('9'.to_ascii().is_digit());
-        assert!(!'/'.to_ascii().is_digit());
-        assert!(!':'.to_ascii().is_digit());
+        assert!('0'.to_ascii().unwrap().is_digit());
+        assert!('9'.to_ascii().unwrap().is_digit());
+        assert!(!'/'.to_ascii().unwrap().is_digit());
+        assert!(!':'.to_ascii().unwrap().is_digit());
 
-        assert!((0x1fu8).to_ascii().is_control());
-        assert!(!' '.to_ascii().is_control());
-        assert!((0x7fu8).to_ascii().is_control());
+        assert!((0x1fu8).to_ascii().unwrap().is_control());
+        assert!(!' '.to_ascii().unwrap().is_control());
+        assert!((0x7fu8).to_ascii().unwrap().is_control());
 
         assert!("banana".chars().all(|c| c.is_ascii()));
         assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
@@ -529,21 +515,21 @@ mod tests {
     #[test]
     fn test_ascii_vec() {
         let test = &[40u8, 32u8, 59u8];
-        assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
-        assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
+        assert_eq!(test.to_ascii(), Some(v2ascii!([40, 32, 59])));
+        assert_eq!("( ;".to_ascii(), Some(v2ascii!([40, 32, 59])));
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
-        let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
-        let v = ~"( ;";              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), Some(v2ascii!([40, 32, 59])));
+        let v = ~"( ;";              assert_eq!(v.to_ascii(), Some(v2ascii!([40, 32, 59])));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), ~"abcdef&?#");
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), ~"ABCDEF&?#");
+        assert_eq!("abCDef&?#".to_ascii().unwrap().to_lower().into_str(), ~"abcdef&?#");
+        assert_eq!("abCDef&?#".to_ascii().unwrap().to_upper().into_str(), ~"ABCDEF&?#");
 
-        assert_eq!("".to_ascii().to_lower().into_str(), ~"");
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
+        assert_eq!("".to_ascii().unwrap().to_lower().into_str(), ~"");
+        assert_eq!("YMCA".to_ascii().unwrap().to_lower().into_str(), ~"ymca");
+        assert_eq!("abcDEFxyz:.;".to_ascii().unwrap().to_upper().into_str(), ~"ABCDEFXYZ:.;");
 
-        assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
+        assert!("aBcDeF&?#".to_ascii().unwrap().eq_ignore_case("AbCdEf&?#".to_ascii().unwrap()));
 
         assert!("".is_ascii());
         assert!("a".is_ascii());
@@ -553,8 +539,8 @@ mod tests {
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
+        assert_eq!((~"( ;").into_ascii(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Some(v2ascii!(~[40, 32, 59])));
     }
 
     #[test]
@@ -574,46 +560,46 @@ mod tests {
     }
 
     #[test] #[should_fail]
-    fn test_ascii_vec_fail_u8_slice()  { (&[127u8, 128u8, 255u8]).to_ascii(); }
+    fn test_ascii_vec_fail_u8_slice()  { (&[127u8, 128u8, 255u8]).to_ascii().unwrap(); }
 
     #[test] #[should_fail]
-    fn test_ascii_vec_fail_str_slice() { "zoä华".to_ascii(); }
+    fn test_ascii_vec_fail_str_slice() { "zoä华".to_ascii().unwrap(); }
 
     #[test] #[should_fail]
-    fn test_ascii_fail_u8_slice() { 255u8.to_ascii(); }
+    fn test_ascii_fail_u8_slice() { 255u8.to_ascii().unwrap(); }
 
     #[test] #[should_fail]
-    fn test_ascii_fail_char_slice() { 'λ'.to_ascii(); }
+    fn test_ascii_fail_char_slice() { 'λ'.to_ascii().unwrap(); }
 
     #[test]
     fn test_opt() {
-        assert_eq!(65u8.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
-        assert_eq!(255u8.to_ascii_opt(), None);
+        assert_eq!(65u8.to_ascii(), Some(Ascii { chr: 65u8 }));
+        assert_eq!(255u8.to_ascii(), None);
 
-        assert_eq!('A'.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
-        assert_eq!('λ'.to_ascii_opt(), None);
+        assert_eq!('A'.to_ascii(), Some(Ascii { chr: 65u8 }));
+        assert_eq!('λ'.to_ascii(), None);
 
-        assert_eq!("zoä华".to_ascii_opt(), None);
+        assert_eq!("zoä华".to_ascii(), None);
 
         let test1 = &[127u8, 128u8, 255u8];
-        assert_eq!((test1).to_ascii_opt(), None);
+        assert_eq!((test1).to_ascii(), None);
 
         let v = [40u8, 32u8, 59u8];
         let v2 = v2ascii!(&[40, 32, 59]);
-        assert_eq!(v.to_ascii_opt(), Some(v2));
+        assert_eq!(v.to_ascii(), Some(v2));
         let v = [127u8, 128u8, 255u8];
-        assert_eq!(v.to_ascii_opt(), None);
+        assert_eq!(v.to_ascii(), None);
 
         let v = "( ;";
         let v2 = v2ascii!(&[40, 32, 59]);
-        assert_eq!(v.to_ascii_opt(), Some(v2));
-        assert_eq!("zoä华".to_ascii_opt(), None);
+        assert_eq!(v.to_ascii(), Some(v2));
+        assert_eq!("zoä华".to_ascii(), None);
 
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii(), None);
 
-        assert_eq!((~"( ;").into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~"zoä华").into_ascii_opt(), None);
+        assert_eq!((~"( ;").into_ascii(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~"zoä华").into_ascii(), None);
     }
 
     #[test]
