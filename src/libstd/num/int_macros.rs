@@ -614,8 +614,17 @@ mod tests {
     }
 
     #[test]
-    fn test_bitcount() {
-        assert_eq!((0b010101 as $T).population_count(), 3);
+    fn test_count_ones() {
+        assert_eq!((0b0101100 as $T).count_ones(), 3);
+        assert_eq!((0b0100001 as $T).count_ones(), 2);
+        assert_eq!((0b1111001 as $T).count_ones(), 5);
+    }
+
+    #[test]
+    fn test_count_zeros() {
+        assert_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
+        assert_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
+        assert_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
     }
 
     #[test]

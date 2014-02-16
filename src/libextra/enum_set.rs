@@ -129,7 +129,7 @@ impl<E:CLike> Iterator<E> for Items<E> {
     }
 
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let exact = self.bits.population_count();
+        let exact = self.bits.count_ones();
         (exact, Some(exact))
     }
 }
