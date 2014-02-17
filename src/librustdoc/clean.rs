@@ -181,6 +181,7 @@ pub enum ItemEnum {
     VariantItem(Variant),
     ForeignFunctionItem(Function),
     ForeignStaticItem(Static),
+    MacroItem(Macro),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -206,7 +207,8 @@ impl Clean<Item> for doctree::Module {
                        self.fns.clean(), self.foreigns.clean().concat_vec(),
                        self.mods.clean(), self.typedefs.clean(),
                        self.statics.clean(), self.traits.clean(),
-                       self.impls.clean(), self.view_items.clean()].concat_vec()
+                       self.impls.clean(), self.view_items.clean(),
+                       self.macros.clean()].concat_vec()
             })
         }
     }
@@ -1261,5 +1263,25 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
             def_map.get().find(&id).map(|&d| ast_util::def_id_of_def(d))
         }
         None => None
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Macro {
+    source: ~str,
+}
+
+impl Clean<Item> for doctree::Macro {
+    fn clean(&self) -> Item {
+        Item {
+            name: Some(self.name.clean()),
+            attrs: self.attrs.clean(),
+            source: self.where.clean(),
+            visibility: ast::Public.clean(),
+            id: self.id,
+            inner: MacroItem(Macro {
+                source: self.where.to_src(),
+            }),
+        }
     }
 }
