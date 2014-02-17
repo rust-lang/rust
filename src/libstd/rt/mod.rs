@@ -128,6 +128,9 @@ pub mod args;
 // Support for running procedures when a program has exited.
 mod at_exit_imp;
 
+// Stack overflow protection
+pub mod stack;
+
 /// The default error code of the rust runtime if the main task fails instead
 /// of exiting cleanly.
 pub static DEFAULT_ERROR_CODE: int = 101;

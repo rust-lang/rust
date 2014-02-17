@@ -12,7 +12,7 @@ use std::uint;
 use std::cast::{transmute, transmute_mut_unsafe,
                 transmute_region, transmute_mut_region};
 use stack::Stack;
-use std::unstable::stack;
+use std::rt::stack;
 use std::raw;
 
 // FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
