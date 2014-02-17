@@ -1111,7 +1111,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         if_ok!(write!(w, "\\{\n"));
         for m in required.iter() {
             if_ok!(write!(w, "    "));
-            if_ok!(render_method(w, m.item(), true));
+            if_ok!(render_method(w, m.item()));
             if_ok!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
@@ -1119,7 +1119,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         }
         for m in provided.iter() {
             if_ok!(write!(w, "    "));
-            if_ok!(render_method(w, m.item(), true));
+            if_ok!(render_method(w, m.item()));
             if_ok!(write!(w, " \\{ ... \\}\n"));
         }
         if_ok!(write!(w, "\\}"));
@@ -1133,7 +1133,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         if_ok!(write!(w, "<h3 id='{}.{}' class='method'><code>",
                       shortty(m.item()),
                       *m.item().name.get_ref()));
-        if_ok!(render_method(w, m.item(), false));
+        if_ok!(render_method(w, m.item()));
         if_ok!(write!(w, "</code></h3>"));
         if_ok!(document(w, m.item()));
         Ok(())
@@ -1188,16 +1188,12 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     })
 }
 
-fn render_method(w: &mut Writer, meth: &clean::Item,
-                 withlink: bool) -> fmt::Result {
+fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
     fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
-           g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
-           withlink: bool) -> fmt::Result {
-        write!(w, "{}fn {withlink, select,
-                            true{<a href='\\#{ty}.{name}'
-                                    class='fnname'>{name}</a>}
-                            other{<span class='fnname'>{name}</span>}
-                        }{generics}{decl}",
+           g: &clean::Generics, selfty: &clean::SelfTy,
+           d: &clean::FnDecl) -> fmt::Result {
+        write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
+                   {generics}{decl}",
                match purity {
                    ast::UnsafeFn => "unsafe ",
                    _ => "",
@@ -1205,15 +1201,14 @@ fn render_method(w: &mut Writer, meth: &clean::Item,
                ty = shortty(it),
                name = it.name.get_ref().as_slice(),
                generics = *g,
-               decl = Method(selfty, d),
-               withlink = if withlink {"true"} else {"false"})
+               decl = Method(selfty, d))
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl, withlink)
+            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl, withlink)
+            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
         }
         _ => unreachable!()
     }
@@ -1444,7 +1439,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
     fn docmeth(w: &mut Writer, item: &clean::Item) -> io::IoResult<bool> {
         if_ok!(write!(w, "<h4 id='method.{}' class='method'><code>",
                       *item.name.get_ref()));
-        if_ok!(render_method(w, item, false));
+        if_ok!(render_method(w, item));
         if_ok!(write!(w, "</code></h4>\n"));
         match item.doc_value() {
             Some(s) => {
