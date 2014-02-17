@@ -1287,7 +1287,7 @@ pub trait Acceptor<T> {
 ///
 /// Since connection attempts can continue forever, this iterator always returns
 /// `Some`. The `Some` contains the `IoResult` representing whether the
-/// connection attempt was succesful.  A successful connection will be wrapped
+/// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
 pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,

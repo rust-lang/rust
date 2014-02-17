@@ -460,7 +460,7 @@ impl Mutex {
 
     /// Acquires a mutex, blocking the current task until it is able to do so.
     ///
-    /// This function will block the local task until it is availble to acquire
+    /// This function will block the local task until it is available to acquire
     /// the mutex. Upon returning, the task is the only task with the mutex
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
