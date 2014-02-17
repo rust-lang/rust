@@ -266,19 +266,21 @@ impl ToStrRadix for $T {
 impl Primitive for $T {}
 
 impl Bitwise for $T {
-    /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+    /// Returns the number of ones in the binary representation of the number.
     #[inline]
-    fn population_count(&self) -> $T {
-        (*self as $T_SIGNED).population_count() as $T
+    fn count_ones(&self) -> $T {
+        (*self as $T_SIGNED).count_ones() as $T
     }
 
-    /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+    /// Returns the number of leading zeros in the in the binary representation
+    /// of the number.
     #[inline]
     fn leading_zeros(&self) -> $T {
         (*self as $T_SIGNED).leading_zeros() as $T
     }
 
-    /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+    /// Returns the number of trailing zeros in the in the binary representation
+    /// of the number.
     #[inline]
     fn trailing_zeros(&self) -> $T {
         (*self as $T_SIGNED).trailing_zeros() as $T
@@ -375,8 +377,17 @@ mod tests {
     }
 
     #[test]
-    fn test_bitcount() {
-        assert_eq!((0b010101 as $T).population_count(), 3);
+    fn test_count_ones() {
+        assert_eq!((0b0101100 as $T).count_ones(), 3);
+        assert_eq!((0b0100001 as $T).count_ones(), 2);
+        assert_eq!((0b1111001 as $T).count_ones(), 5);
+    }
+
+    #[test]
+    fn test_count_zeros() {
+        assert_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
+        assert_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
+        assert_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
     }
 
     #[test]
