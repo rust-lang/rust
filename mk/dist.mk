@@ -24,10 +24,10 @@ PKG_FILES := \
     $(S)RELEASES.txt                           \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
-    $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.md                                \
       compiletest                              \
+      doc                                      \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
@@ -52,12 +52,24 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cp $< $@
 
 $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
-            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD))
-	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py i686-pc-mingw32/stage3/bin
+            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+            dist-prepare-win
+	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py tmp/dist/win/bin
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
-endif
 
+dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
+dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
+dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win
+# On windows we're using stage3, unlike Unix...
+dist-prepare-win: PREPARE_STAGE=3
+dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-win: prepare-base
+
+endif
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
