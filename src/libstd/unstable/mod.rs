@@ -17,8 +17,6 @@ pub mod dynamic_lib;
 
 pub mod finally;
 pub mod simd;
-#[cfg(not(test))]
-pub mod lang;
 pub mod sync;
 pub mod mutex;
 pub mod stack;
