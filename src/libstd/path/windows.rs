@@ -226,7 +226,8 @@ impl GenericPathUnsafe for Path {
             // path is assumed to have a prefix of Some(DiskPrefix)
             match me.prefix {
                 Some(DiskPrefix) => me.repr[0] == path[0].to_ascii().unwrap().to_upper().to_byte(),
-                Some(VerbatimDiskPrefix) => me.repr[4] == path[0].to_ascii().unwrap().to_upper().to_byte(),
+                Some(VerbatimDiskPrefix) =>
+                    me.repr[4] == path[0].to_ascii().unwrap().to_upper().to_byte(),
                 _ => false
             }
         }
@@ -655,11 +656,13 @@ impl Path {
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
-                    self.repr[0].to_ascii().unwrap().eq_ignore_case(other.repr[4].to_ascii().unwrap())
+                    self.repr[0].to_ascii().unwrap().
+                        eq_ignore_case(other.repr[4].to_ascii().unwrap())
             }
             (Some(VerbatimDiskPrefix), Some(DiskPrefix)) => {
                 other.is_absolute() &&
-                    self.repr[4].to_ascii().unwrap().eq_ignore_case(other.repr[0].to_ascii().unwrap())
+                    self.repr[4].to_ascii().unwrap().
+                        eq_ignore_case(other.repr[0].to_ascii().unwrap())
             }
             (Some(VerbatimDiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.repr[4].to_ascii().unwrap().eq_ignore_case(other.repr[4].to_ascii().unwrap())
