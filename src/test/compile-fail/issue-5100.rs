@@ -24,12 +24,12 @@ fn main() {
 
     match (true, false) {
         ~(true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)` but found a ~-box pattern
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found a `~`-box pattern
     }
 
     match (true, false) {
         &(true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)` but found an &-pointer pattern
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found an `&`-pointer pattern
     }
 
 
