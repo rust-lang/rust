@@ -607,6 +607,8 @@ impl<'a> Context<'a> {
         let mut lets = ~[];
         let mut locals = ~[];
         let mut names = vec::from_fn(self.name_positions.len(), |_| None);
+        let mut pats = ~[];
+        let mut heads = ~[];
 
         // First, declare all of our methods that are statics
         for &method in self.method_statics.iter() {
@@ -653,8 +655,8 @@ impl<'a> Context<'a> {
             if self.arg_types[i].is_none() { continue } // error already generated
 
             let name = self.ecx.ident_of(format!("__arg{}", i));
-            let e = self.ecx.expr_addr_of(e.span, e);
-            lets.push(self.ecx.stmt_let(e.span, false, name, e));
+            pats.push(self.ecx.pat_ident(e.span, name));
+            heads.push(self.ecx.expr_addr_of(e.span, e));
             locals.push(self.format_arg(e.span, Exact(i),
                                         self.ecx.expr_ident(e.span, name)));
         }
@@ -664,8 +666,8 @@ impl<'a> Context<'a> {
             }
 
             let lname = self.ecx.ident_of(format!("__arg{}", *name));
-            let e = self.ecx.expr_addr_of(e.span, e);
-            lets.push(self.ecx.stmt_let(e.span, false, lname, e));
+            pats.push(self.ecx.pat_ident(e.span, lname));
+            heads.push(self.ecx.expr_addr_of(e.span, e));
             names[*self.name_positions.get(name)] =
                 Some(self.format_arg(e.span,
                                      Named((*name).clone()),
@@ -706,8 +708,40 @@ impl<'a> Context<'a> {
         let res = self.ecx.expr_ident(self.fmtsp, resname);
         let result = self.ecx.expr_call(extra.span, extra, ~[
                             self.ecx.expr_addr_of(extra.span, res)]);
-        self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,
-                                           Some(result)))
+        let body = self.ecx.expr_block(self.ecx.block(self.fmtsp, lets,
+                                                      Some(result)));
+
+        // Constructs an AST equivalent to:
+        //
+        //      match (&arg0, &arg1) {
+        //          (tmp0, tmp1) => body
+        //      }
+        //
+        // It was:
+        //
+        //      let tmp0 = &arg0;
+        //      let tmp1 = &arg1;
+        //      body
+        //
+        // Because of #11585 the new temporary lifetime rule, the enclosing
+        // statements for these temporaries become the let's themselves.
+        // If one or more of them are RefCell's, RefCell borrow() will also
+        // end there; they don't last long enough for body to use them. The
+        // match expression solves the scope problem.
+        //
+        // Note, it may also very well be transformed to:
+        //
+        //      match arg0 {
+        //          ref tmp0 => {
+        //              match arg1 => {
+        //                  ref tmp1 => body } } }
+        //
+        // But the nested match expression is proved to perform not as well
+        // as series of let's; the first approach does.
+        let pat = self.ecx.pat(self.fmtsp, ast::PatTup(pats));
+        let arm = self.ecx.arm(self.fmtsp, ~[pat], body);
+        let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
+        self.ecx.expr_match(self.fmtsp, head, ~[arm])
     }
 
     fn format_arg(&self, sp: Span, argno: Position, arg: @ast::Expr)

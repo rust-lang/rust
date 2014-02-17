@@ -49,11 +49,11 @@ pub fn note_and_explain_region(cx: ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
     }
 }
