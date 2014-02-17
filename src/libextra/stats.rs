@@ -16,9 +16,7 @@ use std::io;
 use std::mem;
 use std::num;
 use collections::hashmap;
-
-// NB: this can probably be rewritten in terms of num::Num
-// to be less f64-specific.
+use std::vec_ng::Vec;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -167,38 +165,111 @@ impl Summary {
 }
 
 impl<'a> Stats for &'a [f64] {
-
-    // FIXME #11059 handle NaN, inf and overflow
     fn sum(self) -> f64 {
-        let mut partials : ~[f64] = ~[];
 
+        fn samesign(x: f64, y: f64) -> bool {
+            (x >= 0f64) == (y > 0f64)
+        }
+
+        fn twosum(x: f64, y: f64) -> (f64, f64) {
+            let hi = x + y;
+            let lo = y - (hi - x);
+            (hi, lo)
+        }
+
+        let mut partials = Vec::new();
+        partials.push(0.0);
+        let twopow: f64 = num::powf(2.0, (Float::max_exp(None::<f64>) - 1) as f64);
         for &mut x in self.iter() {
-            let mut j = 0;
-            // This inner loop applies `hi`/`lo` summation to each
-            // partial so that the list of partial sums remains exact.
-            for i in range(0, partials.len()) {
-                let mut y = partials[i];
-                if num::abs(x) < num::abs(y) {
-                    mem::swap(&mut x, &mut y);
-                }
-                // Rounded `x+y` is stored in `hi` with round-off stored in
-                // `lo`. Together `hi+lo` are exactly equal to `x+y`.
-                let hi = x + y;
-                let lo = y - (hi - x);
-                if lo != 0f64 {
-                    partials[j] = lo;
-                    j += 1;
-                }
-                x = hi;
-            }
-            if j >= partials.len() {
-                partials.push(x);
+            if x.is_nan() {
+                return x;
+            } else if x.is_infinite() {
+                *partials.get_mut(0) += x;
             } else {
-                partials[j] = x;
-                partials.truncate(j+1);
+                let mut i = 1;
+                for z in range(1, partials.len()) {
+                    let mut y = *partials.get(z);
+                    if num::abs(x) < num::abs(y) {
+                        mem::swap(&mut x, &mut y);
+                    }
+                    let (mut hi, mut lo) = twosum(x,y);
+                    if hi.is_infinite() {
+                        let sign = if hi > 0.0 { -1.0 } else { 1.0 };
+                        x = x - twopow * sign - twopow * sign;
+                        *partials.get_mut(0) += sign;
+                        if num::abs(x) < num::abs(y) {
+                            mem::swap(&mut x, &mut y);
+                        }
+                        let (h, l) = twosum(x,y);
+                        hi = h;
+                        lo = l;
+                    }
+                    if lo != 0.0 {
+                        *partials.get_mut(i) = lo;
+                        i += 1;
+                    }
+                    x = hi;
+                }
+                if i >= partials.len() {
+                    partials.push(x);
+                } else {
+                    *partials.get_mut(i) = x;
+                    partials.truncate(i + 1);
+                }
             }
         }
-        partials.iter().fold(0.0, |p, q| p + *q)
+        // special cases arising from infinities
+        if partials.get(0).is_infinite() {
+            return *partials.get(0);
+        } else if partials.get(0).is_nan() {
+            fail!("infinities of both signs in summands");
+        }
+
+        let plen = partials.len();
+        if num::abs(*partials.get(0)) == 1.0 && plen > 1 &&
+                !samesign(*partials.get(plen - 1), *partials.get(0)) {
+            let (hi, lo) = twosum(*partials.get(0) * twopow, 0.5 * *partials.get(plen - 1));
+            if (2.0 * hi).is_infinite() {
+                if (hi + 2.0 * lo - hi) == (2.0 * lo) && plen > 2 &&
+                        samesign(lo, *partials.get(plen - 2)) {
+                    return 2.0 * (hi + 2.0 * lo);
+                }
+            } else {
+                if lo != 0.0 {
+                    partials.push(2.0 * lo);
+                }
+                partials.push(2.0 * hi);
+                *partials.get_mut(0) = 0.0;
+            }
+        }
+        // if there is no overflow, compute the sum of a list of
+        // nonoverlapping floats.
+        if *partials.get(0) == 0.0 {
+            let mut total_so_far = partials.pop().expect("Impossible empty vector in Stats.sum");
+            loop {
+                let item = match partials.pop() {
+                    None => break, //partials is empty, we're finished
+                    Some(x) => x
+                };
+                let (total, lo) = twosum(total_so_far, item);
+                total_so_far = total;
+                if lo != 0.0 {
+                    partials.push(lo);
+                    break;
+                }
+            }
+
+            let len = partials.len();
+            if len >= 2 {
+                let (a, b) = (*partials.get(len - 1), *partials.get(len-2));
+                if samesign(a, b) && (total_so_far + 2.0 * a - total_so_far) == (2.0 * a) {
+                    total_so_far += 2.0 * a;
+                    *partials.get_mut(len - 1) = -a;
+                }
+            }
+            return total_so_far;
+        }
+        fail!("overflow in stats::sum");
     }
 
     fn min(self) -> f64 {
@@ -442,6 +513,7 @@ mod tests {
     use stats::write_boxplot;
     use std::io;
     use std::str;
+    use std::f64;
 
     macro_rules! assert_approx_eq(
         ($a:expr, $b:expr) => ({
@@ -1021,6 +1093,30 @@ mod tests {
     #[test]
     fn test_sum_f64_between_ints_that_sum_to_0() {
         assert_eq!([1e30, 1.2, -1e30].sum(), 1.2);
+    }
+    #[test]
+    fn test_sum_infs_and_nans_f64() {
+        assert_eq!([f64::INFINITY].sum(), f64::INFINITY);
+        assert_eq!([f64::INFINITY, f64::INFINITY].sum(), f64::INFINITY);
+
+        assert!([f64::NAN].sum().is_nan());
+        assert!([f64::INFINITY, f64::NEG_INFINITY, f64::NAN].sum().is_nan());
+    }
+    #[test]
+    #[should_fail]
+    fn test_sum_inf_and_neg_inf_f64() {
+        [f64::INFINITY, f64::NEG_INFINITY].sum();
+    }
+    #[test]
+    fn test_sum_max_value_f64() {
+        let n = f64::MAX_VALUE;
+        assert_eq!([n, -n, n].sum(), n);
+    }
+    #[test]
+    #[should_fail]
+    fn test_sum_overflow_f64() {
+        let n = f64::MAX_VALUE;
+        [n, -n, n, n / 10.0].sum();
     }
 }
 
