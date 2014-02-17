@@ -25,7 +25,6 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 
 use std;
-use std::hashmap::HashMap;
 
 use doctree;
 use visit_ast;
@@ -68,7 +67,7 @@ impl<T: Clean<U>, U> Clean<~[U]> for syntax::opt_vec::OptVec<T> {
 pub struct Crate {
     name: ~str,
     module: Option<Item>,
-    externs: HashMap<ast::CrateNum, ExternalCrate>,
+    externs: ~[(ast::CrateNum, ExternalCrate)],
 }
 
 impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
@@ -76,9 +75,9 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         use syntax::attr::find_crateid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
-        let mut externs = HashMap::new();
+        let mut externs = ~[];
         cx.sess.cstore.iter_crate_data(|n, meta| {
-            externs.insert(n, meta.clean());
+            externs.push((n, meta.clean()));
         });
 
         Crate {

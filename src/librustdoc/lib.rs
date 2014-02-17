@@ -344,7 +344,7 @@ fn json_output(krate: clean::Crate, res: ~[plugins::PluginJson],
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,
-        Err(_) => fail!("Rust generated JSON is invalid??")
+        Err(e) => fail!("Rust generated JSON is invalid: {:?}", e)
     };
 
     json.insert(~"crate", crate_json);
