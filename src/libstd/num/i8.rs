@@ -25,15 +25,17 @@ use unstable::intrinsics;
 int_module!(i8, 8)
 
 impl Bitwise for i8 {
-    /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+    /// Returns the number of ones in the binary representation of the number.
     #[inline]
-    fn population_count(&self) -> i8 { unsafe { intrinsics::ctpop8(*self) } }
+    fn count_ones(&self) -> i8 { unsafe { intrinsics::ctpop8(*self) } }
 
-    /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+    /// Returns the number of leading zeros in the in the binary representation
+    /// of the number.
     #[inline]
     fn leading_zeros(&self) -> i8 { unsafe { intrinsics::ctlz8(*self) } }
 
-    /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+    /// Returns the number of trailing zeros in the in the binary representation
+    /// of the number.
     #[inline]
     fn trailing_zeros(&self) -> i8 { unsafe { intrinsics::cttz8(*self) } }
 }
