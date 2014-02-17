@@ -98,8 +98,8 @@ impl Process {
 
         let env = config.env.map(|a| a.to_owned());
         let cwd = config.cwd.map(|a| Path::new(a));
-        let res = spawn_process_os(config.program, config.args, env,
-                                   cwd.as_ref(), in_fd, out_fd, err_fd);
+        let res = spawn_process_os(config, env, cwd.as_ref(), in_fd, out_fd,
+                                   err_fd);
 
         unsafe {
             for pipe in in_pipe.iter() { let _ = libc::close(pipe.input); }
@@ -180,7 +180,7 @@ struct SpawnProcessResult {
 }
 
 #[cfg(windows)]
-fn spawn_process_os(prog: &str, args: &[~str],
+fn spawn_process_os(config: p::ProcessConfig,
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int,
@@ -201,6 +201,14 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use std::libc::funcs::extra::msvcrt::get_osfhandle;
 
     use std::mem;
+
+    if config.gid.is_some() || config.uid.is_some() {
+        return Err(io::IoError {
+            kind: io::OtherIoError,
+            desc: "unsupported gid/uid requested on windows",
+            detail: None,
+        })
+    }
 
     unsafe {
 
@@ -237,16 +245,23 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in DuplicateHandle: {}", os::last_os_error());
         }
 
-        let cmd = make_command_line(prog, args);
+        let cmd = make_command_line(config.program, config.args);
         let mut pi = zeroed_process_information();
         let mut create_err = None;
+
+        // stolen from the libuv code.
+        let mut flags = 0;
+        if config.detach {
+            flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
+        }
 
         with_envp(env, |envp| {
             with_dirp(dir, |dirp| {
                 cmd.with_c_str(|cmdp| {
                     let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
-                                                 0, envp, dirp, &mut si, &mut pi);
+                                                 flags, envp, dirp, &mut si,
+                                                 &mut pi);
                     if created == FALSE {
                         create_err = Some(super::last_error());
                     }
@@ -364,7 +379,7 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 }
 
 #[cfg(unix)]
-fn spawn_process_os(prog: &str, args: &[~str],
+fn spawn_process_os(config: p::ProcessConfig,
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int,
@@ -372,7 +387,6 @@ fn spawn_process_os(prog: &str, args: &[~str],
     use std::libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use std::libc::funcs::bsd44::getdtablesize;
     use std::libc::c_ulong;
-    use std::unstable::intrinsics;
 
     mod rustrt {
         extern {
@@ -441,43 +455,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         }
         drop(input);
 
-        rustrt::rust_unset_sigprocmask();
-
-        if in_fd == -1 {
-            let _ = libc::close(libc::STDIN_FILENO);
-        } else if retry(|| dup2(in_fd, 0)) == -1 {
-            fail!("failure in dup2(in_fd, 0): {}", os::last_os_error());
-        }
-        if out_fd == -1 {
-            let _ = libc::close(libc::STDOUT_FILENO);
-        } else if retry(|| dup2(out_fd, 1)) == -1 {
-            fail!("failure in dup2(out_fd, 1): {}", os::last_os_error());
-        }
-        if err_fd == -1 {
-            let _ = libc::close(libc::STDERR_FILENO);
-        } else if retry(|| dup2(err_fd, 2)) == -1 {
-            fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
-        }
-        // close all other fds
-        for fd in range(3, getdtablesize()).rev() {
-            if fd != output.fd() {
-                let _ = close(fd as c_int);
-            }
-        }
-
-        with_dirp(dir, |dirp| {
-            if !dirp.is_null() && chdir(dirp) == -1 {
-                fail!("failure in chdir: {}", os::last_os_error());
-            }
-        });
-
-        with_envp(env, |envp| {
-            if !envp.is_null() {
-                set_environ(envp);
-            }
-        });
-        with_argv(prog, args, |argv| {
-            let _ = execvp(*argv, argv);
+        fn fail(output: &mut file::FileDesc) -> ! {
             let errno = os::errno();
             let bytes = [
                 (errno << 24) as u8,
@@ -486,7 +464,82 @@ fn spawn_process_os(prog: &str, args: &[~str],
                 (errno <<  0) as u8,
             ];
             assert!(output.inner_write(bytes).is_ok());
-            intrinsics::abort();
+            unsafe { libc::_exit(1) }
+        }
+
+        rustrt::rust_unset_sigprocmask();
+
+        if in_fd == -1 {
+            let _ = libc::close(libc::STDIN_FILENO);
+        } else if retry(|| dup2(in_fd, 0)) == -1 {
+            fail(&mut output);
+        }
+        if out_fd == -1 {
+            let _ = libc::close(libc::STDOUT_FILENO);
+        } else if retry(|| dup2(out_fd, 1)) == -1 {
+            fail(&mut output);
+        }
+        if err_fd == -1 {
+            let _ = libc::close(libc::STDERR_FILENO);
+        } else if retry(|| dup2(err_fd, 2)) == -1 {
+            fail(&mut output);
+        }
+        // close all other fds
+        for fd in range(3, getdtablesize()).rev() {
+            if fd != output.fd() {
+                let _ = close(fd as c_int);
+            }
+        }
+
+        match config.gid {
+            Some(u) => {
+                if libc::setgid(u as libc::gid_t) != 0 {
+                    fail(&mut output);
+                }
+            }
+            None => {}
+        }
+        match config.uid {
+            Some(u) => {
+                // When dropping privileges from root, the `setgroups` call will
+                // remove any extraneous groups. If we don't call this, then
+                // even though our uid has dropped, we may still have groups
+                // that enable us to do super-user things. This will fail if we
+                // aren't root, so don't bother checking the return value, this
+                // is just done as an optimistic privilege dropping function.
+                extern {
+                    fn setgroups(ngroups: libc::c_int,
+                                 ptr: *libc::c_void) -> libc::c_int;
+                }
+                let _ = setgroups(0, 0 as *libc::c_void);
+
+                if libc::setuid(u as libc::uid_t) != 0 {
+                    fail(&mut output);
+                }
+            }
+            None => {}
+        }
+        if config.detach {
+            // Don't check the error of setsid because it fails if we're the
+            // process leader already. We just forked so it shouldn't return
+            // error, but ignore it anyway.
+            let _ = libc::setsid();
+        }
+
+        with_dirp(dir, |dirp| {
+            if !dirp.is_null() && chdir(dirp) == -1 {
+                fail(&mut output);
+            }
+        });
+
+        with_envp(env, |envp| {
+            if !envp.is_null() {
+                set_environ(envp);
+            }
+        });
+        with_argv(config.program, config.args, |argv| {
+            let _ = execvp(*argv, argv);
+            fail(&mut output);
         })
     }
 }
