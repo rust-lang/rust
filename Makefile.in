@@ -198,16 +198,6 @@ include $(CFG_SRC_DIR)mk/llvm.mk
 # Secondary makefiles, conditionalized for speed
 ######################################################################
 
-# Source and binary distribution artifacts
-ifneq ($(strip $(findstring dist,$(MAKECMDGOALS))   \
-               $(findstring check,$(MAKECMDGOALS))  \
-               $(findstring test,$(MAKECMDGOALS))   \
-               $(findstring tidy,$(MAKECMDGOALS))   \
-               $(findstring clean,$(MAKECMDGOALS))),)
-  CFG_INFO := $(info cfg: including dist rules)
-  include $(CFG_SRC_DIR)mk/dist.mk
-endif
-
 # Binary snapshots
 ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
                $(findstring clean,$(MAKECMDGOALS))),)
@@ -230,16 +220,31 @@ ifneq ($(findstring perf,$(MAKECMDGOALS)),)
   include $(CFG_SRC_DIR)mk/perf.mk
 endif
 
+# Copy all the distributables to another directory for binary install
+ifneq ($(strip $(findstring prepare,$(MAKECMDGOALS)) \
+               $(findstring dist,$(MAKECMDGOALS)) \
+               $(findstring install,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including prepare rules)
+  include $(CFG_SRC_DIR)mk/prepare.mk
+endif
+
+# (Unix) Installation from the build directory
+ifneq ($(findstring install,$(MAKECMDGOALS)),)
+  CFG_INFO := $(info cfg: including install rules)
+  include $(CFG_SRC_DIR)mk/install.mk
+endif
+
+# Source and binary distribution artifacts
+ifneq ($(strip $(findstring dist,$(MAKECMDGOALS)) \
+               $(findstring clean,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including dist rules)
+  include $(CFG_SRC_DIR)mk/dist.mk
+endif
+
 # Cleaning
 ifneq ($(findstring clean,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including clean rules)
   include $(CFG_SRC_DIR)mk/clean.mk
-endif
-
-# Installation from the build directory
-ifneq ($(findstring install,$(MAKECMDGOALS)),)
-  CFG_INFO := $(info cfg: including install rules)
-  include $(CFG_SRC_DIR)mk/install.mk
 endif
 
 # CTAGS building
