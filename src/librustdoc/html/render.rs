@@ -157,6 +157,7 @@ pub struct Cache {
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
     priv privmod: bool,
+    priv public_items: HashSet<ast::NodeId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -231,18 +232,23 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }
 
     // Crawl the crate to build various caches used for the output
-    let mut cache = Cache {
-        impls: HashMap::new(),
-        typarams: HashMap::new(),
-        paths: HashMap::new(),
-        traits: HashMap::new(),
-        implementors: HashMap::new(),
-        stack: ~[],
-        parent_stack: ~[],
-        search_index: ~[],
-        extern_locations: HashMap::new(),
-        privmod: false,
-    };
+    let mut cache = local_data::get(::analysiskey, |analysis| {
+        let public_items = analysis.map(|a| a.public_items.clone());
+        let public_items = public_items.unwrap_or(HashSet::new());
+        Cache {
+            impls: HashMap::new(),
+            typarams: HashMap::new(),
+            paths: HashMap::new(),
+            traits: HashMap::new(),
+            implementors: HashMap::new(),
+            stack: ~[],
+            parent_stack: ~[],
+            search_index: ~[],
+            extern_locations: HashMap::new(),
+            privmod: false,
+            public_items: public_items,
+        }
+    });
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
 
@@ -566,7 +572,16 @@ impl DocFolder for Cache {
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) => {
-                self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
+                // Reexported items mean that the same id can show up twice in
+                // the rustdoc ast that we're looking at. We know, however, that
+                // a reexported item doesn't show up in the `public_items` map,
+                // so we can skip inserting into the paths map if there was
+                // already an entry present and we're not a public item.
+                if !self.paths.contains_key(&item.id) ||
+                   self.public_items.contains(&item.id) {
+                    self.paths.insert(item.id,
+                                      (self.stack.clone(), shortty(&item)));
+                }
             }
             // link variants to their parent enum because pages aren't emitted
             // for each variant

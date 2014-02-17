@@ -130,6 +130,7 @@ macro_rules! log_enabled(
 /// # Example
 ///
 /// ```should_fail
+/// # #[allow(unreachable_code)];
 /// fail!();
 /// fail!("this is a terrible mistake!");
 /// fail!(4); // fail with the value of 4 to be collected elsewhere
@@ -228,13 +229,15 @@ macro_rules! assert_eq(
 /// # Example
 ///
 /// ~~~rust
+/// struct Item { weight: uint }
+///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
 ///     assert!(!v.is_empty());
 ///     let mut so_far = 0u;
 ///     for item in v.iter() {
 ///         so_far += item.weight;
 ///         if so_far > 100 {
-///             return item;
+///             return *item;
 ///         }
 ///     }
 ///     // The above loop always returns, so we must hint to the
@@ -336,7 +339,7 @@ macro_rules! println(
 /// local_data_key!(my_integer: int)
 ///
 /// local_data::set(my_integer, 2);
-/// local_data::get(my_integer, |val| println!("{}", val));
+/// local_data::get(my_integer, |val| println!("{}", val.map(|i| *i)));
 /// ```
 #[macro_export]
 macro_rules! local_data_key(
