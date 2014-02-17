@@ -4012,7 +4012,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
         //We only care about the operation here
         match *split.get(1) {
-            "cxchg" => (1, vec!(ty::mk_mut_rptr(tcx,
+            "cxchg" => (1, vec!(ty::mk_imm_rptr(tcx,
                                              ty::ReLateBound(it.id, ty::BrAnon(0)),
                                              param(ccx, 0)),
                         param(ccx, 0),
@@ -4025,7 +4025,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
               param(ccx, 0)),
             "store" => (1,
                vec!(
-                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
+                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
                                   param(ccx, 0)),
                   param(ccx, 0)
                ),
@@ -4033,7 +4033,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
-                (1, vec!(ty::mk_mut_rptr(tcx,
+                (1, vec!(ty::mk_imm_rptr(tcx,
                                       ty::ReLateBound(it.id, ty::BrAnon(0)),
                                       param(ccx, 0)), param(ccx, 0) ),
                  param(ccx, 0))
