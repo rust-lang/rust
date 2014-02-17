@@ -23,7 +23,7 @@ use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::unstable::stack;
+use std::rt::stack;
 
 use io;
 use task;
