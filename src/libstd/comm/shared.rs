@@ -305,7 +305,6 @@ impl<T: Send> Packet<T> {
             // See the discussion in the stream implementation for why we we
             // might decrement steals.
             Some(data) => {
-                self.steals += 1;
                 if self.steals > MAX_STEALS {
                     match self.cnt.swap(0, atomics::SeqCst) {
                         DISCONNECTED => {
@@ -314,11 +313,12 @@ impl<T: Send> Packet<T> {
                         n => {
                             let m = cmp::min(n, self.steals);
                             self.steals -= m;
-                            self.cnt.fetch_add(n - m, atomics::SeqCst);
+                            self.bump(n - m);
                         }
                     }
                     assert!(self.steals >= 0);
                 }
+                self.steals += 1;
                 Ok(data)
             }
 
