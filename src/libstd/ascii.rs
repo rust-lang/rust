@@ -22,6 +22,7 @@ use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
 use to_bytes::IterBytes;
 use option::{Option, Some, None};
+use result::{Result, Ok, Err};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
@@ -213,13 +214,13 @@ pub trait OwnedAsciiCast {
     /// Check if convertible to ascii
     fn is_ascii(&self) -> bool;
 
-    /// Take ownership and cast to an ascii vector. Return None on non-ASCII input.
+    /// Take ownership and cast to an ascii vector. Return Err(Self) on non-ASCII input.
     #[inline]
-    fn into_ascii(self) -> Option<~[Ascii]> {
+    fn into_ascii(self) -> Result<~[Ascii], Self> {
         if self.is_ascii() {
-            Some(unsafe { self.into_ascii_nocheck() })
+            Ok(unsafe { self.into_ascii_nocheck() })
         } else {
-            None
+            Err(self)
         }
     }
 
@@ -536,8 +537,8 @@ mod tests {
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!((~"( ;").into_ascii(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~"( ;").into_ascii(), Ok(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Ok(v2ascii!(~[40, 32, 59])));
     }
 
     #[test]
@@ -592,11 +593,11 @@ mod tests {
         assert_eq!(v.to_ascii(), Some(v2));
         assert_eq!("zoä华".to_ascii(), None);
 
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii(), None);
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), Ok(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii(), Err(~[127u8, 128u8, 255u8]));
 
-        assert_eq!((~"( ;").into_ascii(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~"zoä华").into_ascii(), None);
+        assert_eq!((~"( ;").into_ascii(), Ok(v2ascii!(~[40, 32, 59])));
+        assert_eq!((~"zoä华").into_ascii(), Err(~"zoä华"));
     }
 
     #[test]
