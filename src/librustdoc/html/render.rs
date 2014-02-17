@@ -305,7 +305,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         krate = folder.fold_crate(krate);
     }
 
-    for (&n, e) in krate.externs.iter() {
+    for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
     }
 
