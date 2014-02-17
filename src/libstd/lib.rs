@@ -217,6 +217,7 @@ mod std {
     pub use kinds;
     pub use local_data;
     pub use logging;
+    pub use num;
     pub use option;
     pub use os;
     pub use rt;

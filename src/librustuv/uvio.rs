@@ -12,6 +12,7 @@ use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
+use std::io::net::raw::{Protocol};
 use std::io::process::ProcessConfig;
 use std::io::signal::Signum;
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
@@ -179,9 +180,8 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
 
-    fn raw_socket_new(&mut self, domain: i32, protocol: i32,
-                      includeIpHeader: bool) -> Result<~rtio::RtioRawSocket, IoError> {
-        RawSocketWatcher::new(self, domain, protocol, includeIpHeader)
+    fn raw_socket_new(&mut self, protocol: Protocol) -> Result<~rtio::RtioRawSocket, IoError> {
+        RawSocketWatcher::new(self, protocol)
             .map(|rsw| ~rsw as ~rtio::RtioRawSocket)
     }
 

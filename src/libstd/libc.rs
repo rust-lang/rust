@@ -2342,6 +2342,9 @@ pub mod consts {
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
 
+            pub static AF_PACKET : c_int = 17;
+            pub static IPPROTO_RAW : c_int = 255;
+
             pub static O_RSYNC : c_int = 1052672;
             pub static O_DSYNC : c_int = 4096;
             pub static O_NONBLOCK : c_int = 2048;

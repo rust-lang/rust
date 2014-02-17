@@ -10,6 +10,7 @@
 
 use std::cast;
 use std::io::net::ip;
+use std::io::net::raw;
 use std::io;
 use std::libc;
 use std::mem;
@@ -642,18 +643,37 @@ pub struct RawSocket {
     priv fd: sock_t,
 }
 
+fn protocol_to_libc(protocol: raw::Protocol)
+    -> (libc::c_int, libc::c_int, libc::c_int, Option<raw::NetworkInterface>) {
+    let ETH_P_ALL: u16 = htons(0x0003);
+    match protocol {
+        raw::DataLinkProtocol(raw::EthernetProtocol(iface))
+            => (libc::AF_PACKET, libc::SOCK_RAW, ETH_P_ALL as libc::c_int, Some(iface)),
+        raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
+            => (libc::AF_PACKET, libc::SOCK_DGRAM, ETH_P_ALL as libc::c_int, Some(iface)),
+        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
+            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
+        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
+            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
+        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
+            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int, None),
+        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
+            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int, None)
+    }
+}
+
 impl RawSocket {
-    pub fn new(domain: i32, protocol: i32, includeIpHeader: bool)
-        -> IoResult<RawSocket>
+    pub fn new(protocol: raw::Protocol) -> IoResult<RawSocket>
     {
-        let sock = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
+        let (domain, typ, proto, _) = protocol_to_libc(protocol);
+        let sock = unsafe { libc::socket(domain, typ, proto) };
         if sock == -1 {
             return Err(super::last_error());
         }
 
         let socket = RawSocket { fd: sock };
 
-        if includeIpHeader && domain == libc::AF_INET {
+        /*if includeIpHeader && domain == libc::AF_INET {
             let one: libc::c_int = 1;
             // Only windows supports IPV6_HDRINCL
             let (proto, hdrincl) = (libc::IPPROTO_IP, libc::IP_HDRINCL);
@@ -667,14 +687,14 @@ impl RawSocket {
             if res == -1 {
                 return Err(super::last_error());
             }
-        }
+        }*/
         return Ok(socket);
     }
 }
 
 impl rtio::RtioRawSocket for RawSocket {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> IoResult<(uint, ip::IpAddr)>
+        -> IoResult<(uint, Option<raw::NetworkAddress>)>
     {
         let mut caddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
         let mut caddrlen = unsafe {
@@ -694,14 +714,15 @@ impl rtio::RtioRawSocket for RawSocket {
         }
 
         return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
-            Ok((len as uint, addr.ip))
+            Ok((len as uint, Some(raw::IpAddress(addr.ip))))
         });
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
+    fn sendto(&mut self, buf: &[u8], dst: Option<raw::NetworkAddress>)
         -> IoResult<int>
     {
-        let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
+        let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
+        let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst_ip.unwrap(), port: 0 });
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
                     retry( || libc::sendto(self.fd,

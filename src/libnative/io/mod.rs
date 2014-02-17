@@ -25,6 +25,7 @@ use std::c_str::CString;
 use std::io;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
+use std::io::net::raw::Protocol;
 use std::io::process::ProcessConfig;
 use std::io::signal::Signum;
 use std::libc::c_int;
@@ -210,9 +211,8 @@ impl rtio::IoFactory for IoFactory {
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
         addrinfo::GetAddrInfoRequest::run(host, servname, hint)
     }
-    fn raw_socket_new(&mut self, domain: i32, protocol: i32,
-                      includeIpHeader: bool) -> IoResult<~rtio::RtioRawSocket> {
-        net::RawSocket::new(domain, protocol, includeIpHeader).map(|r| ~r as ~RtioRawSocket)
+    fn raw_socket_new(&mut self, protocol: Protocol) -> IoResult<~rtio::RtioRawSocket> {
+        net::RawSocket::new(protocol).map(|r| ~r as ~RtioRawSocket)
     }
 
     // filesystem operations
