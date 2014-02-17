@@ -104,7 +104,7 @@ impl<T: Send> Queue<T> {
     ///
     /// Note that the current implementation means that this function cannot
     /// return `Option<T>`. It is possible for this queue to be in an
-    /// inconsistent state where many pushes have suceeded and completely
+    /// inconsistent state where many pushes have succeeded and completely
     /// finished, but pops cannot return `Some(t)`. This inconsistent state
     /// happens when a pusher is pre-empted at an inopportune moment.
     ///
@@ -203,4 +203,3 @@ mod tests {
         }
     }
 }
-
