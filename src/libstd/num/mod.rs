@@ -375,18 +375,35 @@ pub trait Bitwise: Bounded
                  + BitXor<Self,Self>
                  + Shl<Self,Self>
                  + Shr<Self,Self> {
-    /// Returns the number of bits set in the number.
+    /// Returns the number of ones in the binary representation of the number.
     ///
     /// # Example
     ///
     /// ```rust
     /// use std::num::Bitwise;
     ///
-    /// let n = 0b0101000u16;
-    /// assert_eq!(n.population_count(), 2);
+    /// let n = 0b01001100u8;
+    /// assert_eq!(n.count_ones(), 3);
     /// ```
-    fn population_count(&self) -> Self;
-    /// Returns the number of leading zeros in the number.
+    fn count_ones(&self) -> Self;
+
+    /// Returns the number of zeros in the binary representation of the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Bitwise;
+    ///
+    /// let n = 0b01001100u8;
+    /// assert_eq!(n.count_zeros(), 5);
+    /// ```
+    #[inline]
+    fn count_zeros(&self) -> Self {
+        (!*self).count_ones()
+    }
+
+    /// Returns the number of leading zeros in the in the binary representation
+    /// of the number.
     ///
     /// # Example
     ///
@@ -397,7 +414,9 @@ pub trait Bitwise: Bounded
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
     fn leading_zeros(&self) -> Self;
-    /// Returns the number of trailing zeros in the number.
+
+    /// Returns the number of trailing zeros in the in the binary representation
+    /// of the number.
     ///
     /// # Example
     ///
