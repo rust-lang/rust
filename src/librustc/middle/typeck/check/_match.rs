@@ -687,8 +687,8 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                              e, actual)})},
                 Some(expected),
                 format!("{} pattern", match pointer_kind {
-                    Send => "a ~-box",
-                    Borrowed => "an &-pointer"
+                    Send => "a `~`-box",
+                    Borrowed => "an `&`-pointer"
                 }),
                 None);
             fcx.write_error(pat_id);
