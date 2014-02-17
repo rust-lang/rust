@@ -77,7 +77,7 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
-mod macros;
+pub mod macros;
 
 mod rtdeps;
 

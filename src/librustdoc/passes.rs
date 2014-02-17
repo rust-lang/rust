@@ -150,8 +150,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
-            clean::TyMethodItem(..) => {}
+            // tymethods/macros have no control over privacy
+            clean::MacroItem(..) | clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {

@@ -798,6 +798,7 @@ fn shortty(item: &clean::Item) -> &'static str {
         clean::VariantItem(..)         => "variant",
         clean::ForeignFunctionItem(..) => "ffi",
         clean::ForeignStaticItem(..)   => "ffs",
+        clean::MacroItem(..)           => "macro",
     }
 }
 
@@ -876,6 +877,7 @@ impl<'a> fmt::Show for Item<'a> {
             clean::StructItem(ref s) => item_struct(fmt.buf, self.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, self.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, self.item, t),
+            clean::MacroItem(ref m) => item_macro(fmt.buf, self.item, m),
             _ => Ok(())
         }
     }
@@ -944,6 +946,8 @@ fn item_module(w: &mut Writer, cx: &Context,
             (_, &clean::ViewItemItem(..)) => Greater,
             (&clean::ModuleItem(..), _) => Less,
             (_, &clean::ModuleItem(..)) => Greater,
+            (&clean::MacroItem(..), _) => Less,
+            (_, &clean::MacroItem(..)) => Greater,
             (&clean::StructItem(..), _) => Less,
             (_, &clean::StructItem(..)) => Greater,
             (&clean::EnumItem(..), _) => Less,
@@ -994,6 +998,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 clean::VariantItem(..)         => "Variants",
                 clean::ForeignFunctionItem(..) => "Foreign Functions",
                 clean::ForeignStaticItem(..)   => "Foreign Statics",
+                clean::MacroItem(..)           => "Macros",
             }));
         }
 
@@ -1615,4 +1620,10 @@ impl<'a> fmt::Show for Source<'a> {
         if_ok!(write!(fmt.buf, "</pre>"));
         Ok(())
     }
+}
+
+fn item_macro(w: &mut Writer, it: &clean::Item,
+              t: &clean::Macro) -> fmt::Result {
+    if_ok!(write!(w, "<pre class='macro'>{}</pre>", t.source));
+    document(w, it)
 }
