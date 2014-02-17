@@ -159,7 +159,7 @@ pub use libc::funcs::c95::stdio::{fread, freopen, fseek, fsetpos, ftell};
 pub use libc::funcs::c95::stdio::{fwrite, perror, puts, remove, rewind};
 pub use libc::funcs::c95::stdio::{setbuf, setvbuf, tmpfile, ungetc};
 
-pub use libc::funcs::c95::stdlib::{abs, atof, atoi, calloc, exit};
+pub use libc::funcs::c95::stdlib::{abs, atof, atoi, calloc, exit, _exit};
 pub use libc::funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
 pub use libc::funcs::c95::stdlib::{realloc, srand, strtod, strtol};
 pub use libc::funcs::c95::stdlib::{strtoul, system};
@@ -1769,6 +1769,9 @@ pub mod consts {
             pub static MAX_PROTOCOL_CHAIN: DWORD = 7;
             pub static WSAPROTOCOL_LEN: DWORD = 255;
             pub static INVALID_SOCKET: DWORD = !0;
+
+            pub static DETACHED_PROCESS: DWORD = 0x00000008;
+            pub static CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
         }
         pub mod sysconf {
         }
@@ -3340,6 +3343,7 @@ pub mod funcs {
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *mut c_void);
                 pub fn exit(status: c_int) -> !;
+                pub fn _exit(status: c_int) -> !;
                 // Omitted: atexit.
                 pub fn system(s: *c_char) -> c_int;
                 pub fn getenv(s: *c_char) -> *c_char;
