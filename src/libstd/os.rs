@@ -112,7 +112,7 @@ pub mod win32 {
             let mut done = false;
             while !done {
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
+                let k = f(buf.as_mut_ptr(), n);
                 if k == (0 as DWORD) {
                     done = true;
                 } else if k == n &&
@@ -1495,6 +1495,14 @@ mod tests {
 
         e = env();
         assert!(e.contains(&(n, ~"VALUE")));
+    }
+
+    #[test]
+    fn test_env_set_get_huge() {
+        let n = make_rand_name();
+        let s = "x".repeat(10000);
+        setenv(n, s);
+        assert_eq!(getenv(n), Some(s));
     }
 
     #[test]
