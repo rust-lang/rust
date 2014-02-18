@@ -287,6 +287,9 @@ impl rtio::IoFactory for IoFactory {
              io.move_iter().map(|p| p.map(|p| ~p as ~RtioPipe)).collect())
         })
     }
+    fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
+        process::Process::kill(pid, signum)
+    }
     fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe> {
         Ok(~file::FileDesc::new(fd, true) as ~RtioPipe)
     }

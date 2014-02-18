@@ -1108,6 +1108,7 @@ mod test {
         drop(file);
     })
 
+    #[ignore(cfg(windows))] // FIXME(#11638)
     iotest!(fn truncate_works() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");

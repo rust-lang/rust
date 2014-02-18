@@ -645,6 +645,7 @@ extern {
     pub fn uv_spawn(loop_ptr: *uv_loop_t, outptr: *uv_process_t,
                     options: *uv_process_options_t) -> c_int;
     pub fn uv_process_kill(p: *uv_process_t, signum: c_int) -> c_int;
+    pub fn uv_kill(pid: c_int, signum: c_int) -> c_int;
 
     // pipes
     pub fn uv_pipe_init(l: *uv_loop_t, p: *uv_pipe_t, ipc: c_int) -> c_int;

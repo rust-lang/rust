@@ -464,8 +464,8 @@ impl<'a, T:Send +
 #[test]
 #[cfg(not(target_os="android"))] // FIXME(#10455)
 fn test() {
-    use std::{os, run};
-    use std::io::fs;
+    use std::os;
+    use std::io::{fs, Process};
     use std::str::from_utf8_owned;
 
     // Create a path to a new file 'filename' in the directory in which
@@ -499,9 +499,9 @@ fn test() {
         prep.exec(proc(_exe) {
             let out = make_path(~"foo.o");
             // FIXME (#9639): This needs to handle non-utf8 paths
-            run::process_status("gcc", [pth.as_str().unwrap().to_owned(),
-                                        ~"-o",
-                                        out.as_str().unwrap().to_owned()]).unwrap();
+            Process::status("gcc", [pth.as_str().unwrap().to_owned(),
+                                    ~"-o",
+                                    out.as_str().unwrap().to_owned()]).unwrap();
 
             let _proof_of_concept = subcx.prep("subfn");
             // Could run sub-rules inside here.

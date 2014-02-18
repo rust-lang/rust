@@ -31,14 +31,11 @@ pub fn main () {
     let config = process::ProcessConfig {
         program : args[0].as_slice(),
         args : &[~"child"],
-        env : None,
-        cwd : None,
-        io : &[],
-        uid: None,
-        gid: None,
-        detach: false,
+        stdout: process::Ignored,
+        stderr: process::Ignored,
+        .. process::ProcessConfig::new()
     };
 
-    let mut p = process::Process::new(config).unwrap();
+    let mut p = process::Process::configure(config).unwrap();
     println!("{}", p.wait());
 }
