@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:iss.rs
-// ignore-fast
+// Ensure that moves out of static items is forbidden
 
-#[crate_id="issue-6919"];
-extern crate issue6919_3;
+use std::kinds::marker;
 
-pub fn main() {
-    let _ = issue6919_3::D.k;
+struct Foo {
+    foo: int,
+    nopod: marker::NoPod
 }
 
+static BAR: Foo = Foo{foo: 5, nopod: marker::NoPod};
+
+
+fn test(f: Foo) {
+    let _f = Foo{foo: 4, ..f};
+}
+
+fn main() {
+    test(BAR); //~ ERROR cannot move out of static item
+}
