@@ -103,7 +103,7 @@
 #
 # </tips>
 #
-# <nittygritty>
+# <nitty-gritty>
 #
 # # The Rust Build System
 #
@@ -157,7 +157,7 @@
 #
 # Admittedly this is a little convoluted.
 #
-# </nittygritty>
+# </nitty-gritty>
 #
 
 ######################################################################
