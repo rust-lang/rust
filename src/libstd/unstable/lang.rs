@@ -10,7 +10,10 @@
 
 //! Runtime calls emitted by the compiler.
 
-use c_str::ToCStr;
+use c_str::CString;
+use libc::c_char;
+use cast;
+use option::Some;
 
 #[cold]
 #[lang="fail_"]
@@ -23,7 +26,14 @@ pub fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
 pub fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
     let msg = format!("index out of bounds: the len is {} but the index is {}",
                       len as uint, index as uint);
-    msg.with_c_str(|buf| fail_(buf as *u8, file, line))
+
+    let file_str = match unsafe { CString::new(file as *c_char, false) }.as_str() {
+        // This transmute is safe because `file` is always stored in rodata.
+        Some(s) => unsafe { cast::transmute::<&str, &'static str>(s) },
+        None    => "file wasn't UTF-8 safe"
+    };
+
+    ::rt::begin_unwind(msg, file_str, line)
 }
 
 #[lang="malloc"]
