@@ -127,7 +127,7 @@ pub mod consts {
     // staticants from cmath.
 
     // FIXME(#11621): These constants should be deprecated once CTFE is
-    // implemented in favour of calling their respective functions in `Real`.
+    // implemented in favour of calling their respective functions in `Float`.
 
     /// Archimedes' constant
     pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
@@ -300,7 +300,148 @@ impl Round for f32 {
     fn fract(&self) -> f32 { *self - self.trunc() }
 }
 
-impl Real for f32 {
+impl Bounded for f32 {
+    #[inline]
+    fn min_value() -> f32 { 1.17549435e-38 }
+
+    #[inline]
+    fn max_value() -> f32 { 3.40282347e+38 }
+}
+
+impl Primitive for f32 {}
+
+impl Float for f32 {
+    #[inline]
+    fn nan() -> f32 { 0.0 / 0.0 }
+
+    #[inline]
+    fn infinity() -> f32 { 1.0 / 0.0 }
+
+    #[inline]
+    fn neg_infinity() -> f32 { -1.0 / 0.0 }
+
+    #[inline]
+    fn neg_zero() -> f32 { -0.0 }
+
+    /// Returns `true` if the number is NaN
+    #[inline]
+    fn is_nan(&self) -> bool { *self != *self }
+
+    /// Returns `true` if the number is infinite
+    #[inline]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is neither infinite or NaN
+    #[inline]
+    fn is_finite(&self) -> bool {
+        !(self.is_nan() || self.is_infinite())
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline]
+    fn is_normal(&self) -> bool {
+        self.classify() == FPNormal
+    }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    fn classify(&self) -> FPCategory {
+        static EXP_MASK: u32 = 0x7f800000;
+        static MAN_MASK: u32 = 0x007fffff;
+
+        match (
+            unsafe { ::cast::transmute::<f32,u32>(*self) } & MAN_MASK,
+            unsafe { ::cast::transmute::<f32,u32>(*self) } & EXP_MASK,
+        ) {
+            (0, 0)        => FPZero,
+            (_, 0)        => FPSubnormal,
+            (0, EXP_MASK) => FPInfinite,
+            (_, EXP_MASK) => FPNaN,
+            _             => FPNormal,
+        }
+    }
+
+    #[inline]
+    fn mantissa_digits(_: Option<f32>) -> uint { 24 }
+
+    #[inline]
+    fn digits(_: Option<f32>) -> uint { 6 }
+
+    #[inline]
+    fn epsilon() -> f32 { 1.19209290e-07 }
+
+    #[inline]
+    fn min_exp(_: Option<f32>) -> int { -125 }
+
+    #[inline]
+    fn max_exp(_: Option<f32>) -> int { 128 }
+
+    #[inline]
+    fn min_10_exp(_: Option<f32>) -> int { -37 }
+
+    #[inline]
+    fn max_10_exp(_: Option<f32>) -> int { 38 }
+
+    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
+    #[inline]
+    fn ldexp(x: f32, exp: int) -> f32 {
+        ldexp(x, exp as c_int)
+    }
+
+    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
+    ///
+    /// - `self = x * pow(2, exp)`
+    /// - `0.5 <= abs(x) < 1.0`
+    #[inline]
+    fn frexp(&self) -> (f32, int) {
+        let mut exp = 0;
+        let x = frexp(*self, &mut exp);
+        (x, exp as int)
+    }
+
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    #[inline]
+    fn exp_m1(&self) -> f32 { exp_m1(*self) }
+
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    #[inline]
+    fn ln_1p(&self) -> f32 { ln_1p(*self) }
+
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
+    /// produces a more accurate result with better performance than a separate multiplication
+    /// operation followed by an add.
+    #[inline]
+    fn mul_add(&self, a: f32, b: f32) -> f32 {
+        mul_add(*self, a, b)
+    }
+
+    /// Returns the next representable floating-point value in the direction of `other`
+    #[inline]
+    fn next_after(&self, other: f32) -> f32 {
+        next_after(*self, other)
+    }
+
+    /// Returns the mantissa, exponent and sign as integers.
+    fn integer_decode(&self) -> (u64, i16, i8) {
+        let bits: u32 = unsafe {
+            ::cast::transmute(*self)
+        };
+        let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
+        let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
+        let mantissa = if exponent == 0 {
+            (bits & 0x7fffff) << 1
+        } else {
+            (bits & 0x7fffff) | 0x800000
+        };
+        // Exponent bias + mantissa shift
+        exponent -= 127 + 23;
+        (mantissa as u64, exponent, sign)
+    }
+
     /// Archimedes' constant
     #[inline]
     fn pi() -> f32 { 3.14159265358979323846264338327950288 }
@@ -495,156 +636,13 @@ impl Real for f32 {
 
     /// Converts to degrees, assuming the number is in radians
     #[inline]
-    fn to_degrees(&self) -> f32 { *self * (180.0f32 / Real::pi()) }
+    fn to_degrees(&self) -> f32 { *self * (180.0f32 / Float::pi()) }
 
     /// Converts to radians, assuming the number is in degrees
     #[inline]
     fn to_radians(&self) -> f32 {
-        let value: f32 = Real::pi();
+        let value: f32 = Float::pi();
         *self * (value / 180.0f32)
-    }
-}
-
-impl Bounded for f32 {
-    #[inline]
-    fn min_value() -> f32 { 1.17549435e-38 }
-
-    #[inline]
-    fn max_value() -> f32 { 3.40282347e+38 }
-}
-
-impl Primitive for f32 {}
-
-impl Float for f32 {
-    #[inline]
-    fn nan() -> f32 { 0.0 / 0.0 }
-
-    #[inline]
-    fn infinity() -> f32 { 1.0 / 0.0 }
-
-    #[inline]
-    fn neg_infinity() -> f32 { -1.0 / 0.0 }
-
-    #[inline]
-    fn neg_zero() -> f32 { -0.0 }
-
-    /// Returns `true` if the number is NaN
-    #[inline]
-    fn is_nan(&self) -> bool { *self != *self }
-
-    /// Returns `true` if the number is infinite
-    #[inline]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
-    }
-
-    /// Returns `true` if the number is neither infinite or NaN
-    #[inline]
-    fn is_finite(&self) -> bool {
-        !(self.is_nan() || self.is_infinite())
-    }
-
-    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
-    #[inline]
-    fn is_normal(&self) -> bool {
-        self.classify() == FPNormal
-    }
-
-    /// Returns the floating point category of the number. If only one property is going to
-    /// be tested, it is generally faster to use the specific predicate instead.
-    fn classify(&self) -> FPCategory {
-        static EXP_MASK: u32 = 0x7f800000;
-        static MAN_MASK: u32 = 0x007fffff;
-
-        match (
-            unsafe { ::cast::transmute::<f32,u32>(*self) } & MAN_MASK,
-            unsafe { ::cast::transmute::<f32,u32>(*self) } & EXP_MASK,
-        ) {
-            (0, 0)        => FPZero,
-            (_, 0)        => FPSubnormal,
-            (0, EXP_MASK) => FPInfinite,
-            (_, EXP_MASK) => FPNaN,
-            _             => FPNormal,
-        }
-    }
-
-    #[inline]
-    fn mantissa_digits(_: Option<f32>) -> uint { 24 }
-
-    #[inline]
-    fn digits(_: Option<f32>) -> uint { 6 }
-
-    #[inline]
-    fn epsilon() -> f32 { 1.19209290e-07 }
-
-    #[inline]
-    fn min_exp(_: Option<f32>) -> int { -125 }
-
-    #[inline]
-    fn max_exp(_: Option<f32>) -> int { 128 }
-
-    #[inline]
-    fn min_10_exp(_: Option<f32>) -> int { -37 }
-
-    #[inline]
-    fn max_10_exp(_: Option<f32>) -> int { 38 }
-
-    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
-    #[inline]
-    fn ldexp(x: f32, exp: int) -> f32 {
-        ldexp(x, exp as c_int)
-    }
-
-    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
-    ///
-    /// - `self = x * pow(2, exp)`
-    /// - `0.5 <= abs(x) < 1.0`
-    #[inline]
-    fn frexp(&self) -> (f32, int) {
-        let mut exp = 0;
-        let x = frexp(*self, &mut exp);
-        (x, exp as int)
-    }
-
-    /// Returns the exponential of the number, minus `1`, in a way that is accurate
-    /// even if the number is close to zero
-    #[inline]
-    fn exp_m1(&self) -> f32 { exp_m1(*self) }
-
-    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
-    /// than if the operations were performed separately
-    #[inline]
-    fn ln_1p(&self) -> f32 { ln_1p(*self) }
-
-    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
-    /// produces a more accurate result with better performance than a separate multiplication
-    /// operation followed by an add.
-    #[inline]
-    fn mul_add(&self, a: f32, b: f32) -> f32 {
-        mul_add(*self, a, b)
-    }
-
-    /// Returns the next representable floating-point value in the direction of `other`
-    #[inline]
-    fn next_after(&self, other: f32) -> f32 {
-        next_after(*self, other)
-    }
-
-    /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(&self) -> (u64, i16, i8) {
-        let bits: u32 = unsafe {
-            ::cast::transmute(*self)
-        };
-        let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
-        let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
-        let mantissa = if exponent == 0 {
-            (bits & 0x7fffff) << 1
-        } else {
-            (bits & 0x7fffff) | 0x800000
-        };
-        // Exponent bias + mantissa shift
-        exponent -= 127 + 23;
-        (mantissa as u64, exponent, sign)
     }
 }
 
@@ -1002,23 +1000,23 @@ mod tests {
 
     #[test]
     fn test_real_consts() {
-        let pi: f32 = Real::pi();
-        let two_pi: f32 = Real::two_pi();
-        let frac_pi_2: f32 = Real::frac_pi_2();
-        let frac_pi_3: f32 = Real::frac_pi_3();
-        let frac_pi_4: f32 = Real::frac_pi_4();
-        let frac_pi_6: f32 = Real::frac_pi_6();
-        let frac_pi_8: f32 = Real::frac_pi_8();
-        let frac_1_pi: f32 = Real::frac_1_pi();
-        let frac_2_pi: f32 = Real::frac_2_pi();
-        let frac_2_sqrtpi: f32 = Real::frac_2_sqrtpi();
-        let sqrt2: f32 = Real::sqrt2();
-        let frac_1_sqrt2: f32 = Real::frac_1_sqrt2();
-        let e: f32 = Real::e();
-        let log2_e: f32 = Real::log2_e();
-        let log10_e: f32 = Real::log10_e();
-        let ln_2: f32 = Real::ln_2();
-        let ln_10: f32 = Real::ln_10();
+        let pi: f32 = Float::pi();
+        let two_pi: f32 = Float::two_pi();
+        let frac_pi_2: f32 = Float::frac_pi_2();
+        let frac_pi_3: f32 = Float::frac_pi_3();
+        let frac_pi_4: f32 = Float::frac_pi_4();
+        let frac_pi_6: f32 = Float::frac_pi_6();
+        let frac_pi_8: f32 = Float::frac_pi_8();
+        let frac_1_pi: f32 = Float::frac_1_pi();
+        let frac_2_pi: f32 = Float::frac_2_pi();
+        let frac_2_sqrtpi: f32 = Float::frac_2_sqrtpi();
+        let sqrt2: f32 = Float::sqrt2();
+        let frac_1_sqrt2: f32 = Float::frac_1_sqrt2();
+        let e: f32 = Float::e();
+        let log2_e: f32 = Float::log2_e();
+        let log10_e: f32 = Float::log10_e();
+        let ln_2: f32 = Float::ln_2();
+        let ln_10: f32 = Float::ln_10();
 
         assert_approx_eq!(two_pi, 2f32 * pi);
         assert_approx_eq!(frac_pi_2, pi / 2f32);
