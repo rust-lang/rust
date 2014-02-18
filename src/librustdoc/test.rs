@@ -144,11 +144,13 @@ fn maketest(s: &str, cratename: &str) -> ~str {
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
 ";
-    if s.contains("extra") {
-        prog.push_str("extern crate extra;\n");
-    }
-    if s.contains(cratename) {
-        prog.push_str(format!("extern crate {};\n", cratename));
+    if !s.contains("extern crate") {
+        if s.contains("extra") {
+            prog.push_str("extern crate extra;\n");
+        }
+        if s.contains(cratename) {
+            prog.push_str(format!("extern crate {};\n", cratename));
+        }
     }
     if s.contains("fn main") {
         prog.push_str(s);
