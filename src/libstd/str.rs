@@ -731,29 +731,38 @@ pub fn eq(a: &~str, b: &~str) -> bool {
 Section: Misc
 */
 
-/// Determines if a vector of bytes contains valid UTF-8
-pub fn is_utf8(v: &[u8]) -> bool {
-    first_non_utf8_index(v).is_none()
-}
-
+/// Walk through `iter` checking that it's a valid UTF-8 sequence,
+/// returning `true` in that case, or, if it is invalid, `false` with
+/// `iter` reset such that it is pointing at the first byte in the
+/// invalid sequence.
 #[inline(always)]
-fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
-    let mut i = 0u;
-    let total = v.len();
-    fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-        unsafe { *xs.unsafe_ref(i) }
-    }
-    while i < total {
-        let v_i = unsafe_get(v, i);
-        if v_i < 128u8 {
-            i += 1u;
-        } else {
-            let w = utf8_char_width(v_i);
-            if w == 0u { return Some(i); }
+fn run_utf8_validation_iterator(iter: &mut vec::Items<u8>) -> bool {
+    loop {
+        // save the current thing we're pointing at.
+        let old = *iter;
 
-            let nexti = i + w;
-            if nexti > total { return Some(i); }
+        // restore the iterator we had at the start of this codepoint.
+        macro_rules! err ( () => { {*iter = old; return false} });
+        macro_rules! next ( () => {
+                match iter.next() {
+                    Some(a) => *a,
+                    // we needed data, but there was none: error!
+                    None => err!()
+                }
+            });
 
+        let first = match iter.next() {
+            Some(&b) => b,
+            // we're at the end of the iterator and a codepoint
+            // boundary at the same time, so this string is valid.
+            None => return true
+        };
+
+        // ASCII characters are always valid, so only large
+        // bytes need more examination.
+        if first >= 128 {
+            let w = utf8_char_width(first);
+            let second = next!();
             // 2-byte encoding is for codepoints  \u0080 to  \u07ff
             //        first  C2 80        last DF BF
             // 3-byte encoding is for codepoints  \u0800 to  \uffff
@@ -772,35 +781,51 @@ fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
             //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
-            // UTF8-tail   = %x80-BF
             match w {
-                2 => if unsafe_get(v, i + 1) & 192u8 != TAG_CONT_U8 {
-                    return Some(i)
-                },
-                3 => match (v_i,
-                            unsafe_get(v, i + 1),
-                            unsafe_get(v, i + 2) & 192u8) {
-                    (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) => (),
-                    (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) => (),
-                    (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => (),
-                    _ => return Some(i),
-                },
-                _ => match (v_i,
-                            unsafe_get(v, i + 1),
-                            unsafe_get(v, i + 2) & 192u8,
-                            unsafe_get(v, i + 3) & 192u8) {
-                    (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => (),
-                    _ => return Some(i)
-                },
+                2 => if second & 192 != TAG_CONT_U8 {err!()},
+                3 => {
+                    match (first, second, next!() & 192) {
+                        (0xE0        , 0xA0 .. 0xBF, TAG_CONT_U8) |
+                        (0xE1 .. 0xEC, 0x80 .. 0xBF, TAG_CONT_U8) |
+                        (0xED        , 0x80 .. 0x9F, TAG_CONT_U8) |
+                        (0xEE .. 0xEF, 0x80 .. 0xBF, TAG_CONT_U8) => {}
+                        _ => err!()
+                    }
+                }
+                4 => {
+                    match (first, second, next!() & 192, next!() & 192) {
+                        (0xF0        , 0x90 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF1 .. 0xF3, 0x80 .. 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
+                        (0xF4        , 0x80 .. 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
+                        _ => err!()
+                    }
+                }
+                _ => err!()
             }
-
-            i = nexti;
         }
     }
-    None
+}
+
+/// Determines if a vector of bytes contains valid UTF-8.
+pub fn is_utf8(v: &[u8]) -> bool {
+    run_utf8_validation_iterator(&mut v.iter())
+}
+
+#[inline(always)]
+fn first_non_utf8_index(v: &[u8]) -> Option<uint> {
+    let mut it = v.iter();
+
+    let ok = run_utf8_validation_iterator(&mut it);
+    if ok {
+        None
+    } else {
+        // work out how many valid bytes we've consumed
+        // (run_utf8_validation_iterator resets the iterator to just
+        // after the last good byte), which we can do because the
+        // vector iterator size_hint is exact.
+        let (remaining, _) = it.size_hint();
+        Some(v.len() - remaining)
+    }
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
