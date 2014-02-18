@@ -60,6 +60,14 @@ pub mod timer;
 #[path = "timer_win32.rs"]
 pub mod timer;
 
+#[cfg(unix)]
+#[path = "pipe_unix.rs"]
+pub mod pipe;
+
+#[cfg(windows)]
+#[path = "pipe_win32.rs"]
+pub mod pipe;
+
 mod timer_helper;
 
 pub type IoResult<T> = Result<T, IoError>;
@@ -77,6 +85,9 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
+            libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
+            libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
             libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
             libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
             libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
@@ -86,6 +97,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ERROR_BROKEN_PIPE => (io::BrokenPipe, "the pipe has ended"),
 
             x => {
                 debug!("ignoring {}: {}", x, os::last_os_error());
@@ -108,6 +120,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ENOENT => (io::FileNotFound, "no such file or directory"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause
@@ -196,11 +209,11 @@ impl rtio::IoFactory for IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
         net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
     }
-    fn unix_bind(&mut self, _path: &CString) -> IoResult<~RtioUnixListener> {
-        Err(unimpl())
+    fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener> {
+        pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener)
     }
-    fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
-        Err(unimpl())
+    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe> {
+        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe)
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
