@@ -123,11 +123,11 @@ impl<'p> Ipv4Header<'p> {
 
     pub fn set_dscp(&mut self, dscp: u8) {
         let cp = dscp & 0xFC;
-        self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 3) | cp;
+        self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 3) | (cp << 2);
     }
 
     pub fn get_dscp(&self) -> u8 {
-        self.packet[self.offset + 1] & 0xFC
+        (self.packet[self.offset + 1] & 0xFC) >> 2
     }
 
     pub fn set_ecn(&mut self, ecn: u8) {
@@ -172,7 +172,8 @@ impl<'p> Ipv4Header<'p> {
 
     pub fn set_fragment_offset(&mut self, offset: u16) {
         let fo = offset & 0x1FFF;
-        self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0xE0) | (fo & 0xFF00) as u8;
+        self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0xE0) |
+                                       ((fo & 0xFF00) >> 8) as u8;
         self.packet[self.offset + 7] = (fo & 0xFF) as u8;
     }
 
@@ -276,11 +277,23 @@ fn ipv4_header_test() {
         ipHeader.set_header_length(5);
         assert_eq!(ipHeader.get_header_length(), 5);
 
+        ipHeader.set_dscp(4);
+        assert_eq!(ipHeader.get_dscp(), 4);
+
+        ipHeader.set_ecn(1);
+        assert_eq!(ipHeader.get_ecn(), 1);
+
         ipHeader.set_total_length(115);
         assert_eq!(ipHeader.get_total_length(), 115);
 
+        ipHeader.set_identification(257);
+        assert_eq!(ipHeader.get_identification(), 257);
+
         ipHeader.set_flags(2);
         assert_eq!(ipHeader.get_flags(), 2);
+
+        ipHeader.set_fragment_offset(257);
+        assert_eq!(ipHeader.get_fragment_offset(), 257);
 
         ipHeader.set_ttl(64);
         assert_eq!(ipHeader.get_ttl(), 64);
@@ -295,20 +308,20 @@ fn ipv4_header_test() {
         assert_eq!(ipHeader.get_destination(), Ipv4Addr(192, 168, 0, 199));
 
         ipHeader.checksum();
-        assert_eq!(ipHeader.get_checksum(), 0xb861);
+        assert_eq!(ipHeader.get_checksum(), 0xb64e);
     }
 
     let refPacket = [0x45,           /* ver/ihl */
-                     0x00,           /* dscp/ecn */
+                     0x11,           /* dscp/ecn */
                      0x00, 0x73,     /* total len */
-                     0x00, 0x00,     /* identification */
-                     0x40, 0x00,     /* flags/frag offset */
+                     0x01, 0x01,     /* identification */
+                     0x41, 0x01,     /* flags/frag offset */
                      0x40,           /* ttl */
                      0x11,           /* proto */
-                     0xb8, 0x61,     /* checksum */
+                     0xb6, 0x4e,     /* checksum */
                      0xc0, 0xa8, 0x00, 0x01, /* source ip */
                      0xc0, 0xa8, 0x00, 0xc7  /* dest ip */];
-    assert_eq!(packet, refPacket);
+    assert_eq!(refPacket, packet);
 }
 
 pub struct Ipv6Header<'p> {
@@ -316,7 +329,6 @@ pub struct Ipv6Header<'p> {
     priv offset: uint
 }
 
-// FIXME Support extension headers
 impl<'p> Ipv6Header<'p> {
     pub fn new(packet: &'p mut [u8], offset: uint) -> Ipv6Header<'p> {
         Ipv6Header { packet: packet, offset: offset }
@@ -394,6 +406,53 @@ impl<'p> Ipv6Header<'p> {
         Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
+
+#[test]
+fn ipv6_header_test() {
+    /*let mut packet = [0u8, ..40];
+    {
+        let mut ipHeader = Ipv6Header::new(packet.as_mut_slice(), 0);
+        ipHeader.set_version(6);
+        assert_eq!(ipHeader.get_version(), 6);
+
+        ipHeader.set_header_length(5);
+        assert_eq!(ipHeader.get_header_length(), 5);
+
+        ipHeader.set_total_length(115);
+        assert_eq!(ipHeader.get_total_length(), 115);
+
+        ipHeader.set_flags(2);
+        assert_eq!(ipHeader.get_flags(), 2);
+
+        ipHeader.set_ttl(64);
+        assert_eq!(ipHeader.get_ttl(), 64);
+
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
+        assert_eq!(ipHeader.get_next_level_protocol(), IpNextHeaderProtocol::Udp);
+
+        ipHeader.set_source(Ipv4Addr(192, 168, 0, 1));
+        assert_eq!(ipHeader.get_source(), Ipv4Addr(192, 168, 0, 1));
+
+        ipHeader.set_destination(Ipv4Addr(192, 168, 0, 199));
+        assert_eq!(ipHeader.get_destination(), Ipv4Addr(192, 168, 0, 199));
+
+        ipHeader.checksum();
+        assert_eq!(ipHeader.get_checksum(), 0xb861);
+    }
+
+    let refPacket = [0x45,           /* ver/ihl */
+                     0x00,           /* dscp/ecn */
+                     0x00, 0x73,     /* total len */
+                     0x00, 0x00,     /* identification */
+                     0x40, 0x00,     /* flags/frag offset */
+                     0x40,           /* ttl */
+                     0x11,           /* proto */
+                     0xb8, 0x61,     /* checksum */
+                     0xc0, 0xa8, 0x00, 0x01, /* source ip */
+                     0xc0, 0xa8, 0x00, 0xc7  /* dest ip */];
+    assert_eq!(packet, refPacket);*/
+}
+
 
 pub struct UdpHeader<'p> {
     priv packet: &'p mut [u8],
