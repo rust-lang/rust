@@ -86,7 +86,7 @@ pub struct Scheduler {
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
     steal_for_yield: bool,
-    /// Bookeeping for the number of tasks which are currently running around
+    /// Bookkeeping for the number of tasks which are currently running around
     /// inside this pool of schedulers
     task_state: TaskState,
 

@@ -400,7 +400,7 @@ pub fn begin_unwind_raw(msg: *u8, file: *u8, line: uint) -> ! {
 /// The entry point for unwinding with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call
-/// site as much as possible (so that `fail!()` has as low an implact
+/// site as much as possible (so that `fail!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]

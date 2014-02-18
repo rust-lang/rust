@@ -1110,7 +1110,7 @@ impl MetricMap {
 
 // Benchmarking
 
-/// A function that is opaque to the optimiser, to allow benchmarks to
+/// A function that is opaque to the optimizer, to allow benchmarks to
 /// pretend to use outputs to assist in avoiding dead-code
 /// elimination.
 ///

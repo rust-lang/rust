@@ -144,7 +144,7 @@ impl Select {
         }
     }
 
-    /// Waits for an event on this port set. The returned valus is *not* and
+    /// Waits for an event on this port set. The returned value is *not* an
     /// index, but rather an id. This id can be queried against any active
     /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The
