@@ -166,115 +166,6 @@ pub trait Round {
     fn fract(&self) -> Self;
 }
 
-/// Defines constants and methods common to real numbers
-pub trait Real: Signed
-              + Ord
-              + Round
-              + Div<Self,Self> {
-    // Common Constants
-    // FIXME (#5527): These should be associated constants
-    fn pi() -> Self;
-    fn two_pi() -> Self;
-    fn frac_pi_2() -> Self;
-    fn frac_pi_3() -> Self;
-    fn frac_pi_4() -> Self;
-    fn frac_pi_6() -> Self;
-    fn frac_pi_8() -> Self;
-    fn frac_1_pi() -> Self;
-    fn frac_2_pi() -> Self;
-    fn frac_2_sqrtpi() -> Self;
-    fn sqrt2() -> Self;
-    fn frac_1_sqrt2() -> Self;
-    fn e() -> Self;
-    fn log2_e() -> Self;
-    fn log10_e() -> Self;
-    fn ln_2() -> Self;
-    fn ln_10() -> Self;
-
-    // Fractional functions
-
-    /// Take the reciprocal (inverse) of a number, `1/x`.
-    fn recip(&self) -> Self;
-
-    // Algebraic functions
-    /// Raise a number to a power.
-    fn powf(&self, n: &Self) -> Self;
-
-    /// Take the square root of a number.
-    fn sqrt(&self) -> Self;
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    fn rsqrt(&self) -> Self;
-    /// Take the cubic root of a number.
-    fn cbrt(&self) -> Self;
-    /// Calculate the length of the hypotenuse of a right-angle triangle given
-    /// legs of length `x` and `y`.
-    fn hypot(&self, other: &Self) -> Self;
-
-    // Trigonometric functions
-
-    /// Computes the sine of a number (in radians).
-    fn sin(&self) -> Self;
-    /// Computes the cosine of a number (in radians).
-    fn cos(&self) -> Self;
-    /// Computes the tangent of a number (in radians).
-    fn tan(&self) -> Self;
-
-    /// Computes the arcsine of a number. Return value is in radians in
-    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
-    /// [-1, 1].
-    fn asin(&self) -> Self;
-    /// Computes the arccosine of a number. Return value is in radians in
-    /// the range [0, pi] or NaN if the number is outside the range
-    /// [-1, 1].
-    fn acos(&self) -> Self;
-    /// Computes the arctangent of a number. Return value is in radians in the
-    /// range [-pi/2, pi/2];
-    fn atan(&self) -> Self;
-    /// Computes the four quadrant arctangent of a number, `y`, and another
-    /// number `x`. Return value is in radians in the range [-pi, pi].
-    fn atan2(&self, other: &Self) -> Self;
-    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
-    /// `(sin(x), cos(x))`.
-    fn sin_cos(&self) -> (Self, Self);
-
-    // Exponential functions
-
-    /// Returns `e^(self)`, (the exponential function).
-    fn exp(&self) -> Self;
-    /// Returns 2 raised to the power of the number, `2^(self)`.
-    fn exp2(&self) -> Self;
-    /// Returns the natural logarithm of the number.
-    fn ln(&self) -> Self;
-    /// Returns the logarithm of the number with respect to an arbitrary base.
-    fn log(&self, base: &Self) -> Self;
-    /// Returns the base 2 logarithm of the number.
-    fn log2(&self) -> Self;
-    /// Returns the base 10 logarithm of the number.
-    fn log10(&self) -> Self;
-
-    // Hyperbolic functions
-
-    /// Hyperbolic sine function.
-    fn sinh(&self) -> Self;
-    /// Hyperbolic cosine function.
-    fn cosh(&self) -> Self;
-    /// Hyperbolic tangent function.
-    fn tanh(&self) -> Self;
-    /// Inverse hyperbolic sine function.
-    fn asinh(&self) -> Self;
-    /// Inverse hyperbolic cosine function.
-    fn acosh(&self) -> Self;
-    /// Inverse hyperbolic tangent function.
-    fn atanh(&self) -> Self;
-
-    // Angular conversions
-
-    /// Convert radians to degrees.
-    fn to_degrees(&self) -> Self;
-    /// Convert degrees to radians.
-    fn to_radians(&self) -> Self;
-}
-
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
@@ -299,67 +190,6 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
         acc
     }
 }
-
-/// Raise a number to a power.
-///
-/// # Example
-///
-/// ```rust
-/// use std::num;
-///
-/// let sixteen: f64 = num::powf(2.0, 4.0);
-/// assert_eq!(sixteen, 16.0);
-/// ```
-#[inline(always)] pub fn powf<T: Real>(value: T, n: T) -> T { value.powf(&n) }
-/// Take the square root of a number.
-#[inline(always)] pub fn sqrt<T: Real>(value: T) -> T { value.sqrt() }
-/// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-#[inline(always)] pub fn rsqrt<T: Real>(value: T) -> T { value.rsqrt() }
-/// Take the cubic root of a number.
-#[inline(always)] pub fn cbrt<T: Real>(value: T) -> T { value.cbrt() }
-/// Calculate the length of the hypotenuse of a right-angle triangle given legs of length `x` and
-/// `y`.
-#[inline(always)] pub fn hypot<T: Real>(x: T, y: T) -> T { x.hypot(&y) }
-/// Sine function.
-#[inline(always)] pub fn sin<T: Real>(value: T) -> T { value.sin() }
-/// Cosine function.
-#[inline(always)] pub fn cos<T: Real>(value: T) -> T { value.cos() }
-/// Tangent function.
-#[inline(always)] pub fn tan<T: Real>(value: T) -> T { value.tan() }
-/// Compute the arcsine of the number.
-#[inline(always)] pub fn asin<T: Real>(value: T) -> T { value.asin() }
-/// Compute the arccosine of the number.
-#[inline(always)] pub fn acos<T: Real>(value: T) -> T { value.acos() }
-/// Compute the arctangent of the number.
-#[inline(always)] pub fn atan<T: Real>(value: T) -> T { value.atan() }
-/// Compute the arctangent with 2 arguments.
-#[inline(always)] pub fn atan2<T: Real>(x: T, y: T) -> T { x.atan2(&y) }
-/// Simultaneously computes the sine and cosine of the number.
-#[inline(always)] pub fn sin_cos<T: Real>(value: T) -> (T, T) { value.sin_cos() }
-/// Returns `e^(value)`, (the exponential function).
-#[inline(always)] pub fn exp<T: Real>(value: T) -> T { value.exp() }
-/// Returns 2 raised to the power of the number, `2^(value)`.
-#[inline(always)] pub fn exp2<T: Real>(value: T) -> T { value.exp2() }
-/// Returns the natural logarithm of the number.
-#[inline(always)] pub fn ln<T: Real>(value: T) -> T { value.ln() }
-/// Returns the logarithm of the number with respect to an arbitrary base.
-#[inline(always)] pub fn log<T: Real>(value: T, base: T) -> T { value.log(&base) }
-/// Returns the base 2 logarithm of the number.
-#[inline(always)] pub fn log2<T: Real>(value: T) -> T { value.log2() }
-/// Returns the base 10 logarithm of the number.
-#[inline(always)] pub fn log10<T: Real>(value: T) -> T { value.log10() }
-/// Hyperbolic sine function.
-#[inline(always)] pub fn sinh<T: Real>(value: T) -> T { value.sinh() }
-/// Hyperbolic cosine function.
-#[inline(always)] pub fn cosh<T: Real>(value: T) -> T { value.cosh() }
-/// Hyperbolic tangent function.
-#[inline(always)] pub fn tanh<T: Real>(value: T) -> T { value.tanh() }
-/// Inverse hyperbolic sine function.
-#[inline(always)] pub fn asinh<T: Real>(value: T) -> T { value.asinh() }
-/// Inverse hyperbolic cosine function.
-#[inline(always)] pub fn acosh<T: Real>(value: T) -> T { value.acosh() }
-/// Inverse hyperbolic tangent function.
-#[inline(always)] pub fn atanh<T: Real>(value: T) -> T { value.atanh() }
 
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
@@ -492,8 +322,8 @@ pub enum FPCategory {
 }
 
 /// Primitive floating point numbers
-pub trait Float: Real
-               + Signed
+pub trait Float: Signed
+               + Round
                + Primitive {
     // FIXME (#5527): These should be associated constants
     fn nan() -> Self;
@@ -525,6 +355,109 @@ pub trait Float: Real
     fn next_after(&self, other: Self) -> Self;
 
     fn integer_decode(&self) -> (u64, i16, i8);
+
+    // Common Mathematical Constants
+    // FIXME (#5527): These should be associated constants
+    fn pi() -> Self;
+    fn two_pi() -> Self;
+    fn frac_pi_2() -> Self;
+    fn frac_pi_3() -> Self;
+    fn frac_pi_4() -> Self;
+    fn frac_pi_6() -> Self;
+    fn frac_pi_8() -> Self;
+    fn frac_1_pi() -> Self;
+    fn frac_2_pi() -> Self;
+    fn frac_2_sqrtpi() -> Self;
+    fn sqrt2() -> Self;
+    fn frac_1_sqrt2() -> Self;
+    fn e() -> Self;
+    fn log2_e() -> Self;
+    fn log10_e() -> Self;
+    fn ln_2() -> Self;
+    fn ln_10() -> Self;
+
+    // Fractional functions
+
+    /// Take the reciprocal (inverse) of a number, `1/x`.
+    fn recip(&self) -> Self;
+
+    // Algebraic functions
+    /// Raise a number to a power.
+    fn powf(&self, n: &Self) -> Self;
+
+    /// Take the square root of a number.
+    fn sqrt(&self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    fn rsqrt(&self) -> Self;
+    /// Take the cubic root of a number.
+    fn cbrt(&self) -> Self;
+    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// legs of length `x` and `y`.
+    fn hypot(&self, other: &Self) -> Self;
+
+    // Trigonometric functions
+
+    /// Computes the sine of a number (in radians).
+    fn sin(&self) -> Self;
+    /// Computes the cosine of a number (in radians).
+    fn cos(&self) -> Self;
+    /// Computes the tangent of a number (in radians).
+    fn tan(&self) -> Self;
+
+    /// Computes the arcsine of a number. Return value is in radians in
+    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
+    /// [-1, 1].
+    fn asin(&self) -> Self;
+    /// Computes the arccosine of a number. Return value is in radians in
+    /// the range [0, pi] or NaN if the number is outside the range
+    /// [-1, 1].
+    fn acos(&self) -> Self;
+    /// Computes the arctangent of a number. Return value is in radians in the
+    /// range [-pi/2, pi/2];
+    fn atan(&self) -> Self;
+    /// Computes the four quadrant arctangent of a number, `y`, and another
+    /// number `x`. Return value is in radians in the range [-pi, pi].
+    fn atan2(&self, other: &Self) -> Self;
+    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
+    /// `(sin(x), cos(x))`.
+    fn sin_cos(&self) -> (Self, Self);
+
+    // Exponential functions
+
+    /// Returns `e^(self)`, (the exponential function).
+    fn exp(&self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
+    fn exp2(&self) -> Self;
+    /// Returns the natural logarithm of the number.
+    fn ln(&self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
+    fn log(&self, base: &Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
+    fn log2(&self) -> Self;
+    /// Returns the base 10 logarithm of the number.
+    fn log10(&self) -> Self;
+
+    // Hyperbolic functions
+
+    /// Hyperbolic sine function.
+    fn sinh(&self) -> Self;
+    /// Hyperbolic cosine function.
+    fn cosh(&self) -> Self;
+    /// Hyperbolic tangent function.
+    fn tanh(&self) -> Self;
+    /// Inverse hyperbolic sine function.
+    fn asinh(&self) -> Self;
+    /// Inverse hyperbolic cosine function.
+    fn acosh(&self) -> Self;
+    /// Inverse hyperbolic tangent function.
+    fn atanh(&self) -> Self;
+
+    // Angular conversions
+
+    /// Convert radians to degrees.
+    fn to_degrees(&self) -> Self;
+    /// Convert degrees to radians.
+    fn to_radians(&self) -> Self;
 }
 
 /// Returns the exponential of the number, minus `1`, `exp(n) - 1`, in a way
@@ -538,6 +471,67 @@ pub trait Float: Real
 /// This produces a more accurate result with better performance (on some
 /// architectures) than a separate multiplication operation followed by an add.
 #[inline(always)] pub fn mul_add<T: Float>(a: T, b: T, c: T) -> T { a.mul_add(b, c) }
+
+/// Raise a number to a power.
+///
+/// # Example
+///
+/// ```rust
+/// use std::num;
+///
+/// let sixteen: f64 = num::powf(2.0, 4.0);
+/// assert_eq!(sixteen, 16.0);
+/// ```
+#[inline(always)] pub fn powf<T: Float>(value: T, n: T) -> T { value.powf(&n) }
+/// Take the square root of a number.
+#[inline(always)] pub fn sqrt<T: Float>(value: T) -> T { value.sqrt() }
+/// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+#[inline(always)] pub fn rsqrt<T: Float>(value: T) -> T { value.rsqrt() }
+/// Take the cubic root of a number.
+#[inline(always)] pub fn cbrt<T: Float>(value: T) -> T { value.cbrt() }
+/// Calculate the length of the hypotenuse of a right-angle triangle given legs
+/// of length `x` and `y`.
+#[inline(always)] pub fn hypot<T: Float>(x: T, y: T) -> T { x.hypot(&y) }
+/// Sine function.
+#[inline(always)] pub fn sin<T: Float>(value: T) -> T { value.sin() }
+/// Cosine function.
+#[inline(always)] pub fn cos<T: Float>(value: T) -> T { value.cos() }
+/// Tangent function.
+#[inline(always)] pub fn tan<T: Float>(value: T) -> T { value.tan() }
+/// Compute the arcsine of the number.
+#[inline(always)] pub fn asin<T: Float>(value: T) -> T { value.asin() }
+/// Compute the arccosine of the number.
+#[inline(always)] pub fn acos<T: Float>(value: T) -> T { value.acos() }
+/// Compute the arctangent of the number.
+#[inline(always)] pub fn atan<T: Float>(value: T) -> T { value.atan() }
+/// Compute the arctangent with 2 arguments.
+#[inline(always)] pub fn atan2<T: Float>(x: T, y: T) -> T { x.atan2(&y) }
+/// Simultaneously computes the sine and cosine of the number.
+#[inline(always)] pub fn sin_cos<T: Float>(value: T) -> (T, T) { value.sin_cos() }
+/// Returns `e^(value)`, (the exponential function).
+#[inline(always)] pub fn exp<T: Float>(value: T) -> T { value.exp() }
+/// Returns 2 raised to the power of the number, `2^(value)`.
+#[inline(always)] pub fn exp2<T: Float>(value: T) -> T { value.exp2() }
+/// Returns the natural logarithm of the number.
+#[inline(always)] pub fn ln<T: Float>(value: T) -> T { value.ln() }
+/// Returns the logarithm of the number with respect to an arbitrary base.
+#[inline(always)] pub fn log<T: Float>(value: T, base: T) -> T { value.log(&base) }
+/// Returns the base 2 logarithm of the number.
+#[inline(always)] pub fn log2<T: Float>(value: T) -> T { value.log2() }
+/// Returns the base 10 logarithm of the number.
+#[inline(always)] pub fn log10<T: Float>(value: T) -> T { value.log10() }
+/// Hyperbolic sine function.
+#[inline(always)] pub fn sinh<T: Float>(value: T) -> T { value.sinh() }
+/// Hyperbolic cosine function.
+#[inline(always)] pub fn cosh<T: Float>(value: T) -> T { value.cosh() }
+/// Hyperbolic tangent function.
+#[inline(always)] pub fn tanh<T: Float>(value: T) -> T { value.tanh() }
+/// Inverse hyperbolic sine function.
+#[inline(always)] pub fn asinh<T: Float>(value: T) -> T { value.asinh() }
+/// Inverse hyperbolic cosine function.
+#[inline(always)] pub fn acosh<T: Float>(value: T) -> T { value.acosh() }
+/// Inverse hyperbolic tangent function.
+#[inline(always)] pub fn atanh<T: Float>(value: T) -> T { value.atanh() }
 
 /// A generic trait for converting a value to a number.
 pub trait ToPrimitive {
