@@ -433,7 +433,6 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
 #[cfg(test)]
 mod test {
     use std::cast::transmute;
-    use std::ptr;
     use std::unstable::run_in_bare_thread;
 
     use super::{slice_to_uv_buf, Loop};
