@@ -811,7 +811,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                 expr,
                                 "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
-        None => return efmt
+        None => return MacResult::raw_dummy_expr(sp)
     };
 
     let mut parser = parse::Parser::new(fmt.get());
@@ -829,7 +829,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     match parser.errors.shift() {
         Some(error) => {
             cx.ecx.span_err(efmt.span, "invalid format string: " + error);
-            return efmt;
+            return MacResult::raw_dummy_expr(sp);
         }
         None => {}
     }
