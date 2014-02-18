@@ -920,6 +920,32 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
     UTF16Items { iter : v.iter() }
 }
 
+/// Return a slice of `v` ending at (and not including) the first NUL
+/// (0).
+///
+/// # Example
+///
+/// ```rust
+/// use std::str;
+///
+/// // "abcd"
+/// let mut v = ['a' as u16, 'b' as u16, 'c' as u16, 'd' as u16];
+/// // no NULs so no change
+/// assert_eq!(str::truncate_utf16_at_nul(v), v.as_slice());
+///
+/// // "ab\0d"
+/// v[2] = 0;
+/// assert_eq!(str::truncate_utf16_at_nul(v),
+///            &['a' as u16, 'b' as u16]);
+/// ```
+pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
+    match v.iter().position(|c| *c == 0) {
+        // don't include the 0
+        Some(i) => v.slice_to(i),
+        None => v
+    }
+}
+
 /// Decode a UTF-16 encoded vector `v` into a string, returning `None`
 /// if `v` contains any invalid data.
 ///
@@ -3873,6 +3899,24 @@ mod tests {
 
         // general
         assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), ~"\uFFFD𐒋\uFFFD");
+    }
+
+    #[test]
+    fn test_truncate_utf16_at_nul() {
+        let v = [];
+        assert_eq!(truncate_utf16_at_nul(v), &[]);
+
+        let v = [0, 2, 3];
+        assert_eq!(truncate_utf16_at_nul(v), &[]);
+
+        let v = [1, 0, 3];
+        assert_eq!(truncate_utf16_at_nul(v), &[1]);
+
+        let v = [1, 2, 0];
+        assert_eq!(truncate_utf16_at_nul(v), &[1, 2]);
+
+        let v = [1, 2, 3];
+        assert_eq!(truncate_utf16_at_nul(v), &[1, 2, 3]);
     }
 
     #[test]

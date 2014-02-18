@@ -88,7 +88,8 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(str::from_utf16(buf).expect("GetCurrentDirectoryW returned invalid UTF-16"))
+    Path::new(str::from_utf16(str::truncate_utf16_at_nul(buf))
+              .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
 #[cfg(windows)]
@@ -744,7 +745,8 @@ pub fn last_os_error() -> ~str {
                 fail!("[{}] FormatMessage failure", errno());
             }
 
-            str::from_utf16(buf).expect("FormatMessageW returned invalid UTF-16")
+            str::from_utf16(str::truncate_utf16_at_nul(buf))
+                .expect("FormatMessageW returned invalid UTF-16")
         }
     }
 
@@ -833,7 +835,9 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len as int) != 0 { len += 1; }
 
             // Push it onto the list.
-            let opt_s = vec::raw::buf_as_slice(ptr, len, str::from_utf16);
+            let opt_s = vec::raw::buf_as_slice(ptr, len, |buf| {
+                    str::from_utf16(str::truncate_utf16_at_nul(buf))
+                });
             args.push(opt_s.expect("CommandLineToArgvW returned invalid UTF-16"));
         }
     }
