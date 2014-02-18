@@ -119,7 +119,7 @@ pub mod win32 {
                 } else if k == n &&
                           libc::GetLastError() ==
                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
-                    n *= (2 as DWORD);
+                    n *= 2 as DWORD;
                 } else if k >= n {
                     n = k;
                 } else {
@@ -225,7 +225,7 @@ pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
             for p in input.iter() {
                 let vs: ~[&[u8]] = p.splitn(1, |b| *b == '=' as u8).collect();
                 let key = vs[0].to_owned();
-                let val = (if vs.len() < 2 { ~[] } else { vs[1].to_owned() });
+                let val = if vs.len() < 2 { ~[] } else { vs[1].to_owned() };
                 pairs.push((key, val));
             }
             pairs
