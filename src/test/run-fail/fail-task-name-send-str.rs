@@ -11,9 +11,7 @@
 // error-pattern:task 'send name' failed at 'test'
 
 fn main() {
-    let mut t = ::std::task::task();
-    t.name("send name".into_maybe_owned());
-    t.try(proc() {
+    ::std::task::task().named("send name".into_maybe_owned()).try(proc() {
         fail!("test");
         3
     }).unwrap()

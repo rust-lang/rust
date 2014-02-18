@@ -57,7 +57,6 @@ pub fn spawn(f: proc()) {
 /// inside the task.
 pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     let TaskOpts {
-        watched: _watched,
         notify_chan, name, stack_size,
         logger, stderr, stdout,
     } = opts;
