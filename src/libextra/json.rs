@@ -125,7 +125,7 @@ fn main() {
 }
 ```
 
-To decode a json string using `Decodable` trait :
+To decode a JSON string using `Decodable` trait :
 
 ```rust
 extern crate serialize;
@@ -172,7 +172,7 @@ fn main() {
          {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
     let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 
-    // To unserialize use the `extra::json::from_str` and `extra::json::Decoder`
+    // To deserialize use the `extra::json::from_str` and `extra::json::Decoder`
 
     let json_object = extra::json::from_str(encoded_str);
     let mut decoder = json::Decoder::new(json_object.unwrap());
@@ -182,7 +182,7 @@ fn main() {
 
 ## Using `ToJson`
 
-This example use the ToJson impl to unserialize the json string.
+This example use the ToJson impl to deserialize the JSON string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
@@ -212,13 +212,13 @@ impl ToJson for TestStruct1 {
 }
 
 fn main() {
-    // Seralization using our impl of to_json
+    // Serialization using our impl of to_json
 
     let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
     let tjson: json::Json = test2.to_json();
     let json_str: ~str = tjson.to_str();
 
-    // Unserialize like before.
+    // Deserialize like before.
 
     let mut decoder = json::Decoder::new(json::from_str(json_str).unwrap());
     // create the final object
