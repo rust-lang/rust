@@ -202,7 +202,7 @@ impl AbiSet {
     }
 
     pub fn add(&mut self, abi: Abi) {
-        self.bits |= (1 << abi.index());
+        self.bits |= 1 << abi.index();
     }
 
     pub fn each(&self, op: |abi: Abi| -> bool) -> bool {

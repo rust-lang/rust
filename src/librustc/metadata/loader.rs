@@ -407,11 +407,8 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
-                let mut version_ok = false;
-                vec::raw::buf_as_slice(cvbuf, minsz, |buf0| {
-                    version_ok = (buf0 ==
-                                  encoder::metadata_encoding_version);
-                });
+                let version_ok = vec::raw::buf_as_slice(cvbuf, minsz,
+                    |buf0| buf0 == encoder::metadata_encoding_version);
                 if !version_ok { return None; }
 
                 let cvbuf1 = cvbuf.offset(vlen as int);

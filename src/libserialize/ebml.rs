@@ -674,7 +674,7 @@ pub mod writer {
             let last_size_pos = self.size_positions.pop().unwrap();
             let cur_pos = try!(self.writer.tell());
             try!(self.writer.seek(last_size_pos as i64, io::SeekSet));
-            let size = (cur_pos as uint - last_size_pos - 4);
+            let size = cur_pos as uint - last_size_pos - 4;
             write_sized_vuint(self.writer, size, 4u);
             try!(self.writer.seek(cur_pos as i64, io::SeekSet));
 
