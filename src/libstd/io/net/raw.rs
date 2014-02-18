@@ -61,9 +61,8 @@ pub struct EthernetHeader<'p> {
 }
 
 impl<'p> EthernetHeader<'p> {
-    pub fn act<T>(packet: &mut [u8], offset: uint, act: |&mut EthernetHeader| -> T) -> T {
-        let mut header = EthernetHeader { packet: packet, offset: offset };
-        act(&mut header)
+    pub fn new(packet: &'p mut [u8], offset: uint) -> EthernetHeader<'p> {
+        EthernetHeader { packet: packet, offset: offset }
     }
 
     pub fn set_source(&mut self, _mac: MacAddr) {
@@ -100,98 +99,95 @@ pub struct Ipv4Header<'p> {
 }
 
 impl<'p> Ipv4Header<'p> {
-    pub fn act<T>(packet: &mut [u8], offset: uint, act: |&mut Ipv4Header| -> T) -> T {
-        let mut header = Ipv4Header { packet: packet, offset: offset };
-        act(&mut header)
+    pub fn new(packet: &'p mut [u8], offset: uint) -> Ipv4Header<'p> {
+        Ipv4Header { packet: packet, offset: offset }
     }
 
-    pub fn set_version(&mut self, version: uint) {
-        let ver = ((version & 0xF) << 4) as u8;
+    pub fn set_version(&mut self, version: u8) {
+        let ver = version << 4;
         self.packet[self.offset] = (self.packet[self.offset] & 0x0F) | ver;
     }
 
-    pub fn get_version(&self) -> uint {
-        (self.packet[self.offset] >> 4) as uint
+    pub fn get_version(&self) -> u8 {
+        self.packet[self.offset] >> 4
     }
 
-    pub fn set_header_length(&mut self, ihl: uint) {
-        let len = (ihl & 0xF) as u8;
+    pub fn set_header_length(&mut self, ihl: u8) {
+        let len = ihl & 0xF;
         self.packet[self.offset] = (self.packet[self.offset] & 0xF0) | len;
     }
 
-    pub fn get_header_length(&self) -> uint {
-        (self.packet[self.offset] << 4) as uint
+    pub fn get_header_length(&self) -> u8 {
+        self.packet[self.offset] << 4
     }
 
-    pub fn set_dscp(&mut self, dscp: uint) {
-        let cp = (dscp & 0xFC) as u8;
+    pub fn set_dscp(&mut self, dscp: u8) {
+        let cp = dscp & 0xFC;
         self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 3) | cp;
     }
 
-    pub fn get_dscp(&self) -> uint {
-        (self.packet[self.offset + 1] & 0xFC) as uint
+    pub fn get_dscp(&self) -> u8 {
+        self.packet[self.offset + 1] & 0xFC
     }
 
-    pub fn set_ecn(&mut self, ecn: uint) {
-        let cn = (ecn & 3) as u8;
+    pub fn set_ecn(&mut self, ecn: u8) {
+        let cn = ecn & 3;
         self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 0xFC) | cn;
     }
 
-    pub fn get_ecn(&self) -> uint {
-        (self.packet[self.offset + 1] & 3) as uint
+    pub fn get_ecn(&self) -> u8 {
+        self.packet[self.offset + 1] & 3
     }
 
-    pub fn set_total_length(&mut self, len: uint) {
-        let tlen = (len & 0xFFFF) as u16;
-        self.packet[self.offset + 2] = (tlen >> 8) as u8;
-        self.packet[self.offset + 3] = (tlen << 8) as u8;
+    pub fn set_total_length(&mut self, len: u16) {
+        self.packet[self.offset + 2] = (len >> 8) as u8;
+        self.packet[self.offset + 3] = (len << 8) as u8;
     }
 
-    pub fn get_total_length(&self) -> uint {
+    pub fn get_total_length(&self) -> u16 {
         let b1 = self.packet[self.offset + 2] as u16 << 8;
         let b2 = self.packet[self.offset + 3] as u16;
-        (b1 | b2) as uint
+        b1 | b2
     }
 
-    pub fn set_identification(&mut self, identification: uint) {
-        let ident = (identification & 0xFFFF) as u16;
-        self.packet[self.offset + 4] = (ident >> 8) as u8;
-        self.packet[self.offset + 5] = (ident & 0x00FF) as u8;
+    pub fn set_identification(&mut self, identification: u16) {
+        self.packet[self.offset + 4] = (identification >> 8) as u8;
+        self.packet[self.offset + 5] = (identification & 0x00FF) as u8;
     }
 
-    pub fn get_identification(&self) -> uint {
+    pub fn get_identification(&self) -> u16 {
         let b1 = self.packet[self.offset + 4] as u16 << 8;
         let b2 = self.packet[self.offset + 5] as u16;
-        (b1 | b2) as uint
+        b1 | b2
     }
 
-    pub fn set_flags(&mut self, flags: uint) {
-        let fs = ((flags & 7) << 5) as u8;
+    pub fn set_flags(&mut self, flags: u8) {
+        let fs = (flags & 7) << 5;
         self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0x1F) | fs;
     }
 
-    pub fn get_flags(&self) -> uint {
-        (self.packet[self.offset + 6] >> 5) as uint
+    pub fn get_flags(&self) -> u8 {
+        self.packet[self.offset + 6] >> 5
     }
 
-    pub fn set_fragment_offset(&mut self, offset: uint) {
-        let fo = (offset & 0x1FFF) as u16;
+    pub fn set_fragment_offset(&mut self, offset: u16) {
+        let fo = offset & 0x1FFF;
         self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0xE0) | (fo & 0xFF00) as u8;
         self.packet[self.offset + 7] = (fo & 0xFF) as u8;
     }
 
-    pub fn get_fragment_offset(&self) -> uint {
+    pub fn get_fragment_offset(&self) -> u16 {
         let b1 = (self.packet[self.offset + 6] & 0x1F) as u16 << 8;
         let b2 = self.packet[self.offset + 7] as u16;
-        (b1 | b2) as uint
+        b1 | b2
     }
 
-    pub fn set_ttl(&mut self, ttl: uint) {
-        self.packet[self.offset + 8] = (ttl & 0xFF) as u8;
+    pub fn set_ttl(&mut self, ttl: u8) {
+        self.packet[self.offset + 8] = ttl;
     }
 
-    pub fn get_ttl(&self) -> uint {
-        self.packet[self.offset + 8] as uint
+    pub fn get_ttl(&self) -> u8 {
+        self.packet[self.offset + 8]
     }
 
     pub fn set_next_level_protocol(&mut self, protocol: IpNextHeaderProtocol) {
@@ -202,17 +198,17 @@ impl<'p> Ipv4Header<'p> {
         num::FromPrimitive::from_u8(self.packet[self.offset + 9]).unwrap()
     }
 
-    pub fn set_checksum(&mut self, checksum: uint) {
+    pub fn set_checksum(&mut self, checksum: u16) {
         let cs1 = ((checksum & 0xFF00) >> 8) as u8;
         let cs2 = (checksum & 0x00FF) as u8;
         self.packet[self.offset + 10] = cs1;
         self.packet[self.offset + 11] = cs2;
     }
 
-    pub fn get_checksum(&self) -> uint {
+    pub fn get_checksum(&self) -> u16 {
         let cs1 = self.packet[self.offset + 10] as u16 << 8;
         let cs2 = self.packet[self.offset + 11] as u16;
-        (cs1 | cs2) as uint
+        cs1 | cs2
     }
 
     pub fn set_source(&mut self, ip: IpAddr) {
@@ -272,7 +268,7 @@ impl<'p> Ipv4Header<'p> {
     }*/
 
     pub fn checksum(&mut self) {
-        let len = self.get_header_length();
+        let len = self.get_header_length() as uint;
         let packet: &[u16] = unsafe {
             cast::transmute(self.packet.slice(self.offset, self.offset + len * 4))
         };
@@ -285,7 +281,7 @@ impl<'p> Ipv4Header<'p> {
             sum = sum + packet[i] as u32;
             i = i + 1;
         }
-        self.set_checksum(!((sum >> 16) + (sum & 0xFF)) as uint);
+        self.set_checksum(!((sum >> 16) + (sum & 0xFF)) as u16);
     }
 }
 
@@ -296,12 +292,11 @@ pub struct Ipv6Header<'p> {
 
 // FIXME Support extension headers
 impl<'p> Ipv6Header<'p> {
-    pub fn act<T>(packet: &mut [u8], offset: uint, act: |&mut Ipv6Header| -> T) -> T {
-        let mut header = Ipv6Header { packet: packet, offset: offset };
-        act(&mut header)
+    pub fn new(packet: &'p mut [u8], offset: uint) -> Ipv6Header<'p> {
+        Ipv6Header { packet: packet, offset: offset }
     }
 
-    pub fn set_version(&mut self, _version: uint) {
+    pub fn set_version(&mut self, _version: u8) {
         // FIXME
     }
 
@@ -310,29 +305,29 @@ impl<'p> Ipv6Header<'p> {
         0
     }
 
-    pub fn set_traffic_class(&mut self, _tc: uint) {
+    pub fn set_traffic_class(&mut self, _tc: u8) {
         // FIXME
     }
 
-    pub fn get_traffic_class(&self) -> uint {
-        // FIXME
-        0
-    }
-
-    pub fn set_flow_label(&mut self, _label: uint) {
-        // FIXME
-    }
-
-    pub fn get_flow_label(&self) -> uint {
+    pub fn get_traffic_class(&self) -> u8 {
         // FIXME
         0
     }
 
-    pub fn set_payload_length(&mut self, _len: uint) {
+    pub fn set_flow_label(&mut self, _label: u32) {
         // FIXME
     }
 
-    pub fn get_payload_length(&self) -> uint {
+    pub fn get_flow_label(&self) -> u32 {
+        // FIXME
+        0
+    }
+
+    pub fn set_payload_length(&mut self, _len: u16) {
+        // FIXME
+    }
+
+    pub fn get_payload_length(&self) -> u16 {
         // FIXME
         0
     }
@@ -346,11 +341,11 @@ impl<'p> Ipv6Header<'p> {
         IpNextHeaderProtocol::Tcp
     }
 
-    pub fn set_hop_limit(&mut self, _limit: uint) {
+    pub fn set_hop_limit(&mut self, _limit: u8) {
         // FIXME
     }
 
-    pub fn get_hop_limit(&self) -> uint {
+    pub fn get_hop_limit(&self) -> u8 {
         // FIXME
         0
     }
@@ -380,57 +375,52 @@ pub struct UdpHeader<'p> {
 }
 
 impl<'p> UdpHeader<'p> {
-    pub fn act<T>(packet: &mut [u8], offset: uint, act: |&mut UdpHeader| -> T) -> T {
-        let mut header = UdpHeader { packet: packet, offset: offset };
-        act(&mut header)
+    pub fn new(packet: &'p mut [u8], offset: uint) -> UdpHeader<'p> {
+        UdpHeader { packet: packet, offset: offset }
     }
 
-    pub fn set_source(&mut self, port: uint) {
-        let p = (port & 0xFFFF) as u16;
-        self.packet[self.offset + 0] = (p >> 8) as u8;
-        self.packet[self.offset + 1] = (p & 0xFF) as u8;
+    pub fn set_source(&mut self, port: u16) {
+        self.packet[self.offset + 0] = (port >> 8) as u8;
+        self.packet[self.offset + 1] = (port & 0xFF) as u8;
     }
 
-    pub fn get_source(&self) -> uint {
+    pub fn get_source(&self) -> u16 {
         let s1 = self.packet[self.offset + 0] as u16 << 8;
         let s2 = self.packet[self.offset + 1] as u16;
-        (s1 | s2) as uint
+        s1 | s2
     }
 
-    pub fn set_destination(&mut self, port: uint) {
-        let p = (port & 0xFFFF) as u16;
-        self.packet[self.offset + 2] = (p >> 8) as u8;
-        self.packet[self.offset + 3] = (p & 0xFF) as u8;
+    pub fn set_destination(&mut self, port: u16) {
+        self.packet[self.offset + 2] = (port >> 8) as u8;
+        self.packet[self.offset + 3] = (port & 0xFF) as u8;
     }
 
-    pub fn get_destination(&self) -> uint {
+    pub fn get_destination(&self) -> u16 {
         let d1 = self.packet[self.offset + 2] as u16 << 8;
         let d2 = self.packet[self.offset + 3] as u16;
-        (d1 | d2) as uint
+        d1 | d2
     }
 
-    pub fn set_length(&mut self, len: uint) {
-        let l = (len & 0xFFFF) as u16;
-        self.packet[self.offset + 4] = (l >> 8) as u8;
-        self.packet[self.offset + 5] = (l & 0xFF) as u8;
+    pub fn set_length(&mut self, len: u16) {
+        self.packet[self.offset + 4] = (len >> 8) as u8;
+        self.packet[self.offset + 5] = (len & 0xFF) as u8;
     }
 
-    pub fn get_length(&self) -> uint {
+    pub fn get_length(&self) -> u16 {
         let l1 = self.packet[self.offset + 4] as u16 << 8;
         let l2 = self.packet[self.offset + 5] as u16;
-        (l1 | l2) as uint
+        l1 | l2
     }
 
-    pub fn set_checksum(&mut self, checksum: uint) {
-        let c = (checksum & 0xFFFF) as u16;
-        self.packet[self.offset + 6] = (c >> 8) as u8;
-        self.packet[self.offset + 7] = (c & 0xFF) as u8;
+    pub fn set_checksum(&mut self, checksum: u16) {
+        self.packet[self.offset + 6] = (checksum >> 8) as u8;
+        self.packet[self.offset + 7] = (checksum & 0xFF) as u8;
     }
 
-    pub fn get_checksum(&self) -> uint {
+    pub fn get_checksum(&self) -> u16 {
         let c1 = self.packet[self.offset + 6] as u16 << 8;
         let c2 = self.packet[self.offset + 7] as u16;
-        (c1 | c2) as uint
+        c1 | c2
     }
 
     pub fn checksum(&mut self) {
@@ -653,11 +643,11 @@ pub mod test {
     use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
     use vec::ImmutableVector;
 
-    pub static ETHERNET_HEADER_LEN: uint = 14;
-    pub static IPV4_HEADER_LEN: uint = 20;
-    pub static IPV6_HEADER_LEN: uint = 40;
-    pub static UDP_HEADER_LEN: uint = 8;
-    pub static TEST_DATA_LEN: uint = 4;
+    pub static ETHERNET_HEADER_LEN: u16 = 14;
+    pub static IPV4_HEADER_LEN: u16 = 20;
+    pub static IPV6_HEADER_LEN: u16 = 40;
+    pub static UDP_HEADER_LEN: u16 = 8;
+    pub static TEST_DATA_LEN: u16 = 4;
 
     pub fn layer4_test(ip: IpAddr, headerLen: uint) {
         let message = "message";
@@ -690,49 +680,49 @@ pub mod test {
     }
 
     iotest!(fn layer4_ipv4() {
-        layer4_test(Ipv4Addr(127, 0, 0, 1), IPV4_HEADER_LEN);
+        layer4_test(Ipv4Addr(127, 0, 0, 1), IPV4_HEADER_LEN as uint);
     } #[cfg(hasroot)])
 
     iotest!(fn layer4_ipv6() {
-        layer4_test(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), IPV6_HEADER_LEN);
+        layer4_test(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), IPV6_HEADER_LEN as uint);
     } #[cfg(hasroot)])
 
     pub fn build_ipv4_header(packet: &mut [u8], offset: uint) {
-        Ipv4Header::act(packet, offset, |ipHeader| {
-            ipHeader.set_version(4);
-            ipHeader.set_header_length(5);
-            ipHeader.set_total_length(IPV4_HEADER_LEN + UDP_HEADER_LEN + TEST_DATA_LEN);
-            ipHeader.set_ttl(4);
-            ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
-            ipHeader.set_source(Ipv4Addr(127, 0, 0, 1));
-            ipHeader.set_destination(Ipv4Addr(127, 0, 0, 1));
-            ipHeader.checksum();
-        });
+        let mut ipHeader = Ipv4Header::new(packet, offset);
+
+        ipHeader.set_version(4);
+        ipHeader.set_header_length(5);
+        ipHeader.set_total_length(IPV4_HEADER_LEN + UDP_HEADER_LEN + TEST_DATA_LEN);
+        ipHeader.set_ttl(4);
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
+        ipHeader.set_source(Ipv4Addr(127, 0, 0, 1));
+        ipHeader.set_destination(Ipv4Addr(127, 0, 0, 1));
+        ipHeader.checksum();
     }
 
     pub fn build_ipv6_header(packet: &mut [u8], offset: uint) {
-        Ipv6Header::act(packet, offset, |ipHeader| {
-            ipHeader.set_version(6);
-            ipHeader.set_payload_length(UDP_HEADER_LEN + TEST_DATA_LEN);
-            ipHeader.set_next_header(IpNextHeaderProtocol::Udp);
-            ipHeader.set_hop_limit(4);
-            ipHeader.set_source(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
-            ipHeader.set_destination(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
-        });
+        let mut ipHeader = Ipv6Header::new(packet, offset);
+
+        ipHeader.set_version(6);
+        ipHeader.set_payload_length(UDP_HEADER_LEN + TEST_DATA_LEN);
+        ipHeader.set_next_header(IpNextHeaderProtocol::Udp);
+        ipHeader.set_hop_limit(4);
+        ipHeader.set_source(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
+        ipHeader.set_destination(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
     }
 
     pub fn build_udp_header(packet: &mut [u8], offset: uint) {
-        UdpHeader::act(packet, offset, |udpHeader| {
-            udpHeader.set_source(1234); // Arbitary port number
-            udpHeader.set_destination(1234);
-            udpHeader.set_length(UDP_HEADER_LEN + TEST_DATA_LEN);
-            udpHeader.checksum();
-        });
+        let mut udpHeader = UdpHeader::new(packet, offset);
+
+        udpHeader.set_source(1234); // Arbitary port number
+        udpHeader.set_destination(1234);
+        udpHeader.set_length(UDP_HEADER_LEN + TEST_DATA_LEN);
+        udpHeader.checksum();
     }
 
     pub fn build_udp4_packet(packet: &mut [u8], start: uint) {
         build_ipv4_header(packet, start);
-        build_udp_header(packet, IPV4_HEADER_LEN);
+        build_udp_header(packet, IPV4_HEADER_LEN as uint);
 
         let dataStart = IPV4_HEADER_LEN + UDP_HEADER_LEN;
         packet[dataStart + 0] = 't' as u8;
@@ -743,7 +733,7 @@ pub mod test {
 
     pub fn build_udp6_packet(packet: &mut [u8], start: uint) {
         build_ipv6_header(packet, start);
-        build_udp_header(packet, IPV6_HEADER_LEN);
+        build_udp_header(packet, IPV6_HEADER_LEN as uint);
 
         let dataStart = IPV6_HEADER_LEN + UDP_HEADER_LEN;
         packet[dataStart + 0] = 't' as u8;
@@ -856,18 +846,19 @@ pub mod test {
 
         let mut packet = [0u8, ..46];
 
-        //let mut ethernetHeader = EthernetHeader::new(0);
-        //ethernetHeader.set_source(interface.mac_address());
-        //ethernetHeader.set_destination(interface.mac_address());
-        //ethernetHeader.set_ethertype(Ipv4EtherType);
-
-        EthernetHeader::act(packet.as_mut_slice(), 0, |ethernetHeader| {
+        {
+            let mut ethernetHeader = EthernetHeader::new(packet.as_mut_slice(), 0);
             ethernetHeader.set_source(interface.mac_address());
             ethernetHeader.set_destination(interface.mac_address());
             ethernetHeader.set_ethertype(Ipv4EtherType);
-        });
+        }
+        //EthernetHeader::act(packet.as_mut_slice(), 0, |ethernetHeader| {
+        //    ethernetHeader.set_source(interface.mac_address());
+        //    ethernetHeader.set_destination(interface.mac_address());
+        //    ethernetHeader.set_ethertype(Ipv4EtherType);
+        //});
 
-        build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN);
+        build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];

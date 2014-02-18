@@ -100,7 +100,7 @@ mod test {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
+    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))] #[ignore(cfg(hasroot))])
 
     iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
