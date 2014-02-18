@@ -9,14 +9,14 @@
 // except according to those terms.
 
 //use clone::Clone;
-use cast;
+//use cast;
 use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
 use iter::Iterator;
 use num;
 use option::{Option, Some};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
-use vec::ImmutableVector;
+use vec::{MutableVector, ImmutableVector};
 
 pub struct RawSocket {
     priv obj: ~RtioRawSocket
@@ -118,7 +118,7 @@ impl<'p> Ipv4Header<'p> {
     }
 
     pub fn get_header_length(&self) -> u8 {
-        self.packet[self.offset] << 4
+        self.packet[self.offset] & 0xF
     }
 
     pub fn set_dscp(&mut self, dscp: u8) {
@@ -141,7 +141,7 @@ impl<'p> Ipv4Header<'p> {
 
     pub fn set_total_length(&mut self, len: u16) {
         self.packet[self.offset + 2] = (len >> 8) as u8;
-        self.packet[self.offset + 3] = (len << 8) as u8;
+        self.packet[self.offset + 3] = (len & 0xFF) as u8;
     }
 
     pub fn get_total_length(&self) -> u16 {
@@ -249,40 +249,66 @@ impl<'p> Ipv4Header<'p> {
                  self.packet[self.offset + 19])
     }
 
-    pub fn set_options(&mut self, options: &[u8]) {
-        let mut i = 0;
-        for opt in options.iter() {
-            self.packet[self.offset + 20 + i] = *opt;
-            i = i + 1;
-        }
-    }
-
-    /*pub fn get_options(&self) -> ~[u8] {
-        let numOpts = self.get_total_length() - 5;
-        ~self.packet.slice(self.offset + 20, self.offset + 20 + numOpts).clone()
-        /*let mut opts: ~[u8] = ~[];
-        for opt in self.packet.slice(self.offset + 20, self.offset + 20 + numOpts).iter() {
-            opts.push(*opt);
-        }
-        opts*/
-    }*/
-
     pub fn checksum(&mut self) {
-        let len = self.get_header_length() as uint;
-        let packet: &[u16] = unsafe {
-            cast::transmute(self.packet.slice(self.offset, self.offset + len * 4))
-        };
+        let len = self.offset + self.get_header_length() as uint * 4;
         let mut sum = 0u32;
-        let mut i = 0;
-        loop {
-            if i == len * 2 {
-                break;
-            }
-            sum = sum + packet[i] as u32;
-            i = i + 1;
+        let mut i = self.offset;
+        while i < len {
+            let word = self.packet[i] as u32 << 8 | self.packet[i + 1] as u32;
+            sum = sum + word;
+            i = i + 2;
         }
-        self.set_checksum(!((sum >> 16) + (sum & 0xFF)) as u16);
+        while sum >> 16 != 0 {
+            sum = (sum >> 16) + (sum & 0xFFFF);
+        }
+        self.set_checksum(!sum as u16);
     }
+}
+
+#[test]
+fn ipv4_header_test() {
+    let mut packet = [0u8, ..20];
+    {
+        let mut ipHeader = Ipv4Header::new(packet.as_mut_slice(), 0);
+        ipHeader.set_version(4);
+        assert_eq!(ipHeader.get_version(), 4);
+
+        ipHeader.set_header_length(5);
+        assert_eq!(ipHeader.get_header_length(), 5);
+
+        ipHeader.set_total_length(115);
+        assert_eq!(ipHeader.get_total_length(), 115);
+
+        ipHeader.set_flags(2);
+        assert_eq!(ipHeader.get_flags(), 2);
+
+        ipHeader.set_ttl(64);
+        assert_eq!(ipHeader.get_ttl(), 64);
+
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
+        assert_eq!(ipHeader.get_next_level_protocol(), IpNextHeaderProtocol::Udp);
+
+        ipHeader.set_source(Ipv4Addr(192, 168, 0, 1));
+        assert_eq!(ipHeader.get_source(), Ipv4Addr(192, 168, 0, 1));
+
+        ipHeader.set_destination(Ipv4Addr(192, 168, 0, 199));
+        assert_eq!(ipHeader.get_destination(), Ipv4Addr(192, 168, 0, 199));
+
+        ipHeader.checksum();
+        assert_eq!(ipHeader.get_checksum(), 0xb861);
+    }
+
+    let refPacket = [0x45,           /* ver/ihl */
+                     0x00,           /* dscp/ecn */
+                     0x00, 0x73,     /* total len */
+                     0x00, 0x00,     /* identification */
+                     0x40, 0x00,     /* flags/frag offset */
+                     0x40,           /* ttl */
+                     0x11,           /* proto */
+                     0xb8, 0x61,     /* checksum */
+                     0xc0, 0xa8, 0x00, 0x01, /* source ip */
+                     0xc0, 0xa8, 0x00, 0xc7  /* dest ip */];
+    assert_eq!(packet, refPacket);
 }
 
 pub struct Ipv6Header<'p> {
@@ -478,7 +504,7 @@ pub static Ipv6EtherType: u16      = 0x86DD;
 // or the IPv6 Next Header field.
 pub mod IpNextHeaderProtocol {
     //use num::FromPrimitive;
-    #[deriving(FromPrimitive)]
+    #[deriving(Eq,FromPrimitive)]
     pub enum IpNextHeaderProtocol {
         Hopopt         =   0, // IPv6 Hop-by-Hop Option [RFC2460]
         Icmp           =   1, // Internet Control Message [RFC792]
@@ -852,11 +878,6 @@ pub mod test {
             ethernetHeader.set_destination(interface.mac_address());
             ethernetHeader.set_ethertype(Ipv4EtherType);
         }
-        //EthernetHeader::act(packet.as_mut_slice(), 0, |ethernetHeader| {
-        //    ethernetHeader.set_source(interface.mac_address());
-        //    ethernetHeader.set_destination(interface.mac_address());
-        //    ethernetHeader.set_ethertype(Ipv4EtherType);
-        //});
 
         build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
 
