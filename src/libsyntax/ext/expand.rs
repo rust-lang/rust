@@ -64,7 +64,11 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                         extnamestr.get()));
 
                             // let compilation continue
-                            return e;
+                            return @ast::Expr {
+                                id: ast::DUMMY_NODE_ID,
+                                node: ast::ExprLogLevel,
+                                span: e.span,
+                            }
                         }
                         Some(&NormalTT(ref expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
