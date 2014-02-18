@@ -15,10 +15,10 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
+use std::io::timer;
 use std::libc;
-use std::run;
 use std::str;
-use std::io;
+use std::io::process::{Process, ProcessOutput};
 
 #[test]
 fn test_destroy_once() {
@@ -27,8 +27,8 @@ fn test_destroy_once() {
     #[cfg(target_os="android")]
     static PROG: &'static str = "ls"; // android don't have echo binary
 
-    let mut p = run::Process::new(PROG, [], run::ProcessOptions::new()).unwrap();
-    p.destroy(); // this shouldn't crash (and nor should the destructor)
+    let mut p = Process::new(PROG, []).unwrap();
+    p.signal_exit().unwrap(); // this shouldn't crash (and nor should the destructor)
 }
 
 #[test]
@@ -38,12 +38,12 @@ fn test_destroy_twice() {
     #[cfg(target_os="android")]
     static PROG: &'static str = "ls"; // android don't have echo binary
 
-    let mut p = match run::Process::new(PROG, [], run::ProcessOptions::new()) {
+    let mut p = match Process::new(PROG, []) {
         Ok(p) => p,
         Err(e) => fail!("wut: {}", e),
     };
-    p.destroy(); // this shouldnt crash...
-    p.destroy(); // ...and nor should this (and nor should the destructor)
+    p.signal_exit().unwrap(); // this shouldnt crash...
+    p.signal_exit().unwrap(); // ...and nor should this (and nor should the destructor)
 }
 
 fn test_destroy_actually_kills(force: bool) {
@@ -59,14 +59,14 @@ fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(unix,not(target_os="android"))]
     fn process_exists(pid: libc::pid_t) -> bool {
-        let run::ProcessOutput {output, ..} = run::process_output("ps", [~"-p", pid.to_str()])
+        let ProcessOutput {output, ..} = Process::output("ps", [~"-p", pid.to_str()])
             .unwrap();
         str::from_utf8_owned(output).unwrap().contains(pid.to_str())
     }
 
     #[cfg(unix,target_os="android")]
     fn process_exists(pid: libc::pid_t) -> bool {
-        let run::ProcessOutput {output, ..} = run::process_output("/system/bin/ps", [pid.to_str()])
+        let ProcessOutput {output, ..} = Process::output("/system/bin/ps", [pid.to_str()])
             .unwrap();
         str::from_utf8_owned(output).unwrap().contains(~"root")
     }
@@ -91,18 +91,20 @@ fn test_destroy_actually_kills(force: bool) {
     }
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new())
-        .unwrap();
+    let mut p = Process::new(BLOCK_COMMAND, []).unwrap();
 
-    assert!(process_exists(p.get_id()));
+    assert!(process_exists(p.id()));
 
     if force {
-        p.force_destroy();
+        p.signal_kill().unwrap();
     } else {
-        p.destroy();
+        p.signal_exit().unwrap();
     }
 
-    assert!(!process_exists(p.get_id()));
+    if process_exists(p.id()) {
+        timer::sleep(500);
+        assert!(!process_exists(p.id()));
+    }
 }
 
 #[test]

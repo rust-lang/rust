@@ -30,9 +30,9 @@ use std::c_str::ToCStr;
 use std::char;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
-use std::run;
 use std::str;
 use std::io;
+use std::io::Process;
 use std::io::fs;
 use flate;
 use serialize::hex::ToHex;
@@ -101,8 +101,8 @@ pub mod write {
     use syntax::abi;
 
     use std::c_str::ToCStr;
+    use std::io::Process;
     use std::libc::{c_uint, c_int};
-    use std::run;
     use std::str;
 
     // On android, we by default compile for armv7 processors. This enables
@@ -333,7 +333,7 @@ pub mod write {
             assembly.as_str().unwrap().to_owned()];
 
         debug!("{} '{}'", cc, args.connect("' '"));
-        match run::process_output(cc, args) {
+        match Process::output(cc, args) {
             Ok(prog) => {
                 if !prog.status.success() {
                     sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
@@ -1033,7 +1033,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
     let prog = time(sess.time_passes(), "running linker", (), |()|
-                    run::process_output(cc_prog, cc_args));
+                    Process::output(cc_prog, cc_args));
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
@@ -1054,7 +1054,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     // the symbols
     if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        match run::process_status("dsymutil",
+        match Process::status("dsymutil",
                                   [out_filename.as_str().unwrap().to_owned()]) {
             Ok(..) => {}
             Err(e) => {

@@ -21,8 +21,7 @@
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
 
-use std::{os, run};
-use std::io::process;
+use std::os;
 
 struct Test { x: int }
 
