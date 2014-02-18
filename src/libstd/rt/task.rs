@@ -254,7 +254,7 @@ impl Task {
         ops.deschedule(amt, self, f)
     }
 
-    /// Wakes up a previously blocked task, optionally specifiying whether the
+    /// Wakes up a previously blocked task, optionally specifying whether the
     /// current task can accept a change in scheduling. This function can only
     /// be called on tasks that were previously blocked in `deschedule`.
     pub fn reawaken(mut ~self) {

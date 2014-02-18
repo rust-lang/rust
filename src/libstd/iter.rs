@@ -883,7 +883,7 @@ pub trait OrdIterator<A> {
     /// ```
     fn min(&mut self) -> Option<A>;
 
-    /// `min_max` finds the mininum and maximum elements in the iterator.
+    /// `min_max` finds the minimum and maximum elements in the iterator.
     ///
     /// The return type `MinMaxResult` is an enum of three variants:
     /// - `NoElements` if the iterator is empty.
