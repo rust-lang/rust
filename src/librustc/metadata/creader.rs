@@ -24,7 +24,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::{Span};
 use syntax::diagnostic::SpanHandler;
 use syntax::ext::base::{CrateLoader, MacroCrate};
 use syntax::parse::token::{IdentInterner, InternedString};
@@ -147,6 +147,7 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
     match extract_crate_info(i) {
         Some(info) => {
             let cnum = resolve_crate(e,
+                                     None,
                                      info.ident.clone(),
                                      info.name.clone(),
                                      info.version.clone(),
@@ -299,6 +300,7 @@ fn existing_match(e: &Env, name: &str, version: &str, hash: &str) -> Option<ast:
 }
 
 fn resolve_crate(e: &mut Env,
+                 root_ident: Option<~str>,
                  ident: ~str,
                  name: ~str,
                  version: ~str,
@@ -319,7 +321,7 @@ fn resolve_crate(e: &mut Env,
         };
         let loader::Library {
             dylib, rlib, metadata
-        } = load_ctxt.load_library_crate();
+        } = load_ctxt.load_library_crate(root_ident.clone());
 
         let attrs = decoder::get_crate_attributes(metadata.as_slice());
         let crateid = attr::find_crateid(attrs).unwrap();
@@ -338,8 +340,17 @@ fn resolve_crate(e: &mut Env,
         }
         e.next_crate_num += 1;
 
+        // Maintain a reference to the top most crate.
+        let root_crate = match root_ident {
+            Some(c) => c,
+            None => load_ctxt.ident.clone()
+        };
+
         // Now resolve the crates referenced by this crate
-        let cnum_map = resolve_crate_deps(e, metadata.as_slice());
+        let cnum_map = resolve_crate_deps(e,
+                                          Some(root_crate),
+                                          metadata.as_slice(),
+                                          span);
 
         let cmeta = @cstore::crate_metadata {
             name: load_ctxt.name,
@@ -364,7 +375,10 @@ fn resolve_crate(e: &mut Env,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: &mut Env,
+                      root_ident: Option<~str>,
+                      cdata: &[u8], span : Span)
+                   -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
@@ -387,15 +401,13 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
           None => {
             debug!("need to load it");
             // This is a new one so we've got to load it
-            // FIXME (#2404): Need better error reporting than just a bogus
-            // span.
-            let fake_span = DUMMY_SP;
             let local_cnum = resolve_crate(e,
+                                           root_ident.clone(),
                                            cname_str.get().to_str(),
                                            cname_str.get().to_str(),
                                            dep.vers.clone(),
                                            dep.hash.clone(),
-                                           fake_span);
+                                           span);
             cnum_map.insert(extrn_cnum, local_cnum);
           }
         }
@@ -427,6 +439,7 @@ impl CrateLoader for Loader {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(krate).unwrap();
         let cnum = resolve_crate(&mut self.env,
+                                 None,
                                  info.ident.clone(),
                                  info.name.clone(),
                                  info.version.clone(),
