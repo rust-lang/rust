@@ -226,8 +226,7 @@ spawn(proc() {
 });
 ~~~
 
-Instead we can use a `SharedChan`, a type that allows a single
-`Chan` to be shared by multiple senders.
+Instead we can clone the `chan`, which allows for multiple senders.
 
 ~~~
 # use std::task::spawn;
@@ -246,16 +245,13 @@ let result = port.recv() + port.recv() + port.recv();
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
 
-Here we transfer ownership of the channel into a new `SharedChan` value.  Like
-`Chan`, `SharedChan` is a non-copyable, owned type (sometimes also referred to
-as an *affine* or *linear* type). Unlike with `Chan`, though, the programmer
-may duplicate a `SharedChan`, with the `clone()` method.  A cloned
-`SharedChan` produces a new handle to the same channel, allowing multiple
-tasks to send data to a single port.  Between `spawn`, `Chan` and
-`SharedChan`, we have enough tools to implement many useful concurrency
-patterns.
+Cloning a `Chan` produces a new handle to the same channel, allowing multiple
+tasks to send data to a single port. It also upgrades the channel internally in
+order to allow this functionality, which means that channels that are not
+cloned can avoid the overhead required to handle multiple senders. But this
+fact has no bearing on the channel's usage: the upgrade is transparent.
 
-Note that the above `SharedChan` example is somewhat contrived since
+Note that the above cloning example is somewhat contrived since
 you could also simply use three `Chan` pairs, but it serves to
 illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
