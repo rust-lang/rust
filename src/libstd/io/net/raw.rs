@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//use clone::Clone;
-//use cast;
 use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
 use iter::Iterator;
-use num;
 use option::{Option, Some};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
 use vec::{MutableVector, ImmutableVector};
@@ -192,11 +189,11 @@ impl<'p> Ipv4Header<'p> {
     }
 
     pub fn set_next_level_protocol(&mut self, protocol: IpNextHeaderProtocol) {
-        self.packet[self.offset + 9] = protocol as u8;
+        self.packet[self.offset + 9] = protocol;
     }
 
     pub fn get_next_level_protocol(&self) -> IpNextHeaderProtocol {
-        num::FromPrimitive::from_u8(self.packet[self.offset + 9]).unwrap()
+        self.packet[self.offset + 9]
     }
 
     pub fn set_checksum(&mut self, checksum: u16) {
@@ -381,11 +378,11 @@ impl<'p> Ipv6Header<'p> {
     }
 
     pub fn set_next_header(&mut self, protocol: IpNextHeaderProtocol) {
-        self.packet[self.offset + 6] = protocol as u8;
+        self.packet[self.offset + 6] = protocol;
     }
 
     pub fn get_next_header(&self) -> IpNextHeaderProtocol {
-        num::FromPrimitive::from_u8(self.packet[self.offset + 6]).unwrap()
+        self.packet[self.offset + 6]
     }
 
     pub fn set_hop_limit(&mut self, limit: u8) {
@@ -637,159 +634,157 @@ pub static Ipv6EtherType: u16      = 0x86DD;
 // These values should be used in either the IPv4 Next Level Protocol field
 // or the IPv6 Next Header field.
 pub mod IpNextHeaderProtocol {
-    //use num::FromPrimitive;
-    #[deriving(Eq,FromPrimitive)]
-    pub enum IpNextHeaderProtocol {
-        Hopopt         =   0, // IPv6 Hop-by-Hop Option [RFC2460]
-        Icmp           =   1, // Internet Control Message [RFC792]
-        Igmp           =   2, // Internet Group Management [RFC1112]
-        Ggp            =   3, // Gateway-to-Gateway [RFC823]
-        Ipv4           =   4, // IPv4 encapsulation [RFC2003]
-        St             =   5, // Stream [RFC1190][RFC1819]
-        Tcp            =   6, // Transmission Control [RFC793]
-        Cbt            =   7, // CBT
-        Egp            =   8, // Exterior Gateway Protocol [RFC888]
-        Igp            =   9, // any private interior gateway (used by Cisco for their IGRP)
-        BbnRccMon      =  10, // BBN RCC Monitoring
-        NvpII          =  11, // Network Voice Protocol [RFC741]
-        Pup            =  12, // PUP
-        Argus          =  13, // ARGUS
-        Emcon          =  14, // EMCON
-        Xnet           =  15, // Cross Net Debugger
-        Chaos          =  16, // Chaos
-        Udp            =  17, // User Datagram [RFC768]
-        Mux            =  18, // Multiplexing
-        DcnMeas        =  19, // DCN Measurement Subsystems
-        Hmp            =  20, // Host Monitoring [RFC869]
-        Prm            =  21, // Packet Radio Measurement
-        XnsIdp         =  22, // XEROX NS IDP
-        Trunk1         =  23, // Trunk-1
-        Trunk2         =  24, // Trunk-2
-        Leaf1          =  25, // Leaf-1
-        Leaf2          =  26, // Leaf-2
-        Rdp            =  27, // Reliable Data Protocol [RFC908]
-        Irtp           =  28, // Internet Reliable Transaction [RFC938]
-        IsoTp4         =  29, // ISO Transport Protocol Class 4 [RFC905]
-        Netblt         =  30, // Bulk Data Transfer Protocol [RFC969]
-        MfeNsp         =  31, // MFE Network Services Protocol
-        MeritInp       =  32, // MERIT Internodal Protocol
-        Dccp           =  33, // Datagram Congestion Control Protocol [RFC4340]
-        ThreePc        =  34, // Third Party Connect Protocol
-        Idpr           =  35, // Inter-Domain Policy Routing Protocol
-        Xtp            =  36, // XTP
-        Ddp            =  37, // Datagram Delivery Protocol
-        IdprCmtp       =  38, // IDPR Control Message Transport Proto
-        TpPlusPlus     =  39, // TP++ Transport Protocol
-        Il             =  40, // IL Transport Protocol
-        Ipv6           =  41, // IPv6 encapsulation [RFC2473]
-        Sdrp           =  42, // Source Demand Routing Protocol
-        Ipv6Route      =  43, // Routing Header for IPv6
-        Ipv6Frag       =  44, // Fragment Header for IPv6
-        Idrp           =  45, // Inter-Domain Routing Protocol
-        Rsvp           =  46, // Reservation Protocol [RFC2205][RFC3209]
-        Gre            =  47, // Generic Routing Encapsulation [RFC1701]
-        Dsr            =  48, // Dynamic Source Routing Protocol [RFC4728]
-        Bna            =  49, // BNA
-        Esp            =  50, // Encap Security Payload [RFC4303]
-        Ah             =  51, // Authentication Header [RFC4302]
-        INlsp          =  52, // Integrated Net Layer Security TUBA
-        Swipe          =  53, // IP with Encryption
-        Narp           =  54, // NBMA Address Resolution Protocol [RFC1735]
-        Mobile         =  55, // IP Mobility
-        Tlsp           =  56, // Transport Layer Security Protocol using Kryptonet key management
-        Skip           =  57, // SKIP
-        Ipv6Icmp       =  58, // ICMP for IPv6 [RFC2460]
-        Ipv6NoNxt      =  59, // No Next Header for IPv6 [RFC2460]
-        Ipv6Opts       =  60, // Destination Options for IPv6 [RFC2460]
-        HostInternal   =  61, // any host internal protocol
-        Cftp           =  62, // CFTP
-        LocalNetwork   =  63, // any local network
-        SatExpak       =  64, // SATNET and Backroom EXPAK
-        Kryptolan      =  65, // Kryptolan
-        Rvd            =  66, // MIT Remote Virtual Disk Protocol
-        Ippc           =  67, // Internet Pluribus Packet Core
-        DistributedFs  =  68, // any distributed file system
-        SatMon         =  69, // SATNET Monitoring
-        Visa           =  70, // VISA Protocol
-        Ipcv           =  71, // Internet Packet Core Utility
-        Cpnx           =  72, // Computer Protocol Network Executive
-        Cphb           =  73, // Computer Protocol Heart Beat
-        Wsn            =  74, // Wang Span Network
-        Pvp            =  75, // Packet Video Protocol
-        BrSatMon       =  76, // Backroom SATNET Monitoring
-        SunNd          =  77, // SUN ND PROTOCOL-Temporary
-        WbMon          =  78, // WIDEBAND Monitoring
-        WbExpak        =  79, // WIDEBAND EXPAK
-        IsoIp          =  80, // ISO Internet Protocol
-        Vmtp           =  81, // VMTP
-        SecureVmtp     =  82, // SECURE-VMTP
-        Vines          =  83, // VINES
-        TtpOrIptm      =  84, // Transaction Transport Protocol/Internet Protocol Traffic Manager
-        NsfnetIgp      =  85, // NSFNET-IGP
-        Dgp            =  86, // Dissimilar Gateway Protocol
-        Tcf            =  87, // TCF
-        Eigrp          =  88, // EIGRP
-        OspfigP        =  89, // OSPFIGP [RFC1583][RFC2328][RFC5340]
-        SpriteRpc      =  90, // Sprite RPC Protocol
-        Larp           =  91, // Locus Address Resolution Protocol
-        Mtp            =  92, // Multicast Transport Protocol
-        Ax25           =  93, // AX.25 Frames
-        IpIp           =  94, // IP-within-IP Encapsulation Protocol
-        Micp           =  95, // Mobile Internetworking Control Pro.
-        SccSp          =  96, // Semaphore Communications Sec. Pro.
-        Etherip        =  97, // Ethernet-within-IP Encapsulation [RFC3378]
-        Encap          =  98, // Encapsulation Header [RFC1241]
-        PrivEncryption =  99, // any private encryption scheme
-        Gmtp           = 100, // GMTP
-        Ifmp           = 101, // Ipsilon Flow Management Protocol
-        Pnni           = 102, // PNNI over IP
-        Pim            = 103, // Protocol Independent Multicast [RFC4601]
-        Aris           = 104, // ARIS
-        Scps           = 105, // SCPS
-        Qnx            = 106, // QNX
-        AN             = 107, // Active Networks
-        IpComp         = 108, // IP Payload Compression Protocol [RFC2393]
-        Snp            = 109, // Sitara Networks Protocol
-        CompaqPeer     = 110, // Compaq Peer Protocol
-        IpxInIp        = 111, // IPX in IP
-        Vrrp           = 112, // Virtual Router Redundancy Protocol [RFC5798]
-        Pgm            = 113, // PGM Reliable Transport Protocol
-        ZeroHop        = 114, // any 0-hop protocol
-        L2tp           = 115, // Layer Two Tunneling Protocol [RFC3931]
-        Ddx            = 116, // D-II Data Exchange (DDX)
-        Iatp           = 117, // Interactive Agent Transfer Protocol
-        Stp            = 118, // Schedule Transfer Protocol
-        Srp            = 119, // SpectraLink Radio Protocol
-        Uti            = 120, // UTI
-        Smp            = 121, // Simple Message Protocol
-        Sm             = 122, // Simple Multicast Protocol
-        Ptp            = 123, // Performance Transparency Protocol
-        IsisOverIpv4   = 124, //
-        Fire           = 125, //
-        Crtp           = 126, // Combat Radio Transport Protocol
-        Crudp          = 127, // Combat Radio User Datagram
-        Sscopmce       = 128, //
-        Iplt           = 129, //
-        Sps            = 130, // Secure Packet Shield
-        Pipe           = 131, // Private IP Encapsulation within IP
-        Sctp           = 132, // Stream Control Transmission Protocol
-        Fc             = 133, // Fibre Channel [RFC6172]
-        RsvpE2eIgnore  = 134, // [RFC3175]
-        MobilityHeader = 135, // [RFC6275]
-        UdpLite        = 136, // [RFC3828]
-        MplsInIp       = 137, // [RFC4023]
-        Manet          = 138, // MANET Protocols [RFC5498]
-        Hip            = 139, // Host Identity Protocol [RFC5201]
-        Shim6          = 140, // Shim6 Protocol [RFC5533]
-        Wesp           = 141, // Wrapped Encapsulating Security Payload [RFC5840]
-        Rohc           = 142, // Robust Header Compression [RFC5858]
-        Test1          = 253, // Use for experimentation and testing [RFC3692]
-        Test2          = 254, // Use for experimentation and testing [RFC3692]
-        Reserved       = 255, //
-    }
+    pub static Hopopt: u8         =   0; // IPv6 Hop-by-Hop Option [RFC2460]
+    pub static Icmp: u8           =   1; // Internet Control Message [RFC792]
+    pub static Igmp: u8           =   2; // Internet Group Management [RFC1112]
+    pub static Ggp: u8            =   3; // Gateway-to-Gateway [RFC823]
+    pub static Ipv4: u8           =   4; // IPv4 encapsulation [RFC2003]
+    pub static St: u8             =   5; // Stream [RFC1190][RFC1819]
+    pub static Tcp: u8            =   6; // Transmission Control [RFC793]
+    pub static Cbt: u8            =   7; // CBT
+    pub static Egp: u8            =   8; // Exterior Gateway Protocol [RFC888]
+    pub static Igp: u8            =   9; // any private interior gateway (used by Cisco for
+                                          //                               their IGRP)
+    pub static BbnRccMon: u8      =  10; // BBN RCC Monitoring
+    pub static NvpII: u8          =  11; // Network Voice Protocol [RFC741]
+    pub static Pup: u8            =  12; // PUP
+    pub static Argus: u8          =  13; // ARGUS
+    pub static Emcon: u8          =  14; // EMCON
+    pub static Xnet: u8           =  15; // Cross Net Debugger
+    pub static Chaos: u8          =  16; // Chaos
+    pub static Udp: u8            =  17; // User Datagram [RFC768]
+    pub static Mux: u8            =  18; // Multiplexing
+    pub static DcnMeas: u8        =  19; // DCN Measurement Subsystems
+    pub static Hmp: u8            =  20; // Host Monitoring [RFC869]
+    pub static Prm: u8            =  21; // Packet Radio Measurement
+    pub static XnsIdp: u8         =  22; // XEROX NS IDP
+    pub static Trunk1: u8         =  23; // Trunk-1
+    pub static Trunk2: u8         =  24; // Trunk-2
+    pub static Leaf1: u8          =  25; // Leaf-1
+    pub static Leaf2: u8          =  26; // Leaf-2
+    pub static Rdp: u8            =  27; // Reliable Data Protocol [RFC908]
+    pub static Irtp: u8           =  28; // Internet Reliable Transaction [RFC938]
+    pub static IsoTp4: u8         =  29; // ISO Transport Protocol Class 4 [RFC905]
+    pub static Netblt: u8         =  30; // Bulk Data Transfer Protocol [RFC969]
+    pub static MfeNsp: u8         =  31; // MFE Network Services Protocol
+    pub static MeritInp: u8       =  32; // MERIT Internodal Protocol
+    pub static Dccp: u8           =  33; // Datagram Congestion Control Protocol [RFC4340]
+    pub static ThreePc: u8        =  34; // Third Party Connect Protocol
+    pub static Idpr: u8           =  35; // Inter-Domain Policy Routing Protocol
+    pub static Xtp: u8            =  36; // XTP
+    pub static Ddp: u8            =  37; // Datagram Delivery Protocol
+    pub static IdprCmtp: u8       =  38; // IDPR Control Message Transport Proto
+    pub static TpPlusPlus: u8     =  39; // TP++ Transport Protocol
+    pub static Il: u8             =  40; // IL Transport Protocol
+    pub static Ipv6: u8           =  41; // IPv6 encapsulation [RFC2473]
+    pub static Sdrp: u8           =  42; // Source Demand Routing Protocol
+    pub static Ipv6Route: u8      =  43; // Routing Header for IPv6
+    pub static Ipv6Frag: u8       =  44; // Fragment Header for IPv6
+    pub static Idrp: u8           =  45; // Inter-Domain Routing Protocol
+    pub static Rsvp: u8           =  46; // Reservation Protocol [RFC2205][RFC3209]
+    pub static Gre: u8            =  47; // Generic Routing Encapsulation [RFC1701]
+    pub static Dsr: u8            =  48; // Dynamic Source Routing Protocol [RFC4728]
+    pub static Bna: u8            =  49; // BNA
+    pub static Esp: u8            =  50; // Encap Security Payload [RFC4303]
+    pub static Ah: u8             =  51; // Authentication Header [RFC4302]
+    pub static INlsp: u8          =  52; // Integrated Net Layer Security TUBA
+    pub static Swipe: u8          =  53; // IP with Encryption
+    pub static Narp: u8           =  54; // NBMA Address Resolution Protocol [RFC1735]
+    pub static Mobile: u8         =  55; // IP Mobility
+    pub static Tlsp: u8           =  56; // Transport Layer Security Protocol using Kryptonet key
+                                          // management
+    pub static Skip: u8           =  57; // SKIP
+    pub static Ipv6Icmp: u8       =  58; // ICMP for IPv6 [RFC2460]
+    pub static Ipv6NoNxt: u8      =  59; // No Next Header for IPv6 [RFC2460]
+    pub static Ipv6Opts: u8       =  60; // Destination Options for IPv6 [RFC2460]
+    pub static HostInternal: u8   =  61; // any host internal protocol
+    pub static Cftp: u8           =  62; // CFTP
+    pub static LocalNetwork: u8   =  63; // any local network
+    pub static SatExpak: u8       =  64; // SATNET and Backroom EXPAK
+    pub static Kryptolan: u8      =  65; // Kryptolan
+    pub static Rvd: u8            =  66; // MIT Remote Virtual Disk Protocol
+    pub static Ippc: u8           =  67; // Internet Pluribus Packet Core
+    pub static DistributedFs: u8  =  68; // any distributed file system
+    pub static SatMon: u8         =  69; // SATNET Monitoring
+    pub static Visa: u8           =  70; // VISA Protocol
+    pub static Ipcv: u8           =  71; // Internet Packet Core Utility
+    pub static Cpnx: u8           =  72; // Computer Protocol Network Executive
+    pub static Cphb: u8           =  73; // Computer Protocol Heart Beat
+    pub static Wsn: u8            =  74; // Wang Span Network
+    pub static Pvp: u8            =  75; // Packet Video Protocol
+    pub static BrSatMon: u8       =  76; // Backroom SATNET Monitoring
+    pub static SunNd: u8          =  77; // SUN ND PROTOCOL-Temporary
+    pub static WbMon: u8          =  78; // WIDEBAND Monitoring
+    pub static WbExpak: u8        =  79; // WIDEBAND EXPAK
+    pub static IsoIp: u8          =  80; // ISO Internet Protocol
+    pub static Vmtp: u8           =  81; // VMTP
+    pub static SecureVmtp: u8     =  82; // SECURE-VMTP
+    pub static Vines: u8          =  83; // VINES
+    pub static TtpOrIptm: u8      =  84; // Transaction Transport Protocol/IP Traffic Manager
+    pub static NsfnetIgp: u8      =  85; // NSFNET-IGP
+    pub static Dgp: u8            =  86; // Dissimilar Gateway Protocol
+    pub static Tcf: u8            =  87; // TCF
+    pub static Eigrp: u8          =  88; // EIGRP
+    pub static OspfigP: u8        =  89; // OSPFIGP [RFC1583][RFC2328][RFC5340]
+    pub static SpriteRpc: u8      =  90; // Sprite RPC Protocol
+    pub static Larp: u8           =  91; // Locus Address Resolution Protocol
+    pub static Mtp: u8            =  92; // Multicast Transport Protocol
+    pub static Ax25: u8           =  93; // AX.25 Frames
+    pub static IpIp: u8           =  94; // IP-within-IP Encapsulation Protocol
+    pub static Micp: u8           =  95; // Mobile Internetworking Control Pro.
+    pub static SccSp: u8          =  96; // Semaphore Communications Sec. Pro.
+    pub static Etherip: u8        =  97; // Ethernet-within-IP Encapsulation [RFC3378]
+    pub static Encap: u8          =  98; // Encapsulation Header [RFC1241]
+    pub static PrivEncryption: u8 =  99; // any private encryption scheme
+    pub static Gmtp: u8           = 100; // GMTP
+    pub static Ifmp: u8           = 101; // Ipsilon Flow Management Protocol
+    pub static Pnni: u8           = 102; // PNNI over IP
+    pub static Pim: u8            = 103; // Protocol Independent Multicast [RFC4601]
+    pub static Aris: u8           = 104; // ARIS
+    pub static Scps: u8           = 105; // SCPS
+    pub static Qnx: u8            = 106; // QNX
+    pub static AN: u8             = 107; // Active Networks
+    pub static IpComp: u8         = 108; // IP Payload Compression Protocol [RFC2393]
+    pub static Snp: u8            = 109; // Sitara Networks Protocol
+    pub static CompaqPeer: u8     = 110; // Compaq Peer Protocol
+    pub static IpxInIp: u8        = 111; // IPX in IP
+    pub static Vrrp: u8           = 112; // Virtual Router Redundancy Protocol [RFC5798]
+    pub static Pgm: u8            = 113; // PGM Reliable Transport Protocol
+    pub static ZeroHop: u8        = 114; // any 0-hop protocol
+    pub static L2tp: u8           = 115; // Layer Two Tunneling Protocol [RFC3931]
+    pub static Ddx: u8            = 116; // D-II Data Exchange (DDX)
+    pub static Iatp: u8           = 117; // Interactive Agent Transfer Protocol
+    pub static Stp: u8            = 118; // Schedule Transfer Protocol
+    pub static Srp: u8            = 119; // SpectraLink Radio Protocol
+    pub static Uti: u8            = 120; // UTI
+    pub static Smp: u8            = 121; // Simple Message Protocol
+    pub static Sm: u8             = 122; // Simple Multicast Protocol
+    pub static Ptp: u8            = 123; // Performance Transparency Protocol
+    pub static IsisOverIpv4: u8   = 124; //
+    pub static Fire: u8           = 125; //
+    pub static Crtp: u8           = 126; // Combat Radio Transport Protocol
+    pub static Crudp: u8          = 127; // Combat Radio User Datagram
+    pub static Sscopmce: u8       = 128; //
+    pub static Iplt: u8           = 129; //
+    pub static Sps: u8            = 130; // Secure Packet Shield
+    pub static Pipe: u8           = 131; // Private IP Encapsulation within IP
+    pub static Sctp: u8           = 132; // Stream Control Transmission Protocol
+    pub static Fc: u8             = 133; // Fibre Channel [RFC6172]
+    pub static RsvpE2eIgnore: u8  = 134; // [RFC3175]
+    pub static MobilityHeader: u8 = 135; // [RFC6275]
+    pub static UdpLite: u8        = 136; // [RFC3828]
+    pub static MplsInIp: u8       = 137; // [RFC4023]
+    pub static Manet: u8          = 138; // MANET Protocols [RFC5498]
+    pub static Hip: u8            = 139; // Host Identity Protocol [RFC5201]
+    pub static Shim6: u8          = 140; // Shim6 Protocol [RFC5533]
+    pub static Wesp: u8           = 141; // Wrapped Encapsulating Security Payload [RFC5840]
+    pub static Rohc: u8           = 142; // Robust Header Compression [RFC5858]
+    pub static Test1: u8          = 253; // Use for experimentation and testing [RFC3692]
+    pub static Test2: u8          = 254; // Use for experimentation and testing [RFC3692]
+    pub static Reserved: u8       = 255; //
 }
 
-pub type IpNextHeaderProtocol = self::IpNextHeaderProtocol::IpNextHeaderProtocol;
+pub type IpNextHeaderProtocol = u8;
 
 #[cfg(test)]
 pub mod test {
