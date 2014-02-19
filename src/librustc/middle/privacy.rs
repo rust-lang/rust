@@ -41,6 +41,11 @@ pub type ExportedItems = HashSet<ast::NodeId>;
 /// reexporting a public struct doesn't inline the doc).
 pub type PublicItems = HashSet<ast::NodeId>;
 
+/// Result of a checking operation - None => no errors were found. Some => an
+/// error and contains the span and message for reporting that error and
+/// optionally the same for a note about the error.
+type CheckResult = Option<(Span, ~str, Option<(Span, ~str)>)>;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// The parent visitor, used to determine what's the parent of what (node-wise)
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,40 +515,50 @@ impl<'a> PrivacyVisitor<'a> {
         }
     }
 
-    /// Guarantee that a particular definition is public, possibly emitting an
-    /// error message if it's not.
-    fn ensure_public(&self, span: Span, to_check: ast::DefId,
-                     source_did: Option<ast::DefId>, msg: &str) -> bool {
-        match self.def_privacy(to_check) {
-            ExternallyDenied => {
-                self.tcx.sess.span_err(span, format!("{} is private", msg))
-            }
-            DisallowedBy(id) => {
-                if id == source_did.unwrap_or(to_check).node {
-                    self.tcx.sess.span_err(span, format!("{} is private", msg));
-                    return false;
-                } else {
-                    self.tcx.sess.span_err(span, format!("{} is inaccessible",
-                                                         msg));
+    fn report_error(&self, result: CheckResult) -> bool {
+        match result {
+            None => true,
+            Some((span, msg, note)) => {
+                self.tcx.sess.span_err(span, msg);
+                match note {
+                    Some((span, msg)) => self.tcx.sess.span_note(span, msg),
+                    None => {},
                 }
+                false
+            },
+        }
+    }
+
+    /// Guarantee that a particular definition is public. Returns a CheckResult
+    /// which contains any errors found. These can be reported using `report_error`.
+    /// If the result is `None`, no errors were found.
+    fn ensure_public(&self, span: Span, to_check: ast::DefId,
+                     source_did: Option<ast::DefId>, msg: &str) -> CheckResult {
+        match self.def_privacy(to_check) {
+            ExternallyDenied => Some((span, format!("{} is private", msg), None)),
+            DisallowedBy(id) => {
+                let (err_span, err_msg) = if id == source_did.unwrap_or(to_check).node {
+                    return Some((span, format!("{} is private", msg), None));
+                } else {
+                    (span, format!("{} is inaccessible", msg))
+                };
                 match self.tcx.map.find(id) {
                     Some(ast_map::NodeItem(item)) => {
                         let desc = match item.node {
                             ast::ItemMod(..) => "module",
                             ast::ItemTrait(..) => "trait",
-                            _ => return false,
+                            _ => return Some((err_span, err_msg, None)),
                         };
                         let msg = format!("{} `{}` is private",
                                           desc,
                                           token::get_ident(item.ident));
-                        self.tcx.sess.span_note(span, msg);
-                    }
-                    Some(..) | None => {}
+                        Some((err_span, err_msg, Some((span, msg))))
+                    },
+                    _ => Some((err_span, err_msg, None)),
                 }
-            }
-            Allowable => return true
+            },
+            Allowable => None,
         }
-        return false;
     }
 
     // Checks that a field is in scope.
@@ -613,34 +628,99 @@ impl<'a> PrivacyVisitor<'a> {
         let method_id = ty::method(self.tcx, method_id).provided_source
                                                        .unwrap_or(method_id);
 
-        self.ensure_public(span,
-                           method_id,
-                           None,
-                           format!("method `{}`", token::get_ident(name)));
+        let string = token::get_ident(name);
+        self.report_error(self.ensure_public(span,
+                                             method_id,
+                                             None,
+                                             format!("method `{}`", string)));
     }
 
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
         let def_map = self.tcx.def_map.borrow();
-        let def = def_map.get().get_copy(&path_id);
+        let orig_def = def_map.get().get_copy(&path_id);
         let ck = |tyname: &str| {
-            let origdid = def_id_of_def(def);
+            let ck_public = |def: ast::DefId| {
+                let name = token::get_ident(path.segments
+                                                .last()
+                                                .unwrap()
+                                                .identifier);
+                let origdid = def_id_of_def(orig_def);
+                self.ensure_public(span,
+                                   def,
+                                   Some(origdid),
+                                   format!("{} `{}`",
+                                           tyname,
+                                           name))
+            };
+
             match *self.last_private_map.get(&path_id) {
-                resolve::AllPublic => {},
-                resolve::DependsOn(def) => {
-                    let name = token::get_ident(path.segments
-                                                    .last()
-                                                    .unwrap()
-                                                    .identifier);
-                    self.ensure_public(span,
-                                       def,
-                                       Some(origdid),
-                                       format!("{} `{}`",
-                                               tyname, name));
-                }
+                resolve::LastMod(resolve::AllPublic) => {},
+                resolve::LastMod(resolve::DependsOn(def)) => {
+                    self.report_error(ck_public(def));
+                },
+                resolve::LastImport{value_priv: value_priv,
+                                    value_used: check_value,
+                                    type_priv: type_priv,
+                                    type_used: check_type} => {
+                    // This dance with found_error is because we don't want to report
+                    // a privacy error twice for the same directive.
+                    let found_error = match (type_priv, check_type) {
+                        (Some(resolve::DependsOn(def)), resolve::Used) => {
+                            !self.report_error(ck_public(def))
+                        },
+                        _ => false,
+                    };
+                    if !found_error {
+                        match (value_priv, check_value) {
+                            (Some(resolve::DependsOn(def)), resolve::Used) => {
+                                self.report_error(ck_public(def));
+                            },
+                            _ => {},
+                        }
+                    }
+                    // If an import is not used in either namespace, we still want to check
+                    // that it could be legal. Therefore we check in both namespaces and only
+                    // report an error if both would be illegal. We only report one error,
+                    // even if it is illegal to import from both namespaces.
+                    match (value_priv, check_value, type_priv, check_type) {
+                        (Some(p), resolve::Unused, None, _) |
+                        (None, _, Some(p), resolve::Unused) => {
+                            let p = match p {
+                                resolve::AllPublic => None,
+                                resolve::DependsOn(def) => ck_public(def),
+                            };
+                            if p.is_some() {
+                                self.report_error(p);
+                            }
+                        },
+                        (Some(v), resolve::Unused, Some(t), resolve::Unused) => {
+                            let v = match v {
+                                resolve::AllPublic => None,
+                                resolve::DependsOn(def) => ck_public(def),
+                            };
+                            let t = match t {
+                                resolve::AllPublic => None,
+                                resolve::DependsOn(def) => ck_public(def),
+                            };
+                            match (v, t) {
+                                (Some(_), Some(t)) => {
+                                    self.report_error(Some(t));
+                                },
+                                _ => {},
+                            }
+                        },
+                        _ => {},
+                    }
+                },
             }
         };
+        // FIXME(#12334) Imports can refer to definitions in both the type and
+        // value namespaces. The privacy information is aware of this, but the
+        // def map is not. Therefore the names we work out below will not always
+        // be accurate and we can get slightly wonky error messages (but type
+        // checking is always correct).
         let def_map = self.tcx.def_map.borrow();
         match def_map.get().get_copy(&path_id) {
             ast::DefStaticMethod(..) => ck("static method"),
@@ -668,7 +748,7 @@ impl<'a> PrivacyVisitor<'a> {
             // is whether the trait itself is accessible or not.
             method_param(method_param { trait_id: trait_id, .. }) |
             method_object(method_object { trait_id: trait_id, .. }) => {
-                self.ensure_public(span, trait_id, None, "source trait");
+                self.report_error(self.ensure_public(span, trait_id, None, "source trait"));
             }
         }
     }
