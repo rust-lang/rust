@@ -693,10 +693,6 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
         });
       }
 
-      ast::ExprParen(e) => {
-          early_resolve_expr(e, fcx, is_early);
-      }
-
       // Must resolve bounds on methods with bounded params
       ast::ExprBinary(callee_id, _, _, _) |
       ast::ExprUnary(callee_id, _, _) |
