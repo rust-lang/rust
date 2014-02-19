@@ -55,6 +55,17 @@ pub struct Url {
     fragment: Option<~str>
 }
 
+#[deriving(Clone, Eq)]
+pub struct Path {
+    /// The path component of a URL, for example `/foo/bar`.
+    path: ~str,
+    /// The query component of a URL.  `~[(~"baz", ~"qux")]` represents the
+    /// fragment `baz=qux` in the above example.
+    query: Query,
+    /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
+    fragment: Option<~str>
+}
+
 /// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq)]
 pub struct UserInfo {
@@ -81,6 +92,19 @@ impl Url {
             user: user,
             host: host,
             port: port,
+            path: path,
+            query: query,
+            fragment: fragment,
+        }
+    }
+}
+
+impl Path {
+    pub fn new(path: ~str,
+               query: Query,
+               fragment: Option<~str>)
+               -> Path {
+        Path {
             path: path,
             query: query,
             fragment: fragment,
@@ -727,10 +751,34 @@ pub fn from_str(rawurl: &str) -> Result<Url, ~str> {
     Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
 }
 
+pub fn path_from_str(rawpath: &str) -> Result<Path, ~str> {
+    let (path, rest) = match get_path(rawpath, false) {
+        Ok(val) => val,
+        Err(e) => return Err(e)
+    };
+
+    // query and fragment
+    let (query, fragment) = match get_query_fragment(rest) {
+        Ok(val) => val,
+        Err(e) => return Err(e),
+    };
+
+    Ok(Path{ path: path, query: query, fragment: fragment })
+}
+
 impl FromStr for Url {
     fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
             Ok(url) => Some(url),
+            Err(_) => None
+        }
+    }
+}
+
+impl FromStr for Path {
+    fn from_str(s: &str) -> Option<Path> {
+        match path_from_str(s) {
+            Ok(path) => Some(path),
             Err(_) => None
         }
     }
@@ -780,13 +828,40 @@ pub fn to_str(url: &Url) -> ~str {
     format!("{}:{}{}{}{}", url.scheme, authority, url.path, query, fragment)
 }
 
+pub fn path_to_str(path: &Path) -> ~str {
+    let query = if path.query.is_empty() {
+        ~""
+    } else {
+        format!("?{}", query_to_str(&path.query))
+    };
+
+    let fragment = match path.fragment {
+        Some(ref fragment) => format!("\\#{}", encode_component(*fragment)),
+        None => ~"",
+    };
+
+    format!("{}{}{}", path.path, query, fragment)
+}
+
 impl ToStr for Url {
     fn to_str(&self) -> ~str {
         to_str(self)
     }
 }
 
+impl ToStr for Path {
+    fn to_str(&self) -> ~str {
+        path_to_str(self)
+    }
+}
+
 impl IterBytes for Url {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        self.to_str().iter_bytes(lsb0, f)
+    }
+}
+
+impl IterBytes for Path {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_str().iter_bytes(lsb0, f)
     }
@@ -900,11 +975,29 @@ mod tests {
     }
 
     #[test]
+    fn test_path_parse() {
+        let path = ~"/doc/~u?s=v#something";
+
+        let up = path_from_str(path);
+        let u = up.unwrap();
+        assert_eq!(&u.path, &~"/doc/~u");
+        assert_eq!(&u.query, &~[(~"s", ~"v")]);
+        assert_eq!(&u.fragment, &Some(~"something"));
+    }
+
+    #[test]
     fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).unwrap();
         assert!(url.host == ~"0.42.42.42");
         assert!(url.path == ~"/");
+    }
+
+    #[test]
+    fn test_path_parse_host_slash() {
+        let pathstr = ~"/";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/");
     }
 
     #[test]
@@ -931,10 +1024,24 @@ mod tests {
     }
 
     #[test]
+    fn test_path_with_underscores() {
+        let pathstr = ~"/file_name.html";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/file_name.html");
+    }
+
+    #[test]
     fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).unwrap();
         assert!(url.path == ~"/file-name.html");
+    }
+
+    #[test]
+    fn test_path_with_dashes() {
+        let pathstr = ~"/file-name.html";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/file-name.html");
     }
 
     #[test]
@@ -1015,6 +1122,14 @@ mod tests {
         let u = from_str(url).unwrap();
         assert!(u.path == ~"/doc uments");
         assert!(u.query == ~[(~"ba%d ", ~"#&+")]);
+    }
+
+    #[test]
+    fn test_path_component_encoding() {
+        let path = ~"/doc%20uments?ba%25d%20=%23%26%2B";
+        let p = path_from_str(path).unwrap();
+        assert!(p.path == ~"/doc uments");
+        assert!(p.query == ~[(~"ba%d ", ~"#&+")]);
     }
 
     #[test]
