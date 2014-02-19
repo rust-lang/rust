@@ -555,7 +555,7 @@ impl<T: Writer> ConsoleTestState<T> {
                 }
             }
         }
-        if_ok!(self.write_plain(format!("result of ratchet: {} matrics added, \
+        if_ok!(self.write_plain(format!("result of ratchet: {} metrics added, \
                                         {} removed, {} improved, {} regressed, \
                                         {} noise\n",
                                        added, removed, improved, regressed,
