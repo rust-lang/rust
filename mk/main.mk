@@ -446,13 +446,13 @@ all: $(ALL_TARGET_RULES) $(GENERATED) docs
 # $(1) is the name of the doc <section> in Makefile.in
 # pick everything between tags | remove first line | remove last line
 # | remove extra (?) line | strip leading `#` from lines
-SHOW_DOCS = $(Q)awk '/$(1)/,/<\/$(1)>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^\# \?//'
+SHOW_DOCS = $(Q)awk '/<$(1)>/,/<\/$(1)>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^\# \?//'
 
 help:
 	$(call SHOW_DOCS,help)
 
-hot-tips:
-	$(call SHOW_DOCS,hottips)
+tips:
+	$(call SHOW_DOCS,tips)
 
 nitty-gritty:
-	$(call SHOW_DOCS,nittygritty)
+	$(call SHOW_DOCS,nitty-gritty)
