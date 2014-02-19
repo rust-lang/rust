@@ -19,12 +19,16 @@
 #
 # First, start with one of these build targets:
 #
-#   * all - The default. Builds a complete, bootstrapped compiler.
+#   * all - The default. Build a complete, bootstrapped compiler.
 #           `rustc` will be in `${target-triple}/stage2/bin/`. Run it
 #           directly from the build directory if you like. This also
 #           comes with docs in `doc/`.
 #
 #   * check - Run the complete test suite
+#
+#   * clean - Clean the build repertory. It is advised to run this
+#             command if you want to build Rust again, after an update
+#             of the git repository.
 #
 #   * install - Install Rust. Note that installation is not necessary
 #               to use the compiler.
@@ -103,7 +107,7 @@
 #
 # </tips>
 #
-# <nittygritty>
+# <nitty-gritty>
 #
 # # The Rust Build System
 #
@@ -152,12 +156,12 @@
 # libraries are managed and versioned without polluting the common
 # areas of the filesystem.
 #
-# General rust binaries may stil live in the host bin directory; they
+# General rust binaries may still live in the host bin directory; they
 # will just link against the libraries in the target lib directory.
 #
 # Admittedly this is a little convoluted.
 #
-# </nittygritty>
+# </nitty-gritty>
 #
 
 ######################################################################
