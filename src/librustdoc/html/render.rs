@@ -157,6 +157,7 @@ pub struct Cache {
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
     priv privmod: bool,
+    priv public_items: HashSet<ast::NodeId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -231,18 +232,23 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }
 
     // Crawl the crate to build various caches used for the output
-    let mut cache = Cache {
-        impls: HashMap::new(),
-        typarams: HashMap::new(),
-        paths: HashMap::new(),
-        traits: HashMap::new(),
-        implementors: HashMap::new(),
-        stack: ~[],
-        parent_stack: ~[],
-        search_index: ~[],
-        extern_locations: HashMap::new(),
-        privmod: false,
-    };
+    let mut cache = local_data::get(::analysiskey, |analysis| {
+        let public_items = analysis.map(|a| a.public_items.clone());
+        let public_items = public_items.unwrap_or(HashSet::new());
+        Cache {
+            impls: HashMap::new(),
+            typarams: HashMap::new(),
+            paths: HashMap::new(),
+            traits: HashMap::new(),
+            implementors: HashMap::new(),
+            stack: ~[],
+            parent_stack: ~[],
+            search_index: ~[],
+            extern_locations: HashMap::new(),
+            privmod: false,
+            public_items: public_items,
+        }
+    });
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
 
@@ -305,7 +311,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         krate = folder.fold_crate(krate);
     }
 
-    for (&n, e) in krate.externs.iter() {
+    for &(n, ref e) in krate.externs.iter() {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
     }
 
@@ -565,8 +571,24 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) | clean::VariantItem(..) => {
-                self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
+            clean::ForeignFunctionItem(..) => {
+                // Reexported items mean that the same id can show up twice in
+                // the rustdoc ast that we're looking at. We know, however, that
+                // a reexported item doesn't show up in the `public_items` map,
+                // so we can skip inserting into the paths map if there was
+                // already an entry present and we're not a public item.
+                if !self.paths.contains_key(&item.id) ||
+                   self.public_items.contains(&item.id) {
+                    self.paths.insert(item.id,
+                                      (self.stack.clone(), shortty(&item)));
+                }
+            }
+            // link variants to their parent enum because pages aren't emitted
+            // for each variant
+            clean::VariantItem(..) => {
+                let mut stack = self.stack.clone();
+                stack.pop();
+                self.paths.insert(item.id, (stack, "enum"));
             }
             _ => {}
         }
@@ -791,6 +813,7 @@ fn shortty(item: &clean::Item) -> &'static str {
         clean::VariantItem(..)         => "variant",
         clean::ForeignFunctionItem(..) => "ffi",
         clean::ForeignStaticItem(..)   => "ffs",
+        clean::MacroItem(..)           => "macro",
     }
 }
 
@@ -869,6 +892,7 @@ impl<'a> fmt::Show for Item<'a> {
             clean::StructItem(ref s) => item_struct(fmt.buf, self.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, self.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, self.item, t),
+            clean::MacroItem(ref m) => item_macro(fmt.buf, self.item, m),
             _ => Ok(())
         }
     }
@@ -937,6 +961,8 @@ fn item_module(w: &mut Writer, cx: &Context,
             (_, &clean::ViewItemItem(..)) => Greater,
             (&clean::ModuleItem(..), _) => Less,
             (_, &clean::ModuleItem(..)) => Greater,
+            (&clean::MacroItem(..), _) => Less,
+            (_, &clean::MacroItem(..)) => Greater,
             (&clean::StructItem(..), _) => Less,
             (_, &clean::StructItem(..)) => Greater,
             (&clean::EnumItem(..), _) => Less,
@@ -987,6 +1013,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 clean::VariantItem(..)         => "Variants",
                 clean::ForeignFunctionItem(..) => "Foreign Functions",
                 clean::ForeignStaticItem(..)   => "Foreign Statics",
+                clean::MacroItem(..)           => "Macros",
             }));
         }
 
@@ -1099,7 +1126,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         if_ok!(write!(w, "\\{\n"));
         for m in required.iter() {
             if_ok!(write!(w, "    "));
-            if_ok!(render_method(w, m.item(), true));
+            if_ok!(render_method(w, m.item()));
             if_ok!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
@@ -1107,7 +1134,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         }
         for m in provided.iter() {
             if_ok!(write!(w, "    "));
-            if_ok!(render_method(w, m.item(), true));
+            if_ok!(render_method(w, m.item()));
             if_ok!(write!(w, " \\{ ... \\}\n"));
         }
         if_ok!(write!(w, "\\}"));
@@ -1121,7 +1148,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         if_ok!(write!(w, "<h3 id='{}.{}' class='method'><code>",
                       shortty(m.item()),
                       *m.item().name.get_ref()));
-        if_ok!(render_method(w, m.item(), false));
+        if_ok!(render_method(w, m.item()));
         if_ok!(write!(w, "</code></h3>"));
         if_ok!(document(w, m.item()));
         Ok(())
@@ -1176,16 +1203,12 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     })
 }
 
-fn render_method(w: &mut Writer, meth: &clean::Item,
-                 withlink: bool) -> fmt::Result {
+fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
     fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
-           g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
-           withlink: bool) -> fmt::Result {
-        write!(w, "{}fn {withlink, select,
-                            true{<a href='\\#{ty}.{name}'
-                                    class='fnname'>{name}</a>}
-                            other{<span class='fnname'>{name}</span>}
-                        }{generics}{decl}",
+           g: &clean::Generics, selfty: &clean::SelfTy,
+           d: &clean::FnDecl) -> fmt::Result {
+        write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
+                   {generics}{decl}",
                match purity {
                    ast::UnsafeFn => "unsafe ",
                    _ => "",
@@ -1193,15 +1216,14 @@ fn render_method(w: &mut Writer, meth: &clean::Item,
                ty = shortty(it),
                name = it.name.get_ref().as_slice(),
                generics = *g,
-               decl = Method(selfty, d),
-               withlink = if withlink {"true"} else {"false"})
+               decl = Method(selfty, d))
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl, withlink)
+            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl, withlink)
+            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
         }
         _ => unreachable!()
     }
@@ -1432,7 +1454,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
     fn docmeth(w: &mut Writer, item: &clean::Item) -> io::IoResult<bool> {
         if_ok!(write!(w, "<h4 id='method.{}' class='method'><code>",
                       *item.name.get_ref()));
-        if_ok!(render_method(w, item, false));
+        if_ok!(render_method(w, item));
         if_ok!(write!(w, "</code></h4>\n"));
         match item.doc_value() {
             Some(s) => {
@@ -1608,4 +1630,10 @@ impl<'a> fmt::Show for Source<'a> {
         if_ok!(write!(fmt.buf, "</pre>"));
         Ok(())
     }
+}
+
+fn item_macro(w: &mut Writer, it: &clean::Item,
+              t: &clean::Macro) -> fmt::Result {
+    if_ok!(write!(w, "<pre class='macro'>{}</pre>", t.source));
+    document(w, it)
 }

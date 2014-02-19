@@ -7,8 +7,29 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+//! Standard library macros
+//!
+//! This modules contains a set of macros which are exported from the standard
+//! library. Each macro is available for use when linking against the standard
+//! library.
+
 #[macro_escape];
 
+/// The standard logging macro
+///
+/// This macro will generically log over a provided level (of type u32) with a
+/// format!-based argument list. See documentation in `std::fmt` for details on
+/// how to use the syntax, and documentation in `std::logging` for info about
+/// logging macros.
+///
+/// # Example
+///
+/// ```
+/// log!(::std::logging::DEBUG, "this is a debug message");
+/// log!(::std::logging::WARN, "this is a warning {}", "message");
+/// log!(6, "this is a custom logging level: {level}", level=6);
+/// ```
 #[macro_export]
 macro_rules! log(
     ($lvl:expr, $($arg:tt)+) => ({
@@ -21,26 +42,73 @@ macro_rules! log(
     })
 )
 
+/// A convenience macro for logging at the error log level. See `std::logging`
+/// for more information. about logging.
+///
+/// # Example
+///
+/// ```
+/// # let error = 3;
+/// error!("the build has failed with error code: {}", error);
+/// ```
 #[macro_export]
 macro_rules! error(
     ($($arg:tt)*) => (log!(1u32, $($arg)*))
 )
 
+/// A convenience macro for logging at the warning log level. See `std::logging`
+/// for more information. about logging.
+///
+/// # Example
+///
+/// ```
+/// # let code = 3;
+/// warn!("you may like to know that a process exited with: {}", code);
+/// ```
 #[macro_export]
 macro_rules! warn(
     ($($arg:tt)*) => (log!(2u32, $($arg)*))
 )
 
+/// A convenience macro for logging at the info log level. See `std::logging`
+/// for more information. about logging.
+///
+/// # Example
+///
+/// ```
+/// # let ret = 3;
+/// info!("this function is about to return: {}", ret);
+/// ```
 #[macro_export]
 macro_rules! info(
     ($($arg:tt)*) => (log!(3u32, $($arg)*))
 )
 
+/// A convenience macro for logging at the debug log level. See `std::logging`
+/// for more information. about logging.
+///
+/// # Example
+///
+/// ```
+/// debug!("x = {x}, y = {y}", x=10, y=20);
+/// ```
 #[macro_export]
 macro_rules! debug(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { log!(4u32, $($arg)*) })
 )
 
+/// A macro to test whether a log level is enabled for the current module.
+///
+/// # Example
+///
+/// ```
+/// # struct Point { x: int, y: int }
+/// # fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }
+/// if log_enabled!(std::logging::DEBUG) {
+///     let x = some_expensive_computation();
+///     debug!("x.x = {}, x.y = {}", x.x, x.y);
+/// }
+/// ```
 #[macro_export]
 macro_rules! log_enabled(
     ($lvl:expr) => ({
@@ -49,6 +117,25 @@ macro_rules! log_enabled(
     })
 )
 
+/// The entry point for failure of rust tasks.
+///
+/// This macro is used to inject failure into a rust task, causing the task to
+/// unwind and fail entirely. Each task's failure can be reaped as the `~Any`
+/// type, and the single-argument form of the `fail!` macro will be the value
+/// which is transmitted.
+///
+/// The multi-argument form of this macro fails with a string and has the
+/// `format!` sytnax for building a string.
+///
+/// # Example
+///
+/// ```should_fail
+/// # #[allow(unreachable_code)];
+/// fail!();
+/// fail!("this is a terrible mistake!");
+/// fail!(4); // fail with the value of 4 to be collected elsewhere
+/// fail!("this is a {} {message}", "fancy", message = "message");
+/// ```
 #[macro_export]
 macro_rules! fail(
     () => (
@@ -70,6 +157,26 @@ macro_rules! fail(
     });
 )
 
+/// Ensure that a boolean expression is `true` at runtime.
+///
+/// This will invoke the `fail!` macro if the provided expression cannot be
+/// evaluated to `true` at runtime.
+///
+/// # Example
+///
+/// ```
+/// // the failure message for these assertions is the stringified value of the
+/// // expression given.
+/// assert!(true);
+/// # fn some_computation() -> bool { true }
+/// assert!(some_computation());
+///
+/// // assert with a custom message
+/// # let x = true;
+/// assert!(x, "x wasn't true!");
+/// # let a = 3; let b = 27;
+/// assert!(a + b == 30, "a = {}, b = {}", a, b);
+/// ```
 #[macro_export]
 macro_rules! assert(
     ($cond:expr) => (
@@ -89,6 +196,18 @@ macro_rules! assert(
     );
 )
 
+/// Asserts that two expressions are equal to each other, testing equality in
+/// both directions.
+///
+/// On failure, this macro will print the values of the expressions.
+///
+/// # Example
+///
+/// ```
+/// let a = 3;
+/// let b = 1 + 2;
+/// assert_eq!(a, b);
+/// ```
 #[macro_export]
 macro_rules! assert_eq(
     ($given:expr , $expected:expr) => ({
@@ -110,13 +229,15 @@ macro_rules! assert_eq(
 /// # Example
 ///
 /// ~~~rust
+/// struct Item { weight: uint }
+///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
 ///     assert!(!v.is_empty());
 ///     let mut so_far = 0u;
 ///     for item in v.iter() {
 ///         so_far += item.weight;
 ///         if so_far > 100 {
-///             return item;
+///             return *item;
 ///         }
 ///     }
 ///     // The above loop always returns, so we must hint to the
@@ -136,6 +257,16 @@ macro_rules! unimplemented(
     () => (fail!("not yet implemented"))
 )
 
+/// Use the syntax described in `std::fmt` to create a value of type `~str`.
+/// See `std::fmt` for more information.
+///
+/// # Example
+///
+/// ```
+/// format!("test");
+/// format!("hello {}", "world!");
+/// format!("x = {}, y = {y}", 10, y = 30);
+/// ```
 #[macro_export]
 macro_rules! format(
     ($($arg:tt)*) => (
@@ -143,6 +274,19 @@ macro_rules! format(
     )
 )
 
+/// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
+/// See `std::fmt` for more information.
+///
+/// # Example
+///
+/// ```
+/// # #[allow(unused_must_use)];
+/// use std::io::MemWriter;
+///
+/// let mut w = MemWriter::new();
+/// write!(&mut w, "test");
+/// write!(&mut w, "formatted {}", "arguments");
+/// ```
 #[macro_export]
 macro_rules! write(
     ($dst:expr, $($arg:tt)*) => ({
@@ -151,6 +295,8 @@ macro_rules! write(
     })
 )
 
+/// Equivalent to the `write!` macro, except that a newline is appended after
+/// the message is written.
 #[macro_export]
 macro_rules! writeln(
     ($dst:expr, $($arg:tt)*) => ({
@@ -159,16 +305,42 @@ macro_rules! writeln(
     })
 )
 
+/// Equivalent to the `println!` macro except that a newline is not printed at
+/// the end of the message.
 #[macro_export]
 macro_rules! print(
     ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
 )
 
+/// Macro for printing to a task's stdout handle.
+///
+/// Each task can override its stdout handle via `std::io::stdio::set_stdout`.
+/// The syntax of this macro is the same as that used for `format!`. For more
+/// information, see `std::fmt` and `std::io::stdio`.
+///
+/// # Example
+///
+/// ```
+/// println!("hello there!");
+/// println!("format {} arguments", "some");
+/// ```
 #[macro_export]
 macro_rules! println(
     ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
 )
 
+/// Declare a task-local key with a specific type.
+///
+/// # Example
+///
+/// ```
+/// use std::local_data;
+///
+/// local_data_key!(my_integer: int)
+///
+/// local_data::set(my_integer, 2);
+/// local_data::get(my_integer, |val| println!("{}", val.map(|i| *i)));
+/// ```
 #[macro_export]
 macro_rules! local_data_key(
     ($name:ident: $ty:ty) => (
@@ -179,6 +351,9 @@ macro_rules! local_data_key(
     );
 )
 
+/// Helper macro for unwrapping `Result` values while returning early with an
+/// error if the value of the expression is `Err`. For more information, see
+/// `std::io`.
 #[macro_export]
 macro_rules! if_ok(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
