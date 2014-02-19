@@ -64,7 +64,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                                    "inline assembly must be a string literal.") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
-                    None => return MacResult::dummy_expr(),
+                    None => return MacResult::dummy_expr(sp),
                 };
                 asm = s;
                 asm_str_style = Some(style);
