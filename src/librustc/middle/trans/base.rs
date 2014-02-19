@@ -65,6 +65,7 @@ use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::trans::value::Value;
 use middle::ty;
+use middle::typeck;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
@@ -535,22 +536,14 @@ pub fn get_res_dtor(ccx: @CrateContext,
     };
     if !substs.is_empty() {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
-        let tsubsts = ty::substs {regions: ty::ErasedRegions,
-                                  self_ty: None,
-                                  tps: /*bad*/ substs.to_owned() };
+        let tsubsts = ty::substs {
+            regions: ty::ErasedRegions,
+            self_ty: None,
+            tps: substs.to_owned()
+        };
 
-        // FIXME: #4252: Generic destructors with type bounds are broken.
-        //
-        // Since the vtables aren't passed to `monomorphic_fn` here, generic destructors with type
-        // bounds are broken. Sadly, the `typeck` pass isn't outputting the necessary metadata
-        // because it does so based on method calls present in the AST. Destructor calls are not yet
-        // known about at that stage of compilation, since `trans` handles cleanups.
-        let (val, _) = monomorphize::monomorphic_fn(ccx,
-                                                    did,
-                                                    &tsubsts,
-                                                    None,
-                                                    None,
-                                                    None);
+        let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx, did.node, &tsubsts);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, &tsubsts, vtables, None, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {

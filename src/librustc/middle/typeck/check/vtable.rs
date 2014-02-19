@@ -812,6 +812,28 @@ pub fn resolve_impl(tcx: ty::ctxt,
     impl_vtables.get().insert(impl_def_id, res);
 }
 
+/// Resolve vtables for a method call after typeck has finished.
+/// Used by trans to monomorphize artificial method callees (e.g. drop).
+pub fn trans_resolve_method(tcx: ty::ctxt, id: ast::NodeId,
+                            substs: &ty::substs) -> Option<vtable_res> {
+    let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
+    let type_param_defs = generics.type_param_defs.borrow();
+    if has_trait_bounds(*type_param_defs) {
+        let vcx = VtableContext {
+            infcx: &infer::new_infer_ctxt(tcx),
+            param_env: &ty::construct_parameter_environment(tcx, None, [], [], [], id)
+        };
+        let loc_info = LocationInfo {
+            id: id,
+            span: tcx.map.span(id)
+        };
+
+        Some(lookup_vtables(&vcx, &loc_info, *type_param_defs, substs, false))
+    } else {
+        None
+    }
+}
+
 impl<'a> visit::Visitor<()> for &'a FnCtxt {
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         early_resolve_expr(ex, *self, false);
