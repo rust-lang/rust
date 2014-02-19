@@ -101,6 +101,7 @@ pub trait AnyMacro {
     fn make_stmt(&self) -> @ast::Stmt;
 }
 
+
 pub enum MacResult {
     MRExpr(@ast::Expr),
     MRItem(@ast::Item),
@@ -112,10 +113,15 @@ impl MacResult {
     /// type signatures after emitting a non-fatal error (which stop
     /// compilation well before the validity (or otherwise)) of the
     /// expression are checked.
-    pub fn dummy_expr() -> MacResult {
-        MRExpr(@ast::Expr {
-                id: ast::DUMMY_NODE_ID, node: ast::ExprLogLevel, span: codemap::DUMMY_SP
-            })
+    pub fn raw_dummy_expr(sp: codemap::Span) -> @ast::Expr {
+        @ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ExprLogLevel,
+            span: sp
+        }
+    }
+    pub fn dummy_expr(sp: codemap::Span) -> MacResult {
+        MRExpr(MacResult::raw_dummy_expr(sp))
     }
 }
 
