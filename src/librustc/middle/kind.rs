@@ -285,8 +285,15 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
                 // Even though the callee_id may have been the id with
                 // node_type_substs, e.id is correct here.
-                ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
-                    "non path/method call expr has type substs??")
+                match cx.method_map.borrow().get().find(&e.id) {
+                    Some(origin) => {
+                        ty::method_call_type_param_defs(cx.tcx, *origin)
+                    }
+                    None => {
+                        cx.tcx.sess.span_bug(e.span,
+                            "non path/method call expr has type substs??");
+                    }
+                }
               }
             };
             let type_param_defs = type_param_defs.borrow();

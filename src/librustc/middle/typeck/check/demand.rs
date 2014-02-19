@@ -20,17 +20,17 @@ use syntax::codemap::Span;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
-pub fn suptype(fcx: @FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn suptype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     suptype_with_fn(fcx, sp, false, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn subtype(fcx: @FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn subtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     suptype_with_fn(fcx, sp, true, actual, expected,
         |sp, a, e, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-pub fn suptype_with_fn(fcx: @FnCtxt,
+pub fn suptype_with_fn(fcx: &FnCtxt,
                        sp: Span,
                        b_is_expected: bool,
                        ty_a: ty::t,

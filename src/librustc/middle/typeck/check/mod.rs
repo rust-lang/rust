@@ -590,8 +590,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
                                              ast_trait_ref,
                                              impl_trait_ref,
                                              *ms);
-                vtable::resolve_impl(ccx, it, &impl_tpt.generics,
-                                     impl_trait_ref);
+                vtable::resolve_impl(ccx.tcx, it, &impl_tpt.generics, impl_trait_ref);
             }
             None => { }
         }
@@ -3831,8 +3830,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-pub fn structurally_resolved_type(fcx: @FnCtxt, sp: Span, tp: ty::t)
-                               -> ty::t {
+pub fn structurally_resolved_type(fcx: &FnCtxt, sp: Span, tp: ty::t) -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
         _ => {
