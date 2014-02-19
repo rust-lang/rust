@@ -192,9 +192,9 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) -> io::IoResult<()> {
     }
     fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str,
                                c: term::attr::Attr) -> io::IoResult<()> {
-        if_ok!(term.attr(c));
-        if_ok!(term.write(s.as_bytes()));
-        if_ok!(term.reset());
+        try!(term.attr(c));
+        try!(term.write(s.as_bytes()));
+        try!(term.reset());
         Ok(())
     }
 
@@ -230,12 +230,12 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) -> io::IoResult<()> {
 fn print_diagnostic(topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
     if !topic.is_empty() {
         let mut stderr = io::stderr();
-        if_ok!(write!(&mut stderr as &mut io::Writer, "{} ", topic));
+        try!(write!(&mut stderr as &mut io::Writer, "{} ", topic));
     }
 
-    if_ok!(print_maybe_styled(format!("{}: ", lvl.to_str()),
+    try!(print_maybe_styled(format!("{}: ", lvl.to_str()),
                               term::attr::ForegroundColor(lvl.color())));
-    if_ok!(print_maybe_styled(format!("{}\n", msg), term::attr::Bold));
+    try!(print_maybe_styled(format!("{}\n", msg), term::attr::Bold));
     Ok(())
 }
 
@@ -276,11 +276,11 @@ fn emit(cm: &codemap::CodeMap, sp: Span,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
-        if_ok!(print_diagnostic(ses, lvl, msg));
-        if_ok!(custom_highlight_lines(cm, sp, lvl, lines));
+        try!(print_diagnostic(ses, lvl, msg));
+        try!(custom_highlight_lines(cm, sp, lvl, lines));
     } else {
-        if_ok!(print_diagnostic(ss, lvl, msg));
-        if_ok!(highlight_lines(cm, sp, lvl, lines));
+        try!(print_diagnostic(ss, lvl, msg));
+        try!(highlight_lines(cm, sp, lvl, lines));
     }
     print_macro_backtrace(cm, sp)
 }
@@ -301,13 +301,13 @@ fn highlight_lines(cm: &codemap::CodeMap,
     }
     // Print the offending lines
     for line in display_lines.iter() {
-        if_ok!(write!(err, "{}:{} {}\n", fm.name, *line + 1,
+        try!(write!(err, "{}:{} {}\n", fm.name, *line + 1,
                       fm.get_line(*line as int)));
     }
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
         let s = format!("{}:{} ", fm.name, last_line + 1u);
-        if_ok!(write!(err, "{0:1$}...\n", "", s.len()));
+        try!(write!(err, "{0:1$}...\n", "", s.len()));
     }
 
     // FIXME (#3260)
@@ -339,7 +339,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
                 _ => s.push_char(' '),
             };
         }
-        if_ok!(write!(err, "{}", s));
+        try!(write!(err, "{}", s));
         let mut s = ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
@@ -347,7 +347,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for _ in range(0, num_squigglies) { s.push_char('~'); }
         }
-        if_ok!(print_maybe_styled(s + "\n",
+        try!(print_maybe_styled(s + "\n",
                                   term::attr::ForegroundColor(lvl.color())));
     }
     Ok(())
@@ -369,15 +369,15 @@ fn custom_highlight_lines(cm: &codemap::CodeMap,
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {
-        if_ok!(write!(err, "{}:{} {}\n", fm.name,
+        try!(write!(err, "{}:{} {}\n", fm.name,
                       lines[0] + 1, fm.get_line(lines[0] as int)));
-        if_ok!(write!(err, "...\n"));
+        try!(write!(err, "...\n"));
         let last_line = lines[lines.len()-1];
-        if_ok!(write!(err, "{}:{} {}\n", fm.name,
+        try!(write!(err, "{}:{} {}\n", fm.name,
                       last_line + 1, fm.get_line(last_line as int)));
     } else {
         for line in lines.iter() {
-            if_ok!(write!(err, "{}:{} {}\n", fm.name,
+            try!(write!(err, "{}:{} {}\n", fm.name,
                           *line + 1, fm.get_line(*line as int)));
         }
     }
@@ -398,12 +398,12 @@ fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) -> io::IoResult<()> {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-        if_ok!(print_diagnostic(ss, Note,
+        try!(print_diagnostic(ss, Note,
                                 format!("in expansion of {}{}{}", pre,
                                         ei.callee.name, post)));
         let ss = cm.span_to_str(ei.call_site);
-        if_ok!(print_diagnostic(ss, Note, "expansion site"));
-        if_ok!(print_macro_backtrace(cm, ei.call_site));
+        try!(print_diagnostic(ss, Note, "expansion site"));
+        try!(print_macro_backtrace(cm, ei.call_site));
     }
     Ok(())
 }

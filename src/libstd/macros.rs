@@ -355,6 +355,6 @@ macro_rules! local_data_key(
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
 #[macro_export]
-macro_rules! if_ok(
+macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )

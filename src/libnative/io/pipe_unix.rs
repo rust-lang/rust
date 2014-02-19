@@ -77,8 +77,8 @@ impl Drop for Inner {
 }
 
 fn connect(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
-    let (addr, len) = if_ok!(addr_to_sockaddr_un(addr));
-    let inner = Inner { fd: if_ok!(unix_socket(ty)) };
+    let (addr, len) = try!(addr_to_sockaddr_un(addr));
+    let inner = Inner { fd: try!(unix_socket(ty)) };
     let addrp = &addr as *libc::sockaddr_storage;
     match retry(|| unsafe {
         libc::connect(inner.fd, addrp as *libc::sockaddr,
@@ -90,8 +90,8 @@ fn connect(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
 }
 
 fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
-    let (addr, len) = if_ok!(addr_to_sockaddr_un(addr));
-    let inner = Inner { fd: if_ok!(unix_socket(ty)) };
+    let (addr, len) = try!(addr_to_sockaddr_un(addr));
+    let inner = Inner { fd: try!(unix_socket(ty)) };
     let addrp = &addr as *libc::sockaddr_storage;
     match unsafe {
         libc::bind(inner.fd, addrp as *libc::sockaddr, len as libc::socklen_t)
@@ -198,7 +198,7 @@ impl UnixDatagram {
     }
 
     pub fn sendto(&mut self, buf: &[u8], dst: &CString) -> IoResult<()> {
-        let (dst, len) = if_ok!(addr_to_sockaddr_un(dst));
+        let (dst, len) = try!(addr_to_sockaddr_un(dst));
         let dstp = &dst as *libc::sockaddr_storage;
         let ret = retry(|| unsafe {
             libc::sendto(self.fd(),

@@ -162,7 +162,7 @@ pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "cs
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
 pub fn parse(file: &mut io::Reader,
              longnames: bool) -> Result<~TermInfo, ~str> {
-    macro_rules! if_ok( ($e:expr) => (
+    macro_rules! try( ($e:expr) => (
         match $e { Ok(e) => e, Err(e) => return Err(format!("{}", e)) }
     ) )
 
@@ -181,17 +181,17 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // Check magic number
-    let magic = if_ok!(file.read_le_u16());
+    let magic = try!(file.read_le_u16());
     if magic != 0x011A {
         return Err(format!("invalid magic number: expected {:x} but found {:x}",
                            0x011A, magic as uint));
     }
 
-    let names_bytes          = if_ok!(file.read_le_i16()) as int;
-    let bools_bytes          = if_ok!(file.read_le_i16()) as int;
-    let numbers_count        = if_ok!(file.read_le_i16()) as int;
-    let string_offsets_count = if_ok!(file.read_le_i16()) as int;
-    let string_table_bytes   = if_ok!(file.read_le_i16()) as int;
+    let names_bytes          = try!(file.read_le_i16()) as int;
+    let bools_bytes          = try!(file.read_le_i16()) as int;
+    let numbers_count        = try!(file.read_le_i16()) as int;
+    let string_offsets_count = try!(file.read_le_i16()) as int;
+    let string_table_bytes   = try!(file.read_le_i16()) as int;
 
     assert!(names_bytes          > 0);
 
@@ -220,21 +220,21 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // don't read NUL
-    let bytes = if_ok!(file.read_bytes(names_bytes as uint - 1));
+    let bytes = try!(file.read_bytes(names_bytes as uint - 1));
     let names_str = match str::from_utf8_owned(bytes) {
         Some(s) => s, None => return Err(~"input not utf-8"),
     };
 
     let term_names: ~[~str] = names_str.split('|').map(|s| s.to_owned()).collect();
 
-    if_ok!(file.read_byte()); // consume NUL
+    try!(file.read_byte()); // consume NUL
 
     debug!("term names: {:?}", term_names);
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
         for i in range(0, bools_bytes) {
-            let b = if_ok!(file.read_byte());
+            let b = try!(file.read_byte());
             if b < 0 {
                 error!("EOF reading bools after {} entries", i);
                 return Err(~"error: expected more bools but hit EOF");
@@ -249,13 +249,13 @@ pub fn parse(file: &mut io::Reader,
 
     if (bools_bytes + names_bytes) % 2 == 1 {
         debug!("adjusting for padding between bools and numbers");
-        if_ok!(file.read_byte()); // compensate for padding
+        try!(file.read_byte()); // compensate for padding
     }
 
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
         for i in range(0, numbers_count) {
-            let n = if_ok!(file.read_le_u16());
+            let n = try!(file.read_le_u16());
             if n != 0xFFFF {
                 debug!("{}\\#{}", nnames[i], n);
                 numbers_map.insert(nnames[i].to_owned(), n);
@@ -270,12 +270,12 @@ pub fn parse(file: &mut io::Reader,
     if string_offsets_count != 0 {
         let mut string_offsets = vec::with_capacity(10);
         for _ in range(0, string_offsets_count) {
-            string_offsets.push(if_ok!(file.read_le_u16()));
+            string_offsets.push(try!(file.read_le_u16()));
         }
 
         debug!("offsets: {:?}", string_offsets);
 
-        let string_table = if_ok!(file.read_bytes(string_table_bytes as uint));
+        let string_table = try!(file.read_bytes(string_table_bytes as uint));
 
         if string_table.len() != string_table_bytes as uint {
             error!("EOF reading string table after {} bytes, wanted {}", string_table.len(),
