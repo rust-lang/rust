@@ -48,6 +48,11 @@ pub fn main() {
     t!(format!("hello"), "hello");
     t!(format!("hello \\{"), "hello {");
 
+    // No format string uses default poly formatters
+    t!(format!(1), "1");
+    t!(format!(1, 2), "1 2");
+    t!(format!(1, "foo", 2, true), "1 \"foo\" 2 true");
+
     // default formatters should work
     t!(format!("{}", 1i), "1");
     t!(format!("{}", 1i8), "1");
