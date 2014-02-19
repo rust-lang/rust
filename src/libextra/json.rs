@@ -59,6 +59,7 @@ the code for these traits: `#[deriving(Decodable, Encodable)]`
 To encode using Encodable :
 
 ```rust
+extern crate extra;
 extern crate serialize;
 use extra::json;
 use std::io;
@@ -98,6 +99,7 @@ A basic `ToJson` example using a TreeMap of attribute name / attribute value:
 
 
 ```rust
+extern crate extra;
 extern crate collections;
 
 use extra::json;
@@ -128,6 +130,7 @@ fn main() {
 To decode a JSON string using `Decodable` trait :
 
 ```rust
+extern crate extra;
 extern crate serialize;
 use serialize::Decodable;
 
@@ -154,6 +157,7 @@ Create a struct called TestStruct1 and serialize and deserialize it to and from 
 using the serialization API, using the derived serialization code.
 
 ```rust
+extern crate extra;
 extern crate serialize;
 use extra::json;
 use serialize::{Encodable, Decodable};
@@ -186,6 +190,7 @@ This example use the ToJson impl to deserialize the JSON string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
+extern crate extra;
 extern crate serialize;
 extern crate collections;
 
