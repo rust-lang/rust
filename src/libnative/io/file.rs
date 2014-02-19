@@ -571,7 +571,9 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         else {
                             let fp_vec = vec::from_buf(
                                 fp_buf, wcslen(fp_buf) as uint);
-                            let fp_str = str::from_utf16(fp_vec);
+                            let fp_trimmed = str::truncate_utf16_at_nul(fp_vec);
+                            let fp_str = str::from_utf16(fp_trimmed)
+                                    .expect("rust_list_dir_wfd_fp_buf returned invalid UTF-16");
                             paths.push(Path::new(fp_str));
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
