@@ -94,7 +94,7 @@ impl MarkSymbolVisitor {
                                 span: codemap::Span) {
         let method_map = self.method_map.borrow();
         match method_map.get().find(id) {
-            Some(&typeck::method_map_entry { origin, .. }) => {
+            Some(&origin) => {
                 match origin {
                     typeck::method_static(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
