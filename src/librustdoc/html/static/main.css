@@ -301,3 +301,5 @@ a {
 .stability.Stable { border-color: #AEC516; color: #7c8b10; }
 .stability.Frozen { border-color: #009431; color: #007726; }
 .stability.Locked { border-color: #0084B6; color: #00668c; }
+
+:target { background: #FDFFD3; }
