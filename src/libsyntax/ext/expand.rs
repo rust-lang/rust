@@ -51,7 +51,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             format!("expected macro name without module \
                                   separators"));
                         // let compilation continue
-                        return e;
+                        return MacResult::raw_dummy_expr(e.span);
                     }
                     let extname = pth.segments[0].identifier;
                     let extnamestr = token::get_ident(extname);
@@ -64,7 +64,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                         extnamestr.get()));
 
                             // let compilation continue
-                            return e;
+                            return MacResult::raw_dummy_expr(e.span);
                         }
                         Some(&NormalTT(ref expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
@@ -98,7 +98,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                             extnamestr.get()
                                         )
                                     );
-                                    return e;
+                                    return MacResult::raw_dummy_expr(e.span);
                                 }
                             };
 
@@ -111,7 +111,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                 format!("'{}' is not a tt-style macro",
                                         extnamestr.get())
                             );
-                            return e;
+                            return MacResult::raw_dummy_expr(e.span);
                         }
                     };
 

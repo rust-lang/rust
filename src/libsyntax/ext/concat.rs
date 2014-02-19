@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          tts: &[ast::TokenTree]) -> base::MacResult {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,
-        None => return base::MacResult::dummy_expr()
+        None => return base::MacResult::dummy_expr(sp)
     };
     let mut accumulator = ~"";
     for e in es.move_iter() {

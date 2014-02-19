@@ -33,7 +33,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         cx.set_trace_macros(false);
     } else {
         cx.span_err(sp, "trace_macros! only accepts `true` or `false`");
-        return base::MacResult::dummy_expr();
+        return base::MacResult::dummy_expr(sp);
     }
 
     rust_parser.bump();
