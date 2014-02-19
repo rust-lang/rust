@@ -782,6 +782,20 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
     }
 }
 
+/// Try to match a string literal, and if not found, emit a note. No big deal.
+fn try_expr_literal(cx: &ExtCtxt, expr: @ast::Expr, note_msg: &str)
+                    -> Option<~str> {
+
+    match expr.node {
+        ast::ExprLit(l) => match l.node {
+            ast::LitStr(ref s, _) => return Some(s.get().to_owned()),
+            _ => cx.span_note(l.span, note_msg)
+        },
+        _ => cx.span_note(expr.span, note_msg)
+    }
+    None
+}
+
 /// Take the various parts of `format_args!(extra, efmt, args...,
 /// name=names...)` and construct the appropriate formatting
 /// expression.
@@ -807,14 +821,22 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     // Be sure to recursively expand macros just in case the format string uses
     // a macro to build the format expression.
     let expr = cx.ecx.expand_expr(efmt);
-    let fmt = match expr_to_str(cx.ecx,
-                                expr,
-                                "format argument must be a string literal.") {
-        Some((fmt, _)) => fmt,
-        None => return efmt
+    let fmt = match try_expr_literal(cx.ecx,
+                                     expr,
+                                     "format string literal missing, using default") {
+        Some(fmt) => fmt,
+        None => {
+            // push arg back into args lists
+            cx.args.unshift(expr);
+            cx.arg_types.unshift(None);
+            let mut parts = ~[];
+            let form = ~"{:?}";
+            parts.grow(cx.args.len(), &form);
+            parts.connect(" ")
+        }
     };
 
-    let mut parser = parse::Parser::new(fmt.get());
+    let mut parser = parse::Parser::new(fmt);
     loop {
         match parser.next() {
             Some(piece) => {
