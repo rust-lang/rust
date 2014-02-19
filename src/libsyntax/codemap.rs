@@ -380,6 +380,20 @@ impl CodeMap {
                 a = m;
             }
         }
+        // There can be filemaps with length 0. These have the same start_pos as the previous
+        // filemap, but are not the filemaps we want (because they are length 0, they cannot
+        // contain what we are looking for). So, rewind until we find a useful filemap.
+        loop {
+            let lines = files[a].lines.borrow();
+            let lines = lines.get();
+            if lines.len() > 0 {
+                break;
+            }
+            if a == 0 {
+                fail!("position {} does not resolve to a source location", pos.to_uint());
+            }
+            a -= 1;
+        }
         if a >= len {
             fail!("position {} does not resolve to a source location", pos.to_uint())
         }
@@ -406,10 +420,10 @@ impl CodeMap {
     fn lookup_pos(&self, pos: BytePos) -> Loc {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
-        let chpos = self.bytepos_to_local_charpos(pos);
-        let mut lines = f.lines.borrow_mut();
+        let chpos = self.bytepos_to_charpos(pos);
+        let lines = f.lines.borrow();
         let linebpos = lines.get()[a];
-        let linechpos = self.bytepos_to_local_charpos(linebpos);
+        let linechpos = self.bytepos_to_charpos(linebpos);
         debug!("codemap: byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
         debug!("codemap: char pos {:?} is on the line at char pos {:?}",
@@ -432,9 +446,8 @@ impl CodeMap {
         return FileMapAndBytePos {fm: fm, pos: offset};
     }
 
-    // Converts an absolute BytePos to a CharPos relative to the file it is
-    // located in
-    fn bytepos_to_local_charpos(&self, bpos: BytePos) -> CharPos {
+    // Converts an absolute BytePos to a CharPos relative to the codemap.
+    fn bytepos_to_charpos(&self, bpos: BytePos) -> CharPos {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
@@ -450,8 +463,8 @@ impl CodeMap {
                 total_extra_bytes += mbc.bytes;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos == mbc.pos
-                    || bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
+                assert!(bpos == mbc.pos ||
+                        bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
             } else {
                 break;
             }
@@ -485,5 +498,62 @@ mod test {
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));
         fm.next_line(BytePos(2));
+    }
+
+    fn init_code_map() ->CodeMap {
+        let cm = CodeMap::new();
+        let fm1 = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
+        let fm2 = cm.new_filemap(~"empty.rs",~"");
+        let fm3 = cm.new_filemap(~"blork2.rs",~"first line.\nsecond line");
+
+        fm1.next_line(BytePos(0));
+        fm1.next_line(BytePos(12));
+        fm2.next_line(BytePos(23));
+        fm3.next_line(BytePos(23));
+        fm3.next_line(BytePos(33));
+
+        cm
+    }
+
+    #[test]
+    fn t3() {
+        // Test lookup_byte_offset
+        let cm = init_code_map();
+
+        let fmabp1 = cm.lookup_byte_offset(BytePos(22));
+        assert_eq!(fmabp1.fm.name, ~"blork.rs");
+        assert_eq!(fmabp1.pos, BytePos(22));
+
+        let fmabp2 = cm.lookup_byte_offset(BytePos(23));
+        assert_eq!(fmabp2.fm.name, ~"blork2.rs");
+        assert_eq!(fmabp2.pos, BytePos(0));
+    }
+
+    #[test]
+    fn t4() {
+        // Test bytepos_to_charpos
+        let cm = init_code_map();
+
+        let cp1 = cm.bytepos_to_charpos(BytePos(22));
+        assert_eq!(cp1, CharPos(22));
+
+        let cp2 = cm.bytepos_to_charpos(BytePos(23));
+        assert_eq!(cp2, CharPos(23));
+    }
+
+    #[test]
+    fn t5() {
+        // Test zero-length filemaps.
+        let cm = init_code_map();
+
+        let loc1 = cm.lookup_char_pos(BytePos(22));
+        assert_eq!(loc1.file.name, ~"blork.rs");
+        assert_eq!(loc1.line, 2);
+        assert_eq!(loc1.col, CharPos(10));
+
+        let loc2 = cm.lookup_char_pos(BytePos(23));
+        assert_eq!(loc2.file.name, ~"blork2.rs");
+        assert_eq!(loc2.line, 1);
+        assert_eq!(loc2.col, CharPos(0));
     }
 }
