@@ -10,12 +10,12 @@
 
 use std::cast;
 use std::libc::funcs::posix88::unistd;
-use std::ptr;
 use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
+use std::sync::arc::UnsafeArc;
 use std::sync::atomics::{AtomicBool, SeqCst};
 use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
@@ -63,7 +63,7 @@ pub struct Scheduler {
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
-    sleepy: AtomicBool,
+    sleepy: UnsafeArc<AtomicBool>,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
@@ -155,7 +155,7 @@ impl Scheduler {
             pool_id: pool_id,
             message_queue: consumer,
             message_producer: producer,
-            sleepy: AtomicBool::new(false),
+            sleepy: UnsafeArc::new(AtomicBool::new(false)),
             no_sleep: false,
             backoff_counter: 0,
             left_sched: None,
@@ -333,22 +333,24 @@ impl Scheduler {
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
         // somebody can wake us up later.
-        if !sched.no_sleep && !sched.sleepy.load(SeqCst) {
-            if sched.backoff_counter == EXPONENTIAL_BACKOFF_FACTOR {
-                sched.backoff_counter = 0;
-                rtdebug!("scheduler has no work to do, going to sleep");
-                sched.sleepy.store(true, SeqCst);
-                // Since we are sleeping, deactivate the idle callback.
-                sched.idle_callback.get_mut_ref().pause();
+        unsafe {
+            if !sched.no_sleep && !(*sched.sleepy.get()).load(SeqCst) {
+                if sched.backoff_counter == EXPONENTIAL_BACKOFF_FACTOR {
+                    sched.backoff_counter = 0;
+                    rtdebug!("scheduler has no work to do, going to sleep");
+                    (*sched.sleepy.get()).store(true, SeqCst);
+                    // Since we are sleeping, deactivate the idle callback.
+                    sched.idle_callback.get_mut_ref().pause();
+                } else if !sched.event_loop.has_active_io() {
+                    unistd::usleep((1 << sched.backoff_counter) * 1000u as u32);
+                    sched.backoff_counter += 1;
+                }
             } else {
-                unsafe { unistd::usleep((1 << sched.backoff_counter) * 1000u as u32); }
-                sched.backoff_counter += 1;
+                rtdebug!("not sleeping, already doing so or no_sleep set");
+                // We may not be sleeping, but we still need to deactivate
+                // the idle callback.
+                sched.idle_callback.get_mut_ref().pause();
             }
-        } else {
-            rtdebug!("not sleeping, already doing so or no_sleep set");
-            // We may not be sleeping, but we still need to deactivate
-            // the idle callback.
-            sched.idle_callback.get_mut_ref().pause();
         }
 
         // Finished a cycle without using the Scheduler. Place it back
@@ -410,26 +412,30 @@ impl Scheduler {
                 (sched, task, true)
             }
             Some(Wake) => {
-                self.sleepy.store(false, SeqCst);
-                (self, stask, true)
+                unsafe {
+                    (*self.sleepy.get()).store(false, SeqCst);
+                    (self, stask, true)
+                }
             }
             Some(Shutdown) => {
                 rtdebug!("shutting down");
-                if self.sleepy.load(SeqCst) {
-                    match self.left_sched.take() {
-                        Some(mut sched) => sched.wakeup_if_sleepy(),
-                        None => ()
-                    };
-                    match self.right_sched.take() {
-                        Some(mut sched) => sched.wakeup_if_sleepy(),
-                        None => ()
-                    };
+                unsafe {
+                    if (*self.sleepy.get()).load(SeqCst) {
+                        match self.left_sched.take() {
+                            Some(mut sched) => sched.wakeup_if_sleepy(),
+                            None => ()
+                        };
+                        match self.right_sched.take() {
+                            Some(mut sched) => sched.wakeup_if_sleepy(),
+                            None => ()
+                        };
+                    }
+                    // No more sleeping. After there are no outstanding
+                    // event loop references we will shut down.
+                    self.no_sleep = true;
+                    (*self.sleepy.get()).store(false, SeqCst);
+                    (self, stask, true)
                 }
-                // No more sleeping. After there are no outstanding
-                // event loop references we will shut down.
-                self.no_sleep = true;
-                self.sleepy.store(false, SeqCst);
-                (self, stask, true)
             }
             Some(NewNeighbor(neighbor)) => {
                 self.work_queues.push(neighbor);
@@ -868,7 +874,7 @@ impl Scheduler {
 
         return SchedHandle {
             remote: remote,
-            sleepy: ptr::to_unsafe_ptr(&(self.sleepy)),
+            sleepy: self.sleepy.clone(),
             queue: self.message_producer.clone(),
             sched_id: self.sched_id()
         }
@@ -894,7 +900,7 @@ pub struct SchedHandle {
     priv queue: msgq::Producer<SchedMessage>,
     // Under the current design, a scheduler always outlives the handles
     // pointing to it, so it's safe to use an unsafe pointer here
-    priv sleepy: *AtomicBool,
+    priv sleepy: UnsafeArc<AtomicBool>,
     sched_id: uint
 }
 
@@ -906,7 +912,7 @@ impl SchedHandle {
 
     fn wakeup_if_sleepy(&mut self) {
         unsafe {
-            if (*self.sleepy).load(SeqCst) {
+            if (*self.sleepy.get()).load(SeqCst) {
                 self.send(Wake);
             }
         }
