@@ -2111,7 +2111,13 @@ fn type_metadata(cx: &CrateContext,
             trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {
-            prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
+            if ty::type_is_simd(cx.tcx, t) {
+                let element_type = ty::simd_type(cx.tcx, t);
+                let len = ty::simd_size(cx.tcx, t);
+                fixed_vec_metadata(cx, element_type, len, usage_site_span)
+            } else {
+                prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
+            }
         },
         ty::ty_tup(ref elements) => {
             prepare_tuple_metadata(cx, t, *elements, usage_site_span).finalize(cx)
