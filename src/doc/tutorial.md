@@ -1750,6 +1750,24 @@ closures, but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
+Closures can be used to spawn tasks.
+A practical example of this pattern is found when using the `spawn` function,
+which starts a new task.
+
+~~~~
+use std::task::spawn;
+
+// proc is the closure which will be spawned.
+spawn(proc() {
+    debug!("I'm a new task")
+});
+~~~~
+
+> ***Note:*** If you want to see the output of `debug!` statements, you will need to turn on
+> `debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
+> variable to the name of your crate, which, for a file named `foo.rs`, will be
+> `foo` (e.g., with bash, `export RUST_LOG=foo`).
+
 ## Closure compatibility
 
 Rust closures have a convenient subtyping property: you can pass any kind of
@@ -1770,45 +1788,6 @@ call_twice(function);
 > ***Note:*** Both the syntax and the semantics will be changing
 > in small ways. At the moment they can be unsound in some
 > scenarios, particularly with non-copyable types.
-
-## Do syntax
-
-The `do` expression makes it easier to call functions that take procedures
-as arguments.
-
-Consider this function that takes a procedure:
-
-~~~~
-fn call_it(op: proc(v: int)) {
-    op(10)
-}
-~~~~
-
-As a caller, if we use a closure to provide the final operator
-argument, we can write it in a way that has a pleasant, block-like
-structure.
-
-~~~~
-# fn call_it(op: proc(v: int)) { }
-call_it(proc(n) {
-    println!("{}", n);
-});
-~~~~
-
-A practical example of this pattern is found when using the `spawn` function,
-which starts a new task.
-
-~~~~
-use std::task::spawn;
-spawn(proc() {
-    debug!("I'm a new task")
-});
-~~~~
-
-If you want to see the output of `debug!` statements, you will need to turn on
-`debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
-variable to the name of your crate, which, for a file named `foo.rs`, will be
-`foo` (e.g., with bash, `export RUST_LOG=foo`).
 
 # Methods
 
