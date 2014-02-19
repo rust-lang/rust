@@ -3551,7 +3551,7 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
                             ccx.tcx.sess.span_err(e.span, "expected signed integer constant");
                         }
                         Err(ref err) => {
-                            ccx.tcx.sess.span_err(e.span, format!("expected constant: {}", (*err)));
+                            ccx.tcx.sess.span_err(e.span, format!("expected constant: {}", *err));
                         }
                     }
                 },
