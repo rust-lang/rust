@@ -173,6 +173,7 @@ impl Archive {
             if_ok!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
         }
+        if inputs.len() == 0 { return Ok(()) }
 
         // Finally, add all the renamed files to this archive
         let mut args = ~[&self.dst];
