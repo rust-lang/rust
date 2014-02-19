@@ -2645,15 +2645,15 @@ impl<A: DeepClone> DeepClone for ~[A] {
 
 impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "["));
+        try!(write!(f.buf, "["));
         let mut is_first = true;
         for x in self.iter() {
             if is_first {
                 is_first = false;
             } else {
-                if_ok!(write!(f.buf, ", "));
+                try!(write!(f.buf, ", "));
             }
-            if_ok!(write!(f.buf, "{}", *x))
+            try!(write!(f.buf, "{}", *x))
         }
         write!(f.buf, "]")
     }

@@ -161,9 +161,9 @@ macro_rules! write_tuple {
         write!($buf, "({},)", *$x)
     );
     ($buf:expr, $hd:expr, $($tl:expr),+) => ({
-        if_ok!(write!($buf, "("));
-        if_ok!(write!($buf, "{}", *$hd));
-        $(if_ok!(write!($buf, ", {}", *$tl));)+
+        try!(write!($buf, "("));
+        try!(write!($buf, "{}", *$hd));
+        $(try!(write!($buf, ", {}", *$tl));)+
         write!($buf, ")")
     });
 }

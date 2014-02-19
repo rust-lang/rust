@@ -30,10 +30,6 @@ use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
 use terminfo::parm::{expand, Number, Variables};
 
-macro_rules! if_ok (
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
-
 pub mod terminfo;
 
 // FIXME (#2807): Windows support.
@@ -155,7 +151,7 @@ impl<T: Writer> Terminal<T> {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                if_ok!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap()));
                 return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
@@ -176,7 +172,7 @@ impl<T: Writer> Terminal<T> {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                if_ok!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap()));
                 return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
@@ -198,7 +194,7 @@ impl<T: Writer> Terminal<T> {
                 if parm.is_some() {
                     let s = expand(*parm.unwrap(), [], &mut Variables::new());
                     if s.is_ok() {
-                        if_ok!(self.out.write(s.unwrap()));
+                        try!(self.out.write(s.unwrap()));
                         return Ok(true)
                     } else {
                         warn!("{}", s.unwrap_err());

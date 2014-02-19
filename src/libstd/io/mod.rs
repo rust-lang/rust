@@ -365,7 +365,7 @@ pub struct IoError {
 
 impl fmt::Show for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(fmt.buf.write_str(self.desc));
+        try!(fmt.buf.write_str(self.desc));
         match self.detail {
             Some(ref s) => write!(fmt.buf, " ({})", *s),
             None => Ok(())
@@ -581,7 +581,7 @@ pub trait Reader {
         let mut pos = 0;
         let mut i = nbytes;
         while i > 0 {
-            val += (if_ok!(self.read_u8()) as u64) << pos;
+            val += (try!(self.read_u8()) as u64) << pos;
             pos += 8;
             i -= 1;
         }
@@ -605,7 +605,7 @@ pub trait Reader {
         let mut i = nbytes;
         while i > 0 {
             i -= 1;
-            val += (if_ok!(self.read_u8()) as u64) << i * 8;
+            val += (try!(self.read_u8()) as u64) << i * 8;
         }
         Ok(val)
     }
@@ -1191,7 +1191,7 @@ pub trait Buffer: Reader {
     /// This function will also return error if the stream does not contain a
     /// valid utf-8 encoded codepoint as the next few bytes in the stream.
     fn read_char(&mut self) -> IoResult<char> {
-        let first_byte = if_ok!(self.read_byte());
+        let first_byte = try!(self.read_byte());
         let width = str::utf8_char_width(first_byte);
         if width == 1 { return Ok(first_byte as char) }
         if width == 0 { return Err(standard_error(InvalidInput)) } // not utf8
@@ -1199,7 +1199,7 @@ pub trait Buffer: Reader {
         {
             let mut start = 1;
             while start < width {
-                match if_ok!(self.read(buf.mut_slice(start, width))) {
+                match try!(self.read(buf.mut_slice(start, width))) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }
                     _ => return Err(standard_error(InvalidInput)),

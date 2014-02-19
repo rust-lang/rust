@@ -189,7 +189,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
             Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
         };
-        if_ok!(w.write(buf.slice_to(len)));
+        try!(w.write(buf.slice_to(len)));
     }
 }
 

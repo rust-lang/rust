@@ -376,48 +376,48 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
     let range_width = width_hint - overhead_width;;
     let char_step = range / (range_width as f64);
 
-    if_ok!(write!(w, "{} |", lostr));
+    try!(write!(w, "{} |", lostr));
 
     let mut c = 0;
     let mut v = lo;
 
     while c < range_width && v < s.min {
-        if_ok!(write!(w, " "));
+        try!(write!(w, " "));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, "["));
+    try!(write!(w, "["));
     c += 1;
     while c < range_width && v < q1 {
-        if_ok!(write!(w, "-"));
+        try!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < q2 {
-        if_ok!(write!(w, "*"));
+        try!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, r"\#"));
+    try!(write!(w, r"\#"));
     c += 1;
     while c < range_width && v < q3 {
-        if_ok!(write!(w, "*"));
+        try!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < s.max {
-        if_ok!(write!(w, "-"));
+        try!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, "]"));
+    try!(write!(w, "]"));
     while c < range_width {
-        if_ok!(write!(w, " "));
+        try!(write!(w, " "));
         v += char_step;
         c += 1;
     }
 
-    if_ok!(write!(w, "| {}", histr));
+    try!(write!(w, "| {}", histr));
     Ok(())
 }
 
