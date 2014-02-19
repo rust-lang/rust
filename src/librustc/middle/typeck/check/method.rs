@@ -1303,7 +1303,7 @@ impl<'a> LookupContext<'a> {
         self.tcx().sess.span_note(
             span,
             format!("candidate \\#{} is `{}`",
-                 (idx+1u),
+                 idx+1u,
                  ty::item_path_str(self.tcx(), did)));
     }
 
@@ -1311,7 +1311,7 @@ impl<'a> LookupContext<'a> {
         self.tcx().sess.span_note(
             self.expr.span,
             format!("candidate \\#{} derives from the bound `{}`",
-                 (idx+1u),
+                 idx+1u,
                  ty::item_path_str(self.tcx(), did)));
     }
 
@@ -1320,7 +1320,7 @@ impl<'a> LookupContext<'a> {
             self.expr.span,
             format!("candidate \\#{} derives from the type of the receiver, \
                   which is the trait `{}`",
-                 (idx+1u),
+                 idx+1u,
                  ty::item_path_str(self.tcx(), did)));
     }
 

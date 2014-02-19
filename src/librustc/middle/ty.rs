@@ -4142,7 +4142,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
                                           .span_err(e.span,
                                                     format!("expected \
                                                              constant: {}",
-                                                            (*err)));
+                                                            *err));
                                     }
                                 },
                                 None => {}
