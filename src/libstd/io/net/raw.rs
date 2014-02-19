@@ -334,123 +334,198 @@ impl<'p> Ipv6Header<'p> {
         Ipv6Header { packet: packet, offset: offset }
     }
 
-    pub fn set_version(&mut self, _version: u8) {
-        // FIXME
+    pub fn set_version(&mut self, version: u8) {
+        let ver = version << 4;
+        self.packet[self.offset] = (self.packet[self.offset] & 0x0F) | ver;
     }
 
-    pub fn get_version(&self) -> uint {
-        // FIXME
-        0
+    pub fn get_version(&self) -> u8 {
+        self.packet[self.offset] >> 4
     }
 
-    pub fn set_traffic_class(&mut self, _tc: u8) {
-        // FIXME
+    pub fn set_traffic_class(&mut self, tc: u8) {
+        self.packet[self.offset + 0] = (self.packet[self.offset] & 0xF0) | (tc >> 4);
+        self.packet[self.offset + 1] = ((tc & 0x0F) << 4) |
+                                        ((self.packet[self.offset + 1] & 0xF0) >> 4);
     }
 
     pub fn get_traffic_class(&self) -> u8 {
-        // FIXME
-        0
+        let tc1 = (self.packet[self.offset + 0] & 0x0F) << 4;
+        let tc2 = self.packet[self.offset + 1] >> 4;
+        tc1 | tc2
     }
 
-    pub fn set_flow_label(&mut self, _label: u32) {
-        // FIXME
+    pub fn set_flow_label(&mut self, label: u32) {
+        let lbl = ((label & 0xF0000) >> 16) as u8;
+        self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 0xF0) | lbl;
+        self.packet[self.offset + 2] = ((label & 0xFF00) >> 8) as u8;
+        self.packet[self.offset + 3] = (label & 0x00FF) as u8;
     }
 
     pub fn get_flow_label(&self) -> u32 {
-        // FIXME
-        0
+        let fl1 = (self.packet[self.offset + 1] as u32 & 0xF) << 16;
+        let fl2 = (self.packet[self.offset + 2] as u32 << 8);
+        let fl3 =  self.packet[self.offset + 3] as u32;
+        fl1 | fl2 | fl3
     }
 
-    pub fn set_payload_length(&mut self, _len: u16) {
-        // FIXME
+    pub fn set_payload_length(&mut self, len: u16) {
+        self.packet[self.offset + 4] = (len >> 8) as u8;
+        self.packet[self.offset + 5] = (len & 0xFF) as u8;
     }
 
     pub fn get_payload_length(&self) -> u16 {
-        // FIXME
-        0
+        let len1 = self.packet[self.offset + 4] as u16 << 8;
+        let len2 = self.packet[self.offset + 5] as u16;
+        len1 | len2
     }
 
-    pub fn set_next_header(&mut self, _protocol: IpNextHeaderProtocol) {
-        // FIXME
+    pub fn set_next_header(&mut self, protocol: IpNextHeaderProtocol) {
+        self.packet[self.offset + 6] = protocol as u8;
     }
 
     pub fn get_next_header(&self) -> IpNextHeaderProtocol {
-        // FIXME
-        IpNextHeaderProtocol::Tcp
+        num::FromPrimitive::from_u8(self.packet[self.offset + 6]).unwrap()
     }
 
-    pub fn set_hop_limit(&mut self, _limit: u8) {
-        // FIXME
+    pub fn set_hop_limit(&mut self, limit: u8) {
+        self.packet[self.offset + 7] = limit;
     }
 
     pub fn get_hop_limit(&self) -> u8 {
-        // FIXME
-        0
+        self.packet[self.offset + 7]
     }
 
-    pub fn set_source(&mut self, _ip: IpAddr) {
-        // FIXME
+    pub fn set_source(&mut self, ip: IpAddr) {
+        match ip {
+            Ipv6Addr(a, b, c, d, e, f, g, h) => {
+                self.packet[self.offset +  8] = (a >> 8) as u8;
+                self.packet[self.offset +  9] = (a & 0xFF) as u8;
+                self.packet[self.offset + 10] = (b >> 8) as u8;
+                self.packet[self.offset + 11] = (b & 0xFF) as u8;;
+                self.packet[self.offset + 12] = (c >> 8) as u8;
+                self.packet[self.offset + 13] = (c & 0xFF) as u8;;
+                self.packet[self.offset + 14] = (d >> 8) as u8;
+                self.packet[self.offset + 15] = (d & 0xFF) as u8;;
+                self.packet[self.offset + 16] = (e >> 8) as u8;
+                self.packet[self.offset + 17] = (e & 0xFF) as u8;;
+                self.packet[self.offset + 18] = (f >> 8) as u8;
+                self.packet[self.offset + 19] = (f & 0xFF) as u8;;
+                self.packet[self.offset + 20] = (g >> 8) as u8;
+                self.packet[self.offset + 21] = (g & 0xFF) as u8;;
+                self.packet[self.offset + 22] = (h >> 8) as u8;
+                self.packet[self.offset + 23] = (h & 0xFF) as u8;
+            },
+            _ => ()
+        }
     }
 
     pub fn get_source(&self) -> IpAddr {
-        // FIXME
-        Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)
+        let a = (self.packet[self.offset +  8] as u16 << 8) | self.packet[self.offset +  9] as u16;
+        let b = (self.packet[self.offset + 10] as u16 << 8) | self.packet[self.offset + 11] as u16;
+        let c = (self.packet[self.offset + 12] as u16 << 8) | self.packet[self.offset + 13] as u16;
+        let d = (self.packet[self.offset + 14] as u16 << 8) | self.packet[self.offset + 15] as u16;
+        let e = (self.packet[self.offset + 16] as u16 << 8) | self.packet[self.offset + 17] as u16;
+        let f = (self.packet[self.offset + 18] as u16 << 8) | self.packet[self.offset + 19] as u16;
+        let g = (self.packet[self.offset + 20] as u16 << 8) | self.packet[self.offset + 21] as u16;
+        let h = (self.packet[self.offset + 22] as u16 << 8) | self.packet[self.offset + 23] as u16;
+
+        Ipv6Addr(a, b, c, d, e, f, g, h)
     }
 
-    pub fn set_destination(&mut self, _ip: IpAddr) {
-        // FIXME
+    pub fn set_destination(&mut self, ip: IpAddr) {
+        match ip {
+            Ipv6Addr(a, b, c, d, e, f, g, h) => {
+                self.packet[self.offset + 24] = (a >> 8) as u8;
+                self.packet[self.offset + 25] = (a & 0xFF) as u8;
+                self.packet[self.offset + 26] = (b >> 8) as u8;
+                self.packet[self.offset + 27] = (b & 0xFF) as u8;;
+                self.packet[self.offset + 28] = (c >> 8) as u8;
+                self.packet[self.offset + 29] = (c & 0xFF) as u8;;
+                self.packet[self.offset + 30] = (d >> 8) as u8;
+                self.packet[self.offset + 31] = (d & 0xFF) as u8;;
+                self.packet[self.offset + 32] = (e >> 8) as u8;
+                self.packet[self.offset + 33] = (e & 0xFF) as u8;;
+                self.packet[self.offset + 34] = (f >> 8) as u8;
+                self.packet[self.offset + 35] = (f & 0xFF) as u8;;
+                self.packet[self.offset + 36] = (g >> 8) as u8;
+                self.packet[self.offset + 37] = (g & 0xFF) as u8;;
+                self.packet[self.offset + 38] = (h >> 8) as u8;
+                self.packet[self.offset + 39] = (h & 0xFF) as u8;
+            },
+            _ => ()
+        }
     }
 
     pub fn get_destination(&self) -> IpAddr {
-        // FIXME
-        Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)
+        let a = (self.packet[self.offset + 24] as u16 << 8) | self.packet[self.offset + 25] as u16;
+        let b = (self.packet[self.offset + 26] as u16 << 8) | self.packet[self.offset + 27] as u16;
+        let c = (self.packet[self.offset + 28] as u16 << 8) | self.packet[self.offset + 29] as u16;
+        let d = (self.packet[self.offset + 30] as u16 << 8) | self.packet[self.offset + 31] as u16;
+        let e = (self.packet[self.offset + 32] as u16 << 8) | self.packet[self.offset + 33] as u16;
+        let f = (self.packet[self.offset + 34] as u16 << 8) | self.packet[self.offset + 35] as u16;
+        let g = (self.packet[self.offset + 36] as u16 << 8) | self.packet[self.offset + 37] as u16;
+        let h = (self.packet[self.offset + 38] as u16 << 8) | self.packet[self.offset + 39] as u16;
+
+        Ipv6Addr(a, b, c, d, e, f, g, h)
     }
 }
 
 #[test]
 fn ipv6_header_test() {
-    /*let mut packet = [0u8, ..40];
+    let mut packet = [0u8, ..40];
     {
         let mut ipHeader = Ipv6Header::new(packet.as_mut_slice(), 0);
         ipHeader.set_version(6);
         assert_eq!(ipHeader.get_version(), 6);
 
-        ipHeader.set_header_length(5);
-        assert_eq!(ipHeader.get_header_length(), 5);
+        ipHeader.set_traffic_class(17);
+        assert_eq!(ipHeader.get_traffic_class(), 17);
 
-        ipHeader.set_total_length(115);
-        assert_eq!(ipHeader.get_total_length(), 115);
+        ipHeader.set_flow_label(0x10101);
+        assert_eq!(ipHeader.get_flow_label(), 0x10101);
 
-        ipHeader.set_flags(2);
-        assert_eq!(ipHeader.get_flags(), 2);
+        ipHeader.set_payload_length(0x0101);
+        assert_eq!(ipHeader.get_payload_length(), 0x0101);
 
-        ipHeader.set_ttl(64);
-        assert_eq!(ipHeader.get_ttl(), 64);
+        ipHeader.set_next_header(IpNextHeaderProtocol::Udp);
+        assert_eq!(ipHeader.get_next_header(), IpNextHeaderProtocol::Udp);
 
-        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
-        assert_eq!(ipHeader.get_next_level_protocol(), IpNextHeaderProtocol::Udp);
+        ipHeader.set_hop_limit(1);
+        assert_eq!(ipHeader.get_hop_limit(), 1)
 
-        ipHeader.set_source(Ipv4Addr(192, 168, 0, 1));
-        assert_eq!(ipHeader.get_source(), Ipv4Addr(192, 168, 0, 1));
+        let source = Ipv6Addr(0x110, 0x1001, 0x110, 0x1001, 0x110, 0x1001, 0x110, 0x1001);
+        ipHeader.set_source(source);
+        assert_eq!(ipHeader.get_source(), source);
 
-        ipHeader.set_destination(Ipv4Addr(192, 168, 0, 199));
-        assert_eq!(ipHeader.get_destination(), Ipv4Addr(192, 168, 0, 199));
-
-        ipHeader.checksum();
-        assert_eq!(ipHeader.get_checksum(), 0xb861);
+        let dest = Ipv6Addr(0x110, 0x1001, 0x110, 0x1001, 0x110, 0x1001, 0x110, 0x1001);
+        ipHeader.set_destination(dest);
+        assert_eq!(ipHeader.get_destination(), dest);
     }
 
-    let refPacket = [0x45,           /* ver/ihl */
-                     0x00,           /* dscp/ecn */
-                     0x00, 0x73,     /* total len */
-                     0x00, 0x00,     /* identification */
-                     0x40, 0x00,     /* flags/frag offset */
-                     0x40,           /* ttl */
-                     0x11,           /* proto */
-                     0xb8, 0x61,     /* checksum */
-                     0xc0, 0xa8, 0x00, 0x01, /* source ip */
-                     0xc0, 0xa8, 0x00, 0xc7  /* dest ip */];
-    assert_eq!(packet, refPacket);*/
+    let refPacket = [0x61,           /* ver/traffic class */
+                     0x11,           /* traffic class/flow label */
+                     0x01, 0x01,     /* flow label */
+                     0x01, 0x01,     /* payload length */
+                     0x11,           /* next header */
+                     0x01,           /* hop limit */
+                     0x01, 0x10,     /* source ip */
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01,
+                     0x01, 0x10,    /* dest ip */
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01,
+                     0x01, 0x10,
+                     0x10, 0x01];
+    assert_eq!(refPacket, packet);
 }
 
 
