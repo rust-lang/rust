@@ -280,7 +280,14 @@ impl<'a> RustdocVisitor<'a> {
             ast::ItemForeignMod(ref fm) => {
                 om.foreigns.push(fm.clone());
             }
-            _ => (),
+            ast::ItemMac(ref _m) => {
+                om.macros.push(Macro {
+                    id: item.id,
+                    attrs: item.attrs.clone(),
+                    name: item.ident,
+                    where: item.span,
+                })
+            }
         }
     }
 }
