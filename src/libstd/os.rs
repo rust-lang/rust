@@ -88,7 +88,8 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(str::from_utf16(buf))
+    Path::new(str::from_utf16(str::truncate_utf16_at_nul(buf))
+              .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
 #[cfg(windows)]
@@ -124,7 +125,12 @@ pub mod win32 {
                 }
                 if k != 0 && done {
                     let sub = buf.slice(0, k as uint);
-                    res = option::Some(str::from_utf16(sub));
+                    // We want to explicitly catch the case when the
+                    // closure returned invalid UTF-16, rather than
+                    // set `res` to None and continue.
+                    let s = str::from_utf16(sub)
+                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
+                    res = option::Some(s)
                 }
             }
             return res;
@@ -739,7 +745,8 @@ pub fn last_os_error() -> ~str {
                 fail!("[{}] FormatMessage failure", errno());
             }
 
-            str::from_utf16(buf)
+            str::from_utf16(str::truncate_utf16_at_nul(buf))
+                .expect("FormatMessageW returned invalid UTF-16")
         }
     }
 
@@ -828,8 +835,10 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len as int) != 0 { len += 1; }
 
             // Push it onto the list.
-            args.push(vec::raw::buf_as_slice(ptr, len,
-                                             str::from_utf16));
+            let opt_s = vec::raw::buf_as_slice(ptr, len, |buf| {
+                    str::from_utf16(str::truncate_utf16_at_nul(buf))
+                });
+            args.push(opt_s.expect("CommandLineToArgvW returned invalid UTF-16"));
         }
     }
 
