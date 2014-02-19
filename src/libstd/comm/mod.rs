@@ -385,17 +385,17 @@ impl<T: Send> Chan<T> {
     pub fn try_send(&self, t: T) -> bool {
         // In order to prevent starvation of other tasks in situations where
         // a task sends repeatedly without ever receiving, we occassionally
-        // yield instead of doing a send immediately.  Only doing this if
-        // we're doing a rescheduling send, otherwise the caller is
-        // expecting not to context switch.
+        // yield instead of doing a send immediately.
         //
-        // Note that we don't unconditionally attempt to yield because the
-        // TLS overhead can be a bit much.
+        // Don't unconditionally attempt to yield because the TLS overhead can
+        // be a bit much, and also use `try_take` instead of `take` because
+        // there's no reason that this send shouldn't be usable off the
+        // runtime.
         let cnt = self.sends.get() + 1;
         self.sends.set(cnt);
         if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: ~Task = Local::take();
-            task.maybe_yield();
+            let task: Option<~Task> = Local::try_take();
+            task.map(|t| t.maybe_yield());
         }
 
         let (new_inner, ret) = match self.inner {
@@ -521,12 +521,13 @@ impl<T: Send> Port<T> {
     pub fn try_recv(&self) -> TryRecvResult<T> {
         // If a thread is spinning in try_recv, we should take the opportunity
         // to reschedule things occasionally. See notes above in scheduling on
-        // sends for why this doesn't always hit TLS.
+        // sends for why this doesn't always hit TLS, and also for why this uses
+        // `try_take` instead of `take`.
         let cnt = self.receives.get() + 1;
         self.receives.set(cnt);
         if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: ~Task = Local::take();
-            task.maybe_yield();
+            let task: Option<~Task> = Local::try_take();
+            task.map(|t| t.maybe_yield());
         }
 
         loop {
@@ -1202,5 +1203,43 @@ mod test {
 
         // wait for the child task to exit before we exit
         p1.recv();
+    })
+
+    test!(fn sends_off_the_runtime() {
+        use rt::thread::Thread;
+
+        let (p, c) = Chan::new();
+        let t = Thread::start(proc() {
+            for _ in range(0, 1000) {
+                c.send(());
+            }
+        });
+        for _ in range(0, 1000) {
+            p.recv();
+        }
+        t.join();
+    })
+
+    test!(fn try_recvs_off_the_runtime() {
+        use rt::thread::Thread;
+
+        let (p, c) = Chan::new();
+        let (pdone, cdone) = Chan::new();
+        let t = Thread::start(proc() {
+            let mut hits = 0;
+            while hits < 10 {
+                match p.try_recv() {
+                    Data(()) => { hits += 1; }
+                    Empty => { Thread::yield_now(); }
+                    Disconnected => return,
+                }
+            }
+            cdone.send(());
+        });
+        for _ in range(0, 10) {
+            c.send(());
+        }
+        t.join();
+        pdone.recv();
     })
 }
