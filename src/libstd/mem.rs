@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -20,19 +20,19 @@ use ptr;
 use unstable::intrinsics;
 use unstable::intrinsics::{bswap16, bswap32, bswap64};
 
-/// Returns the size of a type
+/// Returns the size of a type in bytes.
 #[inline]
 pub fn size_of<T>() -> uint {
     unsafe { intrinsics::size_of::<T>() }
 }
 
-/// Returns the size of the type that `_val` points to
+/// Returns the size of the type that `_val` points to in bytes.
 #[inline]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
 
-/// Returns the size of a type, or 1 if the actual size is zero.
+/// Returns the size of a type in bytes, or 1 if the actual size is zero.
 ///
 /// Useful for building structures containing variable-length arrays.
 #[inline]
@@ -41,7 +41,7 @@ pub fn nonzero_size_of<T>() -> uint {
     if s == 0 { 1 } else { s }
 }
 
-/// Returns the size of the type of the value that `_val` points to
+/// Returns the size in bytes of the type of the value that `_val` points to.
 #[inline]
 pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
     nonzero_size_of::<T>()
