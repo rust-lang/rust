@@ -98,7 +98,7 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-pub enum EnvAction {
+enum EnvAction {
     /// Copy the value from this llvm ValueRef into the environment.
     EnvCopy,
 
@@ -109,7 +109,7 @@ pub enum EnvAction {
     EnvRef
 }
 
-pub struct EnvValue {
+struct EnvValue {
     action: EnvAction,
     datum: Datum<Lvalue>
 }
@@ -178,7 +178,7 @@ fn allocate_cbox<'a>(bcx: &'a Block<'a>,
     }
 }
 
-pub struct ClosureResult<'a> {
+struct ClosureResult<'a> {
     llbox: ValueRef,    // llvalue of ptr to closure
     cdata_ty: ty::t,    // type of the closure data
     bcx: &'a Block<'a>  // final bcx
@@ -188,8 +188,7 @@ pub struct ClosureResult<'a> {
 // construct a closure out of them. If copying is true, it is a
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
-pub fn store_environment<'a>(
-                         bcx: &'a Block<'a>,
+fn store_environment<'a>(bcx: &'a Block<'a>,
                          bound_values: ~[EnvValue],
                          sigil: ast::Sigil)
                          -> ClosureResult<'a> {
@@ -247,38 +246,31 @@ pub fn store_environment<'a>(
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
-fn build_closure<'a>(bcx0: &'a Block<'a>,
+fn build_closure<'a>(mut bcx: &'a Block<'a>,
+                     id: ast::NodeId,
                      cap_vars: &[moves::CaptureVar],
                      sigil: ast::Sigil)
                      -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::build_closure");
 
-    // If we need to, package up the iterator body to call
-    let bcx = bcx0;
-
     // Package up the captured upvars
-    let mut env_vals = ~[];
-    for cap_var in cap_vars.iter() {
+    let env_vals = cap_vars.map(|cap_var| {
         debug!("Building closure: captured variable {:?}", *cap_var);
+        let action = match cap_var.mode {
+            moves::CapRef => EnvRef,
+            moves::CapCopy => EnvCopy,
+            moves::CapMove => EnvMove
+        };
         let datum = expr::trans_local_var(bcx, cap_var.def);
-        match cap_var.mode {
-            moves::CapRef => {
-                assert_eq!(sigil, ast::BorrowedSigil);
-                env_vals.push(EnvValue {action: EnvRef,
-                                        datum: datum});
-            }
-            moves::CapCopy => {
-                env_vals.push(EnvValue {action: EnvCopy,
-                                        datum: datum});
-            }
-            moves::CapMove => {
-                env_vals.push(EnvValue {action: EnvMove,
-                                        datum: datum});
-            }
+        let r = datum.to_lvalue_datum(bcx, "", id);
+        bcx = r.bcx;
+        EnvValue {
+            action: action,
+            datum: r.datum
         }
-    }
+    });
 
-    return store_environment(bcx, env_vals, sigil);
+    store_environment(bcx, env_vals, sigil)
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -395,7 +387,7 @@ pub fn trans_expr_fn<'a>(
         let capture_map = ccx.maps.capture_map.borrow();
         capture_map.get().get_copy(&id)
     };
-    let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, *cap_vars.borrow(), sigil);
+    let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, id, *cap_vars.borrow(), sigil);
     trans_closure(ccx, decl, body, llfn,
                   bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),

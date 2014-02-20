@@ -292,15 +292,11 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
 
-        let datum = {
-            let lllocals = bcx.fcx.lllocals.borrow();
-            match lllocals.get().find_copy(&node_id) {
-                Some(datum) => datum,
-                None => {
-                    bcx.tcx().sess.span_bug(span,
-                        format!("no entry in lllocals table for {:?}",
-                                node_id));
-                }
+        let datum = match bcx.fcx.locals.borrow().get().find(&node_id) {
+            Some(datum) => datum.to_lvalue_or_pod_rvalue_datum(bcx),
+            None => {
+                bcx.tcx().sess.span_bug(span,
+                    format!("no entry in locals table for {:?}", node_id));
             }
         };
 
@@ -434,19 +430,15 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
-        let llarg = {
-            let llargs = bcx.fcx.llargs.borrow();
-            match llargs.get().find_copy(&node_id) {
-                Some(v) => v,
-                None => {
-                    bcx.tcx().sess.span_bug(span,
-                        format!("no entry in llargs table for {:?}",
-                                node_id));
-                }
+        let datum = match bcx.fcx.locals.borrow().get().find(&node_id) {
+            Some(datum) => datum.to_lvalue_or_pod_rvalue_datum(bcx),
+            None => {
+                bcx.tcx().sess.span_bug(span,
+                    format!("no entry in llargs table for {:?}", node_id));
             }
         };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::null() {
+        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null() {
             cx.sess.span_bug(span, "debuginfo::create_argument_metadata() - \
                                     Referenced variable location is not an alloca!");
         }
@@ -462,9 +454,9 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
 
         declare_local(bcx,
                       argument_ident,
-                      llarg.ty,
+                      datum.ty,
                       scope_metadata,
-                      DirectVariable { alloca: llarg.val },
+                      DirectVariable { alloca: datum.val },
                       ArgumentVariable(argument_index),
                       span);
     })

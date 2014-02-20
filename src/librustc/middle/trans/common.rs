@@ -20,7 +20,7 @@ use middle::trans::base;
 use middle::trans::build;
 use middle::trans::cleanup;
 use middle::trans::datum;
-use middle::trans::datum::{Datum, Lvalue};
+use middle::trans::datum::Datum;
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty::substs;
@@ -210,8 +210,7 @@ impl Repr for param_substs {
 }
 
 // work around bizarre resolve errors
-type RvalueDatum = datum::Datum<datum::Rvalue>;
-type LvalueDatum = datum::Datum<datum::Lvalue>;
+type ExprDatum = datum::Datum<datum::Expr>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -250,12 +249,9 @@ pub struct FunctionContext<'a> {
     // this value is false, llretptr will be a local alloca.
     caller_expects_out_pointer: bool,
 
-    // Maps arguments to allocas created for them in llallocas.
-    llargs: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
-
-    // Maps the def_ids for local variables to the allocas created for
-    // them in llallocas.
-    lllocals: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+    // Maps the NodeIds for arguments and local variables to
+    // the Datums that they were placed in.
+    locals: RefCell<HashMap<ast::NodeId, ExprDatum>>,
 
     // Same as above, but for closure upvars
     llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
