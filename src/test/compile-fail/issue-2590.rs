@@ -18,7 +18,7 @@ trait parse {
 
 impl parse for parser {
     fn parse(&self) -> ~[int] {
-        self.tokens //~ ERROR cannot move out of dereference of & pointer
+        self.tokens //~ ERROR cannot move out of dereference of `&`-pointer
     }
 }
 
