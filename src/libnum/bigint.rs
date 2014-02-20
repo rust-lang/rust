@@ -1254,7 +1254,7 @@ impl FromStrRadix for BigInt {
     }
 }
 
-trait RandBigInt {
+pub trait RandBigInt {
     /// Generate a random `BigUint` of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
 
