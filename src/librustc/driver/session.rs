@@ -65,7 +65,9 @@ debugging_opts!(
         GC,
         PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
-        LTO
+        LTO,
+        AST_JSON,
+        AST_JSON_NOEXPAND
     ]
     0
 )
@@ -97,6 +99,8 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
       "Prints the llvm optimization passes being run",
       PRINT_LLVM_PASSES),
      ("lto", "Perform LLVM link-time optimizations", LTO),
+     ("ast-json", "Print the AST as JSON and halt", AST_JSON),
+     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
     ]
 }
 
