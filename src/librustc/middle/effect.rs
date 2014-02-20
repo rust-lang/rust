@@ -106,11 +106,28 @@ impl Visitor<()> for EffectCheckVisitor {
 
     fn visit_block(&mut self, block: &ast::Block, _:()) {
         let old_unsafe_context = self.unsafe_context;
-        let is_unsafe = match block.rules {
-            ast::UnsafeBlock(..) => true, ast::DefaultBlock => false
-        };
-        if is_unsafe && self.unsafe_context == SafeContext {
-            self.unsafe_context = UnsafeBlock(block.id)
+        match block.rules {
+            ast::DefaultBlock => {}
+            ast::UnsafeBlock(source) => {
+                // By default only the outermost `unsafe` block is
+                // "used" and so nested unsafe blocks are pointless
+                // (the inner ones are unnecessary and we actually
+                // warn about them). As such, there are two cases when
+                // we need to create a new context, when we're
+                // - outside `unsafe` and found a `unsafe` block
+                //   (normal case)
+                // - inside `unsafe` but found an `unsafe` block
+                //   created internally to the compiler
+                //
+                // The second case is necessary to ensure that the
+                // compiler `unsafe` blocks don't accidentally "use"
+                // external blocks (e.g. `unsafe { println("") }`,
+                // expands to `unsafe { ... unsafe { ... } }` where
+                // the inner one is compiler generated).
+                if self.unsafe_context == SafeContext || source == ast::CompilerGenerated {
+                    self.unsafe_context = UnsafeBlock(block.id)
+                }
+            }
         }
 
         visit::walk_block(self, block, ());
