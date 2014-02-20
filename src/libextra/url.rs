@@ -14,7 +14,7 @@
 
 use std::io::BufReader;
 use std::cmp::Eq;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::to_bytes;
 use std::uint;
 
@@ -957,7 +957,7 @@ mod tests {
 
     use super::*;
 
-    use std::hashmap::HashMap;
+    use collections::HashMap;
 
     #[test]
     fn test_url_parse() {

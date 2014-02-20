@@ -17,8 +17,8 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
-use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
+use collections::HashMap;
 use syntax::codemap::Span;
 
 pub struct Builder<'a> {

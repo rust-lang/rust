@@ -10,7 +10,8 @@
 
 //buggy.rs
 
-use std::hashmap::HashMap;
+extern crate collections;
+use collections::HashMap;
 
 fn main() {
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();

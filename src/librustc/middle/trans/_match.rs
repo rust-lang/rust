@@ -223,7 +223,7 @@ use util::common::indenter;
 use util::ppaux::{Repr, vec_map_to_str};
 
 use std::cell::Cell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::vec;
 use syntax::ast;
 use syntax::ast::Ident;

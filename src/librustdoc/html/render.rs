@@ -34,12 +34,12 @@
 //! both occur before the crate is rendered.
 
 use std::fmt;
-use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::io;
 use std::io::{fs, File, BufferedWriter};
 use std::str;
 use std::vec;
+use collections::{HashMap, HashSet};
 
 use sync::Arc;
 use extra::json::ToJson;

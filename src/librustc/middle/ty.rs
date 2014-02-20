@@ -33,12 +33,12 @@ use util::common::{indenter};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::hashmap::{HashMap, HashSet};
 use std::ops;
 use std::rc::Rc;
 use std::to_bytes;
 use std::to_str::ToStr;
 use std::vec;
+use collections::{HashMap, HashSet};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
 use syntax::ast_util;
@@ -460,7 +460,7 @@ pub struct param_ty {
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -620,13 +620,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr, Show)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: BoundRegion
 }
 
-#[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -869,7 +869,7 @@ pub struct IntVid(uint);
 #[deriving(Clone, Eq, IterBytes)]
 pub struct FloatVid(uint);
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, Show)]
 pub struct RegionVid {
     id: uint
 }
@@ -881,7 +881,7 @@ pub enum InferTy {
     FloatVar(FloatVid)
 }
 
-#[deriving(Clone, Encodable, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, Encodable, Decodable, IterBytes, ToStr, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)

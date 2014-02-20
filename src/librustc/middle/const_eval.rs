@@ -24,7 +24,7 @@ use syntax::visit;
 use syntax::{ast, ast_map, ast_util};
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::rc::Rc;
 
 //

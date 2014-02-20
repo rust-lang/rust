@@ -13,7 +13,7 @@
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::libc::{c_uint, c_ushort, c_void, free};
 use std::str::raw::from_c_str;
 

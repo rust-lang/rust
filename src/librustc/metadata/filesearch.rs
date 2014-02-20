@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::option;
 use std::os;
 use std::io::fs;
-use std::hashmap::HashSet;
+use collections::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
 

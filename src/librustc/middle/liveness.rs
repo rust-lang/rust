@@ -111,7 +111,7 @@ use middle::moves;
 
 use std::cast::transmute;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::io;
 use std::str;
 use std::to_str;

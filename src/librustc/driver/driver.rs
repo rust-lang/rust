@@ -31,12 +31,12 @@ use extra::json;
 use serialize::Encodable;
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
 use std::io::MemReader;
 use std::os;
 use std::vec;
+use collections::{HashMap, HashSet};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;

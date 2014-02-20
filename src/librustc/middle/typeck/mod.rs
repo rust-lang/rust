@@ -70,7 +70,7 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::rc::Rc;
 use collections::List;
 use collections::list;

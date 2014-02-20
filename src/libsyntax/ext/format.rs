@@ -18,8 +18,9 @@ use opt_vec;
 use parse::token::InternedString;
 use parse::token;
 use rsparse = parse;
+
 use std::fmt::parse;
-use std::hashmap::{HashMap, HashSet};
+use collections::{HashMap, HashSet};
 use std::vec;
 
 #[deriving(Eq)]

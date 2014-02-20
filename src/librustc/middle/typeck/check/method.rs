@@ -98,7 +98,7 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::result;
 use std::vec;
 use syntax::ast::{DefId, SelfValue, SelfRegion};

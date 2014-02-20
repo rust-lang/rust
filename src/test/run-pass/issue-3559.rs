@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hashmap::HashMap;
+extern crate collections;
+
+use collections::HashMap;
 
 fn check_strs(actual: &str, expected: &str) -> bool {
     if actual != expected {

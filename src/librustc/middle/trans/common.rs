@@ -33,7 +33,7 @@ use util::ppaux::Repr;
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use syntax::ast::Ident;
 use syntax::ast;

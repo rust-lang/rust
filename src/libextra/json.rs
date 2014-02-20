@@ -235,7 +235,7 @@ fn main() {
 
 use std::char;
 use std::f64;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::io;
 use std::io::MemWriter;
 use std::num;
