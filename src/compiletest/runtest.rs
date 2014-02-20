@@ -258,15 +258,12 @@ actual:\n\
 }
 
 fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
-
-    // do not optimize debuginfo tests
-    let mut config = match config.target_rustcflags {
-        Some(ref flags) => config {
-            target_rustcflags: Some(flags.replace("-O", "")),
-            .. (*config).clone()
-        },
-        None => (*config).clone()
+    let mut config = config {
+        target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
+        host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
+        .. config.clone()
     };
+
     let config = &mut config;
     let check_lines = &props.check_lines;
     let mut cmds = props.debugger_cmds.connect("\n");
@@ -435,6 +432,20 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             fatal_ProcRes(format!("line not found in debugger output: {}",
                                   check_lines[i]), &ProcRes);
         }
+    }
+
+    fn cleanup_debug_info_options(options: &Option<~str>) -> Option<~str> {
+        if options.is_none() {
+            return None;
+        }
+
+        // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
+        let options_to_remove = [~"-O", ~"-g", ~"--debuginfo"];
+        let new_options = split_maybe_args(options).move_iter()
+                                                   .filter(|x| !options_to_remove.contains(x))
+                                                   .to_owned_vec()
+                                                   .connect(" ");
+        Some(new_options)
     }
 }
 
