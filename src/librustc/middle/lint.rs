@@ -1400,7 +1400,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         ast::ExprMethodCall(..) => {
             let method_map = cx.method_map.borrow();
             match method_map.get().find(&e.id) {
-                Some(&typeck::method_map_entry { origin, .. }) => {
+                Some(&origin) => {
                     match origin {
                         typeck::method_static(def_id) => {
                             // If this implements a trait method, get def_id
