@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
 extern crate collections;
+extern crate time;
 
 use collections::bitv::BitvSet;
 use collections::TreeSet;
@@ -31,9 +31,9 @@ struct Results {
 }
 
 fn timed(result: &mut f64, op: ||) {
-    let start = extra::time::precise_time_s();
+    let start = time::precise_time_s();
     op();
-    let end = extra::time::precise_time_s();
+    let end = time::precise_time_s();
     *result = (end - start);
 }
 
@@ -191,13 +191,13 @@ fn main() {
             let s: TreeSet<~str> = TreeSet::new();
             s
         });
-        write_results("extra::treemap::TreeSet", &results);
+        write_results("collections::TreeSet", &results);
     }
 
     {
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || BitvSet::new());
-        write_results("extra::bitv::BitvSet", &results);
+        write_results("collections::bitv::BitvSet", &results);
     }
 }

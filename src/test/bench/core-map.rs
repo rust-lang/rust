@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
 extern crate collections;
+extern crate time;
 
-use extra::time;
 use collections::TreeMap;
 use std::hashmap::{HashMap, HashSet};
 use std::os;
