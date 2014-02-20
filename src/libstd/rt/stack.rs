@@ -36,7 +36,7 @@ pub static RED_ZONE: uint = 20 * 1024;
                   //   irrelevant for documentation purposes.
 #[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
-    use option::None;
+    use option::{Option, None, Some};
     use rt::local::Local;
     use rt::task::Task;
     use str::Str;
@@ -85,16 +85,21 @@ pub extern "C" fn rust_stack_exhausted() {
         //  #9854 - unwinding on windows through __morestack has never worked
         //  #2361 - possible implementation of not using landing pads
 
-        let mut task = Local::borrow(None::<Task>);
-        let n = task.get().name.as_ref()
-                    .map(|n| n.as_slice()).unwrap_or("<unnamed>");
+        let task: Option<~Task> = Local::try_take();
+        let name = match task {
+            Some(ref task) => {
+                task.name.as_ref().map(|n| n.as_slice())
+            }
+            None => None
+        };
+        let name = name.unwrap_or("<unknown>");
 
         // See the message below for why this is not emitted to the
         // task's logger. This has the additional conundrum of the
         // logger may not be initialized just yet, meaning that an FFI
         // call would happen to initialized it (calling out to libuv),
         // and the FFI call needs 2MB of stack when we just ran out.
-        println!("task '{}' has overflowed its stack", n);
+        rterrln!("task '{}' has overflowed its stack", name);
 
         intrinsics::abort();
     }
