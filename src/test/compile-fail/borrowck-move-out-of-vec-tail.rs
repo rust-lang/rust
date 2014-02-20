@@ -26,8 +26,8 @@ pub fn main() {
         [_, ..tail] => {
             match tail {
                 [Foo { string: a }, Foo { string: b }] => {
-                    //~^ ERROR cannot move out of dereference of & pointer
-                    //~^^ ERROR cannot move out of dereference of & pointer
+                    //~^ ERROR cannot move out of dereference of `&`-pointer
+                    //~^^ ERROR cannot move out of dereference of `&`-pointer
                 }
                 _ => {
                     unreachable!();

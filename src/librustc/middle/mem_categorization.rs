@@ -1152,7 +1152,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                       format!("captured outer variable")
                   }
                   _ => {
-                      format!("dereference of {} pointer", ptr_sigil(pk))
+                      format!("dereference of `{}`-pointer", ptr_sigil(pk))
                   }
               }
           }
