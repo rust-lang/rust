@@ -875,14 +875,14 @@ An example of what will and will not work for `use` items:
 
 ~~~~
 # #[allow(unused_imports)];
-use foo::extra;          // good: foo is at the root of the crate
+use foo::extra::json;    // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
 mod foo {
     extern crate extra;
 
-    use foo::extra::time;  // good: foo is at crate root
-//  use extra::*;          // bad:  extra is not at the crate root
+    use foo::extra::json;  // good: foo is at crate root
+//  use extra::json::*;    // bad:  extra is not at the crate root
     use self::baz::foobaz; // good: self refers to module 'foo'
     use foo::bar::foobar;  // good: foo is at crate root
 

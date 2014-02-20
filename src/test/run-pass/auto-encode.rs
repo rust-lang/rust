@@ -14,6 +14,7 @@
 #[feature(managed_boxes)];
 
 extern crate extra;
+extern crate time;
 
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
@@ -26,7 +27,6 @@ use std::cmp::Eq;
 use std::cmp;
 use std::io;
 use serialize::{Decodable, Encodable};
-use extra::time;
 
 fn test_ebml<'a, A:
     Eq +

@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[crate_id = "time#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+
 #[allow(missing_doc)];
+
+extern crate serialize;
 
 use std::io::BufReader;
 use std::libc;
@@ -1035,7 +1042,8 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Timespec, get_time, precise_time_ns, precise_time_s, tzset,
+                at_utc, at, strptime};
 
     use std::f64;
     use std::result::{Err, Ok};

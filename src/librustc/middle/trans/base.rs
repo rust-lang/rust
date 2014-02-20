@@ -72,7 +72,6 @@ use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
 
 use arena::TypedArena;
-use extra::time;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
@@ -89,6 +88,8 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
+
+use time;
 
 pub use middle::trans::context::task_llcx;
 

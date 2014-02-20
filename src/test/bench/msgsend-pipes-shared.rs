@@ -18,7 +18,7 @@
 // different scalability characteristics compared to the select
 // version.
 
-extern crate extra;
+extern crate time;
 
 use std::comm;
 use std::os;
@@ -58,7 +58,7 @@ fn run(args: &[~str]) {
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();
     let num_bytes = 100;
-    let start = extra::time::precise_time_s();
+    let start = time::precise_time_s();
     let mut worker_results = ~[];
     for _ in range(0u, workers) {
         let to_child = to_child.clone();
@@ -84,7 +84,7 @@ fn run(args: &[~str]) {
     to_child.send(stop);
     move_out(to_child);
     let result = from_child.recv();
-    let end = extra::time::precise_time_s();
+    let end = time::precise_time_s();
     let elapsed = end - start;
     print!("Count is {:?}\n", result);
     print!("Test took {:?} seconds\n", elapsed);

@@ -26,13 +26,14 @@ extern crate extra;
 extern crate getopts;
 extern crate serialize;
 extern crate term;
+extern crate time;
 
 use collections::TreeMap;
 use extra::json::ToJson;
 use extra::json;
 use extra::stats::Stats;
 use extra::stats;
-use extra::time::precise_time_ns;
+use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
 use serialize::Decodable;
 use term::Terminal;
