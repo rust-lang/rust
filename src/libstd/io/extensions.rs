@@ -17,13 +17,15 @@
 
 use container::Container;
 use iter::Iterator;
-use option::Option;
-use io::Reader;
+use option::{Option, Some, None};
+use result::{Ok, Err};
+use io;
+use io::{IoError, IoResult, Reader};
 use vec::{OwnedVector, ImmutableVector};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
-/// until `.read_byte()` returns `None`.
+/// until `.read_byte()` returns `EndOfFile`.
 ///
 /// # Notes about the Iteration Protocol
 ///
@@ -31,11 +33,10 @@ use ptr::RawPtr;
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
-/// # Failure
+/// # Error
 ///
-/// Raises the same conditions as the `read` method, for
-/// each call to its `.next()` method.
-/// Yields `None` if the condition is handled.
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
 pub struct Bytes<'r, T> {
     priv reader: &'r mut T,
 }
@@ -46,10 +47,14 @@ impl<'r, R: Reader> Bytes<'r, R> {
     }
 }
 
-impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
+impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
     #[inline]
-    fn next(&mut self) -> Option<u8> {
-        self.reader.read_byte().ok()
+    fn next(&mut self) -> Option<IoResult<u8>> {
+        match self.reader.read_byte() {
+            Ok(x) => Some(Ok(x)),
+            Err(IoError { kind: io::EndOfFile, .. }) => None,
+            Err(e) => Some(Err(e))
+        }
     }
 }
 
@@ -257,7 +262,7 @@ mod test {
             count: 0,
         };
         let byte = reader.bytes().next();
-        assert!(byte == Some(10));
+        assert!(byte == Some(Ok(10)));
     }
 
     #[test]
@@ -272,7 +277,7 @@ mod test {
         let mut reader = ErroringReader;
         let mut it = reader.bytes();
         let byte = it.next();
-        assert!(byte.is_none());
+        assert!(byte.unwrap().is_err());
     }
 
     #[test]

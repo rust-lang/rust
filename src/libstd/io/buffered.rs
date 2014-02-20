@@ -537,9 +537,9 @@ mod test {
         let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
-        assert_eq!(it.next(), Some(~"a\n"));
-        assert_eq!(it.next(), Some(~"b\n"));
-        assert_eq!(it.next(), Some(~"c"));
+        assert_eq!(it.next(), Some(Ok(~"a\n")));
+        assert_eq!(it.next(), Some(Ok(~"b\n")));
+        assert_eq!(it.next(), Some(Ok(~"c")));
         assert_eq!(it.next(), None);
     }
 
@@ -569,8 +569,8 @@ mod test {
         let buf = [195u8, 159u8, 'a' as u8];
         let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
         let mut it = reader.chars();
-        assert_eq!(it.next(), Some('ß'));
-        assert_eq!(it.next(), Some('a'));
+        assert_eq!(it.next(), Some(Ok('ß')));
+        assert_eq!(it.next(), Some(Ok('a')));
         assert_eq!(it.next(), None);
     }
 
