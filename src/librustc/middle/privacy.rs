@@ -790,17 +790,17 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
                 match ty::get(t).sty {
                     ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
-                        let method_map = self.method_map.borrow();
-                        let entry = match method_map.get().find(&expr.id) {
+                        match self.method_map.borrow().get().find(&expr.id) {
                             None => {
                                 self.tcx.sess.span_bug(expr.span,
                                                        "method call not in \
                                                         method map");
                             }
-                            Some(entry) => entry
-                        };
-                        debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, &entry.origin, ident);
+                            Some(origin) => {
+                                debug!("(privacy checking) checking impl method");
+                                self.check_method(expr.span, origin, ident);
+                            }
+                        }
                     }
                     _ => {}
                 }

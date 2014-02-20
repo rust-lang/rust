@@ -20,7 +20,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
-use middle::typeck::{method_origin, method_map_entry};
+use middle::typeck::method_origin;
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
@@ -573,35 +573,7 @@ impl tr for moves::CaptureVar {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of method_map_entry
-
-trait read_method_map_entry_helper {
-    fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
-                             -> method_map_entry;
-}
-
-fn encode_method_map_entry(ebml_w: &mut writer::Encoder, mme: method_map_entry) {
-    ebml_w.emit_struct("method_map_entry", 3, |ebml_w| {
-        ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
-            mme.origin.encode(ebml_w);
-        });
-    })
-}
-
-impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
-    fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
-                             -> method_map_entry {
-        self.read_struct("method_map_entry", 3, |this| {
-            method_map_entry {
-                origin: this.read_struct_field("origin", 1, |this| {
-                    let method_origin: method_origin =
-                        Decodable::decode(this);
-                    method_origin.tr(xcx)
-                })
-            }
-        })
-    }
-}
+// Encoding and decoding of method_origin
 
 impl tr for method_origin {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> method_origin {
@@ -1023,11 +995,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     {
         let method_map = maps.method_map.borrow();
         let r = method_map.get().find(&id);
-        for &mme in r.iter() {
+        for &origin in r.iter() {
             ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    encode_method_map_entry(ebml_w, *mme)
+                    origin.encode(ebml_w);
                 })
             })
         }
@@ -1364,9 +1336,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let entry = val_dsr.read_method_map_entry(xcx);
+                        let origin: method_origin = Decodable::decode(val_dsr);
                         let mut method_map = dcx.maps.method_map.borrow_mut();
-                        method_map.get().insert(id, entry);
+                        method_map.get().insert(id, origin.tr(xcx));
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =
