@@ -281,7 +281,7 @@ impl fmt::Show for Abi {
 
 impl fmt::Show for AbiSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "\""));
+        try!(write!(f.buf, "\""));
         let mut first = true;
         self.each(|abi| {
             if first { first = false; }

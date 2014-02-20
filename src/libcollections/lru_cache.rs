@@ -222,24 +222,24 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, r"\{"));
+        try!(write!(f.buf, r"\{"));
         let mut cur = self.head;
         for i in range(0, self.len()) {
-            if i > 0 { if_ok!(write!(f.buf, ", ")) }
+            if i > 0 { try!(write!(f.buf, ", ")) }
             unsafe {
                 cur = (*cur).next;
                 match (*cur).key {
                     // should never print nil
-                    None => if_ok!(write!(f.buf, "nil")),
-                    Some(ref k) => if_ok!(write!(f.buf, "{}", *k)),
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref k) => try!(write!(f.buf, "{}", *k)),
                 }
             }
-            if_ok!(write!(f.buf, ": "));
+            try!(write!(f.buf, ": "));
             unsafe {
                 match (*cur).value {
                     // should never print nil
-                    None => if_ok!(write!(f.buf, "nil")),
-                    Some(ref value) => if_ok!(write!(f.buf, "{}", *value)),
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref value) => try!(write!(f.buf, "{}", *value)),
                 }
             }
         }

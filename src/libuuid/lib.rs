@@ -65,14 +65,14 @@ extern crate test;
 extern crate serialize;
 
 use std::cast::{transmute,transmute_copy};
-use std::cast::{transmute,transmute_copy};
 use std::char::Char;
-use std::cmp::Eq;
-use std::cmp::Eq;
 use std::fmt;
 use std::hash::{Hash, sip};
 use std::num::FromStrRadix;
 use std::rand::Rng;
+use std::rand;
+use std::str;
+use std::vec;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 

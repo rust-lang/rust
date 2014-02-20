@@ -405,8 +405,8 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Leaf<K, V> {
     ///Returns a string representation of a Leaf.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { if_ok!(write!(f.buf, " // ")) }
-            if_ok!(write!(f.buf, "{}", *s))
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
         }
         Ok(())
     }
@@ -626,8 +626,8 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Branch<K, V> {
     ///Returns a string representation of a Branch.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, s) in self.elts.iter().enumerate() {
-            if i != 0 { if_ok!(write!(f.buf, " // ")) }
-            if_ok!(write!(f.buf, "{}", *s))
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
         }
         write!(f.buf, " // rightmost child: ({}) ", *self.rightmost_child)
     }
