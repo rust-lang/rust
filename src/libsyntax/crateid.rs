@@ -30,7 +30,7 @@ pub struct CrateId {
 
 impl fmt::Show for CrateId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "{}", self.path));
+        try!(write!(f.buf, "{}", self.path));
         let version = match self.version {
             None => "0.0",
             Some(ref version) => version.as_slice(),

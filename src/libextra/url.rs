@@ -803,25 +803,25 @@ impl fmt::Show for Url {
      * result in just "http://somehost.com".
      */
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "{}:", self.scheme));
+        try!(write!(f.buf, "{}:", self.scheme));
 
         if !self.host.is_empty() {
-            if_ok!(write!(f.buf, "//"));
+            try!(write!(f.buf, "//"));
             match self.user {
-                Some(ref user) => if_ok!(write!(f.buf, "{}", *user)),
+                Some(ref user) => try!(write!(f.buf, "{}", *user)),
                 None => {}
             }
             match self.port {
-                Some(ref port) => if_ok!(write!(f.buf, "{}:{}", self.host,
+                Some(ref port) => try!(write!(f.buf, "{}:{}", self.host,
                                                 *port)),
-                None => if_ok!(write!(f.buf, "{}", self.host)),
+                None => try!(write!(f.buf, "{}", self.host)),
             }
         }
 
-        if_ok!(write!(f.buf, "{}", self.path));
+        try!(write!(f.buf, "{}", self.path));
 
         if !self.query.is_empty() {
-            if_ok!(write!(f.buf, "?{}", query_to_str(&self.query)));
+            try!(write!(f.buf, "?{}", query_to_str(&self.query)));
         }
 
         match self.fragment {
@@ -834,9 +834,9 @@ impl fmt::Show for Url {
 
 impl fmt::Show for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, "{}", self.path));
+        try!(write!(f.buf, "{}", self.path));
         if !self.query.is_empty() {
-            if_ok!(write!(f.buf, "?{}", self.query))
+            try!(write!(f.buf, "?{}", self.query))
         }
 
         match self.fragment {
