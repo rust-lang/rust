@@ -32,6 +32,8 @@ pub struct TestProps {
     force_host: bool,
     // Check stdout for error-pattern output as well as stderr
     check_stdout: bool,
+    // Don't force a --crate-type=dylib flag on the command line
+    no_prefer_dynamic: bool,
 }
 
 // Load any test directives embedded in the file
@@ -45,6 +47,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut check_lines = ~[];
     let mut force_host = false;
     let mut check_stdout = false;
+    let mut no_prefer_dynamic = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -65,6 +68,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if !check_stdout {
             check_stdout = parse_check_stdout(ln);
+        }
+
+        if !no_prefer_dynamic {
+            no_prefer_dynamic = parse_no_prefer_dynamic(ln);
         }
 
         match parse_aux_build(ln) {
@@ -99,6 +106,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_lines: check_lines,
         force_host: force_host,
         check_stdout: check_stdout,
+        no_prefer_dynamic: no_prefer_dynamic,
     };
 }
 
@@ -165,6 +173,10 @@ fn parse_force_host(line: &str) -> bool {
 
 fn parse_check_stdout(line: &str) -> bool {
     parse_name_directive(line, "check-stdout")
+}
+
+fn parse_no_prefer_dynamic(line: &str) -> bool {
+    parse_name_directive(line, "no-prefer-dynamic")
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
