@@ -315,12 +315,15 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
-            match s.split('.').to_owned_vec() {
-                [a, b] => match (from_str::<uint>(a), from_str::<uint>(b)) {
-                    (Some(a), Some(b)) => Some((a,b)),
+            let vector = s.split('.').to_owned_vec();
+            if vector.len() == 2 {
+                match (from_str::<uint>(vector[0]),
+                       from_str::<uint>(vector[1])) {
+                    (Some(a), Some(b)) => Some((a, b)),
                     _ => None
-                },
-                _ => None
+                }
+            } else {
+                None
             }
         }
     }

@@ -14,7 +14,7 @@ struct Foo {
 }
 
 pub fn main() {
-    let x = ~[
+    let x = [
         Foo { string: ~"foo" },
         Foo { string: ~"bar" },
         Foo { string: ~"baz" }
@@ -38,9 +38,6 @@ pub fn main() {
                     unreachable!();
                 }
             }
-        }
-        _ => {
-            unreachable!();
         }
     }
 }
