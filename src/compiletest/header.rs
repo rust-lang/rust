@@ -140,6 +140,7 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
+        let ln = ln.unwrap();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return true;
         } else { if !(it(ln.trim())) { return false; } }
