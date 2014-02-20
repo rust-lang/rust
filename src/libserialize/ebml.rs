@@ -1037,8 +1037,9 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use ebml::reader;
-    use extra::test::BenchHarness;
 
     #[bench]
     pub fn vuint_at_A_aligned(bh: &mut BenchHarness) {

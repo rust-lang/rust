@@ -20,7 +20,7 @@
 #[feature(macro_rules, managed_boxes)];
 
 extern crate serialize;
-#[cfg(test)] extern crate extra; // benchmark tests need this
+#[cfg(test)] extern crate test;
 
 pub use bitv::Bitv;
 pub use btree::BTree;

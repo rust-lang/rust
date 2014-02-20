@@ -1734,10 +1734,11 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use num;
     use vec;
     use prelude::*;
-    use extra::test::BenchHarness;
 
     #[bench]
     fn bench_pow_function(b: &mut BenchHarness) {

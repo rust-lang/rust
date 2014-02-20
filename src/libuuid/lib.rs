@@ -61,7 +61,7 @@ Examples of string representations:
 
 // test harness access
 #[cfg(test)]
-extern crate extra;
+extern crate test;
 extern crate serialize;
 
 use std::str;
@@ -812,8 +812,9 @@ mod test {
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use super::Uuid;
-    use extra::test::BenchHarness;
 
     #[bench]
     pub fn create_uuids(bh: &mut BenchHarness) {
