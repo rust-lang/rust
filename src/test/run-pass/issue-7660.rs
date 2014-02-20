@@ -11,7 +11,9 @@
 // Regresion test for issue 7660
 // rvalue lifetime too short when equivalent `match` works
 
-use std::hashmap::HashMap;
+extern crate collections;
+
+use collections::HashMap;
 
 struct A(int, int);
 

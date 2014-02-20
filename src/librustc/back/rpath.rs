@@ -13,7 +13,7 @@ use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
 
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::{os, vec};
 use syntax::abi;
 

@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::container::Map;
-use std::hashmap::HashMap;
+extern crate collections;
+
+use collections::HashMap;
 
 // Test that trait types printed in error msgs include the type arguments.
 

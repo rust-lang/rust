@@ -13,11 +13,12 @@
 // ignore-fast
 // aux-build:issue-2631-a.rs
 
+extern crate collections;
 extern crate req;
 
 use req::request;
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];

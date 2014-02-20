@@ -3395,7 +3395,6 @@ mod tests {
 
     #[test]
     fn test_permutations() {
-        use hashmap;
         {
             let v: [int, ..0] = [];
             let mut it = v.permutations();
@@ -3418,13 +3417,13 @@ mod tests {
             assert_eq!(it.next(), None);
         }
         {
-            // check that we have N! unique permutations
-            let mut set = hashmap::HashSet::new();
+            // check that we have N! permutations
             let v = ['A', 'B', 'C', 'D', 'E', 'F'];
-            for perm in v.permutations() {
-                set.insert(perm);
+            let mut amt = 0;
+            for _perm in v.permutations() {
+                amt += 1;
             }
-            assert_eq!(set.len(), 2 * 3 * 4 * 5 * 6);
+            assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
         }
     }
 

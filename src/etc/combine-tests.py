@@ -55,6 +55,8 @@ c.write(
 #[crate_id=\"run_pass_stage2#0.1\"];
 #[feature(globs, macro_rules, struct_variant, managed_boxes)];
 #[allow(warnings)];
+extern crate collections;
+extern crate extra;
 """
 )
 for t in stage2_tests:

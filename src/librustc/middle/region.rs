@@ -26,7 +26,7 @@ use middle::ty::{FreeRegion};
 use middle::ty;
 
 use std::cell::RefCell;
-use std::hashmap::{HashMap, HashSet};
+use collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::visit::{Visitor, FnKind};

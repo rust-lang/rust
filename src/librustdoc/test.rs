@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::local_data;
 use std::os;
 use std::run;

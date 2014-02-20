@@ -18,7 +18,7 @@ Uses `Graph` as the underlying representation.
 use middle::graph;
 use middle::ty;
 use middle::typeck;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use syntax::ast;
 use syntax::opt_vec::OptVec;
 

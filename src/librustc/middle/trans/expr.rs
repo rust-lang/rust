@@ -70,7 +70,7 @@ use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map;

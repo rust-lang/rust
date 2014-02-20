@@ -21,7 +21,7 @@ use metadata::loader;
 use metadata::loader::Os;
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;

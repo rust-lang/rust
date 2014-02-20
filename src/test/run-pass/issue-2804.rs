@@ -10,10 +10,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate collections;
 extern crate extra;
 
 use extra::json;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::option;
 
 enum object {

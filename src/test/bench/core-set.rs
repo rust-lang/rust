@@ -15,7 +15,7 @@ extern crate time;
 
 use collections::bitv::BitvSet;
 use collections::TreeSet;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::os;
 use std::rand;
 use std::uint;
@@ -177,7 +177,7 @@ fn main() {
             let s: HashSet<~str> = HashSet::new();
             s
         });
-        write_results("std::hashmap::HashSet", &results);
+        write_results("collections::HashSet", &results);
     }
 
     {

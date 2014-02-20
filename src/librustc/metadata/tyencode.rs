@@ -14,7 +14,7 @@
 #[allow(non_camel_case_types)];
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::io;
 use std::io::MemWriter;
 use std::str;

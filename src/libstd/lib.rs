@@ -11,7 +11,7 @@
 //! # The Rust standard library
 //!
 //! The Rust standard library is a group of interrelated modules defining
-//! the core language traits, operations on built-in data types, collections,
+//! the core language traits, operations on built-in data types,
 //! platform abstractions, the task scheduler, runtime support for language
 //! features and other common functionality.
 //!
@@ -68,9 +68,9 @@
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
-#[cfg(test)] extern crate rustuv = "rustuv";
-#[cfg(test)] extern crate native = "native";
-#[cfg(test)] extern crate green = "green";
+#[cfg(test)] extern crate rustuv;
+#[cfg(test)] extern crate native;
+#[cfg(test)] extern crate green;
 
 // Make extra accessible for benchmarking
 #[cfg(test)] extern crate extra = "extra";
@@ -156,9 +156,7 @@ pub mod any;
 
 pub mod option;
 pub mod result;
-pub mod hashmap;
 pub mod cell;
-pub mod trie;
 
 
 /* Tasks and communication */
