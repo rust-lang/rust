@@ -34,7 +34,7 @@ use std::str;
 use std::task;
 use std::vec;
 
-use extra::test::MetricMap;
+use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
 

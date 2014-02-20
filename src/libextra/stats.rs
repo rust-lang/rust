@@ -1025,7 +1025,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use std::vec;
     use stats::Stats;
 

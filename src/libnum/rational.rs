@@ -430,8 +430,7 @@ mod test {
 
     mod arith {
         use super::{_0, _1, _2, _1_2, _3_2, _neg1_2, to_big};
-        use super::super::{Ratio, Rational, BigRational};
-
+        use super::super::{Ratio, Rational};
 
         #[test]
         fn test_add() {

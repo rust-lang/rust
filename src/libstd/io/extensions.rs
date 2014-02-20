@@ -456,7 +456,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use container::Container;
 
     macro_rules! u64_from_be_bytes_bench_impl(
