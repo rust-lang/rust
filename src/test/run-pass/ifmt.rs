@@ -238,6 +238,7 @@ pub fn main() {
 
     test_write();
     test_print();
+    test_dump();
 
     // make sure that format! doesn't move out of local variables
     let a = ~3;
@@ -283,6 +284,18 @@ fn test_print() {
     println!("hello");
     println!("this is a {}", "test");
     println!("{foo}", foo="bar");
+}
+
+// Just make sure that the macros are defined, there's not really a lot that we
+// can do with them just yet (to test the output)
+fn test_dump() {
+    dump!("hello");
+    dump!(2u8, 2 + 2);
+    let val_a = ~[0u8];
+    let val_b = Some(3);
+    let val_c = true;
+    dump!(val_a, val_b, val_c);
+    dump!(bytes!("bye"));
 }
 
 // Just make sure that the macros are defined, there's not really a lot that we

@@ -170,6 +170,23 @@ macro_rules! println(
 )
 
 #[macro_export]
+macro_rules! dump(
+    ($a:expr) => (
+        println!(concat!(stringify!($a), " = {:?}"), $a);
+    );
+    ($a:expr, $($b:expr),+) => (
+        println!(
+            concat!(
+                stringify!($a), " = {:?}",
+                $(", ", stringify!($b), " = {:?}"),+
+            ),
+            $a,
+            $($b),+
+        );
+    );
+)
+
+#[macro_export]
 macro_rules! local_data_key(
     ($name:ident: $ty:ty) => (
         static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
