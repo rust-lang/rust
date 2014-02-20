@@ -113,13 +113,15 @@ pub mod win32 {
             let mut done = false;
             while !done {
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
+                let k = f(buf.as_mut_ptr(), n);
                 if k == (0 as DWORD) {
                     done = true;
                 } else if k == n &&
                           libc::GetLastError() ==
                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
                     n *= (2 as DWORD);
+                } else if k >= n {
+                    n = k;
                 } else {
                     done = true;
                 }
@@ -1492,6 +1494,16 @@ mod tests {
             // from env() but not visible from getenv().
             assert!(v2.is_none() || v2 == option::Some(v));
         }
+    }
+
+    #[test]
+    fn test_env_set_get_huge() {
+        let n = make_rand_name();
+        let s = "x".repeat(10000);
+        setenv(n, s);
+        assert_eq!(getenv(n), Some(s));
+        unsetenv(n);
+        assert_eq!(getenv(n), None);
     }
 
     #[test]
