@@ -976,7 +976,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(ToStr, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable)]
 pub enum Mutability {
     Mutable,
     Immutable,

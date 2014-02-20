@@ -169,7 +169,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Call the `to_err_msg` method to retrieve the
 /// error as a string.
-#[deriving(Clone, Eq, ToStr)]
+#[deriving(Clone, Eq, Show)]
 #[allow(missing_doc)]
 pub enum Fail_ {
     ArgumentMissing(~str),

@@ -111,12 +111,12 @@ use middle::moves;
 
 use std::cast::transmute;
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
+use std::fmt;
 use std::io;
 use std::str;
-use std::to_str;
 use std::uint;
 use std::vec;
+use collections::HashMap;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
@@ -184,12 +184,16 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-impl to_str::ToStr for LiveNode {
-    fn to_str(&self) -> ~str { format!("ln({})", self.get()) }
+impl fmt::Show for LiveNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "ln({})", self.get())
+    }
 }
 
-impl to_str::ToStr for Variable {
-    fn to_str(&self) -> ~str { format!("v({})", self.get()) }
+impl fmt::Show for Variable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "v({})", self.get())
+    }
 }
 
 // ______________________________________________________________________

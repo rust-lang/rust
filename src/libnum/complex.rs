@@ -11,6 +11,7 @@
 
 //! Complex numbers.
 
+use std::fmt;
 use std::num::{Zero,One,ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This
@@ -167,12 +168,12 @@ impl<T: Clone + Num> One for Cmplx<T> {
 }
 
 /* string conversions */
-impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
-    fn to_str(&self) -> ~str {
+impl<T: fmt::Show + Num + Ord> fmt::Show for Cmplx<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
-            format!("{}-{}i", self.re.to_str(), (-self.im).to_str())
+            write!(f.buf, "{}-{}i", self.re, -self.im)
         } else {
-            format!("{}+{}i", self.re.to_str(), self.im.to_str())
+            write!(f.buf, "{}+{}i", self.re, self.im)
         }
     }
 }

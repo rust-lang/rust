@@ -10,7 +10,7 @@
 
 //! Operations on ASCII strings and characters
 
-use to_str::{ToStr, IntoStr};
+use to_str::{IntoStr};
 use str;
 use str::Str;
 use str::StrSlice;
@@ -124,14 +124,6 @@ impl Ascii {
     #[inline]
     pub fn is_hex(&self) -> bool {
         self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
-    }
-}
-
-impl ToStr for Ascii {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        // self.chr is always a valid utf8 byte, no need for the check
-        unsafe { str::raw::from_byte(self.chr) }
     }
 }
 

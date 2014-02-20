@@ -273,14 +273,6 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     f(buf.slice(0, cur))
 }
 
-impl ToStr for $T {
-    /// Convert to a string in base 10.
-    #[inline]
-    fn to_str(&self) -> ~str {
-        format!("{:d}", *self)
-    }
-}
-
 impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]

@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
+
 struct Thingy {
     x: int,
     y: int
 }
 
-impl ToStr for Thingy {
-    fn to_str(&self) -> ~str {
-        format!("\\{ x: {}, y: {} \\}", self.x, self.y)
+impl fmt::Show for Thingy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "\\{ x: {}, y: {} \\}", self.x, self.y)
     }
 }
 
@@ -23,9 +25,9 @@ struct PolymorphicThingy<T> {
     x: T
 }
 
-impl<T:ToStr> ToStr for PolymorphicThingy<T> {
-    fn to_str(&self) -> ~str {
-        self.x.to_str()
+impl<T:fmt::Show> fmt::Show for PolymorphicThingy<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.x)
     }
 }
 
