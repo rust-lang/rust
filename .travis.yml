@@ -1,0 +1,3 @@
+script:
+  - ./configure
+  - make tidy
