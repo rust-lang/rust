@@ -71,7 +71,6 @@ use iter::Iterator;
 use option::{Option, None, Some};
 use str;
 use str::{MaybeOwned, OwnedStr, Str, StrSlice, from_utf8_lossy};
-use to_str::ToStr;
 use vec;
 use vec::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector};
@@ -496,16 +495,6 @@ pub struct Display<'a, P> {
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_maybe_owned().as_slice().fmt(f)
-    }
-}
-
-impl<'a, P: GenericPath> ToStr for Display<'a, P> {
-    /// Returns the path as a string
-    ///
-    /// If the path is not UTF-8, invalid sequences with be replaced with the
-    /// unicode replacement char. This involves allocation.
-    fn to_str(&self) -> ~str {
-        self.as_maybe_owned().into_owned()
     }
 }
 

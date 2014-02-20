@@ -9,14 +9,18 @@
 // except according to those terms.
 
 pub mod kitty {
+    use std::fmt;
+
     pub struct cat {
       priv meows : uint,
       how_hungry : int,
       name : ~str,
     }
 
-    impl ToStr for cat {
-       fn to_str(&self) -> ~str { self.name.clone() }
+    impl fmt::Show for cat {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f.buf, "{}", self.name)
+        }
     }
 
     impl cat {

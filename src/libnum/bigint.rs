@@ -19,14 +19,14 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 use Integer;
 
 use std::cmp;
-use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+use std::fmt;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
+use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::rand::Rng;
 use std::str;
 use std::uint;
-use std::{i64, u64};
 use std::vec;
+use std::{i64, u64};
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -121,9 +121,10 @@ impl TotalOrd for BigUint {
     }
 }
 
-impl ToStr for BigUint {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_str_radix(10) }
+impl fmt::Show for BigUint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_str_radix(10))
+    }
 }
 
 impl FromStr for BigUint {
@@ -904,9 +905,10 @@ impl TotalOrd for BigInt {
     }
 }
 
-impl ToStr for BigInt {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_str_radix(10) }
+impl fmt::Show for BigInt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_str_radix(10))
+    }
 }
 
 impl FromStr for BigInt {

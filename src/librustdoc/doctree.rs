@@ -58,7 +58,7 @@ impl Module {
     }
 }
 
-#[deriving(ToStr, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable)]
 pub enum StructType {
     /// A normal struct
     Plain,

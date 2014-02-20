@@ -22,6 +22,7 @@ use std::logging;
 use std::cell::RefCell;
 use std::iter;
 use std::vec;
+use std::fmt;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
@@ -37,9 +38,10 @@ impl PathElem {
     }
 }
 
-impl ToStr for PathElem {
-    fn to_str(&self) -> ~str {
-        token::get_name(self.name()).get().to_str()
+impl fmt::Show for PathElem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let slot = token::get_name(self.name());
+        write!(f.buf, "{}", slot.get())
     }
 }
 

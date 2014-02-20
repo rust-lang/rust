@@ -12,14 +12,11 @@
 
 use clone::Clone;
 use cmp::Eq;
-use fmt;
 use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
-use str::OwnedStr;
-use to_str::ToStr;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, Show)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value
@@ -198,20 +195,6 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
             Err(e) => e
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Trait implementations
-/////////////////////////////////////////////////////////////////////////////
-
-impl<T: fmt::Show, E: fmt::Show> fmt::Show for Result<T, E> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Ok(ref t) => write!(f.buf, "Ok({})", *t),
-            Err(ref e) => write!(f.buf, "Err({})", *e)
         }
     }
 }

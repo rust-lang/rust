@@ -40,14 +40,14 @@ use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::cmp;
-use std::io;
-use std::io::{File, PortReader, ChanWriter};
+use std::f64;
+use std::fmt;
 use std::io::stdio::StdWriter;
+use std::io::{File, PortReader, ChanWriter};
+use std::io;
+use std::os;
 use std::str;
 use std::task;
-use std::to_str::ToStr;
-use std::f64;
-use std::os;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -70,11 +70,11 @@ pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(~str)
 }
-impl ToStr for TestName {
-    fn to_str(&self) -> ~str {
-        match (*self).clone() {
-            StaticTestName(s) => s.to_str(),
-            DynTestName(s) => s.to_str()
+impl fmt::Show for TestName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            StaticTestName(s) => f.buf.write_str(s),
+            DynTestName(ref s) => f.buf.write_str(s.as_slice()),
         }
     }
 }

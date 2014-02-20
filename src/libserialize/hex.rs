@@ -11,6 +11,7 @@
 //! Hex binary-to-text encoding
 use std::str;
 use std::vec;
+use std::fmt;
 
 /// A trait for converting a value to hexadecimal encoding
 pub trait ToHex {
@@ -65,12 +66,12 @@ pub enum FromHexError {
     InvalidHexLength,
 }
 
-impl ToStr for FromHexError {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for FromHexError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidHexCharacter(ch, idx) =>
-                format!("Invalid character '{}' at position {}", ch, idx),
-            InvalidHexLength => ~"Invalid input length",
+                write!(f.buf, "Invalid character '{}' at position {}", ch, idx),
+            InvalidHexLength => write!(f.buf, "Invalid input length"),
         }
     }
 }

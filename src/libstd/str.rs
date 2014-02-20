@@ -98,7 +98,6 @@ use num::Saturating;
 use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
-use to_str::ToStr;
 use from_str::FromStr;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
@@ -132,19 +131,9 @@ pub fn from_utf8<'a>(v: &'a [u8]) -> Option<&'a str> {
     } else { None }
 }
 
-impl ToStr for ~str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
-}
-
 impl FromStr for ~str {
     #[inline]
     fn from_str(s: &str) -> Option<~str> { Some(s.to_owned()) }
-}
-
-impl<'a> ToStr for &'a str {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /// Convert a byte to a UTF-8 string
@@ -1267,11 +1256,6 @@ impl<'a> IntoMaybeOwned<'a> for &'a str {
 impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
-}
-
-impl<'a> ToStr for MaybeOwned<'a> {
-    #[inline]
-    fn to_str(&self) -> ~str { self.as_slice().to_owned() }
 }
 
 impl<'a> Eq for MaybeOwned<'a> {
