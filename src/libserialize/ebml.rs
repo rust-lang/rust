@@ -12,7 +12,7 @@
 
 use std::str;
 
-macro_rules! if_ok( ($e:expr) => (
+macro_rules! try( ($e:expr) => (
     match $e { Ok(e) => e, Err(e) => { self.last_error = Err(e); return } }
 ) )
 
@@ -665,18 +665,18 @@ pub mod writer {
             write_vuint(self.writer, tag_id);
 
             // Write a placeholder four-byte size.
-            self.size_positions.push(if_ok!(self.writer.tell()) as uint);
+            self.size_positions.push(try!(self.writer.tell()) as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
-            if_ok!(self.writer.write(zeroes));
+            try!(self.writer.write(zeroes));
         }
 
         pub fn end_tag(&mut self) {
             let last_size_pos = self.size_positions.pop().unwrap();
-            let cur_pos = if_ok!(self.writer.tell());
-            if_ok!(self.writer.seek(last_size_pos as i64, io::SeekSet));
+            let cur_pos = try!(self.writer.tell());
+            try!(self.writer.seek(last_size_pos as i64, io::SeekSet));
             let size = (cur_pos as uint - last_size_pos - 4);
             write_sized_vuint(self.writer, size, 4u);
-            if_ok!(self.writer.seek(cur_pos as i64, io::SeekSet));
+            try!(self.writer.seek(cur_pos as i64, io::SeekSet));
 
             debug!("End tag (size = {})", size);
         }

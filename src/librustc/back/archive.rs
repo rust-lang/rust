@@ -161,7 +161,7 @@ impl Archive {
         // We skip any files explicitly desired for skipping, and we also skip
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
-        let files = if_ok!(fs::readdir(loc.path()));
+        let files = try!(fs::readdir(loc.path()));
         let mut inputs = ~[];
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
@@ -170,7 +170,7 @@ impl Archive {
 
             let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
-            if_ok!(fs::rename(file, &new_filename));
+            try!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
         }
         if inputs.len() == 0 { return Ok(()) }

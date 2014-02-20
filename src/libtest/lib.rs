@@ -397,7 +397,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn new(opts: &TestOpts,
                _: Option<T>) -> io::IoResult<ConsoleTestState<StdWriter>> {
         let log_out = match opts.logfile {
-            Some(ref path) => Some(if_ok!(File::create(path))),
+            Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
         let out = match term::Terminal::new(io::stdout()) {
@@ -461,11 +461,11 @@ impl<T: Writer> ConsoleTestState<T> {
         match self.out {
             Pretty(ref mut term) => {
                 if self.use_color {
-                    if_ok!(term.fg(color));
+                    try!(term.fg(color));
                 }
-                if_ok!(term.write(word.as_bytes()));
+                try!(term.write(word.as_bytes()));
                 if self.use_color {
-                    if_ok!(term.reset());
+                    try!(term.reset());
                 }
                 Ok(())
             }
@@ -493,16 +493,16 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_result(&mut self, result: &TestResult) -> io::IoResult<()> {
-        if_ok!(match *result {
+        try!(match *result {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
-                if_ok!(self.write_metric());
+                try!(self.write_metric());
                 self.write_plain(format!(": {}", fmt_metrics(mm)))
             }
             TrBench(ref bs) => {
-                if_ok!(self.write_bench());
+                try!(self.write_bench());
                 self.write_plain(format!(": {}", fmt_bench_samples(bs)))
             }
         });
@@ -527,7 +527,7 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_failures(&mut self) -> io::IoResult<()> {
-        if_ok!(self.write_plain("\nfailures:\n"));
+        try!(self.write_plain("\nfailures:\n"));
         let mut failures = ~[];
         let mut fail_out  = ~"";
         for &(ref f, ref stdout) in self.failures.iter() {
@@ -541,14 +541,14 @@ impl<T: Writer> ConsoleTestState<T> {
             }
         }
         if fail_out.len() > 0 {
-            if_ok!(self.write_plain("\n"));
-            if_ok!(self.write_plain(fail_out));
+            try!(self.write_plain("\n"));
+            try!(self.write_plain(fail_out));
         }
 
-        if_ok!(self.write_plain("\nfailures:\n"));
+        try!(self.write_plain("\nfailures:\n"));
         failures.sort();
         for name in failures.iter() {
-            if_ok!(self.write_plain(format!("    {}\n", name.to_str())));
+            try!(self.write_plain(format!("    {}\n", name.to_str())));
         }
         Ok(())
     }
@@ -565,37 +565,37 @@ impl<T: Writer> ConsoleTestState<T> {
                 LikelyNoise => noise += 1,
                 MetricAdded => {
                     added += 1;
-                    if_ok!(self.write_added());
-                    if_ok!(self.write_plain(format!(": {}\n", *k)));
+                    try!(self.write_added());
+                    try!(self.write_plain(format!(": {}\n", *k)));
                 }
                 MetricRemoved => {
                     removed += 1;
-                    if_ok!(self.write_removed());
-                    if_ok!(self.write_plain(format!(": {}\n", *k)));
+                    try!(self.write_removed());
+                    try!(self.write_plain(format!(": {}\n", *k)));
                 }
                 Improvement(pct) => {
                     improved += 1;
-                    if_ok!(self.write_plain(format!(": {}", *k)));
-                    if_ok!(self.write_improved());
-                    if_ok!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
+                    try!(self.write_plain(format!(": {}", *k)));
+                    try!(self.write_improved());
+                    try!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
                 }
                 Regression(pct) => {
                     regressed += 1;
-                    if_ok!(self.write_plain(format!(": {}", *k)));
-                    if_ok!(self.write_regressed());
-                    if_ok!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
+                    try!(self.write_plain(format!(": {}", *k)));
+                    try!(self.write_regressed());
+                    try!(self.write_plain(format!(" by {:.2f}%\n", pct as f64)));
                 }
             }
         }
-        if_ok!(self.write_plain(format!("result of ratchet: {} metrics added, \
+        try!(self.write_plain(format!("result of ratchet: {} metrics added, \
                                         {} removed, {} improved, {} regressed, \
                                         {} noise\n",
                                        added, removed, improved, regressed,
                                        noise)));
         if regressed == 0 {
-            if_ok!(self.write_plain("updated ratchet file\n"));
+            try!(self.write_plain("updated ratchet file\n"));
         } else {
-            if_ok!(self.write_plain("left ratchet file untouched\n"));
+            try!(self.write_plain("left ratchet file untouched\n"));
         }
         Ok(())
     }
@@ -608,38 +608,38 @@ impl<T: Writer> ConsoleTestState<T> {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                if_ok!(self.write_plain(format!("\nusing metrics ratcher: {}\n",
+                try!(self.write_plain(format!("\nusing metrics ratcher: {}\n",
                                         pth.display())));
                 match ratchet_pct {
                     None => (),
                     Some(pct) =>
-                        if_ok!(self.write_plain(format!("with noise-tolerance \
+                        try!(self.write_plain(format!("with noise-tolerance \
                                                          forced to: {}%\n",
                                                         pct)))
                 }
                 let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
-                if_ok!(self.write_metric_diff(&diff));
+                try!(self.write_metric_diff(&diff));
                 ok
             }
         };
 
         let test_success = self.failed == 0u;
         if !test_success {
-            if_ok!(self.write_failures());
+            try!(self.write_failures());
         }
 
         let success = ratchet_success && test_success;
 
-        if_ok!(self.write_plain("\ntest result: "));
+        try!(self.write_plain("\ntest result: "));
         if success {
             // There's no parallelism at this point so it's safe to use color
-            if_ok!(self.write_ok());
+            try!(self.write_ok());
         } else {
-            if_ok!(self.write_failed());
+            try!(self.write_failed());
         }
         let s = format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
                         self.passed, self.failed, self.ignored, self.measured);
-        if_ok!(self.write_plain(s));
+        try!(self.write_plain(s));
         return Ok(success);
     }
 }
@@ -678,8 +678,8 @@ pub fn run_tests_console(opts: &TestOpts,
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeResult(test, result, stdout) => {
-                if_ok!(st.write_log(&test, &result));
-                if_ok!(st.write_result(&result));
+                try!(st.write_log(&test, &result));
+                try!(st.write_result(&result));
                 match result {
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
@@ -707,7 +707,7 @@ pub fn run_tests_console(opts: &TestOpts,
             }
         }
     }
-    let mut st = if_ok!(ConsoleTestState::new(opts, None::<StdWriter>));
+    let mut st = try!(ConsoleTestState::new(opts, None::<StdWriter>));
     fn len_if_padded(t: &TestDescAndFn) -> uint {
         match t.testfn.padding() {
             PadNone => 0u,
@@ -722,12 +722,12 @@ pub fn run_tests_console(opts: &TestOpts,
         },
         None => {}
     }
-    if_ok!(run_tests(opts, tests, |x| callback(&x, &mut st)));
+    try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
     match opts.save_metrics {
         None => (),
         Some(ref pth) => {
-            if_ok!(st.metrics.save(pth));
-            if_ok!(st.write_plain(format!("\nmetrics saved to: {}",
+            try!(st.metrics.save(pth));
+            try!(st.write_plain(format!("\nmetrics saved to: {}",
                                           pth.display())));
         }
     }
@@ -793,7 +793,7 @@ fn run_tests(opts: &TestOpts,
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.map(|t| t.desc.clone());
 
-    if_ok!(callback(TeFiltered(filtered_descs)));
+    try!(callback(TeFiltered(filtered_descs)));
 
     let (filtered_tests, filtered_benchs_and_metrics) =
         filtered_tests.partition(|e| {
@@ -821,7 +821,7 @@ fn run_tests(opts: &TestOpts,
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                if_ok!(callback(TeWait(test.desc.clone(), test.testfn.padding())));
+                try!(callback(TeWait(test.desc.clone(), test.testfn.padding())));
             }
             run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
@@ -829,19 +829,19 @@ fn run_tests(opts: &TestOpts,
 
         let (desc, result, stdout) = p.recv();
         if concurrency != 1 {
-            if_ok!(callback(TeWait(desc.clone(), PadNone)));
+            try!(callback(TeWait(desc.clone(), PadNone)));
         }
-        if_ok!(callback(TeResult(desc, result, stdout)));
+        try!(callback(TeResult(desc, result, stdout)));
         pending -= 1;
     }
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
     for b in filtered_benchs_and_metrics.move_iter() {
-        if_ok!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
+        try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result, stdout) = p.recv();
-        if_ok!(callback(TeResult(test, result, stdout)));
+        try!(callback(TeResult(test, result, stdout)));
     }
     Ok(())
 }
@@ -1026,7 +1026,7 @@ impl MetricMap {
 
     /// Write MetricDiff to a file.
     pub fn save(&self, p: &Path) -> io::IoResult<()> {
-        let mut file = if_ok!(File::create(p));
+        let mut file = try!(File::create(p));
         let MetricMap(ref map) = *self;
         map.to_json().to_pretty_writer(&mut file)
     }

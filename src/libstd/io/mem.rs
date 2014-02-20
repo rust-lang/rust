@@ -113,7 +113,7 @@ impl Writer for MemWriter {
 impl Seek for MemWriter {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
     }
@@ -183,7 +183,7 @@ impl Reader for MemReader {
 impl Seek for MemReader {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
     }
@@ -253,7 +253,7 @@ impl<'a> Writer for BufWriter<'a> {
 impl<'a> Seek for BufWriter<'a> {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
     }
@@ -313,7 +313,7 @@ impl<'a> Reader for BufReader<'a> {
 impl<'a> Seek for BufReader<'a> {
     fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
-        let new = if_ok!(combine(style, self.pos, self.buf.len(), pos));
+        let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
     }
