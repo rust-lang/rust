@@ -27,6 +27,9 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use extra::json;
+use serialize::Encodable;
+
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 use std::io;
@@ -154,7 +157,7 @@ pub enum Input {
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
-    time(sess.time_passes(), "parsing", (), |_| {
+    let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
@@ -166,7 +169,15 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
                                                    sess.parse_sess)
             }
         }
-    })
+    });
+
+    if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    krate
 }
 
 // For continuing compilation after a parsed crate has been
@@ -220,8 +231,16 @@ pub fn phase_2_configure_and_expand(sess: Session,
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
 
-    time(time_passes, "assinging node ids and indexing ast", krate, |krate|
-         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate))
+    let (krate, map) = time(time_passes, "assinging node ids and indexing ast", krate, |krate|
+         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
+
+    if sess.opts.debugging_opts & session::AST_JSON != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    (krate, map)
 }
 
 pub struct CrateAnalysis {
@@ -428,7 +447,7 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0;
 }
 
 pub fn stop_after_phase_2(sess: Session) -> bool {
@@ -436,7 +455,7 @@ pub fn stop_after_phase_2(sess: Session) -> bool {
         debug!("invoked with --no-analysis, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON != 0;
 }
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
