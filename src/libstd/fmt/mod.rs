@@ -82,7 +82,7 @@ function, but the `format!` macro is a syntax extension which allows it to
 leverage named parameters. Named parameters are listed at the end of the
 argument list and have the syntax:
 
-```ignore
+```notrust
 identifier '=' expression
 ```
 
@@ -107,7 +107,7 @@ and if all references to one argument do not provide a type, then the format `?`
 is used (the type's rust-representation is printed). For example, this is an
 invalid format string:
 
-```ignore
+```notrust
 {0:d} {0:s}
 ```
 
@@ -123,7 +123,7 @@ must have the type `uint`. Although a `uint` can be printed with `{:u}`, it is
 illegal to reference an argument as such. For example, this is another invalid
 format string:
 
-```ignore
+```notrust
 {:.*s} {0:u}
 ```
 
@@ -232,7 +232,7 @@ fn main() {
 There are a number of related macros in the `format!` family. The ones that are
 currently implemented are:
 
-```rust,ignore
+```ignore
 format!      // described above
 write!       // first argument is a &mut io::Writer, the destination
 writeln!     // same as write but appends a newline
@@ -276,7 +276,7 @@ references information on the stack. Under the hood, all of
 the related macros are implemented in terms of this. First
 off, some example usage is:
 
-```rust,ignore
+```ignore
 use std::fmt;
 
 # fn lol<T>() -> T { fail!() }
@@ -334,7 +334,7 @@ This example is the equivalent of `{0:s}` essentially.
 The select method is a switch over a `&str` parameter, and the parameter *must*
 be of the type `&str`. An example of the syntax is:
 
-```ignore
+```notrust
 {0, select, male{...} female{...} other{...}}
 ```
 
@@ -353,7 +353,7 @@ The plural method is a switch statement over a `uint` parameter, and the
 parameter *must* be a `uint`. A plural method in its full glory can be specified
 as:
 
-```ignore
+```notrust
 {0, plural, offset=1 =1{...} two{...} many{...} other{...}}
 ```
 
@@ -381,7 +381,7 @@ should not be too alien. Arguments are formatted with python-like syntax,
 meaning that arguments are surrounded by `{}` instead of the C-like `%`. The
 actual grammar for the formatting syntax is:
 
-```ignore
+```notrust
 format_string := <text> [ format <text> ] *
 format := '{' [ argument ] [ ':' format_spec ] [ ',' function_spec ] '}'
 argument := integer | identifier
@@ -896,10 +896,10 @@ impl<'a> Formatter<'a> {
     ///
     /// # Arguments
     ///
-    ///     * is_positive - whether the original integer was positive or not.
-    ///     * prefix - if the '#' character (FlagAlternate) is provided, this
-    ///       is the prefix to put in front of the number.
-    ///     * buf - the byte array that the number has been formatted into
+    /// * is_positive - whether the original integer was positive or not.
+    /// * prefix - if the '#' character (FlagAlternate) is provided, this
+    ///   is the prefix to put in front of the number.
+    /// * buf - the byte array that the number has been formatted into
     ///
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
