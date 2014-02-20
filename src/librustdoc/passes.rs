@@ -311,20 +311,19 @@ pub fn unindent(s: &str) -> ~str {
         }
     });
 
-    match lines {
-        [head, .. tail] => {
-            let mut unindented = ~[ head.trim() ];
-            unindented.push_all(tail.map(|&line| {
-                if line.is_whitespace() {
-                    line
-                } else {
-                    assert!(line.len() >= min_indent);
-                    line.slice_from(min_indent)
-                }
-            }));
-            unindented.connect("\n")
-        }
-        [] => s.to_owned()
+    if lines.len() >= 1 {
+        let mut unindented = ~[ lines[0].trim() ];
+        unindented.push_all(lines.tail().map(|&line| {
+            if line.is_whitespace() {
+                line
+            } else {
+                assert!(line.len() >= min_indent);
+                line.slice_from(min_indent)
+            }
+        }));
+        unindented.connect("\n")
+    } else {
+        s.to_owned()
     }
 }
 

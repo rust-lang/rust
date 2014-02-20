@@ -363,40 +363,48 @@ mod test {
     // check the token-tree-ization of macros
     #[test] fn string_to_tts_macro () {
         let tts = string_to_tts(~"macro_rules! zip (($a)=>($a))");
+        let tts: &[ast::TokenTree] = tts;
         match tts {
             [ast::TTTok(_,_),
              ast::TTTok(_,token::NOT),
              ast::TTTok(_,_),
-             ast::TTDelim(delim_elts)] =>
-                match *delim_elts {
-                [ast::TTTok(_,token::LPAREN),
-                 ast::TTDelim(first_set),
-                 ast::TTTok(_,token::FAT_ARROW),
-                 ast::TTDelim(second_set),
-                 ast::TTTok(_,token::RPAREN)] =>
-                    match *first_set {
+             ast::TTDelim(delim_elts)] => {
+                let delim_elts: &[ast::TokenTree] = *delim_elts;
+                match delim_elts {
                     [ast::TTTok(_,token::LPAREN),
-                     ast::TTTok(_,token::DOLLAR),
-                     ast::TTTok(_,_),
-                     ast::TTTok(_,token::RPAREN)] =>
-                        match *second_set {
-                        [ast::TTTok(_,token::LPAREN),
-                         ast::TTTok(_,token::DOLLAR),
-                         ast::TTTok(_,_),
-                         ast::TTTok(_,token::RPAREN)] =>
-                            assert_eq!("correct","correct"),
-                        _ => assert_eq!("wrong 4","correct")
+                     ast::TTDelim(first_set),
+                     ast::TTTok(_,token::FAT_ARROW),
+                     ast::TTDelim(second_set),
+                     ast::TTTok(_,token::RPAREN)] => {
+                        let first_set: &[ast::TokenTree] = *first_set;
+                        match first_set {
+                            [ast::TTTok(_,token::LPAREN),
+                             ast::TTTok(_,token::DOLLAR),
+                             ast::TTTok(_,_),
+                             ast::TTTok(_,token::RPAREN)] => {
+                                let second_set: &[ast::TokenTree] =
+                                    *second_set;
+                                match second_set {
+                                    [ast::TTTok(_,token::LPAREN),
+                                     ast::TTTok(_,token::DOLLAR),
+                                     ast::TTTok(_,_),
+                                     ast::TTTok(_,token::RPAREN)] => {
+                                        assert_eq!("correct","correct")
+                                    }
+                                    _ => assert_eq!("wrong 4","correct")
+                                }
+                            },
+                            _ => {
+                                error!("failing value 3: {:?}",first_set);
+                                assert_eq!("wrong 3","correct")
+                            }
+                        }
                     },
                     _ => {
-                        error!("failing value 3: {:?}",first_set);
-                        assert_eq!("wrong 3","correct")
+                        error!("failing value 2: {:?}",delim_elts);
+                        assert_eq!("wrong","correct");
                     }
-                },
-                _ => {
-                    error!("failing value 2: {:?}",delim_elts);
-                    assert_eq!("wrong","correct");
                 }
-
             },
             _ => {
                 error!("failing value: {:?}",tts);

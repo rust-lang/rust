@@ -663,25 +663,26 @@ impl<'a> MethodDef<'a> {
         }
 
         // transpose raw_fields
-        let fields = match raw_fields {
-            [ref self_arg, .. rest] => {
-                self_arg.iter().enumerate().map(|(i, &(span, opt_id, field))| {
-                    let other_fields = rest.map(|l| {
-                        match &l[i] {
-                            &(_, _, ex) => ex
-                        }
-                    });
-                    FieldInfo {
-                        span: span,
-                        name: opt_id,
-                        self_: field,
-                        other: other_fields
+        let fields = if raw_fields.len() > 0 {
+            raw_fields[0].iter()
+                         .enumerate()
+                         .map(|(i, &(span, opt_id, field))| {
+                let other_fields = raw_fields.tail().map(|l| {
+                    match &l[i] {
+                        &(_, _, ex) => ex
                     }
-                }).collect()
-            }
-            [] => { cx.span_bug(trait_.span,
-                                "no self arguments to non-static method \
-                                in generic `deriving`") }
+                });
+                FieldInfo {
+                    span: span,
+                    name: opt_id,
+                    self_: field,
+                    other: other_fields
+                }
+            }).collect()
+        } else {
+            cx.span_bug(trait_.span,
+                        "no self arguments to non-static method in generic \
+                         `deriving`")
         };
 
         // body of the inner most destructuring match
