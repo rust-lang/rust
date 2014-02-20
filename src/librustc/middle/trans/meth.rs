@@ -95,16 +95,15 @@ pub fn trans_method_callee<'a>(
                            bcx: &'a Block<'a>,
                            callee_id: ast::NodeId,
                            this: &ast::Expr,
-                           mentry: typeck::method_map_entry,
+                           origin: typeck::method_origin,
                            arg_cleanup_scope: cleanup::ScopeId)
                            -> Callee<'a> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
-    debug!("trans_method_callee(callee_id={:?}, mentry={})",
-           callee_id,
-           mentry.repr(bcx.tcx()));
+    debug!("trans_method_callee(callee_id={:?}, origin={})",
+           callee_id, origin.repr(bcx.tcx()));
 
-    match mentry.origin {
+    match origin {
         typeck::method_static(did) => {
             Callee {
                 bcx: bcx,

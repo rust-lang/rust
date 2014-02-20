@@ -141,16 +141,9 @@ pub struct method_object {
     real_index: uint,
 }
 
-
-#[deriving(Clone)]
-pub struct method_map_entry {
-    // method details being invoked
-    origin: method_origin,
-}
-
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @RefCell<HashMap<ast::NodeId, method_map_entry>>;
+pub type method_map = @RefCell<HashMap<ast::NodeId, method_origin>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.

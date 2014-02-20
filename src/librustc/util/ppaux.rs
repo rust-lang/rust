@@ -870,12 +870,6 @@ impl Repr for ty::FnSig {
     }
 }
 
-impl Repr for typeck::method_map_entry {
-    fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_map_entry \\{origin: {}\\}", self.origin.repr(tcx))
-    }
-}
-
 impl Repr for typeck::method_origin {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {

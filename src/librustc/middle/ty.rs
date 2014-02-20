@@ -3242,25 +3242,21 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::Expr) -> bool {
     return node_id_has_type_params(cx, expr.id);
 }
 
-pub fn method_call_type_param_defs(tcx: ctxt,
-                                   method_map: typeck::method_map,
-                                   id: ast::NodeId)
-                                   -> Option<Rc<~[TypeParameterDef]>> {
-    let method_map = method_map.borrow();
-    method_map.get().find(&id).map(|method| {
-        match method.origin {
-          typeck::method_static(did) => {
+pub fn method_call_type_param_defs(tcx: ctxt, origin: typeck::method_origin)
+                                   -> Rc<~[TypeParameterDef]> {
+    match origin {
+        typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
             // that we encode include both the impl bounds
             // and then the method bounds themselves...
             ty::lookup_item_type(tcx, did).generics.type_param_defs
-          }
-          typeck::method_param(typeck::method_param {
-              trait_id: trt_id,
-              method_num: n_mth, ..}) |
-          typeck::method_object(typeck::method_object {
-              trait_id: trt_id,
-              method_num: n_mth, ..}) => {
+        }
+        typeck::method_param(typeck::method_param {
+            trait_id: trt_id,
+            method_num: n_mth, ..}) |
+        typeck::method_object(typeck::method_object {
+            trait_id: trt_id,
+            method_num: n_mth, ..}) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -3271,9 +3267,8 @@ pub fn method_call_type_param_defs(tcx: ctxt,
                 ty::trait_method(tcx,
                                  trt_id,
                                  n_mth).generics.type_param_defs()))
-          }
         }
-    })
+    }
 }
 
 pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
