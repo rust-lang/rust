@@ -36,15 +36,10 @@ Rust extras are part of the standard Rust distribution.
 
 extern crate sync;
 extern crate serialize;
-
 extern crate collections;
 
 // Utility modules
-
 pub mod c_vec;
-
-// And ... other stuff
-
 pub mod url;
 pub mod json;
 pub mod tempfile;
@@ -56,15 +51,11 @@ pub mod stats;
 #[cfg(unicode)]
 mod unicode;
 
-// Compiler support modules
-
-pub mod test;
-
 // A curious inner-module that's not exported that contains the binding
 // 'extra' so that macro-expanded references to extra::serialize and such
 // can be resolved within libextra.
 #[doc(hidden)]
 pub mod extra {
     pub use serialize;
-    pub use test;
 }
+

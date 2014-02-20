@@ -431,8 +431,9 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use deque::Deque;
-    use extra::test;
     use std::clone::Clone;
     use std::cmp::Eq;
     use super::RingBuf;

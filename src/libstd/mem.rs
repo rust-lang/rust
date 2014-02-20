@@ -267,8 +267,8 @@ mod tests {
 /// Completely miscellaneous language-construct benchmarks.
 #[cfg(test)]
 mod bench {
-
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use option::{Some,None};
 
     // Static/dynamic method dispatch

@@ -260,8 +260,9 @@ impl<'a> FromBase64 for &'a str {
 }
 
 #[cfg(test)]
-mod test {
-    use extra::test::BenchHarness;
+mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]

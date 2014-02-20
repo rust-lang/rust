@@ -657,8 +657,9 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
 
 #[cfg(test)]
 mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use deque::Deque;
-    use extra::test;
     use std::rand;
     use super::{DList, Node, ListInsertion};
 

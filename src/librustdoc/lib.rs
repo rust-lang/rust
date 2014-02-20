@@ -23,6 +23,7 @@ extern crate serialize;
 extern crate sync;
 extern crate getopts;
 extern crate collections;
+extern crate testing = "test";
 
 use std::local_data;
 use std::io;

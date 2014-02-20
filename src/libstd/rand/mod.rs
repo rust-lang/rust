@@ -845,8 +845,9 @@ static RAND_BENCH_N: u64 = 100;
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use prelude::*;
-    use extra::test::BenchHarness;
     use rand::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
     use mem::size_of;
 

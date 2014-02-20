@@ -15,8 +15,8 @@ use std::os;
 use std::run;
 use std::str;
 
+use testing;
 use extra::tempfile::TempDir;
-use extra::test;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
@@ -89,7 +89,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let mut args = args.to_owned_vec();
     args.unshift(~"rustdoctest");
 
-    test::test_main(args, collector.tests);
+    testing::test_main(args, collector.tests);
 
     0
 }
@@ -164,7 +164,7 @@ fn maketest(s: &str, cratename: &str) -> ~str {
 }
 
 pub struct Collector {
-    priv tests: ~[test::TestDescAndFn],
+    priv tests: ~[testing::TestDescAndFn],
     priv names: ~[~str],
     priv libs: @RefCell<HashSet<Path>>,
     priv cnt: uint,
@@ -180,13 +180,13 @@ impl Collector {
         let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
         debug!("Creating test {}: {}", name, test);
-        self.tests.push(test::TestDescAndFn {
-            desc: test::TestDesc {
-                name: test::DynTestName(name),
+        self.tests.push(testing::TestDescAndFn {
+            desc: testing::TestDesc {
+                name: testing::DynTestName(name),
                 ignore: false,
                 should_fail: false, // compiler failures are test failures
             },
-            testfn: test::DynTestFn(proc() {
+            testfn: testing::DynTestFn(proc() {
                 runtest(test, cratename, libs, should_fail);
             }),
         });

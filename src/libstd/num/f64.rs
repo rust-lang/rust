@@ -867,7 +867,6 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
-
     use num::*;
     use num;
 

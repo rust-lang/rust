@@ -32,7 +32,6 @@ This API is completely unstable and subject to change.
 
 #[deny(non_camel_case_types)];
 
-#[cfg(test)] extern crate extra;
 extern crate serialize;
 extern crate term;
 extern crate collections;

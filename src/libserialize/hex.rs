@@ -139,7 +139,8 @@ impl<'a> FromHex for &'a str {
 
 #[cfg(test)]
 mod tests {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use hex::{FromHex, ToHex};
 
     #[test]

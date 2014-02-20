@@ -938,7 +938,8 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
 
 #[cfg(test)]
 mod tests {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
 
     use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
                from_bytes};

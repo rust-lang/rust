@@ -283,9 +283,10 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
 
 #[cfg(test)]
 mod test {
+    extern crate extra;
+    use self::extra::json;
     use super::*;
     use serialize::Encodable;
-    use extra;
     use std::io;
     use std::io::MemWriter;
     use std::str;
@@ -300,9 +301,9 @@ mod test {
     use util::parser_testing::string_to_stmt;
 
     #[cfg(test)]
-    fn to_json_str<'a, E: Encodable<extra::json::Encoder<'a>>>(val: &E) -> ~str {
+    fn to_json_str<'a, E: Encodable<json::Encoder<'a>>>(val: &E) -> ~str {
         let mut writer = MemWriter::new();
-        let mut encoder = extra::json::Encoder::new(&mut writer as &mut io::Writer);
+        let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
         str::from_utf8_owned(writer.unwrap()).unwrap()
     }

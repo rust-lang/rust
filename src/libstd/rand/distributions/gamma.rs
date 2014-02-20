@@ -371,7 +371,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use mem::size_of;
     use prelude::*;
     use rand::distributions::IndependentSample;
