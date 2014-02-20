@@ -1220,6 +1220,74 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
 // the intermediate rlib version)
 fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                             dylib: bool, tmpdir: &Path) {
+
+    // As a limitation of the current implementation, we require that everything
+    // must be static or everything must be dynamic. The reasons for this are a
+    // little subtle, but as with staticlibs and rlibs, the goal is to prevent
+    // duplicate copies of the same library showing up. For example, a static
+    // immediate dependency might show up as an upstream dynamic dependency and
+    // we currently have no way of knowing that. We know that all dynamic
+    // libraries require dynamic dependencies (see above), so it's satisfactory
+    // to include either all static libraries or all dynamic libraries.
+    //
+    // With this limitation, we expose a compiler default linkage type and an
+    // option to reverse that preference. The current behavior looks like:
+    //
+    // * If a dylib is being created, upstream dependencies must be dylibs
+    // * If nothing else is specified, static linking is preferred
+    // * If the -C prefer-dynamic flag is given, dynamic linking is preferred
+    // * If one form of linking fails, the second is also attempted
+    // * If both forms fail, then we emit an error message
+
+    let dynamic = get_deps(sess.cstore, cstore::RequireDynamic);
+    let statik = get_deps(sess.cstore, cstore::RequireStatic);
+    match (dynamic, statik, sess.opts.cg.prefer_dynamic, dylib) {
+        (_, Some(deps), false, false) => {
+            add_static_crates(args, sess, tmpdir, deps)
+        }
+
+        (None, Some(deps), true, false) => {
+            // If you opted in to dynamic linking and we decided to emit a
+            // static output, you should probably be notified of such an event!
+            sess.warn("dynamic linking was preferred, but dependencies \
+                       could not all be found in an dylib format.");
+            sess.warn("linking statically instead, using rlibs");
+            add_static_crates(args, sess, tmpdir, deps)
+        }
+
+        (Some(deps), _, _, _) => add_dynamic_crates(args, sess, deps),
+
+        (None, _, _, true) => {
+            sess.err("dylib output requested, but some depenencies could not \
+                      be found in the dylib format");
+            let deps = sess.cstore.get_used_crates(cstore::RequireDynamic);
+            for (cnum, path) in deps.move_iter() {
+                if path.is_some() { continue }
+                let name = sess.cstore.get_crate_data(cnum).name.clone();
+                sess.note(format!("dylib not found: {}", name));
+            }
+        }
+
+        (None, None, pref, false) => {
+            let (pref, name) = if pref {
+                sess.err("dynamic linking is preferred, but dependencies were \
+                          not found in either dylib or rlib format");
+                (cstore::RequireDynamic, "dylib")
+            } else {
+                sess.err("dependencies were not all found in either dylib or \
+                          rlib format");
+                (cstore::RequireStatic, "rlib")
+            };
+            sess.note(format!("dependencies not found in the `{}` format",
+                              name));
+            for (cnum, path) in sess.cstore.get_used_crates(pref).move_iter() {
+                if path.is_some() { continue }
+                let name = sess.cstore.get_crate_data(cnum).name.clone();
+                sess.note(name);
+            }
+        }
+    }
+
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::Config, stem: &str) -> ~str {
         if stem.starts_with("lib") &&
@@ -1230,96 +1298,82 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
         }
     }
 
-    let cstore = sess.cstore;
-    if !dylib && !sess.opts.cg.prefer_dynamic {
-        // With an executable, things get a little interesting. As a limitation
-        // of the current implementation, we require that everything must be
-        // static or everything must be dynamic. The reasons for this are a
-        // little subtle, but as with the above two cases, the goal is to
-        // prevent duplicate copies of the same library showing up. For example,
-        // a static immediate dependency might show up as an upstream dynamic
-        // dependency and we currently have no way of knowing that. We know that
-        // all dynamic libraries require dynamic dependencies (see above), so
-        // it's satisfactory to include either all static libraries or all
-        // dynamic libraries.
-        let crates = cstore.get_used_crates(cstore::RequireStatic);
+    // Attempts to find all dependencies with a certain linkage preference,
+    // returning `None` if not all libraries could be found with that
+    // preference.
+    fn get_deps(cstore: &cstore::CStore,  preference: cstore::LinkagePreference)
+            -> Option<~[(ast::CrateNum, Path)]>
+    {
+        let crates = cstore.get_used_crates(preference);
         if crates.iter().all(|&(_, ref p)| p.is_some()) {
-            for (cnum, path) in crates.move_iter() {
-                let cratepath = path.unwrap();
-
-                // When performing LTO on an executable output, all of the
-                // bytecode from the upstream libraries has already been
-                // included in our object file output. We need to modify all of
-                // the upstream archives to remove their corresponding object
-                // file to make sure we don't pull the same code in twice.
-                //
-                // We must continue to link to the upstream archives to be sure
-                // to pull in native static dependencies. As the final caveat,
-                // on linux it is apparently illegal to link to a blank archive,
-                // so if an archive no longer has any object files in it after
-                // we remove `lib.o`, then don't link against it at all.
-                //
-                // If we're not doing LTO, then our job is simply to just link
-                // against the archive.
-                if sess.lto() {
-                    let name = sess.cstore.get_crate_data(cnum).name.clone();
-                    time(sess.time_passes(), format!("altering {}.rlib", name),
-                         (), |()| {
-                        let dst = tmpdir.join(cratepath.filename().unwrap());
-                        match fs::copy(&cratepath, &dst) {
-                            Ok(..) => {}
-                            Err(e) => {
-                                sess.err(format!("failed to copy {} to {}: {}",
-                                                 cratepath.display(),
-                                                 dst.display(),
-                                                 e));
-                                sess.abort_if_errors();
-                            }
-                        }
-                        let dst_str = dst.as_str().unwrap().to_owned();
-                        let mut archive = Archive::open(sess, dst);
-                        archive.remove_file(format!("{}.o", name));
-                        let files = archive.files();
-                        if files.iter().any(|s| s.ends_with(".o")) {
-                            args.push(dst_str);
-                        }
-                    });
-                } else {
-                    args.push(cratepath.as_str().unwrap().to_owned());
-                }
-            }
-            return;
+            Some(crates.move_iter().map(|(a, b)| (a, b.unwrap())).collect())
+        } else {
+            None
         }
     }
 
-    // If we're performing LTO, then it should have been previously required
-    // that all upstream rust dependencies were available in an rlib format.
-    assert!(!sess.lto());
-
-    // This is a fallback of three different  cases of linking:
-    //
-    // * When creating a dynamic library, all inputs are required to be dynamic
-    //   as well
-    // * If an executable is created with a preference on dynamic linking, then
-    //   this case is the fallback
-    // * If an executable is being created, and one of the inputs is missing as
-    //   a static library, then this is the fallback case.
-    let crates = cstore.get_used_crates(cstore::RequireDynamic);
-    for &(cnum, ref path) in crates.iter() {
-        let cratepath = match *path {
-            Some(ref p) => p.clone(),
-            None => {
-                sess.err(format!("could not find dynamic library for: `{}`",
-                                 sess.cstore.get_crate_data(cnum).name));
-                return
+    // Adds the static "rlib" versions of all crates to the command line.
+    fn add_static_crates(args: &mut ~[~str], sess: Session, tmpdir: &Path,
+                         crates: ~[(ast::CrateNum, Path)]) {
+        for (cnum, cratepath) in crates.move_iter() {
+            // When performing LTO on an executable output, all of the
+            // bytecode from the upstream libraries has already been
+            // included in our object file output. We need to modify all of
+            // the upstream archives to remove their corresponding object
+            // file to make sure we don't pull the same code in twice.
+            //
+            // We must continue to link to the upstream archives to be sure
+            // to pull in native static dependencies. As the final caveat,
+            // on linux it is apparently illegal to link to a blank archive,
+            // so if an archive no longer has any object files in it after
+            // we remove `lib.o`, then don't link against it at all.
+            //
+            // If we're not doing LTO, then our job is simply to just link
+            // against the archive.
+            if sess.lto() {
+                let name = sess.cstore.get_crate_data(cnum).name.clone();
+                time(sess.time_passes(), format!("altering {}.rlib", name),
+                     (), |()| {
+                    let dst = tmpdir.join(cratepath.filename().unwrap());
+                    match fs::copy(&cratepath, &dst) {
+                        Ok(..) => {}
+                        Err(e) => {
+                            sess.err(format!("failed to copy {} to {}: {}",
+                                             cratepath.display(),
+                                             dst.display(),
+                                             e));
+                            sess.abort_if_errors();
+                        }
+                    }
+                    let dst_str = dst.as_str().unwrap().to_owned();
+                    let mut archive = Archive::open(sess, dst);
+                    archive.remove_file(format!("{}.o", name));
+                    let files = archive.files();
+                    if files.iter().any(|s| s.ends_with(".o")) {
+                        args.push(dst_str);
+                    }
+                });
+            } else {
+                args.push(cratepath.as_str().unwrap().to_owned());
             }
-        };
-        // Just need to tell the linker about where the library lives and what
-        // its name is
-        let dir = cratepath.dirname_str().unwrap();
-        if !dir.is_empty() { args.push("-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap());
-        args.push("-l" + libarg);
+        }
+    }
+
+    // Same thing as above, but for dynamic crates instead of static crates.
+    fn add_dynamic_crates(args: &mut ~[~str], sess: Session,
+                          crates: ~[(ast::CrateNum, Path)]) {
+        // If we're performing LTO, then it should have been previously required
+        // that all upstream rust dependencies were available in an rlib format.
+        assert!(!sess.lto());
+
+        for (_, cratepath) in crates.move_iter() {
+            // Just need to tell the linker about where the library lives and
+            // what its name is
+            let dir = cratepath.dirname_str().unwrap();
+            if !dir.is_empty() { args.push("-L" + dir); }
+            let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap());
+            args.push("-l" + libarg);
+        }
     }
 }
 
