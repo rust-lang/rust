@@ -26,11 +26,9 @@ Some examples of obvious things you might want to do
 * Read lines from stdin
 
     ```rust
-    use std::io::BufferedReader;
-    use std::io::stdin;
+    use std::io;
 
-    let mut stdin = BufferedReader::new(stdin());
-    for line in stdin.lines() {
+    for line in io::stdin().lines() {
         print!("{}", line);
     }
     ```
@@ -1097,10 +1095,9 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::{BufferedReader, stdin};
+    /// use std::io;
     ///
-    /// let mut reader = BufferedReader::new(stdin());
-    ///
+    /// let mut reader = io::stdin();
     /// let input = reader.read_line().ok().unwrap_or(~"nothing");
     /// ```
     ///
