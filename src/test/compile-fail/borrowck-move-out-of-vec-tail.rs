@@ -21,6 +21,7 @@ pub fn main() {
         Foo { string: ~"bar" },
         Foo { string: ~"baz" }
     ];
+    let x: &[Foo] = x;
     match x {
         [_, ..tail] => {
             match tail {

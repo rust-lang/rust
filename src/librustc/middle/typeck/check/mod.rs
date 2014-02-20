@@ -3894,8 +3894,11 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
         ast::ExprVstoreUniq => ty::vstore_uniq,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             match e.node {
-                ast::ExprLit(..) |
-                ast::ExprVec([], _) => {
+                ast::ExprLit(..) => {
+                    // string literals and *empty slices* live in static memory
+                    ty::vstore_slice(ty::ReStatic)
+                }
+                ast::ExprVec(ref elements, _) if elements.len() == 0 => {
                     // string literals and *empty slices* live in static memory
                     ty::vstore_slice(ty::ReStatic)
                 }

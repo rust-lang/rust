@@ -81,7 +81,13 @@ impl<T> SmallVector<T> {
     pub fn expect_one(self, err: &'static str) -> T {
         match self {
             One(v) => v,
-            Many([v]) => v,
+            Many(v) => {
+                if v.len() == 1 {
+                    v.move_iter().next().unwrap()
+                } else {
+                    fail!(err)
+                }
+            }
             _ => fail!(err)
         }
     }

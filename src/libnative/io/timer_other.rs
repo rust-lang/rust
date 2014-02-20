@@ -130,27 +130,25 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     }
 
     'outer: loop {
-        let timeout = match active {
+        let timeout = if active.len() == 0 {
             // Empty array? no timeout (wait forever for the next request)
-            [] => ptr::null(),
-
-            [~Inner { target, .. }, ..] => {
-                let now = now();
-                // If this request has already expired, then signal it and go
-                // through another iteration
-                if target <= now {
-                    signal(&mut active, &mut dead);
-                    continue;
-                }
-
-                // The actual timeout listed in the requests array is an
-                // absolute date, so here we translate the absolute time to a
-                // relative time.
-                let tm = target - now;
-                timeout.tv_sec = (tm / 1000) as libc::time_t;
-                timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
-                &timeout as *libc::timeval
+            ptr::null()
+        } else {
+            let now = now();
+            // If this request has already expired, then signal it and go
+            // through another iteration
+            if active[0].target <= now {
+                signal(&mut active, &mut dead);
+                continue;
             }
+
+            // The actual timeout listed in the requests array is an
+            // absolute date, so here we translate the absolute time to a
+            // relative time.
+            let tm = active[0].target - now;
+            timeout.tv_sec = (tm / 1000) as libc::time_t;
+            timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
+            &timeout as *libc::timeval
         };
 
         imp::fd_set(&mut set, input);
