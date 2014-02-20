@@ -17,7 +17,6 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
-use std::cast;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
 use syntax::codemap::Span;
@@ -30,10 +29,8 @@ pub struct Builder<'a> {
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 pub fn noname() -> *c_char {
-    unsafe {
-        static cnull: uint = 0u;
-        cast::transmute(&cnull)
-    }
+    static cnull: c_char = 0;
+    &cnull as *c_char
 }
 
 impl<'a> Builder<'a> {

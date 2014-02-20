@@ -30,8 +30,6 @@ use util::ppaux::Repr;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
-use std::cast::transmute;
-use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
@@ -668,7 +666,7 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = cast::transmute(bytes.as_ptr());
+        let ptr = bytes.as_ptr() as *c_char;
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }
