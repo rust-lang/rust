@@ -303,3 +303,18 @@ a {
 .stability.Locked { border-color: #0084B6; color: #00668c; }
 
 :target { background: #FDFFD3; }
+
+pre.rust .kw { color: #cc782f; }
+pre.rust .kw-2 { color: #3bbb33; }
+pre.rust .prelude-ty { color: #3bbb33; }
+pre.rust .number { color: #c13928; }
+pre.rust .self { color: #c13928; }
+pre.rust .boolval { color: #c13928; }
+pre.rust .prelude-val { color: #c13928; }
+pre.rust .op { color: #cc782f; }
+pre.rust .comment { color: #533add; }
+pre.rust .doccomment { color: #d343d0; }
+pre.rust .macro { color: #d343d0; }
+pre.rust .string { color: #c13928; }
+pre.rust .lifetime { color: #d343d0; }
+pre.rust .attribute { color: #d343d0 !important; }

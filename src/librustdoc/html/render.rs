@@ -50,10 +50,10 @@ use syntax::parse::token::InternedString;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::escape::Escape;
 use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
 use html::markdown::Markdown;
+use html::highlight;
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -1091,7 +1091,8 @@ fn item_module(w: &mut Writer, cx: &Context,
 
 fn item_function(w: &mut Writer, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='fn'>{vis}{purity}fn {name}{generics}{decl}</pre>",
+    try!(write!(w, "<pre class='rust fn'>{vis}{purity}fn \
+                    {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
            purity = PuritySpace(f.purity),
            name = it.name.get_ref().as_slice(),
@@ -1112,7 +1113,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     }
 
     // Output the trait definition
-    try!(write!(w, "<pre class='trait'>{}trait {}{}{} ",
+    try!(write!(w, "<pre class='rust trait'>{}trait {}{}{} ",
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
                   t.generics,
@@ -1231,7 +1232,7 @@ fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
 
 fn item_struct(w: &mut Writer, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
-    try!(write!(w, "<pre class='struct'>"));
+    try!(write!(w, "<pre class='rust struct'>"));
     try!(render_struct(w, it, Some(&s.generics), s.struct_type, s.fields,
                          s.fields_stripped, "", true));
     try!(write!(w, "</pre>"));
@@ -1255,7 +1256,7 @@ fn item_struct(w: &mut Writer, it: &clean::Item,
 }
 
 fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
-    try!(write!(w, "<pre class='enum'>{}enum {}{}",
+    try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
                   e.generics));
@@ -1532,7 +1533,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
 
 fn item_typedef(w: &mut Writer, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
-    try!(write!(w, "<pre class='typedef'>type {}{} = {};</pre>",
+    try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
                   it.name.get_ref().as_slice(),
                   t.generics,
                   t.type_));
@@ -1625,9 +1626,7 @@ impl<'a> fmt::Show for Source<'a> {
             try!(write!(fmt.buf, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
         }
         try!(write!(fmt.buf, "</pre>"));
-        try!(write!(fmt.buf, "<pre class='rust'>"));
-        try!(write!(fmt.buf, "{}", Escape(s.as_slice())));
-        try!(write!(fmt.buf, "</pre>"));
+        try!(write!(fmt.buf, "{}", highlight::highlight(s.as_slice())));
         Ok(())
     }
 }
