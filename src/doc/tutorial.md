@@ -582,6 +582,32 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
+There is also a for-loop that can be used to iterate over a range of numbers:
+
+~~~~
+for n in range(0, 5) {
+    println!("{}", n);
+}
+~~~~
+
+The snippet above prints integer numbers under 5 starting at 0.
+
+More generally, a for loop works with anything implementing the `Iterator` trait.
+Data structures can provide one or more methods that return iterators over
+their contents. For example, strings support iteration over their contents in
+various ways:
+
+~~~~
+let s = "Hello";
+for c in s.chars() {
+    println!("{}", c);
+}
+~~~~
+
+The snippet above prints the characters in "Hello" vertically, adding a new
+line after each character.
+
+
 # Data structures
 
 ## Structs
