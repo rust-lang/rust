@@ -31,6 +31,7 @@ use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::mem;
+use std::ptr::read;
 use std::cmp;
 use std::num;
 use std::kinds::marker;
@@ -345,17 +346,13 @@ pub struct TypedArena<T> {
     /// reached, a new chunk is allocated.
     priv end: *T,
 
-    /// The type descriptor of the objects in the arena. This should not be
-    /// necessary, but is until generic destructors are supported.
-    priv tydesc: *TyDesc,
-
     /// A pointer to the first arena segment.
-    priv first: Option<~TypedArenaChunk>,
+    priv first: Option<~TypedArenaChunk<T>>,
 }
 
-struct TypedArenaChunk {
+struct TypedArenaChunk<T> {
     /// Pointer to the next arena segment.
-    next: Option<~TypedArenaChunk>,
+    next: Option<~TypedArenaChunk<T>>,
 
     /// The number of elements that this chunk can hold.
     capacity: uint,
@@ -363,11 +360,10 @@ struct TypedArenaChunk {
     // Objects follow here, suitably aligned.
 }
 
-impl TypedArenaChunk {
+impl<T> TypedArenaChunk<T> {
     #[inline]
-    fn new<T>(next: Option<~TypedArenaChunk>, capacity: uint)
-           -> ~TypedArenaChunk {
-        let mut size = mem::size_of::<TypedArenaChunk>();
+    fn new(next: Option<~TypedArenaChunk<T>>, capacity: uint) -> ~TypedArenaChunk<T> {
+        let mut size = mem::size_of::<TypedArenaChunk<T>>();
         size = round_up(size, mem::min_align_of::<T>());
         let elem_size = mem::size_of::<T>();
         let elems_size = elem_size.checked_mul(&capacity).unwrap();
@@ -375,7 +371,7 @@ impl TypedArenaChunk {
 
         let mut chunk = unsafe {
             let chunk = global_heap::exchange_malloc(size);
-            let mut chunk: ~TypedArenaChunk = cast::transmute(chunk);
+            let mut chunk: ~TypedArenaChunk<T> = cast::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
         };
@@ -387,16 +383,13 @@ impl TypedArenaChunk {
     /// Destroys this arena chunk. If the type descriptor is supplied, the
     /// drop glue is called; otherwise, drop glue is not called.
     #[inline]
-    unsafe fn destroy(&mut self, len: uint, opt_tydesc: Option<*TyDesc>) {
+    unsafe fn destroy(&mut self, len: uint) {
         // Destroy all the allocated objects.
-        match opt_tydesc {
-            None => {}
-            Some(tydesc) => {
-                let mut start = self.start(tydesc);
-                for _ in range(0, len) {
-                    ((*tydesc).drop_glue)(start as *i8);
-                    start = start.offset((*tydesc).size as int)
-                }
+        if intrinsics::needs_drop::<T>() {
+            let mut start = self.start();
+            for _ in range(0, len) {
+                read(start as *T); // run the destructor on the pointer
+                start = start.offset(mem::size_of::<T>() as int)
             }
         }
 
@@ -406,26 +399,26 @@ impl TypedArenaChunk {
             None => {}
             Some(mut next) => {
                 // We assume that the next chunk is completely filled.
-                next.destroy(next.capacity, opt_tydesc)
+                next.destroy(next.capacity)
             }
         }
     }
 
     // Returns a pointer to the first allocated object.
     #[inline]
-    fn start(&self, tydesc: *TyDesc) -> *u8 {
-        let this: *TypedArenaChunk = self;
+    fn start(&self) -> *u8 {
+        let this: *TypedArenaChunk<T> = self;
         unsafe {
-            cast::transmute(round_up(this.offset(1) as uint, (*tydesc).align))
+            cast::transmute(round_up(this.offset(1) as uint, mem::min_align_of::<T>()))
         }
     }
 
     // Returns a pointer to the end of the allocated space.
     #[inline]
-    fn end(&self, tydesc: *TyDesc) -> *u8 {
+    fn end(&self) -> *u8 {
         unsafe {
-            let size = (*tydesc).size.checked_mul(&self.capacity).unwrap();
-            self.start(tydesc).offset(size as int)
+            let size = mem::size_of::<T>().checked_mul(&self.capacity).unwrap();
+            self.start().offset(size as int)
         }
     }
 }
@@ -441,14 +434,10 @@ impl<T> TypedArena<T> {
     /// objects.
     #[inline]
     pub fn with_capacity(capacity: uint) -> TypedArena<T> {
-        let chunk = TypedArenaChunk::new::<T>(None, capacity);
-        let tydesc = unsafe {
-            intrinsics::get_tydesc::<T>()
-        };
+        let chunk = TypedArenaChunk::<T>::new(None, capacity);
         TypedArena {
-            ptr: chunk.start(tydesc) as *T,
-            end: chunk.end(tydesc) as *T,
-            tydesc: tydesc,
+            ptr: chunk.start() as *T,
+            end: chunk.end() as *T,
             first: Some(chunk),
         }
     }
@@ -475,9 +464,9 @@ impl<T> TypedArena<T> {
     fn grow(&mut self) {
         let chunk = self.first.take_unwrap();
         let new_capacity = chunk.capacity.checked_mul(&2).unwrap();
-        let chunk = TypedArenaChunk::new::<T>(Some(chunk), new_capacity);
-        self.ptr = chunk.start(self.tydesc) as *T;
-        self.end = chunk.end(self.tydesc) as *T;
+        let chunk = TypedArenaChunk::<T>::new(Some(chunk), new_capacity);
+        self.ptr = chunk.start() as *T;
+        self.end = chunk.end() as *T;
         self.first = Some(chunk)
     }
 }
@@ -486,18 +475,13 @@ impl<T> TypedArena<T> {
 impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         // Determine how much was filled.
-        let start = self.first.get_ref().start(self.tydesc) as uint;
+        let start = self.first.get_ref().start() as uint;
         let end = self.ptr as uint;
         let diff = (end - start) / mem::size_of::<T>();
 
         // Pass that to the `destroy` method.
         unsafe {
-            let opt_tydesc = if intrinsics::needs_drop::<T>() {
-                Some(self.tydesc)
-            } else {
-                None
-            };
-            self.first.get_mut_ref().destroy(diff, opt_tydesc)
+            self.first.get_mut_ref().destroy(diff)
         }
     }
 }
