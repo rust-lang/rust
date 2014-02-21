@@ -85,7 +85,7 @@ syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator Cloneabl
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
-syn keyword rustTrait Bitwise Bounded Integer
+syn keyword rustTrait Bitwise Bounded Fractional
 syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul CheckedDiv
 syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
