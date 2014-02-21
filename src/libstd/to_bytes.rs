@@ -21,6 +21,7 @@ use option::{None, Option, Some};
 use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
+use vec_ng::Vec;
 
 pub type Cb<'a> = 'a |buf: &[u8]| -> bool;
 
@@ -260,6 +261,13 @@ iter_bytes_tuple!(A, B, C, D, E, F, G)
 iter_bytes_tuple!(A, B, C, D, E, F, G, H)
 
 impl<A:IterBytes> IterBytes for ~[A] {
+    #[inline]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.as_slice().iter_bytes(lsb0, f)
+    }
+}
+
+impl<A:IterBytes> IterBytes for Vec<A> {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         self.as_slice().iter_bytes(lsb0, f)
