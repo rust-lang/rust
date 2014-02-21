@@ -918,11 +918,9 @@ pub fn invoke<'a>(
     }
 
     if need_invoke(bcx) {
-        unsafe {
-            debug!("invoking {} at {}", llfn, bcx.llbb);
-            for &llarg in llargs.iter() {
-                debug!("arg: {}", llarg);
-            }
+        debug!("invoking {} at {}", llfn, bcx.llbb);
+        for &llarg in llargs.iter() {
+            debug!("arg: {}", llarg);
         }
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
@@ -940,11 +938,9 @@ pub fn invoke<'a>(
                               attributes);
         return (llresult, normal_bcx);
     } else {
-        unsafe {
-            debug!("calling {} at {}", llfn, bcx.llbb);
-            for &llarg in llargs.iter() {
-                debug!("arg: {}", llarg);
-            }
+        debug!("calling {} at {}", llfn, bcx.llbb);
+        for &llarg in llargs.iter() {
+            debug!("arg: {}", llarg);
         }
 
         match call_info {
