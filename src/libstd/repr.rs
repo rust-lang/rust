@@ -60,19 +60,13 @@ impl Repr for bool {
 
 impl Repr for int {
     fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
-        ::int::to_str_bytes(*self, 10u, |bits| {
-            writer.write(bits)
-        })
+        write!(writer, "{}", *self)
     }
 }
 
 macro_rules! int_repr(($ty:ident, $suffix:expr) => (impl Repr for $ty {
     fn write_repr(&self, writer: &mut io::Writer) -> io::IoResult<()> {
-        ::$ty::to_str_bytes(*self, 10u, |bits| {
-            writer.write(bits).and_then(|()| {
-                writer.write(bytes!($suffix))
-            })
-        })
+        write!(writer, "{}{}", *self, $suffix)
     }
 }))
 

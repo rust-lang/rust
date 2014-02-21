@@ -2024,7 +2024,7 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 
 impl ToStr for TypeContents {
     fn to_str(&self) -> ~str {
-        format!("TypeContents({})", self.bits.to_str_radix(2))
+        format!("TypeContents({:t})", self.bits)
     }
 }
 
