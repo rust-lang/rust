@@ -339,8 +339,8 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
         })
     }
 
-    let mut reader = if_ok!(File::open(from));
-    let mut writer = if_ok!(File::create(to));
+    let mut reader = try!(File::open(from));
+    let mut writer = try!(File::create(to));
     let mut buf = [0, ..io::DEFAULT_BUF_SIZE];
 
     loop {
@@ -349,10 +349,10 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
             Err(ref e) if e.kind == io::EndOfFile => { break }
             Err(e) => return Err(e)
         };
-        if_ok!(writer.write(buf.slice_to(amt)));
+        try!(writer.write(buf.slice_to(amt)));
     }
 
-    chmod(to, if_ok!(from.stat()).perm)
+    chmod(to, try!(from.stat()).perm)
 }
 
 /// Changes the permission mode bits found on a file or a directory. This
@@ -460,10 +460,10 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// // one possible implementation of fs::walk_dir only visiting files
 /// fn visit_dirs(dir: &Path, cb: |&Path|) -> io::IoResult<()> {
 ///     if dir.is_dir() {
-///         let contents = if_ok!(fs::readdir(dir));
+///         let contents = try!(fs::readdir(dir));
 ///         for entry in contents.iter() {
 ///             if entry.is_dir() {
-///                 if_ok!(visit_dirs(entry, |p| cb(p)));
+///                 try!(visit_dirs(entry, |p| cb(p)));
 ///             } else {
 ///                 cb(entry);
 ///             }
@@ -490,7 +490,7 @@ pub fn readdir(path: &Path) -> IoResult<~[Path]> {
 /// rooted at `path`. The path given will not be iterated over, and this will
 /// perform iteration in a top-down order.
 pub fn walk_dir(path: &Path) -> IoResult<Directories> {
-    Ok(Directories { stack: if_ok!(readdir(path)) })
+    Ok(Directories { stack: try!(readdir(path)) })
 }
 
 /// An iterator which walks over a directory
@@ -529,7 +529,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
         return Ok(())
     }
     if path.filename().is_some() {
-        if_ok!(mkdir_recursive(&path.dir_path(), mode));
+        try!(mkdir_recursive(&path.dir_path(), mode));
     }
     mkdir(path, mode)
 }
@@ -542,12 +542,12 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// This function will return an `Err` value if an error happens. See
 /// `file::unlink` and `fs::readdir` for possible error conditions.
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
-    let children = if_ok!(readdir(path));
+    let children = try!(readdir(path));
     for child in children.iter() {
         if child.is_dir() {
-            if_ok!(rmdir_recursive(child));
+            try!(rmdir_recursive(child));
         } else {
-            if_ok!(unlink(child));
+            try!(unlink(child));
         }
     }
     // Directory should now be empty

@@ -521,9 +521,9 @@ fn write_out_deps(sess: Session,
              })
              .collect()
     };
-    let mut file = if_ok!(io::File::create(&deps_filename));
+    let mut file = try!(io::File::create(&deps_filename));
     for path in out_filenames.iter() {
-        if_ok!(write!(&mut file as &mut Writer,
+        try!(write!(&mut file as &mut Writer,
                       "{}: {}\n\n", path.display(), files.connect(" ")));
     }
     Ok(())
@@ -575,21 +575,21 @@ impl pprust::PpAnn for IdentifiedAnnotation {
     fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(s, item) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, item.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, item.id.to_str()));
             }
             pprust::NodeBlock(s, blk) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
             }
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, expr.id.to_str()));
-                if_ok!(pprust::pclose(s));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, expr.id.to_str()));
+                try!(pprust::pclose(s));
             }
             pprust::NodePat(s, pat) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
             }
         }
         Ok(())
@@ -611,12 +611,12 @@ impl pprust::PpAnn for TypedAnnotation {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s, "as"));
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s,
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s, "as"));
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s,
                                 ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
-                if_ok!(pprust::pclose(s));
+                try!(pprust::pclose(s));
             }
             _ => ()
         }

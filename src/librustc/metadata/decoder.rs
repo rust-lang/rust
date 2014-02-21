@@ -1088,11 +1088,11 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
 
 fn list_crate_attributes(md: ebml::Doc, hash: &str,
                          out: &mut io::Writer) -> io::IoResult<()> {
-    if_ok!(write!(out, "=Crate Attributes ({})=\n", hash));
+    try!(write!(out, "=Crate Attributes ({})=\n", hash));
 
     let r = get_attributes(md);
     for attr in r.iter() {
-        if_ok!(write!(out, "{}\n", pprust::attribute_to_str(attr)));
+        try!(write!(out, "{}\n", pprust::attribute_to_str(attr)));
     }
 
     write!(out, "\n\n")
@@ -1131,11 +1131,11 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
 }
 
 fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
-    if_ok!(write!(out, "=External Dependencies=\n"));
+    try!(write!(out, "=External Dependencies=\n"));
 
     let r = get_crate_deps(data);
     for dep in r.iter() {
-        if_ok!(write!(out,
+        try!(write!(out,
                       "{} {}-{}-{}\n",
                       dep.cnum,
                       token::get_ident(dep.name),
@@ -1143,7 +1143,7 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
                       dep.vers));
     }
 
-    if_ok!(write!(out, "\n"));
+    try!(write!(out, "\n"));
     Ok(())
 }
 
@@ -1164,7 +1164,7 @@ pub fn get_crate_vers(data: &[u8]) -> ~str {
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    if_ok!(list_crate_attributes(md, hash, out));
+    try!(list_crate_attributes(md, hash, out));
     list_crate_deps(bytes, out)
 }
 
