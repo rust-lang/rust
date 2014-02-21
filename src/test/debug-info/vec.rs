@@ -17,11 +17,21 @@
 // debugger:finish
 // debugger:print a
 // check:$1 = {1, 2, 3}
+// debugger:print vec::VECT
+// check:$2 = {4, 5, 6}
 
 #[allow(unused_variable)];
 
+static mut VECT: [i32, ..3] = [1, 2, 3];
+
 fn main() {
     let a = [1, 2, 3];
+
+    unsafe {
+        VECT[0] = 4;
+        VECT[1] = 5;
+        VECT[2] = 6;
+    }
 
     zzz();
 }
