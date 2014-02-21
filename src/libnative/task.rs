@@ -186,7 +186,7 @@ impl rt::Runtime for Ops {
         cur_task.put_runtime(self as ~rt::Runtime);
 
         unsafe {
-            let cur_task_dupe = *cast::transmute::<&~Task, &uint>(&cur_task);
+            let cur_task_dupe = &*cur_task as *Task;
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {
@@ -218,7 +218,7 @@ impl rt::Runtime for Ops {
                 }
             }
             // re-acquire ownership of the task
-            cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
+            cur_task = cast::transmute(cur_task_dupe);
         }
 
         // put the task back in TLS, and everything is as it once was.
