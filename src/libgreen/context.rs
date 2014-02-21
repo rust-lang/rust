@@ -289,11 +289,8 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 }
 
 fn align_down(sp: *mut uint) -> *mut uint {
-    unsafe {
-        let sp: uint = transmute(sp);
-        let sp = sp & !(16 - 1);
-        transmute::<uint, *mut uint>(sp)
-    }
+    let sp = (sp as uint) & !(16 - 1);
+    sp as *mut uint
 }
 
 // ptr::mut_offset is positive ints only
