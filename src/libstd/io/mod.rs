@@ -857,12 +857,12 @@ pub trait Writer {
 
     /// Write the result of passing n through `int::to_str_bytes`.
     fn write_int(&mut self, n: int) -> IoResult<()> {
-        int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+        write!(self, "{:d}", n)
     }
 
     /// Write the result of passing n through `uint::to_str_bytes`.
     fn write_uint(&mut self, n: uint) -> IoResult<()> {
-        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+        write!(self, "{:u}", n)
     }
 
     /// Write a little-endian uint (number of bytes depends on system).

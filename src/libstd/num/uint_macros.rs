@@ -191,7 +191,7 @@ impl ToStr for $T {
     /// Convert to a string in base 10.
     #[inline]
     fn to_str(&self) -> ~str {
-        self.to_str_radix(10u)
+        format!("{:u}", *self)
     }
 }
 
