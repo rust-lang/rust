@@ -15,29 +15,26 @@
 // debugger:rbreak zzz
 // debugger:run
 
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$1 = 0
+
 // STRUCT EXPRESSION
 // debugger:finish
 // debugger:print val
-// check:$1 = -1
+// check:$2 = -1
 // debugger:print ten
-// check:$2 = 10
+// check:$3 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$3 = 11
-// debugger:print ten
-// check:$4 = 10
-// debugger:continue
-
-// debugger:finish
-// debugger:print val
-// check:$5 = -1
+// check:$4 = 11
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$5 = 1
 // debugger:print ten
 // check:$6 = 10
 // debugger:continue
 
-// FUNCTION CALL
 // debugger:finish
 // debugger:print val
 // check:$7 = -1
@@ -45,57 +42,55 @@
 // check:$8 = 10
 // debugger:continue
 
+// FUNCTION CALL
 // debugger:finish
 // debugger:print val
-// check:$9 = 12
+// check:$9 = -1
 // debugger:print ten
 // check:$10 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$11 = -1
+// check:$11 = 12
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$12 = 2
 // debugger:print ten
-// check:$12 = 10
+// check:$13 = 10
+// debugger:continue
+
+// debugger:finish
+// debugger:print val
+// check:$14 = -1
+// debugger:print ten
+// check:$15 = 10
 // debugger:continue
 
 // TUPLE EXPRESSION
 // debugger:finish
 // debugger:print val
-// check:$13 = -1
+// check:$16 = -1
 // debugger:print ten
-// check:$14 = 10
+// check:$17 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$15 = 13
-// debugger:print ten
-// check:$16 = 10
-// debugger:continue
-
-// debugger:finish
-// debugger:print val
-// check:$17 = -1
-// debugger:print ten
-// check:$18 = 10
-// debugger:continue
-
-// VEC EXPRESSION
-// debugger:finish
-// debugger:print val
-// check:$19 = -1
+// check:$18 = 13
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$19 = 3
 // debugger:print ten
 // check:$20 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$21 = 14
+// check:$21 = -1
 // debugger:print ten
 // check:$22 = 10
 // debugger:continue
 
+// VEC EXPRESSION
 // debugger:finish
 // debugger:print val
 // check:$23 = -1
@@ -103,39 +98,35 @@
 // check:$24 = 10
 // debugger:continue
 
+// debugger:finish
+// debugger:print val
+// check:$25 = 14
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$26 = 4
+// debugger:print ten
+// check:$27 = 10
+// debugger:continue
+
+// debugger:finish
+// debugger:print val
+// check:$28 = -1
+// debugger:print ten
+// check:$29 = 10
+// debugger:continue
+
 // REPEAT VEC EXPRESSION
 // debugger:finish
 // debugger:print val
-// check:$25 = -1
+// check:$30 = -1
 // debugger:print ten
-// check:$26 = 10
+// check:$31 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$27 = 15
-// debugger:print ten
-// check:$28 = 10
-// debugger:continue
-
-// debugger:finish
-// debugger:print val
-// check:$29 = -1
-// debugger:print ten
-// check:$30 = 10
-// debugger:continue
-
-// ASSIGNMENT EXPRESSION
-// debugger:finish
-// debugger:print val
-// check:$31 = -1
-// debugger:print ten
-// check:$32 = 10
-// debugger:continue
-
-// debugger:finish
-// debugger:print val
-// check:$33 = 16
+// check:$32 = 15
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$33 = 5
 // debugger:print ten
 // check:$34 = 10
 // debugger:continue
@@ -147,8 +138,7 @@
 // check:$36 = 10
 // debugger:continue
 
-
-// ARITHMETIC EXPRESSION
+// ASSIGNMENT EXPRESSION
 // debugger:finish
 // debugger:print val
 // check:$37 = -1
@@ -158,39 +148,73 @@
 
 // debugger:finish
 // debugger:print val
-// check:$39 = 17
+// check:$39 = 16
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$40 = 6
 // debugger:print ten
-// check:$40 = 10
+// check:$41 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$41 = -1
+// check:$42 = -1
 // debugger:print ten
-// check:$42 = 10
+// check:$43 = 10
+// debugger:continue
+
+
+// ARITHMETIC EXPRESSION
+// debugger:finish
+// debugger:print val
+// check:$44 = -1
+// debugger:print ten
+// check:$45 = 10
+// debugger:continue
+
+// debugger:finish
+// debugger:print val
+// check:$46 = 17
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$47 = 7
+// debugger:print ten
+// check:$48 = 10
+// debugger:continue
+
+// debugger:finish
+// debugger:print val
+// check:$49 = -1
+// debugger:print ten
+// check:$50 = 10
 // debugger:continue
 
 // INDEX EXPRESSION
 // debugger:finish
 // debugger:print val
-// check:$43 = -1
+// check:$51 = -1
 // debugger:print ten
-// check:$44 = 10
+// check:$52 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$45 = 18
+// check:$53 = 18
+// debugger:print 'lexical-scopes-in-block-expression::MUT_INT'
+// check:$54 = 8
 // debugger:print ten
-// check:$46 = 10
+// check:$55 = 10
 // debugger:continue
 
 // debugger:finish
 // debugger:print val
-// check:$47 = -1
+// check:$56 = -1
 // debugger:print ten
-// check:$48 = 10
+// check:$57 = 10
 // debugger:continue
+
+#[allow(unused_variable)];
+#[allow(dead_assignment)];
+
+static mut MUT_INT: int = 0;
 
 struct Point {
     x: int,
@@ -213,6 +237,7 @@ fn main() {
             sentinel();
 
             let val = ten + 1;
+            unsafe {MUT_INT = 1;};
 
             zzz();
             sentinel();
@@ -231,6 +256,7 @@ fn main() {
         sentinel();
 
         let val = ten + 2;
+        unsafe {MUT_INT = 2;};
 
         zzz();
         sentinel();
@@ -248,6 +274,7 @@ fn main() {
         sentinel();
 
         let val = ten + 3;
+        unsafe {MUT_INT = 3;};
 
         zzz();
         sentinel();
@@ -264,6 +291,7 @@ fn main() {
         sentinel();
 
         let val = ten + 4;
+        unsafe {MUT_INT = 4;};
 
         zzz();
         sentinel();
@@ -280,6 +308,7 @@ fn main() {
         sentinel();
 
         let val = ten + 5;
+        unsafe {MUT_INT = 5;};
 
         zzz();
         sentinel();
@@ -297,6 +326,7 @@ fn main() {
         sentinel();
 
         let val = ten + 6;
+        unsafe {MUT_INT = 6;};
 
         zzz();
         sentinel();
@@ -313,6 +343,7 @@ fn main() {
         sentinel();
 
         let val = ten + 7;
+        unsafe {MUT_INT = 7;};
 
         zzz();
         sentinel();
@@ -330,6 +361,7 @@ fn main() {
         sentinel();
 
         let val = ten + 8;
+        unsafe {MUT_INT = 8;};
 
         zzz();
         sentinel();

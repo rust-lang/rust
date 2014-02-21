@@ -46,8 +46,7 @@
 // check:type = f64
 // debugger:info functions _yyy
 // check:[...]![...]_yyy([...])([...]);
-// debugger:detach
-// debugger:quit
+// debugger:continue
 
 #[allow(unused_variable)];
 

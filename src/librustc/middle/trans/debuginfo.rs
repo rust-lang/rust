@@ -280,6 +280,66 @@ pub fn finalize(cx: &CrateContext) {
     };
 }
 
+/// Creates debug information for the given global variable.
+///
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_global_var_metadata(cx: &CrateContext,
+                                  node_id: ast::NodeId,
+                                  global: ValueRef) {
+    if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    let var_item = cx.tcx.map.get(node_id);
+
+    let (ident, span) = match var_item {
+        ast_map::NodeItem(item) => {
+            match item.node {
+                ast::ItemStatic(..) => (item.ident, item.span),
+                _ => cx.sess().span_bug(item.span,
+                                        format!("debuginfo::create_global_var_metadata() -
+                                                Captured var-id refers to unexpected ast_item
+                                                variant: {:?}",
+                                                var_item))
+            }
+        },
+        _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() - Captured var-id \
+                                   refers to unexpected ast_map variant: {:?}",
+                                   var_item))
+    };
+
+    let filename = span_start(cx, span).file.name.clone();
+    let file_metadata = file_metadata(cx, filename);
+
+    let is_local_to_unit = is_node_local_to_unit(cx, node_id);
+    let loc = span_start(cx, span);
+
+    let variable_type = ty::node_id_to_type(cx.tcx(), node_id);
+    let type_metadata = type_metadata(cx, variable_type, span);
+
+    let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
+    let var_name = token::get_ident(ident).get().to_str();
+    let linkage_name = namespace_node.mangled_name_of_contained_item(var_name);
+    let var_scope = namespace_node.scope;
+
+    var_name.with_c_str(|var_name| {
+        linkage_name.with_c_str(|linkage_name| {
+            unsafe {
+                llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
+                                                        var_scope,
+                                                        var_name,
+                                                        linkage_name,
+                                                        file_metadata,
+                                                        loc.line as c_uint,
+                                                        type_metadata,
+                                                        is_local_to_unit,
+                                                        global,
+                                                        ptr::null());
+            }
+        })
+    });
+}
+
 /// Creates debug information for the given local variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
@@ -640,13 +700,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
     let scope_line = span_start(cx, top_level_block.span).line;
 
-    // The is_local_to_unit flag indicates whether a function is local to the current compilation
-    // unit (i.e. if it is *static* in the C-sense). The *reachable* set should provide a good
-    // approximation of this, as it contains everything that might leak out of the current crate
-    // (by being externally visible or by being inlined into something externally visible). It might
-    // better to use the `exported_items` set from `driver::CrateAnalysis` in the future, but (atm)
-    // this set is not available in the translation pass.
-    let is_local_to_unit = !cx.reachable.contains(&fn_ast_id);
+    let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
     let fn_metadata = function_name.with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
@@ -853,6 +907,17 @@ pub fn create_function_debug_context(cx: &CrateContext,
 //=-------------------------------------------------------------------------------------------------
 // Module-Internal debug info creation functions
 //=-------------------------------------------------------------------------------------------------
+
+fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
+{
+    // The is_local_to_unit flag indicates whether a function is local to the current compilation
+    // unit (i.e. if it is *static* in the C-sense). The *reachable* set should provide a good
+    // approximation of this, as it contains everything that might leak out of the current crate
+    // (by being externally visible or by being inlined into something externally visible). It might
+    // better to use the `exported_items` set from `driver::CrateAnalysis` in the future, but (atm)
+    // this set is not available in the translation pass.
+    !cx.reachable.contains(&node_id)
+}
 
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
