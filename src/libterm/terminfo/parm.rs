@@ -12,7 +12,6 @@
 
 use std::{char, vec};
 use std::mem::replace;
-use std::num::strconv::{SignNone,SignNeg,SignAll,int_to_str_bytes_common};
 
 #[deriving(Eq)]
 enum States {
@@ -480,68 +479,49 @@ impl FormatOp {
 fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
     let mut s = match val {
         Number(d) => {
-            match op {
-                FormatString => {
-                    return Err(~"non-number on stack with %s")
-                }
-                _ => {
-                    let radix = match op {
-                        FormatDigit => 10,
-                        FormatOctal => 8,
-                        FormatHex|FormatHEX => 16,
-                        FormatString => unreachable!()
-                    };
-                    let mut s = ~[];
-                    match op {
-                        FormatDigit => {
-                            let sign = if flags.sign { SignAll } else { SignNeg };
-                            int_to_str_bytes_common(d, radix, sign, |c| {
-                                s.push(c);
-                            })
-                        }
-                        _ => {
-                            int_to_str_bytes_common(d as uint, radix, SignNone, |c| {
-                                s.push(c);
-                            })
-                        }
-                    };
-                    if flags.precision > s.len() {
-                        let mut s_ = vec::with_capacity(flags.precision);
-                        let n = flags.precision - s.len();
-                        s_.grow(n, &('0' as u8));
-                        s_.push_all_move(s);
-                        s = s_;
-                    }
-                    assert!(!s.is_empty(), "string conversion produced empty result");
-                    match op {
-                        FormatDigit => {
-                            if flags.space && !(s[0] == '-' as u8 || s[0] == '+' as u8) {
-                                s.unshift(' ' as u8);
-                            }
-                        }
-                        FormatOctal => {
-                            if flags.alternate && s[0] != '0' as u8 {
-                                s.unshift('0' as u8);
-                            }
-                        }
-                        FormatHex => {
-                            if flags.alternate {
-                                let s_ = replace(&mut s, ~['0' as u8, 'x' as u8]);
-                                s.push_all_move(s_);
-                            }
-                        }
-                        FormatHEX => {
-                            s = s.into_ascii().to_upper().into_bytes();
-                            if flags.alternate {
-                                let s_ = replace(&mut s, ~['0' as u8, 'X' as u8]);
-                                s.push_all_move(s_);
-                            }
-                        }
-                        FormatString => unreachable!()
-                    }
-                    s
-                }
+            let mut s = match (op, flags.sign) {
+                (FormatDigit, true)  => format!("{:+d}", d).into_bytes(),
+                (FormatDigit, false) => format!("{:d}", d).into_bytes(),
+                (FormatOctal, _)     => format!("{:o}", d).into_bytes(),
+                (FormatHex, _)       => format!("{:x}", d).into_bytes(),
+                (FormatHEX, _)       => format!("{:X}", d).into_bytes(),
+                (FormatString, _)    => return Err(~"non-number on stack with %s"),
+            };
+            if flags.precision > s.len() {
+                let mut s_ = vec::with_capacity(flags.precision);
+                let n = flags.precision - s.len();
+                s_.grow(n, &('0' as u8));
+                s_.push_all_move(s);
+                s = s_;
             }
+            assert!(!s.is_empty(), "string conversion produced empty result");
+            match op {
+                FormatDigit => {
+                    if flags.space && !(s[0] == '-' as u8 || s[0] == '+' as u8) {
+                        s.unshift(' ' as u8);
+                    }
+                }
+                FormatOctal => {
+                    if flags.alternate && s[0] != '0' as u8 {
+                        s.unshift('0' as u8);
+                    }
+                }
+                FormatHex => {
+                    if flags.alternate {
+                        let s_ = replace(&mut s, ~['0' as u8, 'x' as u8]);
+                        s.push_all_move(s_);
+                    }
+                }
+                FormatHEX => {
+                    s = s.into_ascii().to_upper().into_bytes();
+                    if flags.alternate {
+                        let s_ = replace(&mut s, ~['0' as u8, 'X' as u8]);
+                        s.push_all_move(s_);
+                    }
+                }
+                FormatString => unreachable!()
+            }
+            s
         }
         String(s) => {
             match op {
