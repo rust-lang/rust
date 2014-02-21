@@ -358,3 +358,13 @@ macro_rules! local_data_key(
 macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
+
+#[macro_export]
+macro_rules! vec(
+    ($($e:expr),*) => ({
+        let mut temp = ::std::vec_ng::Vec::new();
+        $(temp.push($e);)*
+        temp
+    })
+)
+
