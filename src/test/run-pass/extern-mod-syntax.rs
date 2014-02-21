@@ -12,8 +12,8 @@
 
 #[allow(unused_imports)];
 
-extern crate extra;
-use extra::json::Object;
+extern crate serialize;
+use serialize::json::Object;
 
 pub fn main() {
     println!("Hello world!");

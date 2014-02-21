@@ -42,7 +42,7 @@ use std::vec;
 use collections::{HashMap, HashSet};
 
 use sync::Arc;
-use extra::json::ToJson;
+use serialize::json::ToJson;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token::InternedString;

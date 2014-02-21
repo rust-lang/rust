@@ -17,8 +17,6 @@ use std::cmp::Ordering;
 use std::mem::{replace, swap};
 use std::ptr;
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
 // as a right child. The time complexity is the same, and re-balancing
@@ -1003,71 +1001,6 @@ impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
         for elem in *iter {
             self.insert(elem);
         }
-    }
-}
-
-impl<
-    E: Encoder,
-    K: Encodable<E> + Eq + TotalOrd,
-    V: Encodable<E> + Eq
-> Encodable<E> for TreeMap<K, V> {
-    fn encode(&self, e: &mut E) {
-        e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self.iter() {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
-                i += 1;
-            }
-        })
-    }
-}
-
-impl<
-    D: Decoder,
-    K: Decodable<D> + Eq + TotalOrd,
-    V: Decodable<D> + Eq
-> Decodable<D> for TreeMap<K, V> {
-    fn decode(d: &mut D) -> TreeMap<K, V> {
-        d.read_map(|d, len| {
-            let mut map = TreeMap::new();
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
-    }
-}
-
-impl<
-    S: Encoder,
-    T: Encodable<S> + Eq + TotalOrd
-> Encodable<S> for TreeSet<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self.iter() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-                i += 1;
-            }
-        })
-    }
-}
-
-impl<
-    D: Decoder,
-    T: Decodable<D> + Eq + TotalOrd
-> Decodable<D> for TreeSet<T> {
-    fn decode(d: &mut D) -> TreeSet<T> {
-        d.read_seq(|d, len| {
-            let mut set = TreeSet::new();
-            for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-            set
-        })
     }
 }
 
