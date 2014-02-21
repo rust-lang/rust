@@ -13,32 +13,32 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
 extern crate time;
+extern crate serialize;
 
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
 use std::hashmap::{HashMap, HashSet};
 
-use EBReader = extra::ebml::reader;
-use EBWriter = extra::ebml::writer;
+use EBReader = serialize::ebml::reader;
+use EBWriter = serialize::ebml::writer;
 use std::cmp::Eq;
 use std::cmp;
 use std::io;
 use serialize::{Decodable, Encodable};
 
-fn test_ebml<'a, A:
+fn test_ebml<'a, 'b, A:
     Eq +
-    Encodable<EBWriter::Encoder> +
-    Decodable<EBReader::Decoder<'a>>
+    Encodable<EBWriter::Encoder<'a>> +
+    Decodable<EBReader::Decoder<'b>>
 >(a1: &A) {
     let mut wr = std::io::MemWriter::new();
     let mut ebml_w = EBWriter::Encoder(&mut wr);
     a1.encode(&mut ebml_w);
     let bytes = wr.get_ref();
 
-    let d: extra::ebml::Doc<'a> = EBReader::Doc(bytes);
+    let d: serialize::ebml::Doc<'a> = EBReader::Doc(bytes);
     let mut decoder: EBReader::Decoder<'a> = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);

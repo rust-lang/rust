@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// this now fails (correctly, I claim) because hygiene prevents
+// the assembled identifier from being a reference to the binding.
 
-native "cdecl" mod rustrt {
-  fn str_buf(str s) -> int;
+pub fn main() {
+    let asdf_fdsa = ~"<.<";
+    assert_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
+    //~^ ERROR: unresolved name `asdf_fdsa`
+
+    assert!(stringify!(use_mention_distinction) ==
+                "use_mention_distinction");
 }
-
-
-native mod libc = target_libc {
-  fn puts(int s) -> ();
-}
-
-mod user = "native-src/native.rs";
