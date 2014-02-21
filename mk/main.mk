@@ -218,8 +218,12 @@ LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
 define DEF_LLVM_VARS
 # The configure script defines these variables with the target triples
 # separated by Z. This defines new ones with the expected format.
+ifeq ($$(CFG_LLVM_ROOT),)
 CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
+else
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
+endif
 
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
