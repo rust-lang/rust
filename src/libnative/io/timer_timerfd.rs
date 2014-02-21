@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,6 +27,8 @@
 //! to block the calling thread.
 //!
 //! As with timer_other, all units in this file are in units of millseconds.
+
+#[allow(non_camel_case_types)];
 
 use std::comm::Data;
 use std::libc;

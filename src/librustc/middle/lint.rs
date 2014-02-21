@@ -33,6 +33,8 @@
 //! modify the Context visitor appropriately. If you're adding lints from the
 //! Context itself, span_lint should be used instead of add_lint.
 
+#[allow(non_camel_case_types)];
+
 use driver::session;
 use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
@@ -189,7 +191,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: NonCamelCaseTypes,
         desc: "types, variants and traits should have camel case names",
-        default: allow
+        default: warn
      }),
 
     ("non_uppercase_statics",

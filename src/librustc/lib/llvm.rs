@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(non_uppercase_pattern_statics)];
+#[allow(non_camel_case_types)];
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
