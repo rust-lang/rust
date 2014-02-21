@@ -599,15 +599,15 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 
 impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, r"\{"))
+        try!(write!(f.buf, r"\{"))
         let mut first = true;
         for (key, value) in self.iter() {
             if first {
                 first = false;
             } else {
-                if_ok!(write!(f.buf, ", "));
+                try!(write!(f.buf, ", "));
             }
-            if_ok!(write!(f.buf, "{}: {}", *key, *value));
+            try!(write!(f.buf, "{}: {}", *key, *value));
         }
         write!(f.buf, r"\}")
     }
@@ -877,15 +877,15 @@ impl<T:Hash + Eq + Clone> Clone for HashSet<T> {
 
 impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(write!(f.buf, r"\{"))
+        try!(write!(f.buf, r"\{"))
         let mut first = true;
         for x in self.iter() {
             if first {
                 first = false;
             } else {
-                if_ok!(write!(f.buf, ", "));
+                try!(write!(f.buf, ", "));
             }
-            if_ok!(write!(f.buf, "{}", *x));
+            try!(write!(f.buf, "{}", *x));
         }
         write!(f.buf, r"\}")
     }

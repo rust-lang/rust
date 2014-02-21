@@ -246,7 +246,7 @@ use serialize::Encodable;
 use serialize;
 use collections::TreeMap;
 
-macro_rules! if_ok( ($e:expr) => (
+macro_rules! try( ($e:expr) => (
     match $e { Ok(e) => e, Err(e) => { self.error = Err(e); return } }
 ) )
 
@@ -342,7 +342,7 @@ impl<'a> Encoder<'a> {
 }
 
 impl<'a> serialize::Encoder for Encoder<'a> {
-    fn emit_nil(&mut self) { if_ok!(write!(self.wr, "null")) }
+    fn emit_nil(&mut self) { try!(write!(self.wr, "null")) }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -358,20 +358,20 @@ impl<'a> serialize::Encoder for Encoder<'a> {
 
     fn emit_bool(&mut self, v: bool) {
         if v {
-            if_ok!(write!(self.wr, "true"));
+            try!(write!(self.wr, "true"));
         } else {
-            if_ok!(write!(self.wr, "false"));
+            try!(write!(self.wr, "false"));
         }
     }
 
     fn emit_f64(&mut self, v: f64) {
-        if_ok!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)))
+        try!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)))
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) {
-        if_ok!(write!(self.wr, "{}", escape_str(v)))
+        try!(write!(self.wr, "{}", escape_str(v)))
     }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>|) { f(self) }
@@ -385,19 +385,19 @@ impl<'a> serialize::Encoder for Encoder<'a> {
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
         if cnt == 0 {
-            if_ok!(write!(self.wr, "{}", escape_str(name)));
+            try!(write!(self.wr, "{}", escape_str(name)));
         } else {
-            if_ok!(write!(self.wr, "\\{\"variant\":"));
-            if_ok!(write!(self.wr, "{}", escape_str(name)));
-            if_ok!(write!(self.wr, ",\"fields\":["));
+            try!(write!(self.wr, "\\{\"variant\":"));
+            try!(write!(self.wr, "{}", escape_str(name)));
+            try!(write!(self.wr, ",\"fields\":["));
             f(self);
-            if_ok!(write!(self.wr, "]\\}"));
+            try!(write!(self.wr, "]\\}"));
         }
     }
 
     fn emit_enum_variant_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
-            if_ok!(write!(self.wr, ","));
+            try!(write!(self.wr, ","));
         }
         f(self);
     }
@@ -418,17 +418,17 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     }
 
     fn emit_struct(&mut self, _: &str, _: uint, f: |&mut Encoder<'a>|) {
-        if_ok!(write!(self.wr, r"\{"));
+        try!(write!(self.wr, r"\{"));
         f(self);
-        if_ok!(write!(self.wr, r"\}"));
+        try!(write!(self.wr, r"\}"));
     }
 
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
                          f: |&mut Encoder<'a>|) {
-        if idx != 0 { if_ok!(write!(self.wr, ",")) }
-        if_ok!(write!(self.wr, "{}:", escape_str(name)));
+        if idx != 0 { try!(write!(self.wr, ",")) }
+        try!(write!(self.wr, "{}:", escape_str(name)));
         f(self);
     }
 
@@ -454,31 +454,31 @@ impl<'a> serialize::Encoder for Encoder<'a> {
     fn emit_option_some(&mut self, f: |&mut Encoder<'a>|) { f(self); }
 
     fn emit_seq(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
-        if_ok!(write!(self.wr, "["));
+        try!(write!(self.wr, "["));
         f(self);
-        if_ok!(write!(self.wr, "]"));
+        try!(write!(self.wr, "]"));
     }
 
     fn emit_seq_elt(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
-            if_ok!(write!(self.wr, ","));
+            try!(write!(self.wr, ","));
         }
         f(self)
     }
 
     fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
-        if_ok!(write!(self.wr, r"\{"));
+        try!(write!(self.wr, r"\{"));
         f(self);
-        if_ok!(write!(self.wr, r"\}"));
+        try!(write!(self.wr, r"\}"));
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
-        if idx != 0 { if_ok!(write!(self.wr, ",")) }
+        if idx != 0 { try!(write!(self.wr, ",")) }
         f(self)
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
-        if_ok!(write!(self.wr, ":"));
+        try!(write!(self.wr, ":"));
         f(self)
     }
 }
@@ -503,7 +503,7 @@ impl<'a> PrettyEncoder<'a> {
 }
 
 impl<'a> serialize::Encoder for PrettyEncoder<'a> {
-    fn emit_nil(&mut self) { if_ok!(write!(self.wr, "null")); }
+    fn emit_nil(&mut self) { try!(write!(self.wr, "null")); }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
     fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
@@ -519,20 +519,20 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
 
     fn emit_bool(&mut self, v: bool) {
         if v {
-            if_ok!(write!(self.wr, "true"));
+            try!(write!(self.wr, "true"));
         } else {
-            if_ok!(write!(self.wr, "false"));
+            try!(write!(self.wr, "false"));
         }
     }
 
     fn emit_f64(&mut self, v: f64) {
-        if_ok!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)));
+        try!(write!(self.wr, "{}", f64::to_str_digits(v, 6u)));
     }
     fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
 
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) {
-        if_ok!(write!(self.wr, "{}", escape_str(v)));
+        try!(write!(self.wr, "{}", escape_str(v)));
     }
 
     fn emit_enum(&mut self, _name: &str, f: |&mut PrettyEncoder<'a>|) {
@@ -545,14 +545,14 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                          cnt: uint,
                          f: |&mut PrettyEncoder<'a>|) {
         if cnt == 0 {
-            if_ok!(write!(self.wr, "{}", escape_str(name)));
+            try!(write!(self.wr, "{}", escape_str(name)));
         } else {
             self.indent += 2;
-            if_ok!(write!(self.wr, "[\n{}{},\n", spaces(self.indent),
+            try!(write!(self.wr, "[\n{}{},\n", spaces(self.indent),
                           escape_str(name)));
             f(self);
             self.indent -= 2;
-            if_ok!(write!(self.wr, "\n{}]", spaces(self.indent)));
+            try!(write!(self.wr, "\n{}]", spaces(self.indent)));
         }
     }
 
@@ -560,9 +560,9 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                              idx: uint,
                              f: |&mut PrettyEncoder<'a>|) {
         if idx != 0 {
-            if_ok!(write!(self.wr, ",\n"));
+            try!(write!(self.wr, ",\n"));
         }
-        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
+        try!(write!(self.wr, "{}", spaces(self.indent)));
         f(self)
     }
 
@@ -587,13 +587,13 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                    len: uint,
                    f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            if_ok!(write!(self.wr, "\\{\\}"));
+            try!(write!(self.wr, "\\{\\}"));
         } else {
-            if_ok!(write!(self.wr, "\\{"));
+            try!(write!(self.wr, "\\{"));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            if_ok!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
+            try!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
         }
     }
 
@@ -602,11 +602,11 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
                          idx: uint,
                          f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            if_ok!(write!(self.wr, "\n"));
+            try!(write!(self.wr, "\n"));
         } else {
-            if_ok!(write!(self.wr, ",\n"));
+            try!(write!(self.wr, ",\n"));
         }
-        if_ok!(write!(self.wr, "{}{}: ", spaces(self.indent), escape_str(name)));
+        try!(write!(self.wr, "{}{}: ", spaces(self.indent), escape_str(name)));
         f(self);
     }
 
@@ -635,50 +635,50 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
 
     fn emit_seq(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            if_ok!(write!(self.wr, "[]"));
+            try!(write!(self.wr, "[]"));
         } else {
-            if_ok!(write!(self.wr, "["));
+            try!(write!(self.wr, "["));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            if_ok!(write!(self.wr, "\n{}]", spaces(self.indent)));
+            try!(write!(self.wr, "\n{}]", spaces(self.indent)));
         }
     }
 
     fn emit_seq_elt(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            if_ok!(write!(self.wr, "\n"));
+            try!(write!(self.wr, "\n"));
         } else {
-            if_ok!(write!(self.wr, ",\n"));
+            try!(write!(self.wr, ",\n"));
         }
-        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
+        try!(write!(self.wr, "{}", spaces(self.indent)));
         f(self)
     }
 
     fn emit_map(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
-            if_ok!(write!(self.wr, "\\{\\}"));
+            try!(write!(self.wr, "\\{\\}"));
         } else {
-            if_ok!(write!(self.wr, "\\{"));
+            try!(write!(self.wr, "\\{"));
             self.indent += 2;
             f(self);
             self.indent -= 2;
-            if_ok!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
+            try!(write!(self.wr, "\n{}\\}", spaces(self.indent)));
         }
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
-            if_ok!(write!(self.wr, "\n"));
+            try!(write!(self.wr, "\n"));
         } else {
-            if_ok!(write!(self.wr, ",\n"));
+            try!(write!(self.wr, ",\n"));
         }
-        if_ok!(write!(self.wr, "{}", spaces(self.indent)));
+        try!(write!(self.wr, "{}", spaces(self.indent)));
         f(self);
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut PrettyEncoder<'a>|) {
-        if_ok!(write!(self.wr, ": "));
+        try!(write!(self.wr, ": "));
         f(self);
     }
 }

@@ -299,7 +299,7 @@ impl Printer {
             if !self.scan_stack_empty {
                 self.check_stack(0);
                 let left = self.token[self.left].clone();
-                if_ok!(self.advance_left(left, self.size[self.left]));
+                try!(self.advance_left(left, self.size[self.left]));
             }
             self.indent(0);
             Ok(())
@@ -377,9 +377,9 @@ impl Printer {
                 }
             }
             let left = self.token[self.left].clone();
-            if_ok!(self.advance_left(left, self.size[self.left]));
+            try!(self.advance_left(left, self.size[self.left]));
             if self.left != self.right {
-                if_ok!(self.check_stream());
+                try!(self.check_stream());
             }
         }
         Ok(())
@@ -436,7 +436,7 @@ impl Printer {
                 self.left += 1u;
                 self.left %= self.buf_len;
                 let left = self.token[self.left].clone();
-                if_ok!(self.advance_left(left, self.size[self.left]));
+                try!(self.advance_left(left, self.size[self.left]));
             }
             ret
         } else {
@@ -491,7 +491,7 @@ impl Printer {
     }
     pub fn print_str(&mut self, s: &str) -> io::IoResult<()> {
         while self.pending_indentation > 0 {
-            if_ok!(write!(self.out, " "));
+            try!(write!(self.out, " "));
             self.pending_indentation -= 1;
         }
         write!(self.out, "{}", s)

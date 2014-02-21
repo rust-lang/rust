@@ -351,7 +351,7 @@ fn json_output(krate: clean::Crate, res: ~[plugins::PluginJson],
     json.insert(~"crate", crate_json);
     json.insert(~"plugins", json::Object(plugins_json));
 
-    let mut file = if_ok!(File::create(&dst));
-    if_ok!(json::Object(json).to_writer(&mut file));
+    let mut file = try!(File::create(&dst));
+    try!(json::Object(json).to_writer(&mut file));
     Ok(())
 }

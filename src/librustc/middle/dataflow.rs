@@ -113,8 +113,8 @@ impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
 
             let comment_str = format!("id {}: {}{}{}",
                                       id, entry_str, gens_str, kills_str);
-            if_ok!(pprust::synth_comment(ps, comment_str));
-            if_ok!(pp::space(&mut ps.s));
+            try!(pprust::synth_comment(ps, comment_str));
+            try!(pp::space(&mut ps.s));
         }
         Ok(())
     }
@@ -351,10 +351,10 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     fn pretty_print_to(&self, wr: ~io::Writer,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
-        if_ok!(pprust::cbox(&mut ps, pprust::indent_unit));
-        if_ok!(pprust::ibox(&mut ps, 0u));
-        if_ok!(pprust::print_block(&mut ps, blk));
-        if_ok!(pp::eof(&mut ps.s));
+        try!(pprust::cbox(&mut ps, pprust::indent_unit));
+        try!(pprust::ibox(&mut ps, 0u));
+        try!(pprust::print_block(&mut ps, blk));
+        try!(pp::eof(&mut ps.s));
         Ok(())
     }
 }

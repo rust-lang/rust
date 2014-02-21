@@ -262,7 +262,7 @@ impl UnixStream {
 impl rtio::RtioPipe for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         if self.read.is_none() {
-            self.read = Some(if_ok!(Event::new(true, false)));
+            self.read = Some(try!(Event::new(true, false)));
         }
 
         let mut bytes_read = 0;
@@ -298,7 +298,7 @@ impl rtio::RtioPipe for UnixStream {
 
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.write.is_none() {
-            self.write = Some(if_ok!(Event::new(true, false)));
+            self.write = Some(try!(Event::new(true, false)));
         }
 
         let mut offset = 0;
@@ -371,7 +371,7 @@ impl UnixListener {
     pub fn native_listen(self) -> IoResult<UnixAcceptor> {
         Ok(UnixAcceptor {
             listener: self,
-            event: if_ok!(Event::new(true, false)),
+            event: try!(Event::new(true, false)),
         })
     }
 }

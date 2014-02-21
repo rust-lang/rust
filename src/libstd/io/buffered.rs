@@ -88,7 +88,7 @@ impl<R: Reader> BufferedReader<R> {
 impl<R: Reader> Buffer for BufferedReader<R> {
     fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            self.cap = if_ok!(self.inner.read(self.buf));
+            self.cap = try!(self.inner.read(self.buf));
             self.pos = 0;
         }
         Ok(self.buf.slice(self.pos, self.cap))
@@ -103,7 +103,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let nread = {
-            let available = if_ok!(self.fill());
+            let available = try!(self.fill());
             let nread = cmp::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
@@ -182,7 +182,7 @@ impl<W: Writer> BufferedWriter<W> {
 impl<W: Writer> Writer for BufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos + buf.len() > self.buf.len() {
-            if_ok!(self.flush_buf());
+            try!(self.flush_buf());
         }
 
         if buf.len() > self.buf.len() {
@@ -233,9 +233,9 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == '\n' as u8) {
             Some(i) => {
-                if_ok!(self.inner.write(buf.slice_to(i + 1)));
-                if_ok!(self.inner.flush());
-                if_ok!(self.inner.write(buf.slice_from(i + 1)));
+                try!(self.inner.write(buf.slice_to(i + 1)));
+                try!(self.inner.flush());
+                try!(self.inner.write(buf.slice_from(i + 1)));
                 Ok(())
             }
             None => self.inner.write(buf),

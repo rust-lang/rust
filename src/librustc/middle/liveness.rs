@@ -740,7 +740,7 @@ impl Liveness {
         for var_idx in range(0u, self.ir.num_vars.get()) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                if_ok!(write!(wr, " {}", Variable(var_idx).to_str()));
+                try!(write!(wr, " {}", Variable(var_idx).to_str()));
             }
         }
         Ok(())

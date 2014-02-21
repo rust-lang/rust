@@ -702,7 +702,7 @@ pub unsafe fn write_unsafe(output: &mut io::Writer,
         curarg: args.iter(),
     };
     for piece in fmt.iter() {
-        if_ok!(formatter.run(piece, None));
+        try!(formatter.run(piece, None));
     }
     Ok(())
 }
@@ -859,13 +859,13 @@ impl<'a> Formatter<'a> {
                 for s in selectors.iter() {
                     if s.selector == value {
                         for piece in s.result.iter() {
-                            if_ok!(self.run(piece, Some(value)));
+                            try!(self.run(piece, Some(value)));
                         }
                         return Ok(());
                     }
                 }
                 for piece in default.iter() {
-                    if_ok!(self.run(piece, Some(value)));
+                    try!(self.run(piece, Some(value)));
                 }
                 Ok(())
             }
@@ -876,7 +876,7 @@ impl<'a> Formatter<'a> {
         ::uint::to_str_bytes(value, 10, |buf| {
             let valuestr = str::from_utf8(buf).unwrap();
             for piece in pieces.iter() {
-                if_ok!(self.run(piece, Some(valuestr)));
+                try!(self.run(piece, Some(valuestr)));
             }
             Ok(())
         })
@@ -917,12 +917,12 @@ impl<'a> Formatter<'a> {
         let sign = |this: &mut Formatter| {
             if !signprinted {
                 if this.flags & 1 << (FlagSignPlus as uint) != 0 && positive {
-                    if_ok!(this.buf.write(['+' as u8]));
+                    try!(this.buf.write(['+' as u8]));
                 } else if !positive {
-                    if_ok!(this.buf.write(['-' as u8]));
+                    try!(this.buf.write(['-' as u8]));
                 }
                 if this.flags & 1 << (FlagAlternate as uint) != 0 {
-                    if_ok!(this.buf.write(alternate_prefix.as_bytes()));
+                    try!(this.buf.write(alternate_prefix.as_bytes()));
                 }
                 signprinted = true;
             }
@@ -939,7 +939,7 @@ impl<'a> Formatter<'a> {
             Some(min) => {
                 if self.flags & 1 << (FlagSignAwareZeroPad as uint) != 0 {
                     self.fill = '0';
-                    if_ok!(sign(self));
+                    try!(sign(self));
                 }
                 self.with_padding(min - actual_len, parse::AlignRight, |me| {
                     emit(me)
@@ -1011,15 +1011,15 @@ impl<'a> Formatter<'a> {
             parse::AlignLeft | parse::AlignRight => self.align
         };
         if align == parse::AlignLeft {
-            if_ok!(f(self));
+            try!(f(self));
         }
         let mut fill = [0u8, ..4];
         let len = self.fill.encode_utf8(fill);
         for _ in range(0, padding) {
-            if_ok!(self.buf.write(fill.slice_to(len)));
+            try!(self.buf.write(fill.slice_to(len)));
         }
         if align == parse::AlignRight {
-            if_ok!(f(self));
+            try!(f(self));
         }
         Ok(())
     }
