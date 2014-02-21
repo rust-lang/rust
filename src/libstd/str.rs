@@ -293,7 +293,7 @@ impl<'a> Chars<'a> {
    * println!("{:s}", iter.remaining());
    * ```
    */
-  fn remaining(&self) -> 'a &str { self.string }
+  fn remaining(&self) -> &'a str { self.string }
 }
 
 impl<'a> Iterator<char> for Chars<'a> {
