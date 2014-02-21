@@ -16,8 +16,6 @@ use std::mem::init;
 use std::vec;
 use std::vec::{Items, MutItems};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
 static SIZE: uint = 1 << SHIFT;
@@ -617,59 +615,6 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
     fn size_hint(&self) -> (uint, Option<uint>) {
         self.iter.size_hint()
-    }
-}
-
-impl<
-    E: Encoder,
-    V: Encodable<E>
-> Encodable<E> for TrieMap<V> {
-    fn encode(&self, e: &mut E) {
-        e.emit_map(self.len(), |e| {
-                for (i, (key, val)) in self.iter().enumerate() {
-                    e.emit_map_elt_key(i, |e| key.encode(e));
-                    e.emit_map_elt_val(i, |e| val.encode(e));
-                }
-            });
-    }
-}
-
-impl<
-    D: Decoder,
-    V: Decodable<D>
-> Decodable<D> for TrieMap<V> {
-    fn decode(d: &mut D) -> TrieMap<V> {
-        d.read_map(|d, len| {
-            let mut map = TrieMap::new();
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
-    }
-}
-
-impl<S: Encoder> Encodable<S> for TrieSet {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-                for (i, e) in self.iter().enumerate() {
-                    s.emit_seq_elt(i, |s| e.encode(s));
-                }
-            })
-    }
-}
-
-impl<D: Decoder> Decodable<D> for TrieSet {
-    fn decode(d: &mut D) -> TrieSet {
-        d.read_seq(|d, len| {
-            let mut set = TrieSet::new();
-            for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-            set
-        })
     }
 }
 

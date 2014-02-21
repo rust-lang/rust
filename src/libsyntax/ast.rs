@@ -1201,8 +1201,7 @@ pub enum InlinedItem {
 
 #[cfg(test)]
 mod test {
-    extern crate extra;
-    use self::extra::json;
+    use serialize::json;
     use serialize;
     use codemap::*;
     use super::*;

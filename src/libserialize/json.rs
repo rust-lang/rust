@@ -59,11 +59,8 @@ the code for these traits: `#[deriving(Decodable, Encodable)]`
 To encode using Encodable :
 
 ```rust
-extern crate extra;
-extern crate serialize;
-use extra::json;
 use std::io;
-use serialize::Encodable;
+use serialize::{json, Encodable};
 
  #[deriving(Encodable)]
  pub struct TestStruct   {
@@ -84,7 +81,7 @@ Two wrapper functions are provided to encode a Encodable object
 into a string (~str) or buffer (~[u8]): `str_encode(&m)` and `buffer_encode(&m)`.
 
 ```rust
-use extra::json;
+use serialize::json;
 let to_encode_object = ~"example of string to encode";
 let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 ```
@@ -99,11 +96,11 @@ A basic `ToJson` example using a TreeMap of attribute name / attribute value:
 
 
 ```rust
-extern crate extra;
 extern crate collections;
+extern crate serialize;
 
-use extra::json;
-use extra::json::ToJson;
+use serialize::json;
+use serialize::json::ToJson;
 use collections::TreeMap;
 
 pub struct MyStruct  {
@@ -130,9 +127,8 @@ fn main() {
 To decode a JSON string using `Decodable` trait :
 
 ```rust
-extern crate extra;
 extern crate serialize;
-use serialize::Decodable;
+use serialize::{json, Decodable};
 
 #[deriving(Decodable)]
 pub struct MyStruct  {
@@ -143,8 +139,8 @@ pub struct MyStruct  {
 fn main() {
     let json_str_to_decode: ~str =
             ~"{\"attr1\":1,\"attr2\":\"toto\"}";
-    let json_object = extra::json::from_str(json_str_to_decode);
-    let mut decoder = extra::json::Decoder::new(json_object.unwrap());
+    let json_object = json::from_str(json_str_to_decode);
+    let mut decoder = json::Decoder::new(json_object.unwrap());
     let decoded_object: MyStruct = Decodable::decode(&mut decoder); // create the final object
 }
 ```
@@ -157,10 +153,8 @@ Create a struct called TestStruct1 and serialize and deserialize it to and from 
 using the serialization API, using the derived serialization code.
 
 ```rust
-extern crate extra;
 extern crate serialize;
-use extra::json;
-use serialize::{Encodable, Decodable};
+use serialize::{json, Encodable, Decodable};
 
  #[deriving(Decodable, Encodable)] //generate Decodable, Encodable impl.
  pub struct TestStruct1  {
@@ -176,9 +170,9 @@ fn main() {
          {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
     let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 
-    // To deserialize use the `extra::json::from_str` and `extra::json::Decoder`
+    // To deserialize use the `json::from_str` and `json::Decoder`
 
-    let json_object = extra::json::from_str(encoded_str);
+    let json_object = json::from_str(encoded_str);
     let mut decoder = json::Decoder::new(json_object.unwrap());
     let decoded1: TestStruct1 = Decodable::decode(&mut decoder); // create the final object
 }
@@ -190,13 +184,11 @@ This example use the ToJson impl to deserialize the JSON string.
 Example of `ToJson` trait implementation for TestStruct1.
 
 ```rust
-extern crate extra;
 extern crate serialize;
 extern crate collections;
 
-use extra::json;
-use extra::json::ToJson;
-use serialize::{Encodable, Decodable};
+use serialize::json::ToJson;
+use serialize::{json, Encodable, Decodable};
 use collections::TreeMap;
 
 #[deriving(Decodable, Encodable)] // generate Decodable, Encodable impl.
@@ -242,8 +234,7 @@ use std::num;
 use std::str;
 use std::fmt;
 
-use serialize::Encodable;
-use serialize;
+use Encodable;
 use collections::TreeMap;
 
 macro_rules! try( ($e:expr) => (
@@ -324,7 +315,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T:serialize::Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~[u8]  {
+    pub fn buffer_encode<T:Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~[u8]  {
        //Serialize the object in a string using a writer
         let mut m = MemWriter::new();
         {
@@ -335,13 +326,13 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json str
-    pub fn str_encode<T:serialize::Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~str  {
+    pub fn str_encode<T:Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~str  {
         let buff:~[u8] = Encoder::buffer_encode(to_encode_object);
         str::from_utf8_owned(buff).unwrap()
     }
 }
 
-impl<'a> serialize::Encoder for Encoder<'a> {
+impl<'a> ::Encoder for Encoder<'a> {
     fn emit_nil(&mut self) { try!(write!(self.wr, "null")) }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
@@ -502,7 +493,7 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> serialize::Encoder for PrettyEncoder<'a> {
+impl<'a> ::Encoder for PrettyEncoder<'a> {
     fn emit_nil(&mut self) { try!(write!(self.wr, "null")); }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
@@ -683,7 +674,7 @@ impl<'a> serialize::Encoder for PrettyEncoder<'a> {
     }
 }
 
-impl<E: serialize::Encoder> serialize::Encodable<E> for Json {
+impl<E: ::Encoder> Encodable<E> for Json {
     fn encode(&self, e: &mut E) {
         match *self {
             Number(v) => v.encode(e),
@@ -1154,7 +1145,7 @@ impl Decoder {
     }
 }
 
-impl serialize::Decoder for Decoder {
+impl ::Decoder for Decoder {
     fn read_nil(&mut self) -> () {
         debug!("read_nil");
         match self.stack.pop().unwrap() {
@@ -1591,10 +1582,10 @@ impl fmt::Show for Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
+    use {Encodable, Decodable};
+    use super::{Encoder, Decoder, Error, Boolean, Number, List, String, Null,
+                PrettyEncoder, Object, Json, from_str};
     use std::io;
-    use serialize::{Encodable, Decodable};
     use collections::TreeMap;
 
     #[deriving(Eq, Encodable, Decodable)]

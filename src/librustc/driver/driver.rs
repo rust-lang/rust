@@ -27,8 +27,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
-use extra::json;
-use serialize::Encodable;
+use serialize::{json, Encodable};
 
 use std::cell::{Cell, RefCell};
 use std::io;

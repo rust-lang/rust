@@ -10,7 +10,7 @@
 
 use clean;
 
-use extra::json;
+use serialize::json;
 use dl = std::unstable::dynamic_lib;
 
 pub type PluginJson = Option<(~str, json::Json)>;
