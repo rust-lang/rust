@@ -991,9 +991,7 @@ impl RegionScope for infer::InferCtxt {
 
 impl FnCtxt {
     pub fn tag(&self) -> ~str {
-        unsafe {
-            format!("{}", self as *FnCtxt)
-        }
+        format!("{}", self as *FnCtxt)
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
