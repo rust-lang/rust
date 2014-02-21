@@ -11,17 +11,17 @@ which both pattern-match on their input and both return early in one case,
 doing nothing otherwise:
 
 ~~~~
-# enum t { special_a(uint), special_b(uint) };
+# enum T { SpecialA(uint), SpecialB(uint) };
 # fn f() -> uint {
-# let input_1 = special_a(0);
-# let input_2 = special_a(0);
+# let input_1 = SpecialA(0);
+# let input_2 = SpecialA(0);
 match input_1 {
-    special_a(x) => { return x; }
+    SpecialA(x) => { return x; }
     _ => {}
 }
 // ...
 match input_2 {
-    special_b(x) => { return x; }
+    SpecialB(x) => { return x; }
     _ => {}
 }
 # return 0u;
@@ -37,12 +37,12 @@ lightweight custom syntax extensions, themselves defined using the
 the pattern in the above code:
 
 ~~~~
-# enum t { special_a(uint), special_b(uint) };
+# enum T { SpecialA(uint), SpecialB(uint) };
 # fn f() -> uint {
-# let input_1 = special_a(0);
-# let input_2 = special_a(0);
+# let input_1 = SpecialA(0);
+# let input_2 = SpecialA(0);
 macro_rules! early_return(
-    ($inp:expr $sp:ident) => ( // invoke it like `(input_5 special_e)`
+    ($inp:expr $sp:ident) => ( // invoke it like `(input_5 SpecialE)`
         match $inp {
             $sp(x) => { return x; }
             _ => {}
@@ -50,9 +50,9 @@ macro_rules! early_return(
     );
 )
 // ...
-early_return!(input_1 special_a);
+early_return!(input_1 SpecialA);
 // ...
-early_return!(input_2 special_b);
+early_return!(input_2 SpecialB);
 # return 0;
 # }
 ~~~~
@@ -155,10 +155,10 @@ separator token (a comma-separated list could be written `$(...),*`), and `+`
 instead of `*` to mean "at least one".
 
 ~~~~
-# enum t { special_a(uint),special_b(uint),special_c(uint),special_d(uint)};
+# enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)};
 # fn f() -> uint {
-# let input_1 = special_a(0);
-# let input_2 = special_a(0);
+# let input_1 = SpecialA(0);
+# let input_2 = SpecialA(0);
 macro_rules! early_return(
     ($inp:expr, [ $($sp:ident)|+ ]) => (
         match $inp {
@@ -170,9 +170,9 @@ macro_rules! early_return(
     );
 )
 // ...
-early_return!(input_1, [special_a|special_c|special_d]);
+early_return!(input_1, [SpecialA|SpecialC|SpecialD]);
 // ...
-early_return!(input_2, [special_b]);
+early_return!(input_2, [SpecialB]);
 # return 0;
 # }
 ~~~~
@@ -215,14 +215,14 @@ solves the problem.
 Now consider code like the following:
 
 ~~~~
-# enum t1 { good_1(t2, uint), bad_1 };
-# struct t2 { body: t3 }
-# enum t3 { good_2(uint), bad_2};
-# fn f(x: t1) -> uint {
+# enum T1 { Good1(T2, uint), Bad1};
+# struct T2 { body: T3 }
+# enum T3 { Good2(uint), Bad2};
+# fn f(x: T1) -> uint {
 match x {
-    good_1(g1, val) => {
+    Good1(g1, val) => {
         match g1.body {
-            good_2(result) => {
+            Good2(result) => {
                 // complicated stuff goes here
                 return result + val;
             },
@@ -261,13 +261,13 @@ macro_rules! biased_match (
     )
 )
 
-# enum t1 { good_1(t2, uint), bad_1 };
-# struct t2 { body: t3 }
-# enum t3 { good_2(uint), bad_2};
-# fn f(x: t1) -> uint {
-biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };
+# enum T1 { Good1(T2, uint), Bad1};
+# struct T2 { body: T3 }
+# enum T3 { Good2(uint), Bad2};
+# fn f(x: T1) -> uint {
+biased_match!((x)       ~ (Good1(g1, val)) else { return 0 };
               binds g1, val )
-biased_match!((g1.body) ~ (good_2(result) )
+biased_match!((g1.body) ~ (Good2(result) )
                   else { fail!("Didn't get good_2") };
               binds result )
 // complicated stuff goes here
@@ -365,13 +365,13 @@ macro_rules! biased_match (
 )
 
 
-# enum t1 { good_1(t2, uint), bad_1 };
-# struct t2 { body: t3 }
-# enum t3 { good_2(uint), bad_2};
-# fn f(x: t1) -> uint {
+# enum T1 { Good1(T2, uint), Bad1};
+# struct T2 { body: T3 }
+# enum T3 { Good2(uint), Bad2};
+# fn f(x: T1) -> uint {
 biased_match!(
-    (x)       ~ (good_1(g1, val)) else { return 0 };
-    (g1.body) ~ (good_2(result) ) else { fail!("Didn't get good_2") };
+    (x)       ~ (Good1(g1, val)) else { return 0 };
+    (g1.body) ~ (Good2(result) ) else { fail!("Didn't get Good2") };
     binds val, result )
 // complicated stuff goes here
 return result + val;
