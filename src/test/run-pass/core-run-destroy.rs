@@ -23,22 +23,23 @@ use std::io::process::{Process, ProcessOutput};
 #[test]
 fn test_destroy_once() {
     #[cfg(not(target_os="android"))]
-    static PROG: &'static str = "echo";
-    #[cfg(target_os="android")]
-    static PROG: &'static str = "ls"; // android don't have echo binary
+    static mut PROG: &'static str = "echo";
 
-    let mut p = Process::new(PROG, []).unwrap();
+    #[cfg(target_os="android")]
+    static mut PROG: &'static str = "ls"; // android don't have echo binary
+
+    let mut p = unsafe {Process::new(PROG, []).unwrap()};
     p.signal_exit().unwrap(); // this shouldn't crash (and nor should the destructor)
 }
 
 #[test]
 fn test_destroy_twice() {
     #[cfg(not(target_os="android"))]
-    static PROG: &'static str = "echo";
+    static mut PROG: &'static str = "echo";
     #[cfg(target_os="android")]
-    static PROG: &'static str = "ls"; // android don't have echo binary
+    static mut PROG: &'static str = "ls"; // android don't have echo binary
 
-    let mut p = match Process::new(PROG, []) {
+    let mut p = match unsafe{Process::new(PROG, [])} {
         Ok(p) => p,
         Err(e) => fail!("wut: {}", e),
     };
@@ -49,13 +50,13 @@ fn test_destroy_twice() {
 fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(unix,not(target_os="android"))]
-    static BLOCK_COMMAND: &'static str = "cat";
+    static mut BLOCK_COMMAND: &'static str = "cat";
 
     #[cfg(unix,target_os="android")]
-    static BLOCK_COMMAND: &'static str = "/system/bin/cat";
+    static mut BLOCK_COMMAND: &'static str = "/system/bin/cat";
 
     #[cfg(windows)]
-    static BLOCK_COMMAND: &'static str = "cmd";
+    static mut BLOCK_COMMAND: &'static str = "cmd";
 
     #[cfg(unix,not(target_os="android"))]
     fn process_exists(pid: libc::pid_t) -> bool {
@@ -91,7 +92,7 @@ fn test_destroy_actually_kills(force: bool) {
     }
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = Process::new(BLOCK_COMMAND, []).unwrap();
+    let mut p = unsafe {Process::new(BLOCK_COMMAND, []).unwrap()};
 
     assert!(process_exists(p.id()));
 

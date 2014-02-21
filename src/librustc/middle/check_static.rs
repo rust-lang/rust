@@ -118,14 +118,35 @@ impl Visitor<bool> for CheckStaticVisitor {
                 self.tcx.sess.span_err(e.span,
                                    "static items are not allowed to have owned pointers");
             }
+            ast::ExprProc(..) => {
+                self.report_error(e.span,
+                                  Some(~"immutable static items must be `Freeze`"));
+                return;
+            }
+            ast::ExprAddrOf(mutability, _) => {
+                match mutability {
+                    ast::MutMutable => {
+                        self.report_error(e.span,
+                                  Some(~"immutable static items must be `Freeze`"));
+                        return;
+                    }
+                    _ => {}
+                }
+            }
             _ => {
                 let node_ty = ty::node_id_to_type(self.tcx, e.id);
+
                 match ty::get(node_ty).sty {
                     ty::ty_struct(did, _) |
                     ty::ty_enum(did, _) => {
                         if ty::has_dtor(self.tcx, did) {
                             self.report_error(e.span,
                                      Some(~"static items are not allowed to have destructors"));
+                            return;
+                        }
+                        if Some(did) == self.tcx.lang_items.no_freeze_bound() {
+                            self.report_error(e.span,
+                                              Some(~"immutable static items must be `Freeze`"));
                             return;
                         }
                     }
