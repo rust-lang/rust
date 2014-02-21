@@ -33,6 +33,12 @@ pub trait Num: Eq + Zero + One
              + Div<Self,Self>
              + Rem<Self,Self> {}
 
+/// Simultaneous division and remainder
+#[inline]
+pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+    (x / y, x % y)
+}
+
 /// Defines an additive identity element for `Self`.
 ///
 /// # Deriving
@@ -121,31 +127,6 @@ pub trait Signed: Num
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
 pub trait Unsigned: Num {}
-
-pub trait Integer: Num
-                 + Ord
-                 + Div<Self,Self>
-                 + Rem<Self,Self> {
-    fn div_rem(&self, other: &Self) -> (Self,Self);
-
-    fn div_floor(&self, other: &Self) -> Self;
-    fn mod_floor(&self, other: &Self) -> Self;
-    fn div_mod_floor(&self, other: &Self) -> (Self,Self);
-
-    fn gcd(&self, other: &Self) -> Self;
-    fn lcm(&self, other: &Self) -> Self;
-
-    fn is_multiple_of(&self, other: &Self) -> bool;
-    fn is_even(&self) -> bool;
-    fn is_odd(&self) -> bool;
-}
-
-/// Calculates the Greatest Common Divisor (GCD) of the number and `other`.
-///
-/// The result is always positive.
-#[inline(always)] pub fn gcd<T: Integer>(x: T, y: T) -> T { x.gcd(&y) }
-/// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
-#[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
 /// A collection of rounding operations.
 pub trait Round {
@@ -270,8 +251,7 @@ pub trait Primitive: Clone
                    + Bounded {}
 
 /// A collection of traits relevant to primitive signed and unsigned integers
-pub trait Int: Integer
-             + Primitive
+pub trait Int: Primitive
              + Bitwise
              + CheckedAdd
              + CheckedSub

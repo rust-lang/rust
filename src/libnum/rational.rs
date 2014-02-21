@@ -10,6 +10,8 @@
 
 //! Rational numbers
 
+use Integer;
+
 use std::cmp;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
