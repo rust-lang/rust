@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,6 +19,8 @@
 //! `shutdown` is only called when the entire program is finished. No new timers
 //! can be created in the future and there must be no active timers at that
 //! time.
+
+#[allow(non_camel_case_types)];
 
 use std::cast;
 use std::rt;
@@ -98,6 +100,7 @@ mod imp {
 
     use io::file::FileDesc;
 
+    #[allow(non_camel_case_types)]
     pub type signal = libc::c_int;
 
     pub fn new() -> (signal, signal) {

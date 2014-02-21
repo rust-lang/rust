@@ -24,6 +24,8 @@
 //! // ... something using html
 //! ```
 
+#[allow(non_camel_case_types)];
+
 use std::cast;
 use std::fmt;
 use std::io;

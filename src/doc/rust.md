@@ -470,7 +470,7 @@ Two examples of paths with type arguments:
 # use std::hashmap::HashMap;
 # fn f() {
 # fn id<T>(t: T) -> T { t }
-type t = HashMap<int,~str>;  // Type arguments used in a type expression
+type T = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
 ~~~~
@@ -701,7 +701,7 @@ An example of a module:
 
 ~~~~
 mod math {
-    type complex = (f64, f64);
+    type Complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
 # fail!();
@@ -2824,13 +2824,13 @@ provided by an implementation of `std::iter::Iterator`.
 An example of a for loop over the contents of a vector:
 
 ~~~~
-# type foo = int;
-# fn bar(f: foo) { }
+# type Foo = int;
+# fn bar(f: Foo) { }
 # let a = 0;
 # let b = 0;
 # let c = 0;
 
-let v: &[foo] = &[a, b, c];
+let v: &[Foo] = &[a, b, c];
 
 for e in v.iter() {
     bar(*e);

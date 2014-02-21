@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,6 +60,7 @@
  * tied to `x`. The type of `x'` will be a borrowed pointer.
  */
 
+#[allow(non_camel_case_types)];
 
 use middle::ty;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};

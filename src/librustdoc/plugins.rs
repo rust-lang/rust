@@ -15,12 +15,12 @@ use dl = std::unstable::dynamic_lib;
 
 pub type PluginJson = Option<(~str, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);
-pub type plugin_callback = extern fn (clean::Crate) -> PluginResult;
+pub type PluginCallback = extern fn (clean::Crate) -> PluginResult;
 
 /// Manages loading and running of plugins
 pub struct PluginManager {
     priv dylibs: ~[dl::DynamicLibrary],
-    priv callbacks: ~[plugin_callback],
+    priv callbacks: ~[PluginCallback],
     /// The directory plugins will be loaded from
     prefix: Path,
 }
@@ -53,7 +53,7 @@ impl PluginManager {
     ///
     /// This is to run passes over the cleaned crate. Plugins run this way
     /// correspond to the A-aux tag on Github.
-    pub fn add_plugin(&mut self, plugin: plugin_callback) {
+    pub fn add_plugin(&mut self, plugin: PluginCallback) {
         self.callbacks.push(plugin);
     }
     /// Run all the loaded plugins over the crate, returning their results

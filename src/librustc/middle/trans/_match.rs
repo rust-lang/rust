@@ -192,6 +192,7 @@
  *
  */
 
+#[allow(non_camel_case_types)];
 
 use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
