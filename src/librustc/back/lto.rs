@@ -16,6 +16,7 @@ use metadata::cstore;
 use util::common::time;
 
 use std::libc;
+use flate;
 
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
@@ -55,6 +56,8 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
         let bc = time(sess.time_passes(), format!("read {}.bc", name), (), |_|
                       archive.read(format!("{}.bc", name)));
         let bc = bc.expect("missing bytecode in archive!");
+        let bc = time(sess.time_passes(), format!("inflate {}.bc", name), (), |_|
+                      flate::inflate_bytes(bc));
         let ptr = bc.as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(), format!("ll link {}", name), (), |()| unsafe {

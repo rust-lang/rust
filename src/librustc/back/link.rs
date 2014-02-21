@@ -34,6 +34,7 @@ use std::run;
 use std::str;
 use std::io;
 use std::io::fs;
+use flate;
 use serialize::hex::ToHex;
 use extra::tempfile::TempDir;
 use syntax::abi;
@@ -942,6 +943,15 @@ fn link_rlib(sess: Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
             let bc = obj_filename.with_extension("bc");
+            match fs::File::open(&bc).read_to_end().and_then(|data| {
+                fs::File::create(&bc).write(flate::deflate_bytes(data))
+            }) {
+                Ok(()) => {}
+                Err(e) => {
+                    sess.err(format!("failed to compress bytecode: {}", e));
+                    sess.abort_if_errors()
+                }
+            }
             a.add_file(&bc, false);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
