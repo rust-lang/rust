@@ -11,7 +11,7 @@
 extern crate collections;
 
 use std::clone::{Clone, DeepClone};
-use std::cmp::{TotalEq, Ord, TotalOrd, Equiv};
+use std::cmp::{Ord, Equiv};
 use std::cmp::Equal;
 use std::container::{Container, Map, MutableMap};
 use std::default::Default;

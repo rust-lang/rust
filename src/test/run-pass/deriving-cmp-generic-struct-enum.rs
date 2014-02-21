@@ -10,7 +10,7 @@
 
 #[feature(struct_variant)];
 
-#[deriving(Eq, TotalEq, Ord, TotalOrd)]
+#[deriving(Eq, Ord)]
 enum ES<T> {
     ES1 { x: T },
     ES2 { x: T, y: T }
@@ -20,7 +20,6 @@ enum ES<T> {
 pub fn main() {
     let (es11, es12, es21, es22) = (ES1 {x: 1}, ES1 {x: 2}, ES2 {x: 1, y: 1}, ES2 {x: 1, y: 2});
 
-    // in order for both Ord and TotalOrd
     let ess = [es11, es12, es21, es22];
 
     for (i, es1) in ess.iter().enumerate() {
@@ -35,9 +34,6 @@ pub fn main() {
             assert_eq!(*es1 == *es2, eq);
             assert_eq!(*es1 != *es2, !eq);
 
-            // TotalEq
-            assert_eq!(es1.equals(es2), eq);
-
             // Ord
             assert_eq!(*es1 < *es2, lt);
             assert_eq!(*es1 > *es2, gt);
@@ -45,7 +41,6 @@ pub fn main() {
             assert_eq!(*es1 <= *es2, le);
             assert_eq!(*es1 >= *es2, ge);
 
-            // TotalOrd
             assert_eq!(es1.cmp(es2), ord);
         }
     }

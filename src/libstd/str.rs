@@ -86,7 +86,7 @@ use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
-use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
+use cmp::{Eq, Ord, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
 use iter::{Iterator, FromIterator, Extendable, range};
@@ -869,7 +869,7 @@ pub struct UTF16Items<'a> {
     priv iter: vec::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(Eq, Clone)]
 pub enum UTF16Item {
     /// A valid codepoint.
     ScalarValue(char),
@@ -1276,14 +1276,7 @@ impl<'a> ToStr for MaybeOwned<'a> {
 impl<'a> Eq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().equals(&other.as_slice())
-    }
-}
-
-impl<'a> TotalEq for MaybeOwned<'a> {
-    #[inline]
-    fn equals(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().equals(&other.as_slice())
+        self.as_slice().eq(&other.as_slice())
     }
 }
 
@@ -1292,9 +1285,7 @@ impl<'a> Ord for MaybeOwned<'a> {
     fn lt(&self, other: &MaybeOwned) -> bool {
         self.as_slice().lt(&other.as_slice())
     }
-}
 
-impl<'a> TotalOrd for MaybeOwned<'a> {
     #[inline]
     fn cmp(&self, other: &MaybeOwned) -> Ordering {
         self.as_slice().cmp(&other.as_slice())
@@ -1304,7 +1295,7 @@ impl<'a> TotalOrd for MaybeOwned<'a> {
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
-        self.as_slice().equals(&other.as_slice())
+        self.as_slice().eq(&other.as_slice())
     }
 }
 
@@ -1542,7 +1533,7 @@ Section: Trait implementations
 #[allow(missing_doc)]
 pub mod traits {
     use container::Container;
-    use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
+    use cmp::{Ordering, Less, Equal, Greater, Eq, Ord, Equiv};
     use iter::Iterator;
     use ops::Add;
     use option::{Some, None};
@@ -1555,26 +1546,6 @@ pub mod traits {
             ret.push_str(*rhs);
             ret
         }
-    }
-
-    impl<'a> TotalOrd for &'a str {
-        #[inline]
-        fn cmp(&self, other: & &'a str) -> Ordering {
-            for (s_b, o_b) in self.bytes().zip(other.bytes()) {
-                match s_b.cmp(&o_b) {
-                    Greater => return Greater,
-                    Less => return Less,
-                    Equal => ()
-                }
-            }
-
-            self.len().cmp(&other.len())
-        }
-    }
-
-    impl TotalOrd for ~str {
-        #[inline]
-        fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a> Eq for &'a str {
@@ -1593,28 +1564,30 @@ pub mod traits {
         }
     }
 
-    impl<'a> TotalEq for &'a str {
-        #[inline]
-        fn equals(&self, other: & &'a str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
-
-    impl TotalEq for ~str {
-        #[inline]
-        fn equals(&self, other: &~str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
-
     impl<'a> Ord for &'a str {
         #[inline]
         fn lt(&self, other: & &'a str) -> bool { self.cmp(other) == Less }
+
+        #[inline]
+        fn cmp(&self, other: & &'a str) -> Ordering {
+            for (s_b, o_b) in self.bytes().zip(other.bytes()) {
+                match s_b.cmp(&o_b) {
+                    Greater => return Greater,
+                    Less => return Less,
+                    Equal => ()
+                }
+            }
+
+            self.len().cmp(&other.len())
+        }
     }
 
     impl Ord for ~str {
         #[inline]
         fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
+
+        #[inline]
+        fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a, S: Str> Equiv<S> for &'a str {
@@ -4460,11 +4433,11 @@ mod tests {
         assert_eq!(Owned(~""), Default::default());
 
         assert_eq!(s.cmp(&o), Equal);
-        assert!(s.equals(&o));
+        assert!(s.eq(&o));
         assert!(s.equiv(&o));
 
         assert_eq!(o.cmp(&s), Equal);
-        assert!(o.equals(&s));
+        assert!(o.eq(&s));
         assert!(o.equiv(&s));
     }
 

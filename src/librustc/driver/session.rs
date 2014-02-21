@@ -157,7 +157,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[deriving(Eq, Clone, TotalOrd, TotalEq)]
+#[deriving(Eq, Ord, Clone)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::TotalOrd;
+use cmp::Ord;
 use container::MutableSet;
 use iter::Iterator;
 use option::{Some, None, Option};

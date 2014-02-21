@@ -74,7 +74,7 @@ syn keyword rustTrait Bool
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
 syn keyword rustTrait Clone DeepClone
-syn keyword rustTrait Eq Ord TotalEq TotalOrd Ordering Equiv
+syn keyword rustTrait Eq Ord Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
 syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
 syn keyword rustTrait Default
@@ -98,7 +98,7 @@ syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
+syn keyword rustTrait ImmutableEqVector ImmutableOrdVector ImmutableCloneableVector
 syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
 

@@ -11,7 +11,7 @@
 //! Utilities for references
 
 #[cfg(not(test))]
-use cmp::{Eq, Ord, Ordering, TotalEq, TotalOrd};
+use cmp::{Eq, Ord, Ordering};
 
 // Equality for region pointers
 #[cfg(not(test))]
@@ -20,6 +20,7 @@ impl<'a, T: Eq> Eq for &'a T {
     fn eq(&self, other: & &'a T) -> bool {
         *(*self) == *(*other)
     }
+
     #[inline]
     fn ne(&self, other: & &'a T) -> bool {
         *(*self) != *(*other)
@@ -33,29 +34,24 @@ impl<'a, T: Ord> Ord for &'a T {
     fn lt(&self, other: & &'a T) -> bool {
         *(*self) < *(*other)
     }
+
     #[inline]
     fn le(&self, other: & &'a T) -> bool {
         *(*self) <= *(*other)
     }
+
     #[inline]
     fn ge(&self, other: & &'a T) -> bool {
         *(*self) >= *(*other)
     }
+
     #[inline]
     fn gt(&self, other: & &'a T) -> bool {
         *(*self) > *(*other)
     }
-}
 
-#[cfg(not(test))]
-impl<'a, T: TotalOrd> TotalOrd for &'a T {
     #[inline]
-    fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
+    fn cmp(&self, other: & &'a T) -> Ordering {
+        (**self).cmp(*other)
+    }
 }
-
-#[cfg(not(test))]
-impl<'a, T: TotalEq> TotalEq for &'a T {
-    #[inline]
-    fn equals(&self, other: & &'a T) -> bool { (**self).equals(*other) }
-}
-

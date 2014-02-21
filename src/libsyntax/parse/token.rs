@@ -536,7 +536,7 @@ pub fn get_ident_interner() -> @IdentInterner {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
-#[deriving(Clone, Eq, IterBytes, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, IterBytes, Ord)]
 pub struct InternedString {
     priv string: RcStr,
 }

@@ -13,7 +13,7 @@
 
 use cast::{forget, transmute};
 use clone::Clone;
-use cmp::{Eq, Ordering, TotalEq, TotalOrd};
+use cmp::{Eq, Ordering, Less, Ord};
 use container::Container;
 use iter::{DoubleEndedIterator, FromIterator, Iterator};
 use libc::{free, c_void};
@@ -109,14 +109,12 @@ impl<T:Eq> Eq for Vec<T> {
     }
 }
 
-impl<T:TotalEq> TotalEq for Vec<T> {
+impl<T: Ord> Ord for Vec<T> {
     #[inline]
-    fn equals(&self, other: &Vec<T>) -> bool {
-        self.as_slice().equals(&other.as_slice())
+    fn lt(&self, other: &Vec<T>) -> bool {
+        self.cmp(other) == Less
     }
-}
 
-impl<T:TotalOrd> TotalOrd for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         self.as_slice().cmp(&other.as_slice())

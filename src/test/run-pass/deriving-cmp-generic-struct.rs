@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, TotalEq, Ord, TotalOrd)]
+#[deriving(Eq, Ord)]
 struct S<T> {
     x: T,
     y: T
@@ -18,7 +18,6 @@ pub fn main() {
     let s1 = S {x: 1, y: 1};
     let s2 = S {x: 1, y: 2};
 
-    // in order for both Ord and TotalOrd
     let ss = [s1, s2];
 
     for (i, s1) in ss.iter().enumerate() {
@@ -35,9 +34,6 @@ pub fn main() {
             assert_eq!(*s1 == *s2, eq);
             assert_eq!(*s1 != *s2, !eq);
 
-            // TotalEq
-            assert_eq!(s1.equals(s2), eq);
-
             // Ord
             assert_eq!(*s1 < *s2, lt);
             assert_eq!(*s1 > *s2, gt);
@@ -45,7 +41,6 @@ pub fn main() {
             assert_eq!(*s1 <= *s2, le);
             assert_eq!(*s1 >= *s2, ge);
 
-            // TotalOrd
             assert_eq!(s1.cmp(s2), ord);
         }
     }

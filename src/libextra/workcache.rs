@@ -87,7 +87,7 @@ use std::io::{File, MemWriter};
 *
 */
 
-#[deriving(Clone, Eq, Encodable, Decodable, TotalOrd, TotalEq)]
+#[deriving(Clone, Eq, Ord, Encodable, Decodable)]
 struct WorkKey {
     kind: ~str,
     name: ~str

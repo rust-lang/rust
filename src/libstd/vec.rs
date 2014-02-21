@@ -65,7 +65,7 @@ Vectors are a very useful type, and so there's several implementations of
 traits from other modules. Some notable examples:
 
 * `Clone`
-* `Eq`, `Ord`, `TotalEq`, `TotalOrd` -- vectors can be compared,
+* `Eq`, `Ord` -- vectors can be compared,
   if the element type defines the corresponding trait.
 
 ## Iteration
@@ -106,7 +106,7 @@ use cast::transmute;
 use ops::Drop;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
-use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, Ord, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use fmt;
@@ -627,7 +627,7 @@ pub mod traits {
 
     use container::Container;
     use clone::Clone;
-    use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equiv};
+    use cmp::{Eq, Ord, Ordering, Equiv};
     use iter::order;
     use ops::Add;
 
@@ -649,18 +649,6 @@ pub mod traits {
         fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
 
-    impl<'a,T:TotalEq> TotalEq for &'a [T] {
-        fn equals(&self, other: & &'a [T]) -> bool {
-            self.len() == other.len() &&
-                order::equals(self.iter(), other.iter())
-        }
-    }
-
-    impl<T:TotalEq> TotalEq for ~[T] {
-        #[inline]
-        fn equals(&self, other: &~[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
-    }
-
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
@@ -669,17 +657,6 @@ pub mod traits {
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-    }
-
-    impl<'a,T:TotalOrd> TotalOrd for &'a [T] {
-        fn cmp(&self, other: & &'a [T]) -> Ordering {
-            order::cmp(self.iter(), other.iter())
-        }
-    }
-
-    impl<T: TotalOrd> TotalOrd for ~[T] {
-        #[inline]
-        fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a, T: Eq + Ord> Ord for &'a [T] {
@@ -698,17 +675,28 @@ pub mod traits {
         fn gt(&self, other: & &'a [T]) -> bool {
             order::gt(self.iter(), other.iter())
         }
+
+        #[inline]
+        fn cmp(&self, other: & &'a [T]) -> Ordering {
+            order::cmp(self.iter(), other.iter())
+        }
     }
 
     impl<T: Eq + Ord> Ord for ~[T] {
         #[inline]
         fn lt(&self, other: &~[T]) -> bool { self.as_slice() < other.as_slice() }
+
         #[inline]
         fn le(&self, other: &~[T]) -> bool { self.as_slice() <= other.as_slice() }
+
         #[inline]
         fn ge(&self, other: &~[T]) -> bool { self.as_slice() >= other.as_slice() }
+
         #[inline]
         fn gt(&self, other: &~[T]) -> bool { self.as_slice() > other.as_slice() }
+
+        #[inline]
+        fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
     impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
@@ -1205,8 +1193,8 @@ impl<'a,T:Eq> ImmutableEqVector<T> for &'a [T] {
     }
 }
 
-/// Extension methods for vectors containing `TotalOrd` elements.
-pub trait ImmutableTotalOrdVector<T: TotalOrd> {
+/// Extension methods for vectors containing `Ord` elements.
+pub trait ImmutableOrdVector<T: Ord> {
     /**
      * Binary search a sorted vector for a given element.
      *
@@ -1215,7 +1203,7 @@ pub trait ImmutableTotalOrdVector<T: TotalOrd> {
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
 }
 
-impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
+impl<'a, T: Ord> ImmutableOrdVector<T> for &'a [T] {
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
     }
@@ -2447,7 +2435,7 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableTotalOrdVector<T> {
+pub trait MutableOrdVector<T> {
     /// Sort the vector, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
@@ -2462,7 +2450,7 @@ pub trait MutableTotalOrdVector<T> {
     /// ```
     fn sort(self);
 }
-impl<'a, T: TotalOrd> MutableTotalOrdVector<T> for &'a mut [T] {
+impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
         self.sort_by(|a,b| a.cmp(b))

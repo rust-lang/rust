@@ -90,18 +90,6 @@ pub struct RcStr {
     priv string: Rc<~str>,
 }
 
-impl TotalEq for RcStr {
-    fn equals(&self, other: &RcStr) -> bool {
-        self.as_slice().equals(&other.as_slice())
-    }
-}
-
-impl TotalOrd for RcStr {
-    fn cmp(&self, other: &RcStr) -> Ordering {
-        self.as_slice().cmp(&other.as_slice())
-    }
-}
-
 impl Str for RcStr {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {

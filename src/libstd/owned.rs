@@ -44,16 +44,6 @@ impl<T:Ord> Ord for ~T {
     fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
     #[inline]
     fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalOrd> TotalOrd for ~T {
     #[inline]
     fn cmp(&self, other: &~T) -> Ordering { (**self).cmp(*other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalEq> TotalEq for ~T {
-    #[inline]
-    fn equals(&self, other: &~T) -> bool { (**self).equals(*other) }
 }

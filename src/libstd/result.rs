@@ -19,7 +19,7 @@ use str::OwnedStr;
 use to_str::ToStr;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
+#[deriving(Clone, DeepClone, Eq, Ord, ToStr)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value

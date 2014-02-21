@@ -158,9 +158,7 @@ macro_rules! cmp_impl {
     };
 }
 cmp_impl!(impl Eq, eq, ne)
-cmp_impl!(impl TotalEq, equals)
-cmp_impl!(impl Ord, lt, gt, le, ge)
-cmp_impl!(impl TotalOrd, cmp -> cmp::Ordering)
+cmp_impl!(impl Ord, lt -> bool, gt -> bool, le -> bool, ge -> bool, cmp -> cmp::Ordering)
 
 /* Arithmetic */
 // a/b * c/d = (a*c)/(b*d)

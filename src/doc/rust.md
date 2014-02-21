@@ -2032,7 +2032,7 @@ impl<T: Eq> Eq for Foo<T> {
 
 Supported traits for `deriving` are:
 
-* Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
+* Comparison traits: `Eq`, `Ord`
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
