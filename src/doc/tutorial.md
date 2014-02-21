@@ -495,8 +495,7 @@ reject the previous example if the arm with the wildcard pattern was
 omitted.
 
 A powerful application of pattern matching is *destructuring*:
-matching in order to bind names to the contents of data
-types.
+matching in order to bind names to the contents of data types.
 
 > ***Note:*** The following code makes use of tuples (`(f64, f64)`) which
 > are explained in section 5.3. For now you can think of tuples as a list of
@@ -2726,7 +2725,8 @@ pub mod barn {
 
 In short, `mod foo;` is just syntactic sugar for `mod foo { /* content of <...>/foo.rs or <...>/foo/mod.rs */ }`.
 
-This also means that having two or more identical `mod foo;` declarations somewhere in your crate hierarchy is generally a bad idea,
+This also means that having two or more identical `mod foo;` declarations
+somewhere in your crate hierarchy is generally a bad idea,
 just like copy-and-paste-ing a module into multiple places is a bad idea.
 Both will result in duplicate and mutually incompatible definitions.
 
@@ -3074,11 +3074,6 @@ fn main() {
 It's a bit weird, but it's the result of shadowing rules that have been set that way because
 they model most closely what people expect to shadow.
 
-## Package ids
-
-If you use `extern crate`, per default `rustc` will look for libraries in the library search path (which you can
-extend with the `-L` switch).
-
 ## Crate metadata and settings
 
 For every crate you can define a number of metadata items, such as link name, version or author.
@@ -3096,14 +3091,13 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 // `lib.rs`
 
 # #[crate_type = "lib"];
-// Package ID
 #[crate_id = "farm#2.5"];
 
 // ...
 # fn farm() {}
 ~~~~
 
-You can also specify package ID information in a `extern crate` statement.  For
+You can also specify crate id information in a `extern crate` statement.  For
 example, these `extern crate` statements would both accept and select the
 crate define above:
 
@@ -3161,7 +3155,7 @@ Now compile and run like this (adjust to your platform if necessary):
 Notice that the library produced contains the version in the file name
 as well as an inscrutable string of alphanumerics. As explained in the previous paragraph,
 these are both part of Rust's library versioning scheme. The alphanumerics are
-a hash representing the crates package ID.
+a hash representing the crates id.
 
 ## The standard library and the prelude
 
@@ -3231,8 +3225,7 @@ library.  You can link to a library such as `extra` with an `extern crate extra;
 [extra library]: extra/index.html
 
 Right now `extra` contains those definitions directly, but in the future it will likely just
-re-export a bunch of 'officially blessed' crates that get managed with a
-package manager.
+re-export a bunch of 'officially blessed' crates that get managed with a package manager.
 
 # What next?
 
