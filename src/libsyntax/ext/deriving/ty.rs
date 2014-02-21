@@ -111,14 +111,14 @@ pub fn nil_ty() -> Ty<'static> {
 
 fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
+        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s).name)),
         None => None
     }
 }
 
 fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
     match *lt {
-        Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s))),
+        Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s).name)),
         None => opt_vec::Empty
     }
 }
@@ -221,7 +221,7 @@ impl<'a> LifetimeBounds<'a> {
                        self_generics: &Generics)
                        -> Generics {
         let lifetimes = self.lifetimes.map(|lt| {
-            cx.lifetime(span, cx.ident_of(*lt))
+            cx.lifetime(span, cx.ident_of(*lt).name)
         });
         let ty_params = self.bounds.map(|t| {
             match t {
@@ -248,7 +248,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 match *ptr {
                     Send => ast::SelfUniq,
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
+                        let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
                         ast::SelfRegion(lt, mutbl)
                     }
                 });

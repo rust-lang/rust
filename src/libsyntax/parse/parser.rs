@@ -1596,7 +1596,7 @@ impl Parser {
                 return ast::Lifetime {
                     id: ast::DUMMY_NODE_ID,
                     span: span,
-                    ident: i
+                    ident: i.name
                 };
             }
             _ => {

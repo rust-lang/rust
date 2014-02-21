@@ -145,7 +145,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     fn visit_lifetime_ref(&mut self,
                           lifetime_ref: &ast::Lifetime,
                           scope: &'a ScopeChain<'a>) {
-        if lifetime_ref.ident == special_idents::statik {
+        if lifetime_ref.ident == special_idents::statik.name {
             self.insert_lifetime(lifetime_ref, ast::DefStaticRegion);
             return;
         }
@@ -262,7 +262,7 @@ impl LifetimeContext {
         self.sess.span_err(
             lifetime_ref.span,
             format!("use of undeclared lifetime name `'{}`",
-                    token::get_ident(lifetime_ref.ident)));
+                    token::get_name(lifetime_ref.ident)));
     }
 
     fn check_lifetime_names(&self, lifetimes: &OptVec<ast::Lifetime>) {
@@ -271,11 +271,11 @@ impl LifetimeContext {
 
             let special_idents = [special_idents::statik];
             for lifetime in lifetimes.iter() {
-                if special_idents.iter().any(|&i| i == lifetime.ident) {
+                if special_idents.iter().any(|&i| i.name == lifetime.ident) {
                     self.sess.span_err(
                         lifetime.span,
                         format!("illegal lifetime parameter name: `{}`",
-                                token::get_ident(lifetime.ident)));
+                                token::get_name(lifetime.ident)));
                 }
             }
 
@@ -287,7 +287,7 @@ impl LifetimeContext {
                         lifetime_j.span,
                         format!("lifetime name `'{}` declared twice in \
                                 the same scope",
-                                token::get_ident(lifetime_j.ident)));
+                                token::get_name(lifetime_j.ident)));
                 }
             }
         }
