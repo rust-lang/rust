@@ -275,6 +275,27 @@ pub struct Chars<'a> {
     priv string: &'a str,
 }
 
+impl<'a> Chars<'a> {
+  /**
+   * Returns the remaining string not yet iterated over.
+   *
+   * # Example
+   *
+   * Print the string `s` without the leading spaces
+   * (i.e. `"a string"`).
+   *
+   * ```rust
+   * let s = "   a string";
+   * let iter = s.chars();
+   * for ch in iter {
+   *     if ch != ' ' { break }
+   * }
+   * println!("{:s}", iter.remaining());
+   * ```
+   */
+  fn remaining(&self) -> 'a &str { self.string }
+}
+
 impl<'a> Iterator<char> for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
