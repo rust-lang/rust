@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use std::uint;
-use std::cast::{transmute, transmute_mut_unsafe,
-                transmute_region, transmute_mut_region};
+use std::cast::{transmute, transmute_mut_unsafe};
 use stack::Stack;
 use std::rt::stack;
 use std::raw;
@@ -55,10 +54,6 @@ impl Context {
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
-        unsafe {
-            rust_swap_registers(transmute_mut_region(&mut *regs),
-                                transmute_region(&*regs));
-        };
 
         initialize_call_frame(&mut *regs,
                               init,
