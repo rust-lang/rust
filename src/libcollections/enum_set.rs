@@ -139,7 +139,7 @@ mod test {
 
     use std::cast;
 
-    use enum_set::*;
+    use enum_set::{EnumSet, CLike};
 
     #[deriving(Eq)]
     #[repr(uint)]

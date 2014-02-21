@@ -52,7 +52,7 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
-use extra::enum_set::{EnumSet, CLike};
+use collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
 
