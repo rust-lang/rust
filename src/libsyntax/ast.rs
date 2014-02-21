@@ -144,8 +144,7 @@ pub type FnIdent = Option<Ident>;
 pub struct Lifetime {
     id: NodeId,
     span: Span,
-    // FIXME #7743 : change this to Name!
-    ident: Ident
+    ident: Name
 }
 
 // a "Path" is essentially Rust's notion of a name;
