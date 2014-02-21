@@ -225,8 +225,9 @@ impl GenericPathUnsafe for Path {
         fn shares_volume(me: &Path, path: &str) -> bool {
             // path is assumed to have a prefix of Some(DiskPrefix)
             match me.prefix {
-                Some(DiskPrefix) => me.repr[0] == path[0].to_ascii().to_upper().to_byte(),
-                Some(VerbatimDiskPrefix) => me.repr[4] == path[0].to_ascii().to_upper().to_byte(),
+                Some(DiskPrefix) => me.repr[0] == path[0].to_ascii().unwrap().to_upper().to_byte(),
+                Some(VerbatimDiskPrefix) =>
+                    me.repr[4] == path[0].to_ascii().unwrap().to_upper().to_byte(),
                 _ => false
             }
         }
@@ -655,14 +656,16 @@ impl Path {
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
-                    self.repr[0].to_ascii().eq_ignore_case(other.repr[4].to_ascii())
+                    self.repr[0].to_ascii().unwrap().
+                        eq_ignore_case(other.repr[4].to_ascii().unwrap())
             }
             (Some(VerbatimDiskPrefix), Some(DiskPrefix)) => {
                 other.is_absolute() &&
-                    self.repr[4].to_ascii().eq_ignore_case(other.repr[0].to_ascii())
+                    self.repr[4].to_ascii().unwrap().
+                        eq_ignore_case(other.repr[0].to_ascii().unwrap())
             }
             (Some(VerbatimDiskPrefix), Some(VerbatimDiskPrefix)) => {
-                self.repr[4].to_ascii().eq_ignore_case(other.repr[4].to_ascii())
+                self.repr[4].to_ascii().unwrap().eq_ignore_case(other.repr[4].to_ascii().unwrap())
             }
             (Some(UNCPrefix(_,_)), Some(VerbatimUNCPrefix(_,_))) => {
                 self.repr.slice(2, self.prefix_len()) == other.repr.slice(8, other.prefix_len())
@@ -729,7 +732,7 @@ impl Path {
                                 let mut s = s.slice_to(len).to_owned();
                                 unsafe {
                                     str::raw::as_owned_vec(&mut s)[0] =
-                                        s[0].to_ascii().to_upper().to_byte();
+                                        s[0].to_ascii().unwrap().to_upper().to_byte();
                                 }
                                 if is_abs {
                                     // normalize C:/ to C:\
@@ -744,7 +747,7 @@ impl Path {
                                 let mut s = s.slice_to(len).to_owned();
                                 unsafe {
                                     str::raw::as_owned_vec(&mut s)[4] =
-                                        s[4].to_ascii().to_upper().to_byte();
+                                        s[4].to_ascii().unwrap().to_upper().to_byte();
                                 }
                                 Some(s)
                             }
@@ -765,12 +768,12 @@ impl Path {
                         let mut s = str::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
-                                s.push_char(prefix_[0].to_ascii().to_upper().to_char());
+                                s.push_char(prefix_[0].to_ascii().unwrap().to_upper().to_char());
                                 s.push_char(':');
                             }
                             Some(VerbatimDiskPrefix) => {
                                 s.push_str(prefix_.slice_to(4));
-                                s.push_char(prefix_[4].to_ascii().to_upper().to_char());
+                                s.push_char(prefix_[4].to_ascii().unwrap().to_upper().to_char());
                                 s.push_str(prefix_.slice_from(5));
                             }
                             Some(UNCPrefix(a,b)) => {

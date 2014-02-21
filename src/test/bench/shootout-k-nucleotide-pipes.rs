@@ -68,7 +68,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    for &(ref k, v) in pairs_sorted.iter() {
        unsafe {
            buffer.push_str(format!("{} {:0.3f}\n",
-                                   k.to_ascii().to_upper().into_str(), v));
+                                   k.to_ascii().unwrap().to_upper().into_str(), v));
        }
    }
 
@@ -77,7 +77,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
-   let key = key.into_ascii().to_lower().into_str();
+   let key = key.into_ascii().unwrap().to_lower().into_str();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }

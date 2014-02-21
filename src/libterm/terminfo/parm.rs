@@ -531,7 +531,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                             }
                         }
                         FormatHEX => {
-                            s = s.into_ascii().to_upper().into_bytes();
+                            s = s.into_ascii().unwrap().to_upper().into_bytes();
                             if flags.alternate {
                                 let s_ = replace(&mut s, ~['0' as u8, 'X' as u8]);
                                 s.push_all_move(s_);

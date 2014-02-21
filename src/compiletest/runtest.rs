@@ -515,10 +515,9 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     fn to_lower( s : &str ) -> ~str {
         let i = s.chars();
         let c : ~[char] = i.map( |c| {
-            if c.is_ascii() {
-                c.to_ascii().to_lower().to_char()
-            } else {
-                c
+            match c.to_ascii() {
+                Some(ascii) => ascii.to_lower().to_char(),
+                None => c
             }
         } ).collect();
         str::from_chars( c )

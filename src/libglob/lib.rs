@@ -447,8 +447,8 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
                 // FIXME: work with non-ascii chars properly (issue #1347)
                 if !options.case_sensitive && c.is_ascii() && start.is_ascii() && end.is_ascii() {
 
-                    let start = start.to_ascii().to_lower();
-                    let end = end.to_ascii().to_lower();
+                    let start = start.to_ascii().unwrap().to_lower();
+                    let end = end.to_ascii().unwrap().to_lower();
 
                     let start_up = start.to_upper();
                     let end_up = end.to_upper();
@@ -458,7 +458,7 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
                     if start != start_up && end != end_up {
                         let start = start.to_char();
                         let end = end.to_char();
-                        let c = c.to_ascii().to_lower().to_char();
+                        let c = c.to_ascii().unwrap().to_lower().to_char();
                         if c >= start && c <= end {
                             return true;
                         }
@@ -481,7 +481,7 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
         true
     } else if !case_sensitive && a.is_ascii() && b.is_ascii() {
         // FIXME: work with non-ascii chars properly (issue #1347)
-        a.to_ascii().eq_ignore_case(b.to_ascii())
+        a.to_ascii().unwrap().eq_ignore_case(b.to_ascii().unwrap())
     } else {
         a == b
     }
