@@ -101,6 +101,7 @@ use to_str::ToStr;
 use from_str::FromStr;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
+use vec_ng::Vec;
 use default::Default;
 use to_bytes::{IterBytes, Cb};
 use unstable::raw::Repr;
@@ -219,6 +220,18 @@ impl<'a, S: Str> StrVector for &'a [S] {
             result.push_str(s.as_slice());
         }
         result
+    }
+}
+
+impl<'a, S: Str> StrVector for Vec<S> {
+    #[inline]
+    fn concat(&self) -> ~str {
+        self.as_slice().concat()
+    }
+
+    #[inline]
+    fn connect(&self, sep: &str) -> ~str {
+        self.as_slice().connect(sep)
     }
 }
 
