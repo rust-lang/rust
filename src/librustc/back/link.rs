@@ -944,7 +944,7 @@ fn link_rlib(sess: Session,
             // into the archive.
             let bc = obj_filename.with_extension("bc");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc).write(flate::deflate_bytes(data))
+                fs::File::create(&bc).write(flate::deflate_bytes(data).as_slice())
             }) {
                 Ok(()) => {}
                 Err(e) => {
