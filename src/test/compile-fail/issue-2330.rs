@@ -15,7 +15,7 @@ trait channel<T> {
 }
 
 // `chan` is not a trait, it's an enum
-impl chan for int { //~ ERROR chan is not a trait
+impl chan for int { //~ ERROR `chan` is not a trait
     fn send(&self, v: int) { fail!() }
 }
 
