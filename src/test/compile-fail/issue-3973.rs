@@ -23,11 +23,11 @@ impl ToStr for Point { //~ ERROR implements a method not defined in the trait
     }
 
     fn to_str(&self) -> ~str {
-        fmt!("(%f, %f)", self.x, self.y)
+        format!("({}, {})", self.x, self.y)
     }
 }
 
 fn main() {
-    let p = Point::new(0.0f, 0.0f);
+    let p = Point::new(0.0, 0.0);
     println!("{}", p.to_str());
 }

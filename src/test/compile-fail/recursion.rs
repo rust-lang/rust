@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 enum Nil {Nil}
 struct Cons<T> {head:int, tail:T}
-trait Dot {fn dot(other:self) -> int;}
+trait Dot {fn dot(&self, other:Self) -> int;}
 impl Dot for Nil {
-  fn dot(_:Nil) -> int {0}
+  fn dot(&self, _:Nil) -> int {0}
 }
 impl<T:Dot> Dot for Cons<T> {
-  fn dot(other:Cons<T>) -> int {
+  fn dot(&self, other:Cons<T>) -> int {
     self.head * other.head + self.tail.dot(other.tail)
   }
 }
 fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
+    //~^ ERROR: overly deep expansion of inlined function
   match n {
     0 => {first.dot(second)}
       // Error message should be here. It should be a type error

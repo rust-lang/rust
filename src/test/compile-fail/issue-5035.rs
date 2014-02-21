@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 trait I {}
-type K = I;
-impl K for int {}
+type K = I; //~ ERROR: reference to trait
+impl K for int {} //~ ERROR: `K` is not a trait
 fn main() {}

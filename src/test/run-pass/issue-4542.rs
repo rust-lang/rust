@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,9 +11,8 @@
 use std::os;
 
 pub fn main() {
-    let x = os::args();
-    for arg in x.iter() {
-        match arg.clone() {
+    for arg in os::args().iter() {
+        match (*arg).clone() {
             _s => { }
         }
     }

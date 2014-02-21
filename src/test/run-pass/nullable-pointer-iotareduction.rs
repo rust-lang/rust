@@ -8,19 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
-// ignored due to a bug in move detection for macros.
-
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+#[feature(macro_rules)];
 
 use std::{option, cast};
 
@@ -42,7 +30,7 @@ impl<T> E<T> {
     }
     fn get_ref<'r>(&'r self) -> (int, &'r T) {
         match *self {
-            Nothing(..) => fail!("E::get_ref(Nothing::<%s>)",  stringify!($T)),
+            Nothing(..) => fail!("E::get_ref(Nothing::<{}>)",  stringify!(T)),
             Thing(x, ref y) => (x, y)
         }
     }
@@ -71,7 +59,7 @@ macro_rules! check_fancy {
         let t_ = Thing::<$T>(23, e);
         match t_.get_ref() {
             (23, $v) => { $chk }
-            _ => fail!("Thing::<%s>(23, %s).get_ref() != (23, _)",
+            _ => fail!("Thing::<{}>(23, {}).get_ref() != (23, _)",
                        stringify!($T), stringify!($e))
         }
     }}
@@ -91,7 +79,7 @@ pub fn main() {
     check_type!(~"foo": ~str);
     check_type!(~[20, 22]: ~[int]);
     let mint: uint = unsafe { cast::transmute(main) };
-    check_type!(main: extern fn(), |pthing| {
+    check_type!(main: fn(), |pthing| {
         assert!(mint == unsafe { cast::transmute(*pthing) })
     });
 }
