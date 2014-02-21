@@ -45,7 +45,6 @@ pub mod json;
 pub mod tempfile;
 pub mod time;
 pub mod workcache;
-pub mod enum_set;
 pub mod stats;
 
 #[cfg(unicode)]
