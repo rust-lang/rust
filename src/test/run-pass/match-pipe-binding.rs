@@ -12,8 +12,8 @@ fn test1() {
     // from issue 6338
     match ((1, ~"a"), (2, ~"b")) {
         ((1, a), (2, b)) | ((2, b), (1, a)) => {
-                assert_eq!(a, ~"a");
-                assert_eq!(b, ~"b");
+                fail_unless_eq!(a, ~"a");
+                fail_unless_eq!(b, ~"b");
             },
             _ => fail!(),
     }
@@ -22,8 +22,8 @@ fn test1() {
 fn test2() {
     match (1, 2, 3) {
         (1, a, b) | (2, b, a) => {
-            assert_eq!(a, 2);
-            assert_eq!(b, 3);
+            fail_unless_eq!(a, 2);
+            fail_unless_eq!(b, 3);
         },
         _ => fail!(),
     }
@@ -32,8 +32,8 @@ fn test2() {
 fn test3() {
     match (1, 2, 3) {
         (1, ref a, ref b) | (2, ref b, ref a) => {
-            assert_eq!(*a, 2);
-            assert_eq!(*b, 3);
+            fail_unless_eq!(*a, 2);
+            fail_unless_eq!(*b, 3);
         },
         _ => fail!(),
     }
@@ -42,8 +42,8 @@ fn test3() {
 fn test4() {
     match (1, 2, 3) {
         (1, a, b) | (2, b, a) if a == 2 => {
-            assert_eq!(a, 2);
-            assert_eq!(b, 3);
+            fail_unless_eq!(a, 2);
+            fail_unless_eq!(b, 3);
         },
         _ => fail!(),
     }
@@ -52,8 +52,8 @@ fn test4() {
 fn test5() {
     match (1, 2, 3) {
         (1, ref a, ref b) | (2, ref b, ref a) if *a == 2 => {
-            assert_eq!(*a, 2);
-            assert_eq!(*b, 3);
+            fail_unless_eq!(*a, 2);
+            fail_unless_eq!(*b, 3);
         },
         _ => fail!(),
     }

@@ -25,5 +25,5 @@ fn test(foo: @Triple) -> @Triple {
 pub fn main() {
     let x = @Triple{a: 1, b: 2, c: 3};
     let y = test(x);
-    assert_eq!(y.c, 3);
+    fail_unless_eq!(y.c, 3);
 }

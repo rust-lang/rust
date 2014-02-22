@@ -56,7 +56,7 @@ pub struct Queue {
 }
 
 extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-    assert_eq!(status, 0);
+    fail_unless_eq!(status, 0);
     let pool: &mut QueuePool = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -121,7 +121,7 @@ impl QueuePool {
         };
 
         unsafe {
-            assert_eq!(uvll::uv_async_init(loop_.handle, handle, async_cb), 0);
+            fail_unless_eq!(uvll::uv_async_init(loop_.handle, handle, async_cb), 0);
             uvll::uv_unref(handle);
             let data: *c_void = *cast::transmute::<&~QueuePool, &*c_void>(&q);
             uvll::set_data_for_uv_handle(handle, data);

@@ -121,11 +121,11 @@ fn test_success() {
             *i = 10;
         },
         |i| {
-            assert!(!failing());
-            assert_eq!(*i, 10);
+            fail_unless!(!failing());
+            fail_unless_eq!(*i, 10);
             *i = 20;
         });
-    assert_eq!(i, 20);
+    fail_unless_eq!(i, 20);
 }
 
 #[test]
@@ -139,8 +139,8 @@ fn test_fail() {
             fail!();
         },
         |i| {
-            assert!(failing());
-            assert_eq!(*i, 10);
+            fail_unless!(failing());
+            fail_unless_eq!(*i, 10);
         })
 }
 
@@ -148,7 +148,7 @@ fn test_fail() {
 fn test_retval() {
     let closure: || -> int = || 10;
     let i = closure.finally(|| { });
-    assert_eq!(i, 10);
+    fail_unless_eq!(i, 10);
 }
 
 #[test]

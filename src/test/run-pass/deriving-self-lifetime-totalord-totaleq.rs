@@ -19,13 +19,13 @@ struct A<'a> {
 pub fn main() {
     let (a, b) = (A { x: &1 }, A { x: &2 });
 
-    assert!(a.equals(&a));
-    assert!(b.equals(&b));
+    fail_unless!(a.equals(&a));
+    fail_unless!(b.equals(&b));
 
 
-    assert_eq!(a.cmp(&a), Equal);
-    assert_eq!(b.cmp(&b), Equal);
+    fail_unless_eq!(a.cmp(&a), Equal);
+    fail_unless_eq!(b.cmp(&b), Equal);
 
-    assert_eq!(a.cmp(&b), Less);
-    assert_eq!(b.cmp(&a), Greater);
+    fail_unless_eq!(a.cmp(&b), Less);
+    fail_unless_eq!(b.cmp(&a), Greater);
 }

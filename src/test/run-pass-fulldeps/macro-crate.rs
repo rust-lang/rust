@@ -19,6 +19,6 @@
 extern crate macro_crate_test;
 
 pub fn main() {
-    assert_eq!(1, make_a_1!());
-    assert_eq!(2, exported_macro!());
+    fail_unless_eq!(1, make_a_1!());
+    fail_unless_eq!(2, exported_macro!());
 }

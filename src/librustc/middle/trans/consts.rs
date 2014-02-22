@@ -83,7 +83,7 @@ pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
         let mut const_globals = cx.const_globals.borrow_mut();
-        assert!(const_globals.get().insert(b as int, a));
+        fail_unless!(const_globals.get().insert(b as int, a));
         b
     }
 }
@@ -122,7 +122,7 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
         None => v
     };
     unsafe {
-        assert_eq!(llvm::LLVMIsGlobalConstant(v), True);
+        fail_unless_eq!(llvm::LLVMIsGlobalConstant(v), True);
         llvm::LLVMGetInitializer(v)
     }
 }
@@ -137,7 +137,7 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
     match ty::deref(t, explicit) {
         Some(ref mt) => {
-            assert!(mt.mutbl != ast::MutMutable);
+            fail_unless!(mt.mutbl != ast::MutMutable);
             let dv = match ty::get(t).sty {
                 ty::ty_ptr(..) | ty::ty_rptr(..) => {
                      const_deref_ptr(cx, v)
@@ -245,13 +245,13 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                             match *autoref {
                                 ty::AutoUnsafe(m) |
                                 ty::AutoPtr(ty::ReStatic, m) => {
-                                    assert!(m != ast::MutMutable);
+                                    fail_unless!(m != ast::MutMutable);
                                     llconst = llptr;
                                 }
                                 ty::AutoBorrowVec(ty::ReStatic, m) => {
-                                    assert!(m != ast::MutMutable);
-                                    assert_eq!(abi::slice_elt_base, 0);
-                                    assert_eq!(abi::slice_elt_len, 1);
+                                    fail_unless!(m != ast::MutMutable);
+                                    fail_unless_eq!(abi::slice_elt_base, 0);
+                                    fail_unless_eq!(abi::slice_elt_len, 1);
                                     match ty::get(ty).sty {
                                         ty::ty_vec(_,
                                                    ty::vstore_fixed(len)) => {
@@ -457,7 +457,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
-                  ty::ty_str(..) => {assert!(len > 0); len - 1},
+                  ty::ty_str(..) => {fail_unless!(len > 0); len - 1},
                   _ => len
               };
               if iv >= len {
@@ -609,7 +609,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
           }
           ast::ExprPath(ref pth) => {
             // Assert that there are no type parameters in this path.
-            assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
+            fail_unless!(pth.segments.iter().all(|seg| seg.types.is_empty()));
 
             let tcx = cx.tcx;
             let opt_def = {
@@ -622,7 +622,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         (base::trans_external_path(cx, def_id, ty), true)
                     } else {
-                        assert!(ast_util::is_local(def_id));
+                        fail_unless!(ast_util::is_local(def_id));
                         (base::get_item_val(cx, def_id.node), true)
                     }
                 }

@@ -220,10 +220,10 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         let start = *n * self.words_per_id;
         let end = start + self.words_per_id;
 
-        assert!(start < self.gens.len());
-        assert!(end <= self.gens.len());
-        assert!(self.gens.len() == self.kills.len());
-        assert!(self.gens.len() == self.on_entry.len());
+        fail_unless!(start < self.gens.len());
+        fail_unless!(end <= self.gens.len());
+        fail_unless!(self.gens.len() == self.kills.len());
+        fail_unless!(self.gens.len() == self.on_entry.len());
 
         (start, end)
     }
@@ -499,7 +499,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.add_to_entry_set(expr.id, body_bits);
 
                 let new_loop_scope = loop_scopes.pop().unwrap();
-                assert_eq!(new_loop_scope.loop_id, expr.id);
+                fail_unless_eq!(new_loop_scope.loop_id, expr.id);
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
@@ -885,7 +885,7 @@ fn join_bits<O:DataFlowOperator>(oper: &O,
 #[inline]
 fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
            -> bool {
-    assert_eq!(out_vec.len(), in_vec.len());
+    fail_unless_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
     for (out_elt, in_elt) in out_vec.mut_iter().zip(in_vec.iter()) {
         let old_val = *out_elt;

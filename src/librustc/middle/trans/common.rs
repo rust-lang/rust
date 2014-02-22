@@ -194,8 +194,8 @@ pub struct param_substs {
 
 impl param_substs {
     pub fn validate(&self) {
-        for t in self.tys.iter() { assert!(!ty::type_needs_infer(*t)); }
-        for t in self.self_ty.iter() { assert!(!ty::type_needs_infer(*t)); }
+        for t in self.tys.iter() { fail_unless!(!ty::type_needs_infer(*t)); }
+        for t in self.self_ty.iter() { fail_unless!(!ty::type_needs_infer(*t)); }
     }
 }
 
@@ -298,7 +298,7 @@ impl<'a> FunctionContext<'a> {
     }
 
     pub fn out_arg_pos(&self) -> uint {
-        assert!(self.caller_expects_out_pointer);
+        fail_unless!(self.caller_expects_out_pointer);
         0u
     }
 
@@ -785,8 +785,8 @@ pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
         }
         _ => {
-            assert!(!ty::type_has_params(t));
-            assert!(!ty::type_has_self(t));
+            fail_unless!(!ty::type_has_params(t));
+            fail_unless!(!ty::type_has_self(t));
             t
         }
     }

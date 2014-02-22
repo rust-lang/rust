@@ -87,7 +87,7 @@ mod test {
         let mut writer: io::IoResult<MemWriter> = Ok(MemWriter::new());
         writer.write([0, 1, 2]).unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.unwrap().unwrap(), ~[0, 1, 2]);
+        fail_unless_eq!(writer.unwrap().unwrap(), ~[0, 1, 2]);
     }
 
     #[test]
@@ -97,11 +97,11 @@ mod test {
 
         match writer.write([0, 0, 0]) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => fail_unless_eq!(e.kind, io::EndOfFile),
         }
         match writer.flush() {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => fail_unless_eq!(e.kind, io::EndOfFile),
         }
     }
 
@@ -111,7 +111,7 @@ mod test {
             Ok(MemReader::new(~[0, 1, 2, 3]));
         let mut buf = [0, 0];
         reader.read(buf).unwrap();
-        assert_eq!(buf, [0, 1]);
+        fail_unless_eq!(buf, [0, 1]);
     }
 
     #[test]
@@ -122,7 +122,7 @@ mod test {
 
         match reader.read(buf) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => fail_unless_eq!(e.kind, io::EndOfFile),
         }
     }
 }

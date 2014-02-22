@@ -27,8 +27,8 @@ pub fn main() {
     let obj = ~1;
     let objptr: *uint = &*obj;
     let xptr = getaddr(obj);
-    assert_eq!(objptr, xptr);
+    fail_unless_eq!(objptr, xptr);
 
     let obj = ~22;
-    assert_eq!(checkval(obj), 22);
+    fail_unless_eq!(checkval(obj), 22);
 }

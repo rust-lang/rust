@@ -25,6 +25,6 @@ enum Hero {
 pub fn main() {
     let pet: Animal = Snake;
     let hero: Hero = Superman;
-    assert!(pet as uint == 3);
-    assert!(hero as int == -2);
+    fail_unless!(pet as uint == 3);
+    fail_unless!(hero as int == -2);
 }

@@ -34,7 +34,7 @@ impl SignalWatcher {
             channel: channel,
             signal: signum,
         };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_signal_init(io.uv_loop(), s.handle)
         }, 0);
 
@@ -50,7 +50,7 @@ impl SignalWatcher {
 
 extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
     let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
-    assert_eq!(signum as int, s.signal as int);
+    fail_unless_eq!(signum as int, s.signal as int);
     s.channel.try_send(s.signal);
 }
 

@@ -29,5 +29,5 @@ pub fn main() {
         x.get() * b
       }
     };
-    assert_eq!(z, 18);
+    fail_unless_eq!(z, 18);
 }

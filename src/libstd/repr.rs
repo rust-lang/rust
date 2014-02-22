@@ -636,7 +636,7 @@ fn test_repr() {
         let mut m = io::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t).unwrap();
         let s = str::from_utf8_owned(m.unwrap()).unwrap();
-        assert_eq!(s.as_slice(), e);
+        fail_unless_eq!(s.as_slice(), e);
     }
 
     exact_test(&10, "10");

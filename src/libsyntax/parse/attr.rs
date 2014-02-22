@@ -70,7 +70,7 @@ impl ParserAttr for Parser {
                permit_inner, self.token);
         let (span, value) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
-                assert!(attr.node.style == ast::AttrOuter);
+                fail_unless!(attr.node.style == ast::AttrOuter);
                 self.bump();
                 (attr.span, attr.node.value)
             }

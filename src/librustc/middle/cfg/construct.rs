@@ -458,7 +458,7 @@ impl CFGBuilder {
     }
 
     fn add_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
-        assert!(!self.exit_map.contains_key(&id));
+        fail_unless!(!self.exit_map.contains_key(&id));
         let node = self.graph.add_node(CFGNodeData {id: id});
         self.exit_map.insert(id, node);
         for &pred in preds.iter() {

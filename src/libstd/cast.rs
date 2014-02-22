@@ -51,7 +51,7 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  * use std::cast;
  *
  * let v: &[u8] = unsafe { cast::transmute("L") };
- * assert!(v == [76u8]);
+ * fail_unless!(v == [76u8]);
  * ```
  */
 #[inline]
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_transmute_copy() {
-        assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
+        fail_unless_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
     }
 
     #[test]
@@ -128,8 +128,8 @@ mod tests {
             let ptr: *int = transmute(managed); // refcount 2
             let _box1: @~str = ::cast::transmute_copy(&ptr);
             let _box2: @~str = ::cast::transmute_copy(&ptr);
-            assert!(*_box1 == ~"box box box");
-            assert!(*_box2 == ~"box box box");
+            fail_unless!(*_box1 == ~"box box box");
+            fail_unless!(*_box2 == ~"box box box");
             // Will destroy _box1 and _box2. Without the bump, this would
             // use-after-free. With too many bumps, it would leak.
         }
@@ -140,7 +140,7 @@ mod tests {
         unsafe {
             let x = @100u8;
             let x: *raw::Box<u8> = transmute(x);
-            assert!((*x).data == 100);
+            fail_unless!((*x).data == 100);
             let _x: @int = transmute(x);
         }
     }
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert_eq!(~[76u8], transmute(~"L"));
+            fail_unless_eq!(~[76u8], transmute(~"L"));
         }
     }
 }

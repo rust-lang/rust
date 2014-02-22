@@ -144,10 +144,10 @@ mod tests {
         let mut cnt = 0;
         unsafe {
             iter_crate_map(&root_crate, |entry| {
-                assert!(*entry.log_level == 3);
+                fail_unless!(*entry.log_level == 3);
                 cnt += 1;
             });
-            assert!(cnt == 1);
+            fail_unless!(cnt == 1);
         }
     }
 
@@ -186,10 +186,10 @@ mod tests {
         let mut cnt = 0;
         unsafe {
             iter_crate_map(&root_crate, |entry| {
-                assert!(*entry.log_level == cnt);
+                fail_unless!(*entry.log_level == cnt);
                 cnt += 1;
             });
-            assert!(cnt == 4);
+            fail_unless!(cnt == 4);
         }
     }
 }

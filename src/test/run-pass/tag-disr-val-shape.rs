@@ -19,7 +19,7 @@ enum color {
 pub fn main() {
     let act = format!("{:?}", red);
     println!("{}", act);
-    assert_eq!(~"red", act);
-    assert_eq!(~"green", format!("{:?}", green));
-    assert_eq!(~"white", format!("{:?}", white));
+    fail_unless_eq!(~"red", act);
+    fail_unless_eq!(~"green", format!("{:?}", green));
+    fail_unless_eq!(~"white", format!("{:?}", white));
 }

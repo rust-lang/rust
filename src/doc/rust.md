@@ -2926,8 +2926,8 @@ fn is_symmetric(list: &[uint]) -> bool {
 fn main() {
     let sym     = &[0, 1, 4, 2, 4, 1, 0];
     let not_sym = &[0, 1, 7, 2, 4, 1, 0];
-    assert!(is_symmetric(sym));
-    assert!(!is_symmetric(not_sym));
+    fail_unless!(is_symmetric(sym));
+    fail_unless!(!is_symmetric(not_sym));
 }
 ~~~~
 
@@ -2995,7 +2995,7 @@ fn is_sorted(list: &List) -> bool {
 
 fn main() {
     let a = Cons(6, ~Cons(7, ~Cons(42, ~Nil)));
-    assert!(is_sorted(&a));
+    fail_unless!(is_sorted(&a));
 }
 
 ~~~~
@@ -3009,7 +3009,7 @@ on `x: &int` are equivalent:
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
-assert_eq!(y, z);
+fail_unless_eq!(y, z);
 ~~~~
 
 A pattern that's just an identifier, like `Nil` in the previous example,
@@ -3163,7 +3163,7 @@ An example of a tuple type and its use:
 type Pair<'a> = (int,&'a str);
 let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
-assert!(b != "world");
+fail_unless!(b != "world");
 ~~~~
 
 ### Vector types
@@ -3189,7 +3189,7 @@ An example of a vector type and its use:
 ~~~~
 let v: &[int] = &[7, 5, 3];
 let i: int = v[2];
-assert!(i == 3);
+fail_unless!(i == 3);
 ~~~~
 
 All in-bounds elements of a vector are always initialized,

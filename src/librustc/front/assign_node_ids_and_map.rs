@@ -19,7 +19,7 @@ struct NodeIdAssigner {
 
 impl ast_map::FoldOps for NodeIdAssigner {
     fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
-        assert_eq!(old_id, ast::DUMMY_NODE_ID);
+        fail_unless_eq!(old_id, ast::DUMMY_NODE_ID);
         self.sess.next_node_id()
     }
 }

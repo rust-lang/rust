@@ -14,6 +14,6 @@ pub fn main() {
     let mut i = ~100;
     let mut j = ~200;
     swap(&mut i, &mut j);
-    assert_eq!(i, ~200);
-    assert_eq!(j, ~100);
+    fail_unless_eq!(i, ~200);
+    fail_unless_eq!(j, ~100);
 }

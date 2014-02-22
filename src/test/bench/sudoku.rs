@@ -68,7 +68,7 @@ impl Sudoku {
     }
 
     pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
-        assert!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
+        fail_unless!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         for line in reader.lines() {
@@ -221,30 +221,30 @@ static DEFAULT_SOLUTION: [[u8, ..9], ..9] = [
 
 #[test]
 fn colors_new_works() {
-    assert_eq!(*Colors::new(1), 1022u16);
-    assert_eq!(*Colors::new(2), 1020u16);
-    assert_eq!(*Colors::new(3), 1016u16);
-    assert_eq!(*Colors::new(4), 1008u16);
-    assert_eq!(*Colors::new(5), 992u16);
-    assert_eq!(*Colors::new(6), 960u16);
-    assert_eq!(*Colors::new(7), 896u16);
-    assert_eq!(*Colors::new(8), 768u16);
-    assert_eq!(*Colors::new(9), 512u16);
+    fail_unless_eq!(*Colors::new(1), 1022u16);
+    fail_unless_eq!(*Colors::new(2), 1020u16);
+    fail_unless_eq!(*Colors::new(3), 1016u16);
+    fail_unless_eq!(*Colors::new(4), 1008u16);
+    fail_unless_eq!(*Colors::new(5), 992u16);
+    fail_unless_eq!(*Colors::new(6), 960u16);
+    fail_unless_eq!(*Colors::new(7), 896u16);
+    fail_unless_eq!(*Colors::new(8), 768u16);
+    fail_unless_eq!(*Colors::new(9), 512u16);
 }
 
 #[test]
 fn colors_next_works() {
-    assert_eq!(Colors(0).next(), 0u8);
-    assert_eq!(Colors(2).next(), 1u8);
-    assert_eq!(Colors(4).next(), 2u8);
-    assert_eq!(Colors(8).next(), 3u8);
-    assert_eq!(Colors(16).next(), 4u8);
-    assert_eq!(Colors(32).next(), 5u8);
-    assert_eq!(Colors(64).next(), 6u8);
-    assert_eq!(Colors(128).next(), 7u8);
-    assert_eq!(Colors(256).next(), 8u8);
-    assert_eq!(Colors(512).next(), 9u8);
-    assert_eq!(Colors(1024).next(), 0u8);
+    fail_unless_eq!(Colors(0).next(), 0u8);
+    fail_unless_eq!(Colors(2).next(), 1u8);
+    fail_unless_eq!(Colors(4).next(), 2u8);
+    fail_unless_eq!(Colors(8).next(), 3u8);
+    fail_unless_eq!(Colors(16).next(), 4u8);
+    fail_unless_eq!(Colors(32).next(), 5u8);
+    fail_unless_eq!(Colors(64).next(), 6u8);
+    fail_unless_eq!(Colors(128).next(), 7u8);
+    fail_unless_eq!(Colors(256).next(), 8u8);
+    fail_unless_eq!(Colors(512).next(), 9u8);
+    fail_unless_eq!(Colors(1024).next(), 0u8);
 }
 
 #[test]
@@ -256,7 +256,7 @@ fn colors_remove_works() {
     colors.remove(1);
 
     // THEN
-    assert_eq!(colors.next(), 2u8);
+    fail_unless_eq!(colors.next(), 2u8);
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn check_DEFAULT_SUDOKU_solution() {
     sudoku.solve();
 
     // THEN
-    assert!(sudoku.equal(&solution));
+    fail_unless!(sudoku.equal(&solution));
 }
 
 fn main() {

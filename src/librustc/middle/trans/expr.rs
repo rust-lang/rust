@@ -465,7 +465,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             // if overloaded, would be RvalueDpsExpr
             {
                 let method_map = bcx.ccx().maps.method_map.borrow();
-                assert!(!method_map.get().contains_key(&expr.id));
+                fail_unless!(!method_map.get().contains_key(&expr.id));
             }
 
             trans_binary(bcx, expr, op, lhs, rhs)
@@ -1178,12 +1178,12 @@ fn trans_unary_datum<'a>(
     let _icx = push_ctxt("trans_unary_datum");
 
     // if deref, would be LvalueExpr
-    assert!(op != ast::UnDeref);
+    fail_unless!(op != ast::UnDeref);
 
     // if overloaded, would be RvalueDpsExpr
     {
         let method_map = bcx.ccx().maps.method_map.borrow();
-        assert!(!method_map.get().contains_key(&un_expr.id));
+        fail_unless!(!method_map.get().contains_key(&un_expr.id));
     }
 
     let un_ty = expr_ty(bcx, un_expr);
@@ -1677,14 +1677,14 @@ fn trans_assign_op<'a>(
     debug!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!({
+    fail_unless!({
             let method_map = bcx.ccx().maps.method_map.borrow();
             !method_map.get().find(&expr.id).is_some()
         });
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
-    assert!(!ty::type_needs_drop(bcx.tcx(), dst_datum.ty));
+    fail_unless!(!ty::type_needs_drop(bcx.tcx(), dst_datum.ty));
     let dst_ty = dst_datum.ty;
     let dst = Load(bcx, dst_datum.val);
 
@@ -1804,7 +1804,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
-            assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
+            fail_unless!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
 
             let ptr = datum.to_llscalarish(bcx);
 

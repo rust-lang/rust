@@ -23,13 +23,13 @@ pub fn main() {
     let mut q: Triple = Triple {x: 68, y: 69, z: 70};
     y = id::<int>(x);
     info!("{}", y);
-    assert_eq!(x, y);
+    fail_unless_eq!(x, y);
     b = id::<char>(a);
     info!("{}", b);
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
     q = id::<Triple>(p);
     x = p.z;
     y = q.z;
     info!("{}", y);
-    assert_eq!(x, y);
+    fail_unless_eq!(x, y);
 }

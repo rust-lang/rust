@@ -19,5 +19,5 @@ pub fn main() {
         }
         q += *i + p;
     }
-    assert!(q == 1010100);
+    fail_unless!(q == 1010100);
 }

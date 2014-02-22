@@ -145,46 +145,46 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), ~"666f6f626172");
+        fail_unless_eq!("foobar".as_bytes().to_hex(), ~"666f6f626172");
     }
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().unwrap(),
+        fail_unless_eq!("666f6f626172".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
-        assert_eq!("666F6F626172".from_hex().unwrap(),
+        fail_unless_eq!("666F6F626172".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
     }
 
     #[test]
     pub fn test_from_hex_odd_len() {
-        assert!("666".from_hex().is_err());
-        assert!("66 6".from_hex().is_err());
+        fail_unless!("666".from_hex().is_err());
+        fail_unless!("66 6".from_hex().is_err());
     }
 
     #[test]
     pub fn test_from_hex_invalid_char() {
-        assert!("66y6".from_hex().is_err());
+        fail_unless!("66y6".from_hex().is_err());
     }
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
+        fail_unless_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
                    "foobar".as_bytes().to_owned());
     }
 
     #[test]
     pub fn test_to_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
+            fail_unless_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
         }
     }
 
     #[test]
     pub fn test_from_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!(format!("{:02x}", i as uint).from_hex().unwrap(), ~[i as u8]);
-            assert_eq!(format!("{:02X}", i as uint).from_hex().unwrap(), ~[i as u8]);
+            fail_unless_eq!(format!("{:02x}", i as uint).from_hex().unwrap(), ~[i as u8]);
+            fail_unless_eq!(format!("{:02X}", i as uint).from_hex().unwrap(), ~[i as u8]);
         }
     }
 

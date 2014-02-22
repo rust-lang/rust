@@ -154,7 +154,7 @@ mod tests {
         match UnixListener::bind(&path) {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == PermissionDenied || e.kind == FileNotFound ||
+                fail_unless!(e.kind == PermissionDenied || e.kind == FileNotFound ||
                         e.kind == InvalidInput);
             }
         }
@@ -169,7 +169,7 @@ mod tests {
         match UnixStream::connect(&path) {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == FileNotFound || e.kind == OtherIoError);
+                fail_unless!(e.kind == FileNotFound || e.kind == OtherIoError);
             }
         }
     })
@@ -178,7 +178,7 @@ mod tests {
         smalltest(proc(mut server) {
             let mut buf = [0];
             server.read(buf).unwrap();
-            assert!(buf[0] == 99);
+            fail_unless!(buf[0] == 99);
         }, proc(mut client) {
             client.write([99]).unwrap();
         })
@@ -187,8 +187,8 @@ mod tests {
     iotest!(fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            assert!(server.read(buf).is_err());
-            assert!(server.read(buf).is_err());
+            fail_unless!(server.read(buf).is_err());
+            fail_unless!(server.read(buf).is_err());
         }, proc(_client) {
             // drop the client
         })
@@ -201,7 +201,7 @@ mod tests {
                 match server.write(buf) {
                     Ok(..) => {}
                     Err(e) => {
-                        assert!(e.kind == BrokenPipe ||
+                        fail_unless!(e.kind == BrokenPipe ||
                                 e.kind == NotConnected ||
                                 e.kind == ConnectionReset,
                                 "unknown error {:?}", e);
@@ -243,7 +243,7 @@ mod tests {
                 Ok(..) => {}
                 Err(e) => fail!("failed read/accept: {}", e),
             }
-            assert_eq!(buf[0], 100);
+            fail_unless_eq!(buf[0], 100);
         }
     })
 
@@ -251,7 +251,7 @@ mod tests {
     iotest!(fn path_exists() {
         let path = next_test_unix();
         let _acceptor = UnixListener::bind(&path).listen();
-        assert!(path.exists());
+        fail_unless!(path.exists());
     })
 
     iotest!(fn unix_clone_smoke() {
@@ -262,8 +262,8 @@ mod tests {
             let mut s = UnixStream::connect(&addr);
             let mut buf = [0, 0];
             debug!("client reading");
-            assert_eq!(s.read(buf), Ok(1));
-            assert_eq!(buf[0], 1);
+            fail_unless_eq!(s.read(buf), Ok(1));
+            fail_unless_eq!(buf[0], 1);
             debug!("client writing");
             s.write([2]).unwrap();
             debug!("client dropping");
@@ -285,7 +285,7 @@ mod tests {
         c1.send(());
         let mut buf = [0, 0];
         debug!("reader reading");
-        assert_eq!(s1.read(buf), Ok(1));
+        fail_unless_eq!(s1.read(buf), Ok(1));
         debug!("reader done");
         p2.recv();
     })

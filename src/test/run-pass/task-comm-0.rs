@@ -34,5 +34,5 @@ fn test05() {
     error!("{}", value);
     value = po.recv();
     error!("{}", value);
-    assert_eq!(value, 30);
+    fail_unless_eq!(value, 30);
 }

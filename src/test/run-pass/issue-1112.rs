@@ -35,10 +35,10 @@ pub fn main() {
 }
 
 fn bar<T>(x: X<T>) {
-    assert_eq!(x.b, 9u8);
-    assert_eq!(x.c, true);
-    assert_eq!(x.d, 10u8);
-    assert_eq!(x.e, 11u16);
-    assert_eq!(x.f, 12u8);
-    assert_eq!(x.g, 13u8);
+    fail_unless_eq!(x.b, 9u8);
+    fail_unless_eq!(x.c, true);
+    fail_unless_eq!(x.d, 10u8);
+    fail_unless_eq!(x.e, 11u16);
+    fail_unless_eq!(x.f, 12u8);
+    fail_unless_eq!(x.g, 13u8);
 }

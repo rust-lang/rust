@@ -24,15 +24,15 @@ fn static_bound_set(a: &'static mut int) {
 }
 
 unsafe fn run() {
-    assert!(static_mut_xc::a == 3);
+    fail_unless!(static_mut_xc::a == 3);
     static_mut_xc::a = 4;
-    assert!(static_mut_xc::a == 4);
+    fail_unless!(static_mut_xc::a == 4);
     static_mut_xc::a += 1;
-    assert!(static_mut_xc::a == 5);
+    fail_unless!(static_mut_xc::a == 5);
     static_mut_xc::a *= 3;
-    assert!(static_mut_xc::a == 15);
+    fail_unless!(static_mut_xc::a == 15);
     static_mut_xc::a = -3;
-    assert!(static_mut_xc::a == -3);
+    fail_unless!(static_mut_xc::a == -3);
     static_bound(&static_mut_xc::a);
     static_bound_set(&mut static_mut_xc::a);
 }

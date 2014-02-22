@@ -26,5 +26,5 @@ impl Changer for X {
 pub fn main() {
     let x = ~X { a: 32 };
     let new_x = x.change();
-    assert_eq!(new_x.a, 55);
+    fail_unless_eq!(new_x.a, 55);
 }

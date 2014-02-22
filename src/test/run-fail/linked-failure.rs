@@ -16,7 +16,7 @@ extern crate extra;
 use std::comm;
 use std::task;
 
-fn child() { assert!((1 == 2)); }
+fn child() { fail_unless!((1 == 2)); }
 
 fn main() {
     let (p, _c) = comm::stream::<int>();

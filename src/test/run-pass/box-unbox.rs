@@ -18,5 +18,5 @@ pub fn main() {
     let foo: int = 17;
     let bfoo: Box<int> = Box {c: @foo};
     info!("see what's in our box");
-    assert_eq!(unbox::<int>(bfoo), foo);
+    fail_unless_eq!(unbox::<int>(bfoo), foo);
 }

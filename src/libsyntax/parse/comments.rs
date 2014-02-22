@@ -44,7 +44,7 @@ pub fn is_doc_comment(s: &str) -> bool {
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
-    assert!(is_doc_comment(comment));
+    fail_unless!(is_doc_comment(comment));
     if comment.starts_with("//!") || comment.starts_with("/*!") {
         ast::AttrInner
     } else {
@@ -145,7 +145,7 @@ fn read_to_eol(rdr: &StringReader) -> ~str {
 
 fn read_one_line_comment(rdr: &StringReader) -> ~str {
     let val = read_to_eol(rdr);
-    assert!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
+    fail_unless!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
                  (val[0] == '#' as u8 && val[1] == '!' as u8));
     return val;
 }
@@ -271,7 +271,7 @@ fn read_block_comment(rdr: &StringReader,
             bump(rdr);
         }
         if !is_block_non_doc_comment(curr_line) { return; }
-        assert!(!curr_line.contains_char('\n'));
+        fail_unless!(!curr_line.contains_char('\n'));
         lines.push(curr_line);
     } else {
         let mut level: int = 1;
@@ -399,41 +399,41 @@ mod test {
     #[test] fn test_block_doc_comment_1() {
         let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" Test \n*  Test\n   Test");
+        fail_unless_eq!(stripped, ~" Test \n*  Test\n   Test");
     }
 
     #[test] fn test_block_doc_comment_2() {
         let comment = "/**\n * Test\n *  Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" Test\n  Test");
+        fail_unless_eq!(stripped, ~" Test\n  Test");
     }
 
     #[test] fn test_block_doc_comment_3() {
         let comment = "/**\n let a: *int;\n *a = 5;\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" let a: *int;\n *a = 5;");
+        fail_unless_eq!(stripped, ~" let a: *int;\n *a = 5;");
     }
 
     #[test] fn test_block_doc_comment_4() {
         let comment = "/*******************\n test\n *********************/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" test");
+        fail_unless_eq!(stripped, ~" test");
     }
 
     #[test] fn test_line_doc_comment() {
         let stripped = strip_doc_comment_decoration("/// test");
-        assert_eq!(stripped, ~" test");
+        fail_unless_eq!(stripped, ~" test");
         let stripped = strip_doc_comment_decoration("///! test");
-        assert_eq!(stripped, ~" test");
+        fail_unless_eq!(stripped, ~" test");
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, ~" test");
+        fail_unless_eq!(stripped, ~" test");
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, ~" test");
+        fail_unless_eq!(stripped, ~" test");
         let stripped = strip_doc_comment_decoration("///test");
-        assert_eq!(stripped, ~"test");
+        fail_unless_eq!(stripped, ~"test");
         let stripped = strip_doc_comment_decoration("///!test");
-        assert_eq!(stripped, ~"test");
+        fail_unless_eq!(stripped, ~"test");
         let stripped = strip_doc_comment_decoration("//test");
-        assert_eq!(stripped, ~"test");
+        fail_unless_eq!(stripped, ~"test");
     }
 }

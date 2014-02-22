@@ -37,5 +37,5 @@ fn surrounding() {
 pub fn main() {
     surrounding();
 
-    assert_eq!(unsafe {calls}, 3);
+    fail_unless_eq!(unsafe {calls}, 3);
 }

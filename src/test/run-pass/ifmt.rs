@@ -33,7 +33,7 @@ impl fmt::Signed for B {
     }
 }
 
-macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
+macro_rules! t(($a:expr, $b:expr) => { fail_unless_eq!($a, $b.to_owned()) })
 
 pub fn main() {
     // Make sure there's a poly formatter that takes anything

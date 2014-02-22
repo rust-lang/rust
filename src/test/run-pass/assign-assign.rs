@@ -12,27 +12,27 @@
 fn test_assign() {
     let mut x: int;
     let y: () = x = 10;
-    assert_eq!(x, 10);
-    assert_eq!(y, ());
+    fail_unless_eq!(x, 10);
+    fail_unless_eq!(y, ());
     let mut z = x = 11;
-    assert_eq!(x, 11);
-    assert_eq!(z, ());
+    fail_unless_eq!(x, 11);
+    fail_unless_eq!(z, ());
     z = x = 12;
-    assert_eq!(x, 12);
-    assert_eq!(z, ());
+    fail_unless_eq!(x, 12);
+    fail_unless_eq!(z, ());
 }
 
 fn test_assign_op() {
     let mut x: int = 0;
     let y: () = x += 10;
-    assert_eq!(x, 10);
-    assert_eq!(y, ());
+    fail_unless_eq!(x, 10);
+    fail_unless_eq!(y, ());
     let mut z = x += 11;
-    assert_eq!(x, 21);
-    assert_eq!(z, ());
+    fail_unless_eq!(x, 21);
+    fail_unless_eq!(z, ());
     z = x += 12;
-    assert_eq!(x, 33);
-    assert_eq!(z, ());
+    fail_unless_eq!(x, 33);
+    fail_unless_eq!(z, ());
 }
 
 pub fn main() { test_assign(); test_assign_op(); }

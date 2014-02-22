@@ -261,43 +261,43 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = SmallIntMap::new();
-        assert!(m.insert(1, 12));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        fail_unless_eq!(m.find(&5), Some(&new));
     }
 
     #[test]
     fn test_len() {
         let mut map = SmallIntMap::new();
-        assert_eq!(map.len(), 0);
-        assert!(map.is_empty());
-        assert!(map.insert(5, 20));
-        assert_eq!(map.len(), 1);
-        assert!(!map.is_empty());
-        assert!(map.insert(11, 12));
-        assert_eq!(map.len(), 2);
-        assert!(!map.is_empty());
-        assert!(map.insert(14, 22));
-        assert_eq!(map.len(), 3);
-        assert!(!map.is_empty());
+        fail_unless_eq!(map.len(), 0);
+        fail_unless!(map.is_empty());
+        fail_unless!(map.insert(5, 20));
+        fail_unless_eq!(map.len(), 1);
+        fail_unless!(!map.is_empty());
+        fail_unless!(map.insert(11, 12));
+        fail_unless_eq!(map.len(), 2);
+        fail_unless!(!map.is_empty());
+        fail_unless!(map.insert(14, 22));
+        fail_unless_eq!(map.len(), 3);
+        fail_unless!(!map.is_empty());
     }
 
     #[test]
     fn test_clear() {
         let mut map = SmallIntMap::new();
-        assert!(map.insert(5, 20));
-        assert!(map.insert(11, 12));
-        assert!(map.insert(14, 22));
+        fail_unless!(map.insert(5, 20));
+        fail_unless!(map.insert(11, 12));
+        fail_unless!(map.insert(14, 22));
         map.clear();
-        assert!(map.is_empty());
-        assert!(map.find(&5).is_none());
-        assert!(map.find(&11).is_none());
-        assert!(map.find(&14).is_none());
+        fail_unless!(map.is_empty());
+        fail_unless!(map.find(&5).is_none());
+        fail_unless!(map.find(&11).is_none());
+        fail_unless!(map.find(&14).is_none());
     }
 
     #[test]
@@ -322,134 +322,134 @@ mod test_map {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert_eq!(map.find(&3).unwrap(), &10);
-        assert_eq!(map.find(&5).unwrap(), &3);
-        assert_eq!(map.find(&9).unwrap(), &1);
+        fail_unless_eq!(map.find(&3).unwrap(), &10);
+        fail_unless_eq!(map.find(&5).unwrap(), &3);
+        fail_unless_eq!(map.find(&9).unwrap(), &1);
 
         // sadly, no sevens were counted
-        assert!(map.find(&7).is_none());
+        fail_unless!(map.find(&7).is_none());
     }
 
     #[test]
     fn test_swap() {
         let mut m = SmallIntMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        fail_unless_eq!(m.swap(1, 2), None);
+        fail_unless_eq!(m.swap(1, 3), Some(2));
+        fail_unless_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = SmallIntMap::new();
         m.insert(1, 2);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        fail_unless_eq!(m.pop(&1), Some(2));
+        fail_unless_eq!(m.pop(&1), None);
     }
 
     #[test]
     fn test_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        fail_unless!(m.insert(0, 1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 5));
+        fail_unless!(m.insert(6, 10));
+        fail_unless!(m.insert(10, 11));
 
         let mut it = m.iter();
-        assert_eq!(it.size_hint(), (0, Some(11)));
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.size_hint(), (0, Some(10)));
-        assert_eq!(it.next().unwrap(), (1, &2));
-        assert_eq!(it.size_hint(), (0, Some(9)));
-        assert_eq!(it.next().unwrap(), (3, &5));
-        assert_eq!(it.size_hint(), (0, Some(7)));
-        assert_eq!(it.next().unwrap(), (6, &10));
-        assert_eq!(it.size_hint(), (0, Some(4)));
-        assert_eq!(it.next().unwrap(), (10, &11));
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
+        fail_unless_eq!(it.size_hint(), (0, Some(11)));
+        fail_unless_eq!(it.next().unwrap(), (0, &1));
+        fail_unless_eq!(it.size_hint(), (0, Some(10)));
+        fail_unless_eq!(it.next().unwrap(), (1, &2));
+        fail_unless_eq!(it.size_hint(), (0, Some(9)));
+        fail_unless_eq!(it.next().unwrap(), (3, &5));
+        fail_unless_eq!(it.size_hint(), (0, Some(7)));
+        fail_unless_eq!(it.next().unwrap(), (6, &10));
+        fail_unless_eq!(it.size_hint(), (0, Some(4)));
+        fail_unless_eq!(it.next().unwrap(), (10, &11));
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
     fn test_iterator_size_hints() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        fail_unless!(m.insert(0, 1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 5));
+        fail_unless!(m.insert(6, 10));
+        fail_unless!(m.insert(10, 11));
 
-        assert_eq!(m.iter().size_hint(), (0, Some(11)));
-        assert_eq!(m.rev_iter().size_hint(), (0, Some(11)));
-        assert_eq!(m.mut_iter().size_hint(), (0, Some(11)));
-        assert_eq!(m.mut_rev_iter().size_hint(), (0, Some(11)));
+        fail_unless_eq!(m.iter().size_hint(), (0, Some(11)));
+        fail_unless_eq!(m.rev_iter().size_hint(), (0, Some(11)));
+        fail_unless_eq!(m.mut_iter().size_hint(), (0, Some(11)));
+        fail_unless_eq!(m.mut_rev_iter().size_hint(), (0, Some(11)));
     }
 
     #[test]
     fn test_mut_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        fail_unless!(m.insert(0, 1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 5));
+        fail_unless!(m.insert(6, 10));
+        fail_unless!(m.insert(10, 11));
 
         for (k, v) in m.mut_iter() {
             *v += k as int;
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
-        assert!(it.next().is_none());
+        fail_unless_eq!(it.next().unwrap(), (0, &1));
+        fail_unless_eq!(it.next().unwrap(), (1, &3));
+        fail_unless_eq!(it.next().unwrap(), (3, &8));
+        fail_unless_eq!(it.next().unwrap(), (6, &16));
+        fail_unless_eq!(it.next().unwrap(), (10, &21));
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
     fn test_rev_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        fail_unless!(m.insert(0, 1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 5));
+        fail_unless!(m.insert(6, 10));
+        fail_unless!(m.insert(10, 11));
 
         let mut it = m.rev_iter();
-        assert_eq!(it.next().unwrap(), (10, &11));
-        assert_eq!(it.next().unwrap(), (6, &10));
-        assert_eq!(it.next().unwrap(), (3, &5));
-        assert_eq!(it.next().unwrap(), (1, &2));
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert!(it.next().is_none());
+        fail_unless_eq!(it.next().unwrap(), (10, &11));
+        fail_unless_eq!(it.next().unwrap(), (6, &10));
+        fail_unless_eq!(it.next().unwrap(), (3, &5));
+        fail_unless_eq!(it.next().unwrap(), (1, &2));
+        fail_unless_eq!(it.next().unwrap(), (0, &1));
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
     fn test_mut_rev_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
-        assert!(m.insert(1, 2));
-        assert!(m.insert(3, 5));
-        assert!(m.insert(6, 10));
-        assert!(m.insert(10, 11));
+        fail_unless!(m.insert(0, 1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 5));
+        fail_unless!(m.insert(6, 10));
+        fail_unless!(m.insert(10, 11));
 
         for (k, v) in m.mut_rev_iter() {
             *v += k as int;
         }
 
         let mut it = m.iter();
-        assert_eq!(it.next().unwrap(), (0, &1));
-        assert_eq!(it.next().unwrap(), (1, &3));
-        assert_eq!(it.next().unwrap(), (3, &8));
-        assert_eq!(it.next().unwrap(), (6, &16));
-        assert_eq!(it.next().unwrap(), (10, &21));
-        assert!(it.next().is_none());
+        fail_unless_eq!(it.next().unwrap(), (0, &1));
+        fail_unless_eq!(it.next().unwrap(), (1, &3));
+        fail_unless_eq!(it.next().unwrap(), (3, &8));
+        fail_unless_eq!(it.next().unwrap(), (6, &16));
+        fail_unless_eq!(it.next().unwrap(), (10, &21));
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -458,12 +458,12 @@ mod test_map {
         m.insert(1, ~2);
         let mut called = false;
         for (k, v) in m.move_iter() {
-            assert!(!called);
+            fail_unless!(!called);
             called = true;
-            assert_eq!(k, 1);
-            assert_eq!(v, ~2);
+            fail_unless_eq!(k, 1);
+            fail_unless_eq!(v, ~2);
         }
-        assert!(called);
+        fail_unless!(called);
         m.insert(2, ~1);
     }
 }

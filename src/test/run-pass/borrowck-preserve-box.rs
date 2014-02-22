@@ -18,18 +18,18 @@ fn borrow(x: &int, f: |x: &int|) {
     let before = *x;
     f(x);
     let after = *x;
-    assert_eq!(before, after);
+    fail_unless_eq!(before, after);
 }
 
 pub fn main() {
     let mut x = @3;
     borrow(x, |b_x| {
-        assert_eq!(*b_x, 3);
-        assert_eq!(&(*x) as *int, &(*b_x) as *int);
+        fail_unless_eq!(*b_x, 3);
+        fail_unless_eq!(&(*x) as *int, &(*b_x) as *int);
         x = @22;
 
         info!("&*b_x = {:p}", &(*b_x));
-        assert_eq!(*b_x, 3);
-        assert!(&(*x) as *int != &(*b_x) as *int);
+        fail_unless_eq!(*b_x, 3);
+        fail_unless!(&(*x) as *int != &(*b_x) as *int);
     })
 }

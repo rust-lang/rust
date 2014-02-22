@@ -16,12 +16,12 @@ pub fn main() {
     let e = -0o755;
     let f = -0b10101;
 
-    assert_eq!(a, 48879);
-    assert_eq!(b, 493);
-    assert_eq!(c, 21);
-    assert_eq!(d, -48879);
-    assert_eq!(e, -493);
-    assert_eq!(f, -21);
+    fail_unless_eq!(a, 48879);
+    fail_unless_eq!(b, 493);
+    fail_unless_eq!(c, 21);
+    fail_unless_eq!(d, -48879);
+    fail_unless_eq!(e, -493);
+    fail_unless_eq!(f, -21);
 
 
 }

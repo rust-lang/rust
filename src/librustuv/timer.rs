@@ -35,7 +35,7 @@ pub enum NextAction {
 impl TimerWatcher {
     pub fn new(io: &mut UvIoFactory) -> ~TimerWatcher {
         let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_timer_init(io.uv_loop(), handle)
         }, 0);
         let me = ~TimerWatcher {
@@ -49,13 +49,13 @@ impl TimerWatcher {
     }
 
     fn start(&mut self, msecs: u64, period: u64) {
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_timer_start(self.handle, timer_cb, msecs, period)
         }, 0)
     }
 
     fn stop(&mut self) {
-        assert_eq!(unsafe { uvll::uv_timer_stop(self.handle) }, 0)
+        fail_unless_eq!(unsafe { uvll::uv_timer_stop(self.handle) }, 0)
     }
 }
 
@@ -132,7 +132,7 @@ impl RtioTimer for TimerWatcher {
 
 extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
     let _f = ForbidSwitch::new("timer callback can't switch");
-    assert_eq!(status, 0);
+    fail_unless_eq!(status, 0);
     let timer: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
     match timer.action.take_unwrap() {
@@ -196,8 +196,8 @@ mod test {
         let oport = timer.oneshot(1);
         let pport = timer.period(1);
         timer.sleep(1);
-        assert_eq!(oport.recv_opt(), None);
-        assert_eq!(pport.recv_opt(), None);
+        fail_unless_eq!(oport.recv_opt(), None);
+        fail_unless_eq!(pport.recv_opt(), None);
         timer.oneshot(1).recv();
     }
 
@@ -284,7 +284,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.oneshot(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        fail_unless_eq!(port.recv_opt(), None);
     }
 
     #[test]
@@ -293,7 +293,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.period(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        fail_unless_eq!(port.recv_opt(), None);
     }
 
     #[test]

@@ -101,7 +101,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         // this new AST scope had better be its immediate child.
         let top_scope = self.top_ast_scope();
         if top_scope.is_some() {
-            assert_eq!(self.ccx.tcx.region_maps.opt_encl_scope(id), top_scope);
+            fail_unless_eq!(self.ccx.tcx.region_maps.opt_encl_scope(id), top_scope);
         }
 
         self.push_scope(CleanupScope::new(AstScopeKind(id)));
@@ -112,7 +112,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                                exits: [&'a Block<'a>, ..EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(id));
-        assert_eq!(Some(id), self.top_ast_scope());
+        fail_unless_eq!(Some(id), self.top_ast_scope());
 
         self.push_scope(CleanupScope::new(LoopScopeKind(id, exits)));
     }
@@ -137,7 +137,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_and_trans_ast_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
+        fail_unless!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
 
         let scope = self.pop_scope();
         self.trans_scope_cleanups(bcx, &scope)
@@ -156,7 +156,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_loop_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
+        fail_unless!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
 
         let _ = self.pop_scope();
     }
@@ -170,7 +170,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_custom_cleanup_scope({})", custom_scope.index);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_to_pop_custom_scope(custom_scope));
         let _ = self.pop_scope();
     }
 
@@ -185,7 +185,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_to_pop_custom_scope(custom_scope));
 
         let scope = self.pop_scope();
         self.trans_scope_cleanups(bcx, &scope)
@@ -346,7 +346,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("schedule_clean_in_custom_scope(custom_scope={})",
                custom_scope.index);
 
-        assert!(self.is_valid_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
         let scope = &mut scopes.get()[custom_scope.index];
@@ -376,7 +376,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("get_landing_pad");
 
         let orig_scopes_len = self.scopes_len();
-        assert!(orig_scopes_len > 0);
+        fail_unless!(orig_scopes_len > 0);
 
         // Remove any scopes that do not have cleanups on failure:
         let mut popped_scopes = opt_vec::Empty;
@@ -396,7 +396,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
             }
         }
 
-        assert_eq!(self.scopes_len(), orig_scopes_len);
+        fail_unless_eq!(self.scopes_len(), orig_scopes_len);
 
         return llbb;
     }
@@ -630,7 +630,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         debug!("trans_cleanups_to_exit_scope: prev_llbb={}", prev_llbb);
 
-        assert_eq!(self.scopes_len(), orig_scopes_len);
+        fail_unless_eq!(self.scopes_len(), orig_scopes_len);
         prev_llbb
     }
 

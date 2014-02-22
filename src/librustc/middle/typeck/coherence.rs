@@ -639,7 +639,7 @@ impl CoherenceChecker {
     }
 
     fn span_of_impl(&self, implementation: @Impl) -> Span {
-        assert_eq!(implementation.did.krate, LOCAL_CRATE);
+        fail_unless_eq!(implementation.did.krate, LOCAL_CRATE);
         self.crate_context.tcx.map.span(implementation.did.node)
     }
 
@@ -662,7 +662,7 @@ impl CoherenceChecker {
         let associated_traits = get_impl_trait(tcx, implementation.did);
 
         // Do a sanity check.
-        assert!(associated_traits.is_some());
+        fail_unless!(associated_traits.is_some());
 
         // Record all the trait methods.
         for trait_ref in associated_traits.iter() {
@@ -691,7 +691,7 @@ impl CoherenceChecker {
         let crate_store = self.crate_context.tcx.sess.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_impl(crate_store, crate_number, |def_id| {
-                assert_eq!(crate_number, def_id.krate);
+                fail_unless_eq!(crate_number, def_id.krate);
                 self.add_external_impl(&mut impls_seen, def_id)
             })
         })

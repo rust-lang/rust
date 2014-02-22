@@ -50,10 +50,10 @@ impl<T> E<T> {
 
 macro_rules! check_option {
     ($e:expr: $T:ty) => {{
-        check_option!($e: $T, |ptr| assert!(*ptr == $e));
+        check_option!($e: $T, |ptr| fail_unless!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(option::None::<$T>.is_none());
+        fail_unless!(option::None::<$T>.is_none());
         let e = $e;
         let s_ = option::Some::<$T>(e);
         let $v = s_.get_ref();
@@ -63,10 +63,10 @@ macro_rules! check_option {
 
 macro_rules! check_fancy {
     ($e:expr: $T:ty) => {{
-        check_fancy!($e: $T, |ptr| assert!(*ptr == $e));
+        check_fancy!($e: $T, |ptr| fail_unless!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(Nothing::<$T>((), ((), ()), [23i8, ..0]).is_none());
+        fail_unless!(Nothing::<$T>((), ((), ()), [23i8, ..0]).is_none());
         let e = $e;
         let t_ = Thing::<$T>(23, e);
         match t_.get_ref() {
@@ -92,6 +92,6 @@ pub fn main() {
     check_type!(~[20, 22]: ~[int]);
     let mint: uint = unsafe { cast::transmute(main) };
     check_type!(main: extern fn(), |pthing| {
-        assert!(mint == unsafe { cast::transmute(*pthing) })
+        fail_unless!(mint == unsafe { cast::transmute(*pthing) })
     });
 }

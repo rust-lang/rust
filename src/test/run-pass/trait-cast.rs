@@ -58,8 +58,8 @@ pub fn main() {
                                       right: Some(t1),
                                       val: ~2 as ~to_str}));
     let expected = ~"[2, some([1, none, none]), some([1, none, none])]";
-    assert!(t2.to_str_() == expected);
-    assert!(foo(t2) == expected);
+    fail_unless!(t2.to_str_() == expected);
+    fail_unless!(foo(t2) == expected);
 
     {
         let Tree(t1_) = t1;

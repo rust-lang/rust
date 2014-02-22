@@ -16,5 +16,5 @@ fn foo() -> Foo {
 }
 
 pub fn main() {
-    assert_eq!(foo(), Foo(42));
+    fail_unless_eq!(foo(), Foo(42));
 }

@@ -22,12 +22,12 @@ pub type Key = pthread_key_t;
 
 #[cfg(unix)]
 pub unsafe fn create(key: &mut Key) {
-    assert_eq!(0, pthread_key_create(key, null()));
+    fail_unless_eq!(0, pthread_key_create(key, null()));
 }
 
 #[cfg(unix)]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert_eq!(0, pthread_setspecific(key, value));
+    fail_unless_eq!(0, pthread_setspecific(key, value));
 }
 
 #[cfg(unix)]
@@ -37,7 +37,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 
 #[cfg(unix)]
 pub unsafe fn destroy(key: Key) {
-    assert_eq!(0, pthread_key_delete(key));
+    fail_unless_eq!(0, pthread_key_delete(key));
 }
 
 #[cfg(target_os="macos")]
@@ -65,12 +65,12 @@ pub type Key = DWORD;
 pub unsafe fn create(key: &mut Key) {
     static TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
     *key = TlsAlloc();
-    assert!(*key != TLS_OUT_OF_INDEXES);
+    fail_unless!(*key != TLS_OUT_OF_INDEXES);
 }
 
 #[cfg(windows)]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert!(0 != TlsSetValue(key, value as *mut ::libc::c_void))
+    fail_unless!(0 != TlsSetValue(key, value as *mut ::libc::c_void))
 }
 
 #[cfg(windows)]
@@ -80,7 +80,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 
 #[cfg(windows)]
 pub unsafe fn destroy(key: Key) {
-    assert!(TlsFree(key) != 0);
+    fail_unless!(TlsFree(key) != 0);
 }
 
 #[cfg(windows)]
@@ -100,10 +100,10 @@ fn tls_smoke_test() {
         create(&mut key);
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        assert_eq!(value, ~20);
+        fail_unless_eq!(value, ~20);
         let value = ~30;
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        assert_eq!(value, ~30);
+        fail_unless_eq!(value, ~30);
     }
 }

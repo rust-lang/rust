@@ -604,7 +604,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_run_finish(&mut self,
                             ratchet_metrics: &Option<Path>,
                             ratchet_pct: Option<f64>) -> io::IoResult<bool> {
-        assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
+        fail_unless!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
         let ratchet_success = match *ratchet_metrics {
             None => true,
@@ -774,7 +774,7 @@ fn should_sort_failures_before_printing_them() {
 
     let apos = s.as_slice().find_str("a").unwrap();
     let bpos = s.as_slice().find_str("b").unwrap();
-    assert!(apos < bpos);
+    fail_unless!(apos < bpos);
 }
 
 fn use_color() -> bool { return get_concurrency() == 1; }
@@ -1018,7 +1018,7 @@ impl MetricMap {
     /// This function will fail if the path does not exist or the path does not
     /// contain a valid metric map.
     pub fn load(p: &Path) -> MetricMap {
-        assert!(p.exists());
+        fail_unless!(p.exists());
         let mut f = File::open(p).unwrap();
         let value = json::from_reader(&mut f as &mut io::Reader).unwrap();
         let mut decoder = json::Decoder::new(value);
@@ -1310,7 +1310,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert!(res != TrOk);
+        fail_unless!(res != TrOk);
     }
 
     #[test]
@@ -1327,7 +1327,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrIgnored);
+        fail_unless_eq!(res, TrIgnored);
     }
 
     #[test]
@@ -1344,7 +1344,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrOk);
+        fail_unless_eq!(res, TrOk);
     }
 
     #[test]
@@ -1361,7 +1361,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrFailed);
+        fail_unless_eq!(res, TrFailed);
     }
 
     #[test]
@@ -1371,7 +1371,7 @@ mod tests {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!("filter" == opts.filter.clone().unwrap());
+        fail_unless!("filter" == opts.filter.clone().unwrap());
     }
 
     #[test]
@@ -1381,7 +1381,7 @@ mod tests {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in parse_ignored_flag")
         };
-        assert!((opts.run_ignored));
+        fail_unless!((opts.run_ignored));
     }
 
     #[test]
@@ -1421,9 +1421,9 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].desc.name.to_str(), ~"1");
-        assert!(filtered[0].desc.ignore == false);
+        fail_unless_eq!(filtered.len(), 1);
+        fail_unless_eq!(filtered[0].desc.name.to_str(), ~"1");
+        fail_unless!(filtered[0].desc.ignore == false);
     }
 
     #[test]
@@ -1476,7 +1476,7 @@ mod tests {
               ~"test::sort_tests"];
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
-            assert!(*a == b.desc.name.to_str());
+            fail_unless!(*a == b.desc.name.to_str());
         }
     }
 
@@ -1504,29 +1504,29 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.find(&~"in-both-noise").unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.find(&~"in-first-noise").unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.find(&~"in-second-noise").unwrap()), MetricAdded);
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").unwrap()),
+        fail_unless_eq!(*(diff1.find(&~"in-both-noise").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff1.find(&~"in-first-noise").unwrap()), MetricRemoved);
+        fail_unless_eq!(*(diff1.find(&~"in-second-noise").unwrap()), MetricAdded);
+        fail_unless_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").unwrap()),
                    Regression(100.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").unwrap()),
+        fail_unless_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").unwrap()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").unwrap()),
+        fail_unless_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").unwrap()),
                    Regression(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").unwrap()),
+        fail_unless_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").unwrap()),
                    Improvement(100.0));
-        assert_eq!(diff1.len(), 7);
+        fail_unless_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.find(&~"in-both-noise").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-first-noise").unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.find(&~"in-second-noise").unwrap()), MetricAdded);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").unwrap()), LikelyNoise);
-        assert_eq!(diff2.len(), 7);
+        fail_unless_eq!(*(diff2.find(&~"in-both-noise").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff2.find(&~"in-first-noise").unwrap()), MetricRemoved);
+        fail_unless_eq!(*(diff2.find(&~"in-second-noise").unwrap()), MetricAdded);
+        fail_unless_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").unwrap()), LikelyNoise);
+        fail_unless_eq!(diff2.len(), 7);
     }
 
     #[test]
@@ -1547,32 +1547,32 @@ mod tests {
 
         // Ask for a ratchet that should fail to advance.
         let (diff1, ok1) = m2.ratchet(&pth, None);
-        assert_eq!(ok1, false);
-        assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.find(&~"runtime").unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.find(&~"throughput").unwrap()), LikelyNoise);
+        fail_unless_eq!(ok1, false);
+        fail_unless_eq!(diff1.len(), 2);
+        fail_unless_eq!(*(diff1.find(&~"runtime").unwrap()), Regression(10.0));
+        fail_unless_eq!(*(diff1.find(&~"throughput").unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
-        assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&~"runtime").unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
+        fail_unless_eq!(m3.len(), 2);
+        fail_unless_eq!(*(m3.find(&~"runtime").unwrap()), Metric::new(1000.0, 2.0));
+        fail_unless_eq!(*(m3.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
-        assert_eq!(ok2, true);
-        assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.find(&~"runtime").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"throughput").unwrap()), LikelyNoise);
+        fail_unless_eq!(ok2, true);
+        fail_unless_eq!(diff2.len(), 2);
+        fail_unless_eq!(*(diff2.find(&~"runtime").unwrap()), LikelyNoise);
+        fail_unless_eq!(*(diff2.find(&~"throughput").unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
-        assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
+        fail_unless_eq!(m4.len(), 2);
+        fail_unless_eq!(*(m4.find(&~"runtime").unwrap()), Metric::new(1100.0, 2.0));
+        fail_unless_eq!(*(m4.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
     }
 }
 

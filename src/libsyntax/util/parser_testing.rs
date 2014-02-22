@@ -156,15 +156,15 @@ mod test {
     use super::*;
 
     #[test] fn eqmodws() {
-        assert_eq!(matches_codepattern("",""),true);
-        assert_eq!(matches_codepattern("","a"),false);
-        assert_eq!(matches_codepattern("a",""),false);
-        assert_eq!(matches_codepattern("a","a"),true);
-        assert_eq!(matches_codepattern("a b","a   \n\t\r  b"),true);
-        assert_eq!(matches_codepattern("a b ","a   \n\t\r  b"),true);
-        assert_eq!(matches_codepattern("a b","a   \n\t\r  b "),false);
-        assert_eq!(matches_codepattern("a   b","a b"),true);
-        assert_eq!(matches_codepattern("ab","a b"),false);
-        assert_eq!(matches_codepattern("a   b","ab"),true);
+        fail_unless_eq!(matches_codepattern("",""),true);
+        fail_unless_eq!(matches_codepattern("","a"),false);
+        fail_unless_eq!(matches_codepattern("a",""),false);
+        fail_unless_eq!(matches_codepattern("a","a"),true);
+        fail_unless_eq!(matches_codepattern("a b","a   \n\t\r  b"),true);
+        fail_unless_eq!(matches_codepattern("a b ","a   \n\t\r  b"),true);
+        fail_unless_eq!(matches_codepattern("a b","a   \n\t\r  b "),false);
+        fail_unless_eq!(matches_codepattern("a   b","a b"),true);
+        fail_unless_eq!(matches_codepattern("ab","a b"),false);
+        fail_unless_eq!(matches_codepattern("a   b","ab"),true);
     }
 }

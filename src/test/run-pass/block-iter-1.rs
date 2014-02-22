@@ -21,5 +21,5 @@ pub fn main() {
         }
     });
     error!("{:?}", odds);
-    assert_eq!(odds, 4);
+    fail_unless_eq!(odds, 4);
 }

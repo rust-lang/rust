@@ -4294,7 +4294,7 @@ impl Parser {
             self.span_err(self.last_span,
                           "expected item after attributes");
         }
-        assert!(self.token == token::RBRACE);
+        fail_unless!(self.token == token::RBRACE);
         ast::ForeignMod {
             abis: abis,
             view_items: view_items,

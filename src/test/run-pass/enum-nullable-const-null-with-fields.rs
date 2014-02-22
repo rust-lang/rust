@@ -15,5 +15,5 @@ static C: Result<(), ~int> = Ok(());
 // So we won't actually compile if the bug is present, but we check the value in main anyway.
 
 pub fn main() {
-    assert!(C.is_ok());
+    fail_unless!(C.is_ok());
 }

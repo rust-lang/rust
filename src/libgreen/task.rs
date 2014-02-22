@@ -274,13 +274,13 @@ impl GreenTask {
     // Runtime glue functions and helpers
 
     pub fn put_with_sched(mut ~self, sched: ~Scheduler) {
-        assert!(self.sched.is_none());
+        fail_unless!(self.sched.is_none());
         self.sched = Some(sched);
         self.put();
     }
 
     pub fn put_task(&mut self, task: ~Task) {
-        assert!(self.task.is_none());
+        fail_unless!(self.task.is_none());
         self.task = Some(task);
     }
 
@@ -291,7 +291,7 @@ impl GreenTask {
     }
 
     pub fn put(~self) {
-        assert!(self.sched.is_some());
+        fail_unless!(self.sched.is_some());
         Local::put(self.swap());
     }
 
@@ -393,7 +393,7 @@ impl Runtime for GreenTask {
 
     fn reawaken(mut ~self, to_wake: ~Task) {
         self.put_task(to_wake);
-        assert!(self.sched.is_none());
+        fail_unless!(self.sched.is_none());
 
         // Optimistically look for a local task, but if one's not available to
         // inspect (in order to see if it's in the same sched pool as we are),
@@ -513,7 +513,7 @@ mod tests {
             let _c = c;
             fail!()
         });
-        assert_eq!(p.recv_opt(), None);
+        fail_unless_eq!(p.recv_opt(), None);
     }
 
     #[test]
@@ -524,7 +524,7 @@ mod tests {
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
         spawn_opts(opts, proc() {});
-        assert!(p.recv().is_ok());
+        fail_unless!(p.recv().is_ok());
     }
 
     #[test]
@@ -533,7 +533,7 @@ mod tests {
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
         spawn_opts(opts, proc() { fail!() });
-        assert!(p.recv().is_err());
+        fail_unless!(p.recv().is_err());
     }
 
     #[test]

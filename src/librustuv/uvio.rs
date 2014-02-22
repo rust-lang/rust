@@ -122,7 +122,7 @@ fn test_callback_run_once() {
             unsafe { *count_ptr += 1 }
         });
         event_loop.run();
-        assert_eq!(count, 1);
+        fail_unless_eq!(count, 1);
     });
 }
 

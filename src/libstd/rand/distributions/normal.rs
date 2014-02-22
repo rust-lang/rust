@@ -91,7 +91,7 @@ impl Normal {
     /// Construct a new `Normal` distribution with the given mean and
     /// standard deviation. Fails if `std_dev < 0`.
     pub fn new(mean: f64, std_dev: f64) -> Normal {
-        assert!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
+        fail_unless!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
         Normal {
             mean: mean,
             std_dev: std_dev
@@ -133,7 +133,7 @@ impl LogNormal {
     /// Construct a new `LogNormal` distribution with the given mean
     /// and standard deviation. Fails if `std_dev < 0`.
     pub fn new(mean: f64, std_dev: f64) -> LogNormal {
-        assert!(std_dev >= 0.0, "LogNormal::new called with `std_dev` < 0");
+        fail_unless!(std_dev >= 0.0, "LogNormal::new called with `std_dev` < 0");
         LogNormal { norm: Normal::new(mean, std_dev) }
     }
 }

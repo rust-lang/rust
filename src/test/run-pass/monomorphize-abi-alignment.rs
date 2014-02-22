@@ -28,6 +28,6 @@ struct B(u64);
 pub fn main() {
     static Ca: S<A> = S { i: 0, t: A((13, 104)) };
     static Cb: S<B> = S { i: 0, t: B(31337) };
-    assert_eq!(Ca.unwrap(), A((13, 104)));
-    assert_eq!(Cb.unwrap(), B(31337));
+    fail_unless_eq!(Ca.unwrap(), A((13, 104)));
+    fail_unless_eq!(Cb.unwrap(), B(31337));
 }

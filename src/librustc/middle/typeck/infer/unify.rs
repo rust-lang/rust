@@ -154,7 +154,7 @@ impl UnifyInferCtxtMethods for InferCtxt {
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
-            assert_eq!(node_a.rank, node_b.rank);
+            fail_unless_eq!(node_a.rank, node_b.rank);
             self.set(node_b.root.clone(), Redirect(node_a.root.clone()));
             (node_a.root.clone(), node_a.rank + 1)
         }

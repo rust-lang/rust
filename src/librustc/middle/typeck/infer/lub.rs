@@ -156,7 +156,7 @@ impl<'f> Combine for Lub<'f> {
                              -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                fail_unless!(!r0.is_bound());
                 debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
@@ -170,7 +170,7 @@ impl<'f> Combine for Lub<'f> {
                 debug!("generalize_region(r0={:?}): \
                         non-new-variables found in {:?}",
                        r0, tainted);
-                assert!(!r0.is_bound());
+                fail_unless!(!r0.is_bound());
                 return r0;
             }
 

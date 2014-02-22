@@ -42,7 +42,7 @@ pub fn run_in_bare_thread(f: proc()) {
 fn test_run_in_bare_thread() {
     let i = 100;
     run_in_bare_thread(proc() {
-        assert_eq!(i, 100);
+        fail_unless_eq!(i, 100);
     });
 }
 
@@ -51,7 +51,7 @@ fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
     let i = ~100;
     run_in_bare_thread(proc() {
-        assert!(i == ~100);
+        fail_unless!(i == ~100);
     });
 }
 

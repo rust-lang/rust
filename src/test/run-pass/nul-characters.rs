@@ -16,29 +16,29 @@ pub fn main()
     let all_nuls4 = "\x00\u0000\0\U00000000";
 
     // sizes for two should suffice
-    assert_eq!(all_nuls1.len(), 4);
-    assert_eq!(all_nuls2.len(), 4);
+    fail_unless_eq!(all_nuls1.len(), 4);
+    fail_unless_eq!(all_nuls2.len(), 4);
 
     // string equality should pass between the strings
-    assert_eq!(all_nuls1, all_nuls2);
-    assert_eq!(all_nuls2, all_nuls3);
-    assert_eq!(all_nuls3, all_nuls4);
+    fail_unless_eq!(all_nuls1, all_nuls2);
+    fail_unless_eq!(all_nuls2, all_nuls3);
+    fail_unless_eq!(all_nuls3, all_nuls4);
 
     // all extracted characters in all_nuls are equivalent to each other
     for c1 in all_nuls1.chars()
     {
         for c2 in all_nuls1.chars()
         {
-            assert_eq!(c1,c2);
+            fail_unless_eq!(c1,c2);
         }
     }
 
     // testing equality between explicit character literals
-    assert_eq!('\0', '\x00');
-    assert_eq!('\u0000', '\x00');
-    assert_eq!('\u0000', '\U00000000');
+    fail_unless_eq!('\0', '\x00');
+    fail_unless_eq!('\u0000', '\x00');
+    fail_unless_eq!('\u0000', '\U00000000');
 
     // NUL characters should make a difference
-    assert!("Hello World" != "Hello \0World");
-    assert!("Hello World" != "Hello World\0");
+    fail_unless!("Hello World" != "Hello \0World");
+    fail_unless!("Hello World" != "Hello World\0");
 }

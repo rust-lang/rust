@@ -16,7 +16,7 @@ use aux::{A, TestEquality, Something};
 use aux::B;
 
 fn f<T: aux::A>(i: T) {
-    assert_eq!(i.g(), 10);
+    fail_unless_eq!(i.g(), 10);
 }
 
 fn welp<T>(i: int, _x: &T) -> int {
@@ -55,36 +55,36 @@ pub fn main () {
     // Some tests of random things
     f(0);
 
-    assert_eq!(A::lurr(&0, &1), 21);
+    fail_unless_eq!(A::lurr(&0, &1), 21);
 
     let a = stuff::thing { x: 0 };
     let b = stuff::thing { x: 1 };
     let c = Something { x: 1 };
 
-    assert_eq!(0i.g(), 10);
-    assert_eq!(a.g(), 10);
-    assert_eq!(a.h(), 11);
-    assert_eq!(c.h(), 11);
+    fail_unless_eq!(0i.g(), 10);
+    fail_unless_eq!(a.g(), 10);
+    fail_unless_eq!(a.h(), 11);
+    fail_unless_eq!(c.h(), 11);
 
-    assert_eq!(0i.thing(3.14, 1), (3.14, 1));
-    assert_eq!(B::staticthing(&0i, 3.14, 1), (3.14, 1));
-    assert_eq!(B::<f64>::staticthing::<int>(&0i, 3.14, 1), (3.14, 1));
+    fail_unless_eq!(0i.thing(3.14, 1), (3.14, 1));
+    fail_unless_eq!(B::staticthing(&0i, 3.14, 1), (3.14, 1));
+    fail_unless_eq!(B::<f64>::staticthing::<int>(&0i, 3.14, 1), (3.14, 1));
 
-    assert_eq!(g(0i, 3.14, 1), (3.14, 1));
-    assert_eq!(g(false, 3.14, 1), (3.14, 1));
+    fail_unless_eq!(g(0i, 3.14, 1), (3.14, 1));
+    fail_unless_eq!(g(false, 3.14, 1), (3.14, 1));
 
     let obj = ~0i as ~A;
-    assert_eq!(obj.h(), 11);
+    fail_unless_eq!(obj.h(), 11);
 
 
     // Trying out a real one
-    assert!(12.test_neq(&10));
-    assert!(!10.test_neq(&10));
-    assert!(a.test_neq(&b));
-    assert!(!a.test_neq(&a));
+    fail_unless!(12.test_neq(&10));
+    fail_unless!(!10.test_neq(&10));
+    fail_unless!(a.test_neq(&b));
+    fail_unless!(!a.test_neq(&a));
 
-    assert!(neq(&12, &10));
-    assert!(!neq(&10, &10));
-    assert!(neq(&a, &b));
-    assert!(!neq(&a, &a));
+    fail_unless!(neq(&12, &10));
+    fail_unless!(!neq(&10, &10));
+    fail_unless!(neq(&a, &b));
+    fail_unless!(!neq(&a, &a));
 }

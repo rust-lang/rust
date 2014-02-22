@@ -554,7 +554,7 @@ impl InferCtxt {
 
     /// Execute `f` and commit the bindings if successful
     pub fn commit<T,E>(&self, f: || -> Result<T,E>) -> Result<T,E> {
-        assert!(!self.in_snapshot());
+        fail_unless!(!self.in_snapshot());
 
         debug!("commit()");
         indent(|| {

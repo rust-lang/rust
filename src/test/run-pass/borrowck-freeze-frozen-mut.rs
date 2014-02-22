@@ -26,11 +26,11 @@ pub fn main() {
         let index0 = get(&slice, 0);
         let index1 = get(&slice, 1);
         let index2 = get(&slice, 2);
-        assert_eq!(*index0, 5);
-        assert_eq!(*index1, 2);
-        assert_eq!(*index2, 3);
+        fail_unless_eq!(*index0, 5);
+        fail_unless_eq!(*index1, 2);
+        fail_unless_eq!(*index2, 3);
     }
-    assert_eq!(data[0], 5);
-    assert_eq!(data[1], 2);
-    assert_eq!(data[2], 3);
+    fail_unless_eq!(data[0], 5);
+    fail_unless_eq!(data[1], 2);
+    fail_unless_eq!(data[2], 3);
 }

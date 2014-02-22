@@ -27,5 +27,5 @@ fn main() {
         let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
         repeater(tmp1)
     };
-    assert!(3 == *(y.get()));
+    fail_unless!(3 == *(y.get()));
 }

@@ -39,8 +39,8 @@ pub fn main() {
     let a = ShortCircuit { x: 1, y: FailCmp };
     let b = ShortCircuit { x: 2, y: FailCmp };
 
-    assert!(a != b);
-    assert!(a < b);
-    assert!(!a.equals(&b));
-    assert_eq!(a.cmp(&b), ::std::cmp::Less);
+    fail_unless!(a != b);
+    fail_unless!(a < b);
+    fail_unless!(!a.equals(&b));
+    fail_unless_eq!(a.cmp(&b), ::std::cmp::Less);
 }

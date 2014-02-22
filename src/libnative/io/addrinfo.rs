@@ -23,7 +23,7 @@ pub struct GetAddrInfoRequest;
 impl GetAddrInfoRequest {
     pub fn run(host: Option<&str>, servname: Option<&str>,
                hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
-        assert!(host.is_some() || servname.is_some());
+        fail_unless!(host.is_some() || servname.is_some());
 
         let c_host = host.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());
         let c_serv = servname.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());

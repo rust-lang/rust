@@ -26,7 +26,7 @@ pub fn main() {
         kernel32::SetLastError(expected);
         let actual = kernel32::GetLastError();
         info!("actual = {}", actual);
-        assert_eq!(expected, actual);
+        fail_unless_eq!(expected, actual);
     }
 }
 

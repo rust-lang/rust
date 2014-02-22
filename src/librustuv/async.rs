@@ -34,7 +34,7 @@ struct Payload {
 impl AsyncWatcher {
     pub fn new(loop_: &mut Loop, cb: ~Callback) -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_async_init(loop_.handle, handle, async_cb)
         }, 0);
         let flag = Exclusive::new(false);
@@ -55,7 +55,7 @@ impl UvHandle<uvll::uv_async_t> for AsyncWatcher {
 }
 
 extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-    assert!(status == 0);
+    fail_unless!(status == 0);
     let payload: &mut Payload = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -157,7 +157,7 @@ mod test_remote {
             watcher.fire();
         });
 
-        assert_eq!(port.recv(), 1);
+        fail_unless_eq!(port.recv(), 1);
         thread.join();
     }
 }

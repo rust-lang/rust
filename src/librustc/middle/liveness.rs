@@ -680,7 +680,7 @@ impl Liveness {
 
     pub fn live_on_entry(&self, ln: LiveNode, var: Variable)
                          -> Option<LiveNodeKind> {
-        assert!(ln.is_valid());
+        fail_unless!(ln.is_valid());
         let users = self.users.borrow();
         let reader = users.get()[self.idx(ln, var)].reader;
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
@@ -699,14 +699,14 @@ impl Liveness {
     }
 
     pub fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
-        assert!(ln.is_valid());
+        fail_unless!(ln.is_valid());
         let users = self.users.borrow();
         users.get()[self.idx(ln, var)].used
     }
 
     pub fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                              -> Option<LiveNodeKind> {
-        assert!(ln.is_valid());
+        fail_unless!(ln.is_valid());
         let users = self.users.borrow();
         let writer = users.get()[self.idx(ln, var)].writer;
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
@@ -1418,9 +1418,9 @@ impl Liveness {
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
-            assert!(cond_ln == self.propagate_through_opt_expr(cond,
+            fail_unless!(cond_ln == self.propagate_through_opt_expr(cond,
                                                                     ln));
-            assert!(body_ln == self.with_loop_nodes(expr.id, succ, ln,
+            fail_unless!(body_ln == self.with_loop_nodes(expr.id, succ, ln,
             || {
                 self.propagate_through_block(body, cond_ln)
             }));

@@ -26,5 +26,5 @@ pub fn main() {
     let objptr: *uint = &*obj;
     let f = Foo {x: obj, y: ~2};
     let xptr = foo(f);
-    assert_eq!(objptr, xptr);
+    fail_unless_eq!(objptr, xptr);
 }

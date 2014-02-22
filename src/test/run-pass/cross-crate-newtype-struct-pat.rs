@@ -16,6 +16,6 @@ extern crate newtype_struct_xc;
 pub fn main() {
     let x = newtype_struct_xc::Au(21);
     match x {
-        newtype_struct_xc::Au(n) => assert_eq!(n, 21)
+        newtype_struct_xc::Au(n) => fail_unless_eq!(n, 21)
     }
 }

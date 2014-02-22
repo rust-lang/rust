@@ -413,7 +413,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
     // Supertraits are ensured at the same time.
     {
         let supertraits = tcx.supertraits.borrow();
-        assert!(!supertraits.get().contains_key(&local_def(id)));
+        fail_unless!(!supertraits.get().contains_key(&local_def(id)));
     }
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));

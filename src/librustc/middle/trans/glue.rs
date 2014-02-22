@@ -255,7 +255,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
 
     // Class dtors have no explicit args, so the params should
     // just consist of the environment (self)
-    assert_eq!(params.len(), 1);
+    fail_unless_eq!(params.len(), 1);
 
     // Be sure to put all of the fields into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field
@@ -399,7 +399,7 @@ fn incr_refcnt_of_boxed<'a>(bcx: &'a Block<'a>,
 pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    assert!(!ccx.finished_tydescs.get());
+    fail_unless!(!ccx.finished_tydescs.get());
 
     let llty = type_of(ccx, t);
 

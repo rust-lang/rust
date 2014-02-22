@@ -31,10 +31,10 @@ fn test_tempdir() {
     let path = {
         let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
         let p = p.path();
-        assert!(p.as_vec().ends_with(bytes!("foobar")));
+        fail_unless!(p.as_vec().ends_with(bytes!("foobar")));
         p.clone()
     };
-    assert!(!path.exists());
+    fail_unless!(!path.exists());
 }
 
 fn test_rm_tempdir() {
@@ -46,7 +46,7 @@ fn test_rm_tempdir() {
     };
     task::try(f);
     let path = rd.recv();
-    assert!(!path.exists());
+    fail_unless!(!path.exists());
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
@@ -55,7 +55,7 @@ fn test_rm_tempdir() {
         fail!("fail to unwind past `tmp`");
     };
     task::try(f);
-    assert!(!path.exists());
+    fail_unless!(!path.exists());
 
     let path;
     {
@@ -64,18 +64,18 @@ fn test_rm_tempdir() {
         };
         let tmp = task::try(f).ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
-        assert!(path.exists());
+        fail_unless!(path.exists());
     }
-    assert!(!path.exists());
+    fail_unless!(!path.exists());
 
     let path;
     {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         path = tmp.unwrap();
     }
-    assert!(path.exists());
+    fail_unless!(path.exists());
     fs::rmdir_recursive(&path);
-    assert!(!path.exists());
+    fail_unless!(!path.exists());
 }
 
 // Ideally these would be in std::os but then core would need
@@ -86,9 +86,9 @@ fn recursive_mkdir_rel() {
     debug!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::UserRWX);
-    assert!(path.is_dir());
+    fail_unless!(path.is_dir());
     fs::mkdir_recursive(&path, io::UserRWX);
-    assert!(path.is_dir());
+    fail_unless!(path.is_dir());
 }
 
 fn recursive_mkdir_dot() {
@@ -104,14 +104,14 @@ fn recursive_mkdir_rel_2() {
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::UserRWX);
-    assert!(path.is_dir());
-    assert!(path.dir_path().is_dir());
+    fail_unless!(path.is_dir());
+    fail_unless!(path.dir_path().is_dir());
     let path2 = Path::new("quux/blat");
     debug!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
     fs::mkdir_recursive(&path2, io::UserRWX);
-    assert!(path2.is_dir());
-    assert!(path2.dir_path().is_dir());
+    fail_unless!(path2.is_dir());
+    fail_unless!(path2.dir_path().is_dir());
 }
 
 // Ideally this would be in core, but needs TempFile
@@ -129,14 +129,14 @@ pub fn test_rmdir_recursive_ok() {
     fs::mkdir(&root.join("foo").join("bar"), rwx);
     fs::mkdir(&root.join("foo").join("bar").join("blat"), rwx);
     fs::rmdir_recursive(&root);
-    assert!(!root.exists());
-    assert!(!root.join("bar").exists());
-    assert!(!root.join("bar").join("blat").exists());
+    fail_unless!(!root.exists());
+    fail_unless!(!root.join("bar").exists());
+    fail_unless!(!root.join("bar").join("blat").exists());
 }
 
 fn in_tmpdir(f: ||) {
     let tmpdir = TempDir::new("test").expect("can't make tmpdir");
-    assert!(os::change_dir(tmpdir.path()));
+    fail_unless!(os::change_dir(tmpdir.path()));
 
     f();
 }

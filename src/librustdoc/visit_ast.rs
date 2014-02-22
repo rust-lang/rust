@@ -128,7 +128,7 @@ impl<'a> RustdocVisitor<'a> {
         let item = match item.node {
             ast::ViewItemUse(ref paths) => {
                 // rustc no longer supports "use foo, bar;"
-                assert_eq!(paths.len(), 1);
+                fail_unless_eq!(paths.len(), 1);
                 match self.visit_view_path(paths[0], om) {
                     None => return,
                     Some(path) => {

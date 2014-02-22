@@ -120,7 +120,7 @@ impl<T: Clone> WeightedChoice<T> {
     /// - the total weight is larger than a `uint` can contain.
     pub fn new(mut items: ~[Weighted<T>]) -> WeightedChoice<T> {
         // strictly speaking, this is subsumed by the total weight == 0 case
-        assert!(!items.is_empty(), "WeightedChoice::new called with no items");
+        fail_unless!(!items.is_empty(), "WeightedChoice::new called with no items");
 
         let mut running_total = 0u;
 
@@ -134,7 +134,7 @@ impl<T: Clone> WeightedChoice<T> {
 
             item.weight = running_total;
         }
-        assert!(running_total != 0, "WeightedChoice::new called with a total weight of 0");
+        fail_unless!(running_total != 0, "WeightedChoice::new called with a total weight of 0");
 
         WeightedChoice {
             items: items,
@@ -281,8 +281,8 @@ mod tests {
     fn test_rand_sample() {
         let mut rand_sample = RandSample::<ConstRand>;
 
-        assert_eq!(rand_sample.sample(&mut task_rng()), ConstRand(0));
-        assert_eq!(rand_sample.ind_sample(&mut task_rng()), ConstRand(0));
+        fail_unless_eq!(rand_sample.sample(&mut task_rng()), ConstRand(0));
+        fail_unless_eq!(rand_sample.ind_sample(&mut task_rng()), ConstRand(0));
     }
     #[test]
     fn test_weighted_choice() {
@@ -299,7 +299,7 @@ mod tests {
                 let mut rng = CountingRng { i: 0 };
 
                 for &val in expected.iter() {
-                    assert_eq!(wc.ind_sample(&mut rng), val)
+                    fail_unless_eq!(wc.ind_sample(&mut rng), val)
                 }
             }}
         );

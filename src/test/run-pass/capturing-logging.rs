@@ -43,5 +43,5 @@ fn main() {
         debug!("debug");
         info!("info");
     });
-    assert_eq!(r.read_to_str().unwrap(), ~"info\n");
+    fail_unless_eq!(r.read_to_str().unwrap(), ~"info\n");
 }

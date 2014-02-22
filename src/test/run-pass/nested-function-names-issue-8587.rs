@@ -43,8 +43,8 @@ impl X {
 
 pub fn main() {
     let n = X;
-    assert_eq!(n.f(), 0);
-    assert_eq!(n.g(), 1);
+    fail_unless_eq!(n.f(), 0);
+    fail_unless_eq!(n.g(), 1);
     // This test `h` used to fail.
-    assert_eq!(n.h(), 2);
+    fail_unless_eq!(n.h(), 2);
 }

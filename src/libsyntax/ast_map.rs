@@ -418,7 +418,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         self.parent = DUMMY_NODE_ID;
 
         let i = fold::noop_fold_item(i, self).expect_one("expected one item");
-        assert_eq!(self.parent, i.id);
+        fail_unless_eq!(self.parent, i.id);
 
         match i.node {
             ItemImpl(_, _, _, ref ms) => {
@@ -509,7 +509,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
         let m = fold::noop_fold_method(m, self);
-        assert_eq!(self.parent, m.id);
+        fail_unless_eq!(self.parent, m.id);
         self.parent = parent;
         m
     }

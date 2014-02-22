@@ -23,5 +23,5 @@ pub fn main() {
     let x = t_rec {c8: 22u8, t: a_tag(44u64)};
     let y = format!("{:?}", x);
     info!("y = {}", y);
-    assert_eq!(y, ~"t_rec{c8: 22u8, t: a_tag(44u64)}");
+    fail_unless_eq!(y, ~"t_rec{c8: 22u8, t: a_tag(44u64)}");
 }

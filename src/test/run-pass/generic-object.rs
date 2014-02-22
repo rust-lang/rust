@@ -25,5 +25,5 @@ impl Foo<int> for S {
 pub fn main() {
     let x = ~S { x: 1 };
     let y = x as ~Foo<int>;
-    assert_eq!(y.get(), 1);
+    fail_unless_eq!(y.get(), 1);
 }

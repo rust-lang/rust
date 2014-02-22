@@ -13,11 +13,11 @@ use std::cmp::Eq;
 fn sendable() {
 
     fn f<T:Send + Eq>(i: T, j: T) {
-        assert_eq!(i, j);
+        fail_unless_eq!(i, j);
     }
 
     fn g<T:Send + Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;
@@ -31,11 +31,11 @@ fn sendable() {
 fn copyable() {
 
     fn f<T:Eq>(i: T, j: T) {
-        assert_eq!(i, j);
+        fail_unless_eq!(i, j);
     }
 
     fn g<T:Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;
@@ -49,11 +49,11 @@ fn copyable() {
 fn noncopyable() {
 
     fn f<T:Eq>(i: T, j: T) {
-        assert_eq!(i, j);
+        fail_unless_eq!(i, j);
     }
 
     fn g<T:Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;

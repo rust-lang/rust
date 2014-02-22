@@ -306,7 +306,7 @@ pub fn failing() -> bool {
 fn test_unnamed_task() {
     spawn(proc() {
         with_task_name(|name| {
-            assert!(name.is_none());
+            fail_unless!(name.is_none());
         })
     })
 }
@@ -315,7 +315,7 @@ fn test_unnamed_task() {
 fn test_owned_named_task() {
     task().named(~"ada lovelace").spawn(proc() {
         with_task_name(|name| {
-            assert!(name.unwrap() == "ada lovelace");
+            fail_unless!(name.unwrap() == "ada lovelace");
         })
     })
 }
@@ -324,7 +324,7 @@ fn test_owned_named_task() {
 fn test_static_named_task() {
     task().named("ada lovelace").spawn(proc() {
         with_task_name(|name| {
-            assert!(name.unwrap() == "ada lovelace");
+            fail_unless!(name.unwrap() == "ada lovelace");
         })
     })
 }
@@ -333,7 +333,7 @@ fn test_static_named_task() {
 fn test_send_named_task() {
     task().named("ada lovelace".into_maybe_owned()).spawn(proc() {
         with_task_name(|name| {
-            assert!(name.unwrap() == "ada lovelace");
+            fail_unless!(name.unwrap() == "ada lovelace");
         })
     })
 }
@@ -366,14 +366,14 @@ fn test_future_result() {
     let mut builder = task();
     let result = builder.future_result();
     builder.spawn(proc() {});
-    assert!(result.recv().is_ok());
+    fail_unless!(result.recv().is_ok());
 
     let mut builder = task();
     let result = builder.future_result();
     builder.spawn(proc() {
         fail!();
     });
-    assert!(result.recv().is_err());
+    fail_unless!(result.recv().is_err());
 }
 
 #[test] #[should_fail]
@@ -451,7 +451,7 @@ fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     });
 
     let x_in_child = p.recv();
-    assert_eq!(x_in_parent, x_in_child);
+    fail_unless_eq!(x_in_parent, x_in_child);
 }
 
 #[test]
@@ -507,8 +507,8 @@ fn test_try_fail_message_static_str() {
     }) {
         Err(e) => {
             type T = &'static str;
-            assert!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), "static string");
+            fail_unless!(e.is::<T>());
+            fail_unless_eq!(*e.move::<T>().unwrap(), "static string");
         }
         Ok(()) => fail!()
     }
@@ -521,8 +521,8 @@ fn test_try_fail_message_owned_str() {
     }) {
         Err(e) => {
             type T = ~str;
-            assert!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), ~"owned string");
+            fail_unless!(e.is::<T>());
+            fail_unless_eq!(*e.move::<T>().unwrap(), ~"owned string");
         }
         Ok(()) => fail!()
     }
@@ -535,10 +535,10 @@ fn test_try_fail_message_any() {
     }) {
         Err(e) => {
             type T = ~Any;
-            assert!(e.is::<T>());
+            fail_unless!(e.is::<T>());
             let any = e.move::<T>().unwrap();
-            assert!(any.is::<u16>());
-            assert_eq!(*any.move::<u16>().unwrap(), 413u16);
+            fail_unless!(any.is::<u16>());
+            fail_unless_eq!(*any.move::<u16>().unwrap(), 413u16);
         }
         Ok(()) => fail!()
     }

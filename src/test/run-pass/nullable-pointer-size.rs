@@ -19,13 +19,13 @@ struct S<T>(int, T);
 
 macro_rules! check_option {
     ($T:ty) => {
-        assert_eq!(mem::size_of::<Option<$T>>(), mem::size_of::<$T>());
+        fail_unless_eq!(mem::size_of::<Option<$T>>(), mem::size_of::<$T>());
     }
 }
 
 macro_rules! check_fancy {
     ($T:ty) => {
-        assert_eq!(mem::size_of::<E<$T>>(), mem::size_of::<S<$T>>());
+        fail_unless_eq!(mem::size_of::<E<$T>>(), mem::size_of::<S<$T>>());
     }
 }
 

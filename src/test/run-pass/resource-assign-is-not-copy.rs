@@ -38,5 +38,5 @@ pub fn main() {
         let (c, _d) = b;
         info!("{:?}", c);
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }

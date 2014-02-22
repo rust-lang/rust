@@ -16,6 +16,6 @@ struct Bar(int, int);
 pub fn main() {
     let f: extern fn(int) -> Foo = Foo;
     let g: extern fn(int, int) -> Bar = Bar;
-    assert_eq!(f(42), Foo(42));
-    assert_eq!(g(4, 7), Bar(4, 7));
+    fail_unless_eq!(f(42), Foo(42));
+    fail_unless_eq!(g(4, 7), Bar(4, 7));
 }

@@ -18,8 +18,8 @@ pub fn main() {
     let foo = Foo { bar: 1, baz: 2 };
     match foo {
         Foo {bar, baz} => {
-            assert_eq!(bar, 1);
-            assert_eq!(baz, 2);
+            fail_unless_eq!(bar, 1);
+            fail_unless_eq!(baz, 2);
         }
     }
 }

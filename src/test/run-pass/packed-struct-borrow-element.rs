@@ -18,5 +18,5 @@ pub fn main() {
     let foo = Foo { bar: 1, baz: 2 };
     let brw = &foo.baz;
 
-    assert_eq!(*brw, 2);
+    fail_unless_eq!(*brw, 2);
 }

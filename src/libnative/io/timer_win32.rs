@@ -69,8 +69,8 @@ fn helper(input: libc::HANDLE, messages: Port<Req>) {
                         }
                     }
                     Data(Shutdown) => {
-                        assert_eq!(objs.len(), 1);
-                        assert_eq!(chans.len(), 0);
+                        fail_unless_eq!(objs.len(), 1);
+                        fail_unless_eq!(chans.len(), 0);
                         break 'outer;
                     }
                     _ => break
@@ -128,7 +128,7 @@ impl rtio::RtioTimer for Timer {
         // there are 10^6 nanoseconds in a millisecond, and the parameter is in
         // 100ns intervals, so we multiply by 10^4.
         let due = -(msecs * 10000) as libc::LARGE_INTEGER;
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
                                   ptr::mut_null(), 0)
         }, 1);
@@ -142,7 +142,7 @@ impl rtio::RtioTimer for Timer {
 
         // see above for the calculation
         let due = -(msecs * 10000) as libc::LARGE_INTEGER;
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
                                   ptr::mut_null(), 0)
         }, 1);
@@ -158,7 +158,7 @@ impl rtio::RtioTimer for Timer {
 
         // see above for the calculation
         let due = -(msecs * 10000) as libc::LARGE_INTEGER;
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, msecs as libc::LONG,
                                   ptr::null(), ptr::mut_null(), 0)
         }, 1);
@@ -173,7 +173,7 @@ impl rtio::RtioTimer for Timer {
 impl Drop for Timer {
     fn drop(&mut self) {
         self.remove();
-        assert!(unsafe { libc::CloseHandle(self.obj) != 0 });
+        fail_unless!(unsafe { libc::CloseHandle(self.obj) != 0 });
     }
 }
 

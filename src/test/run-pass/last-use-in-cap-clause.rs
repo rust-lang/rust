@@ -20,5 +20,5 @@ fn foo() -> 'static || -> int {
 }
 
 pub fn main() {
-    assert_eq!(foo()(), 22);
+    fail_unless_eq!(foo()(), 22);
 }

@@ -16,7 +16,7 @@ fn test1() {
     let mut s: ~str = ~"hello";
     s.push_str("world");
     info!("{}", s.clone());
-    assert_eq!(s[9], 'd' as u8);
+    fail_unless_eq!(s[9], 'd' as u8);
 }
 
 fn test2() {
@@ -27,8 +27,8 @@ fn test2() {
     let b: ~str = ~"ABC" + ff + "ABC";
     info!("{}", a.clone());
     info!("{}", b.clone());
-    assert_eq!(a, ~"abcABCabc");
-    assert_eq!(b, ~"ABCabcABC");
+    fail_unless_eq!(a, ~"abcABCabc");
+    fail_unless_eq!(b, ~"ABCabcABC");
 }
 
 pub fn main() { test1(); test2(); }

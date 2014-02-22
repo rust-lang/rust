@@ -20,7 +20,7 @@ fn test05() {
     let three = ~3;
     let fn_to_send: proc(int) = proc(n) {
         error!("{}", *three + n); // will copy x into the closure
-        assert_eq!(*three, 3);
+        fail_unless_eq!(*three, 3);
     };
     task::spawn(proc() {
         test05_start(fn_to_send);

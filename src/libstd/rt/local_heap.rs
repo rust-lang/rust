@@ -122,7 +122,7 @@ impl LocalHeap {
 
 impl Drop for LocalHeap {
     fn drop(&mut self) {
-        assert!(self.live_allocs.is_null());
+        fail_unless!(self.live_allocs.is_null());
     }
 }
 

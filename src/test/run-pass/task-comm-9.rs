@@ -43,5 +43,5 @@ fn test00() {
 
     result.recv();
 
-    assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
+    fail_unless_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

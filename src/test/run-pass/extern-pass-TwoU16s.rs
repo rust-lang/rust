@@ -27,6 +27,6 @@ pub fn main() {
     unsafe {
         let x = TwoU16s {one: 22, two: 23};
         let y = rust_dbg_extern_identity_TwoU16s(x);
-        assert_eq!(x, y);
+        fail_unless_eq!(x, y);
     }
 }

@@ -452,7 +452,7 @@ pub fn write_content<'a>(
                     // cleanup since things would *probably* be broken at that point anyways.
 
                     let elem = unpack_datum!(bcx, expr::trans(bcx, element));
-                    assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
+                    fail_unless!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
 
                     let bcx = iter_vec_loop(bcx, lldest, vt,
                                   C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
@@ -538,14 +538,14 @@ pub fn get_base_and_byte_len(bcx: &Block,
             (base, len)
         }
         ty::vstore_slice(_) => {
-            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
+            fail_unless!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
             let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
             let len = Mul(bcx, count, vt.llunit_size);
             (base, len)
         }
         ty::vstore_uniq => {
-            assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
+            fail_unless!(type_is_immediate(bcx.ccx(), vt.vec_ty));
             let body = Load(bcx, llval);
             (get_dataptr(bcx, body), get_fill(bcx, body))
         }
@@ -578,13 +578,13 @@ pub fn get_base_and_len(bcx: &Block,
             (base, C_uint(ccx, n))
         }
         ty::vstore_slice(_) => {
-            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
+            fail_unless!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
             let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
             (base, count)
         }
         ty::vstore_uniq => {
-            assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
+            fail_unless!(type_is_immediate(bcx.ccx(), vt.vec_ty));
             let body = Load(bcx, llval);
             (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
         }

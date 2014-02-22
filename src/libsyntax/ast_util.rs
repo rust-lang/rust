@@ -973,11 +973,11 @@ mod test {
     }
 
     #[test] fn idents_name_eq_test() {
-        assert!(segments_name_eq([Ident{name:3,ctxt:4},
+        fail_unless!(segments_name_eq([Ident{name:3,ctxt:4},
                                    Ident{name:78,ctxt:82}].map(ident_to_segment),
                                  [Ident{name:3,ctxt:104},
                                    Ident{name:78,ctxt:182}].map(ident_to_segment)));
-        assert!(!segments_name_eq([Ident{name:3,ctxt:4},
+        fail_unless!(!segments_name_eq([Ident{name:3,ctxt:4},
                                     Ident{name:78,ctxt:82}].map(ident_to_segment),
                                   [Ident{name:3,ctxt:104},
                                     Ident{name:77,ctxt:182}].map(ident_to_segment)));
@@ -986,19 +986,19 @@ mod test {
     #[test] fn xorpush_test () {
         let mut s = ~[];
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
+        fail_unless_eq!(s.clone(), ~[14]);
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[]);
+        fail_unless_eq!(s.clone(), ~[]);
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
+        fail_unless_eq!(s.clone(), ~[14]);
         xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14, 15]);
+        fail_unless_eq!(s.clone(), ~[14, 15]);
         xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15, 16]);
+        fail_unless_eq!(s.clone(), ~[14, 15, 16]);
         xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15]);
+        fail_unless_eq!(s.clone(), ~[14, 15]);
         xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14]);
+        fail_unless_eq!(s.clone(), ~[14]);
     }
 
     fn id(n: Name, s: SyntaxContext) -> Ident {
@@ -1049,14 +1049,14 @@ mod test {
         let mut t = new_sctable_internal();
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
-        assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
+        fail_unless_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(9,0));
-            assert_eq!(table.get()[3],Rename(id(101,0),14,2));
-            assert_eq!(table.get()[4],Mark(3,3));
+            fail_unless_eq!(table.get()[2],Mark(9,0));
+            fail_unless_eq!(table.get()[3],Rename(id(101,0),14,2));
+            fail_unless_eq!(table.get()[4],Mark(3,3));
         }
-        assert_eq!(refold_test_sc(4,&t),test_sc);
+        fail_unless_eq!(refold_test_sc(4,&t),test_sc);
     }
 
     // extend a syntax context with a sequence of marks given
@@ -1070,11 +1070,11 @@ mod test {
     #[test] fn unfold_marks_test() {
         let mut t = new_sctable_internal();
 
-        assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
+        fail_unless_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
         {
             let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(7,0));
-            assert_eq!(table.get()[3],Mark(3,2));
+            fail_unless_eq!(table.get()[2],Mark(7,0));
+            fail_unless_eq!(table.get()[3],Mark(3,2));
         }
     }
 
@@ -1082,16 +1082,16 @@ mod test {
         let stopname = 242;
         let name1 = 243;
         let mut t = new_sctable_internal();
-        assert_eq!(marksof (EMPTY_CTXT,stopname,&t),~[]);
+        fail_unless_eq!(marksof (EMPTY_CTXT,stopname,&t),~[]);
         // FIXME #5074: ANF'd to dodge nested calls
         { let ans = unfold_marks(~[4,98],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t),~[4,98]);}
+         fail_unless_eq! (marksof (ans,stopname,&t),~[4,98]);}
         // does xoring work?
         { let ans = unfold_marks(~[5,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t), ~[16]);}
+         fail_unless_eq! (marksof (ans,stopname,&t), ~[16]);}
         // does nested xoring work?
         { let ans = unfold_marks(~[5,10,10,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname,&t), ~[16]);}
+         fail_unless_eq! (marksof (ans, stopname,&t), ~[16]);}
         // rename where stop doesn't match:
         { let chain = ~[M(9),
                         R(id(name1,
@@ -1099,7 +1099,7 @@ mod test {
                           100101102),
                         M(14)];
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9,14]);}
+         fail_unless_eq! (marksof (ans, stopname, &t), ~[9,14]);}
         // rename where stop does match
         { let name1sc = new_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = ~[M(9),
@@ -1107,7 +1107,7 @@ mod test {
                          stopname),
                        M(14)];
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9]); }
+         fail_unless_eq! (marksof (ans, stopname, &t), ~[9]); }
     }
 
 
@@ -1116,28 +1116,28 @@ mod test {
         let mut t = new_sctable_internal();
         let mut rt = HashMap::new();
         // - ctxt is MT
-        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
+        fail_unless_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
         // - simple ignored marks
         { let sc = unfold_marks(~[1,2,3],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - orthogonal rename where names don't match
         { let sc = unfold_test_sc(~[R(id(50,EMPTY_CTXT),51),M(12)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - rename where names do match, but marks don't
         { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),
                                    M(1),
                                    M(2)],
                                  EMPTY_CTXT,&mut t);
-        assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
+        fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
         // - rename where names and marks match
         { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - rename where names and marks match by literal sharing
         { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
@@ -1145,47 +1145,47 @@ mod test {
         { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
                                     R(id(a,EMPTY_CTXT),51)],
                                   EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
         // the simplest double-rename:
         { let a_to_a50 = new_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
          let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
+         fail_unless_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
          // mark on the outside doesn't stop rename:
          let sc = new_mark_internal(9,a50_to_a51,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
+         fail_unless_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
          // but mark on the inside does:
          let a50_to_a51_b = unfold_test_sc(~[R(id(a,a_to_a50),51),
                                               M(9)],
                                            a_to_a50,
                                            &mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}
+         fail_unless_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}
     }
 
     #[test] fn mtwt_resolve_test(){
         let a = 40;
-        assert_eq!(mtwt_resolve(id(a,EMPTY_CTXT)),a);
+        fail_unless_eq!(mtwt_resolve(id(a,EMPTY_CTXT)),a);
     }
 
 
     #[test] fn hashing_tests () {
         let mut t = new_sctable_internal();
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
-        assert_eq!(new_mark_internal(13,EMPTY_CTXT,&mut t),3);
+        fail_unless_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        fail_unless_eq!(new_mark_internal(13,EMPTY_CTXT,&mut t),3);
         // using the same one again should result in the same index:
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
+        fail_unless_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
         // I'm assuming that the rename table will behave the same....
     }
 
     #[test] fn resolve_table_hashing_tests() {
         let mut t = new_sctable_internal();
         let mut rt = HashMap::new();
-        assert_eq!(rt.len(),0);
+        fail_unless_eq!(rt.len(),0);
         resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),1);
+        fail_unless_eq!(rt.len(),1);
         resolve_internal(id(39,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),2);
+        fail_unless_eq!(rt.len(),2);
         resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),2);
+        fail_unless_eq!(rt.len(),2);
     }
 
 }

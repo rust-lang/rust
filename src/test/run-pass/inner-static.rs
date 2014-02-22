@@ -17,7 +17,7 @@ pub fn main() {
     let a = inner_static::A::<()>;
     let b = inner_static::B::<()>;
     let c = inner_static::test::A::<()>;
-    assert_eq!(a.bar(), 2);
-    assert_eq!(b.bar(), 4);
-    assert_eq!(c.bar(), 6);
+    fail_unless_eq!(a.bar(), 2);
+    fail_unless_eq!(b.bar(), 4);
+    fail_unless_eq!(c.bar(), 6);
 }

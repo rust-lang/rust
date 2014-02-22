@@ -14,21 +14,21 @@
 struct Rect {x: int, y: int, w: int, h: int}
 
 fn f(r: Rect, x: int, y: int, w: int, h: int) {
-    assert_eq!(r.x, x);
-    assert_eq!(r.y, y);
-    assert_eq!(r.w, w);
-    assert_eq!(r.h, h);
+    fail_unless_eq!(r.x, x);
+    fail_unless_eq!(r.y, y);
+    fail_unless_eq!(r.w, w);
+    fail_unless_eq!(r.h, h);
 }
 
 pub fn main() {
     let r: Rect = Rect {x: 10, y: 20, w: 100, h: 200};
-    assert_eq!(r.x, 10);
-    assert_eq!(r.y, 20);
-    assert_eq!(r.w, 100);
-    assert_eq!(r.h, 200);
+    fail_unless_eq!(r.x, 10);
+    fail_unless_eq!(r.y, 20);
+    fail_unless_eq!(r.w, 100);
+    fail_unless_eq!(r.h, 200);
     let r2: Rect = r;
     let x: int = r2.x;
-    assert_eq!(x, 10);
+    fail_unless_eq!(x, 10);
     f(r, 10, 20, 100, 200);
     f(r2, 10, 20, 100, 200);
 }

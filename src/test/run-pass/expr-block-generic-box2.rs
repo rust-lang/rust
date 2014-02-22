@@ -16,7 +16,7 @@ type compare<'a, T> = 'a |T, T| -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
     let actual: T = { expected.clone() };
-    assert!((eq(expected, actual)));
+    fail_unless!((eq(expected, actual)));
 }
 
 fn test_vec() {

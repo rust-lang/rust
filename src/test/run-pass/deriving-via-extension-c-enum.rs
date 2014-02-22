@@ -18,8 +18,8 @@ enum Foo {
 pub fn main() {
     let a = Bar;
     let b = Bar;
-    assert_eq!(a, b);
-    assert!(!(a != b));
-    assert!(a.eq(&b));
-    assert!(!a.ne(&b));
+    fail_unless_eq!(a, b);
+    fail_unless!(!(a != b));
+    fail_unless!(a.eq(&b));
+    fail_unless!(!a.ne(&b));
 }

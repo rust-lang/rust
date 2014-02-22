@@ -18,5 +18,5 @@ pub fn main() {
         BAR => 2,
         _ => 3
     };
-    assert_eq!(y, 2);
+    fail_unless_eq!(y, 2);
 }

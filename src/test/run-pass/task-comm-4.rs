@@ -48,5 +48,5 @@ fn test00() {
     r = p.recv();
     sum += r;
     info!("{}", r);
-    assert_eq!(sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
+    fail_unless_eq!(sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
 }

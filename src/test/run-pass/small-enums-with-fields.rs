@@ -17,13 +17,13 @@ enum Either<T, U> { Left(T), Right(U) }
 
 macro_rules! check {
     ($t:ty, $sz:expr, $($e:expr, $s:expr),*) => {{
-        assert_eq!(size_of::<$t>(), $sz);
+        fail_unless_eq!(size_of::<$t>(), $sz);
         $({
             static S: $t = $e;
             let v: $t = $e;
-            assert_eq!(S, v);
-            assert_eq!(format!("{:?}", v), ~$s);
-            assert_eq!(format!("{:?}", S), ~$s);
+            fail_unless_eq!(S, v);
+            fail_unless_eq!(format!("{:?}", v), ~$s);
+            fail_unless_eq!(format!("{:?}", S), ~$s);
         });*
     }}
 }

@@ -379,7 +379,7 @@ impl Drop for FileWatcher {
             rtio::CloseAsynchronously => {
                 unsafe {
                     let req = uvll::malloc_req(uvll::UV_FS);
-                    assert_eq!(uvll::uv_fs_close(self.loop_.handle, req,
+                    fail_unless_eq!(uvll::uv_fs_close(self.loop_.handle, req,
                                                  self.fd, close_cb), 0);
                 }
 
@@ -466,36 +466,36 @@ mod test {
             // open/create
             let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          create_flags as int, mode as int);
-            assert!(result.is_ok());
+            fail_unless!(result.is_ok());
             let result = result.unwrap();
             let fd = result.fd;
 
             // write
             let result = FsRequest::write(l(), fd, "hello".as_bytes(), -1);
-            assert!(result.is_ok());
+            fail_unless!(result.is_ok());
         }
 
         {
             // re-open
             let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          read_flags as int, 0);
-            assert!(result.is_ok());
+            fail_unless!(result.is_ok());
             let result = result.unwrap();
             let fd = result.fd;
 
             // read
             let mut read_mem = vec::from_elem(1000, 0u8);
             let result = FsRequest::read(l(), fd, read_mem, 0);
-            assert!(result.is_ok());
+            fail_unless!(result.is_ok());
 
             let nread = result.unwrap();
-            assert!(nread > 0);
+            fail_unless!(nread > 0);
             let read_str = str::from_utf8(read_mem.slice_to(nread as uint)).unwrap();
-            assert_eq!(read_str, "hello");
+            fail_unless_eq!(read_str, "hello");
         }
         // unlink
         let result = FsRequest::unlink(l(), &path_str.to_c_str());
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
     }
 
     #[test]
@@ -505,21 +505,21 @@ mod test {
         let mode = (S_IWUSR | S_IRUSR) as int;
 
         let result = FsRequest::open(local_loop(), path, create_flags, mode);
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
         let file = result.unwrap();
 
         let result = FsRequest::write(l(), file.fd, "hello".as_bytes(), 0);
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
 
         let result = FsRequest::stat(l(), path);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().size, 5);
+        fail_unless!(result.is_ok());
+        fail_unless_eq!(result.unwrap().size, 5);
 
         fn free<T>(_: T) {}
         free(file);
 
         let result = FsRequest::unlink(l(), path);
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
     }
 
     #[test]
@@ -528,17 +528,17 @@ mod test {
         let mode = S_IWUSR | S_IRUSR;
 
         let result = FsRequest::mkdir(l(), path, mode);
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
 
         let result = FsRequest::stat(l(), path);
-        assert!(result.is_ok());
-        assert!(result.unwrap().kind == io::TypeDirectory);
+        fail_unless!(result.is_ok());
+        fail_unless!(result.unwrap().kind == io::TypeDirectory);
 
         let result = FsRequest::rmdir(l(), path);
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
 
         let result = FsRequest::stat(l(), path);
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
 
     #[test]
@@ -547,19 +547,19 @@ mod test {
         let mode = S_IWUSR | S_IRUSR;
 
         let result = FsRequest::stat(l(), path);
-        assert!(result.is_err(), "{:?}", result);
+        fail_unless!(result.is_err(), "{:?}", result);
         let result = FsRequest::mkdir(l(), path, mode as c_int);
-        assert!(result.is_ok(), "{:?}", result);
+        fail_unless!(result.is_ok(), "{:?}", result);
         let result = FsRequest::mkdir(l(), path, mode as c_int);
-        assert!(result.is_err(), "{:?}", result);
+        fail_unless!(result.is_err(), "{:?}", result);
         let result = FsRequest::rmdir(l(), path);
-        assert!(result.is_ok(), "{:?}", result);
+        fail_unless!(result.is_ok(), "{:?}", result);
     }
 
     #[test]
     fn file_test_rmdir_chokes_on_nonexistant_path() {
         let path = &"./tmp/never_existed_dir".to_c_str();
         let result = FsRequest::rmdir(l(), path);
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
 }

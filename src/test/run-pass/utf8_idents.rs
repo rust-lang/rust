@@ -18,8 +18,8 @@ pub fn main() {
     let ε = 0.00001;
     let Π = 3.14;
     let लंच = Π * Π + 1.54;
-    assert!(num::abs((लंच - 1.54) - (Π * Π)) < ε);
-    assert_eq!(საჭმელად_გემრიელი_სადილი(), 0);
+    fail_unless!(num::abs((लंच - 1.54) - (Π * Π)) < ε);
+    fail_unless_eq!(საჭმელად_გემრიელი_სადილი(), 0);
 }
 
 fn საჭმელად_გემრიელი_სადილი() -> int {
@@ -43,9 +43,9 @@ fn საჭმელად_გემრიელი_სადილი() -> int
 
     // Lunchy arithmetic, mm.
 
-    assert_eq!(hádegismatur * ручек * обед, 1000);
-    assert_eq!(10, ארוחת_צהריי);
-    assert_eq!(ランチ + 午餐 + μεσημεριανό, 30);
-    assert_eq!(ăn_trưa + อาหารกลางวัน, 20);
+    fail_unless_eq!(hádegismatur * ручек * обед, 1000);
+    fail_unless_eq!(10, ארוחת_צהריי);
+    fail_unless_eq!(ランチ + 午餐 + μεσημεριανό, 30);
+    fail_unless_eq!(ăn_trưa + อาหารกลางวัน, 20);
     return (абед + լանչ) >> غداء;
 }

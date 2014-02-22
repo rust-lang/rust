@@ -167,26 +167,21 @@ macro_rules! fail(
 /// ```
 /// // the failure message for these assertions is the stringified value of the
 /// // expression given.
-/// assert!(true);
+/// fail_unless!(true);
 /// # fn some_computation() -> bool { true }
-/// assert!(some_computation());
+/// fail_unless!(some_computation());
 ///
 /// // assert with a custom message
 /// # let x = true;
-/// assert!(x, "x wasn't true!");
+/// fail_unless!(x, "x wasn't true!");
 /// # let a = 3; let b = 27;
-/// assert!(a + b == 30, "a = {}, b = {}", a, b);
+/// fail_unless!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
-macro_rules! assert(
+macro_rules! fail_unless(
     ($cond:expr) => (
         if !$cond {
             fail!("assertion failed: {:s}", stringify!($cond))
-        }
-    );
-    ($cond:expr, $msg:expr) => (
-        if !$cond {
-            fail!($msg)
         }
     );
     ($cond:expr, $($arg:expr),+) => (
@@ -199,17 +194,18 @@ macro_rules! assert(
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
 ///
-/// On failure, this macro will print the values of the expressions.
+/// If the expressions are not equal, `fail!` is invoked, with a
+/// message containing the two values.
 ///
 /// # Example
 ///
 /// ```
 /// let a = 3;
 /// let b = 1 + 2;
-/// assert_eq!(a, b);
+/// fail_unless_eq!(a, b);
 /// ```
 #[macro_export]
-macro_rules! assert_eq(
+macro_rules! fail_unless_eq (
     ($given:expr , $expected:expr) => ({
         let given_val = &($given);
         let expected_val = &($expected);
@@ -222,6 +218,37 @@ macro_rules! assert_eq(
     })
 )
 
+#[macro_export]
+macro_rules! debug_assert {
+    ($cond:expr) => {
+        if cfg!(not(ndebug)) && !$cond {
+            fail!("assertion failed: {:s}", stringify!($cond))
+        }
+    };
+    ($cond:expr, $( $arg:expr ),+) => {
+        if cfg!(not(ndebug)) && !$cond {
+            fail!( $($arg),+ )
+        }
+    }
+
+}
+
+#[macro_export]
+macro_rules! debug_assert_eq {
+    ($given:expr , $expected:expr) => (
+        if cfg!(not(ndebug)) {
+            let given_val = &($given);
+            let expected_val = &($expected);
+            // check both directions of equality....
+            if !((*given_val == *expected_val) &&
+                 (*expected_val == *given_val)) {
+                fail!("assertion failed: `(left == right) && (right == left)` \
+                       (left: `{:?}`, right: `{:?}`)", *given_val, *expected_val)
+            }
+        }
+    )
+}
+
 /// A utility macro for indicating unreachable code. It will fail if
 /// executed. This is occasionally useful to put after loops that never
 /// terminate normally, but instead directly return from a function.
@@ -232,7 +259,7 @@ macro_rules! assert_eq(
 /// struct Item { weight: uint }
 ///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
-///     assert!(!v.is_empty());
+///     fail_unless!(!v.is_empty());
 ///     let mut so_far = 0u;
 ///     for item in v.iter() {
 ///         so_far += item.weight;
@@ -367,4 +394,3 @@ macro_rules! vec(
         temp
     })
 )
-

@@ -22,20 +22,20 @@ pub mod m1 {
 macro_rules! indirect_line( () => ( line!() ) )
 
 pub fn main() {
-    assert_eq!(line!(), 25);
-    //assert!((col!() == 11));
-    assert_eq!(indirect_line!(), 27);
-    assert!((file!().to_owned().ends_with("syntax-extension-source-utils.rs")));
-    assert_eq!(stringify!((2*3) + 5).to_owned(), ~"( 2 * 3 ) + 5");
-    assert!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
+    fail_unless_eq!(line!(), 25);
+    //fail_unless!((col!() == 11));
+    fail_unless_eq!(indirect_line!(), 27);
+    fail_unless!((file!().to_owned().ends_with("syntax-extension-source-utils.rs")));
+    fail_unless_eq!(stringify!((2*3) + 5).to_owned(), ~"( 2 * 3 ) + 5");
+    fail_unless!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
            == ~"victory robot 6");
 
-    assert!(
+    fail_unless!(
         include_str!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
         .starts_with("/* this is for "));
-    assert!(
+    fail_unless!(
         include_bin!("syntax-extension-source-utils-files/includeme.fragment")
         [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
-    assert!((m1::m2::where_am_i().ends_with("m1::m2")));
+    fail_unless!((m1::m2::where_am_i().ends_with("m1::m2")));
 }

@@ -14,7 +14,7 @@ pub fn main() {
     let (port, chan) = Chan::<&'static str>::new();
 
     task::spawn(proc() {
-        assert_eq!(port.recv(), "hello, world");
+        fail_unless_eq!(port.recv(), "hello, world");
     });
 
     chan.send("hello, world");

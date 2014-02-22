@@ -12,8 +12,8 @@ use std::repr;
 
 pub fn main() {
     let act = repr::repr_to_str(&~[1, 2, 3]);
-    assert_eq!(~"~[1, 2, 3]", act);
+    fail_unless_eq!(~"~[1, 2, 3]", act);
 
     let act = format!("{:?}/{:6?}", ~[1, 2, 3], ~"hi");
-    assert_eq!(act, ~"~[1, 2, 3]/~\"hi\" ");
+    fail_unless_eq!(act, ~"~[1, 2, 3]/~\"hi\" ");
 }

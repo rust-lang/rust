@@ -16,5 +16,5 @@ extern crate packed;
 use std::mem;
 
 pub fn main() {
-    assert_eq!(mem::size_of::<packed::S>(), 5);
+    fail_unless_eq!(mem::size_of::<packed::S>(), 5);
 }

@@ -17,7 +17,7 @@ fn test_generic<T:Clone>(expected: ~T, eq: compare<T>) {
         true => { expected.clone() },
         _ => fail!("wat")
     };
-    assert!((eq(expected, actual)));
+    fail_unless!((eq(expected, actual)));
 }
 
 fn test_box() {

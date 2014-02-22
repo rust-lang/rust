@@ -35,5 +35,5 @@ pub fn main() {
         let _p = Some(r(b));
     }
 
-    assert_eq!(b.get(), 1);
+    fail_unless_eq!(b.get(), 1);
 }

@@ -15,5 +15,5 @@ fn has_two<'a,'b>(x: &'a int, y: &'b int) -> int {
 }
 
 pub fn main() {
-    assert_eq!(has_two(&20, &2), 22);
+    fail_unless_eq!(has_two(&20, &2), 22);
 }

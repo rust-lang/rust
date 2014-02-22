@@ -21,7 +21,7 @@ fn f() {
         //~^ ERROR static constant in pattern should be all caps
         (x, y) => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
 }
 
 mod m {
@@ -35,7 +35,7 @@ fn g() {
         //~^ ERROR static constant in pattern should be all caps
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
 }
 
 mod n {
@@ -49,7 +49,7 @@ fn h() {
         //~^ ERROR static constant in pattern should be all caps
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
 }
 
 fn main () {

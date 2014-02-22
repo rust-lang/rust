@@ -20,5 +20,5 @@ macro_rules! foo( () => (1) )
 macro_rules! foo( () => (2) )
 
 pub fn main() {
-    assert_eq!(foo!(), 1);
+    fail_unless_eq!(foo!(), 1);
 }

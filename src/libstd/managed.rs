@@ -61,10 +61,10 @@ impl<T: TotalEq> TotalEq for @T {
 fn test() {
     let x = @3;
     let y = @3;
-    assert!((ptr_eq::<int>(x, x)));
-    assert!((ptr_eq::<int>(y, y)));
-    assert!((!ptr_eq::<int>(x, y)));
-    assert!((!ptr_eq::<int>(y, x)));
+    fail_unless!((ptr_eq::<int>(x, x)));
+    fail_unless!((ptr_eq::<int>(y, y)));
+    fail_unless!((!ptr_eq::<int>(x, y)));
+    fail_unless!((!ptr_eq::<int>(y, x)));
 }
 
 #[test]
@@ -72,8 +72,8 @@ fn refcount_test() {
     use clone::Clone;
 
     let x = @3;
-    assert_eq!(refcount(x), 1);
+    fail_unless_eq!(refcount(x), 1);
     let y = x.clone();
-    assert_eq!(refcount(x), 2);
-    assert_eq!(refcount(y), 2);
+    fail_unless_eq!(refcount(x), 2);
+    fail_unless_eq!(refcount(y), 2);
 }

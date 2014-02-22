@@ -366,16 +366,16 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_process_status() {
         let mut status = run::process_status("false", []).unwrap();
-        assert!(status.matches_exit_status(1));
+        fail_unless!(status.matches_exit_status(1));
 
         status = run::process_status("true", []).unwrap();
-        assert!(status.success());
+        fail_unless!(status.success());
     }
 
     #[test]
     fn test_process_output_fail_to_start() {
         match run::process_output("/no-binary-by-this-name-should-exist", []) {
-            Err(e) => assert_eq!(e.kind, FileNotFound),
+            Err(e) => fail_unless_eq!(e.kind, FileNotFound),
             Ok(..) => fail!()
         }
     }
@@ -388,11 +388,11 @@ mod tests {
              = run::process_output("echo", [~"hello"]).unwrap();
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless!(status.success());
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -403,9 +403,9 @@ mod tests {
         let run::ProcessOutput {status, output, error}
              = run::process_output("mkdir", [~"."]).unwrap();
 
-        assert!(status.matches_exit_status(1));
-        assert_eq!(output, ~[]);
-        assert!(!error.is_empty());
+        fail_unless!(status.matches_exit_status(1));
+        fail_unless_eq!(output, ~[]);
+        fail_unless!(!error.is_empty());
     }
 
     #[test]
@@ -434,7 +434,7 @@ mod tests {
         readclose(pipe_err.input);
         process.finish();
 
-        assert_eq!(~"test", actual);
+        fail_unless_eq!(~"test", actual);
     }
 
     fn writeclose(fd: c_int, s: &str) {
@@ -451,7 +451,7 @@ mod tests {
     fn test_finish_once() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
             .unwrap();
-        assert!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
@@ -459,8 +459,8 @@ mod tests {
     fn test_finish_twice() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
             .unwrap();
-        assert!(prog.finish().matches_exit_status(1));
-        assert!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
@@ -473,11 +473,11 @@ mod tests {
             = prog.finish_with_output();
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless!(status.success());
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -492,21 +492,21 @@ mod tests {
 
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless!(status.success());
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
 
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
-        assert!(status.success());
-        assert_eq!(output, ~[]);
+        fail_unless!(status.success());
+        fail_unless_eq!(output, ~[]);
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -544,8 +544,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+        fail_unless_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        fail_unless_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     }
 
     #[test]
@@ -561,8 +561,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+        fail_unless_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        fail_unless_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     }
 
     #[cfg(unix,not(target_os="android"))]
@@ -599,7 +599,7 @@ mod tests {
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
+            fail_unless!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
         }
     }
     #[test]
@@ -614,7 +614,7 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != ~"RANDOM" {
-                assert!(output.contains(format!("{}={}", *k, *v)) ||
+                fail_unless!(output.contains(format!("{}={}", *k, *v)) ||
                         output.contains(format!("{}=\'{}\'", *k, *v)));
             }
         }
@@ -629,6 +629,6 @@ mod tests {
         let mut prog = run_env(Some(new_env));
         let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
 
-        assert!(output.contains("RUN_TEST_NEW_ENV=123"));
+        fail_unless!(output.contains("RUN_TEST_NEW_ENV=123"));
     }
 }

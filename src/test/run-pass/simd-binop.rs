@@ -32,7 +32,7 @@ pub fn test_shift(e: u32) -> u32 {
 }
 
 pub fn main() {
-    assert_eq!(test_int(3i32), 9i32);
-    assert_eq!(test_float(3f32), 9f32);
-    assert_eq!(test_shift(3u32), 3u32);
+    fail_unless_eq!(test_int(3i32), 9i32);
+    fail_unless_eq!(test_float(3f32), 9f32);
+    fail_unless_eq!(test_shift(3u32), 3u32);
 }

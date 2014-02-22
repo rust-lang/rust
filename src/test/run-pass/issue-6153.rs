@@ -16,5 +16,5 @@ fn swap(f: |~[int]| -> ~[int]) -> ~[int] {
 pub fn main() {
     let v = swap(|mut x| { x.push(4); x });
     let w = swap(|mut x| { x.push(4); x });
-    assert_eq!(v, w);
+    fail_unless_eq!(v, w);
 }

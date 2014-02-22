@@ -26,6 +26,6 @@ fn foo2() -> int { 3 }
 
 
 pub fn main() {
-    assert_eq!(1, foo1());
-    assert_eq!(3, foo2());
+    fail_unless_eq!(1, foo1());
+    fail_unless_eq!(3, foo2());
 }

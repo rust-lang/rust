@@ -13,5 +13,5 @@ fn f() -> ~int {
 }
 
 pub fn main() {
-    assert_eq!(f(), ~100);
+    fail_unless_eq!(f(), ~100);
 }

@@ -125,5 +125,5 @@ pub fn main() {
     let mut tcx = TypeContext::new(&ty_arena, &ast_arena);
     let ast = tcx.ast(ExprInt);
     let ty = compute_types(&mut tcx, ast);
-    assert_eq!(*ty, TypeInt);
+    fail_unless_eq!(*ty, TypeInt);
 }

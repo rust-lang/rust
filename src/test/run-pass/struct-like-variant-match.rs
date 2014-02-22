@@ -24,12 +24,12 @@ enum Foo {
 fn f(x: &Foo) {
     match *x {
         Baz { x: x, y: y } => {
-            assert_eq!(x, 1.0);
-            assert_eq!(y, 2.0);
+            fail_unless_eq!(x, 1.0);
+            fail_unless_eq!(y, 2.0);
         }
         Bar { y: y, x: x } => {
-            assert_eq!(x, 1);
-            assert_eq!(y, 2);
+            fail_unless_eq!(x, 1);
+            fail_unless_eq!(y, 2);
         }
     }
 }

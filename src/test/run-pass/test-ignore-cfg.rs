@@ -28,9 +28,9 @@ fn checktests() {
     // Pull the tests out of the secreturn test module
     let tests = __test::TESTS;
 
-    assert!(
+    fail_unless!(
         tests.iter().any(|t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
 
-    assert!(
+    fail_unless!(
         tests.iter().any(|t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore));
 }

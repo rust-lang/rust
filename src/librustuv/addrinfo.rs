@@ -34,7 +34,7 @@ pub struct GetAddrInfoRequest;
 impl GetAddrInfoRequest {
     pub fn run(loop_: &Loop, node: Option<&str>, service: Option<&str>,
                hints: Option<ai::Hint>) -> Result<~[ai::Info], UvError> {
-        assert!(node.is_some() || service.is_some());
+        fail_unless!(node.is_some() || service.is_some());
         let (_c_node, c_node_ptr) = match node {
             Some(n) => {
                 let c_node = n.to_c_str();
@@ -103,7 +103,7 @@ impl GetAddrInfoRequest {
                                  status: c_int,
                                  res: *libc::addrinfo) {
             let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
+            fail_unless!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.status = status;
             cx.addrinfo = Some(Addrinfo { handle: res });

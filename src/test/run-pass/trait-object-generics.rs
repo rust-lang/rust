@@ -43,5 +43,5 @@ impl<V> Trait<u8,V> for () {
 
 pub fn main() {
     let a = ~() as ~Trait<u8, u8>;
-    assert_eq!(a.method(Constant), 0);
+    fail_unless_eq!(a.method(Constant), 0);
 }

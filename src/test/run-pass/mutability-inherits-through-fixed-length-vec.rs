@@ -11,13 +11,13 @@
 fn test1() {
     let mut ints = [0, ..32];
     ints[0] += 1;
-    assert_eq!(ints[0], 1);
+    fail_unless_eq!(ints[0], 1);
 }
 
 fn test2() {
     let mut ints = [0, ..32];
     for i in ints.mut_iter() { *i += 22; }
-    for i in ints.iter() { assert!(*i == 22); }
+    for i in ints.iter() { fail_unless!(*i == 22); }
 }
 
 pub fn main() {

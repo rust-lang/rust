@@ -94,7 +94,7 @@ fn test_destroy_actually_kills(force: bool) {
     let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new())
         .unwrap();
 
-    assert!(process_exists(p.get_id()));
+    fail_unless!(process_exists(p.get_id()));
 
     if force {
         p.force_destroy();
@@ -102,7 +102,7 @@ fn test_destroy_actually_kills(force: bool) {
         p.destroy();
     }
 
-    assert!(!process_exists(p.get_id()));
+    fail_unless!(!process_exists(p.get_id()));
 }
 
 #[test]

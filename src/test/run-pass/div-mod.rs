@@ -14,14 +14,14 @@
 pub fn main() {
     let x: int = 15;
     let y: int = 5;
-    assert_eq!(x / 5, 3);
-    assert_eq!(x / 4, 3);
-    assert_eq!(x / 3, 5);
-    assert_eq!(x / y, 3);
-    assert_eq!(15 / y, 3);
-    assert_eq!(x % 5, 0);
-    assert_eq!(x % 4, 3);
-    assert_eq!(x % 3, 0);
-    assert_eq!(x % y, 0);
-    assert_eq!(15 % y, 0);
+    fail_unless_eq!(x / 5, 3);
+    fail_unless_eq!(x / 4, 3);
+    fail_unless_eq!(x / 3, 5);
+    fail_unless_eq!(x / y, 3);
+    fail_unless_eq!(15 / y, 3);
+    fail_unless_eq!(x % 5, 0);
+    fail_unless_eq!(x % 4, 3);
+    fail_unless_eq!(x % 3, 0);
+    fail_unless_eq!(x % y, 0);
+    fail_unless_eq!(15 % y, 0);
 }

@@ -26,20 +26,20 @@ impl<'a> get for &'a int {
 pub fn main() {
     let x = @6;
     let y = x.get();
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 
     let x = @6;
     let y = x.get();
     info!("y={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 
     let x = ~6;
     let y = x.get();
     info!("y={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 
     let x = &6;
     let y = x.get();
     info!("y={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 }

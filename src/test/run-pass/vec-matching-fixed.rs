@@ -26,9 +26,9 @@ fn a() {
     }
     match x {
         [a, b, c] => {
-            assert_eq!(1, a);
-            assert_eq!(2, b);
-            assert_eq!(3, c);
+            fail_unless_eq!(1, a);
+            fail_unless_eq!(2, b);
+            fail_unless_eq!(3, c);
         }
     }
 }

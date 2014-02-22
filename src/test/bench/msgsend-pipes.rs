@@ -100,7 +100,7 @@ fn run(args: &[~str]) {
     print!("Test took {:?} seconds\n", elapsed);
     let thruput = ((size / workers * workers) as f64) / (elapsed as f64);
     print!("Throughput={} per sec\n", thruput);
-    assert_eq!(result, num_bytes * size);
+    fail_unless_eq!(result, num_bytes * size);
 }
 
 fn main() {

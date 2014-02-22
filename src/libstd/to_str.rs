@@ -127,23 +127,23 @@ mod tests {
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_str(), ~"1");
-        assert_eq!((-1i).to_str(), ~"-1");
-        assert_eq!(200u.to_str(), ~"200");
-        assert_eq!(2u8.to_str(), ~"2");
-        assert_eq!(true.to_str(), ~"true");
-        assert_eq!(false.to_str(), ~"false");
-        assert_eq!(().to_str(), ~"()");
-        assert_eq!((~"hi").to_str(), ~"hi");
+        fail_unless_eq!(1i.to_str(), ~"1");
+        fail_unless_eq!((-1i).to_str(), ~"-1");
+        fail_unless_eq!(200u.to_str(), ~"200");
+        fail_unless_eq!(2u8.to_str(), ~"2");
+        fail_unless_eq!(true.to_str(), ~"true");
+        fail_unless_eq!(false.to_str(), ~"false");
+        fail_unless_eq!(().to_str(), ~"()");
+        fail_unless_eq!((~"hi").to_str(), ~"hi");
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = ~[];
-        assert_eq!(x.to_str(), ~"[]");
-        assert_eq!((~[1]).to_str(), ~"[1]");
-        assert_eq!((~[1, 2, 3]).to_str(), ~"[1, 2, 3]");
-        assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
+        fail_unless_eq!(x.to_str(), ~"[]");
+        fail_unless_eq!((~[1]).to_str(), ~"[1]");
+        fail_unless_eq!((~[1, 2, 3]).to_str(), ~"[1, 2, 3]");
+        fail_unless!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
     }
 
@@ -167,8 +167,8 @@ mod tests {
 
         let table_str = table.to_str();
 
-        assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
-        assert_eq!(empty.to_str(), ~"{}");
+        fail_unless!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
+        fail_unless_eq!(empty.to_str(), ~"{}");
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
 
         let set_str = set.to_str();
 
-        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
-        assert_eq!(empty_set.to_str(), ~"{}");
+        fail_unless!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        fail_unless_eq!(empty_set.to_str(), ~"{}");
     }
 }

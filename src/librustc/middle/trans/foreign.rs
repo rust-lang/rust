@@ -136,7 +136,7 @@ pub fn register_foreign_item_fn(ccx: @CrateContext, abis: AbiSet,
     // Make sure the calling convention is right for variadic functions
     // (should've been caught if not in typeck)
     if tys.fn_sig.variadic {
-        assert!(cc == lib::llvm::CCallConv);
+        fail_unless!(cc == lib::llvm::CCallConv);
     }
 
     // Create the LLVM value for the C extern fn
@@ -451,7 +451,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
         // normal Rust function. This will be the type of the wrappee fn.
         let f = match ty::get(t).sty {
             ty::ty_bare_fn(ref f) => {
-                assert!(!f.abis.is_rust() && !f.abis.is_intrinsic());
+                fail_unless!(!f.abis.is_rust() && !f.abis.is_intrinsic());
                 f
             }
             _ => {
@@ -610,7 +610,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
             // bitcast the llforeign_arg pointer so it matches the types
             // Rust expects.
             if llforeign_arg_ty.cast.is_some() {
-                assert!(!foreign_indirect);
+                fail_unless!(!foreign_indirect);
                 llforeign_arg = llvm::LLVMBuildBitCast(
                     builder, llforeign_arg,
                     llrust_ty.ptr_to().to_ref(), noname());

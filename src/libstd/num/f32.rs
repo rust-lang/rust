@@ -294,7 +294,7 @@ impl Round for f32 {
     ///
     /// ```rust
     /// let x = 1.65f32;
-    /// assert!(x == x.trunc() + x.fract())
+    /// fail_unless!(x == x.trunc() + x.fract())
     /// ```
     #[inline]
     fn fract(&self) -> f32 { *self - self.trunc() }
@@ -945,53 +945,53 @@ mod tests {
 
     #[test]
     fn test_asinh() {
-        assert_eq!(0.0f32.asinh(), 0.0f32);
-        assert_eq!((-0.0f32).asinh(), -0.0f32);
+        fail_unless_eq!(0.0f32.asinh(), 0.0f32);
+        fail_unless_eq!((-0.0f32).asinh(), -0.0f32);
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(inf.asinh(), inf);
-        assert_eq!(neg_inf.asinh(), neg_inf);
-        assert!(nan.asinh().is_nan());
+        fail_unless_eq!(inf.asinh(), inf);
+        fail_unless_eq!(neg_inf.asinh(), neg_inf);
+        fail_unless!(nan.asinh().is_nan());
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     }
 
     #[test]
     fn test_acosh() {
-        assert_eq!(1.0f32.acosh(), 0.0f32);
-        assert!(0.999f32.acosh().is_nan());
+        fail_unless_eq!(1.0f32.acosh(), 0.0f32);
+        fail_unless!(0.999f32.acosh().is_nan());
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(inf.acosh(), inf);
-        assert!(neg_inf.acosh().is_nan());
-        assert!(nan.acosh().is_nan());
+        fail_unless_eq!(inf.acosh(), inf);
+        fail_unless!(neg_inf.acosh().is_nan());
+        fail_unless!(nan.acosh().is_nan());
         assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
         assert_approx_eq!(3.0f32.acosh(), 1.76274717403908605046521864995958461f32);
     }
 
     #[test]
     fn test_atanh() {
-        assert_eq!(0.0f32.atanh(), 0.0f32);
-        assert_eq!((-0.0f32).atanh(), -0.0f32);
+        fail_unless_eq!(0.0f32.atanh(), 0.0f32);
+        fail_unless_eq!((-0.0f32).atanh(), -0.0f32);
 
         let inf32: f32 = Float::infinity();
         let neg_inf32: f32 = Float::neg_infinity();
-        assert_eq!(1.0f32.atanh(), inf32);
-        assert_eq!((-1.0f32).atanh(), neg_inf32);
+        fail_unless_eq!(1.0f32.atanh(), inf32);
+        fail_unless_eq!((-1.0f32).atanh(), neg_inf32);
 
-        assert!(2f64.atanh().atanh().is_nan());
-        assert!((-2f64).atanh().atanh().is_nan());
+        fail_unless!(2f64.atanh().atanh().is_nan());
+        fail_unless!((-2f64).atanh().atanh().is_nan());
 
         let inf64: f32 = Float::infinity();
         let neg_inf64: f32 = Float::neg_infinity();
         let nan32: f32 = Float::nan();
-        assert!(inf64.atanh().is_nan());
-        assert!(neg_inf64.atanh().is_nan());
-        assert!(nan32.atanh().is_nan());
+        fail_unless!(inf64.atanh().is_nan());
+        fail_unless!(neg_inf64.atanh().is_nan());
+        fail_unless!(nan32.atanh().is_nan());
 
         assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
         assert_approx_eq!((-0.5f32).atanh(), -0.54930614433405484569762261846126285f32);
@@ -1036,68 +1036,68 @@ mod tests {
 
     #[test]
     pub fn test_abs() {
-        assert_eq!(INFINITY.abs(), INFINITY);
-        assert_eq!(1f32.abs(), 1f32);
-        assert_eq!(0f32.abs(), 0f32);
-        assert_eq!((-0f32).abs(), 0f32);
-        assert_eq!((-1f32).abs(), 1f32);
-        assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
-        assert!(NAN.abs().is_nan());
+        fail_unless_eq!(INFINITY.abs(), INFINITY);
+        fail_unless_eq!(1f32.abs(), 1f32);
+        fail_unless_eq!(0f32.abs(), 0f32);
+        fail_unless_eq!((-0f32).abs(), 0f32);
+        fail_unless_eq!((-1f32).abs(), 1f32);
+        fail_unless_eq!(NEG_INFINITY.abs(), INFINITY);
+        fail_unless_eq!((1f32/NEG_INFINITY).abs(), 0f32);
+        fail_unless!(NAN.abs().is_nan());
     }
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-1f32).abs_sub(&1f32), 0f32);
-        assert_eq!(1f32.abs_sub(&1f32), 0f32);
-        assert_eq!(1f32.abs_sub(&0f32), 1f32);
-        assert_eq!(1f32.abs_sub(&-1f32), 2f32);
-        assert_eq!(NEG_INFINITY.abs_sub(&0f32), 0f32);
-        assert_eq!(INFINITY.abs_sub(&1f32), INFINITY);
-        assert_eq!(0f32.abs_sub(&NEG_INFINITY), INFINITY);
-        assert_eq!(0f32.abs_sub(&INFINITY), 0f32);
+        fail_unless_eq!((-1f32).abs_sub(&1f32), 0f32);
+        fail_unless_eq!(1f32.abs_sub(&1f32), 0f32);
+        fail_unless_eq!(1f32.abs_sub(&0f32), 1f32);
+        fail_unless_eq!(1f32.abs_sub(&-1f32), 2f32);
+        fail_unless_eq!(NEG_INFINITY.abs_sub(&0f32), 0f32);
+        fail_unless_eq!(INFINITY.abs_sub(&1f32), INFINITY);
+        fail_unless_eq!(0f32.abs_sub(&NEG_INFINITY), INFINITY);
+        fail_unless_eq!(0f32.abs_sub(&INFINITY), 0f32);
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(&-1f32).is_nan());
-        assert!(1f32.abs_sub(&NAN).is_nan());
+        fail_unless!(NAN.abs_sub(&-1f32).is_nan());
+        fail_unless!(1f32.abs_sub(&NAN).is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(INFINITY.signum(), 1f32);
-        assert_eq!(1f32.signum(), 1f32);
-        assert_eq!(0f32.signum(), 1f32);
-        assert_eq!((-0f32).signum(), -1f32);
-        assert_eq!((-1f32).signum(), -1f32);
-        assert_eq!(NEG_INFINITY.signum(), -1f32);
-        assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
-        assert!(NAN.signum().is_nan());
+        fail_unless_eq!(INFINITY.signum(), 1f32);
+        fail_unless_eq!(1f32.signum(), 1f32);
+        fail_unless_eq!(0f32.signum(), 1f32);
+        fail_unless_eq!((-0f32).signum(), -1f32);
+        fail_unless_eq!((-1f32).signum(), -1f32);
+        fail_unless_eq!(NEG_INFINITY.signum(), -1f32);
+        fail_unless_eq!((1f32/NEG_INFINITY).signum(), -1f32);
+        fail_unless!(NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_positive() {
-        assert!(INFINITY.is_positive());
-        assert!(1f32.is_positive());
-        assert!(0f32.is_positive());
-        assert!(!(-0f32).is_positive());
-        assert!(!(-1f32).is_positive());
-        assert!(!NEG_INFINITY.is_positive());
-        assert!(!(1f32/NEG_INFINITY).is_positive());
-        assert!(!NAN.is_positive());
+        fail_unless!(INFINITY.is_positive());
+        fail_unless!(1f32.is_positive());
+        fail_unless!(0f32.is_positive());
+        fail_unless!(!(-0f32).is_positive());
+        fail_unless!(!(-1f32).is_positive());
+        fail_unless!(!NEG_INFINITY.is_positive());
+        fail_unless!(!(1f32/NEG_INFINITY).is_positive());
+        fail_unless!(!NAN.is_positive());
     }
 
     #[test]
     fn test_is_negative() {
-        assert!(!INFINITY.is_negative());
-        assert!(!1f32.is_negative());
-        assert!(!0f32.is_negative());
-        assert!((-0f32).is_negative());
-        assert!((-1f32).is_negative());
-        assert!(NEG_INFINITY.is_negative());
-        assert!((1f32/NEG_INFINITY).is_negative());
-        assert!(!NAN.is_negative());
+        fail_unless!(!INFINITY.is_negative());
+        fail_unless!(!1f32.is_negative());
+        fail_unless!(!0f32.is_negative());
+        fail_unless!((-0f32).is_negative());
+        fail_unless!((-1f32).is_negative());
+        fail_unless!(NEG_INFINITY.is_negative());
+        fail_unless!((1f32/NEG_INFINITY).is_negative());
+        fail_unless!(!NAN.is_negative());
     }
 
     #[test]
@@ -1107,14 +1107,14 @@ mod tests {
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Zero::zero();
         let neg_zero: f32 = Float::neg_zero();
-        assert!(!nan.is_normal());
-        assert!(!inf.is_normal());
-        assert!(!neg_inf.is_normal());
-        assert!(!zero.is_normal());
-        assert!(!neg_zero.is_normal());
-        assert!(1f32.is_normal());
-        assert!(1e-37f32.is_normal());
-        assert!(!1e-38f32.is_normal());
+        fail_unless!(!nan.is_normal());
+        fail_unless!(!inf.is_normal());
+        fail_unless!(!neg_inf.is_normal());
+        fail_unless!(!zero.is_normal());
+        fail_unless!(!neg_zero.is_normal());
+        fail_unless!(1f32.is_normal());
+        fail_unless!(1e-37f32.is_normal());
+        fail_unless!(!1e-38f32.is_normal());
     }
 
     #[test]
@@ -1124,14 +1124,14 @@ mod tests {
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Zero::zero();
         let neg_zero: f32 = Float::neg_zero();
-        assert_eq!(nan.classify(), FPNaN);
-        assert_eq!(inf.classify(), FPInfinite);
-        assert_eq!(neg_inf.classify(), FPInfinite);
-        assert_eq!(zero.classify(), FPZero);
-        assert_eq!(neg_zero.classify(), FPZero);
-        assert_eq!(1f32.classify(), FPNormal);
-        assert_eq!(1e-37f32.classify(), FPNormal);
-        assert_eq!(1e-38f32.classify(), FPSubnormal);
+        fail_unless_eq!(nan.classify(), FPNaN);
+        fail_unless_eq!(inf.classify(), FPInfinite);
+        fail_unless_eq!(neg_inf.classify(), FPInfinite);
+        fail_unless_eq!(zero.classify(), FPZero);
+        fail_unless_eq!(neg_zero.classify(), FPZero);
+        fail_unless_eq!(1f32.classify(), FPNormal);
+        fail_unless_eq!(1e-37f32.classify(), FPNormal);
+        fail_unless_eq!(1e-38f32.classify(), FPSubnormal);
     }
 
     #[test]
@@ -1140,18 +1140,18 @@ mod tests {
         // are supported in floating-point literals
         let f1: f32 = from_str_hex("1p-123").unwrap();
         let f2: f32 = from_str_hex("1p-111").unwrap();
-        assert_eq!(Float::ldexp(1f32, -123), f1);
-        assert_eq!(Float::ldexp(1f32, -111), f2);
+        fail_unless_eq!(Float::ldexp(1f32, -123), f1);
+        fail_unless_eq!(Float::ldexp(1f32, -111), f2);
 
-        assert_eq!(Float::ldexp(0f32, -123), 0f32);
-        assert_eq!(Float::ldexp(-0f32, -123), -0f32);
+        fail_unless_eq!(Float::ldexp(0f32, -123), 0f32);
+        fail_unless_eq!(Float::ldexp(-0f32, -123), -0f32);
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(Float::ldexp(inf, -123), inf);
-        assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
-        assert!(Float::ldexp(nan, -123).is_nan());
+        fail_unless_eq!(Float::ldexp(inf, -123), inf);
+        fail_unless_eq!(Float::ldexp(neg_inf, -123), neg_inf);
+        fail_unless!(Float::ldexp(nan, -123).is_nan());
     }
 
     #[test]
@@ -1162,13 +1162,13 @@ mod tests {
         let f2: f32 = from_str_hex("1p-111").unwrap();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
-        assert_eq!((x1, exp1), (0.5f32, -122));
-        assert_eq!((x2, exp2), (0.5f32, -110));
-        assert_eq!(Float::ldexp(x1, exp1), f1);
-        assert_eq!(Float::ldexp(x2, exp2), f2);
+        fail_unless_eq!((x1, exp1), (0.5f32, -122));
+        fail_unless_eq!((x2, exp2), (0.5f32, -110));
+        fail_unless_eq!(Float::ldexp(x1, exp1), f1);
+        fail_unless_eq!(Float::ldexp(x2, exp2), f2);
 
-        assert_eq!(0f32.frexp(), (0f32, 0));
-        assert_eq!((-0f32).frexp(), (-0f32, 0));
+        fail_unless_eq!(0f32.frexp(), (0f32, 0));
+        fail_unless_eq!((-0f32).frexp(), (-0f32, 0));
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8755
@@ -1176,20 +1176,20 @@ mod tests {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf)
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
-        assert!(match nan.frexp() { (x, _) => x.is_nan() })
+        fail_unless_eq!(match inf.frexp() { (x, _) => x }, inf)
+        fail_unless_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
+        fail_unless!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]
     fn test_integer_decode() {
-        assert_eq!(3.14159265359f32.integer_decode(), (13176795u64, -22i16, 1i8));
-        assert_eq!((-8573.5918555f32).integer_decode(), (8779358u64, -10i16, -1i8));
-        assert_eq!(2f32.powf(&100.0).integer_decode(), (8388608u64, 77i16, 1i8));
-        assert_eq!(0f32.integer_decode(), (0u64, -150i16, 1i8));
-        assert_eq!((-0f32).integer_decode(), (0u64, -150i16, -1i8));
-        assert_eq!(INFINITY.integer_decode(), (8388608u64, 105i16, 1i8));
-        assert_eq!(NEG_INFINITY.integer_decode(), (8388608u64, 105i16, -1i8));
-        assert_eq!(NAN.integer_decode(), (12582912u64, 105i16, 1i8));
+        fail_unless_eq!(3.14159265359f32.integer_decode(), (13176795u64, -22i16, 1i8));
+        fail_unless_eq!((-8573.5918555f32).integer_decode(), (8779358u64, -10i16, -1i8));
+        fail_unless_eq!(2f32.powf(&100.0).integer_decode(), (8388608u64, 77i16, 1i8));
+        fail_unless_eq!(0f32.integer_decode(), (0u64, -150i16, 1i8));
+        fail_unless_eq!((-0f32).integer_decode(), (0u64, -150i16, -1i8));
+        fail_unless_eq!(INFINITY.integer_decode(), (8388608u64, 105i16, 1i8));
+        fail_unless_eq!(NEG_INFINITY.integer_decode(), (8388608u64, 105i16, -1i8));
+        fail_unless_eq!(NAN.integer_decode(), (12582912u64, 105i16, 1i8));
     }
 }

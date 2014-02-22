@@ -13,5 +13,5 @@
 static toplevel_mod: int = -1;
 
 pub fn main() {
-    assert_eq!(toplevel_mod, -1);
+    fail_unless_eq!(toplevel_mod, -1);
 }

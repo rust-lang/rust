@@ -28,5 +28,5 @@ impl FooTrait for BarStruct {
 
 pub fn main() {
     let foo = ~BarStruct{ x: 22 } as ~FooTrait;
-    assert_eq!(22, foo.foo());
+    fail_unless_eq!(22, foo.foo());
 }

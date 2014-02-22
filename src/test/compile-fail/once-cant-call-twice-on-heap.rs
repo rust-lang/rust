@@ -23,7 +23,7 @@ fn foo(blk: proc()) {
 fn main() {
     let x = Arc::new(true);
     foo(proc() {
-        assert!(*x.get());
+        fail_unless!(*x.get());
         drop(x);
     });
 }

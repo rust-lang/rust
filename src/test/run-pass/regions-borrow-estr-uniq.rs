@@ -15,9 +15,9 @@ fn foo(x: &str) -> u8 {
 pub fn main() {
     let p = ~"hello";
     let r = foo(p);
-    assert_eq!(r, 'h' as u8);
+    fail_unless_eq!(r, 'h' as u8);
 
     let p = ~"hello";
     let r = foo(p);
-    assert_eq!(r, 'h' as u8);
+    fail_unless_eq!(r, 'h' as u8);
 }

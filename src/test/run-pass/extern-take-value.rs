@@ -19,6 +19,6 @@ pub fn main() {
     let b: extern "C" fn() = f;
     let c: extern "C" fn() = g;
 
-    assert_eq!(a, b);
-    assert!(a != c);
+    fail_unless_eq!(a, b);
+    fail_unless!(a != c);
 }

@@ -34,6 +34,6 @@ extern "C" fn foo(_x: uint) -> Foo { B }
 pub fn main() {
   unsafe {
     let f: extern "C" fn(uint) -> u32 = ::std::cast::transmute(foo);
-    assert_eq!(f(0xDEADBEEF), B as u32);
+    fail_unless_eq!(f(0xDEADBEEF), B as u32);
   }
 }

@@ -13,5 +13,5 @@
 pub fn main() {
     let _f: |int| -> int = |ref x: int| { *x };
     let foo = 10;
-    assert!(_f(foo) == 10);
+    fail_unless!(_f(foo) == 10);
 }

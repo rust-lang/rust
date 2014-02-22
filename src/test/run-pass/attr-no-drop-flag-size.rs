@@ -21,5 +21,5 @@ impl<T> Drop for Test<T> {
 }
 
 pub fn main() {
-    assert_eq!(size_of::<int>(), size_of::<Test<int>>());
+    fail_unless_eq!(size_of::<int>(), size_of::<Test<int>>());
 }

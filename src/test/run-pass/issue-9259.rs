@@ -19,5 +19,5 @@ pub fn main() {
         a: &[~"test"],
         b: Some(b),
     };
-    assert_eq!(a.b.get_ref()[0].as_slice(), "foo");
+    fail_unless_eq!(a.b.get_ref()[0].as_slice(), "foo");
 }

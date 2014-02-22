@@ -27,8 +27,8 @@ pub fn main() {
     let mut it = Unfold::new(0, count);
     let mut i = 0;
     for counted in it {
-        assert_eq!(counted, i);
+        fail_unless_eq!(counted, i);
         i += 1;
     }
-    assert_eq!(i, 10);
+    fail_unless_eq!(i, 10);
 }

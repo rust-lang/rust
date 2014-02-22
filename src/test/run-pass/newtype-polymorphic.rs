@@ -23,8 +23,8 @@ fn myvec_elt<X>(mv: myvec<X>) -> X {
 
 pub fn main() {
     let mv = myvec(~[1, 2, 3]);
-    assert_eq!(myvec_deref(mv.clone())[1], 2);
-    assert_eq!(myvec_elt(mv.clone()), 1);
+    fail_unless_eq!(myvec_deref(mv.clone())[1], 2);
+    fail_unless_eq!(myvec_elt(mv.clone()), 1);
     let myvec(v) = mv;
-    assert_eq!(v[2], 3);
+    fail_unless_eq!(v[2], 3);
 }

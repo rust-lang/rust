@@ -275,7 +275,7 @@ mod tests {
             let _c = c;
             fail!()
         });
-        assert_eq!(p.recv_opt(), None);
+        fail_unless_eq!(p.recv_opt(), None);
     }
 
     #[test]
@@ -286,7 +286,7 @@ mod tests {
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
         spawn_opts(opts, proc() {});
-        assert!(p.recv().is_ok());
+        fail_unless!(p.recv().is_ok());
     }
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
         spawn_opts(opts, proc() { fail!() });
-        assert!(p.recv().is_err());
+        fail_unless!(p.recv().is_err());
     }
 
     #[test]

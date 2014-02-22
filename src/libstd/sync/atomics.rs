@@ -537,17 +537,17 @@ mod test {
     #[test]
     fn flag() {
         let mut flg = AtomicFlag::new();
-        assert!(!flg.test_and_set(SeqCst));
-        assert!(flg.test_and_set(SeqCst));
+        fail_unless!(!flg.test_and_set(SeqCst));
+        fail_unless!(flg.test_and_set(SeqCst));
 
         flg.clear(SeqCst);
-        assert!(!flg.test_and_set(SeqCst));
+        fail_unless!(!flg.test_and_set(SeqCst));
     }
 
     #[test]
     fn option_empty() {
         let mut option: AtomicOption<()> = AtomicOption::empty();
-        assert!(option.is_empty(SeqCst));
+        fail_unless!(option.is_empty(SeqCst));
     }
 
     #[test]
@@ -557,38 +557,38 @@ mod test {
 
         let b = p.swap(a, SeqCst);
 
-        assert_eq!(b, Some(~1));
-        assert_eq!(p.take(SeqCst), Some(~2));
+        fail_unless_eq!(b, Some(~1));
+        fail_unless_eq!(p.take(SeqCst), Some(~2));
     }
 
     #[test]
     fn option_take() {
         let mut p = AtomicOption::new(~1);
 
-        assert_eq!(p.take(SeqCst), Some(~1));
-        assert_eq!(p.take(SeqCst), None);
+        fail_unless_eq!(p.take(SeqCst), Some(~1));
+        fail_unless_eq!(p.take(SeqCst), None);
 
         let p2 = ~2;
         p.swap(p2, SeqCst);
 
-        assert_eq!(p.take(SeqCst), Some(~2));
+        fail_unless_eq!(p.take(SeqCst), Some(~2));
     }
 
     #[test]
     fn option_fill() {
         let mut p = AtomicOption::new(~1);
-        assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
-        assert_eq!(p.take(SeqCst), Some(~1));
+        fail_unless!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
+        fail_unless_eq!(p.take(SeqCst), Some(~1));
 
-        assert!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
-        assert_eq!(p.take(SeqCst), Some(~2));
+        fail_unless!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
+        fail_unless_eq!(p.take(SeqCst), Some(~2));
     }
 
     #[test]
     fn bool_and() {
         let mut a = AtomicBool::new(true);
-        assert_eq!(a.fetch_and(false, SeqCst),true);
-        assert_eq!(a.load(SeqCst),false);
+        fail_unless_eq!(a.fetch_and(false, SeqCst),true);
+        fail_unless_eq!(a.load(SeqCst),false);
     }
 
     static mut S_FLAG : AtomicFlag = INIT_ATOMIC_FLAG;
@@ -599,10 +599,10 @@ mod test {
     #[test]
     fn static_init() {
         unsafe {
-            assert!(!S_FLAG.test_and_set(SeqCst));
-            assert!(!S_BOOL.load(SeqCst));
-            assert!(S_INT.load(SeqCst) == 0);
-            assert!(S_UINT.load(SeqCst) == 0);
+            fail_unless!(!S_FLAG.test_and_set(SeqCst));
+            fail_unless!(!S_BOOL.load(SeqCst));
+            fail_unless!(S_INT.load(SeqCst) == 0);
+            fail_unless!(S_UINT.load(SeqCst) == 0);
         }
     }
 
@@ -610,13 +610,13 @@ mod test {
     fn different_sizes() {
         unsafe {
             let mut slot = 0u16;
-            assert_eq!(super::atomic_swap(&mut slot, 1, SeqCst), 0);
+            fail_unless_eq!(super::atomic_swap(&mut slot, 1, SeqCst), 0);
 
             let mut slot = 0u8;
-            assert_eq!(super::atomic_compare_and_swap(&mut slot, 1, 2, SeqCst), 0);
+            fail_unless_eq!(super::atomic_compare_and_swap(&mut slot, 1, 2, SeqCst), 0);
 
             let mut slot = 0u32;
-            assert_eq!(super::atomic_load(&mut slot, SeqCst), 0);
+            fail_unless_eq!(super::atomic_load(&mut slot, SeqCst), 0);
 
             let mut slot = 0u64;
             super::atomic_store(&mut slot, 2, SeqCst);

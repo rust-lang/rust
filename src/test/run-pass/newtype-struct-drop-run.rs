@@ -29,5 +29,5 @@ pub fn main() {
     {
         let _x = Foo(y);
     }
-    assert_eq!(y.get(), 23);
+    fail_unless_eq!(y.get(), 23);
 }

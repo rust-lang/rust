@@ -29,7 +29,7 @@ fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {
 
 fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint)> {
     // the sun_path length is limited to SUN_LEN (with null)
-    assert!(mem::size_of::<libc::sockaddr_storage>() >=
+    fail_unless!(mem::size_of::<libc::sockaddr_storage>() >=
             mem::size_of::<libc::sockaddr_un>());
     let mut storage: libc::sockaddr_storage = unsafe { intrinsics::init() };
     let s: &mut libc::sockaddr_un = unsafe { cast::transmute(&mut storage) };
@@ -56,7 +56,7 @@ fn sockaddr_to_unix(storage: &libc::sockaddr_storage,
                     len: uint) -> IoResult<CString> {
     match storage.ss_family as libc::c_int {
         libc::AF_UNIX => {
-            assert!(len as uint <= mem::size_of::<libc::sockaddr_un>());
+            fail_unless!(len as uint <= mem::size_of::<libc::sockaddr_un>());
             let storage: &libc::sockaddr_un = unsafe {
                 cast::transmute(storage)
             };

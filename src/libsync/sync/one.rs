@@ -127,9 +127,9 @@ mod test {
         static mut o: Once = ONCE_INIT;
         let mut a = 0;
         unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
+        fail_unless_eq!(a, 1);
         unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
+        fail_unless_eq!(a, 1);
     }
 
     #[test]
@@ -144,10 +144,10 @@ mod test {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
-                        assert!(!run);
+                        fail_unless!(!run);
                         run = true;
                     });
-                    assert!(run);
+                    fail_unless!(run);
                 }
                 c.send(());
             });
@@ -155,10 +155,10 @@ mod test {
 
         unsafe {
             o.doit(|| {
-                assert!(!run);
+                fail_unless!(!run);
                 run = true;
             });
-            assert!(run);
+            fail_unless!(run);
         }
 
         for _ in range(0, 10) {

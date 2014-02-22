@@ -14,5 +14,5 @@ pub fn main() {
     for x in xs.iter() {
         sum += *x;
     }
-    assert_eq!(sum, 15);
+    fail_unless_eq!(sum, 15);
 }

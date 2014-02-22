@@ -31,5 +31,5 @@ pub fn main() {
     let factory = ();
     let connection = factory.create();
     let result = connection.read();
-    assert_eq!(result, 43);
+    fail_unless_eq!(result, 43);
 }

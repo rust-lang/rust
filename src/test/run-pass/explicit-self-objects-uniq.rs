@@ -18,7 +18,7 @@ struct S {
 
 impl Foo for S {
     fn f(~self) {
-        assert_eq!(self.x, 3);
+        fail_unless_eq!(self.x, 3);
     }
 }
 

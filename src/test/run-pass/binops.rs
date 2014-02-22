@@ -11,39 +11,39 @@
 // Binop corner cases
 
 fn test_nil() {
-    assert_eq!((), ());
-    assert!((!(() != ())));
-    assert!((!(() < ())));
-    assert!((() <= ()));
-    assert!((!(() > ())));
-    assert!((() >= ()));
+    fail_unless_eq!((), ());
+    fail_unless!((!(() != ())));
+    fail_unless!((!(() < ())));
+    fail_unless!((() <= ()));
+    fail_unless!((!(() > ())));
+    fail_unless!((() >= ()));
 }
 
 fn test_bool() {
-    assert!((!(true < false)));
-    assert!((!(true <= false)));
-    assert!((true > false));
-    assert!((true >= false));
+    fail_unless!((!(true < false)));
+    fail_unless!((!(true <= false)));
+    fail_unless!((true > false));
+    fail_unless!((true >= false));
 
-    assert!((false < true));
-    assert!((false <= true));
-    assert!((!(false > true)));
-    assert!((!(false >= true)));
+    fail_unless!((false < true));
+    fail_unless!((false <= true));
+    fail_unless!((!(false > true)));
+    fail_unless!((!(false >= true)));
 
     // Bools support bitwise binops
-    assert_eq!(false & false, false);
-    assert_eq!(true & false, false);
-    assert_eq!(true & true, true);
-    assert_eq!(false | false, false);
-    assert_eq!(true | false, true);
-    assert_eq!(true | true, true);
-    assert_eq!(false ^ false, false);
-    assert_eq!(true ^ false, true);
-    assert_eq!(true ^ true, false);
+    fail_unless_eq!(false & false, false);
+    fail_unless_eq!(true & false, false);
+    fail_unless_eq!(true & true, true);
+    fail_unless_eq!(false | false, false);
+    fail_unless_eq!(true | false, true);
+    fail_unless_eq!(true | true, true);
+    fail_unless_eq!(false ^ false, false);
+    fail_unless_eq!(true ^ false, true);
+    fail_unless_eq!(true ^ true, false);
 }
 
 fn test_box() {
-    assert_eq!(@10, @10);
+    fail_unless_eq!(@10, @10);
 }
 
 fn test_ptr() {
@@ -52,14 +52,14 @@ fn test_ptr() {
         let p2: *u8 = ::std::cast::transmute(0);
         let p3: *u8 = ::std::cast::transmute(1);
 
-        assert_eq!(p1, p2);
-        assert!(p1 != p3);
-        assert!(p1 < p3);
-        assert!(p1 <= p3);
-        assert!(p3 > p1);
-        assert!(p3 >= p3);
-        assert!(p1 <= p2);
-        assert!(p1 >= p2);
+        fail_unless_eq!(p1, p2);
+        fail_unless!(p1 != p3);
+        fail_unless!(p1 < p3);
+        fail_unless!(p1 <= p3);
+        fail_unless!(p3 > p1);
+        fail_unless!(p3 >= p3);
+        fail_unless!(p1 <= p2);
+        fail_unless!(p1 >= p2);
     }
 }
 
@@ -85,11 +85,11 @@ fn test_class() {
          (::std::cast::transmute::<*p, uint>(&q)),
          (::std::cast::transmute::<*p, uint>(&r)));
   }
-  assert_eq!(q, r);
+  fail_unless_eq!(q, r);
   r.y = 17;
-  assert!((r.y != q.y));
-  assert_eq!(r.y, 17);
-  assert!((q != r));
+  fail_unless!((r.y != q.y));
+  fail_unless_eq!(r.y, 17);
+  fail_unless!((q != r));
 }
 
 pub fn main() {

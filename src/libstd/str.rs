@@ -64,7 +64,7 @@ other languages.
 let mut buf = ~"testing";
 buf.push_char(' ');
 buf.push_str("123");
-assert_eq!(buf, ~"testing 123");
+fail_unless_eq!(buf, ~"testing 123");
  ```
 
 # Representation
@@ -153,7 +153,7 @@ impl<'a> ToStr for &'a str {
 ///
 /// Fails if invalid UTF-8
 pub fn from_byte(b: u8) -> ~str {
-    assert!(b < 128u8);
+    fail_unless!(b < 128u8);
     unsafe { ::cast::transmute(~[b]) }
 }
 
@@ -947,7 +947,7 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 ///          0x0073, 0xDD1E, 0x0069, 0x0063,
 ///          0xD834];
 ///
-/// assert_eq!(str::utf16_items(v).to_owned_vec(),
+/// fail_unless_eq!(str::utf16_items(v).to_owned_vec(),
 ///            ~[ScalarValue('𝄞'),
 ///              ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
 ///              LoneSurrogate(0xDD1E),
@@ -969,11 +969,11 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
 /// // "abcd"
 /// let mut v = ['a' as u16, 'b' as u16, 'c' as u16, 'd' as u16];
 /// // no NULs so no change
-/// assert_eq!(str::truncate_utf16_at_nul(v), v.as_slice());
+/// fail_unless_eq!(str::truncate_utf16_at_nul(v), v.as_slice());
 ///
 /// // "ab\0d"
 /// v[2] = 0;
-/// assert_eq!(str::truncate_utf16_at_nul(v),
+/// fail_unless_eq!(str::truncate_utf16_at_nul(v),
 ///            &['a' as u16, 'b' as u16]);
 /// ```
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
@@ -995,11 +995,11 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
 /// // 𝄞music
 /// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
 ///              0x0073, 0x0069, 0x0063];
-/// assert_eq!(str::from_utf16(v), Some(~"𝄞music"));
+/// fail_unless_eq!(str::from_utf16(v), Some(~"𝄞music"));
 ///
 /// // 𝄞mu<invalid>ic
 /// v[4] = 0xD800;
-/// assert_eq!(str::from_utf16(v), None);
+/// fail_unless_eq!(str::from_utf16(v), None);
 /// ```
 pub fn from_utf16(v: &[u16]) -> Option<~str> {
     let mut s = with_capacity(v.len() / 2);
@@ -1024,7 +1024,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
 ///          0x0073, 0xDD1E, 0x0069, 0x0063,
 ///          0xD834];
 ///
-/// assert_eq!(str::from_utf16_lossy(v),
+/// fail_unless_eq!(str::from_utf16_lossy(v),
 ///            ~"𝄞mus\uFFFDic\uFFFD");
 /// ```
 pub fn from_utf16_lossy(v: &[u16]) -> ~str {
@@ -1097,7 +1097,7 @@ static TAG_CONT_U8: u8 = 128u8;
 /// ```rust
 /// let input = bytes!("Hello ", 0xF0, 0x90, 0x80, "World");
 /// let output = std::str::from_utf8_lossy(input);
-/// assert_eq!(output.as_slice(), "Hello \uFFFDWorld");
+/// fail_unless_eq!(output.as_slice(), "Hello \uFFFDWorld");
 /// ```
 pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
     let firstbad = match first_non_utf8_index(v) {
@@ -1394,7 +1394,7 @@ pub mod raw {
         ptr::copy_memory(v.as_mut_ptr(), buf, len);
         v.set_len(len);
 
-        assert!(is_utf8(v));
+        fail_unless!(is_utf8(v));
         ::cast::transmute(v)
     }
 
@@ -1445,7 +1445,7 @@ pub mod raw {
             curr = s.offset(len as int);
         }
         let v = Slice { data: s, len: len };
-        assert!(is_utf8(::cast::transmute(v)));
+        fail_unless!(is_utf8(::cast::transmute(v)));
         ::cast::transmute(v)
     }
 
@@ -1459,8 +1459,8 @@ pub mod raw {
     /// If end is greater than the length of the string.
     #[inline]
     pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        assert!(begin <= end);
-        assert!(end <= s.len());
+        fail_unless!(begin <= end);
+        fail_unless!(end <= s.len());
         slice_unchecked(s, begin, end)
     }
 
@@ -1495,7 +1495,7 @@ pub mod raw {
     /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
         let len = s.len();
-        assert!((len > 0u));
+        fail_unless!((len > 0u));
         let b = s[len - 1u];
         s.set_len(len - 1);
         return b;
@@ -1505,7 +1505,7 @@ pub mod raw {
     /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
         let len = s.len();
-        assert!((len > 0u));
+        fail_unless!((len > 0u));
         let b = s[0];
         *s = s.slice(1, len).to_owned();
         return b;
@@ -1529,7 +1529,7 @@ pub mod raw {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
-            assert_eq!(c, ~"AAA");
+            fail_unless_eq!(c, ~"AAA");
         }
     }
 }
@@ -1703,7 +1703,7 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[char] = "abc åäö".chars().collect();
-    /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// fail_unless_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
     fn chars(&self) -> Chars<'a>;
 
@@ -1730,13 +1730,13 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".split(' ').collect();
-    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    /// fail_unless_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
     ///
     /// let v: ~[&str] = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
-    /// assert_eq!(v, ~["abc", "def", "ghi"]);
+    /// fail_unless_eq!(v, ~["abc", "def", "ghi"]);
     ///
     /// let v: ~[&str] = "lionXXtigerXleopard".split('X').collect();
-    /// assert_eq!(v, ~["lion", "", "tiger", "leopard"]);
+    /// fail_unless_eq!(v, ~["lion", "", "tiger", "leopard"]);
     /// ```
     fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -1748,13 +1748,13 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "Mary had a little lambda".splitn(' ', 2).collect();
-    /// assert_eq!(v, ~["Mary", "had", "a little lambda"]);
+    /// fail_unless_eq!(v, ~["Mary", "had", "a little lambda"]);
     ///
     /// let v: ~[&str] = "abc1def2ghi".splitn(|c: char| c.is_digit(), 1).collect();
-    /// assert_eq!(v, ~["abc", "def2ghi"]);
+    /// fail_unless_eq!(v, ~["abc", "def2ghi"]);
     ///
     /// let v: ~[&str] = "lionXXtigerXleopard".splitn('X', 2).collect();
-    /// assert_eq!(v, ~["lion", "", "tigerXleopard"]);
+    /// fail_unless_eq!(v, ~["lion", "", "tigerXleopard"]);
     /// ```
     fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
@@ -1768,10 +1768,10 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "A.B.".split_terminator('.').collect();
-    /// assert_eq!(v, ~["A", "B"]);
+    /// fail_unless_eq!(v, ~["A", "B"]);
     ///
     /// let v: ~[&str] = "A..B..".split_terminator('.').collect();
-    /// assert_eq!(v, ~["A", "", "B", ""]);
+    /// fail_unless_eq!(v, ~["A", "", "B", ""]);
     /// ```
     fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -1782,13 +1782,13 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".rsplit(' ').collect();
-    /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
+    /// fail_unless_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
     ///
     /// let v: ~[&str] = "abc1def2ghi".rsplit(|c: char| c.is_digit()).collect();
-    /// assert_eq!(v, ~["ghi", "def", "abc"]);
+    /// fail_unless_eq!(v, ~["ghi", "def", "abc"]);
     ///
     /// let v: ~[&str] = "lionXXtigerXleopard".rsplit('X').collect();
-    /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
+    /// fail_unless_eq!(v, ~["leopard", "tiger", "", "lion"]);
     /// ```
     fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep>;
 
@@ -1800,13 +1800,13 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".rsplitn(' ', 2).collect();
-    /// assert_eq!(v, ~["lamb", "little", "Mary had a"]);
+    /// fail_unless_eq!(v, ~["lamb", "little", "Mary had a"]);
     ///
     /// let v: ~[&str] = "abc1def2ghi".rsplitn(|c: char| c.is_digit(), 1).collect();
-    /// assert_eq!(v, ~["ghi", "abc1def"]);
+    /// fail_unless_eq!(v, ~["ghi", "abc1def"]);
     ///
     /// let v: ~[&str] = "lionXXtigerXleopard".rsplitn('X', 2).collect();
-    /// assert_eq!(v, ~["leopard", "tiger", "lionX"]);
+    /// fail_unless_eq!(v, ~["leopard", "tiger", "lionX"]);
     /// ```
     fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
@@ -1822,13 +1822,13 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[(uint, uint)] = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, ~[(0,3), (6,9), (12,15)]);
+    /// fail_unless_eq!(v, ~[(0,3), (6,9), (12,15)]);
     ///
     /// let v: ~[(uint, uint)] = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, ~[(1,4), (4,7)]);
+    /// fail_unless_eq!(v, ~[(1,4), (4,7)]);
     ///
     /// let v: ~[(uint, uint)] = "ababa".match_indices("aba").collect();
-    /// assert_eq!(v, ~[(0, 3)]); // only the first `aba`
+    /// fail_unless_eq!(v, ~[(0, 3)]); // only the first `aba`
     /// ```
     fn match_indices(&self, sep: &'a str) -> MatchIndices<'a>;
 
@@ -1838,10 +1838,10 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let v: ~[&str] = "abcXXXabcYYYabc".split_str("abc").collect();
-    /// assert_eq!(v, ~["", "XXX", "YYY", ""]);
+    /// fail_unless_eq!(v, ~["", "XXX", "YYY", ""]);
     ///
     /// let v: ~[&str] = "1abcabc2".split_str("abc").collect();
-    /// assert_eq!(v, ~["1", "", "2"]);
+    /// fail_unless_eq!(v, ~["1", "", "2"]);
     /// ```
     fn split_str(&self, &'a str) -> StrSplits<'a>;
 
@@ -1854,7 +1854,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let four_lines = "foo\nbar\n\nbaz\n";
     /// let v: ~[&str] = four_lines.lines().collect();
-    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// fail_unless_eq!(v, ~["foo", "bar", "", "baz"]);
     /// ```
     fn lines(&self) -> CharSplits<'a, char>;
 
@@ -1867,7 +1867,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
     /// let v: ~[&str] = four_lines.lines_any().collect();
-    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// fail_unless_eq!(v, ~["foo", "bar", "", "baz"]);
     /// ```
     fn lines_any(&self) -> AnyLines<'a>;
 
@@ -1880,7 +1880,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let some_words = " Mary   had\ta little  \n\t lamb";
     /// let v: ~[&str] = some_words.words().collect();
-    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    /// fail_unless_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
     /// ```
     fn words(&self) -> Words<'a>;
 
@@ -1899,10 +1899,10 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert!(" \t\n".is_whitespace());
-    /// assert!("".is_whitespace());
+    /// fail_unless!(" \t\n".is_whitespace());
+    /// fail_unless!("".is_whitespace());
     ///
-    /// assert!( !"abc".is_whitespace());
+    /// fail_unless!( !"abc".is_whitespace());
     /// ```
     fn is_whitespace(&self) -> bool;
 
@@ -1914,10 +1914,10 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
-    /// assert!("".is_alphanumeric());
+    /// fail_unless!("Löwe老虎Léopard123".is_alphanumeric());
+    /// fail_unless!("".is_alphanumeric());
     ///
-    /// assert!( !" &*~".is_alphanumeric());
+    /// fail_unless!( !" &*~".is_alphanumeric());
     /// ```
     fn is_alphanumeric(&self) -> bool;
 
@@ -1942,11 +1942,11 @@ pub trait StrSlice<'a> {
     /// // decomposed forms of `ö` and `é`
     /// let d = "Lo\u0308we 老虎 Le\u0301opard";
     ///
-    /// assert_eq!(c.char_len(), 15);
-    /// assert_eq!(d.char_len(), 17);
+    /// fail_unless_eq!(c.char_len(), 15);
+    /// fail_unless_eq!(d.char_len(), 17);
     ///
-    /// assert_eq!(c.len(), 21);
-    /// assert_eq!(d.len(), 23);
+    /// fail_unless_eq!(c.len(), 21);
+    /// fail_unless_eq!(d.len(), 23);
     ///
     /// // the two strings *look* the same
     /// println!("{}", c);
@@ -1970,9 +1970,9 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
-    /// assert_eq!(s.slice(0, 1), "L");
+    /// fail_unless_eq!(s.slice(0, 1), "L");
     ///
-    /// assert_eq!(s.slice(1, 9), "öwe 老");
+    /// fail_unless_eq!(s.slice(1, 9), "öwe 老");
     ///
     /// // these will fail:
     /// // byte 2 lies within `ö`:
@@ -2027,8 +2027,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
-    /// assert_eq!(s.slice_chars(0, 4), "Löwe");
-    /// assert_eq!(s.slice_chars(5, 7), "老虎");
+    /// fail_unless_eq!(s.slice_chars(0, 4), "Löwe");
+    /// fail_unless_eq!(s.slice_chars(5, 7), "老虎");
     /// ```
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str;
 
@@ -2062,9 +2062,9 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
-    /// assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
+    /// fail_unless_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
+    /// fail_unless_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
+    /// fail_unless_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
     /// ```
     fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
 
@@ -2077,9 +2077,9 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
-    /// assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
+    /// fail_unless_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
+    /// fail_unless_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
+    /// fail_unless_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
     /// ```
     fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
 
@@ -2092,9 +2092,9 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
-    /// assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
+    /// fail_unless_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
+    /// fail_unless_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
+    /// fail_unless_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
     /// ```
     fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
 
@@ -2115,12 +2115,12 @@ pub trait StrSlice<'a> {
     /// let s = ~"Do you know the muffin man,
     /// The muffin man, the muffin man, ...";
     ///
-    /// assert_eq!(s.replace("muffin man", "little lamb"),
+    /// fail_unless_eq!(s.replace("muffin man", "little lamb"),
     ///            ~"Do you know the little lamb,
     /// The little lamb, the little lamb, ...");
     ///
     /// // not found, so no change.
-    /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
+    /// fail_unless_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
     fn replace(&self, from: &str, to: &str) -> ~str;
 
@@ -2142,16 +2142,16 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
-    /// assert!(s.is_char_boundary(0));
+    /// fail_unless!(s.is_char_boundary(0));
     /// // start of `老`
-    /// assert!(s.is_char_boundary(6));
-    /// assert!(s.is_char_boundary(s.len()));
+    /// fail_unless!(s.is_char_boundary(6));
+    /// fail_unless!(s.is_char_boundary(s.len()));
     ///
     /// // second byte of `ö`
-    /// assert!(!s.is_char_boundary(2));
+    /// fail_unless!(!s.is_char_boundary(2));
     ///
     /// // third byte of `老`
-    /// assert!(!s.is_char_boundary(8));
+    /// fail_unless!(!s.is_char_boundary(8));
     /// ```
     fn is_char_boundary(&self, index: uint) -> bool;
 
@@ -2239,14 +2239,14 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.find('L'), Some(0));
-    /// assert_eq!(s.find('é'), Some(14));
+    /// fail_unless_eq!(s.find('L'), Some(0));
+    /// fail_unless_eq!(s.find('é'), Some(14));
     ///
     /// // the first space
-    /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    /// fail_unless_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
     ///
     /// // neither are found
-    /// assert_eq!(s.find(&['1', '2']), None);
+    /// fail_unless_eq!(s.find(&['1', '2']), None);
     /// ```
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
 
@@ -2263,14 +2263,14 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.rfind('L'), Some(13));
-    /// assert_eq!(s.rfind('é'), Some(14));
+    /// fail_unless_eq!(s.rfind('L'), Some(13));
+    /// fail_unless_eq!(s.rfind('é'), Some(14));
     ///
     /// // the second space
-    /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    /// fail_unless_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
     ///
     /// // searches for an occurrence of either `1` or `2`, but neither are found
-    /// assert_eq!(s.rfind(&['1', '2']), None);
+    /// fail_unless_eq!(s.rfind(&['1', '2']), None);
     /// ```
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
 
@@ -2290,8 +2290,8 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     ///
-    /// assert_eq!(s.find_str("老虎 L"), Some(6));
-    /// assert_eq!(s.find_str("muffin man"), None);
+    /// fail_unless_eq!(s.find_str("老虎 L"), Some(6));
+    /// fail_unless_eq!(s.find_str("muffin man"), None);
     /// ```
     fn find_str(&self, &str) -> Option<uint>;
 
@@ -2312,12 +2312,12 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     /// let (c, s1) = s.slice_shift_char();
-    /// assert_eq!(c, 'L');
-    /// assert_eq!(s1, "öwe 老虎 Léopard");
+    /// fail_unless_eq!(c, 'L');
+    /// fail_unless_eq!(s1, "öwe 老虎 Léopard");
     ///
     /// let (c, s2) = s1.slice_shift_char();
-    /// assert_eq!(c, 'ö');
-    /// assert_eq!(s2, "we 老虎 Léopard");
+    /// fail_unless_eq!(c, 'ö');
+    /// fail_unless_eq!(s2, "we 老虎 Léopard");
     /// ```
     fn slice_shift_char(&self) -> (char, &'a str);
 
@@ -2334,9 +2334,9 @@ pub trait StrSlice<'a> {
     /// let string = "a\nb\nc";
     /// let lines: ~[&str] = string.lines().collect();
     ///
-    /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
-    /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
-    /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
+    /// fail_unless!(string.subslice_offset(lines[0]) == 0); // &"a"
+    /// fail_unless!(string.subslice_offset(lines[1]) == 2); // &"b"
+    /// fail_unless!(string.subslice_offset(lines[2]) == 4); // &"c"
     /// ```
     fn subslice_offset(&self, inner: &str) -> uint;
 
@@ -2436,7 +2436,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn match_indices(&self, sep: &'a str) -> MatchIndices<'a> {
-        assert!(!sep.is_empty())
+        fail_unless!(!sep.is_empty())
         MatchIndices {
             haystack: *self,
             needle: sep,
@@ -2502,7 +2502,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(begin) && self.is_char_boundary(end));
+        fail_unless!(self.is_char_boundary(begin) && self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
 
@@ -2513,12 +2513,12 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn slice_to(&self, end: uint) -> &'a str {
-        assert!(self.is_char_boundary(end));
+        fail_unless!(self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, 0, end) }
     }
 
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str {
-        assert!(begin <= end);
+        fail_unless!(begin <= end);
         let mut count = 0;
         let mut begin_byte = None;
         let mut end_byte = None;
@@ -2640,11 +2640,11 @@ impl<'a> StrSlice<'a> for &'a str {
             if (ch & 0xFFFF_u32) == ch {
                 // The BMP falls through (assuming non-surrogate, as it
                 // should)
-                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
+                fail_unless!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
                 u.push(ch as u16)
             } else {
                 // Supplementary planes break into surrogates.
-                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+                fail_unless!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
                 ch -= 0x1_0000_u32;
                 let w1 = 0xD800_u16 | ((ch >> 10) as u16);
                 let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
@@ -2671,7 +2671,7 @@ impl<'a> StrSlice<'a> for &'a str {
         fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
             let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
-            assert!((w != 0));
+            fail_unless!((w != 0));
 
             val = utf8_first_byte!(val, w);
             val = utf8_acc_cont_byte!(val, s[i + 1]);
@@ -2703,7 +2703,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
             let mut val = s[i] as u32;
             let w = UTF8_CHAR_WIDTH[val] as uint;
-            assert!((w != 0));
+            fail_unless!((w != 0));
 
             val = utf8_first_byte!(val, w);
             val = utf8_acc_cont_byte!(val, s[i + 1]);
@@ -2816,8 +2816,8 @@ impl<'a> StrSlice<'a> for &'a str {
         let b_start = inner.as_ptr() as uint;
         let b_end = b_start + inner.len();
 
-        assert!(a_start <= b_start);
-        assert!(b_end <= a_end);
+        fail_unless!(a_start <= b_start);
+        fail_unless!(b_end <= a_end);
         b_start - a_start
     }
 
@@ -2955,7 +2955,7 @@ impl OwnedStr for ~str {
     #[inline]
     fn pop_char(&mut self) -> char {
         let end = self.len();
-        assert!(end > 0u);
+        fail_unless!(end > 0u);
         let CharRange {ch, next} = self.char_range_at_reverse(end);
         unsafe { self.set_len(next); }
         return ch;
@@ -3026,8 +3026,8 @@ impl OwnedStr for ~str {
 
     #[inline]
     fn truncate(&mut self, len: uint) {
-        assert!(len <= self.len());
-        assert!(self.is_char_boundary(len));
+        fail_unless!(len <= self.len());
+        fail_unless!(self.is_char_boundary(len));
         unsafe { self.set_len(len); }
     }
 
@@ -3095,102 +3095,102 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        assert!((eq(&~"", &~"")));
-        assert!((eq(&~"foo", &~"foo")));
-        assert!((!eq(&~"foo", &~"bar")));
+        fail_unless!((eq(&~"", &~"")));
+        fail_unless!((eq(&~"foo", &~"foo")));
+        fail_unless!((!eq(&~"foo", &~"bar")));
     }
 
     #[test]
     fn test_eq_slice() {
-        assert!((eq_slice("foobar".slice(0, 3), "foo")));
-        assert!((eq_slice("barfoo".slice(3, 6), "foo")));
-        assert!((!eq_slice("foo1", "foo2")));
+        fail_unless!((eq_slice("foobar".slice(0, 3), "foo")));
+        fail_unless!((eq_slice("barfoo".slice(3, 6), "foo")));
+        fail_unless!((!eq_slice("foo1", "foo2")));
     }
 
     #[test]
     fn test_le() {
-        assert!("" <= "");
-        assert!("" <= "foo");
-        assert!("foo" <= "foo");
-        assert!("foo" != "bar");
+        fail_unless!("" <= "");
+        fail_unless!("" <= "foo");
+        fail_unless!("foo" <= "foo");
+        fail_unless!("foo" != "bar");
     }
 
     #[test]
     fn test_len() {
-        assert_eq!("".len(), 0u);
-        assert_eq!("hello world".len(), 11u);
-        assert_eq!("\x63".len(), 1u);
-        assert_eq!("\xa2".len(), 2u);
-        assert_eq!("\u03c0".len(), 2u);
-        assert_eq!("\u2620".len(), 3u);
-        assert_eq!("\U0001d11e".len(), 4u);
+        fail_unless_eq!("".len(), 0u);
+        fail_unless_eq!("hello world".len(), 11u);
+        fail_unless_eq!("\x63".len(), 1u);
+        fail_unless_eq!("\xa2".len(), 2u);
+        fail_unless_eq!("\u03c0".len(), 2u);
+        fail_unless_eq!("\u2620".len(), 3u);
+        fail_unless_eq!("\U0001d11e".len(), 4u);
 
-        assert_eq!("".char_len(), 0u);
-        assert_eq!("hello world".char_len(), 11u);
-        assert_eq!("\x63".char_len(), 1u);
-        assert_eq!("\xa2".char_len(), 1u);
-        assert_eq!("\u03c0".char_len(), 1u);
-        assert_eq!("\u2620".char_len(), 1u);
-        assert_eq!("\U0001d11e".char_len(), 1u);
-        assert_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
+        fail_unless_eq!("".char_len(), 0u);
+        fail_unless_eq!("hello world".char_len(), 11u);
+        fail_unless_eq!("\x63".char_len(), 1u);
+        fail_unless_eq!("\xa2".char_len(), 1u);
+        fail_unless_eq!("\u03c0".char_len(), 1u);
+        fail_unless_eq!("\u2620".char_len(), 1u);
+        fail_unless_eq!("\U0001d11e".char_len(), 1u);
+        fail_unless_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
     }
 
     #[test]
     fn test_find() {
-        assert_eq!("hello".find('l'), Some(2u));
-        assert_eq!("hello".find(|c:char| c == 'o'), Some(4u));
-        assert!("hello".find('x').is_none());
-        assert!("hello".find(|c:char| c == 'x').is_none());
-        assert_eq!("ประเทศไทย中华Việt Nam".find('华'), Some(30u));
-        assert_eq!("ประเทศไทย中华Việt Nam".find(|c: char| c == '华'), Some(30u));
+        fail_unless_eq!("hello".find('l'), Some(2u));
+        fail_unless_eq!("hello".find(|c:char| c == 'o'), Some(4u));
+        fail_unless!("hello".find('x').is_none());
+        fail_unless!("hello".find(|c:char| c == 'x').is_none());
+        fail_unless_eq!("ประเทศไทย中华Việt Nam".find('华'), Some(30u));
+        fail_unless_eq!("ประเทศไทย中华Việt Nam".find(|c: char| c == '华'), Some(30u));
     }
 
     #[test]
     fn test_rfind() {
-        assert_eq!("hello".rfind('l'), Some(3u));
-        assert_eq!("hello".rfind(|c:char| c == 'o'), Some(4u));
-        assert!("hello".rfind('x').is_none());
-        assert!("hello".rfind(|c:char| c == 'x').is_none());
-        assert_eq!("ประเทศไทย中华Việt Nam".rfind('华'), Some(30u));
-        assert_eq!("ประเทศไทย中华Việt Nam".rfind(|c: char| c == '华'), Some(30u));
+        fail_unless_eq!("hello".rfind('l'), Some(3u));
+        fail_unless_eq!("hello".rfind(|c:char| c == 'o'), Some(4u));
+        fail_unless!("hello".rfind('x').is_none());
+        fail_unless!("hello".rfind(|c:char| c == 'x').is_none());
+        fail_unless_eq!("ประเทศไทย中华Việt Nam".rfind('华'), Some(30u));
+        fail_unless_eq!("ประเทศไทย中华Việt Nam".rfind(|c: char| c == '华'), Some(30u));
     }
 
     #[test]
     fn test_push_str() {
         let mut s = ~"";
         s.push_str("");
-        assert_eq!(s.slice_from(0), "");
+        fail_unless_eq!(s.slice_from(0), "");
         s.push_str("abc");
-        assert_eq!(s.slice_from(0), "abc");
+        fail_unless_eq!(s.slice_from(0), "abc");
         s.push_str("ประเทศไทย中华Việt Nam");
-        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+        fail_unless_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
     }
 
     #[test]
     fn test_append() {
         let mut s = ~"";
         s = s.append("");
-        assert_eq!(s.slice_from(0), "");
+        fail_unless_eq!(s.slice_from(0), "");
         s = s.append("abc");
-        assert_eq!(s.slice_from(0), "abc");
+        fail_unless_eq!(s.slice_from(0), "abc");
         s = s.append("ประเทศไทย中华Việt Nam");
-        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+        fail_unless_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
     }
 
     #[test]
     fn test_pop_char() {
         let mut data = ~"ประเทศไทย中华";
         let cc = data.pop_char();
-        assert_eq!(~"ประเทศไทย中", data);
-        assert_eq!('华', cc);
+        fail_unless_eq!(~"ประเทศไทย中", data);
+        fail_unless_eq!('华', cc);
     }
 
     #[test]
     fn test_pop_char_2() {
         let mut data2 = ~"华";
         let cc2 = data2.pop_char();
-        assert_eq!(~"", data2);
-        assert_eq!('华', cc2);
+        fail_unless_eq!(~"", data2);
+        fail_unless_eq!('华', cc2);
     }
 
     #[test]
@@ -3208,46 +3208,46 @@ mod tests {
         data.push_char('¢'); // 2 byte
         data.push_char('€'); // 3 byte
         data.push_char('𤭢'); // 4 byte
-        assert_eq!(~"ประเทศไทย中华b¢€𤭢", data);
+        fail_unless_eq!(~"ประเทศไทย中华b¢€𤭢", data);
     }
 
     #[test]
     fn test_shift_char() {
         let mut data = ~"ประเทศไทย中";
         let cc = data.shift_char();
-        assert_eq!(~"ระเทศไทย中", data);
-        assert_eq!('ป', cc);
+        fail_unless_eq!(~"ระเทศไทย中", data);
+        fail_unless_eq!('ป', cc);
     }
 
     #[test]
     fn test_unshift_char() {
         let mut data = ~"ประเทศไทย中";
         data.unshift_char('华');
-        assert_eq!(~"华ประเทศไทย中", data);
+        fail_unless_eq!(~"华ประเทศไทย中", data);
     }
 
     #[test]
     fn test_insert_char() {
         let mut data = ~"ประเทศไทย中";
         data.insert_char(15, '华');
-        assert_eq!(~"ประเท华ศไทย中", data);
+        fail_unless_eq!(~"ประเท华ศไทย中", data);
     }
 
     #[test]
     fn test_insert() {
         let mut data = ~"ประเทศไทย中";
         data.insert(15, "华中");
-        assert_eq!(~"ประเท华中ศไทย中", data);
+        fail_unless_eq!(~"ประเท华中ศไทย中", data);
     }
 
     #[test]
     fn test_collect() {
         let empty = ~"";
         let s: ~str = empty.chars().collect();
-        assert_eq!(empty, s);
+        fail_unless_eq!(empty, s);
         let data = ~"ประเทศไทย中";
         let s: ~str = data.chars().collect();
-        assert_eq!(data, s);
+        fail_unless_eq!(data, s);
     }
 
     #[test]
@@ -3257,75 +3257,75 @@ mod tests {
         let other = "abc";
         let mut it = other.chars();
         cpy.extend(&mut it);
-        assert_eq!(cpy, data + other);
+        fail_unless_eq!(cpy, data + other);
     }
 
     #[test]
     fn test_clear() {
         let mut empty = ~"";
         empty.clear();
-        assert_eq!("", empty.as_slice());
+        fail_unless_eq!("", empty.as_slice());
         let mut data = ~"ประเทศไทย中";
         data.clear();
-        assert_eq!("", data.as_slice());
+        fail_unless_eq!("", data.as_slice());
         data.push_char('华');
-        assert_eq!("华", data.as_slice());
+        fail_unless_eq!("华", data.as_slice());
     }
 
     #[test]
     fn test_into_bytes() {
         let data = ~"asdf";
         let buf = data.into_bytes();
-        assert_eq!(bytes!("asdf"), buf.as_slice());
+        fail_unless_eq!(bytes!("asdf"), buf.as_slice());
     }
 
     #[test]
     fn test_find_str() {
         // byte positions
-        assert_eq!("".find_str(""), Some(0u));
-        assert!("banana".find_str("apple pie").is_none());
+        fail_unless_eq!("".find_str(""), Some(0u));
+        fail_unless!("banana".find_str("apple pie").is_none());
 
         let data = "abcabc";
-        assert_eq!(data.slice(0u, 6u).find_str("ab"), Some(0u));
-        assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
-        assert!(data.slice(2u, 4u).find_str("ab").is_none());
+        fail_unless_eq!(data.slice(0u, 6u).find_str("ab"), Some(0u));
+        fail_unless_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
+        fail_unless!(data.slice(2u, 4u).find_str("ab").is_none());
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data = data + data;
-        assert!(data.find_str("ไท华").is_none());
-        assert_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
-        assert_eq!(data.slice(6u, 43u).find_str(""), Some(6u - 6u));
+        fail_unless!(data.find_str("ไท华").is_none());
+        fail_unless_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
+        fail_unless_eq!(data.slice(6u, 43u).find_str(""), Some(6u - 6u));
 
-        assert_eq!(data.slice(0u, 43u).find_str("ประ"), Some( 0u));
-        assert_eq!(data.slice(0u, 43u).find_str("ทศไ"), Some(12u));
-        assert_eq!(data.slice(0u, 43u).find_str("ย中"), Some(24u));
-        assert_eq!(data.slice(0u, 43u).find_str("iệt"), Some(34u));
-        assert_eq!(data.slice(0u, 43u).find_str("Nam"), Some(40u));
+        fail_unless_eq!(data.slice(0u, 43u).find_str("ประ"), Some( 0u));
+        fail_unless_eq!(data.slice(0u, 43u).find_str("ทศไ"), Some(12u));
+        fail_unless_eq!(data.slice(0u, 43u).find_str("ย中"), Some(24u));
+        fail_unless_eq!(data.slice(0u, 43u).find_str("iệt"), Some(34u));
+        fail_unless_eq!(data.slice(0u, 43u).find_str("Nam"), Some(40u));
 
-        assert_eq!(data.slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
+        fail_unless_eq!(data.slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
+        fail_unless_eq!(data.slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
+        fail_unless_eq!(data.slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
+        fail_unless_eq!(data.slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
+        fail_unless_eq!(data.slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
     }
 
     #[test]
     fn test_slice_chars() {
         fn t(a: &str, b: &str, start: uint) {
-            assert_eq!(a.slice_chars(start, start + b.char_len()), b);
+            fail_unless_eq!(a.slice_chars(start, start + b.char_len()), b);
         }
         t("", "", 0);
         t("hello", "llo", 2);
         t("hello", "el", 1);
         t("αβλ", "β", 1);
         t("αβλ", "", 3);
-        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
+        fail_unless_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
     #[test]
     fn test_concat() {
         fn t(v: &[~str], s: &str) {
-            assert_eq!(v.concat(), s.to_str());
+            fail_unless_eq!(v.concat(), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"], "youknowI'mnogood");
         let v: &[~str] = [];
@@ -3336,7 +3336,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[~str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str());
+            fail_unless_eq!(v.connect(sep), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"],
           " ", "you know I'm no good");
@@ -3348,7 +3348,7 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(v.concat(), s.to_str());
+            fail_unless_eq!(v.concat(), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
         let v: &[&str] = [];
@@ -3359,7 +3359,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(v.connect(sep), s.to_str());
+            fail_unless_eq!(v.connect(sep), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -3369,18 +3369,18 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert_eq!("x".repeat(4), ~"xxxx");
-        assert_eq!("hi".repeat(4), ~"hihihihi");
-        assert_eq!("ไท华".repeat(3), ~"ไท华ไท华ไท华");
-        assert_eq!("".repeat(4), ~"");
-        assert_eq!("hi".repeat(0), ~"");
+        fail_unless_eq!("x".repeat(4), ~"xxxx");
+        fail_unless_eq!("hi".repeat(4), ~"hihihihi");
+        fail_unless_eq!("ไท华".repeat(3), ~"ไท华ไท华ไท华");
+        fail_unless_eq!("".repeat(4), ~"");
+        fail_unless_eq!("hi".repeat(0), ~"");
     }
 
     #[test]
     fn test_unsafe_slice() {
-        assert_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
-        assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
-        assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
+        fail_unless_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
+        fail_unless_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
+        fail_unless_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
@@ -3394,48 +3394,48 @@ mod tests {
             rs
         }
         let letters = a_million_letter_a();
-        assert!(half_a_million_letter_a() ==
+        fail_unless!(half_a_million_letter_a() ==
             unsafe {raw::slice_bytes(letters, 0u, 500000)}.to_owned());
     }
 
     #[test]
     fn test_starts_with() {
-        assert!(("".starts_with("")));
-        assert!(("abc".starts_with("")));
-        assert!(("abc".starts_with("a")));
-        assert!((!"a".starts_with("abc")));
-        assert!((!"".starts_with("abc")));
-        assert!((!"ödd".starts_with("-")));
-        assert!(("ödd".starts_with("öd")));
+        fail_unless!(("".starts_with("")));
+        fail_unless!(("abc".starts_with("")));
+        fail_unless!(("abc".starts_with("a")));
+        fail_unless!((!"a".starts_with("abc")));
+        fail_unless!((!"".starts_with("abc")));
+        fail_unless!((!"ödd".starts_with("-")));
+        fail_unless!(("ödd".starts_with("öd")));
     }
 
     #[test]
     fn test_ends_with() {
-        assert!(("".ends_with("")));
-        assert!(("abc".ends_with("")));
-        assert!(("abc".ends_with("c")));
-        assert!((!"a".ends_with("abc")));
-        assert!((!"".ends_with("abc")));
-        assert!((!"ddö".ends_with("-")));
-        assert!(("ddö".ends_with("dö")));
+        fail_unless!(("".ends_with("")));
+        fail_unless!(("abc".ends_with("")));
+        fail_unless!(("abc".ends_with("c")));
+        fail_unless!((!"a".ends_with("abc")));
+        fail_unless!((!"".ends_with("abc")));
+        fail_unless!((!"ddö".ends_with("-")));
+        fail_unless!(("ddö".ends_with("dö")));
     }
 
     #[test]
     fn test_is_empty() {
-        assert!("".is_empty());
-        assert!(!"a".is_empty());
+        fail_unless!("".is_empty());
+        fail_unless!(!"a".is_empty());
     }
 
     #[test]
     fn test_replace() {
         let a = "a";
-        assert_eq!("".replace(a, "b"), ~"");
-        assert_eq!("a".replace(a, "b"), ~"b");
-        assert_eq!("ab".replace(a, "b"), ~"bb");
+        fail_unless_eq!("".replace(a, "b"), ~"");
+        fail_unless_eq!("a".replace(a, "b"), ~"b");
+        fail_unless_eq!("ab".replace(a, "b"), ~"bb");
         let test = "test";
-        assert!(" test test ".replace(test, "toast") ==
+        fail_unless!(" test test ".replace(test, "toast") ==
             ~" toast toast ");
-        assert_eq!(" test test ".replace(test, ""), ~"   ");
+        fail_unless_eq!(" test test ".replace(test, ""), ~"   ");
     }
 
     #[test]
@@ -3445,7 +3445,7 @@ mod tests {
 
         let a = ~"ประเ";
         let A = ~"دولة الكويتทศไทย中华";
-        assert_eq!(data.replace(a, repl), A);
+        fail_unless_eq!(data.replace(a, repl), A);
     }
 
     #[test]
@@ -3455,7 +3455,7 @@ mod tests {
 
         let b = ~"ะเ";
         let B = ~"ปรدولة الكويتทศไทย中华";
-        assert_eq!(data.replace(b,   repl), B);
+        fail_unless_eq!(data.replace(b,   repl), B);
     }
 
     #[test]
@@ -3465,7 +3465,7 @@ mod tests {
 
         let c = ~"中华";
         let C = ~"ประเทศไทยدولة الكويت";
-        assert_eq!(data.replace(c, repl), C);
+        fail_unless_eq!(data.replace(c, repl), C);
     }
 
     #[test]
@@ -3474,21 +3474,21 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let d = ~"ไท华";
-        assert_eq!(data.replace(d, repl), data);
+        fail_unless_eq!(data.replace(d, repl), data);
     }
 
     #[test]
     fn test_slice() {
-        assert_eq!("ab", "abc".slice(0, 2));
-        assert_eq!("bc", "abc".slice(1, 3));
-        assert_eq!("", "abc".slice(1, 1));
-        assert_eq!("\u65e5", "\u65e5\u672c".slice(0, 3));
+        fail_unless_eq!("ab", "abc".slice(0, 2));
+        fail_unless_eq!("bc", "abc".slice(1, 3));
+        fail_unless_eq!("", "abc".slice(1, 1));
+        fail_unless_eq!("\u65e5", "\u65e5\u672c".slice(0, 3));
 
         let data = "ประเทศไทย中华";
-        assert_eq!("ป", data.slice(0, 3));
-        assert_eq!("ร", data.slice(3, 6));
-        assert_eq!("", data.slice(3, 3));
-        assert_eq!("华", data.slice(30, 33));
+        fail_unless_eq!("ป", data.slice(0, 3));
+        fail_unless_eq!("ร", data.slice(3, 6));
+        fail_unless_eq!("", data.slice(3, 3));
+        fail_unless_eq!("华", data.slice(30, 33));
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
@@ -3506,7 +3506,7 @@ mod tests {
             rs
         }
         let letters = a_million_letter_X();
-        assert!(half_a_million_letter_X() ==
+        fail_unless!(half_a_million_letter_X() ==
             letters.slice(0u, 3u * 500000u).to_owned());
     }
 
@@ -3514,16 +3514,16 @@ mod tests {
     fn test_slice_2() {
         let ss = "中华Việt Nam";
 
-        assert_eq!("华", ss.slice(3u, 6u));
-        assert_eq!("Việt Nam", ss.slice(6u, 16u));
+        fail_unless_eq!("华", ss.slice(3u, 6u));
+        fail_unless_eq!("Việt Nam", ss.slice(6u, 16u));
 
-        assert_eq!("ab", "abc".slice(0u, 2u));
-        assert_eq!("bc", "abc".slice(1u, 3u));
-        assert_eq!("", "abc".slice(1u, 1u));
+        fail_unless_eq!("ab", "abc".slice(0u, 2u));
+        fail_unless_eq!("bc", "abc".slice(1u, 3u));
+        fail_unless_eq!("", "abc".slice(1u, 1u));
 
-        assert_eq!("中", ss.slice(0u, 3u));
-        assert_eq!("华V", ss.slice(3u, 7u));
-        assert_eq!("", ss.slice(3u, 3u));
+        fail_unless_eq!("中", ss.slice(0u, 3u));
+        fail_unless_eq!("华V", ss.slice(3u, 7u));
+        fail_unless_eq!("", ss.slice(3u, 3u));
         /*0: 中
           3: 华
           6: V
@@ -3544,146 +3544,146 @@ mod tests {
 
     #[test]
     fn test_slice_from() {
-        assert_eq!("abcd".slice_from(0), "abcd");
-        assert_eq!("abcd".slice_from(2), "cd");
-        assert_eq!("abcd".slice_from(4), "");
+        fail_unless_eq!("abcd".slice_from(0), "abcd");
+        fail_unless_eq!("abcd".slice_from(2), "cd");
+        fail_unless_eq!("abcd".slice_from(4), "");
     }
     #[test]
     fn test_slice_to() {
-        assert_eq!("abcd".slice_to(0), "");
-        assert_eq!("abcd".slice_to(2), "ab");
-        assert_eq!("abcd".slice_to(4), "abcd");
+        fail_unless_eq!("abcd".slice_to(0), "");
+        fail_unless_eq!("abcd".slice_to(2), "ab");
+        fail_unless_eq!("abcd".slice_to(4), "abcd");
     }
 
     #[test]
     fn test_trim_left_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_left_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(& &['*', ' ']), "");
-        assert_eq!("foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+        fail_unless_eq!(" *** foo *** ".trim_left_chars(&v), " *** foo *** ");
+        fail_unless_eq!(" *** foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+        fail_unless_eq!(" ***  *** ".trim_left_chars(& &['*', ' ']), "");
+        fail_unless_eq!("foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
 
-        assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11");
-        assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12");
-        assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123");
+        fail_unless_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11");
+        fail_unless_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12");
+        fail_unless_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123");
     }
 
     #[test]
     fn test_trim_right_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_right_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_right_chars(& &['*', ' ']), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(& &['*', ' ']), "");
-        assert_eq!(" *** foo".trim_right_chars(& &['*', ' ']), " *** foo");
+        fail_unless_eq!(" *** foo *** ".trim_right_chars(&v), " *** foo *** ");
+        fail_unless_eq!(" *** foo *** ".trim_right_chars(& &['*', ' ']), " *** foo");
+        fail_unless_eq!(" ***  *** ".trim_right_chars(& &['*', ' ']), "");
+        fail_unless_eq!(" *** foo".trim_right_chars(& &['*', ' ']), " *** foo");
 
-        assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar");
-        assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar");
-        assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar");
+        fail_unless_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar");
+        fail_unless_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar");
+        fail_unless_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar");
     }
 
     #[test]
     fn test_trim_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_chars(& &['*', ' ']), "foo");
-        assert_eq!(" ***  *** ".trim_chars(& &['*', ' ']), "");
-        assert_eq!("foo".trim_chars(& &['*', ' ']), "foo");
+        fail_unless_eq!(" *** foo *** ".trim_chars(&v), " *** foo *** ");
+        fail_unless_eq!(" *** foo *** ".trim_chars(& &['*', ' ']), "foo");
+        fail_unless_eq!(" ***  *** ".trim_chars(& &['*', ' ']), "");
+        fail_unless_eq!("foo".trim_chars(& &['*', ' ']), "foo");
 
-        assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar");
-        assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar");
-        assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar");
+        fail_unless_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar");
+        fail_unless_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar");
+        fail_unless_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar");
     }
 
     #[test]
     fn test_trim_left() {
-        assert_eq!("".trim_left(), "");
-        assert_eq!("a".trim_left(), "a");
-        assert_eq!("    ".trim_left(), "");
-        assert_eq!("     blah".trim_left(), "blah");
-        assert_eq!("   \u3000  wut".trim_left(), "wut");
-        assert_eq!("hey ".trim_left(), "hey ");
+        fail_unless_eq!("".trim_left(), "");
+        fail_unless_eq!("a".trim_left(), "a");
+        fail_unless_eq!("    ".trim_left(), "");
+        fail_unless_eq!("     blah".trim_left(), "blah");
+        fail_unless_eq!("   \u3000  wut".trim_left(), "wut");
+        fail_unless_eq!("hey ".trim_left(), "hey ");
     }
 
     #[test]
     fn test_trim_right() {
-        assert_eq!("".trim_right(), "");
-        assert_eq!("a".trim_right(), "a");
-        assert_eq!("    ".trim_right(), "");
-        assert_eq!("blah     ".trim_right(), "blah");
-        assert_eq!("wut   \u3000  ".trim_right(), "wut");
-        assert_eq!(" hey".trim_right(), " hey");
+        fail_unless_eq!("".trim_right(), "");
+        fail_unless_eq!("a".trim_right(), "a");
+        fail_unless_eq!("    ".trim_right(), "");
+        fail_unless_eq!("blah     ".trim_right(), "blah");
+        fail_unless_eq!("wut   \u3000  ".trim_right(), "wut");
+        fail_unless_eq!(" hey".trim_right(), " hey");
     }
 
     #[test]
     fn test_trim() {
-        assert_eq!("".trim(), "");
-        assert_eq!("a".trim(), "a");
-        assert_eq!("    ".trim(), "");
-        assert_eq!("    blah     ".trim(), "blah");
-        assert_eq!("\nwut   \u3000  ".trim(), "wut");
-        assert_eq!(" hey dude ".trim(), "hey dude");
+        fail_unless_eq!("".trim(), "");
+        fail_unless_eq!("a".trim(), "a");
+        fail_unless_eq!("    ".trim(), "");
+        fail_unless_eq!("    blah     ".trim(), "blah");
+        fail_unless_eq!("\nwut   \u3000  ".trim(), "wut");
+        fail_unless_eq!(" hey dude ".trim(), "hey dude");
     }
 
     #[test]
     fn test_is_whitespace() {
-        assert!("".is_whitespace());
-        assert!(" ".is_whitespace());
-        assert!("\u2009".is_whitespace()); // Thin space
-        assert!("  \n\t   ".is_whitespace());
-        assert!(!"   _   ".is_whitespace());
+        fail_unless!("".is_whitespace());
+        fail_unless!(" ".is_whitespace());
+        fail_unless!("\u2009".is_whitespace()); // Thin space
+        fail_unless!("  \n\t   ".is_whitespace());
+        fail_unless!(!"   _   ".is_whitespace());
     }
 
     #[test]
     fn test_push_byte() {
         let mut s = ~"ABC";
         unsafe{raw::push_byte(&mut s, 'D' as u8)};
-        assert_eq!(s, ~"ABCD");
+        fail_unless_eq!(s, ~"ABCD");
     }
 
     #[test]
     fn test_shift_byte() {
         let mut s = ~"ABC";
         let b = unsafe{raw::shift_byte(&mut s)};
-        assert_eq!(s, ~"BC");
-        assert_eq!(b, 65u8);
+        fail_unless_eq!(s, ~"BC");
+        fail_unless_eq!(b, 65u8);
     }
 
     #[test]
     fn test_pop_byte() {
         let mut s = ~"ABC";
         let b = unsafe{raw::pop_byte(&mut s)};
-        assert_eq!(s, ~"AB");
-        assert_eq!(b, 67u8);
+        fail_unless_eq!(s, ~"AB");
+        fail_unless_eq!(b, 67u8);
     }
 
     #[test]
     fn test_is_utf8() {
         // deny overlong encodings
-        assert!(!is_utf8([0xc0, 0x80]));
-        assert!(!is_utf8([0xc0, 0xae]));
-        assert!(!is_utf8([0xe0, 0x80, 0x80]));
-        assert!(!is_utf8([0xe0, 0x80, 0xaf]));
-        assert!(!is_utf8([0xe0, 0x81, 0x81]));
-        assert!(!is_utf8([0xf0, 0x82, 0x82, 0xac]));
-        assert!(!is_utf8([0xf4, 0x90, 0x80, 0x80]));
+        fail_unless!(!is_utf8([0xc0, 0x80]));
+        fail_unless!(!is_utf8([0xc0, 0xae]));
+        fail_unless!(!is_utf8([0xe0, 0x80, 0x80]));
+        fail_unless!(!is_utf8([0xe0, 0x80, 0xaf]));
+        fail_unless!(!is_utf8([0xe0, 0x81, 0x81]));
+        fail_unless!(!is_utf8([0xf0, 0x82, 0x82, 0xac]));
+        fail_unless!(!is_utf8([0xf4, 0x90, 0x80, 0x80]));
 
         // deny surrogates
-        assert!(!is_utf8([0xED, 0xA0, 0x80]));
-        assert!(!is_utf8([0xED, 0xBF, 0xBF]));
+        fail_unless!(!is_utf8([0xED, 0xA0, 0x80]));
+        fail_unless!(!is_utf8([0xED, 0xBF, 0xBF]));
 
-        assert!(is_utf8([0xC2, 0x80]));
-        assert!(is_utf8([0xDF, 0xBF]));
-        assert!(is_utf8([0xE0, 0xA0, 0x80]));
-        assert!(is_utf8([0xED, 0x9F, 0xBF]));
-        assert!(is_utf8([0xEE, 0x80, 0x80]));
-        assert!(is_utf8([0xEF, 0xBF, 0xBF]));
-        assert!(is_utf8([0xF0, 0x90, 0x80, 0x80]));
-        assert!(is_utf8([0xF4, 0x8F, 0xBF, 0xBF]));
+        fail_unless!(is_utf8([0xC2, 0x80]));
+        fail_unless!(is_utf8([0xDF, 0xBF]));
+        fail_unless!(is_utf8([0xE0, 0xA0, 0x80]));
+        fail_unless!(is_utf8([0xED, 0x9F, 0xBF]));
+        fail_unless!(is_utf8([0xEE, 0x80, 0x80]));
+        fail_unless!(is_utf8([0xEF, 0xBF, 0xBF]));
+        fail_unless!(is_utf8([0xF0, 0x90, 0x80, 0x80]));
+        fail_unless!(is_utf8([0xF4, 0x8F, 0xBF, 0xBF]));
     }
 
     #[test]
     fn test_is_utf16() {
-        macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
+        macro_rules! pos ( ($($e:expr),*) => { { $(fail_unless!(is_utf16($e));)* } });
 
         // non-surrogates
         pos!([0x0000],
@@ -3703,7 +3703,7 @@ mod tests {
              [0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
 
         // negative tests
-        macro_rules! neg ( ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } });
+        macro_rules! neg ( ($($e:expr),*) => { { $(fail_unless!(!is_utf16($e));)* } });
 
         neg!(
             // surrogate + regular unit
@@ -3746,7 +3746,7 @@ mod tests {
             let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
             let b = a.as_ptr();
             let c = raw::from_c_str(b);
-            assert_eq!(c, ~"AAAAAAA");
+            fail_unless_eq!(c, ~"AAAAAAA");
         }
     }
 
@@ -3758,9 +3758,9 @@ mod tests {
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
             109
         ];
-        assert_eq!("".as_bytes(), &[]);
-        assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
-        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v);
+        fail_unless_eq!("".as_bytes(), &[]);
+        fail_unless_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
+        fail_unless_eq!("ศไทย中华Việt Nam".as_bytes(), v);
     }
 
     #[test]
@@ -3777,11 +3777,11 @@ mod tests {
     fn test_as_ptr() {
         let buf = "hello".as_ptr();
         unsafe {
-            assert_eq!(*buf.offset(0), 'h' as u8);
-            assert_eq!(*buf.offset(1), 'e' as u8);
-            assert_eq!(*buf.offset(2), 'l' as u8);
-            assert_eq!(*buf.offset(3), 'l' as u8);
-            assert_eq!(*buf.offset(4), 'o' as u8);
+            fail_unless_eq!(*buf.offset(0), 'h' as u8);
+            fail_unless_eq!(*buf.offset(1), 'e' as u8);
+            fail_unless_eq!(*buf.offset(2), 'l' as u8);
+            fail_unless_eq!(*buf.offset(3), 'l' as u8);
+            fail_unless_eq!(*buf.offset(4), 'o' as u8);
         }
     }
 
@@ -3790,15 +3790,15 @@ mod tests {
         let a = "kernelsprite";
         let b = a.slice(7, a.len());
         let c = a.slice(0, a.len() - 6);
-        assert_eq!(a.subslice_offset(b), 7);
-        assert_eq!(a.subslice_offset(c), 0);
+        fail_unless_eq!(a.subslice_offset(b), 7);
+        fail_unless_eq!(a.subslice_offset(c), 0);
 
         let string = "a\nb\nc";
         let mut lines = ~[];
         for line in string.lines() { lines.push(line) }
-        assert_eq!(string.subslice_offset(lines[0]), 0);
-        assert_eq!(string.subslice_offset(lines[1]), 2);
-        assert_eq!(string.subslice_offset(lines[2]), 4);
+        fail_unless_eq!(string.subslice_offset(lines[0]), 0);
+        fail_unless_eq!(string.subslice_offset(lines[1]), 2);
+        fail_unless_eq!(string.subslice_offset(lines[2]), 4);
     }
 
     #[test]
@@ -3818,40 +3818,40 @@ mod tests {
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
-        assert_eq!(n1, n2);
+        fail_unless_eq!(n1, n2);
         while i < n1 {
             let a: u8 = s1[i];
             let b: u8 = s2[i];
             debug!("{}", a);
             debug!("{}", b);
-            assert_eq!(a, b);
+            fail_unless_eq!(a, b);
             i += 1u;
         }
     }
 
     #[test]
     fn test_contains() {
-        assert!("abcde".contains("bcd"));
-        assert!("abcde".contains("abcd"));
-        assert!("abcde".contains("bcde"));
-        assert!("abcde".contains(""));
-        assert!("".contains(""));
-        assert!(!"abcde".contains("def"));
-        assert!(!"".contains("a"));
+        fail_unless!("abcde".contains("bcd"));
+        fail_unless!("abcde".contains("abcd"));
+        fail_unless!("abcde".contains("bcde"));
+        fail_unless!("abcde".contains(""));
+        fail_unless!("".contains(""));
+        fail_unless!(!"abcde".contains("def"));
+        fail_unless!(!"".contains("a"));
 
         let data = ~"ประเทศไทย中华Việt Nam";
-        assert!(data.contains("ประเ"));
-        assert!(data.contains("ะเ"));
-        assert!(data.contains("中华"));
-        assert!(!data.contains("ไท华"));
+        fail_unless!(data.contains("ประเ"));
+        fail_unless!(data.contains("ะเ"));
+        fail_unless!(data.contains("中华"));
+        fail_unless!(!data.contains("ไท华"));
     }
 
     #[test]
     fn test_contains_char() {
-        assert!("abc".contains_char('b'));
-        assert!("a".contains_char('a'));
-        assert!(!"abc".contains_char('d'));
-        assert!(!"".contains_char('a'));
+        fail_unless!("abc".contains_char('b'));
+        fail_unless!("a".contains_char('a'));
+        fail_unless!(!"abc".contains_char('d'));
+        fail_unless!(!"".contains_char('a'));
     }
 
     #[test]
@@ -3898,14 +3898,14 @@ mod tests {
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
-            assert!(is_utf16(u));
-            assert_eq!(s.to_utf16(), u);
+            fail_unless!(is_utf16(u));
+            fail_unless_eq!(s.to_utf16(), u);
 
-            assert_eq!(from_utf16(u).unwrap(), s);
-            assert_eq!(from_utf16_lossy(u), s);
+            fail_unless_eq!(from_utf16(u).unwrap(), s);
+            fail_unless_eq!(from_utf16_lossy(u), s);
 
-            assert_eq!(from_utf16(s.to_utf16()).unwrap(), s);
-            assert_eq!(from_utf16(u).unwrap().to_utf16(), u);
+            fail_unless_eq!(from_utf16(s.to_utf16()).unwrap(), s);
+            fail_unless_eq!(from_utf16(u).unwrap().to_utf16(), u);
         }
     }
 
@@ -3913,48 +3913,48 @@ mod tests {
     fn test_utf16_invalid() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16([0xD800]), None);
+        fail_unless_eq!(from_utf16([0xD800]), None);
         // lead + lead
-        assert_eq!(from_utf16([0xD800, 0xD800]), None);
+        fail_unless_eq!(from_utf16([0xD800, 0xD800]), None);
 
         // isolated trail
-        assert_eq!(from_utf16([0x0061, 0xDC00]), None);
+        fail_unless_eq!(from_utf16([0x0061, 0xDC00]), None);
 
         // general
-        assert_eq!(from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
+        fail_unless_eq!(from_utf16([0xD800, 0xd801, 0xdc8b, 0xD800]), None);
     }
 
     #[test]
     fn test_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), ~"\uFFFD");
+        fail_unless_eq!(from_utf16_lossy([0xD800]), ~"\uFFFD");
         // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), ~"\uFFFD\uFFFD");
+        fail_unless_eq!(from_utf16_lossy([0xD800, 0xD800]), ~"\uFFFD\uFFFD");
 
         // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), ~"a\uFFFD");
+        fail_unless_eq!(from_utf16_lossy([0x0061, 0xDC00]), ~"a\uFFFD");
 
         // general
-        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), ~"\uFFFD𐒋\uFFFD");
+        fail_unless_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), ~"\uFFFD𐒋\uFFFD");
     }
 
     #[test]
     fn test_truncate_utf16_at_nul() {
         let v = [];
-        assert_eq!(truncate_utf16_at_nul(v), &[]);
+        fail_unless_eq!(truncate_utf16_at_nul(v), &[]);
 
         let v = [0, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[]);
+        fail_unless_eq!(truncate_utf16_at_nul(v), &[]);
 
         let v = [1, 0, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[1]);
+        fail_unless_eq!(truncate_utf16_at_nul(v), &[1]);
 
         let v = [1, 2, 0];
-        assert_eq!(truncate_utf16_at_nul(v), &[1, 2]);
+        fail_unless_eq!(truncate_utf16_at_nul(v), &[1, 2]);
 
         let v = [1, 2, 3];
-        assert_eq!(truncate_utf16_at_nul(v), &[1, 2, 3]);
+        fail_unless_eq!(truncate_utf16_at_nul(v), &[1, 2, 3]);
     }
 
     #[test]
@@ -3963,7 +3963,7 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for ch in v.iter() {
-            assert!(s.char_at(pos) == *ch);
+            fail_unless!(s.char_at(pos) == *ch);
             pos += from_char(*ch).len();
         }
     }
@@ -3974,34 +3974,34 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
         for ch in v.rev_iter() {
-            assert!(s.char_at_reverse(pos) == *ch);
+            fail_unless!(s.char_at_reverse(pos) == *ch);
             pos -= from_char(*ch).len();
         }
     }
 
     #[test]
     fn test_escape_unicode() {
-        assert_eq!("abc".escape_unicode(), ~"\\x61\\x62\\x63");
-        assert_eq!("a c".escape_unicode(), ~"\\x61\\x20\\x63");
-        assert_eq!("\r\n\t".escape_unicode(), ~"\\x0d\\x0a\\x09");
-        assert_eq!("'\"\\".escape_unicode(), ~"\\x27\\x22\\x5c");
-        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), ~"\\x00\\x01\\xfe\\xff");
-        assert_eq!("\u0100\uffff".escape_unicode(), ~"\\u0100\\uffff");
-        assert_eq!("\U00010000\U0010ffff".escape_unicode(), ~"\\U00010000\\U0010ffff");
-        assert_eq!("ab\ufb00".escape_unicode(), ~"\\x61\\x62\\ufb00");
-        assert_eq!("\U0001d4ea\r".escape_unicode(), ~"\\U0001d4ea\\x0d");
+        fail_unless_eq!("abc".escape_unicode(), ~"\\x61\\x62\\x63");
+        fail_unless_eq!("a c".escape_unicode(), ~"\\x61\\x20\\x63");
+        fail_unless_eq!("\r\n\t".escape_unicode(), ~"\\x0d\\x0a\\x09");
+        fail_unless_eq!("'\"\\".escape_unicode(), ~"\\x27\\x22\\x5c");
+        fail_unless_eq!("\x00\x01\xfe\xff".escape_unicode(), ~"\\x00\\x01\\xfe\\xff");
+        fail_unless_eq!("\u0100\uffff".escape_unicode(), ~"\\u0100\\uffff");
+        fail_unless_eq!("\U00010000\U0010ffff".escape_unicode(), ~"\\U00010000\\U0010ffff");
+        fail_unless_eq!("ab\ufb00".escape_unicode(), ~"\\x61\\x62\\ufb00");
+        fail_unless_eq!("\U0001d4ea\r".escape_unicode(), ~"\\U0001d4ea\\x0d");
     }
 
     #[test]
     fn test_escape_default() {
-        assert_eq!("abc".escape_default(), ~"abc");
-        assert_eq!("a c".escape_default(), ~"a c");
-        assert_eq!("\r\n\t".escape_default(), ~"\\r\\n\\t");
-        assert_eq!("'\"\\".escape_default(), ~"\\'\\\"\\\\");
-        assert_eq!("\u0100\uffff".escape_default(), ~"\\u0100\\uffff");
-        assert_eq!("\U00010000\U0010ffff".escape_default(), ~"\\U00010000\\U0010ffff");
-        assert_eq!("ab\ufb00".escape_default(), ~"ab\\ufb00");
-        assert_eq!("\U0001d4ea\r".escape_default(), ~"\\U0001d4ea\\r");
+        fail_unless_eq!("abc".escape_default(), ~"abc");
+        fail_unless_eq!("a c".escape_default(), ~"a c");
+        fail_unless_eq!("\r\n\t".escape_default(), ~"\\r\\n\\t");
+        fail_unless_eq!("'\"\\".escape_default(), ~"\\'\\\"\\\\");
+        fail_unless_eq!("\u0100\uffff".escape_default(), ~"\\u0100\\uffff");
+        fail_unless_eq!("\U00010000\U0010ffff".escape_default(), ~"\\U00010000\\U0010ffff");
+        fail_unless_eq!("ab\ufb00".escape_default(), ~"ab\\ufb00");
+        fail_unless_eq!("\U0001d4ea\r".escape_default(), ~"\\U0001d4ea\\r");
     }
 
     #[test]
@@ -4016,19 +4016,19 @@ mod tests {
     #[test]
     fn test_char_range_at() {
         let data = ~"b¢€𤭢𤭢€¢b";
-        assert_eq!('b', data.char_range_at(0).ch);
-        assert_eq!('¢', data.char_range_at(1).ch);
-        assert_eq!('€', data.char_range_at(3).ch);
-        assert_eq!('𤭢', data.char_range_at(6).ch);
-        assert_eq!('𤭢', data.char_range_at(10).ch);
-        assert_eq!('€', data.char_range_at(14).ch);
-        assert_eq!('¢', data.char_range_at(17).ch);
-        assert_eq!('b', data.char_range_at(19).ch);
+        fail_unless_eq!('b', data.char_range_at(0).ch);
+        fail_unless_eq!('¢', data.char_range_at(1).ch);
+        fail_unless_eq!('€', data.char_range_at(3).ch);
+        fail_unless_eq!('𤭢', data.char_range_at(6).ch);
+        fail_unless_eq!('𤭢', data.char_range_at(10).ch);
+        fail_unless_eq!('€', data.char_range_at(14).ch);
+        fail_unless_eq!('¢', data.char_range_at(17).ch);
+        fail_unless_eq!('b', data.char_range_at(19).ch);
     }
 
     #[test]
     fn test_char_range_at_reverse_underflow() {
-        assert_eq!("abc".char_range_at_reverse(0).next, 0);
+        fail_unless_eq!("abc".char_range_at_reverse(0).next, 0);
     }
 
     #[test]
@@ -4039,8 +4039,8 @@ mod tests {
                 let s1 = $s1;
                 let s2 = $s2;
                 let e = $e;
-                assert_eq!(s1 + s2, e.to_owned());
-                assert_eq!(s1.to_owned() + s2, e.to_owned());
+                fail_unless_eq!(s1 + s2, e.to_owned());
+                fail_unless_eq!(s1.to_owned() + s2, e.to_owned());
             } }
         );
 
@@ -4060,10 +4060,10 @@ mod tests {
         let mut it = s.chars();
 
         for c in it {
-            assert_eq!(c, v[pos]);
+            fail_unless_eq!(c, v[pos]);
             pos += 1;
         }
-        assert_eq!(pos, v.len());
+        fail_unless_eq!(pos, v.len());
     }
 
     #[test]
@@ -4076,10 +4076,10 @@ mod tests {
         let mut it = s.chars_rev();
 
         for c in it {
-            assert_eq!(c, v[pos]);
+            fail_unless_eq!(c, v[pos]);
             pos += 1;
         }
-        assert_eq!(pos, v.len());
+        fail_unless_eq!(pos, v.len());
     }
 
     #[test]
@@ -4087,7 +4087,7 @@ mod tests {
         let s = "ศไทย中华Việt Nam";
         let mut it = s.chars();
         it.next();
-        assert!(it.zip(it.clone()).all(|(x,y)| x == y));
+        fail_unless!(it.zip(it.clone()).all(|(x,y)| x == y));
     }
 
     #[test]
@@ -4101,7 +4101,7 @@ mod tests {
         let mut pos = 0;
 
         for b in s.bytes() {
-            assert_eq!(b, v[pos]);
+            fail_unless_eq!(b, v[pos]);
             pos += 1;
         }
     }
@@ -4118,7 +4118,7 @@ mod tests {
 
         for b in s.bytes_rev() {
             pos -= 1;
-            assert_eq!(b, v[pos]);
+            fail_unless_eq!(b, v[pos]);
         }
     }
 
@@ -4133,11 +4133,11 @@ mod tests {
         let mut it = s.char_indices();
 
         for c in it {
-            assert_eq!(c, (p[pos], v[pos]));
+            fail_unless_eq!(c, (p[pos], v[pos]));
             pos += 1;
         }
-        assert_eq!(pos, v.len());
-        assert_eq!(pos, p.len());
+        fail_unless_eq!(pos, v.len());
+        fail_unless_eq!(pos, p.len());
     }
 
     #[test]
@@ -4151,11 +4151,11 @@ mod tests {
         let mut it = s.char_indices_rev();
 
         for c in it {
-            assert_eq!(c, (p[pos], v[pos]));
+            fail_unless_eq!(c, (p[pos], v[pos]));
             pos += 1;
         }
-        assert_eq!(pos, v.len());
-        assert_eq!(pos, p.len());
+        fail_unless_eq!(pos, v.len());
+        fail_unless_eq!(pos, p.len());
     }
 
     #[test]
@@ -4163,33 +4163,33 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.split(' ').collect();
-        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut rsplit: ~[&str] = data.rsplit(' ').collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == ' ').collect();
-        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut rsplit: ~[&str] = data.rsplit(|c: char| c == ' ').collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
         let split: ~[&str] = data.split('ä').collect();
-        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut rsplit: ~[&str] = data.rsplit('ä').collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == 'ä').collect();
-        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut rsplit: ~[&str] = data.rsplit(|c: char| c == 'ä').collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
@@ -4197,17 +4197,17 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.splitn(' ', 3).collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        fail_unless_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         let split: ~[&str] = data.splitn(|c: char| c == ' ', 3).collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        fail_unless_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         // Unicode
         let split: ~[&str] = data.splitn('ä', 3).collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        fail_unless_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
         let split: ~[&str] = data.splitn(|c: char| c == 'ä', 3).collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        fail_unless_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
     }
 
     #[test]
@@ -4216,20 +4216,20 @@ mod tests {
 
         let mut split: ~[&str] = data.rsplitn(' ', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut split: ~[&str] = data.rsplitn(|c: char| c == ' ', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        fail_unless_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
         let mut split: ~[&str] = data.rsplitn('ä', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut split: ~[&str] = data.rsplitn(|c: char| c == 'ä', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        fail_unless_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
@@ -4237,10 +4237,10 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.split('\n').collect();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+        fail_unless_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
 
         let split: ~[&str] = data.split_terminator('\n').collect();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+        fail_unless_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
@@ -4249,64 +4249,64 @@ mod tests {
 
         let mut split: ~[&str] = data.split('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+        fail_unless_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
 
         let mut split: ~[&str] = data.split_terminator('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+        fail_unless_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
     fn test_words() {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
         let words: ~[&str] = data.words().collect();
-        assert_eq!(words, ~["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+        fail_unless_eq!(words, ~["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
     }
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<~str>(), ~"abc");
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<~str>(), ~"d\u0307\u01c4");
-        assert_eq!("\u2026".nfd_chars().collect::<~str>(), ~"\u2026");
-        assert_eq!("\u2126".nfd_chars().collect::<~str>(), ~"\u03a9");
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("a\u0301".nfd_chars().collect::<~str>(), ~"a\u0301");
-        assert_eq!("\u0301a".nfd_chars().collect::<~str>(), ~"\u0301a");
-        assert_eq!("\ud4db".nfd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
-        assert_eq!("\uac1c".nfd_chars().collect::<~str>(), ~"\u1100\u1162");
+        fail_unless_eq!("abc".nfd_chars().collect::<~str>(), ~"abc");
+        fail_unless_eq!("\u1e0b\u01c4".nfd_chars().collect::<~str>(), ~"d\u0307\u01c4");
+        fail_unless_eq!("\u2026".nfd_chars().collect::<~str>(), ~"\u2026");
+        fail_unless_eq!("\u2126".nfd_chars().collect::<~str>(), ~"\u03a9");
+        fail_unless_eq!("\u1e0b\u0323".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
+        fail_unless_eq!("\u1e0d\u0307".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
+        fail_unless_eq!("a\u0301".nfd_chars().collect::<~str>(), ~"a\u0301");
+        fail_unless_eq!("\u0301a".nfd_chars().collect::<~str>(), ~"\u0301a");
+        fail_unless_eq!("\ud4db".nfd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
+        fail_unless_eq!("\uac1c".nfd_chars().collect::<~str>(), ~"\u1100\u1162");
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<~str>(), ~"abc");
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<~str>(), ~"d\u0307DZ\u030c");
-        assert_eq!("\u2026".nfkd_chars().collect::<~str>(), ~"...");
-        assert_eq!("\u2126".nfkd_chars().collect::<~str>(), ~"\u03a9");
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("a\u0301".nfkd_chars().collect::<~str>(), ~"a\u0301");
-        assert_eq!("\u0301a".nfkd_chars().collect::<~str>(), ~"\u0301a");
-        assert_eq!("\ud4db".nfkd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
-        assert_eq!("\uac1c".nfkd_chars().collect::<~str>(), ~"\u1100\u1162");
+        fail_unless_eq!("abc".nfkd_chars().collect::<~str>(), ~"abc");
+        fail_unless_eq!("\u1e0b\u01c4".nfkd_chars().collect::<~str>(), ~"d\u0307DZ\u030c");
+        fail_unless_eq!("\u2026".nfkd_chars().collect::<~str>(), ~"...");
+        fail_unless_eq!("\u2126".nfkd_chars().collect::<~str>(), ~"\u03a9");
+        fail_unless_eq!("\u1e0b\u0323".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
+        fail_unless_eq!("\u1e0d\u0307".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
+        fail_unless_eq!("a\u0301".nfkd_chars().collect::<~str>(), ~"a\u0301");
+        fail_unless_eq!("\u0301a".nfkd_chars().collect::<~str>(), ~"\u0301a");
+        fail_unless_eq!("\ud4db".nfkd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
+        fail_unless_eq!("\uac1c".nfkd_chars().collect::<~str>(), ~"\u1100\u1162");
     }
 
     #[test]
     fn test_lines() {
         let data = "\nMäry häd ä little lämb\n\nLittle lämb\n";
         let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+        fail_unless_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
 
         let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
         let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+        fail_unless_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
 
     #[test]
     fn test_split_strator() {
         fn t<'a>(s: &str, sep: &'a str, u: ~[&str]) {
             let v: ~[&str] = s.split_str(sep).collect();
-            assert_eq!(v, u);
+            fail_unless_eq!(v, u);
         }
         t("--1233345--", "12345", ~["--1233345--"]);
         t("abc::hello::there", "::", ~["abc", "hello", "there"]);
@@ -4329,7 +4329,7 @@ mod tests {
         use default::Default;
         fn t<S: Default + Str>() {
             let s: S = Default::default();
-            assert_eq!(s.as_slice(), "");
+            fail_unless_eq!(s.as_slice(), "");
         }
 
         t::<&str>();
@@ -4343,27 +4343,27 @@ mod tests {
         }
 
         let s = ~"01234";
-        assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
-        assert_eq!(5, sum_len([s.as_slice()]));
+        fail_unless_eq!(5, sum_len(["012", "", "34"]));
+        fail_unless_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
+        fail_unless_eq!(5, sum_len([s.as_slice()]));
     }
 
     #[test]
     fn test_str_truncate() {
         let mut s = ~"12345";
         s.truncate(5);
-        assert_eq!(s.as_slice(), "12345");
+        fail_unless_eq!(s.as_slice(), "12345");
         s.truncate(3);
-        assert_eq!(s.as_slice(), "123");
+        fail_unless_eq!(s.as_slice(), "123");
         s.truncate(0);
-        assert_eq!(s.as_slice(), "");
+        fail_unless_eq!(s.as_slice(), "");
 
         let mut s = ~"12345";
         let p = s.as_ptr();
         s.truncate(3);
         s.push_str("6");
         let p_ = s.as_ptr();
-        assert_eq!(p_, p);
+        fail_unless_eq!(p_, p);
     }
 
     #[test]
@@ -4383,129 +4383,129 @@ mod tests {
     #[test]
     fn test_str_from_utf8() {
         let xs = bytes!("hello");
-        assert_eq!(from_utf8(xs), Some("hello"));
+        fail_unless_eq!(from_utf8(xs), Some("hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam");
-        assert_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
+        fail_unless_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
 
         let xs = bytes!("hello", 0xff);
-        assert_eq!(from_utf8(xs), None);
+        fail_unless_eq!(from_utf8(xs), None);
     }
 
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some(~"hello"));
+        fail_unless_eq!(from_utf8_owned(xs), Some(~"hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some(~"ศไทย中华Việt Nam"));
+        fail_unless_eq!(from_utf8_owned(xs), Some(~"ศไทย中华Việt Nam"));
 
         let xs = bytes!("hello", 0xff).to_owned();
-        assert_eq!(from_utf8_owned(xs), None);
+        fail_unless_eq!(from_utf8_owned(xs), None);
     }
 
     #[test]
     fn test_str_from_utf8_lossy() {
         let xs = bytes!("hello");
-        assert_eq!(from_utf8_lossy(xs), Slice("hello"));
+        fail_unless_eq!(from_utf8_lossy(xs), Slice("hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam");
-        assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
+        fail_unless_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
         let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD There\uFFFD Goodbye"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD There\uFFFD Goodbye"));
 
         let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD\uFFFD There\uFFFD Goodbye"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD\uFFFD There\uFFFD Goodbye"));
 
         let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFD\uFFFDbar"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFD\uFFFDbar"));
 
         let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFDbaz"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFDbaz"));
 
         let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz"));
 
         let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar"));
 
         // surrogates
         let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar"));
+        fail_unless_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar"));
     }
 
     #[test]
     fn test_from_str() {
       let owned: Option<~str> = from_str(&"string");
-      assert_eq!(owned, Some(~"string"));
+      fail_unless_eq!(owned, Some(~"string"));
     }
 
     #[test]
     fn test_maybe_owned_traits() {
         let s = Slice("abcde");
-        assert_eq!(s.len(), 5);
-        assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str(), ~"abcde");
-        assert_eq!(format!("{}", s), ~"abcde");
-        assert!(s.lt(&Owned(~"bcdef")));
-        assert_eq!(Slice(""), Default::default());
+        fail_unless_eq!(s.len(), 5);
+        fail_unless_eq!(s.as_slice(), "abcde");
+        fail_unless_eq!(s.to_str(), ~"abcde");
+        fail_unless_eq!(format!("{}", s), ~"abcde");
+        fail_unless!(s.lt(&Owned(~"bcdef")));
+        fail_unless_eq!(Slice(""), Default::default());
 
         let o = Owned(~"abcde");
-        assert_eq!(o.len(), 5);
-        assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), ~"abcde");
-        assert_eq!(format!("{}", o), ~"abcde");
-        assert!(o.lt(&Slice("bcdef")));
-        assert_eq!(Owned(~""), Default::default());
+        fail_unless_eq!(o.len(), 5);
+        fail_unless_eq!(o.as_slice(), "abcde");
+        fail_unless_eq!(o.to_str(), ~"abcde");
+        fail_unless_eq!(format!("{}", o), ~"abcde");
+        fail_unless!(o.lt(&Slice("bcdef")));
+        fail_unless_eq!(Owned(~""), Default::default());
 
-        assert_eq!(s.cmp(&o), Equal);
-        assert!(s.equals(&o));
-        assert!(s.equiv(&o));
+        fail_unless_eq!(s.cmp(&o), Equal);
+        fail_unless!(s.equals(&o));
+        fail_unless!(s.equiv(&o));
 
-        assert_eq!(o.cmp(&s), Equal);
-        assert!(o.equals(&s));
-        assert!(o.equiv(&s));
+        fail_unless_eq!(o.cmp(&s), Equal);
+        fail_unless!(o.equals(&s));
+        fail_unless!(o.equiv(&s));
     }
 
     #[test]
     fn test_maybe_owned_methods() {
         let s = Slice("abcde");
-        assert!(s.is_slice());
-        assert!(!s.is_owned());
+        fail_unless!(s.is_slice());
+        fail_unless!(!s.is_owned());
 
         let o = Owned(~"abcde");
-        assert!(!o.is_slice());
-        assert!(o.is_owned());
+        fail_unless!(!o.is_slice());
+        fail_unless!(o.is_owned());
     }
 
     #[test]
     fn test_maybe_owned_clone() {
-        assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
-        assert_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
+        fail_unless_eq!(Owned(~"abcde"), Slice("abcde").clone());
+        fail_unless_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
 
-        assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
-        assert_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
+        fail_unless_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
+        fail_unless_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
 
-        assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Slice("abcde").deep_clone());
+        fail_unless_eq!(Slice("abcde"), Slice("abcde").clone());
+        fail_unless_eq!(Slice("abcde"), Slice("abcde").deep_clone());
 
-        assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
-        assert_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
+        fail_unless_eq!(Slice("abcde"), Owned(~"abcde").clone());
+        fail_unless_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
     }
 
     #[test]
     fn test_maybe_owned_into_owned() {
-        assert_eq!(Slice("abcde").into_owned(), ~"abcde");
-        assert_eq!(Owned(~"abcde").into_owned(), ~"abcde");
+        fail_unless_eq!(Slice("abcde").into_owned(), ~"abcde");
+        fail_unless_eq!(Owned(~"abcde").into_owned(), ~"abcde");
     }
 
     #[test]
     fn test_into_maybe_owned() {
-        assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
-        assert_eq!((~"abcde").into_maybe_owned(), Slice("abcde"));
-        assert_eq!("abcde".into_maybe_owned(), Owned(~"abcde"));
-        assert_eq!((~"abcde").into_maybe_owned(), Owned(~"abcde"));
+        fail_unless_eq!("abcde".into_maybe_owned(), Slice("abcde"));
+        fail_unless_eq!((~"abcde").into_maybe_owned(), Slice("abcde"));
+        fail_unless_eq!("abcde".into_maybe_owned(), Owned(~"abcde"));
+        fail_unless_eq!((~"abcde").into_maybe_owned(), Owned(~"abcde"));
     }
 }
 
@@ -4521,7 +4521,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars().len(), len));
+        bh.iter(|| fail_unless_eq!(s.chars().len(), len));
     }
 
     #[bench]
@@ -4534,7 +4534,7 @@ mod bench {
         Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars().len(), len));
+        bh.iter(|| fail_unless_eq!(s.chars().len(), len));
     }
 
     #[bench]
@@ -4542,7 +4542,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars_rev().len(), len));
+        bh.iter(|| fail_unless_eq!(s.chars_rev().len(), len));
     }
 
     #[bench]
@@ -4550,7 +4550,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.char_indices().len(), len));
+        bh.iter(|| fail_unless_eq!(s.char_indices().len(), len));
     }
 
     #[bench]
@@ -4558,14 +4558,14 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.char_indices_rev().len(), len));
+        bh.iter(|| fail_unless_eq!(s.char_indices_rev().len(), len));
     }
 
     #[bench]
     fn split_unicode_ascii(bh: &mut BenchHarness) {
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        bh.iter(|| assert_eq!(s.split('V').len(), 3));
+        bh.iter(|| fail_unless_eq!(s.split('V').len(), 3));
     }
 
     #[bench]
@@ -4580,7 +4580,7 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        bh.iter(|| assert_eq!(s.split(NotAscii('V')).len(), 3));
+        bh.iter(|| fail_unless_eq!(s.split(NotAscii('V')).len(), 3));
     }
 
 
@@ -4589,7 +4589,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(' ').len(), len));
+        bh.iter(|| fail_unless_eq!(s.split(' ').len(), len));
     }
 
     #[bench]
@@ -4606,7 +4606,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(NotAscii(' ')).len(), len));
+        bh.iter(|| fail_unless_eq!(s.split(NotAscii(' ')).len(), len));
     }
 
     #[bench]
@@ -4615,7 +4615,7 @@ mod bench {
         let len = s.split(' ').len();
         fn pred(c: char) -> bool { c == ' ' }
 
-        bh.iter(|| assert_eq!(s.split(pred).len(), len));
+        bh.iter(|| fail_unless_eq!(s.split(pred).len(), len));
     }
 
     #[bench]
@@ -4623,7 +4623,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(|c: char| c == ' ').len(), len));
+        bh.iter(|| fail_unless_eq!(s.split(|c: char| c == ' ').len(), len));
     }
 
     #[bench]
@@ -4631,7 +4631,7 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(&[' ']).len(), len));
+        bh.iter(|| fail_unless_eq!(s.split(&[' ']).len(), len));
     }
 
     #[bench]
@@ -4640,7 +4640,7 @@ mod bench {
         let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
                         Lorem ipsum dolor sit amet, consectetur. ");
 
-        assert_eq!(100, s.len());
+        fail_unless_eq!(100, s.len());
         bh.iter(|| {
             is_utf8(s)
         });
@@ -4649,7 +4649,7 @@ mod bench {
     #[bench]
     fn is_utf8_100_multibyte(bh: &mut BenchHarness) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
-        assert_eq!(100, s.len());
+        fail_unless_eq!(100, s.len());
         bh.iter(|| {
             is_utf8(s)
         });
@@ -4660,7 +4660,7 @@ mod bench {
         let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
                         Lorem ipsum dolor sit amet, consectetur. ");
 
-        assert_eq!(100, s.len());
+        fail_unless_eq!(100, s.len());
         bh.iter(|| {
             let _ = from_utf8_lossy(s);
         });
@@ -4669,7 +4669,7 @@ mod bench {
     #[bench]
     fn from_utf8_lossy_100_multibyte(bh: &mut BenchHarness) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
-        assert_eq!(100, s.len());
+        fail_unless_eq!(100, s.len());
         bh.iter(|| {
             let _ = from_utf8_lossy(s);
         });
@@ -4713,7 +4713,7 @@ mod bench {
         let sep = "→";
         let v = [s, s, s, s, s, s, s, s, s, s];
         bh.iter(|| {
-            assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
+            fail_unless_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
         })
     }
 }

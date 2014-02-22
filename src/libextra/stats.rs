@@ -201,17 +201,17 @@ impl<'a> Stats for &'a [f64] {
     }
 
     fn min(self) -> f64 {
-        assert!(self.len() != 0);
+        fail_unless!(self.len() != 0);
         self.iter().fold(self[0], |p,q| cmp::min(p, *q))
     }
 
     fn max(self) -> f64 {
-        assert!(self.len() != 0);
+        fail_unless!(self.len() != 0);
         self.iter().fold(self[0], |p,q| cmp::max(p, *q))
     }
 
     fn mean(self) -> f64 {
-        assert!(self.len() != 0);
+        fail_unless!(self.len() != 0);
         self.sum() / (self.len() as f64)
     }
 
@@ -282,12 +282,12 @@ impl<'a> Stats for &'a [f64] {
 // linear interpolation. If samples are not sorted, return nonsensical value.
 fn percentile_of_sorted(sorted_samples: &[f64],
                              pct: f64) -> f64 {
-    assert!(sorted_samples.len() != 0);
+    fail_unless!(sorted_samples.len() != 0);
     if sorted_samples.len() == 1 {
         return sorted_samples[0];
     }
-    assert!(0.0 <= pct);
-    assert!(pct <= 100.0);
+    fail_unless!(0.0 <= pct);
+    fail_unless!(pct <= 100.0);
     if pct == 100.0 {
         return sorted_samples[sorted_samples.len() - 1];
     }
@@ -445,7 +445,7 @@ mod tests {
     macro_rules! assert_approx_eq(
         ($a:expr, $b:expr) => ({
             let (a, b) = (&$a, &$b);
-            assert!((*a - *b).abs() < 1.0e-6,
+            fail_unless!((*a - *b).abs() < 1.0e-6,
                     "{} is not approximately equal to {}", *a, *b);
         })
     )
@@ -462,11 +462,11 @@ mod tests {
         write_boxplot(w, &summ2, 50).unwrap();
         (write!(w, "\n")).unwrap();
 
-        assert_eq!(summ.sum, summ2.sum);
-        assert_eq!(summ.min, summ2.min);
-        assert_eq!(summ.max, summ2.max);
-        assert_eq!(summ.mean, summ2.mean);
-        assert_eq!(summ.median, summ2.median);
+        fail_unless_eq!(summ.sum, summ2.sum);
+        fail_unless_eq!(summ.min, summ2.min);
+        fail_unless_eq!(summ.max, summ2.max);
+        fail_unless_eq!(summ.mean, summ2.mean);
+        fail_unless_eq!(summ.median, summ2.median);
 
         // We needed a few more digits to get exact equality on these
         // but they're within float epsilon, which is 1.0e-6.
@@ -476,8 +476,8 @@ mod tests {
         assert_approx_eq!(summ.median_abs_dev, summ2.median_abs_dev);
         assert_approx_eq!(summ.median_abs_dev_pct, summ2.median_abs_dev_pct);
 
-        assert_eq!(summ.quartiles, summ2.quartiles);
-        assert_eq!(summ.iqr, summ2.iqr);
+        fail_unless_eq!(summ.quartiles, summ2.quartiles);
+        fail_unless_eq!(summ.iqr, summ2.iqr);
     }
 
     #[test]
@@ -1005,7 +1005,7 @@ mod tests {
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
             let out = str::from_utf8_owned(m.unwrap()).unwrap();
-            assert_eq!(out, expected);
+            fail_unless_eq!(out, expected);
         }
 
         t(&Summary::new([-2.0, -1.0]), ~"-2 |[------******#*****---]| -1");
@@ -1015,11 +1015,11 @@ mod tests {
     }
     #[test]
     fn test_sum_f64s() {
-        assert_eq!([0.5, 3.2321, 1.5678].sum(), 5.2999);
+        fail_unless_eq!([0.5, 3.2321, 1.5678].sum(), 5.2999);
     }
     #[test]
     fn test_sum_f64_between_ints_that_sum_to_0() {
-        assert_eq!([1e30, 1.2, -1e30].sum(), 1.2);
+        fail_unless_eq!([1e30, 1.2, -1e30].sum(), 1.2);
     }
 }
 

@@ -18,11 +18,11 @@ fn box_it<'r>(x: 'r ||) -> closure_box<'r> {
 
 pub fn main() {
     let mut i = 3;
-    assert_eq!(i, 3);
+    fail_unless_eq!(i, 3);
     {
         let cl = || i += 1;
         let cl_box = box_it(cl);
         (cl_box.cl)();
     }
-    assert_eq!(i, 4);
+    fail_unless_eq!(i, 4);
 }

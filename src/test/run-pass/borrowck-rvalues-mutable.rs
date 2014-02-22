@@ -35,8 +35,8 @@ impl Counter {
 
 pub fn main() {
     let v = Counter::new(22).get_and_inc();
-    assert_eq!(v, 22);
+    fail_unless_eq!(v, 22);
 
     let v = Counter::new(22).inc().inc().get();
-    assert_eq!(v, 24);;
+    fail_unless_eq!(v, 24);;
 }

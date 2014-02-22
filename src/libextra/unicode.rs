@@ -238,25 +238,25 @@ mod tests {
 
     #[test]
     fn test_is_digit() {
-        assert!((is_digit('0')));
-        assert!((!is_digit('m')));
+        fail_unless!((is_digit('0')));
+        fail_unless!((!is_digit('m')));
     }
 
     #[test]
     fn test_is_lower() {
-        assert!((is_lower('m')));
-        assert!((!is_lower('M')));
+        fail_unless!((is_lower('m')));
+        fail_unless!((!is_lower('M')));
     }
 
     #[test]
     fn test_is_space() {
-        assert!((is_space(' ')));
-        assert!((!is_space('m')));
+        fail_unless!((is_space(' ')));
+        fail_unless!((!is_space('m')));
     }
 
     #[test]
     fn test_is_upper() {
-        assert!((is_upper('M')));
-        assert!((!is_upper('m')));
+        fail_unless!((is_upper('M')));
+        fail_unless!((!is_upper('m')));
     }
 }

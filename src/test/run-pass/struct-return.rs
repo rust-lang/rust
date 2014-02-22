@@ -34,10 +34,10 @@ fn test1() {
         error!("b: {:x}", qq.b as uint);
         error!("c: {:x}", qq.c as uint);
         error!("d: {:x}", qq.d as uint);
-        assert_eq!(qq.a, q.c + 1u64);
-        assert_eq!(qq.b, q.d - 1u64);
-        assert_eq!(qq.c, q.a + 1u64);
-        assert_eq!(qq.d, q.b - 1u64);
+        fail_unless_eq!(qq.a, q.c + 1u64);
+        fail_unless_eq!(qq.b, q.d - 1u64);
+        fail_unless_eq!(qq.c, q.a + 1u64);
+        fail_unless_eq!(qq.d, q.b - 1u64);
     }
 }
 
@@ -51,9 +51,9 @@ fn test2() {
         error!("a: {}", ff.a as f64);
         error!("b: {}", ff.b as uint);
         error!("c: {}", ff.c as f64);
-        assert_eq!(ff.a, f.c + 1.0f64);
-        assert_eq!(ff.b, 0xff_u8);
-        assert_eq!(ff.c, f.a - 1.0f64);
+        fail_unless_eq!(ff.a, f.c + 1.0f64);
+        fail_unless_eq!(ff.b, 0xff_u8);
+        fail_unless_eq!(ff.c, f.a - 1.0f64);
     }
 }
 

@@ -18,11 +18,11 @@ trait MyIter {
 }
 
 impl<'a> MyIter for &'a [int] {
-    fn test_imm(&self) { assert_eq!(self[0], 1) }
+    fn test_imm(&self) { fail_unless_eq!(self[0], 1) }
 }
 
 impl<'a> MyIter for &'a str {
-    fn test_imm(&self) { assert_eq!(*self, "test") }
+    fn test_imm(&self) { fail_unless_eq!(*self, "test") }
 }
 
 pub fn main() {

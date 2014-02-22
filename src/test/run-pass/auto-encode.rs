@@ -41,7 +41,7 @@ fn test_ebml<'a, A:
     let d: extra::ebml::Doc<'a> = EBReader::Doc(bytes);
     let mut decoder: EBReader::Decoder<'a> = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);
-    assert!(*a1 == a2);
+    fail_unless!(*a1 == a2);
 }
 
 #[deriving(Decodable, Encodable)]

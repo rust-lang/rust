@@ -24,5 +24,5 @@ impl double for @uint {
 
 pub fn main() {
     let x = @3u;
-    assert_eq!(x.double(), 6u);
+    fail_unless_eq!(x.double(), 6u);
 }

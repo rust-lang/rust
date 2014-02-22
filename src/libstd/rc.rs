@@ -199,7 +199,7 @@ mod tests {
         x.borrow().with_mut(|inner| {
             *inner = 20;
         });
-        assert_eq!(y.borrow().with(|v| *v), 20);
+        fail_unless_eq!(y.borrow().with(|v| *v), 20);
     }
 
     #[test]
@@ -209,34 +209,34 @@ mod tests {
         x.borrow().with_mut(|inner| {
             *inner = 20;
         });
-        assert_eq!(y.borrow().with(|v| *v), 5);
+        fail_unless_eq!(y.borrow().with(|v| *v), 5);
     }
 
     #[test]
     fn test_simple() {
         let x = Rc::new(5);
-        assert_eq!(*x.borrow(), 5);
+        fail_unless_eq!(*x.borrow(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
-        assert_eq!(*x.borrow(), 5);
-        assert_eq!(*y.borrow(), 5);
+        fail_unless_eq!(*x.borrow(), 5);
+        fail_unless_eq!(*y.borrow(), 5);
     }
 
     #[test]
     fn test_destructor() {
         let x = Rc::new(~5);
-        assert_eq!(**x.borrow(), 5);
+        fail_unless_eq!(**x.borrow(), 5);
     }
 
     #[test]
     fn test_live() {
         let x = Rc::new(5);
         let y = x.downgrade();
-        assert!(y.upgrade().is_some());
+        fail_unless!(y.upgrade().is_some());
     }
 
     #[test]
@@ -244,7 +244,7 @@ mod tests {
         let x = Rc::new(5);
         let y = x.downgrade();
         drop(x);
-        assert!(y.upgrade().is_none());
+        fail_unless!(y.upgrade().is_none());
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod tests {
         // see issue #11532
         use gc::Gc;
         let a = Rc::new(RefCell::new(Gc::new(1)));
-        assert!(a.borrow().try_borrow_mut().is_some());
+        fail_unless!(a.borrow().try_borrow_mut().is_some());
     }
 
     #[test]

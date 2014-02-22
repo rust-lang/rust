@@ -34,5 +34,5 @@ fn greater_than_one<T:NumExt>() -> T { MyNum::from_int(1) }
 
 pub fn main() {
     let v: S = greater_than_one();
-    assert_eq!(v.v, 1);
+    fail_unless_eq!(v.v, 1);
 }

@@ -167,10 +167,10 @@ mod tests {
         let s = p.take_stack(10);
         p.give_stack(s);
         let s = p.take_stack(4);
-        assert_eq!(s.min_size, 10);
+        fail_unless_eq!(s.min_size, 10);
         p.give_stack(s);
         let s = p.take_stack(14);
-        assert_eq!(s.min_size, 14);
+        fail_unless_eq!(s.min_size, 14);
         p.give_stack(s);
     }
 
@@ -182,7 +182,7 @@ mod tests {
         p.give_stack(s);
 
         let s = p.take_stack(10);
-        assert_eq!(s.min_size, 10);
-        assert_eq!(s.valgrind_id, 100);
+        fail_unless_eq!(s.min_size, 10);
+        fail_unless_eq!(s.valgrind_id, 100);
     }
 }

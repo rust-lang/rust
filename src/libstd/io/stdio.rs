@@ -372,7 +372,7 @@ mod tests {
             set_stdout(~w as ~Writer);
             println!("hello!");
         });
-        assert_eq!(r.read_to_str().unwrap(), ~"hello!\n");
+        fail_unless_eq!(r.read_to_str().unwrap(), ~"hello!\n");
     })
 
     iotest!(fn capture_stderr() {
@@ -385,6 +385,6 @@ mod tests {
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();
-        assert!(s.contains("my special message"));
+        fail_unless!(s.contains("my special message"));
     })
 }

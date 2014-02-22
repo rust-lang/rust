@@ -47,6 +47,6 @@ pub fn main() {
     task::spawn(proc() {
         let result = count(12u);
         info!("result = {}", result);
-        assert_eq!(result, 2048u);
+        fail_unless_eq!(result, 2048u);
     });
 }

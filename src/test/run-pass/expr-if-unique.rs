@@ -15,7 +15,7 @@
 // Tests for if as expressions returning boxed types
 fn test_box() {
     let rs = if true { ~100 } else { ~101 };
-    assert_eq!(*rs, 100);
+    fail_unless_eq!(*rs, 100);
 }
 
 pub fn main() { test_box(); }

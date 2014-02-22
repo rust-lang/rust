@@ -2186,7 +2186,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
+                fail_unless_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
                 let ty_param_defs = cx.ty_param_defs.borrow();
                 let tp_def = ty_param_defs.get().get(&p.def_id.node);
@@ -3796,7 +3796,7 @@ pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @~[@TraitRef] {
 
     // Not in the cache. It had better be in the metadata, which means it
     // shouldn't be local.
-    assert!(!is_local(id));
+    fail_unless!(!is_local(id));
 
     // Get the supertraits out of the metadata and create the
     // TraitRef for each.
@@ -3981,7 +3981,7 @@ impl VariantInfo {
 
                 let fields: &[StructField] = struct_def.fields;
 
-                assert!(fields.len() > 0);
+                fail_unless!(fields.len() > 0);
 
                 let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
                 let arg_names = fields.map(|field| {
@@ -4218,7 +4218,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
             return trait_def;
         }
         None => {
-            assert!(did.krate != ast::LOCAL_CRATE);
+            fail_unless!(did.krate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
             trait_defs.get().insert(did, trait_def);
             return trait_def;

@@ -18,6 +18,6 @@ fn bip(v: &[uint]) -> ~[uint] {
 
 pub fn main() {
     let mut the_vec = ~[1u, 2, 3, 100];
-    assert_eq!(the_vec.clone(), bar(the_vec));
-    assert_eq!(the_vec.clone(), bip(the_vec));
+    fail_unless_eq!(the_vec.clone(), bar(the_vec));
+    fail_unless_eq!(the_vec.clone(), bip(the_vec));
 }

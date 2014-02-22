@@ -49,7 +49,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// let mut w = MemWriter::new();
 /// w.write([0, 1, 2]);
 ///
-/// assert_eq!(w.unwrap(), ~[0, 1, 2]);
+/// fail_unless_eq!(w.unwrap(), ~[0, 1, 2]);
 /// ```
 pub struct MemWriter {
     priv buf: ~[u8],
@@ -129,7 +129,7 @@ impl Seek for MemWriter {
 ///
 /// let mut r = MemReader::new(~[0, 1, 2]);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
+/// fail_unless_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
 /// ```
 pub struct MemReader {
     priv buf: ~[u8],
@@ -170,11 +170,11 @@ impl Reader for MemReader {
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
-            assert_eq!(input.len(), output.len());
+            fail_unless_eq!(input.len(), output.len());
             vec::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
-        assert!(self.pos <= self.buf.len());
+        fail_unless!(self.pos <= self.buf.len());
 
         return Ok(write_len);
     }
@@ -216,7 +216,7 @@ impl Buffer for MemReader {
 ///     let mut w = BufWriter::new(buf);
 ///     w.write([0, 1, 2]);
 /// }
-/// assert_eq!(buf, [0, 1, 2, 0]);
+/// fail_unless_eq!(buf, [0, 1, 2, 0]);
 /// ```
 pub struct BufWriter<'a> {
     priv buf: &'a mut [u8],
@@ -270,7 +270,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// let mut buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(buf);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
+/// fail_unless_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
 /// ```
 pub struct BufReader<'a> {
     priv buf: &'a [u8],
@@ -300,11 +300,11 @@ impl<'a> Reader for BufReader<'a> {
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
-            assert_eq!(input.len(), output.len());
+            fail_unless_eq!(input.len(), output.len());
             vec::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
-        assert!(self.pos <= self.buf.len());
+        fail_unless!(self.pos <= self.buf.len());
 
         return Ok(write_len);
      }
@@ -340,30 +340,30 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
-        assert_eq!(writer.tell(), Ok(0));
+        fail_unless_eq!(writer.tell(), Ok(0));
         writer.write([0]).unwrap();
-        assert_eq!(writer.tell(), Ok(1));
+        fail_unless_eq!(writer.tell(), Ok(1));
         writer.write([1, 2, 3]).unwrap();
         writer.write([4, 5, 6, 7]).unwrap();
-        assert_eq!(writer.tell(), Ok(8));
-        assert_eq!(writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7]);
+        fail_unless_eq!(writer.tell(), Ok(8));
+        fail_unless_eq!(writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7]);
 
         writer.seek(0, SeekSet).unwrap();
-        assert_eq!(writer.tell(), Ok(0));
+        fail_unless_eq!(writer.tell(), Ok(0));
         writer.write([3, 4]).unwrap();
-        assert_eq!(writer.get_ref(), [3, 4, 2, 3, 4, 5, 6, 7]);
+        fail_unless_eq!(writer.get_ref(), [3, 4, 2, 3, 4, 5, 6, 7]);
 
         writer.seek(1, SeekCur).unwrap();
         writer.write([0, 1]).unwrap();
-        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 7]);
+        fail_unless_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 7]);
 
         writer.seek(-1, SeekEnd).unwrap();
         writer.write([1, 2]).unwrap();
-        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2]);
+        fail_unless_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2]);
 
         writer.seek(1, SeekEnd).unwrap();
         writer.write([1]).unwrap();
-        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+        fail_unless_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
     }
 
     #[test]
@@ -371,14 +371,14 @@ mod test {
         let mut buf = [0 as u8, ..8];
         {
             let mut writer = BufWriter::new(buf);
-            assert_eq!(writer.tell(), Ok(0));
+            fail_unless_eq!(writer.tell(), Ok(0));
             writer.write([0]).unwrap();
-            assert_eq!(writer.tell(), Ok(1));
+            fail_unless_eq!(writer.tell(), Ok(1));
             writer.write([1, 2, 3]).unwrap();
             writer.write([4, 5, 6, 7]).unwrap();
-            assert_eq!(writer.tell(), Ok(8));
+            fail_unless_eq!(writer.tell(), Ok(8));
         }
-        assert_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7]);
+        fail_unless_eq!(buf, [0, 1, 2, 3, 4, 5, 6, 7]);
     }
 
     #[test]
@@ -386,27 +386,27 @@ mod test {
         let mut buf = [0 as u8, ..8];
         {
             let mut writer = BufWriter::new(buf);
-            assert_eq!(writer.tell(), Ok(0));
+            fail_unless_eq!(writer.tell(), Ok(0));
             writer.write([1]).unwrap();
-            assert_eq!(writer.tell(), Ok(1));
+            fail_unless_eq!(writer.tell(), Ok(1));
 
             writer.seek(2, SeekSet).unwrap();
-            assert_eq!(writer.tell(), Ok(2));
+            fail_unless_eq!(writer.tell(), Ok(2));
             writer.write([2]).unwrap();
-            assert_eq!(writer.tell(), Ok(3));
+            fail_unless_eq!(writer.tell(), Ok(3));
 
             writer.seek(-2, SeekCur).unwrap();
-            assert_eq!(writer.tell(), Ok(1));
+            fail_unless_eq!(writer.tell(), Ok(1));
             writer.write([3]).unwrap();
-            assert_eq!(writer.tell(), Ok(2));
+            fail_unless_eq!(writer.tell(), Ok(2));
 
             writer.seek(-1, SeekEnd).unwrap();
-            assert_eq!(writer.tell(), Ok(7));
+            fail_unless_eq!(writer.tell(), Ok(7));
             writer.write([4]).unwrap();
-            assert_eq!(writer.tell(), Ok(8));
+            fail_unless_eq!(writer.tell(), Ok(8));
 
         }
-        assert_eq!(buf, [1, 3, 2, 0, 0, 0, 0, 4]);
+        fail_unless_eq!(buf, [1, 3, 2, 0, 0, 0, 0, 4]);
     }
 
     #[test]
@@ -417,7 +417,7 @@ mod test {
 
         match writer.write([0, 0]) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::OtherIoError),
+            Err(e) => fail_unless_eq!(e.kind, io::OtherIoError),
         }
     }
 
@@ -425,23 +425,23 @@ mod test {
     fn test_mem_reader() {
         let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
         let mut buf = [];
-        assert_eq!(reader.read(buf), Ok(0));
-        assert_eq!(reader.tell(), Ok(0));
+        fail_unless_eq!(reader.read(buf), Ok(0));
+        fail_unless_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Ok(1));
-        assert_eq!(reader.tell(), Ok(1));
-        assert_eq!(buf, [0]);
+        fail_unless_eq!(reader.read(buf), Ok(1));
+        fail_unless_eq!(reader.tell(), Ok(1));
+        fail_unless_eq!(buf, [0]);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Ok(4));
-        assert_eq!(reader.tell(), Ok(5));
-        assert_eq!(buf, [1, 2, 3, 4]);
-        assert_eq!(reader.read(buf), Ok(3));
-        assert_eq!(buf.slice(0, 3), [5, 6, 7]);
-        assert!(reader.read(buf).is_err());
+        fail_unless_eq!(reader.read(buf), Ok(4));
+        fail_unless_eq!(reader.tell(), Ok(5));
+        fail_unless_eq!(buf, [1, 2, 3, 4]);
+        fail_unless_eq!(reader.read(buf), Ok(3));
+        fail_unless_eq!(buf.slice(0, 3), [5, 6, 7]);
+        fail_unless!(reader.read(buf).is_err());
         let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
-        assert!(reader.read(buf).is_err());
+        fail_unless_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
+        fail_unless_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        fail_unless!(reader.read(buf).is_err());
     }
 
     #[test]
@@ -449,41 +449,41 @@ mod test {
         let in_buf = ~[0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = BufReader::new(in_buf);
         let mut buf = [];
-        assert_eq!(reader.read(buf), Ok(0));
-        assert_eq!(reader.tell(), Ok(0));
+        fail_unless_eq!(reader.read(buf), Ok(0));
+        fail_unless_eq!(reader.tell(), Ok(0));
         let mut buf = [0];
-        assert_eq!(reader.read(buf), Ok(1));
-        assert_eq!(reader.tell(), Ok(1));
-        assert_eq!(buf, [0]);
+        fail_unless_eq!(reader.read(buf), Ok(1));
+        fail_unless_eq!(reader.tell(), Ok(1));
+        fail_unless_eq!(buf, [0]);
         let mut buf = [0, ..4];
-        assert_eq!(reader.read(buf), Ok(4));
-        assert_eq!(reader.tell(), Ok(5));
-        assert_eq!(buf, [1, 2, 3, 4]);
-        assert_eq!(reader.read(buf), Ok(3));
-        assert_eq!(buf.slice(0, 3), [5, 6, 7]);
-        assert!(reader.read(buf).is_err());
+        fail_unless_eq!(reader.read(buf), Ok(4));
+        fail_unless_eq!(reader.tell(), Ok(5));
+        fail_unless_eq!(buf, [1, 2, 3, 4]);
+        fail_unless_eq!(reader.read(buf), Ok(3));
+        fail_unless_eq!(buf.slice(0, 3), [5, 6, 7]);
+        fail_unless!(reader.read(buf).is_err());
         let mut reader = BufReader::new(in_buf);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
-        assert!(reader.read(buf).is_err());
+        fail_unless_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
+        fail_unless_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        fail_unless!(reader.read(buf).is_err());
     }
 
     #[test]
     fn test_read_char() {
         let b = bytes!("Việt");
         let mut r = BufReader::new(b);
-        assert_eq!(r.read_char(), Ok('V'));
-        assert_eq!(r.read_char(), Ok('i'));
-        assert_eq!(r.read_char(), Ok('ệ'));
-        assert_eq!(r.read_char(), Ok('t'));
-        assert!(r.read_char().is_err());
+        fail_unless_eq!(r.read_char(), Ok('V'));
+        fail_unless_eq!(r.read_char(), Ok('i'));
+        fail_unless_eq!(r.read_char(), Ok('ệ'));
+        fail_unless_eq!(r.read_char(), Ok('t'));
+        fail_unless!(r.read_char().is_err());
     }
 
     #[test]
     fn test_read_bad_char() {
         let b = bytes!(0x80);
         let mut r = BufReader::new(b);
-        assert!(r.read_char().is_err());
+        fail_unless!(r.read_char().is_err());
     }
 
     #[test]
@@ -493,7 +493,7 @@ mod test {
         writer.write_line("testing").unwrap();
         writer.write_str("testing").unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), ~"testingtesting\ntesting");
+        fail_unless_eq!(r.read_to_str().unwrap(), ~"testingtesting\ntesting");
     }
 
     #[test]
@@ -503,7 +503,7 @@ mod test {
         writer.write_char('\n').unwrap();
         writer.write_char('ệ').unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), ~"a\nệ");
+        fail_unless_eq!(r.read_to_str().unwrap(), ~"a\nệ");
     }
 
     #[test]
@@ -521,36 +521,36 @@ mod test {
         let buf = [0xff];
         let mut r = BufReader::new(buf);
         r.seek(10, SeekSet).unwrap();
-        assert!(r.read(&mut []).is_err());
+        fail_unless!(r.read(&mut []).is_err());
 
         let mut r = MemReader::new(~[10]);
         r.seek(10, SeekSet).unwrap();
-        assert!(r.read(&mut []).is_err());
+        fail_unless!(r.read(&mut []).is_err());
 
         let mut r = MemWriter::new();
         r.seek(10, SeekSet).unwrap();
-        assert!(r.write([3]).is_ok());
+        fail_unless!(r.write([3]).is_ok());
 
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
         r.seek(10, SeekSet).unwrap();
-        assert!(r.write([3]).is_err());
+        fail_unless!(r.write([3]).is_err());
     }
 
     #[test]
     fn seek_before_0() {
         let buf = [0xff];
         let mut r = BufReader::new(buf);
-        assert!(r.seek(-1, SeekSet).is_err());
+        fail_unless!(r.seek(-1, SeekSet).is_err());
 
         let mut r = MemReader::new(~[10]);
-        assert!(r.seek(-1, SeekSet).is_err());
+        fail_unless!(r.seek(-1, SeekSet).is_err());
 
         let mut r = MemWriter::new();
-        assert!(r.seek(-1, SeekSet).is_err());
+        fail_unless!(r.seek(-1, SeekSet).is_err());
 
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
-        assert!(r.seek(-1, SeekSet).is_err());
+        fail_unless!(r.seek(-1, SeekSet).is_err());
     }
 }

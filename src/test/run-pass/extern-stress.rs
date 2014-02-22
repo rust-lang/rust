@@ -43,7 +43,7 @@ fn count(n: uint) -> uint {
 pub fn main() {
     for _ in range(0, 100u) {
         task::spawn(proc() {
-            assert_eq!(count(5u), 16u);
+            fail_unless_eq!(count(5u), 16u);
         });
     }
 }

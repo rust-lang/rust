@@ -31,8 +31,8 @@ pub fn main() {
 
     // lame-o
     let f32x4(x, y, z, w) = add(lr, lr);
-    assert_eq!(x, 2.0f32);
-    assert_eq!(y, 4.0f32);
-    assert_eq!(z, 6.0f32);
-    assert_eq!(w, 8.0f32);
+    fail_unless_eq!(x, 2.0f32);
+    fail_unless_eq!(y, 4.0f32);
+    fail_unless_eq!(z, 6.0f32);
+    fail_unless_eq!(w, 8.0f32);
 }

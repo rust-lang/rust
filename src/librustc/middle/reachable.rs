@@ -228,7 +228,7 @@ impl ReachableContext {
                     let impl_did = tcx.map.get_parent_did(node_id);
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
-                    assert!(impl_did.krate == ast::LOCAL_CRATE);
+                    fail_unless!(impl_did.krate == ast::LOCAL_CRATE);
                     match tcx.map.expect_item(impl_did.node).node {
                         ast::ItemImpl(ref generics, _, _, _) => {
                             generics_require_inlining(generics)

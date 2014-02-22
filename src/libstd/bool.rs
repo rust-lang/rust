@@ -73,10 +73,10 @@ pub trait Bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.and(true), true);
-    /// assert_eq!(true.and(false), false);
-    /// assert_eq!(false.and(true), false);
-    /// assert_eq!(false.and(false), false);
+    /// fail_unless_eq!(true.and(true), true);
+    /// fail_unless_eq!(true.and(false), false);
+    /// fail_unless_eq!(false.and(true), false);
+    /// fail_unless_eq!(false.and(false), false);
     /// ```
     fn and(self, b: bool) -> bool;
 
@@ -85,10 +85,10 @@ pub trait Bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.or(true), true);
-    /// assert_eq!(true.or(false), true);
-    /// assert_eq!(false.or(true), true);
-    /// assert_eq!(false.or(false), false);
+    /// fail_unless_eq!(true.or(true), true);
+    /// fail_unless_eq!(true.or(false), true);
+    /// fail_unless_eq!(false.or(true), true);
+    /// fail_unless_eq!(false.or(false), false);
     /// ```
     fn or(self, b: bool) -> bool;
 
@@ -99,10 +99,10 @@ pub trait Bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.xor(true), false);
-    /// assert_eq!(true.xor(false), true);
-    /// assert_eq!(false.xor(true), true);
-    /// assert_eq!(false.xor(false), false);
+    /// fail_unless_eq!(true.xor(true), false);
+    /// fail_unless_eq!(true.xor(false), true);
+    /// fail_unless_eq!(false.xor(true), true);
+    /// fail_unless_eq!(false.xor(false), false);
     /// ```
     fn xor(self, b: bool) -> bool;
 
@@ -115,10 +115,10 @@ pub trait Bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.implies(true), true);
-    /// assert_eq!(true.implies(false), false);
-    /// assert_eq!(false.implies(true), true);
-    /// assert_eq!(false.implies(false), true);
+    /// fail_unless_eq!(true.implies(true), true);
+    /// fail_unless_eq!(true.implies(false), false);
+    /// fail_unless_eq!(false.implies(true), true);
+    /// fail_unless_eq!(false.implies(false), true);
     /// ```
     fn implies(self, b: bool) -> bool;
 
@@ -127,8 +127,8 @@ pub trait Bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.to_bit::<u8>(), 1u8);
-    /// assert_eq!(false.to_bit::<u8>(), 0u8);
+    /// fail_unless_eq!(true.to_bit::<u8>(), 1u8);
+    /// fail_unless_eq!(false.to_bit::<u8>(), 0u8);
     /// ```
     fn to_bit<N: FromPrimitive>(self) -> N;
 }
@@ -165,9 +165,9 @@ impl FromStr for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(from_str::<bool>("true"), Some(true));
-    /// assert_eq!(from_str::<bool>("false"), Some(false));
-    /// assert_eq!(from_str::<bool>("not even a boolean"), None);
+    /// fail_unless_eq!(from_str::<bool>("true"), Some(true));
+    /// fail_unless_eq!(from_str::<bool>("false"), Some(false));
+    /// fail_unless_eq!(from_str::<bool>("not even a boolean"), None);
     /// ```
     #[inline]
     fn from_str(s: &str) -> Option<bool> {
@@ -185,8 +185,8 @@ impl ToStr for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(true.to_str(), ~"true");
-    /// assert_eq!(false.to_str(), ~"false");
+    /// fail_unless_eq!(true.to_str(), ~"true");
+    /// fail_unless_eq!(false.to_str(), ~"false");
     /// ```
     #[inline]
     fn to_str(&self) -> ~str {
@@ -201,8 +201,8 @@ impl Not<bool> for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(!true, false);
-    /// assert_eq!(!false, true);
+    /// fail_unless_eq!(!true, false);
+    /// fail_unless_eq!(!false, true);
     /// ```
     #[inline]
     fn not(&self) -> bool { !*self }
@@ -215,15 +215,15 @@ impl BitAnd<bool, bool> for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(false.bitand(&false), false);
-    /// assert_eq!(true.bitand(&false), false);
-    /// assert_eq!(false.bitand(&true), false);
-    /// assert_eq!(true.bitand(&true), true);
+    /// fail_unless_eq!(false.bitand(&false), false);
+    /// fail_unless_eq!(true.bitand(&false), false);
+    /// fail_unless_eq!(false.bitand(&true), false);
+    /// fail_unless_eq!(true.bitand(&true), true);
     ///
-    /// assert_eq!(false & false, false);
-    /// assert_eq!(true & false, false);
-    /// assert_eq!(false & true, false);
-    /// assert_eq!(true & true, true);
+    /// fail_unless_eq!(false & false, false);
+    /// fail_unless_eq!(true & false, false);
+    /// fail_unless_eq!(false & true, false);
+    /// fail_unless_eq!(true & true, true);
     /// ```
     #[inline]
     fn bitand(&self, b: &bool) -> bool { *self & *b }
@@ -236,15 +236,15 @@ impl BitOr<bool, bool> for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(false.bitor(&false), false);
-    /// assert_eq!(true.bitor(&false), true);
-    /// assert_eq!(false.bitor(&true), true);
-    /// assert_eq!(true.bitor(&true), true);
+    /// fail_unless_eq!(false.bitor(&false), false);
+    /// fail_unless_eq!(true.bitor(&false), true);
+    /// fail_unless_eq!(false.bitor(&true), true);
+    /// fail_unless_eq!(true.bitor(&true), true);
     ///
-    /// assert_eq!(false | false, false);
-    /// assert_eq!(true | false, true);
-    /// assert_eq!(false | true, true);
-    /// assert_eq!(true | true, true);
+    /// fail_unless_eq!(false | false, false);
+    /// fail_unless_eq!(true | false, true);
+    /// fail_unless_eq!(false | true, true);
+    /// fail_unless_eq!(true | true, true);
     /// ```
     #[inline]
     fn bitor(&self, b: &bool) -> bool { *self | *b }
@@ -259,15 +259,15 @@ impl BitXor<bool, bool> for bool {
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!(false.bitxor(&false), false);
-    /// assert_eq!(true.bitxor(&false), true);
-    /// assert_eq!(false.bitxor(&true), true);
-    /// assert_eq!(true.bitxor(&true), false);
+    /// fail_unless_eq!(false.bitxor(&false), false);
+    /// fail_unless_eq!(true.bitxor(&false), true);
+    /// fail_unless_eq!(false.bitxor(&true), true);
+    /// fail_unless_eq!(true.bitxor(&true), false);
     ///
-    /// assert_eq!(false ^ false, false);
-    /// assert_eq!(true ^ false, true);
-    /// assert_eq!(false ^ true, true);
-    /// assert_eq!(true ^ true, false);
+    /// fail_unless_eq!(false ^ false, false);
+    /// fail_unless_eq!(true ^ false, true);
+    /// fail_unless_eq!(false ^ true, true);
+    /// fail_unless_eq!(true ^ true, false);
     /// ```
     #[inline]
     fn bitxor(&self, b: &bool) -> bool { *self ^ *b }
@@ -292,10 +292,10 @@ impl TotalOrd for bool {
 /// # Examples
 ///
 /// ```rust
-/// assert_eq!(false.eq(&true), false);
-/// assert_eq!(false == false, true);
-/// assert_eq!(false != true, true);
-/// assert_eq!(false.ne(&false), false);
+/// fail_unless_eq!(false.eq(&true), false);
+/// fail_unless_eq!(false == false, true);
+/// fail_unless_eq!(false != true, true);
+/// fail_unless_eq!(false.ne(&false), false);
 /// ```
 #[cfg(not(test))]
 impl Eq for bool {
@@ -315,121 +315,121 @@ mod tests {
 
     #[test]
     fn test_bool() {
-        assert_eq!(false.eq(&true), false);
-        assert_eq!(false == false, true);
-        assert_eq!(false != true, true);
-        assert_eq!(false.ne(&false), false);
+        fail_unless_eq!(false.eq(&true), false);
+        fail_unless_eq!(false == false, true);
+        fail_unless_eq!(false != true, true);
+        fail_unless_eq!(false.ne(&false), false);
 
-        assert_eq!(false.bitand(&false), false);
-        assert_eq!(true.bitand(&false), false);
-        assert_eq!(false.bitand(&true), false);
-        assert_eq!(true.bitand(&true), true);
+        fail_unless_eq!(false.bitand(&false), false);
+        fail_unless_eq!(true.bitand(&false), false);
+        fail_unless_eq!(false.bitand(&true), false);
+        fail_unless_eq!(true.bitand(&true), true);
 
-        assert_eq!(false & false, false);
-        assert_eq!(true & false, false);
-        assert_eq!(false & true, false);
-        assert_eq!(true & true, true);
+        fail_unless_eq!(false & false, false);
+        fail_unless_eq!(true & false, false);
+        fail_unless_eq!(false & true, false);
+        fail_unless_eq!(true & true, true);
 
-        assert_eq!(false.bitor(&false), false);
-        assert_eq!(true.bitor(&false), true);
-        assert_eq!(false.bitor(&true), true);
-        assert_eq!(true.bitor(&true), true);
+        fail_unless_eq!(false.bitor(&false), false);
+        fail_unless_eq!(true.bitor(&false), true);
+        fail_unless_eq!(false.bitor(&true), true);
+        fail_unless_eq!(true.bitor(&true), true);
 
-        assert_eq!(false | false, false);
-        assert_eq!(true | false, true);
-        assert_eq!(false | true, true);
-        assert_eq!(true | true, true);
+        fail_unless_eq!(false | false, false);
+        fail_unless_eq!(true | false, true);
+        fail_unless_eq!(false | true, true);
+        fail_unless_eq!(true | true, true);
 
-        assert_eq!(false.bitxor(&false), false);
-        assert_eq!(true.bitxor(&false), true);
-        assert_eq!(false.bitxor(&true), true);
-        assert_eq!(true.bitxor(&true), false);
+        fail_unless_eq!(false.bitxor(&false), false);
+        fail_unless_eq!(true.bitxor(&false), true);
+        fail_unless_eq!(false.bitxor(&true), true);
+        fail_unless_eq!(true.bitxor(&true), false);
 
-        assert_eq!(false ^ false, false);
-        assert_eq!(true ^ false, true);
-        assert_eq!(false ^ true, true);
-        assert_eq!(true ^ true, false);
+        fail_unless_eq!(false ^ false, false);
+        fail_unless_eq!(true ^ false, true);
+        fail_unless_eq!(false ^ true, true);
+        fail_unless_eq!(true ^ true, false);
 
-        assert_eq!(!true, false);
-        assert_eq!(!false, true);
+        fail_unless_eq!(!true, false);
+        fail_unless_eq!(!false, true);
 
-        assert_eq!(true.to_str(), ~"true");
-        assert_eq!(false.to_str(), ~"false");
+        fail_unless_eq!(true.to_str(), ~"true");
+        fail_unless_eq!(false.to_str(), ~"false");
 
-        assert_eq!(from_str::<bool>("true"), Some(true));
-        assert_eq!(from_str::<bool>("false"), Some(false));
-        assert_eq!(from_str::<bool>("not even a boolean"), None);
+        fail_unless_eq!(from_str::<bool>("true"), Some(true));
+        fail_unless_eq!(from_str::<bool>("false"), Some(false));
+        fail_unless_eq!(from_str::<bool>("not even a boolean"), None);
 
-        assert_eq!(true.and(true), true);
-        assert_eq!(true.and(false), false);
-        assert_eq!(false.and(true), false);
-        assert_eq!(false.and(false), false);
+        fail_unless_eq!(true.and(true), true);
+        fail_unless_eq!(true.and(false), false);
+        fail_unless_eq!(false.and(true), false);
+        fail_unless_eq!(false.and(false), false);
 
-        assert_eq!(true.or(true), true);
-        assert_eq!(true.or(false), true);
-        assert_eq!(false.or(true), true);
-        assert_eq!(false.or(false), false);
+        fail_unless_eq!(true.or(true), true);
+        fail_unless_eq!(true.or(false), true);
+        fail_unless_eq!(false.or(true), true);
+        fail_unless_eq!(false.or(false), false);
 
-        assert_eq!(true.xor(true), false);
-        assert_eq!(true.xor(false), true);
-        assert_eq!(false.xor(true), true);
-        assert_eq!(false.xor(false), false);
+        fail_unless_eq!(true.xor(true), false);
+        fail_unless_eq!(true.xor(false), true);
+        fail_unless_eq!(false.xor(true), true);
+        fail_unless_eq!(false.xor(false), false);
 
-        assert_eq!(true.implies(true), true);
-        assert_eq!(true.implies(false), false);
-        assert_eq!(false.implies(true), true);
-        assert_eq!(false.implies(false), true);
+        fail_unless_eq!(true.implies(true), true);
+        fail_unless_eq!(true.implies(false), false);
+        fail_unless_eq!(false.implies(true), true);
+        fail_unless_eq!(false.implies(false), true);
 
-        assert_eq!(true.to_bit::<u8>(), 1u8);
-        assert_eq!(false.to_bit::<u8>(), 0u8);
+        fail_unless_eq!(true.to_bit::<u8>(), 1u8);
+        fail_unless_eq!(false.to_bit::<u8>(), 0u8);
     }
 
     #[test]
     fn test_bool_from_str() {
         all_values(|v| {
-            assert!(Some(v) == FromStr::from_str(v.to_str()))
+            fail_unless!(Some(v) == FromStr::from_str(v.to_str()))
         });
     }
 
     #[test]
     fn test_bool_to_str() {
-        assert_eq!(false.to_str(), ~"false");
-        assert_eq!(true.to_str(), ~"true");
+        fail_unless_eq!(false.to_str(), ~"false");
+        fail_unless_eq!(true.to_str(), ~"true");
     }
 
     #[test]
     fn test_bool_to_bit() {
         all_values(|v| {
-            assert_eq!(v.to_bit::<u8>(), if v { 1u8 } else { 0u8 });
-            assert_eq!(v.to_bit::<uint>(), if v { 1u } else { 0u });
-            assert_eq!(v.to_bit::<int>(), if v { 1i } else { 0i });
+            fail_unless_eq!(v.to_bit::<u8>(), if v { 1u8 } else { 0u8 });
+            fail_unless_eq!(v.to_bit::<uint>(), if v { 1u } else { 0u });
+            fail_unless_eq!(v.to_bit::<int>(), if v { 1i } else { 0i });
         });
     }
 
     #[test]
     fn test_bool_ord() {
-        assert!(true > false);
-        assert!(!(false > true));
+        fail_unless!(true > false);
+        fail_unless!(!(false > true));
 
-        assert!(false < true);
-        assert!(!(true < false));
+        fail_unless!(false < true);
+        fail_unless!(!(true < false));
 
-        assert!(false <= false);
-        assert!(false >= false);
-        assert!(true <= true);
-        assert!(true >= true);
+        fail_unless!(false <= false);
+        fail_unless!(false >= false);
+        fail_unless!(true <= true);
+        fail_unless!(true >= true);
 
-        assert!(false <= true);
-        assert!(!(false >= true));
-        assert!(true >= false);
-        assert!(!(true <= false));
+        fail_unless!(false <= true);
+        fail_unless!(!(false >= true));
+        fail_unless!(true >= false);
+        fail_unless!(!(true <= false));
     }
 
     #[test]
     fn test_bool_totalord() {
-        assert_eq!(true.cmp(&true), Equal);
-        assert_eq!(false.cmp(&false), Equal);
-        assert_eq!(true.cmp(&false), Greater);
-        assert_eq!(false.cmp(&true), Less);
+        fail_unless_eq!(true.cmp(&true), Equal);
+        fail_unless_eq!(false.cmp(&false), Equal);
+        fail_unless_eq!(true.cmp(&false), Greater);
+        fail_unless_eq!(false.cmp(&true), Less);
     }
 }

@@ -22,7 +22,7 @@ pub fn main() {
 
     let foo_ = foo.clone();
     let foo = Foo { ..foo };
-    assert_eq!(foo, foo_);
+    fail_unless_eq!(foo, foo_);
 
     let foo = Foo {
         bar: ~"one",
@@ -31,5 +31,5 @@ pub fn main() {
 
     let foo_ = foo.clone();
     let foo = Foo { ..foo };
-    assert_eq!(foo, foo_);
+    fail_unless_eq!(foo, foo_);
 }

@@ -31,6 +31,6 @@ pub fn main() {
         }
     }
 
-    assert!(path.exists());
-    assert_eq!(path.stat().unwrap().size, 1000);
+    fail_unless!(path.exists());
+    fail_unless_eq!(path.stat().unwrap().size, 1000);
 }

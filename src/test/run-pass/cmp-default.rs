@@ -41,22 +41,22 @@ impl Ord for RevInt {
 }
 
 pub fn main() {
-    assert!(Int(2) >  Int(1));
-    assert!(Int(2) >= Int(1));
-    assert!(Int(1) >= Int(1));
-    assert!(Int(1) <  Int(2));
-    assert!(Int(1) <= Int(2));
-    assert!(Int(1) <= Int(1));
+    fail_unless!(Int(2) >  Int(1));
+    fail_unless!(Int(2) >= Int(1));
+    fail_unless!(Int(1) >= Int(1));
+    fail_unless!(Int(1) <  Int(2));
+    fail_unless!(Int(1) <= Int(2));
+    fail_unless!(Int(1) <= Int(1));
 
-    assert!(RevInt(2) <  RevInt(1));
-    assert!(RevInt(2) <= RevInt(1));
-    assert!(RevInt(1) <= RevInt(1));
-    assert!(RevInt(1) >  RevInt(2));
-    assert!(RevInt(1) >= RevInt(2));
-    assert!(RevInt(1) >= RevInt(1));
+    fail_unless!(RevInt(2) <  RevInt(1));
+    fail_unless!(RevInt(2) <= RevInt(1));
+    fail_unless!(RevInt(1) <= RevInt(1));
+    fail_unless!(RevInt(1) >  RevInt(2));
+    fail_unless!(RevInt(1) >= RevInt(2));
+    fail_unless!(RevInt(1) >= RevInt(1));
 
-    assert!(Fool(true)  == Fool(false));
-    assert!(Fool(true)  != Fool(true));
-    assert!(Fool(false) != Fool(false));
-    assert!(Fool(false) == Fool(true));
+    fail_unless!(Fool(true)  == Fool(false));
+    fail_unless!(Fool(true)  != Fool(true));
+    fail_unless!(Fool(false) != Fool(false));
+    fail_unless!(Fool(false) == Fool(true));
 }

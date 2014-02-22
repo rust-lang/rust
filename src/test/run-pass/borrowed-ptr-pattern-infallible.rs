@@ -12,6 +12,6 @@
 
 pub fn main() {
     let (&x, &y) = (&3, &'a');
-    assert_eq!(x, 3);
-    assert_eq!(y, 'a');
+    fail_unless_eq!(x, 3);
+    fail_unless_eq!(y, 'a');
 }

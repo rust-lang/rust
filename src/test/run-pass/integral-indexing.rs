@@ -15,16 +15,16 @@
 pub fn main() {
     let v: ~[int] = ~[0, 1, 2, 3, 4, 5];
     let s: ~str = ~"abcdef";
-    assert_eq!(v[3u], 3);
-    assert_eq!(v[3u8], 3);
-    assert_eq!(v[3i8], 3);
-    assert_eq!(v[3u32], 3);
-    assert_eq!(v[3i32], 3);
+    fail_unless_eq!(v[3u], 3);
+    fail_unless_eq!(v[3u8], 3);
+    fail_unless_eq!(v[3i8], 3);
+    fail_unless_eq!(v[3u32], 3);
+    fail_unless_eq!(v[3i32], 3);
     info!("{}", v[3u8]);
-    assert_eq!(s[3u], 'd' as u8);
-    assert_eq!(s[3u8], 'd' as u8);
-    assert_eq!(s[3i8], 'd' as u8);
-    assert_eq!(s[3u32], 'd' as u8);
-    assert_eq!(s[3i32], 'd' as u8);
+    fail_unless_eq!(s[3u], 'd' as u8);
+    fail_unless_eq!(s[3u8], 'd' as u8);
+    fail_unless_eq!(s[3i8], 'd' as u8);
+    fail_unless_eq!(s[3u32], 'd' as u8);
+    fail_unless_eq!(s[3i32], 'd' as u8);
     info!("{}", s[3u8]);
 }

@@ -20,11 +20,11 @@ macro_rules! check {
             }
             static C: E = V;
             pub fn check() {
-                assert_eq!(size_of::<E>(), size_of::<$t>());
-                assert_eq!(V as $t, $v);
-                assert_eq!(C as $t, $v);
-                assert_eq!(format!("{:?}", V), ~"V");
-                assert_eq!(format!("{:?}", C), ~"V");
+                fail_unless_eq!(size_of::<E>(), size_of::<$t>());
+                fail_unless_eq!(V as $t, $v);
+                fail_unless_eq!(C as $t, $v);
+                fail_unless_eq!(format!("{:?}", V), ~"V");
+                fail_unless_eq!(format!("{:?}", C), ~"V");
             }
         }
         $m::check();
@@ -51,5 +51,5 @@ pub fn main() {
     check!(s, i64, -0x1727374757677787);
 
     enum Simple { A, B }
-    assert_eq!(::std::mem::size_of::<Simple>(), 1);
+    fail_unless_eq!(::std::mem::size_of::<Simple>(), 1);
 }

@@ -16,7 +16,7 @@ pub fn main() {
     first_ten(|i| { info!("main"); info!("{}", i); sum = sum + i; });
     info!("sum");
     info!("{}", sum);
-    assert_eq!(sum, 45);
+    fail_unless_eq!(sum, 45);
 }
 
 fn first_ten(it: |int|) {

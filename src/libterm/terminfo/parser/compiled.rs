@@ -193,7 +193,7 @@ pub fn parse(file: &mut io::Reader,
     let string_offsets_count = try!(file.read_le_i16()) as int;
     let string_table_bytes   = try!(file.read_le_i16()) as int;
 
-    assert!(names_bytes          > 0);
+    fail_unless!(names_bytes          > 0);
 
     debug!("names_bytes = {}", names_bytes);
     debug!("bools_bytes = {}", bools_bytes);
@@ -345,9 +345,9 @@ mod test {
 
     #[test]
     fn test_veclens() {
-        assert_eq!(boolfnames.len(), boolnames.len());
-        assert_eq!(numfnames.len(), numnames.len());
-        assert_eq!(stringfnames.len(), stringnames.len());
+        fail_unless_eq!(boolfnames.len(), boolnames.len());
+        fail_unless_eq!(numfnames.len(), numnames.len());
+        fail_unless_eq!(stringfnames.len(), stringnames.len());
     }
 
     #[test]

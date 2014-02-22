@@ -147,9 +147,9 @@ mod imp {
             let expected = ~[bytes!("happy").to_owned(), bytes!("today?").to_owned()];
 
             put(expected.clone());
-            assert!(clone() == Some(expected.clone()));
-            assert!(take() == Some(expected.clone()));
-            assert!(take() == None);
+            fail_unless!(clone() == Some(expected.clone()));
+            fail_unless!(take() == Some(expected.clone()));
+            fail_unless!(take() == None);
 
             (|| {
             }).finally(|| {

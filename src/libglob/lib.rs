@@ -304,9 +304,9 @@ impl Pattern {
      * ```rust
      * use glob::Pattern;
      *
-     * assert!(Pattern::new("c?t").matches("cat"));
-     * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
-     * assert!(Pattern::new("d*g").matches("doog"));
+     * fail_unless!(Pattern::new("c?t").matches("cat"));
+     * fail_unless!(Pattern::new("k[!e]tteh").matches("kitteh"));
+     * fail_unless!(Pattern::new("d*g").matches("doog"));
      * ```
      */
     pub fn matches(&self, str: &str) -> bool {
@@ -549,28 +549,28 @@ mod test {
     #[test]
     fn test_absolute_pattern() {
         // assume that the filesystem is not empty!
-        assert!(glob("/*").next().is_some());
-        assert!(glob("//").next().is_none());
+        fail_unless!(glob("/*").next().is_some());
+        fail_unless!(glob("//").next().is_none());
 
         // check windows absolute paths with host/device components
         let root_with_device = os::getcwd().root_path().unwrap().join("*");
         // FIXME (#9639): This needs to handle non-utf8 paths
-        assert!(glob(root_with_device.as_str().unwrap()).next().is_some());
+        fail_unless!(glob(root_with_device.as_str().unwrap()).next().is_some());
     }
 
     #[test]
     fn test_wildcard_optimizations() {
-        assert!(Pattern::new("a*b").matches("a___b"));
-        assert!(Pattern::new("a**b").matches("a___b"));
-        assert!(Pattern::new("a***b").matches("a___b"));
-        assert!(Pattern::new("a*b*c").matches("abc"));
-        assert!(!Pattern::new("a*b*c").matches("abcd"));
-        assert!(Pattern::new("a*b*c").matches("a_b_c"));
-        assert!(Pattern::new("a*b*c").matches("a___b___c"));
-        assert!(Pattern::new("abc*abc*abc").matches("abcabcabcabcabcabcabc"));
-        assert!(!Pattern::new("abc*abc*abc").matches("abcabcabcabcabcabcabca"));
-        assert!(Pattern::new("a*a*a*a*a*a*a*a*a").matches("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
-        assert!(Pattern::new("a*b[xyz]c*d").matches("abxcdbxcddd"));
+        fail_unless!(Pattern::new("a*b").matches("a___b"));
+        fail_unless!(Pattern::new("a**b").matches("a___b"));
+        fail_unless!(Pattern::new("a***b").matches("a___b"));
+        fail_unless!(Pattern::new("a*b*c").matches("abc"));
+        fail_unless!(!Pattern::new("a*b*c").matches("abcd"));
+        fail_unless!(Pattern::new("a*b*c").matches("a_b_c"));
+        fail_unless!(Pattern::new("a*b*c").matches("a___b___c"));
+        fail_unless!(Pattern::new("abc*abc*abc").matches("abcabcabcabcabcabcabc"));
+        fail_unless!(!Pattern::new("abc*abc*abc").matches("abcabcabcabcabcabcabca"));
+        fail_unless!(Pattern::new("a*a*a*a*a*a*a*a*a").matches("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+        fail_unless!(Pattern::new("a*b[xyz]c*d").matches("abxcdbxcddd"));
     }
 
     #[test]
@@ -584,85 +584,85 @@ mod test {
 
         let pat = Pattern::new("a[0-9]b");
         for i in range(0, 10) {
-            assert!(pat.matches(format!("a{}b", i)));
+            fail_unless!(pat.matches(format!("a{}b", i)));
         }
-        assert!(!pat.matches("a_b"));
+        fail_unless!(!pat.matches("a_b"));
 
         let pat = Pattern::new("a[!0-9]b");
         for i in range(0, 10) {
-            assert!(!pat.matches(format!("a{}b", i)));
+            fail_unless!(!pat.matches(format!("a{}b", i)));
         }
-        assert!(pat.matches("a_b"));
+        fail_unless!(pat.matches("a_b"));
 
         let pats = ["[a-z123]", "[1a-z23]", "[123a-z]"];
         for &p in pats.iter() {
             let pat = Pattern::new(p);
             for c in "abcdefghijklmnopqrstuvwxyz".chars() {
-                assert!(pat.matches(c.to_str()));
+                fail_unless!(pat.matches(c.to_str()));
             }
             for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars() {
                 let options = MatchOptions {case_sensitive: false, .. MatchOptions::new()};
-                assert!(pat.matches_with(c.to_str(), options));
+                fail_unless!(pat.matches_with(c.to_str(), options));
             }
-            assert!(pat.matches("1"));
-            assert!(pat.matches("2"));
-            assert!(pat.matches("3"));
+            fail_unless!(pat.matches("1"));
+            fail_unless!(pat.matches("2"));
+            fail_unless!(pat.matches("3"));
         }
 
         let pats = ["[abc-]", "[-abc]", "[a-c-]"];
         for &p in pats.iter() {
             let pat = Pattern::new(p);
-            assert!(pat.matches("a"));
-            assert!(pat.matches("b"));
-            assert!(pat.matches("c"));
-            assert!(pat.matches("-"));
-            assert!(!pat.matches("d"));
+            fail_unless!(pat.matches("a"));
+            fail_unless!(pat.matches("b"));
+            fail_unless!(pat.matches("c"));
+            fail_unless!(pat.matches("-"));
+            fail_unless!(!pat.matches("d"));
         }
 
         let pat = Pattern::new("[2-1]");
-        assert!(!pat.matches("1"));
-        assert!(!pat.matches("2"));
+        fail_unless!(!pat.matches("1"));
+        fail_unless!(!pat.matches("2"));
 
-        assert!(Pattern::new("[-]").matches("-"));
-        assert!(!Pattern::new("[!-]").matches("-"));
+        fail_unless!(Pattern::new("[-]").matches("-"));
+        fail_unless!(!Pattern::new("[!-]").matches("-"));
     }
 
     #[test]
     fn test_unclosed_bracket() {
         // unclosed `[` should be treated literally
-        assert!(Pattern::new("abc[def").matches("abc[def"));
-        assert!(Pattern::new("abc[!def").matches("abc[!def"));
-        assert!(Pattern::new("abc[").matches("abc["));
-        assert!(Pattern::new("abc[!").matches("abc[!"));
-        assert!(Pattern::new("abc[d").matches("abc[d"));
-        assert!(Pattern::new("abc[!d").matches("abc[!d"));
-        assert!(Pattern::new("abc[]").matches("abc[]"));
-        assert!(Pattern::new("abc[!]").matches("abc[!]"));
+        fail_unless!(Pattern::new("abc[def").matches("abc[def"));
+        fail_unless!(Pattern::new("abc[!def").matches("abc[!def"));
+        fail_unless!(Pattern::new("abc[").matches("abc["));
+        fail_unless!(Pattern::new("abc[!").matches("abc[!"));
+        fail_unless!(Pattern::new("abc[d").matches("abc[d"));
+        fail_unless!(Pattern::new("abc[!d").matches("abc[!d"));
+        fail_unless!(Pattern::new("abc[]").matches("abc[]"));
+        fail_unless!(Pattern::new("abc[!]").matches("abc[!]"));
     }
 
     #[test]
     fn test_pattern_matches() {
         let txt_pat = Pattern::new("*hello.txt");
-        assert!(txt_pat.matches("hello.txt"));
-        assert!(txt_pat.matches("gareth_says_hello.txt"));
-        assert!(txt_pat.matches("some/path/to/hello.txt"));
-        assert!(txt_pat.matches("some\\path\\to\\hello.txt"));
-        assert!(txt_pat.matches("/an/absolute/path/to/hello.txt"));
-        assert!(!txt_pat.matches("hello.txt-and-then-some"));
-        assert!(!txt_pat.matches("goodbye.txt"));
+        fail_unless!(txt_pat.matches("hello.txt"));
+        fail_unless!(txt_pat.matches("gareth_says_hello.txt"));
+        fail_unless!(txt_pat.matches("some/path/to/hello.txt"));
+        fail_unless!(txt_pat.matches("some\\path\\to\\hello.txt"));
+        fail_unless!(txt_pat.matches("/an/absolute/path/to/hello.txt"));
+        fail_unless!(!txt_pat.matches("hello.txt-and-then-some"));
+        fail_unless!(!txt_pat.matches("goodbye.txt"));
 
         let dir_pat = Pattern::new("*some/path/to/hello.txt");
-        assert!(dir_pat.matches("some/path/to/hello.txt"));
-        assert!(dir_pat.matches("a/bigger/some/path/to/hello.txt"));
-        assert!(!dir_pat.matches("some/path/to/hello.txt-and-then-some"));
-        assert!(!dir_pat.matches("some/other/path/to/hello.txt"));
+        fail_unless!(dir_pat.matches("some/path/to/hello.txt"));
+        fail_unless!(dir_pat.matches("a/bigger/some/path/to/hello.txt"));
+        fail_unless!(!dir_pat.matches("some/path/to/hello.txt-and-then-some"));
+        fail_unless!(!dir_pat.matches("some/other/path/to/hello.txt"));
     }
 
     #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
-        assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
-        assert!(Pattern::new(Pattern::escape(s)).matches(s));
+        fail_unless_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
+        fail_unless!(Pattern::new(Pattern::escape(s)).matches(s));
     }
 
     #[test]
@@ -675,10 +675,10 @@ mod test {
             require_literal_leading_dot: false
         };
 
-        assert!(pat.matches_with("aBcDeFg", options));
-        assert!(pat.matches_with("abcdefg", options));
-        assert!(pat.matches_with("ABCDEFG", options));
-        assert!(pat.matches_with("AbCdEfG", options));
+        fail_unless!(pat.matches_with("aBcDeFg", options));
+        fail_unless!(pat.matches_with("abcdefg", options));
+        fail_unless!(pat.matches_with("ABCDEFG", options));
+        fail_unless!(pat.matches_with("AbCdEfG", options));
     }
 
     #[test]
@@ -698,13 +698,13 @@ mod test {
             require_literal_leading_dot: false
         };
 
-        assert!(pat_within.matches_with("a", options_case_insensitive));
-        assert!(pat_within.matches_with("A", options_case_insensitive));
-        assert!(!pat_within.matches_with("A", options_case_sensitive));
+        fail_unless!(pat_within.matches_with("a", options_case_insensitive));
+        fail_unless!(pat_within.matches_with("A", options_case_insensitive));
+        fail_unless!(!pat_within.matches_with("A", options_case_sensitive));
 
-        assert!(!pat_except.matches_with("a", options_case_insensitive));
-        assert!(!pat_except.matches_with("A", options_case_insensitive));
-        assert!(pat_except.matches_with("A", options_case_sensitive));
+        fail_unless!(!pat_except.matches_with("a", options_case_insensitive));
+        fail_unless!(!pat_except.matches_with("A", options_case_insensitive));
+        fail_unless!(pat_except.matches_with("A", options_case_sensitive));
     }
 
     #[test]
@@ -721,15 +721,15 @@ mod test {
             require_literal_leading_dot: false
         };
 
-        assert!(Pattern::new("abc/def").matches_with("abc/def", options_require_literal));
-        assert!(!Pattern::new("abc?def").matches_with("abc/def", options_require_literal));
-        assert!(!Pattern::new("abc*def").matches_with("abc/def", options_require_literal));
-        assert!(!Pattern::new("abc[/]def").matches_with("abc/def", options_require_literal));
+        fail_unless!(Pattern::new("abc/def").matches_with("abc/def", options_require_literal));
+        fail_unless!(!Pattern::new("abc?def").matches_with("abc/def", options_require_literal));
+        fail_unless!(!Pattern::new("abc*def").matches_with("abc/def", options_require_literal));
+        fail_unless!(!Pattern::new("abc[/]def").matches_with("abc/def", options_require_literal));
 
-        assert!(Pattern::new("abc/def").matches_with("abc/def", options_not_require_literal));
-        assert!(Pattern::new("abc?def").matches_with("abc/def", options_not_require_literal));
-        assert!(Pattern::new("abc*def").matches_with("abc/def", options_not_require_literal));
-        assert!(Pattern::new("abc[/]def").matches_with("abc/def", options_not_require_literal));
+        fail_unless!(Pattern::new("abc/def").matches_with("abc/def", options_not_require_literal));
+        fail_unless!(Pattern::new("abc?def").matches_with("abc/def", options_not_require_literal));
+        fail_unless!(Pattern::new("abc*def").matches_with("abc/def", options_not_require_literal));
+        fail_unless!(Pattern::new("abc[/]def").matches_with("abc/def", options_not_require_literal));
     }
 
     #[test]
@@ -747,38 +747,38 @@ mod test {
         };
 
         let f = |options| Pattern::new("*.txt").matches_with(".hello.txt", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(!f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(!f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new(".*.*").matches_with(".hello.txt", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new("aaa/bbb/*").matches_with("aaa/bbb/.ccc", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(!f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(!f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new("aaa/bbb/*").matches_with("aaa/bbb/c.c.c.", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new("aaa/bbb/.*").matches_with("aaa/bbb/.ccc", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new("aaa/?bbb").matches_with("aaa/.bbb", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(!f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(!f(options_require_literal_leading_dot));
 
         let f = |options| Pattern::new("aaa/[.]bbb").matches_with("aaa/.bbb", options);
-        assert!(f(options_not_require_literal_leading_dot));
-        assert!(!f(options_require_literal_leading_dot));
+        fail_unless!(f(options_not_require_literal_leading_dot));
+        fail_unless!(!f(options_require_literal_leading_dot));
     }
 
     #[test]
     fn test_matches_path() {
         // on windows, (Path::new("a/b").as_str().unwrap() == "a\\b"), so this
         // tests that / and \ are considered equivalent on windows
-        assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
+        fail_unless!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
     }
 }

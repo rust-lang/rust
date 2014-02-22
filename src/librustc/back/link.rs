@@ -179,7 +179,7 @@ pub mod write {
             let addpass = |pass: &str| {
                 pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
-            if !sess.no_verify() { assert!(addpass("verify")); }
+            if !sess.no_verify() { fail_unless!(addpass("verify")); }
 
             if !sess.opts.cg.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
@@ -1364,7 +1364,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                           crates: ~[(ast::CrateNum, Path)]) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
-        assert!(!sess.lto());
+        fail_unless!(!sess.lto());
 
         for (_, cratepath) in crates.move_iter() {
             // Just need to tell the linker about where the library lives and

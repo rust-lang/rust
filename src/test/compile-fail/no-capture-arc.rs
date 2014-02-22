@@ -21,10 +21,10 @@ fn main() {
 
     task::spawn(proc() {
         let v = arc_v.get();
-        assert_eq!(v[3], 4);
+        fail_unless_eq!(v[3], 4);
     });
 
-    assert_eq!((arc_v.get())[2], 3);
+    fail_unless_eq!((arc_v.get())[2], 3);
 
     info!("{:?}", arc_v);
 }

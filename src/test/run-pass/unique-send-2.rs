@@ -32,5 +32,5 @@ pub fn main() {
         actual += *j;
     }
 
-    assert_eq!(expected, actual);
+    fail_unless_eq!(expected, actual);
 }

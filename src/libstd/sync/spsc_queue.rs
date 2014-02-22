@@ -118,7 +118,7 @@ impl<T: Send> Queue<T> {
             // Acquire a node (which either uses a cached one or allocates a new
             // one), and then append this to the 'head' node.
             let n = self.alloc();
-            assert!((*n).value.is_none());
+            fail_unless!((*n).value.is_none());
             (*n).value = Some(t);
             (*n).next.store(0 as *mut Node<T>, Relaxed);
             (*self.head).next.store(n, Release);
@@ -168,7 +168,7 @@ impl<T: Send> Queue<T> {
             let tail = self.tail;
             let next = (*tail).next.load(Acquire);
             if next.is_null() { return None }
-            assert!((*next).value.is_some());
+            fail_unless!((*next).value.is_some());
             let ret = (*next).value.take();
 
             self.tail = next;
@@ -234,14 +234,14 @@ mod test {
         let mut q = Queue::new(0);
         q.push(1);
         q.push(2);
-        assert_eq!(q.pop(), Some(1));
-        assert_eq!(q.pop(), Some(2));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(1));
+        fail_unless_eq!(q.pop(), Some(2));
+        fail_unless_eq!(q.pop(), None);
         q.push(3);
         q.push(4);
-        assert_eq!(q.pop(), Some(3));
-        assert_eq!(q.pop(), Some(4));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(3));
+        fail_unless_eq!(q.pop(), Some(4));
+        fail_unless_eq!(q.pop(), None);
     }
 
     #[test]
@@ -256,14 +256,14 @@ mod test {
         let mut q = Queue::new(1);
         q.push(1);
         q.push(2);
-        assert_eq!(q.pop(), Some(1));
-        assert_eq!(q.pop(), Some(2));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(1));
+        fail_unless_eq!(q.pop(), Some(2));
+        fail_unless_eq!(q.pop(), None);
         q.push(3);
         q.push(4);
-        assert_eq!(q.pop(), Some(3));
-        assert_eq!(q.pop(), Some(4));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(3));
+        fail_unless_eq!(q.pop(), Some(4));
+        fail_unless_eq!(q.pop(), None);
     }
 
     #[test]

@@ -10,12 +10,12 @@
 
 pub fn main() {
     let i: int = 'Q' as int;
-    assert_eq!(i, 0x51);
+    fail_unless_eq!(i, 0x51);
     let u: u32 = i as u32;
-    assert_eq!(u, 0x51 as u32);
-    assert_eq!(u, 'Q' as u32);
-    assert_eq!(i as u8, 'Q' as u8);
-    assert_eq!(i as u8 as i8, 'Q' as u8 as i8);
-    assert_eq!(0x51u8 as char, 'Q');
-    assert_eq!(0 as u32, false as u32);
+    fail_unless_eq!(u, 0x51 as u32);
+    fail_unless_eq!(u, 'Q' as u32);
+    fail_unless_eq!(i as u8, 'Q' as u8);
+    fail_unless_eq!(i as u8 as i8, 'Q' as u8 as i8);
+    fail_unless_eq!(0x51u8 as char, 'Q');
+    fail_unless_eq!(0 as u32, false as u32);
 }

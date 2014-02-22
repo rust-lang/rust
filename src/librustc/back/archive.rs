@@ -81,7 +81,7 @@ impl Archive {
 
     /// Opens an existing static archive
     pub fn open(sess: Session, dst: Path) -> Archive {
-        assert!(dst.exists());
+        fail_unless!(dst.exists());
         Archive { sess: sess, dst: dst }
     }
 

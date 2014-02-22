@@ -54,7 +54,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
                                                      bytes.len() as size_t,
                                                      &mut outsz,
                                                      flags);
-        assert!(res as int != 0);
+        fail_unless!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                              outsz as uint);
         libc::free(res as *mut c_void);
@@ -77,7 +77,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
                                                        bytes.len() as size_t,
                                                        &mut outsz,
                                                        flags);
-        assert!(res as int != 0);
+        fail_unless!(res as int != 0);
         let out = vec::raw::from_buf_raw(res as *u8,
                                          outsz as uint);
         libc::free(res as *mut c_void);
@@ -119,7 +119,7 @@ mod tests {
             debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
-            assert_eq!(input, out);
+            fail_unless_eq!(input, out);
         }
     }
 
@@ -128,6 +128,6 @@ mod tests {
         let bytes = ~[1, 2, 3, 4, 5];
         let deflated = deflate_bytes(bytes);
         let inflated = inflate_bytes(deflated);
-        assert_eq!(inflated, bytes);
+        fail_unless_eq!(inflated, bytes);
     }
 }

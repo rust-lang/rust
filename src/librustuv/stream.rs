@@ -154,7 +154,7 @@ extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
 // return all the data read (even if it didn't fill the whole buffer).
 extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     uvdebug!("read_cb {}", nread);
-    assert!(nread != uvll::ECANCELED as ssize_t);
+    fail_unless!(nread != uvll::ECANCELED as ssize_t);
     let rcx: &mut ReadContext = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
@@ -162,7 +162,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     // triggered before the user calls `read` again.
     // FIXME: Is there a performance impact to calling
     // stop here?
-    unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
+    unsafe { fail_unless_eq!(uvll::uv_read_stop(handle), 0); }
     rcx.result = nread;
 
     wakeup(&mut rcx.task);
@@ -173,7 +173,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
 // away the error code as a result.
 extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
     let mut req = Request::wrap(req);
-    assert!(status != uvll::ECANCELED);
+    fail_unless!(status != uvll::ECANCELED);
     // Remember to not free the request because it is re-used between writes on
     // the same stream.
     let wcx: &mut WriteContext = unsafe { req.get_data() };

@@ -81,7 +81,7 @@ impl <T> CVec<T> {
      * * len - The number of elements in the buffer
      */
     pub unsafe fn new(base: *mut T, len: uint) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        fail_unless!(base != ptr::mut_null());
         CVec {
             base: base,
             len: len,
@@ -103,7 +103,7 @@ impl <T> CVec<T> {
      *          for freeing the buffer, etc.
      */
     pub unsafe fn new_with_dtor(base: *mut T, len: uint, dtor: proc()) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        fail_unless!(base != ptr::mut_null());
         CVec {
             base: base,
             len: len,
@@ -117,7 +117,7 @@ impl <T> CVec<T> {
      * Fails if `ofs` is greater or equal to the length of the vector
      */
     pub fn get<'a>(&'a self, ofs: uint) -> &'a T {
-        assert!(ofs < self.len);
+        fail_unless!(ofs < self.len);
         unsafe {
             &*self.base.offset(ofs as int)
         }
@@ -129,7 +129,7 @@ impl <T> CVec<T> {
      * Fails if `ofs` is greater or equal to the length of the vector
      */
     pub fn get_mut<'a>(&'a mut self, ofs: uint) -> &'a mut T {
-        assert!(ofs < self.len);
+        fail_unless!(ofs < self.len);
         unsafe {
             &mut *self.base.offset(ofs as int)
         }
@@ -182,9 +182,9 @@ mod tests {
 
         *cv.get_mut(3) = 8;
         *cv.get_mut(4) = 9;
-        assert_eq!(*cv.get(3), 8);
-        assert_eq!(*cv.get(4), 9);
-        assert_eq!(cv.len(), 16);
+        fail_unless_eq!(*cv.get(3), 8);
+        fail_unless_eq!(*cv.get(4), 9);
+        fail_unless_eq!(cv.len(), 16);
     }
 
     #[test]
@@ -217,7 +217,7 @@ mod tests {
             let cv = CVec::new_with_dtor(1 as *mut int, 0,
                 proc() { fail!("Don't run this destructor!") });
             let p = cv.unwrap();
-            assert_eq!(p, 1 as *mut int);
+            fail_unless_eq!(p, 1 as *mut int);
         }
     }
 

@@ -1457,7 +1457,7 @@ fn compile_submatch<'r,
     /*
       For an empty match, a fall-through case must exist
      */
-    assert!((m.len() > 0u || chk.is_fallible()));
+    fail_unless!((m.len() > 0u || chk.is_fallible()));
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     if m.len() == 0u {
@@ -1522,7 +1522,7 @@ fn compile_submatch_continue<'r,
 
     // If we are not matching against an `@T`, we should not be
     // required to root any values.
-    assert!(!pats_require_rooting(bcx, m, col));
+    fail_unless!(!pats_require_rooting(bcx, m, col));
 
     match collect_record_or_struct_fields(bcx, m, col) {
         Some(ref rec_fields) => {

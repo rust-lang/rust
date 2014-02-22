@@ -29,7 +29,7 @@ fn what() {
     let i = @Cell::new(false);
     let dont = {||the(i)};
     dont();
-    assert!((i.get()));
+    fail_unless!((i.get()));
 }
 
 fn zombiejesus() {
@@ -64,8 +64,8 @@ fn notsure() {
 
 fn canttouchthis() -> uint {
     fn p() -> bool { true }
-    let _a = (assert!((true)) == (assert!(p())));
-    let _c = (assert!((p())) == ());
+    let _a = (fail_unless!((true)) == (fail_unless!(p())));
+    let _c = (fail_unless!((p())) == ());
     let _b: bool = (info!("{}", 0) == (return 0u));
 }
 

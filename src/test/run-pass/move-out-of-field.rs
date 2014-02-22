@@ -27,5 +27,5 @@ pub fn main() {
     sb.append("Hello, ");
     sb.append("World!");
     let str = to_str(sb);
-    assert_eq!(str, ~"Hello, World!");
+    fail_unless_eq!(str, ~"Hello, World!");
 }

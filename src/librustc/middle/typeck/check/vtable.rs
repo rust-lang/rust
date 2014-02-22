@@ -99,7 +99,7 @@ fn lookup_vtables(vcx: &VtableContext,
            substs.repr(vcx.tcx()));
 
     // We do this backwards for reasons discussed above.
-    assert_eq!(substs.tps.len(), type_param_defs.len());
+    fail_unless_eq!(substs.tps.len(), type_param_defs.len());
     let mut result =
         substs.tps.rev_iter()
         .zip(type_param_defs.rev_iter())
@@ -109,7 +109,7 @@ fn lookup_vtables(vcx: &VtableContext,
         .to_owned_vec();
     result.reverse();
 
-    assert_eq!(substs.tps.len(), result.len());
+    fail_unless_eq!(substs.tps.len(), result.len());
     debug!("lookup_vtables result(\
             location_info={:?}, \
             type_param_defs={}, \
@@ -239,7 +239,7 @@ fn lookup_vtable(vcx: &VtableContext,
         Some(ty) => ty,
         None => {
             // fixup_ty can only fail if this is early resolution
-            assert!(is_early);
+            fail_unless!(is_early);
             // The type has unconstrained type variables in it, so we can't
             // do early resolution on it. Return some completely bogus vtable
             // information: we aren't storing it anyways.
@@ -436,7 +436,7 @@ fn search_for_vtable(vcx: &VtableContext,
                                           is_early) {
             Some(ref substs) => (*substs).clone(),
             None => {
-                assert!(is_early);
+                fail_unless!(is_early);
                 // Bail out with a bogus answer
                 return Some(vtable_param(param_self, 0));
             }

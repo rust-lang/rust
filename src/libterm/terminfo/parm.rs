@@ -494,7 +494,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                 s_.push_all_move(s);
                 s = s_;
             }
-            assert!(!s.is_empty(), "string conversion produced empty result");
+            fail_unless!(!s.is_empty(), "string conversion produced empty result");
             match op {
                 FormatDigit => {
                     if flags.space && !(s[0] == '-' as u8 || s[0] == '+' as u8) {
@@ -560,23 +560,23 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
+        fail_unless_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
                    bytes!("\\E[48;5;1m").to_owned());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
+        fail_unless_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
                    bytes!("21").to_owned());
     }
 
     #[test]
     fn test_op_i() {
         let mut vars = Variables::new();
-        assert_eq!(expand(bytes!("%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d"),
+        fail_unless_eq!(expand(bytes!("%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d"),
                           [Number(1),Number(2),Number(3)], &mut vars),
                    Ok(bytes!("123233").to_owned()));
-        assert_eq!(expand(bytes!("%p1%d%p2%d%i%p1%d%p2%d"), [], &mut vars),
+        fail_unless_eq!(expand(bytes!("%p1%d%p2%d%i%p1%d%p2%d"), [], &mut vars),
                    Ok(bytes!("0011").to_owned()));
     }
 
@@ -587,30 +587,30 @@ mod test {
         let caps = ["%d", "%c", "%s", "%Pa", "%l", "%!", "%~"];
         for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
-            assert!(res.is_err(),
+            fail_unless!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
             let res = expand((bytes!("%p1")).to_owned() + cap.as_bytes(), [p], vars);
-            assert!(res.is_ok(),
+            fail_unless!(res.is_ok(),
                     "Op {} failed with 1 stack entry: {}", *cap, res.unwrap_err());
         }
         let caps = ["%+", "%-", "%*", "%/", "%m", "%&", "%|", "%A", "%O"];
         for cap in caps.iter() {
             let res = expand(cap.as_bytes(), [], vars);
-            assert!(res.is_err(),
+            fail_unless!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", *cap);
             let res = expand((bytes!("%{1}")).to_owned() + cap.as_bytes(), [], vars);
-            assert!(res.is_err(),
+            fail_unless!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", *cap);
             let res = expand((bytes!("%{1}%{2}")).to_owned() + cap.as_bytes(), [], vars);
-            assert!(res.is_ok(),
+            fail_unless!(res.is_ok(),
                     "Binop {} failed with 2 stack entries: {}", *cap, res.unwrap_err());
         }
     }
 
     #[test]
     fn test_push_bad_param() {
-        assert!(expand(bytes!("%pa"), [], &mut Variables::new()).is_err());
+        fail_unless!(expand(bytes!("%pa"), [], &mut Variables::new()).is_err());
     }
 
     #[test]
@@ -619,16 +619,16 @@ mod test {
         for &(op, bs) in v.iter() {
             let s = format!("%\\{1\\}%\\{2\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
+            fail_unless!(res.is_ok(), res.unwrap_err());
+            fail_unless_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
             let s = format!("%\\{1\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
+            fail_unless!(res.is_ok(), res.unwrap_err());
+            fail_unless_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
             let s = format!("%\\{2\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
-            assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);
+            fail_unless!(res.is_ok(), res.unwrap_err());
+            fail_unless_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);
         }
     }
 
@@ -637,29 +637,29 @@ mod test {
         let mut vars = Variables::new();
         let s = bytes!("\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
         let res = expand(s, [Number(1)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[31m").to_owned());
+        fail_unless!(res.is_ok(), res.unwrap_err());
+        fail_unless_eq!(res.unwrap(), bytes!("\\E[31m").to_owned());
         let res = expand(s, [Number(8)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[90m").to_owned());
+        fail_unless!(res.is_ok(), res.unwrap_err());
+        fail_unless_eq!(res.unwrap(), bytes!("\\E[90m").to_owned());
         let res = expand(s, [Number(42)], &mut vars);
-        assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
+        fail_unless!(res.is_ok(), res.unwrap_err());
+        fail_unless_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
     }
 
     #[test]
     fn test_format() {
         let mut varstruct = Variables::new();
         let vars = &mut varstruct;
-        assert_eq!(expand(bytes!("%p1%s%p2%2s%p3%2s%p4%.2s"),
+        fail_unless_eq!(expand(bytes!("%p1%s%p2%2s%p3%2s%p4%.2s"),
                           [String(~"foo"), String(~"foo"), String(~"f"), String(~"foo")], vars),
                    Ok(bytes!("foofoo ffo").to_owned()));
-        assert_eq!(expand(bytes!("%p1%:-4.2s"), [String(~"foo")], vars),
+        fail_unless_eq!(expand(bytes!("%p1%:-4.2s"), [String(~"foo")], vars),
                    Ok(bytes!("fo  ").to_owned()));
 
-        assert_eq!(expand(bytes!("%p1%d%p1%.3d%p1%5d%p1%:+d"), [Number(1)], vars),
+        fail_unless_eq!(expand(bytes!("%p1%d%p1%.3d%p1%5d%p1%:+d"), [Number(1)], vars),
                    Ok(bytes!("1001    1+1").to_owned()));
-        assert_eq!(expand(bytes!("%p1%o%p1%#o%p2%6.4x%p2%#6.4X"), [Number(15), Number(27)], vars),
+        fail_unless_eq!(expand(bytes!("%p1%o%p1%#o%p2%6.4x%p2%#6.4X"), [Number(15), Number(27)], vars),
                    Ok(bytes!("17017  001b0X001B").to_owned()));
     }
 }

@@ -17,14 +17,14 @@ struct Pair { x: int, y: int }
 
 pub fn main() {
     let nop: noption<int> = some::<int>(5);
-    match nop { some::<int>(n) => { info!("{:?}", n); assert!((n == 5)); } }
+    match nop { some::<int>(n) => { info!("{:?}", n); fail_unless!((n == 5)); } }
     let nop2: noption<Pair> = some(Pair{x: 17, y: 42});
     match nop2 {
       some(t) => {
         info!("{:?}", t.x);
         info!("{:?}", t.y);
-        assert_eq!(t.x, 17);
-        assert_eq!(t.y, 42);
+        fail_unless_eq!(t.x, 17);
+        fail_unless_eq!(t.y, 42);
       }
     }
 }

@@ -314,7 +314,7 @@ mod test {
     }
 
     #[test] fn path_exprs_1() {
-        assert_eq!(string_to_expr(~"a"),
+        fail_unless_eq!(string_to_expr(~"a"),
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -333,7 +333,7 @@ mod test {
     }
 
     #[test] fn path_exprs_2 () {
-        assert_eq!(string_to_expr(~"::a::b"),
+        fail_unless_eq!(string_to_expr(~"::a::b"),
                    @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -390,33 +390,33 @@ mod test {
                                      ast::TTTok(_,token::DOLLAR),
                                      ast::TTTok(_,_),
                                      ast::TTTok(_,token::RPAREN)] => {
-                                        assert_eq!("correct","correct")
+                                        fail_unless_eq!("correct","correct")
                                     }
-                                    _ => assert_eq!("wrong 4","correct")
+                                    _ => fail_unless_eq!("wrong 4","correct")
                                 }
                             },
                             _ => {
                                 error!("failing value 3: {:?}",first_set);
-                                assert_eq!("wrong 3","correct")
+                                fail_unless_eq!("wrong 3","correct")
                             }
                         }
                     },
                     _ => {
                         error!("failing value 2: {:?}",delim_elts);
-                        assert_eq!("wrong","correct");
+                        fail_unless_eq!("wrong","correct");
                     }
                 }
             },
             _ => {
                 error!("failing value: {:?}",tts);
-                assert_eq!("wrong 1","correct");
+                fail_unless_eq!("wrong 1","correct");
             }
         }
     }
 
     #[test] fn string_to_tts_1 () {
         let tts = string_to_tts(~"fn a (b : int) { b; }");
-        assert_eq!(to_json_str(&tts),
+        fail_unless_eq!(to_json_str(&tts),
         ~"[\
     {\
         \"variant\":\"TTTok\",\
@@ -544,7 +544,7 @@ mod test {
     }
 
     #[test] fn ret_expr() {
-        assert_eq!(string_to_expr(~"return d"),
+        fail_unless_eq!(string_to_expr(~"return d"),
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(@ast::Expr{
@@ -567,7 +567,7 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert_eq!(string_to_stmt(~"b;"),
+        fail_unless_eq!(string_to_stmt(~"b;"),
                    @Spanned{
                        node: ast::StmtExpr(@ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -589,12 +589,12 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(p.token.clone(), token::EOF);
+        fail_unless_eq!(p.token.clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {
         let mut parser = string_to_parser(~"b");
-        assert_eq!(parser.parse_pat(),
+        fail_unless_eq!(parser.parse_pat(),
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
                                 ast::BindByValue(ast::MutImmutable),
@@ -617,7 +617,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int"
-        assert_eq!(string_to_item(~"fn a (b : int) { b; }"),
+        fail_unless_eq!(string_to_item(~"fn a (b : int) { b; }"),
                   Some(
                       @ast::Item{ident:str_to_ident("a"),
                             attrs:~[],

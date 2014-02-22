@@ -91,8 +91,8 @@ impl<T: Send> Packet<T> {
     pub fn inherit_blocker(&mut self, task: Option<BlockedTask>) {
         match task {
             Some(task) => {
-                assert_eq!(self.cnt.load(atomics::SeqCst), 0);
-                assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+                fail_unless_eq!(self.cnt.load(atomics::SeqCst), 0);
+                fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
                 self.to_wake.store(unsafe { task.cast_to_uint() },
                                    atomics::SeqCst);
                 self.cnt.store(-1, atomics::SeqCst);
@@ -237,7 +237,7 @@ impl<T: Send> Packet<T> {
 
     // Essentially the exact same thing as the stream decrement function.
     fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
         let n = unsafe { task.cast_to_uint() };
         self.to_wake.store(n, atomics::SeqCst);
 
@@ -249,7 +249,7 @@ impl<T: Send> Packet<T> {
             // If we factor in our steals and notice that the channel has no
             // data, we successfully sleep
             n => {
-                assert!(n >= 0);
+                fail_unless!(n >= 0);
                 if n - steals <= 0 { return Ok(()) }
             }
         }
@@ -316,7 +316,7 @@ impl<T: Send> Packet<T> {
                             self.bump(n - m);
                         }
                     }
-                    assert!(self.steals >= 0);
+                    fail_unless!(self.steals >= 0);
                 }
                 self.steals += 1;
                 Ok(data)
@@ -359,7 +359,7 @@ impl<T: Send> Packet<T> {
         match self.cnt.swap(DISCONNECTED, atomics::SeqCst) {
             -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
             DISCONNECTED => {}
-            n => { assert!(n >= 0); }
+            n => { fail_unless!(n >= 0); }
         }
     }
 
@@ -388,7 +388,7 @@ impl<T: Send> Packet<T> {
     fn take_to_wake(&mut self) -> BlockedTask {
         let task = self.to_wake.load(atomics::SeqCst);
         self.to_wake.store(0, atomics::SeqCst);
-        assert!(task != 0);
+        fail_unless!(task != 0);
         unsafe { BlockedTask::cast_from_uint(task) }
     }
 
@@ -428,7 +428,7 @@ impl<T: Send> Packet<T> {
             Ok(()) => Ok(()),
             Err(task) => {
                 let prev = self.bump(1);
-                assert!(prev == DISCONNECTED || prev >= 0);
+                fail_unless!(prev == DISCONNECTED || prev >= 0);
                 return Err(task);
             }
         }
@@ -461,11 +461,11 @@ impl<T: Send> Packet<T> {
         let prev = self.bump(steals + 1);
 
         if prev == DISCONNECTED {
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
             true
         } else {
             let cur = prev + steals + 1;
-            assert!(cur >= 0);
+            fail_unless!(cur >= 0);
             if prev < 0 {
                 self.take_to_wake().trash();
             } else {
@@ -476,7 +476,7 @@ impl<T: Send> Packet<T> {
             // if the number of steals is -1, it was the pre-emptive -1 steal
             // count from when we inherited a blocker. This is fine because
             // we're just going to overwrite it with a real value.
-            assert!(self.steals == 0 || self.steals == -1);
+            fail_unless!(self.steals == 0 || self.steals == -1);
             self.steals = steals;
             prev >= 0
         }
@@ -490,8 +490,8 @@ impl<T: Send> Drop for Packet<T> {
         // disconnection, but also a proper fence before the read of
         // `to_wake`, so this assert cannot be removed with also removing
         // the `to_wake` assert.
-        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-        assert_eq!(self.channels.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.channels.load(atomics::SeqCst), 0);
     }
 }

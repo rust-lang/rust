@@ -167,7 +167,7 @@ fn raw_pat(p: @Pat) -> @Pat {
 }
 
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
-    assert!((!pats.is_empty()));
+    fail_unless!((!pats.is_empty()));
     let ext = match is_useful(cx, &pats.map(|p| ~[*p]), [wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable

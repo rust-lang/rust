@@ -88,17 +88,17 @@ fn check_legs(arc: Arc<~[~Pet:Freeze+Send]>) {
     for pet in arc.get().iter() {
         legs += pet.num_legs();
     }
-    assert!(legs == 12);
+    fail_unless!(legs == 12);
 }
 fn check_names(arc: Arc<~[~Pet:Freeze+Send]>) {
     for pet in arc.get().iter() {
         pet.name(|name| {
-            assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
+            fail_unless!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         })
     }
 }
 fn check_pedigree(arc: Arc<~[~Pet:Freeze+Send]>) {
     for pet in arc.get().iter() {
-        assert!(pet.of_good_pedigree());
+        fail_unless!(pet.of_good_pedigree());
     }
 }

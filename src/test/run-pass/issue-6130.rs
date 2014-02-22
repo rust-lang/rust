@@ -12,9 +12,9 @@
 
 pub fn main() {
     let i: uint = 0;
-    assert!(i <= 0xFFFF_FFFF_u);
+    fail_unless!(i <= 0xFFFF_FFFF_u);
 
     let i: int = 0;
-    assert!(i >= -0x8000_0000_i);
-    assert!(i <= 0x7FFF_FFFF_i);
+    fail_unless!(i >= -0x8000_0000_i);
+    fail_unless!(i <= 0x7FFF_FFFF_i);
 }

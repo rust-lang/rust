@@ -22,26 +22,26 @@ enum Bar<T> {
 
 pub fn main() {
     let f: |int| -> int = id;
-    assert_eq!(f(5), 5);
+    fail_unless_eq!(f(5), 5);
 
     let f: proc(int) -> int = id;
-    assert_eq!(f(5), 5);
+    fail_unless_eq!(f(5), 5);
 
     let f: |int| -> Foo<int> = Foo;
-    assert_eq!(f(5), Foo(5));
+    fail_unless_eq!(f(5), Foo(5));
 
     let f: proc(int) -> Foo<int> = Foo;
-    assert_eq!(f(5), Foo(5));
+    fail_unless_eq!(f(5), Foo(5));
 
     let f: |int| -> Bar<int> = Bar;
-    assert_eq!(f(5), Bar(5));
+    fail_unless_eq!(f(5), Bar(5));
 
     let f: proc(int) -> Bar<int> = Bar;
-    assert_eq!(f(5), Bar(5));
+    fail_unless_eq!(f(5), Bar(5));
 
     let f: |int| -> Option<int> = Some;
-    assert_eq!(f(5), Some(5));
+    fail_unless_eq!(f(5), Some(5));
 
     let f: proc(int) -> Option<int> = Some;
-    assert_eq!(f(5), Some(5));
+    fail_unless_eq!(f(5), Some(5));
 }

@@ -200,7 +200,7 @@ impl ExtendedDecodeContext {
          */
 
         // from_id_range should be non-empty
-        assert!(!self.from_id_range.empty());
+        fail_unless!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     pub fn tr_def_id(&self, did: ast::DefId) -> ast::DefId {
@@ -235,7 +235,7 @@ impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
+        fail_unless_eq!(did.krate, ast::LOCAL_CRATE);
         ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: Span) -> Span {
@@ -1435,7 +1435,7 @@ fn roundtrip(in_item: Option<@ast::Item>) {
     let ebml_doc = reader::Doc(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
-    assert_eq!(in_item, out_item);
+    fail_unless_eq!(in_item, out_item);
 }
 
 #[test]
@@ -1483,7 +1483,7 @@ fn test_simplification() {
     ).unwrap());
     match (item_out, item_exp) {
       (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
-        assert!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
+        fail_unless!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
       }
       _ => fail!()
     }

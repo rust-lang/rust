@@ -12,7 +12,7 @@ pub fn main() {
     match ~100 {
       ~x => {
         info!("{:?}", x);
-        assert_eq!(x, 100);
+        fail_unless_eq!(x, 100);
       }
     }
 }

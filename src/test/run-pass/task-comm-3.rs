@@ -71,5 +71,5 @@ fn test00() {
     error!("{:?}", sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
-    assert_eq!(sum, 480);
+    fail_unless_eq!(sum, 480);
 }

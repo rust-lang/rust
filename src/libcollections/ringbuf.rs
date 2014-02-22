@@ -151,8 +151,8 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with the given index
     pub fn swap(&mut self, i: uint, j: uint) {
-        assert!(i < self.len());
-        assert!(j < self.len());
+        fail_unless!(i < self.len());
+        fail_unless!(j < self.len());
         let ri = self.raw_index(i);
         let rj = self.raw_index(j);
         self.elts.swap(ri, rj);
@@ -301,7 +301,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
         let r = if self.remaining1.len() > 0 {
             &mut self.remaining1
         } else {
-            assert!(self.remaining2.len() > 0);
+            fail_unless!(self.remaining2.len() > 0);
             &mut self.remaining2
         };
         self.nelts -= 1;
@@ -323,7 +323,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
         let r = if self.remaining2.len() > 0 {
             &mut self.remaining2
         } else {
-            assert!(self.remaining1.len() > 0);
+            fail_unless!(self.remaining1.len() > 0);
             &mut self.remaining1
         };
         self.nelts -= 1;
@@ -336,7 +336,7 @@ impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
 fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
-    assert_eq!(nelts, elts.len());
+    fail_unless_eq!(nelts, elts.len());
     let lo = *loptr;
     let newlen = nelts * 2;
     elts.reserve(newlen);
@@ -355,7 +355,7 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
       B [o o o|. . . . . . . .|o o o o o]
      */
 
-    assert!(newlen - nelts/2 >= nelts);
+    fail_unless!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A
         for i in range(0u, lo) {
             elts.swap(i, nelts + i);
@@ -441,46 +441,46 @@ mod tests {
     #[test]
     fn test_simple() {
         let mut d = RingBuf::new();
-        assert_eq!(d.len(), 0u);
+        fail_unless_eq!(d.len(), 0u);
         d.push_front(17);
         d.push_front(42);
         d.push_back(137);
-        assert_eq!(d.len(), 3u);
+        fail_unless_eq!(d.len(), 3u);
         d.push_back(137);
-        assert_eq!(d.len(), 4u);
+        fail_unless_eq!(d.len(), 4u);
         debug!("{:?}", d.front());
-        assert_eq!(*d.front().unwrap(), 42);
+        fail_unless_eq!(*d.front().unwrap(), 42);
         debug!("{:?}", d.back());
-        assert_eq!(*d.back().unwrap(), 137);
+        fail_unless_eq!(*d.back().unwrap(), 137);
         let mut i = d.pop_front();
         debug!("{:?}", i);
-        assert_eq!(i, Some(42));
+        fail_unless_eq!(i, Some(42));
         i = d.pop_back();
         debug!("{:?}", i);
-        assert_eq!(i, Some(137));
+        fail_unless_eq!(i, Some(137));
         i = d.pop_back();
         debug!("{:?}", i);
-        assert_eq!(i, Some(137));
+        fail_unless_eq!(i, Some(137));
         i = d.pop_back();
         debug!("{:?}", i);
-        assert_eq!(i, Some(17));
-        assert_eq!(d.len(), 0u);
+        fail_unless_eq!(i, Some(17));
+        fail_unless_eq!(d.len(), 0u);
         d.push_back(3);
-        assert_eq!(d.len(), 1u);
+        fail_unless_eq!(d.len(), 1u);
         d.push_front(2);
-        assert_eq!(d.len(), 2u);
+        fail_unless_eq!(d.len(), 2u);
         d.push_back(4);
-        assert_eq!(d.len(), 3u);
+        fail_unless_eq!(d.len(), 3u);
         d.push_front(1);
-        assert_eq!(d.len(), 4u);
+        fail_unless_eq!(d.len(), 4u);
         debug!("{:?}", d.get(0));
         debug!("{:?}", d.get(1));
         debug!("{:?}", d.get(2));
         debug!("{:?}", d.get(3));
-        assert_eq!(*d.get(0), 1);
-        assert_eq!(*d.get(1), 2);
-        assert_eq!(*d.get(2), 3);
-        assert_eq!(*d.get(3), 4);
+        fail_unless_eq!(*d.get(0), 1);
+        fail_unless_eq!(*d.get(1), 2);
+        fail_unless_eq!(*d.get(2), 3);
+        fail_unless_eq!(*d.get(3), 4);
     }
 
     #[test]
@@ -491,63 +491,63 @@ mod tests {
         let d: @int = @175;
 
         let mut deq = RingBuf::new();
-        assert_eq!(deq.len(), 0);
+        fail_unless_eq!(deq.len(), 0);
         deq.push_front(a);
         deq.push_front(b);
         deq.push_back(c);
-        assert_eq!(deq.len(), 3);
+        fail_unless_eq!(deq.len(), 3);
         deq.push_back(d);
-        assert_eq!(deq.len(), 4);
-        assert_eq!(deq.front(), Some(&b));
-        assert_eq!(deq.back(), Some(&d));
-        assert_eq!(deq.pop_front(), Some(b));
-        assert_eq!(deq.pop_back(), Some(d));
-        assert_eq!(deq.pop_back(), Some(c));
-        assert_eq!(deq.pop_back(), Some(a));
-        assert_eq!(deq.len(), 0);
+        fail_unless_eq!(deq.len(), 4);
+        fail_unless_eq!(deq.front(), Some(&b));
+        fail_unless_eq!(deq.back(), Some(&d));
+        fail_unless_eq!(deq.pop_front(), Some(b));
+        fail_unless_eq!(deq.pop_back(), Some(d));
+        fail_unless_eq!(deq.pop_back(), Some(c));
+        fail_unless_eq!(deq.pop_back(), Some(a));
+        fail_unless_eq!(deq.len(), 0);
         deq.push_back(c);
-        assert_eq!(deq.len(), 1);
+        fail_unless_eq!(deq.len(), 1);
         deq.push_front(b);
-        assert_eq!(deq.len(), 2);
+        fail_unless_eq!(deq.len(), 2);
         deq.push_back(d);
-        assert_eq!(deq.len(), 3);
+        fail_unless_eq!(deq.len(), 3);
         deq.push_front(a);
-        assert_eq!(deq.len(), 4);
-        assert_eq!(*deq.get(0), a);
-        assert_eq!(*deq.get(1), b);
-        assert_eq!(*deq.get(2), c);
-        assert_eq!(*deq.get(3), d);
+        fail_unless_eq!(deq.len(), 4);
+        fail_unless_eq!(*deq.get(0), a);
+        fail_unless_eq!(*deq.get(1), b);
+        fail_unless_eq!(*deq.get(2), c);
+        fail_unless_eq!(*deq.get(3), d);
     }
 
     #[cfg(test)]
     fn test_parameterized<T:Clone + Eq>(a: T, b: T, c: T, d: T) {
         let mut deq = RingBuf::new();
-        assert_eq!(deq.len(), 0);
+        fail_unless_eq!(deq.len(), 0);
         deq.push_front(a.clone());
         deq.push_front(b.clone());
         deq.push_back(c.clone());
-        assert_eq!(deq.len(), 3);
+        fail_unless_eq!(deq.len(), 3);
         deq.push_back(d.clone());
-        assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.front().unwrap()).clone(), b.clone());
-        assert_eq!((*deq.back().unwrap()).clone(), d.clone());
-        assert_eq!(deq.pop_front().unwrap(), b.clone());
-        assert_eq!(deq.pop_back().unwrap(), d.clone());
-        assert_eq!(deq.pop_back().unwrap(), c.clone());
-        assert_eq!(deq.pop_back().unwrap(), a.clone());
-        assert_eq!(deq.len(), 0);
+        fail_unless_eq!(deq.len(), 4);
+        fail_unless_eq!((*deq.front().unwrap()).clone(), b.clone());
+        fail_unless_eq!((*deq.back().unwrap()).clone(), d.clone());
+        fail_unless_eq!(deq.pop_front().unwrap(), b.clone());
+        fail_unless_eq!(deq.pop_back().unwrap(), d.clone());
+        fail_unless_eq!(deq.pop_back().unwrap(), c.clone());
+        fail_unless_eq!(deq.pop_back().unwrap(), a.clone());
+        fail_unless_eq!(deq.len(), 0);
         deq.push_back(c.clone());
-        assert_eq!(deq.len(), 1);
+        fail_unless_eq!(deq.len(), 1);
         deq.push_front(b.clone());
-        assert_eq!(deq.len(), 2);
+        fail_unless_eq!(deq.len(), 2);
         deq.push_back(d.clone());
-        assert_eq!(deq.len(), 3);
+        fail_unless_eq!(deq.len(), 3);
         deq.push_front(a.clone());
-        assert_eq!(deq.len(), 4);
-        assert_eq!((*deq.get(0)).clone(), a.clone());
-        assert_eq!((*deq.get(1)).clone(), b.clone());
-        assert_eq!((*deq.get(2)).clone(), c.clone());
-        assert_eq!((*deq.get(3)).clone(), d.clone());
+        fail_unless_eq!(deq.len(), 4);
+        fail_unless_eq!((*deq.get(0)).clone(), a.clone());
+        fail_unless_eq!((*deq.get(1)).clone(), b.clone());
+        fail_unless_eq!((*deq.get(2)).clone(), c.clone());
+        fail_unless_eq!((*deq.get(3)).clone(), d.clone());
     }
 
     #[test]
@@ -556,10 +556,10 @@ mod tests {
         for i in range(0u, 66) {
             deq.push_front(i);
         }
-        assert_eq!(deq.len(), 66);
+        fail_unless_eq!(deq.len(), 66);
 
         for i in range(0u, 66) {
-            assert_eq!(*deq.get(i), 65 - i);
+            fail_unless_eq!(*deq.get(i), 65 - i);
         }
 
         let mut deq = RingBuf::new();
@@ -568,7 +568,7 @@ mod tests {
         }
 
         for i in range(0u, 66) {
-            assert_eq!(*deq.get(i), i);
+            fail_unless_eq!(*deq.get(i), i);
         }
     }
 
@@ -662,10 +662,10 @@ mod tests {
     fn test_with_capacity() {
         let mut d = RingBuf::with_capacity(0);
         d.push_back(1);
-        assert_eq!(d.len(), 1);
+        fail_unless_eq!(d.len(), 1);
         let mut d = RingBuf::with_capacity(50);
         d.push_back(1);
-        assert_eq!(d.len(), 1);
+        fail_unless_eq!(d.len(), 1);
     }
 
     #[test]
@@ -673,11 +673,11 @@ mod tests {
         let mut d = RingBuf::new();
         d.push_back(0u64);
         d.reserve_exact(50);
-        assert_eq!(d.elts.capacity(), 50);
+        fail_unless_eq!(d.elts.capacity(), 50);
         let mut d = RingBuf::new();
         d.push_back(0u32);
         d.reserve_exact(50);
-        assert_eq!(d.elts.capacity(), 50);
+        fail_unless_eq!(d.elts.capacity(), 50);
     }
 
     #[test]
@@ -685,11 +685,11 @@ mod tests {
         let mut d = RingBuf::new();
         d.push_back(0u64);
         d.reserve(50);
-        assert_eq!(d.elts.capacity(), 64);
+        fail_unless_eq!(d.elts.capacity(), 64);
         let mut d = RingBuf::new();
         d.push_back(0u32);
         d.reserve(50);
-        assert_eq!(d.elts.capacity(), 64);
+        fail_unless_eq!(d.elts.capacity(), 64);
     }
 
     #[test]
@@ -697,31 +697,31 @@ mod tests {
         let mut d: RingBuf<int> = range(0, 5).collect();
         d.pop_front();
         d.swap(0, 3);
-        assert_eq!(d.iter().map(|&x|x).collect::<~[int]>(), ~[4, 2, 3, 1]);
+        fail_unless_eq!(d.iter().map(|&x|x).collect::<~[int]>(), ~[4, 2, 3, 1]);
     }
 
     #[test]
     fn test_iter() {
         let mut d = RingBuf::new();
-        assert_eq!(d.iter().next(), None);
-        assert_eq!(d.iter().size_hint(), (0, Some(0)));
+        fail_unless_eq!(d.iter().next(), None);
+        fail_unless_eq!(d.iter().size_hint(), (0, Some(0)));
 
         for i in range(0, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
+        fail_unless_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
 
         for i in range(6, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
+        fail_unless_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
 
         let mut it = d.iter();
         let mut len = d.len();
         loop {
             match it.next() {
                 None => break,
-                _ => { len -= 1; assert_eq!(it.size_hint(), (len, Some(len))) }
+                _ => { len -= 1; fail_unless_eq!(it.size_hint(), (len, Some(len))) }
             }
         }
     }
@@ -729,77 +729,77 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let mut d = RingBuf::new();
-        assert_eq!(d.rev_iter().next(), None);
+        fail_unless_eq!(d.rev_iter().next(), None);
 
         for i in range(0, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
+        fail_unless_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
 
         for i in range(6, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+        fail_unless_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
     }
 
     #[test]
     fn test_mut_rev_iter_wrap() {
         let mut d = RingBuf::with_capacity(3);
-        assert!(d.mut_rev_iter().next().is_none());
+        fail_unless!(d.mut_rev_iter().next().is_none());
 
         d.push_back(1);
         d.push_back(2);
         d.push_back(3);
-        assert_eq!(d.pop_front(), Some(1));
+        fail_unless_eq!(d.pop_front(), Some(1));
         d.push_back(4);
 
-        assert_eq!(d.mut_rev_iter().map(|x| *x).collect::<~[int]>(),
+        fail_unless_eq!(d.mut_rev_iter().map(|x| *x).collect::<~[int]>(),
                    ~[4, 3, 2]);
     }
 
     #[test]
     fn test_mut_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().next().is_none());
+        fail_unless!(d.mut_iter().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
         for (i, elt) in d.mut_iter().enumerate() {
-            assert_eq!(*elt, 2 - i);
+            fail_unless_eq!(*elt, 2 - i);
             *elt = i;
         }
 
         {
             let mut it = d.mut_iter();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
-            assert!(it.next().is_none());
+            fail_unless_eq!(*it.next().unwrap(), 0);
+            fail_unless_eq!(*it.next().unwrap(), 1);
+            fail_unless_eq!(*it.next().unwrap(), 2);
+            fail_unless!(it.next().is_none());
         }
     }
 
     #[test]
     fn test_mut_rev_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_rev_iter().next().is_none());
+        fail_unless!(d.mut_rev_iter().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
         }
 
         for (i, elt) in d.mut_rev_iter().enumerate() {
-            assert_eq!(*elt, i);
+            fail_unless_eq!(*elt, i);
             *elt = i;
         }
 
         {
             let mut it = d.mut_rev_iter();
-            assert_eq!(*it.next().unwrap(), 0);
-            assert_eq!(*it.next().unwrap(), 1);
-            assert_eq!(*it.next().unwrap(), 2);
-            assert!(it.next().is_none());
+            fail_unless_eq!(*it.next().unwrap(), 0);
+            fail_unless_eq!(*it.next().unwrap(), 1);
+            fail_unless_eq!(*it.next().unwrap(), 2);
+            fail_unless!(it.next().is_none());
         }
     }
 
@@ -809,14 +809,14 @@ mod tests {
         let v = ~[1,2,3,4,5,6,7];
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
         let u: ~[int] = deq.iter().map(|&x| x).collect();
-        assert_eq!(u, v);
+        fail_unless_eq!(u, v);
 
         let mut seq = iter::count(0u, 2).take(256);
         let deq: RingBuf<uint> = seq.collect();
         for (i, &x) in deq.iter().enumerate() {
-            assert_eq!(2*i, x);
+            fail_unless_eq!(2*i, x);
         }
-        assert_eq!(deq.len(), 256);
+        fail_unless_eq!(deq.len(), 256);
     }
 
     #[test]
@@ -826,20 +826,20 @@ mod tests {
         d.push_front(42);
         d.push_back(137);
         d.push_back(137);
-        assert_eq!(d.len(), 4u);
+        fail_unless_eq!(d.len(), 4u);
         let mut e = d.clone();
-        assert_eq!(e.len(), 4u);
+        fail_unless_eq!(e.len(), 4u);
         while !d.is_empty() {
-            assert_eq!(d.pop_back(), e.pop_back());
+            fail_unless_eq!(d.pop_back(), e.pop_back());
         }
-        assert_eq!(d.len(), 0u);
-        assert_eq!(e.len(), 0u);
+        fail_unless_eq!(d.len(), 0u);
+        fail_unless_eq!(e.len(), 0u);
     }
 
     #[test]
     fn test_eq() {
         let mut d = RingBuf::new();
-        assert_eq!(&d, &RingBuf::with_capacity(0));
+        fail_unless_eq!(&d, &RingBuf::with_capacity(0));
         d.push_front(137);
         d.push_front(17);
         d.push_front(42);
@@ -849,11 +849,11 @@ mod tests {
         e.push_back(17);
         e.push_back(137);
         e.push_back(137);
-        assert_eq!(&e, &d);
+        fail_unless_eq!(&e, &d);
         e.pop_back();
         e.push_back(0);
-        assert!(e != d);
+        fail_unless!(e != d);
         e.clear();
-        assert_eq!(e, RingBuf::new());
+        fail_unless_eq!(e, RingBuf::new());
     }
 }

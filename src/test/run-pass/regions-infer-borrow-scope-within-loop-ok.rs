@@ -16,7 +16,7 @@ pub fn main() {
     let x = @3;
     loop {
         let y = borrow(x);
-        assert_eq!(*x, *y);
+        fail_unless_eq!(*x, *y);
         break;
     }
 }

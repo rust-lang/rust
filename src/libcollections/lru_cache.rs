@@ -23,18 +23,18 @@
 //! cache.put(1, 10);
 //! cache.put(2, 20);
 //! cache.put(3, 30);
-//! assert!(cache.get(&1).is_none());
-//! assert_eq!(*cache.get(&2).unwrap(), 20);
-//! assert_eq!(*cache.get(&3).unwrap(), 30);
+//! fail_unless!(cache.get(&1).is_none());
+//! fail_unless_eq!(*cache.get(&2).unwrap(), 20);
+//! fail_unless_eq!(*cache.get(&3).unwrap(), 30);
 //!
 //! cache.put(2, 22);
-//! assert_eq!(*cache.get(&2).unwrap(), 22);
+//! fail_unless_eq!(*cache.get(&2).unwrap(), 22);
 //!
 //! cache.put(6, 60);
-//! assert!(cache.get(&3).is_none());
+//! fail_unless!(cache.get(&3).is_none());
 //!
 //! cache.change_capacity(1);
-//! assert!(cache.get(&2).is_none());
+//! fail_unless!(cache.get(&2).is_none());
 //! ```
 
 use std::container::Container;
@@ -278,8 +278,8 @@ mod tests {
     use super::LruCache;
 
     fn assert_opt_eq<V: Eq>(opt: Option<&V>, v: V) {
-        assert!(opt.is_some());
-        assert_eq!(opt.unwrap(), &v);
+        fail_unless!(opt.is_some());
+        fail_unless_eq!(opt.unwrap(), &v);
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod tests {
         cache.put(2, 20);
         assert_opt_eq(cache.get(&1), 10);
         assert_opt_eq(cache.get(&2), 20);
-        assert_eq!(cache.len(), 2);
+        fail_unless_eq!(cache.len(), 2);
     }
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
         cache.put(~"1", ~[10, 10]);
         cache.put(~"1", ~[10, 19]);
         assert_opt_eq(cache.get(&~"1"), ~[10, 19]);
-        assert_eq!(cache.len(), 1);
+        fail_unless_eq!(cache.len(), 1);
     }
 
     #[test]
@@ -307,10 +307,10 @@ mod tests {
         cache.put(~"foo1", ~"bar1");
         cache.put(~"foo2", ~"bar2");
         cache.put(~"foo3", ~"bar3");
-        assert!(cache.get(&~"foo1").is_none());
+        fail_unless!(cache.get(&~"foo1").is_none());
         cache.put(~"foo2", ~"bar2update");
         cache.put(~"foo4", ~"bar4");
-        assert!(cache.get(&~"foo3").is_none());
+        fail_unless!(cache.get(&~"foo3").is_none());
     }
 
     #[test]
@@ -318,23 +318,23 @@ mod tests {
         let mut cache: LruCache<int, int> = LruCache::new(2);
         cache.put(1, 10);
         cache.put(2, 20);
-        assert_eq!(cache.len(), 2);
+        fail_unless_eq!(cache.len(), 2);
         let opt1 = cache.pop(&1);
-        assert!(opt1.is_some());
-        assert_eq!(opt1.unwrap(), 10);
-        assert!(cache.get(&1).is_none());
-        assert_eq!(cache.len(), 1);
+        fail_unless!(opt1.is_some());
+        fail_unless_eq!(opt1.unwrap(), 10);
+        fail_unless!(cache.get(&1).is_none());
+        fail_unless_eq!(cache.len(), 1);
     }
 
     #[test]
     fn test_change_capacity() {
         let mut cache: LruCache<int, int> = LruCache::new(2);
-        assert_eq!(cache.capacity(), 2);
+        fail_unless_eq!(cache.capacity(), 2);
         cache.put(1, 10);
         cache.put(2, 20);
         cache.change_capacity(1);
-        assert!(cache.get(&1).is_none());
-        assert_eq!(cache.capacity(), 1);
+        fail_unless!(cache.get(&1).is_none());
+        fail_unless_eq!(cache.capacity(), 1);
     }
 
     #[test]
@@ -343,15 +343,15 @@ mod tests {
         cache.put(1, 10);
         cache.put(2, 20);
         cache.put(3, 30);
-        assert_eq!(cache.to_str(), ~"{3: 30, 2: 20, 1: 10}");
+        fail_unless_eq!(cache.to_str(), ~"{3: 30, 2: 20, 1: 10}");
         cache.put(2, 22);
-        assert_eq!(cache.to_str(), ~"{2: 22, 3: 30, 1: 10}");
+        fail_unless_eq!(cache.to_str(), ~"{2: 22, 3: 30, 1: 10}");
         cache.put(6, 60);
-        assert_eq!(cache.to_str(), ~"{6: 60, 2: 22, 3: 30}");
+        fail_unless_eq!(cache.to_str(), ~"{6: 60, 2: 22, 3: 30}");
         cache.get(&3);
-        assert_eq!(cache.to_str(), ~"{3: 30, 6: 60, 2: 22}");
+        fail_unless_eq!(cache.to_str(), ~"{3: 30, 6: 60, 2: 22}");
         cache.change_capacity(2);
-        assert_eq!(cache.to_str(), ~"{3: 30, 6: 60}");
+        fail_unless_eq!(cache.to_str(), ~"{3: 30, 6: 60}");
     }
 
     #[test]
@@ -360,8 +360,8 @@ mod tests {
         cache.put(1, 10);
         cache.put(2, 20);
         cache.clear();
-        assert!(cache.get(&1).is_none());
-        assert!(cache.get(&2).is_none());
-        assert_eq!(cache.to_str(), ~"{}");
+        fail_unless!(cache.get(&1).is_none());
+        fail_unless!(cache.get(&2).is_none());
+        fail_unless_eq!(cache.to_str(), ~"{}");
     }
 }

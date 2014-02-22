@@ -89,8 +89,8 @@ impl Gamma {
     ///
     /// Fails if `shape <= 0` or `scale <= 0`.
     pub fn new(shape: f64, scale: f64) -> Gamma {
-        assert!(shape > 0.0, "Gamma::new called with shape <= 0");
-        assert!(scale > 0.0, "Gamma::new called with scale <= 0");
+        fail_unless!(shape > 0.0, "Gamma::new called with shape <= 0");
+        fail_unless!(scale > 0.0, "Gamma::new called with scale <= 0");
 
         match shape {
             1.0        => One(Exp::new(1.0 / scale)),
@@ -201,7 +201,7 @@ impl ChiSquared {
         if k == 1.0 {
             DoFExactlyOne
         } else {
-            assert!(k > 0.0, "ChiSquared::new called with `k` < 0");
+            fail_unless!(k > 0.0, "ChiSquared::new called with `k` < 0");
             DoFAnythingElse(Gamma::new(0.5 * k, 2.0))
         }
     }
@@ -250,8 +250,8 @@ impl FisherF {
     /// Create a new `FisherF` distribution, with the given
     /// parameter. Fails if either `m` or `n` are not positive.
     pub fn new(m: f64, n: f64) -> FisherF {
-        assert!(m > 0.0, "FisherF::new called with `m < 0`");
-        assert!(n > 0.0, "FisherF::new called with `n < 0`");
+        fail_unless!(m > 0.0, "FisherF::new called with `m < 0`");
+        fail_unless!(n > 0.0, "FisherF::new called with `n < 0`");
 
         FisherF {
             numer: ChiSquared::new(m),
@@ -291,7 +291,7 @@ impl StudentT {
     /// Create a new Student t distribution with `n` degrees of
     /// freedom. Fails if `n <= 0`.
     pub fn new(n: f64) -> StudentT {
-        assert!(n > 0.0, "StudentT::new called with `n <= 0`");
+        fail_unless!(n > 0.0, "StudentT::new called with `n <= 0`");
         StudentT {
             chi: ChiSquared::new(n),
             dof: n

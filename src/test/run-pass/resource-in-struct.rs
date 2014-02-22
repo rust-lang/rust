@@ -43,5 +43,5 @@ pub fn main() {
     let c = @Cell::new(true);
     sink(none);
     sink(some(close_res(c)));
-    assert!(!c.get());
+    fail_unless!(!c.get());
 }

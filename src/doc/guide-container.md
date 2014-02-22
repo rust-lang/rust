@@ -156,7 +156,7 @@ into a single value:
 ~~~
 let xs = [1, 9, 2, 3, 14, 12];
 let result = xs.iter().fold(0, |accumulator, item| accumulator - *item);
-assert_eq!(result, -41);
+fail_unless_eq!(result, -41);
 ~~~
 
 Most adaptors return an adaptor object implementing the `Iterator` trait itself:
@@ -165,7 +165,7 @@ Most adaptors return an adaptor object implementing the `Iterator` trait itself:
 let xs = [1, 9, 2, 3, 14, 12];
 let ys = [5, 2, 1, 8];
 let sum = xs.iter().chain(ys.iter()).fold(0, |a, b| a + *b);
-assert_eq!(sum, 57);
+fail_unless_eq!(sum, 57);
 ~~~
 
 Some iterator adaptors may return `None` before exhausting the underlying
@@ -200,7 +200,7 @@ let mut calls = 0;
     it.next();
 }
 
-assert_eq!(calls, 3);
+fail_unless_eq!(calls, 3);
 ~~~
 
 ## For loops
@@ -256,7 +256,7 @@ for (x, y) in it {
 println!("last: {:?}", it.next());
 
 // the iterator is now fully consumed
-assert!(it.next().is_none());
+fail_unless!(it.next().is_none());
 ~~~
 
 ## Conversion
@@ -266,7 +266,7 @@ Iterators offer generic conversion to containers with the `collect` adaptor:
 ~~~
 let xs = [0, 1, 1, 2, 3, 5, 8];
 let ys = xs.rev_iter().skip(1).map(|&x| x * 2).collect::<~[int]>();
-assert_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
+fail_unless_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
 ~~~
 
 The method requires a type hint for the container type, if the surrounding code
@@ -384,7 +384,7 @@ the trailing underscore is a workaround for issue #5898 and will be removed.
 ~~~
 let mut ys = [1, 2, 3, 4, 5];
 ys.mut_iter().reverse_();
-assert_eq!(ys, [5, 4, 3, 2, 1]);
+fail_unless_eq!(ys, [5, 4, 3, 2, 1]);
 ~~~
 
 ## Random-access iterators

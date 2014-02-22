@@ -18,7 +18,7 @@ struct Foo {
 impl Drop for Foo {
     fn drop(&mut self) {
         // Test to make sure we haven't dropped already
-        assert!(!self.dropped);
+        fail_unless!(!self.dropped);
         self.dropped = true;
         // And record the fact that we dropped for verification later
         unsafe { drop_count += 1; }
@@ -31,7 +31,7 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert!(drop_count == 1); }
+    unsafe { fail_unless!(drop_count == 1); }
 
     // An `if false {} else { expr }` statement should compile the same as `{ expr }`.
     if false {
@@ -40,5 +40,5 @@ pub fn main() {
         let _a = Foo{ dropped: false };
     }
     // Check that we dropped already (as expected from a `{ expr }`).
-    unsafe { assert!(drop_count == 2); }
+    unsafe { fail_unless!(drop_count == 2); }
 }

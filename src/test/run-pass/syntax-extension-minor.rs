@@ -14,8 +14,8 @@
 
 pub fn main() {
     let asdf_fdsa = ~"<.<";
-    assert_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
+    fail_unless_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
 
-    assert!(stringify!(use_mention_distinction) ==
+    fail_unless!(stringify!(use_mention_distinction) ==
                 "use_mention_distinction");
 }

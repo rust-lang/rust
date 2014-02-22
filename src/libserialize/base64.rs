@@ -267,69 +267,69 @@ mod tests {
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".as_bytes().to_base64(STANDARD), ~"");
-        assert_eq!("f".as_bytes().to_base64(STANDARD), ~"Zg==");
-        assert_eq!("fo".as_bytes().to_base64(STANDARD), ~"Zm8=");
-        assert_eq!("foo".as_bytes().to_base64(STANDARD), ~"Zm9v");
-        assert_eq!("foob".as_bytes().to_base64(STANDARD), ~"Zm9vYg==");
-        assert_eq!("fooba".as_bytes().to_base64(STANDARD), ~"Zm9vYmE=");
-        assert_eq!("foobar".as_bytes().to_base64(STANDARD), ~"Zm9vYmFy");
+        fail_unless_eq!("".as_bytes().to_base64(STANDARD), ~"");
+        fail_unless_eq!("f".as_bytes().to_base64(STANDARD), ~"Zg==");
+        fail_unless_eq!("fo".as_bytes().to_base64(STANDARD), ~"Zm8=");
+        fail_unless_eq!("foo".as_bytes().to_base64(STANDARD), ~"Zm9v");
+        fail_unless_eq!("foob".as_bytes().to_base64(STANDARD), ~"Zm9vYg==");
+        fail_unless_eq!("fooba".as_bytes().to_base64(STANDARD), ~"Zm9vYmE=");
+        fail_unless_eq!("foobar".as_bytes().to_base64(STANDARD), ~"Zm9vYmFy");
     }
 
     #[test]
     fn test_to_base64_line_break() {
-        assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
+        fail_unless!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
                 .contains("\r\n"));
-        assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
+        fail_unless_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
                    ~"Zm9v\r\nYmFy");
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
-        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
+        fail_unless_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
+        fail_unless_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
     }
 
     #[test]
     fn test_to_base64_url_safe() {
-        assert_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
-        assert_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
+        fail_unless_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
+        fail_unless_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
     }
 
     #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().unwrap(), "".as_bytes().to_owned());
-        assert_eq!("Zg==".from_base64().unwrap(), "f".as_bytes().to_owned());
-        assert_eq!("Zm8=".from_base64().unwrap(), "fo".as_bytes().to_owned());
-        assert_eq!("Zm9v".from_base64().unwrap(), "foo".as_bytes().to_owned());
-        assert_eq!("Zm9vYg==".from_base64().unwrap(), "foob".as_bytes().to_owned());
-        assert_eq!("Zm9vYmE=".from_base64().unwrap(), "fooba".as_bytes().to_owned());
-        assert_eq!("Zm9vYmFy".from_base64().unwrap(), "foobar".as_bytes().to_owned());
+        fail_unless_eq!("".from_base64().unwrap(), "".as_bytes().to_owned());
+        fail_unless_eq!("Zg==".from_base64().unwrap(), "f".as_bytes().to_owned());
+        fail_unless_eq!("Zm8=".from_base64().unwrap(), "fo".as_bytes().to_owned());
+        fail_unless_eq!("Zm9v".from_base64().unwrap(), "foo".as_bytes().to_owned());
+        fail_unless_eq!("Zm9vYg==".from_base64().unwrap(), "foob".as_bytes().to_owned());
+        fail_unless_eq!("Zm9vYmE=".from_base64().unwrap(), "fooba".as_bytes().to_owned());
+        fail_unless_eq!("Zm9vYmFy".from_base64().unwrap(), "foobar".as_bytes().to_owned());
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
+        fail_unless_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
                    "foobar".as_bytes().to_owned());
-        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+        fail_unless_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
                    "foob".as_bytes().to_owned());
     }
 
     #[test]
     fn test_from_base64_urlsafe() {
-        assert_eq!("-_8".from_base64().unwrap(), "+/8=".from_base64().unwrap());
+        fail_unless_eq!("-_8".from_base64().unwrap(), "+/8=".from_base64().unwrap());
     }
 
     #[test]
     fn test_from_base64_invalid_char() {
-        assert!("Zm$=".from_base64().is_err())
-        assert!("Zg==$".from_base64().is_err());
+        fail_unless!("Zm$=".from_base64().is_err())
+        fail_unless!("Zg==$".from_base64().is_err());
     }
 
     #[test]
     fn test_from_base64_invalid_padding() {
-        assert!("Z===".from_base64().is_err());
+        fail_unless!("Z===".from_base64().is_err());
     }
 
     #[test]
@@ -340,7 +340,7 @@ mod tests {
         for _ in range(0, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
-            assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
+            fail_unless_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
         }
     }
 

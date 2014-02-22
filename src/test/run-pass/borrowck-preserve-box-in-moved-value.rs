@@ -32,5 +32,5 @@ fn lend(x: @Foo) -> int {
 }
 
 pub fn main() {
-    assert_eq!(lend(@Foo {f: @Bar {g: 22}}), 22);
+    fail_unless_eq!(lend(@Foo {f: @Bar {g: 22}}), 22);
 }

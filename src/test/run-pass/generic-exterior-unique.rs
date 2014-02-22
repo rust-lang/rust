@@ -15,5 +15,5 @@ fn reclift<T>(t: T) -> Recbox<T> { return Recbox {x: ~t}; }
 pub fn main() {
     let foo: int = 17;
     let rbfoo: Recbox<int> = reclift::<int>(foo);
-    assert_eq!(*rbfoo.x, foo);
+    fail_unless_eq!(*rbfoo.x, foo);
 }

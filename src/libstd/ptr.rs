@@ -403,29 +403,29 @@ pub mod ptr_tests {
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
             let iptr: *mut int = cast::transmute(pptr);
-            assert_eq!(*iptr, 10);
+            fail_unless_eq!(*iptr, 10);
             *iptr = 30;
-            assert_eq!(*iptr, 30);
-            assert_eq!(p.fst, 30);
+            fail_unless_eq!(*iptr, 30);
+            fail_unless_eq!(p.fst, 30);
 
             *pptr = Pair {fst: 50, snd: 60};
-            assert_eq!(*iptr, 50);
-            assert_eq!(p.fst, 50);
-            assert_eq!(p.snd, 60);
+            fail_unless_eq!(*iptr, 50);
+            fail_unless_eq!(p.fst, 50);
+            fail_unless_eq!(p.snd, 60);
 
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
 
             copy_memory(v1.as_mut_ptr().offset(1),
                         v0.as_ptr().offset(1), 1);
-            assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+            fail_unless!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
             copy_memory(v1.as_mut_ptr(),
                         v0.as_ptr().offset(2), 1);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+            fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 0u16));
             copy_memory(v1.as_mut_ptr().offset(2),
                         v0.as_ptr(), 1u);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+            fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 32000u16));
         }
     }
@@ -436,9 +436,9 @@ pub mod ptr_tests {
 
         "hello".with_c_str(|p| {
             unsafe {
-                assert!(2u == position(p, |c| *c == 'l' as c_char));
-                assert!(4u == position(p, |c| *c == 'o' as c_char));
-                assert!(5u == position(p, |c| *c == 0 as c_char));
+                fail_unless!(2u == position(p, |c| *c == 'l' as c_char));
+                fail_unless!(4u == position(p, |c| *c == 'o' as c_char));
+                fail_unless!(5u == position(p, |c| *c == 0 as c_char));
             }
         })
     }
@@ -450,7 +450,7 @@ pub mod ptr_tests {
                 "thing".with_c_str(|p2| {
                     let v = ~[p0, p1, p2, null()];
                     unsafe {
-                        assert_eq!(buf_len(v.as_ptr()), 3u);
+                        fail_unless_eq!(buf_len(v.as_ptr()), 3u);
                     }
                 })
             })
@@ -460,36 +460,36 @@ pub mod ptr_tests {
     #[test]
     fn test_is_null() {
         let p: *int = null();
-        assert!(p.is_null());
-        assert!(!p.is_not_null());
+        fail_unless!(p.is_null());
+        fail_unless!(!p.is_not_null());
 
         let q = unsafe { p.offset(1) };
-        assert!(!q.is_null());
-        assert!(q.is_not_null());
+        fail_unless!(!q.is_null());
+        fail_unless!(q.is_not_null());
 
         let mp: *mut int = mut_null();
-        assert!(mp.is_null());
-        assert!(!mp.is_not_null());
+        fail_unless!(mp.is_null());
+        fail_unless!(!mp.is_not_null());
 
         let mq = unsafe { mp.offset(1) };
-        assert!(!mq.is_null());
-        assert!(mq.is_not_null());
+        fail_unless!(!mq.is_null());
+        fail_unless!(mq.is_not_null());
     }
 
     #[test]
     fn test_to_option() {
         unsafe {
             let p: *int = null();
-            assert_eq!(p.to_option(), None);
+            fail_unless_eq!(p.to_option(), None);
 
             let q: *int = &2;
-            assert_eq!(q.to_option().unwrap(), &2);
+            fail_unless_eq!(q.to_option().unwrap(), &2);
 
             let p: *mut int = mut_null();
-            assert_eq!(p.to_option(), None);
+            fail_unless_eq!(p.to_option(), None);
 
             let q: *mut int = &mut 2;
-            assert_eq!(q.to_option().unwrap(), &2);
+            fail_unless_eq!(q.to_option().unwrap(), &2);
         }
     }
 
@@ -501,7 +501,7 @@ pub mod ptr_tests {
             let end = ptr.offset(16);
 
             while ptr < end {
-                assert_eq!(*ptr, 5);
+                fail_unless_eq!(*ptr, 5);
                 ptr = ptr.offset(1);
             }
 
@@ -514,7 +514,7 @@ pub mod ptr_tests {
                 m_ptr = m_ptr.offset(1);
             }
 
-            assert_eq!(xs_mut, ~[10, ..16]);
+            fail_unless_eq!(xs_mut, ~[10, ..16]);
         }
     }
 
@@ -526,7 +526,7 @@ pub mod ptr_tests {
             let ptr = xs.as_ptr();
 
             while idx >= 0i8 {
-                assert_eq!(*(ptr.offset(idx as int)), idx as int);
+                fail_unless_eq!(*(ptr.offset(idx as int)), idx as int);
                 idx = idx - 1i8;
             }
 
@@ -539,7 +539,7 @@ pub mod ptr_tests {
                 m_ptr = m_ptr.offset(-1);
             }
 
-            assert_eq!(xs_mut, ~[0,2,4,6,8,10,12,14,16,18]);
+            fail_unless_eq!(xs_mut, ~[0,2,4,6,8,10,12,14,16,18]);
         }
     }
 
@@ -568,11 +568,11 @@ pub mod ptr_tests {
                     debug!(
                         "test_ptr_array_each_with_len e: {}, a: {}",
                         expected, actual);
-                    assert_eq!(actual, expected);
+                    fail_unless_eq!(actual, expected);
                     ctr += 1;
                     iteration_count += 1;
                 });
-            assert_eq!(iteration_count, 3u);
+            fail_unless_eq!(iteration_count, 3u);
         }
     }
 
@@ -604,11 +604,11 @@ pub mod ptr_tests {
                     debug!(
                         "test_ptr_array_each e: {}, a: {}",
                         expected, actual);
-                    assert_eq!(actual, expected);
+                    fail_unless_eq!(actual, expected);
                     ctr += 1;
                     iteration_count += 1;
                 });
-            assert_eq!(iteration_count, 3);
+            fail_unless_eq!(iteration_count, 3);
         }
     }
 
@@ -636,6 +636,6 @@ pub mod ptr_tests {
         let mut xs = [0u8, ..20];
         let ptr = xs.as_mut_ptr();
         unsafe { set_memory(ptr, 5u8, xs.len()); }
-        assert_eq!(xs, [5u8, ..20]);
+        fail_unless_eq!(xs, [5u8, ..20]);
     }
 }

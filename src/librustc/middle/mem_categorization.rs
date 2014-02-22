@@ -450,7 +450,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           ast::ExprField(base, f_name, _) => {
             // Method calls are now a special syntactic form,
             // so `a.b` should always be a field.
-            assert!(!self.typer.is_method_call(expr.id));
+            fail_unless!(!self.typer.is_method_call(expr.id));
 
             let base_cmt = if_ok!(self.cat_expr(base));
             Ok(self.cat_field(expr, base_cmt, f_name, expr_ty))

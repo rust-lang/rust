@@ -22,13 +22,13 @@ pub fn main() {
         _ => fail!()
     }
     match Y {
-        Bar(s) => assert!(s == 2654435769),
+        Bar(s) => fail_unless!(s == 2654435769),
         _ => fail!()
     }
     match Z {
         Quux(d,h) => {
-            assert_eq!(d, 0x123456789abcdef0);
-            assert_eq!(h, 0x1234);
+            fail_unless_eq!(d, 0x123456789abcdef0);
+            fail_unless_eq!(h, 0x1234);
         }
         _ => fail!()
     }

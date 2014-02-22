@@ -28,5 +28,5 @@ pub fn main() {
     }
 
     error!("{:?}", x);
-    assert_eq!(x, 42);
+    fail_unless_eq!(x, 42);
 }

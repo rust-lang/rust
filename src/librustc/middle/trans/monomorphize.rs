@@ -47,7 +47,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
            self_vtables.repr(ccx.tcx),
            ref_id);
 
-    assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
+    fail_unless!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = push_ctxt("monomorphic_fn");
     let mut must_cast = false;
 
@@ -58,8 +58,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         self_vtables: self_vtables
     };
 
-    for s in real_substs.tps.iter() { assert!(!ty::type_has_params(*s)); }
-    for s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
+    for s in real_substs.tps.iter() { fail_unless!(!ty::type_has_params(*s)); }
+    for s in psubsts.tys.iter() { fail_unless!(!ty::type_has_params(*s)); }
 
     let hash_id = make_mono_id(ccx, fn_id, &*psubsts);
     if hash_id.params.iter().any(
@@ -154,7 +154,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let f = match ty::get(mono_ty).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            fail_unless!(f.abis.is_rust() || f.abis.is_intrinsic());
             f
         }
         _ => fail!("expected bare rust fn or an intrinsic")

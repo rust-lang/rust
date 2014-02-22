@@ -16,5 +16,5 @@ fn main()
    let mut x = [1, 2, 4];
    let v : &int = &x[2];
    x[2] = 6;
-   assert_eq!(*v, 6);
+   fail_unless_eq!(*v, 6);
 }

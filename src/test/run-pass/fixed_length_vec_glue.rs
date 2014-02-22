@@ -18,5 +18,5 @@ pub fn main() {
     let arr = [1,2,3];
     let struc = Struc {a: 13u8, b: arr, c: 42};
     let s = repr::repr_to_str(&struc);
-    assert_eq!(s, ~"Struc{a: 13u8, b: [1, 2, 3], c: 42}");
+    fail_unless_eq!(s, ~"Struc{a: 13u8, b: [1, 2, 3], c: 42}");
 }

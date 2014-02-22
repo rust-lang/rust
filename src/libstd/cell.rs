@@ -84,7 +84,7 @@ impl<T> RefCell<T> {
 
     /// Consumes the `RefCell`, returning the wrapped value.
     pub fn unwrap(self) -> T {
-        assert!(self.borrow == UNUSED);
+        fail_unless!(self.borrow == UNUSED);
         self.value
     }
 
@@ -232,7 +232,7 @@ pub struct Ref<'b, T> {
 #[unsafe_destructor]
 impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
+        fail_unless!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
         unsafe { self.parent.as_mut().borrow -= 1; }
     }
 }
@@ -253,7 +253,7 @@ pub struct RefMut<'b, T> {
 #[unsafe_destructor]
 impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow == WRITING);
+        fail_unless!(self.parent.borrow == WRITING);
         self.parent.borrow = UNUSED;
     }
 }
@@ -273,12 +273,12 @@ mod test {
     #[test]
     fn smoketest_cell() {
         let x = Cell::new(10);
-        assert_eq!(x.get(), 10);
+        fail_unless_eq!(x.get(), 10);
         x.set(20);
-        assert_eq!(x.get(), 20);
+        fail_unless_eq!(x.get(), 20);
 
         let y = Cell::new((30, 40));
-        assert_eq!(y.get(), (30, 40));
+        fail_unless_eq!(y.get(), (30, 40));
     }
 
     #[test]
@@ -292,21 +292,21 @@ mod test {
     fn no_mut_then_imm_borrow() {
         let x = RefCell::new(0);
         let _b1 = x.borrow_mut();
-        assert!(x.try_borrow().is_none());
+        fail_unless!(x.try_borrow().is_none());
     }
 
     #[test]
     fn no_imm_then_borrow_mut() {
         let x = RefCell::new(0);
         let _b1 = x.borrow();
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]
     fn no_double_borrow_mut() {
         let x = RefCell::new(0);
         let _b1 = x.borrow_mut();
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]
@@ -334,13 +334,13 @@ mod test {
         {
             let _b2 = x.borrow();
         }
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]
     fn with_ok() {
         let x = RefCell::new(0);
-        assert_eq!(1, x.with(|x| *x+1));
+        fail_unless_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
@@ -355,7 +355,7 @@ mod test {
     fn borrow_with() {
         let x = RefCell::new(0);
         let _b1 = x.borrow();
-        assert_eq!(1, x.with(|x| *x+1));
+        fail_unless_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
@@ -363,7 +363,7 @@ mod test {
         let x = RefCell::new(0);
         x.with_mut(|x| *x += 1);
         let b = x.borrow();
-        assert_eq!(1, *b.get());
+        fail_unless_eq!(1, *b.get());
     }
 
     #[test]

@@ -22,13 +22,13 @@ struct Foo {
 pub fn main() {
     let foos = [Foo { bar: 1, baz: 2 }, .. 10];
 
-    assert_eq!(mem::size_of::<[Foo, .. 10]>(), 90);
+    fail_unless_eq!(mem::size_of::<[Foo, .. 10]>(), 90);
 
     for i in range(0u, 10) {
-        assert_eq!(foos[i], Foo { bar: 1, baz: 2});
+        fail_unless_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 
     for &foo in foos.iter() {
-        assert_eq!(foo, Foo { bar: 1, baz: 2 });
+        fail_unless_eq!(foo, Foo { bar: 1, baz: 2 });
     }
 }

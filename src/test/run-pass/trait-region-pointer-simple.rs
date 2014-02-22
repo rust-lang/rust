@@ -26,5 +26,5 @@ impl Foo for A {
 pub fn main() {
     let a = A { x: 3 };
     let b = (&a) as &Foo;
-    assert_eq!(b.f(), 3);
+    fail_unless_eq!(b.f(), 3);
 }

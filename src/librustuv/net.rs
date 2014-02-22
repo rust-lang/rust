@@ -39,7 +39,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                         len: uint) -> ip::SocketAddr {
     match storage.ss_family as c_int {
         libc::AF_INET => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
+            fail_unless!(len as uint >= mem::size_of::<libc::sockaddr_in>());
             let storage: &libc::sockaddr_in = unsafe {
                 cast::transmute(storage)
             };
@@ -54,7 +54,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             }
         }
         libc::AF_INET6 => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
+            fail_unless!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
             let storage: &libc::sockaddr_in6 = unsafe {
                 cast::transmute(storage)
             };
@@ -185,7 +185,7 @@ impl TcpWatcher {
 
     fn new_home(loop_: &Loop, home: HomeHandle) -> TcpWatcher {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_tcp_init(loop_.handle, handle)
         }, 0);
         TcpWatcher {
@@ -229,7 +229,7 @@ impl TcpWatcher {
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
             let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
+            fail_unless!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.status = status;
             wakeup(&mut cx.task);
@@ -326,7 +326,7 @@ impl TcpListener {
     pub fn bind(io: &mut UvIoFactory, address: ip::SocketAddr)
                 -> Result<~TcpListener, UvError> {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_tcp_init(io.uv_loop(), handle)
         }, 0);
         let (port, chan) = Chan::new();
@@ -379,7 +379,7 @@ impl rtio::RtioTcpListener for TcpListener {
 }
 
 extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
-    assert!(status != uvll::ECANCELED);
+    fail_unless!(status != uvll::ECANCELED);
     let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&server) };
     let msg = match status {
         0 => {
@@ -387,7 +387,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
                 uvll::get_loop_for_uv_handle(server)
             });
             let client = TcpWatcher::new_home(&loop_, tcp.home().clone());
-            assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
+            fail_unless_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
             Ok(~client as ~rtio::RtioTcpStream)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
@@ -459,7 +459,7 @@ impl UdpWatcher {
             read_access: Access::new(),
             write_access: Access::new(),
         };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
         let (addr, _len) = addr_to_sockaddr(address);
@@ -537,7 +537,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: *Buf,
                           addr: *libc::sockaddr, _flags: c_uint) {
-            assert!(nread != uvll::ECANCELED as ssize_t);
+            fail_unless!(nread != uvll::ECANCELED as ssize_t);
             let cx: &mut Ctx = unsafe {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
@@ -551,7 +551,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             }
 
             unsafe {
-                assert_eq!(uvll::uv_udp_recv_stop(handle), 0)
+                fail_unless_eq!(uvll::uv_udp_recv_stop(handle), 0)
             }
 
             let cx: &mut Ctx = unsafe {
@@ -601,7 +601,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         extern fn send_cb(req: *uvll::uv_udp_send_t, status: c_int) {
             let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
+            fail_unless!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.result = status;
             wakeup(&mut cx.task);
@@ -711,7 +711,7 @@ mod test {
     fn connect_close_ip4() {
         match TcpWatcher::connect(local_loop(), next_test_ip4()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => fail_unless_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
 
@@ -719,7 +719,7 @@ mod test {
     fn connect_close_ip6() {
         match TcpWatcher::connect(local_loop(), next_test_ip6()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => fail_unless_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
 
@@ -759,7 +759,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -795,7 +795,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -823,11 +823,11 @@ mod test {
                     chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
-                        Ok((10, addr)) => assert_eq!(addr, client),
+                        Ok((10, addr)) => fail_unless_eq!(addr, client),
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -855,11 +855,11 @@ mod test {
                     chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
-                        Ok((10, addr)) => assert_eq!(addr, client),
+                        Ok((10, addr)) => fail_unless_eq!(addr, client),
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -889,7 +889,7 @@ mod test {
             let buf = [1, .. 2048];
             let mut total_bytes_written = 0;
             while total_bytes_written < MAX {
-                assert!(stream.write(buf).is_ok());
+                fail_unless!(stream.write(buf).is_ok());
                 uvdebug!("wrote bytes");
                 total_bytes_written += buf.len();
             }
@@ -903,7 +903,7 @@ mod test {
             let nread = stream.read(buf).unwrap();
             total_bytes_read += nread;
             for i in range(0u, nread) {
-                assert_eq!(buf[i], 1);
+                fail_unless_eq!(buf[i], 1);
             }
         }
         uvdebug!("read {} bytes total", total_bytes_read);
@@ -919,8 +919,8 @@ mod test {
         spawn(proc() {
             let mut client = UdpWatcher::bind(local_loop(), client_addr).unwrap();
             port.recv();
-            assert!(client.sendto([1], server_addr).is_ok());
-            assert!(client.sendto([2], server_addr).is_ok());
+            fail_unless!(client.sendto([1], server_addr).is_ok());
+            fail_unless!(client.sendto([2], server_addr).is_ok());
         });
 
         let mut server = UdpWatcher::bind(local_loop(), server_addr).unwrap();
@@ -929,12 +929,12 @@ mod test {
         let mut buf2 = [0];
         let (nread1, src1) = server.recvfrom(buf1).unwrap();
         let (nread2, src2) = server.recvfrom(buf2).unwrap();
-        assert_eq!(nread1, 1);
-        assert_eq!(nread2, 1);
-        assert_eq!(src1, client_addr);
-        assert_eq!(src2, client_addr);
-        assert_eq!(buf1[0], 1);
-        assert_eq!(buf2[0], 2);
+        fail_unless_eq!(nread1, 1);
+        fail_unless_eq!(nread2, 1);
+        fail_unless_eq!(src1, client_addr);
+        fail_unless_eq!(src2, client_addr);
+        fail_unless_eq!(buf1[0], 1);
+        fail_unless_eq!(buf2[0], 2);
     }
 
     #[test]
@@ -960,16 +960,16 @@ mod test {
             let mut buf = [1];
             while buf[0] == 1 {
                 // send more data
-                assert!(server_out.sendto(msg, client_in_addr).is_ok());
+                fail_unless!(server_out.sendto(msg, client_in_addr).is_ok());
                 total_bytes_sent += msg.len();
                 // check if the client has received enough
                 let res = server_in.recvfrom(buf);
-                assert!(res.is_ok());
+                fail_unless!(res.is_ok());
                 let (nread, src) = res.unwrap();
-                assert_eq!(nread, 1);
-                assert_eq!(src, client_out_addr);
+                fail_unless_eq!(nread, 1);
+                fail_unless_eq!(src, client_out_addr);
             }
-            assert!(total_bytes_sent >= MAX);
+            fail_unless!(total_bytes_sent >= MAX);
         });
 
         let l = local_loop();
@@ -982,19 +982,19 @@ mod test {
         let mut buf = [0, .. 2048];
         while total_bytes_recv < MAX {
             // ask for more
-            assert!(client_out.sendto([1], server_in_addr).is_ok());
+            fail_unless!(client_out.sendto([1], server_in_addr).is_ok());
             // wait for data
             let res = client_in.recvfrom(buf);
-            assert!(res.is_ok());
+            fail_unless!(res.is_ok());
             let (nread, src) = res.unwrap();
-            assert_eq!(src, server_out_addr);
+            fail_unless_eq!(src, server_out_addr);
             total_bytes_recv += nread;
             for i in range(0u, nread) {
-                assert_eq!(buf[i], 1);
+                fail_unless_eq!(buf[i], 1);
             }
         }
         // tell the server we're done
-        assert!(client_out.sendto([0], server_in_addr).is_ok());
+        fail_unless!(client_out.sendto([0], server_in_addr).is_ok());
     }
 
     #[test]
@@ -1028,7 +1028,7 @@ mod test {
             let nread = stream.read(buf).unwrap();
             for i in range(0u, nread) {
                 let val = buf[i] as uint;
-                assert_eq!(val, current % 8);
+                fail_unless_eq!(val, current % 8);
                 current += 1;
             }
             reads += 1;
@@ -1037,7 +1037,7 @@ mod test {
         }
 
         // Make sure we had multiple reads
-        assert!(reads > 1);
+        fail_unless!(reads > 1);
     }
 
     #[test]
@@ -1050,9 +1050,9 @@ mod test {
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
             let nread = stream.read(buf).unwrap();
-            assert_eq!(nread, 8);
+            fail_unless_eq!(nread, 8);
             for i in range(0u, nread) {
-                assert_eq!(buf[i], i as u8);
+                fail_unless_eq!(buf[i], i as u8);
             }
         });
 

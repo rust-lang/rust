@@ -32,5 +32,5 @@ impl Y for int {
 impl Z for int {}
 
 pub fn main() {
-    assert_eq!(12.x(), 12);
+    fail_unless_eq!(12.x(), 12);
 }

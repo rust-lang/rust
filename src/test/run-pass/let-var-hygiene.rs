@@ -14,5 +14,5 @@
 macro_rules! bad_macro (($ex:expr) => ({let _x = 9; $ex}))
 pub fn main() {
     let _x = 8;
-    assert_eq!(bad_macro!(_x),8)
+    fail_unless_eq!(bad_macro!(_x),8)
 }

@@ -188,18 +188,18 @@ mod tests {
         let b_r: &Any = b;
         let c_r: &Any = c;
 
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
+        fail_unless_eq!(a.as_void_ptr(), a_r.as_void_ptr());
+        fail_unless_eq!(b.as_void_ptr(), b_r.as_void_ptr());
+        fail_unless_eq!(c.as_void_ptr(), c_r.as_void_ptr());
 
         let (a, b, c) = (&5u as &Any, &TEST as &Any, &Test as &Any);
         let a_r: &Any = a;
         let b_r: &Any = b;
         let c_r: &Any = c;
 
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
+        fail_unless_eq!(a.as_void_ptr(), a_r.as_void_ptr());
+        fail_unless_eq!(b.as_void_ptr(), b_r.as_void_ptr());
+        fail_unless_eq!(c.as_void_ptr(), c_r.as_void_ptr());
 
         let mut x = Test;
         let mut y: &'static str = "Test";
@@ -210,16 +210,16 @@ mod tests {
         let b_r: &Any = b;
         let c_r: &Any = c;
 
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
+        fail_unless_eq!(a.as_void_ptr(), a_r.as_void_ptr());
+        fail_unless_eq!(b.as_void_ptr(), b_r.as_void_ptr());
+        fail_unless_eq!(c.as_void_ptr(), c_r.as_void_ptr());
 
         let (a, b, c) = (5u, "hello", Test);
         let (a_r, b_r, c_r) = (&a as &Any, &b as &Any, &c as &Any);
 
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
+        fail_unless_eq!(a.as_void_ptr(), a_r.as_void_ptr());
+        fail_unless_eq!(b.as_void_ptr(), b_r.as_void_ptr());
+        fail_unless_eq!(c.as_void_ptr(), c_r.as_void_ptr());
     }
 
     #[test]
@@ -237,9 +237,9 @@ mod tests {
         let b_r: &mut Any = b;
         let c_r: &mut Any = c;
 
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
+        fail_unless_eq!(a_ptr, a_r.as_mut_void_ptr());
+        fail_unless_eq!(b_ptr, b_r.as_mut_void_ptr());
+        fail_unless_eq!(c_ptr, c_r.as_mut_void_ptr());
 
         let mut x = Test;
         let mut y: &'static str = "Test";
@@ -255,9 +255,9 @@ mod tests {
         let b_r: &mut Any = b;
         let c_r: &mut Any = c;
 
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
+        fail_unless_eq!(a_ptr, a_r.as_mut_void_ptr());
+        fail_unless_eq!(b_ptr, b_r.as_mut_void_ptr());
+        fail_unless_eq!(c_ptr, c_r.as_mut_void_ptr());
 
         let y: &'static str = "Test";
         let mut a = 5u;
@@ -270,43 +270,43 @@ mod tests {
 
         let (a_r, b_r, c_r) = (&mut a as &mut Any, &mut b as &mut Any, &mut c as &mut Any);
 
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
+        fail_unless_eq!(a_ptr, a_r.as_mut_void_ptr());
+        fail_unless_eq!(b_ptr, b_r.as_mut_void_ptr());
+        fail_unless_eq!(c_ptr, c_r.as_mut_void_ptr());
     }
 
     #[test]
     fn any_referenced() {
         let (a, b, c) = (&5u as &Any, &TEST as &Any, &Test as &Any);
 
-        assert!(a.is::<uint>());
-        assert!(!b.is::<uint>());
-        assert!(!c.is::<uint>());
+        fail_unless!(a.is::<uint>());
+        fail_unless!(!b.is::<uint>());
+        fail_unless!(!c.is::<uint>());
 
-        assert!(!a.is::<&'static str>());
-        assert!(b.is::<&'static str>());
-        assert!(!c.is::<&'static str>());
+        fail_unless!(!a.is::<&'static str>());
+        fail_unless!(b.is::<&'static str>());
+        fail_unless!(!c.is::<&'static str>());
 
-        assert!(!a.is::<Test>());
-        assert!(!b.is::<Test>());
-        assert!(c.is::<Test>());
+        fail_unless!(!a.is::<Test>());
+        fail_unless!(!b.is::<Test>());
+        fail_unless!(c.is::<Test>());
     }
 
     #[test]
     fn any_owning() {
         let (a, b, c) = (~5u as ~Any, ~TEST as ~Any, ~Test as ~Any);
 
-        assert!(a.is::<uint>());
-        assert!(!b.is::<uint>());
-        assert!(!c.is::<uint>());
+        fail_unless!(a.is::<uint>());
+        fail_unless!(!b.is::<uint>());
+        fail_unless!(!c.is::<uint>());
 
-        assert!(!a.is::<&'static str>());
-        assert!(b.is::<&'static str>());
-        assert!(!c.is::<&'static str>());
+        fail_unless!(!a.is::<&'static str>());
+        fail_unless!(b.is::<&'static str>());
+        fail_unless!(!c.is::<&'static str>());
 
-        assert!(!a.is::<Test>());
-        assert!(!b.is::<Test>());
-        assert!(c.is::<Test>());
+        fail_unless!(!a.is::<Test>());
+        fail_unless!(!b.is::<Test>());
+        fail_unless!(c.is::<Test>());
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
 
         match a_r.as_mut::<uint>() {
             Some(x) => {
-                assert_eq!(*x, 5u);
+                fail_unless_eq!(*x, 5u);
                 *x = 612;
             }
             x => fail!("Unexpected value {:?}", x)
@@ -343,7 +343,7 @@ mod tests {
 
         match b_r.as_mut::<uint>() {
             Some(x) => {
-                assert_eq!(*x, 7u);
+                fail_unless_eq!(*x, 7u);
                 *x = 413;
             }
             x => fail!("Unexpected value {:?}", x)
@@ -376,31 +376,31 @@ mod tests {
         let b = ~Test as ~Any;
 
         match a.move::<uint>() {
-            Ok(a) => { assert_eq!(a, ~8u); }
+            Ok(a) => { fail_unless_eq!(a, ~8u); }
             Err(..) => fail!()
         }
         match b.move::<Test>() {
-            Ok(a) => { assert_eq!(a, ~Test); }
+            Ok(a) => { fail_unless_eq!(a, ~Test); }
             Err(..) => fail!()
         }
 
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert!(a.move::<~Test>().is_err());
-        assert!(b.move::<~uint>().is_err());
+        fail_unless!(a.move::<~Test>().is_err());
+        fail_unless!(b.move::<~uint>().is_err());
     }
 
     #[test]
     fn test_show() {
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
-        assert_eq!(format!("{}", a), ~"~Any");
-        assert_eq!(format!("{}", b), ~"~Any");
+        fail_unless_eq!(format!("{}", a), ~"~Any");
+        fail_unless_eq!(format!("{}", b), ~"~Any");
 
         let a = &8u as &Any;
         let b = &Test as &Any;
-        assert_eq!(format!("{}", a), ~"&Any");
-        assert_eq!(format!("{}", b), ~"&Any");
+        fail_unless_eq!(format!("{}", a), ~"&Any");
+        fail_unless_eq!(format!("{}", b), ~"&Any");
     }
 }

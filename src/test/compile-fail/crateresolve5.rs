@@ -18,5 +18,5 @@ extern crate cr5_2 = "crateresolve5#0.2";
 
 fn main() {
     // Nominal types from two multiple versions of a crate are different types
-    assert!(cr5_1::nominal() == cr5_2::nominal()); //~ ERROR mismatched types: expected
+    fail_unless!(cr5_1::nominal() == cr5_2::nominal()); //~ ERROR mismatched types: expected
 }

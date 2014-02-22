@@ -14,5 +14,5 @@ fn box_it<T>(x: Triple<T>) -> ~Triple<T> { return ~x; }
 
 pub fn main() {
     let x: ~Triple<int> = box_it::<int>(Triple{x: 1, y: 2, z: 3});
-    assert_eq!(x.y, 2);
+    fail_unless_eq!(x.y, 2);
 }

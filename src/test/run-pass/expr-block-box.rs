@@ -10,4 +10,4 @@
 
 #[feature(managed_boxes)];
 
-pub fn main() { let x = { @100 }; assert!((*x == 100)); }
+pub fn main() { let x = { @100 }; fail_unless!((*x == 100)); }

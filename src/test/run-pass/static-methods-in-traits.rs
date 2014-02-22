@@ -29,6 +29,6 @@ mod a {
 pub fn main() {
     let x: int = a::Foo::foo();
     let y: uint = a::Foo::foo();
-    assert_eq!(x, 3);
-    assert_eq!(y, 5);
+    fail_unless_eq!(x, 3);
+    fail_unless_eq!(y, 5);
 }

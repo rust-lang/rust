@@ -153,7 +153,7 @@ impl CStore {
 
     pub fn add_used_library(&self, lib: ~str, kind: NativeLibaryKind)
                             -> bool {
-        assert!(!lib.is_empty());
+        fail_unless!(!lib.is_empty());
         let mut used_libraries = self.used_libraries.borrow_mut();
         if used_libraries.get().iter().any(|&(ref x, _)| x == &lib) {
             return false;

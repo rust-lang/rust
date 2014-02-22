@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-assert-owned'
 
 fn main() {
-    assert!(false, ~"test-assert-owned");
+    fail_unless!(false, ~"test-assert-owned");
 }

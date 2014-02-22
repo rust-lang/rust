@@ -17,5 +17,5 @@ pub fn main() {
         }
         y += *i;
     }
-    assert!(y == 11);
+    fail_unless!(y == 11);
 }

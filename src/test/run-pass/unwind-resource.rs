@@ -42,5 +42,5 @@ pub fn main() {
     let (p, c) = Chan::new();
     task::spawn(proc() f(c.clone()));
     error!("hiiiiiiiii");
-    assert!(p.recv());
+    fail_unless!(p.recv());
 }

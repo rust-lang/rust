@@ -42,7 +42,7 @@ pub fn main() {
         task::spawn(proc() {
             let result = count(5u);
             info!("result = {}", result);
-            assert_eq!(result, 16u);
+            fail_unless_eq!(result, 16u);
         });
     }
 }

@@ -20,7 +20,7 @@ fn asBlock(f: || -> uint) -> uint {
 
 pub fn main() {
    let x = asSendfn(proc() 22u);
-   assert_eq!(x, 22u);
+   fail_unless_eq!(x, 22u);
    let x = asBlock(|| 22u);
-   assert_eq!(x, 22u);
+   fail_unless_eq!(x, 22u);
 }

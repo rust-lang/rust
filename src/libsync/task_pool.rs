@@ -45,7 +45,7 @@ impl<T> TaskPool<T> {
     pub fn new(n_tasks: uint,
                init_fn_factory: || -> proc(uint) -> T)
                -> TaskPool<T> {
-        assert!(n_tasks >= 1);
+        fail_unless!(n_tasks >= 1);
 
         let channels = vec::from_fn(n_tasks, |i| {
             let (port, chan) = Chan::<Msg<T>>::new();

@@ -23,15 +23,15 @@ fn getbig(a0: int,
           a8: int,
           a9: int) -> int {
 
-    assert_eq!(a0 + 1, a1);
-    assert_eq!(a1 + 1, a2);
-    assert_eq!(a2 + 1, a3);
-    assert_eq!(a3 + 1, a4);
-    assert_eq!(a4 + 1, a5);
-    assert_eq!(a5 + 1, a6);
-    assert_eq!(a6 + 1, a7);
-    assert_eq!(a7 + 1, a8);
-    assert_eq!(a8 + 1, a9);
+    fail_unless_eq!(a0 + 1, a1);
+    fail_unless_eq!(a1 + 1, a2);
+    fail_unless_eq!(a2 + 1, a3);
+    fail_unless_eq!(a3 + 1, a4);
+    fail_unless_eq!(a4 + 1, a5);
+    fail_unless_eq!(a5 + 1, a6);
+    fail_unless_eq!(a6 + 1, a7);
+    fail_unless_eq!(a7 + 1, a8);
+    fail_unless_eq!(a8 + 1, a9);
     if a0 != 0 {
         let j = getbig(a0 - 1,
                        a1 - 1,
@@ -43,7 +43,7 @@ fn getbig(a0: int,
                        a7 - 1,
                        a8 - 1,
                        a9 - 1);
-        assert_eq!(j, a0 - 1);
+        fail_unless_eq!(j, a0 - 1);
     }
     return a0;
 }

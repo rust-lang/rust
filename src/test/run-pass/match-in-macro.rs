@@ -23,5 +23,5 @@ macro_rules! match_inside_expansion(
 )
 
 pub fn main() {
-    assert_eq!(match_inside_expansion!(),129);
+    fail_unless_eq!(match_inside_expansion!(),129);
 }

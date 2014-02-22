@@ -28,7 +28,7 @@ pub fn main() {
     println!("{:?}", p);
     println!("{:?}", q);
     println!("{:?}", t);
-    assert_eq!(p, 3);
-    assert_eq!(q, 3);
-    assert_eq!(t, 20);
+    fail_unless_eq!(p, 3);
+    fail_unless_eq!(q, 3);
+    fail_unless_eq!(t, 20);
 }

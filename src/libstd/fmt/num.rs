@@ -113,7 +113,7 @@ pub struct Radix {
 
 impl Radix {
     fn new(base: u8) -> Radix {
-        assert!(2 <= base && base <= 36, "the base must be in the range of 0..36: {}", base);
+        fail_unless!(2 <= base && base <= 36, "the base must be in the range of 0..36: {}", base);
         Radix { base: base }
     }
 }
@@ -138,7 +138,7 @@ pub struct RadixFmt<T, R>(T, R);
 ///
 /// ~~~
 /// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55, 36)), ~"1j");
+/// fail_unless_eq!(format!("{}", radix(55, 36)), ~"1j");
 /// ~~~
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
@@ -195,41 +195,41 @@ mod tests {
 
     #[test]
     fn test_radix_base() {
-        assert_eq!(Binary.base(), 2);
-        assert_eq!(Octal.base(), 8);
-        assert_eq!(Decimal.base(), 10);
-        assert_eq!(LowerHex.base(), 16);
-        assert_eq!(UpperHex.base(), 16);
-        assert_eq!(Radix { base: 36 }.base(), 36);
+        fail_unless_eq!(Binary.base(), 2);
+        fail_unless_eq!(Octal.base(), 8);
+        fail_unless_eq!(Decimal.base(), 10);
+        fail_unless_eq!(LowerHex.base(), 16);
+        fail_unless_eq!(UpperHex.base(), 16);
+        fail_unless_eq!(Radix { base: 36 }.base(), 36);
     }
 
     #[test]
     fn test_radix_prefix() {
-        assert_eq!(Binary.prefix(), "0b");
-        assert_eq!(Octal.prefix(), "0o");
-        assert_eq!(Decimal.prefix(), "");
-        assert_eq!(LowerHex.prefix(), "0x");
-        assert_eq!(UpperHex.prefix(), "0x");
-        assert_eq!(Radix { base: 36 }.prefix(), "");
+        fail_unless_eq!(Binary.prefix(), "0b");
+        fail_unless_eq!(Octal.prefix(), "0o");
+        fail_unless_eq!(Decimal.prefix(), "");
+        fail_unless_eq!(LowerHex.prefix(), "0x");
+        fail_unless_eq!(UpperHex.prefix(), "0x");
+        fail_unless_eq!(Radix { base: 36 }.prefix(), "");
     }
 
     #[test]
     fn test_radix_digit() {
-        assert_eq!(Binary.digit(0), '0' as u8);
-        assert_eq!(Binary.digit(2), '2' as u8);
-        assert_eq!(Octal.digit(0), '0' as u8);
-        assert_eq!(Octal.digit(7), '7' as u8);
-        assert_eq!(Decimal.digit(0), '0' as u8);
-        assert_eq!(Decimal.digit(9), '9' as u8);
-        assert_eq!(LowerHex.digit(0), '0' as u8);
-        assert_eq!(LowerHex.digit(10), 'a' as u8);
-        assert_eq!(LowerHex.digit(15), 'f' as u8);
-        assert_eq!(UpperHex.digit(0), '0' as u8);
-        assert_eq!(UpperHex.digit(10), 'A' as u8);
-        assert_eq!(UpperHex.digit(15), 'F' as u8);
-        assert_eq!(Radix { base: 36 }.digit(0), '0' as u8);
-        assert_eq!(Radix { base: 36 }.digit(15), 'f' as u8);
-        assert_eq!(Radix { base: 36 }.digit(35), 'z' as u8);
+        fail_unless_eq!(Binary.digit(0), '0' as u8);
+        fail_unless_eq!(Binary.digit(2), '2' as u8);
+        fail_unless_eq!(Octal.digit(0), '0' as u8);
+        fail_unless_eq!(Octal.digit(7), '7' as u8);
+        fail_unless_eq!(Decimal.digit(0), '0' as u8);
+        fail_unless_eq!(Decimal.digit(9), '9' as u8);
+        fail_unless_eq!(LowerHex.digit(0), '0' as u8);
+        fail_unless_eq!(LowerHex.digit(10), 'a' as u8);
+        fail_unless_eq!(LowerHex.digit(15), 'f' as u8);
+        fail_unless_eq!(UpperHex.digit(0), '0' as u8);
+        fail_unless_eq!(UpperHex.digit(10), 'A' as u8);
+        fail_unless_eq!(UpperHex.digit(15), 'F' as u8);
+        fail_unless_eq!(Radix { base: 36 }.digit(0), '0' as u8);
+        fail_unless_eq!(Radix { base: 36 }.digit(15), 'f' as u8);
+        fail_unless_eq!(Radix { base: 36 }.digit(35), 'z' as u8);
     }
 
     #[test]
@@ -243,143 +243,143 @@ mod tests {
         // Formatting integers should select the right implementation based off
         // the type of the argument. Also, hex/octal/binary should be defined
         // for integers, but they shouldn't emit the negative sign.
-        assert_eq!(format!("{}", 1i), ~"1");
-        assert_eq!(format!("{}", 1i8), ~"1");
-        assert_eq!(format!("{}", 1i16), ~"1");
-        assert_eq!(format!("{}", 1i32), ~"1");
-        assert_eq!(format!("{}", 1i64), ~"1");
-        assert_eq!(format!("{:d}", -1i), ~"-1");
-        assert_eq!(format!("{:d}", -1i8), ~"-1");
-        assert_eq!(format!("{:d}", -1i16), ~"-1");
-        assert_eq!(format!("{:d}", -1i32), ~"-1");
-        assert_eq!(format!("{:d}", -1i64), ~"-1");
-        assert_eq!(format!("{:t}", 1i), ~"1");
-        assert_eq!(format!("{:t}", 1i8), ~"1");
-        assert_eq!(format!("{:t}", 1i16), ~"1");
-        assert_eq!(format!("{:t}", 1i32), ~"1");
-        assert_eq!(format!("{:t}", 1i64), ~"1");
-        assert_eq!(format!("{:x}", 1i), ~"1");
-        assert_eq!(format!("{:x}", 1i8), ~"1");
-        assert_eq!(format!("{:x}", 1i16), ~"1");
-        assert_eq!(format!("{:x}", 1i32), ~"1");
-        assert_eq!(format!("{:x}", 1i64), ~"1");
-        assert_eq!(format!("{:X}", 1i), ~"1");
-        assert_eq!(format!("{:X}", 1i8), ~"1");
-        assert_eq!(format!("{:X}", 1i16), ~"1");
-        assert_eq!(format!("{:X}", 1i32), ~"1");
-        assert_eq!(format!("{:X}", 1i64), ~"1");
-        assert_eq!(format!("{:o}", 1i), ~"1");
-        assert_eq!(format!("{:o}", 1i8), ~"1");
-        assert_eq!(format!("{:o}", 1i16), ~"1");
-        assert_eq!(format!("{:o}", 1i32), ~"1");
-        assert_eq!(format!("{:o}", 1i64), ~"1");
+        fail_unless_eq!(format!("{}", 1i), ~"1");
+        fail_unless_eq!(format!("{}", 1i8), ~"1");
+        fail_unless_eq!(format!("{}", 1i16), ~"1");
+        fail_unless_eq!(format!("{}", 1i32), ~"1");
+        fail_unless_eq!(format!("{}", 1i64), ~"1");
+        fail_unless_eq!(format!("{:d}", -1i), ~"-1");
+        fail_unless_eq!(format!("{:d}", -1i8), ~"-1");
+        fail_unless_eq!(format!("{:d}", -1i16), ~"-1");
+        fail_unless_eq!(format!("{:d}", -1i32), ~"-1");
+        fail_unless_eq!(format!("{:d}", -1i64), ~"-1");
+        fail_unless_eq!(format!("{:t}", 1i), ~"1");
+        fail_unless_eq!(format!("{:t}", 1i8), ~"1");
+        fail_unless_eq!(format!("{:t}", 1i16), ~"1");
+        fail_unless_eq!(format!("{:t}", 1i32), ~"1");
+        fail_unless_eq!(format!("{:t}", 1i64), ~"1");
+        fail_unless_eq!(format!("{:x}", 1i), ~"1");
+        fail_unless_eq!(format!("{:x}", 1i8), ~"1");
+        fail_unless_eq!(format!("{:x}", 1i16), ~"1");
+        fail_unless_eq!(format!("{:x}", 1i32), ~"1");
+        fail_unless_eq!(format!("{:x}", 1i64), ~"1");
+        fail_unless_eq!(format!("{:X}", 1i), ~"1");
+        fail_unless_eq!(format!("{:X}", 1i8), ~"1");
+        fail_unless_eq!(format!("{:X}", 1i16), ~"1");
+        fail_unless_eq!(format!("{:X}", 1i32), ~"1");
+        fail_unless_eq!(format!("{:X}", 1i64), ~"1");
+        fail_unless_eq!(format!("{:o}", 1i), ~"1");
+        fail_unless_eq!(format!("{:o}", 1i8), ~"1");
+        fail_unless_eq!(format!("{:o}", 1i16), ~"1");
+        fail_unless_eq!(format!("{:o}", 1i32), ~"1");
+        fail_unless_eq!(format!("{:o}", 1i64), ~"1");
 
-        assert_eq!(format!("{}", 1u), ~"1");
-        assert_eq!(format!("{}", 1u8), ~"1");
-        assert_eq!(format!("{}", 1u16), ~"1");
-        assert_eq!(format!("{}", 1u32), ~"1");
-        assert_eq!(format!("{}", 1u64), ~"1");
-        assert_eq!(format!("{:u}", 1u), ~"1");
-        assert_eq!(format!("{:u}", 1u8), ~"1");
-        assert_eq!(format!("{:u}", 1u16), ~"1");
-        assert_eq!(format!("{:u}", 1u32), ~"1");
-        assert_eq!(format!("{:u}", 1u64), ~"1");
-        assert_eq!(format!("{:t}", 1u), ~"1");
-        assert_eq!(format!("{:t}", 1u8), ~"1");
-        assert_eq!(format!("{:t}", 1u16), ~"1");
-        assert_eq!(format!("{:t}", 1u32), ~"1");
-        assert_eq!(format!("{:t}", 1u64), ~"1");
-        assert_eq!(format!("{:x}", 1u), ~"1");
-        assert_eq!(format!("{:x}", 1u8), ~"1");
-        assert_eq!(format!("{:x}", 1u16), ~"1");
-        assert_eq!(format!("{:x}", 1u32), ~"1");
-        assert_eq!(format!("{:x}", 1u64), ~"1");
-        assert_eq!(format!("{:X}", 1u), ~"1");
-        assert_eq!(format!("{:X}", 1u8), ~"1");
-        assert_eq!(format!("{:X}", 1u16), ~"1");
-        assert_eq!(format!("{:X}", 1u32), ~"1");
-        assert_eq!(format!("{:X}", 1u64), ~"1");
-        assert_eq!(format!("{:o}", 1u), ~"1");
-        assert_eq!(format!("{:o}", 1u8), ~"1");
-        assert_eq!(format!("{:o}", 1u16), ~"1");
-        assert_eq!(format!("{:o}", 1u32), ~"1");
-        assert_eq!(format!("{:o}", 1u64), ~"1");
+        fail_unless_eq!(format!("{}", 1u), ~"1");
+        fail_unless_eq!(format!("{}", 1u8), ~"1");
+        fail_unless_eq!(format!("{}", 1u16), ~"1");
+        fail_unless_eq!(format!("{}", 1u32), ~"1");
+        fail_unless_eq!(format!("{}", 1u64), ~"1");
+        fail_unless_eq!(format!("{:u}", 1u), ~"1");
+        fail_unless_eq!(format!("{:u}", 1u8), ~"1");
+        fail_unless_eq!(format!("{:u}", 1u16), ~"1");
+        fail_unless_eq!(format!("{:u}", 1u32), ~"1");
+        fail_unless_eq!(format!("{:u}", 1u64), ~"1");
+        fail_unless_eq!(format!("{:t}", 1u), ~"1");
+        fail_unless_eq!(format!("{:t}", 1u8), ~"1");
+        fail_unless_eq!(format!("{:t}", 1u16), ~"1");
+        fail_unless_eq!(format!("{:t}", 1u32), ~"1");
+        fail_unless_eq!(format!("{:t}", 1u64), ~"1");
+        fail_unless_eq!(format!("{:x}", 1u), ~"1");
+        fail_unless_eq!(format!("{:x}", 1u8), ~"1");
+        fail_unless_eq!(format!("{:x}", 1u16), ~"1");
+        fail_unless_eq!(format!("{:x}", 1u32), ~"1");
+        fail_unless_eq!(format!("{:x}", 1u64), ~"1");
+        fail_unless_eq!(format!("{:X}", 1u), ~"1");
+        fail_unless_eq!(format!("{:X}", 1u8), ~"1");
+        fail_unless_eq!(format!("{:X}", 1u16), ~"1");
+        fail_unless_eq!(format!("{:X}", 1u32), ~"1");
+        fail_unless_eq!(format!("{:X}", 1u64), ~"1");
+        fail_unless_eq!(format!("{:o}", 1u), ~"1");
+        fail_unless_eq!(format!("{:o}", 1u8), ~"1");
+        fail_unless_eq!(format!("{:o}", 1u16), ~"1");
+        fail_unless_eq!(format!("{:o}", 1u32), ~"1");
+        fail_unless_eq!(format!("{:o}", 1u64), ~"1");
 
         // Test a larger number
-        assert_eq!(format!("{:t}", 55), ~"110111");
-        assert_eq!(format!("{:o}", 55), ~"67");
-        assert_eq!(format!("{:d}", 55), ~"55");
-        assert_eq!(format!("{:x}", 55), ~"37");
-        assert_eq!(format!("{:X}", 55), ~"37");
+        fail_unless_eq!(format!("{:t}", 55), ~"110111");
+        fail_unless_eq!(format!("{:o}", 55), ~"67");
+        fail_unless_eq!(format!("{:d}", 55), ~"55");
+        fail_unless_eq!(format!("{:x}", 55), ~"37");
+        fail_unless_eq!(format!("{:X}", 55), ~"37");
     }
 
     #[test]
     fn test_format_int_zero() {
-        assert_eq!(format!("{}", 0i), ~"0");
-        assert_eq!(format!("{:d}", 0i), ~"0");
-        assert_eq!(format!("{:t}", 0i), ~"0");
-        assert_eq!(format!("{:o}", 0i), ~"0");
-        assert_eq!(format!("{:x}", 0i), ~"0");
-        assert_eq!(format!("{:X}", 0i), ~"0");
+        fail_unless_eq!(format!("{}", 0i), ~"0");
+        fail_unless_eq!(format!("{:d}", 0i), ~"0");
+        fail_unless_eq!(format!("{:t}", 0i), ~"0");
+        fail_unless_eq!(format!("{:o}", 0i), ~"0");
+        fail_unless_eq!(format!("{:x}", 0i), ~"0");
+        fail_unless_eq!(format!("{:X}", 0i), ~"0");
 
-        assert_eq!(format!("{}", 0u), ~"0");
-        assert_eq!(format!("{:u}", 0u), ~"0");
-        assert_eq!(format!("{:t}", 0u), ~"0");
-        assert_eq!(format!("{:o}", 0u), ~"0");
-        assert_eq!(format!("{:x}", 0u), ~"0");
-        assert_eq!(format!("{:X}", 0u), ~"0");
+        fail_unless_eq!(format!("{}", 0u), ~"0");
+        fail_unless_eq!(format!("{:u}", 0u), ~"0");
+        fail_unless_eq!(format!("{:t}", 0u), ~"0");
+        fail_unless_eq!(format!("{:o}", 0u), ~"0");
+        fail_unless_eq!(format!("{:x}", 0u), ~"0");
+        fail_unless_eq!(format!("{:X}", 0u), ~"0");
     }
 
     #[test]
     fn test_format_int_flags() {
-        assert_eq!(format!("{:3d}", 1), ~"  1");
-        assert_eq!(format!("{:>3d}", 1), ~"  1");
-        assert_eq!(format!("{:>+3d}", 1), ~" +1");
-        assert_eq!(format!("{:<3d}", 1), ~"1  ");
-        assert_eq!(format!("{:#d}", 1), ~"1");
-        assert_eq!(format!("{:#x}", 10), ~"0xa");
-        assert_eq!(format!("{:#X}", 10), ~"0xA");
-        assert_eq!(format!("{:#5x}", 10), ~"  0xa");
-        assert_eq!(format!("{:#o}", 10), ~"0o12");
-        assert_eq!(format!("{:08x}", 10), ~"0000000a");
-        assert_eq!(format!("{:8x}", 10), ~"       a");
-        assert_eq!(format!("{:<8x}", 10), ~"a       ");
-        assert_eq!(format!("{:>8x}", 10), ~"       a");
-        assert_eq!(format!("{:#08x}", 10), ~"0x00000a");
-        assert_eq!(format!("{:08d}", -10), ~"-0000010");
-        assert_eq!(format!("{:x}", -1u8), ~"ff");
-        assert_eq!(format!("{:X}", -1u8), ~"FF");
-        assert_eq!(format!("{:t}", -1u8), ~"11111111");
-        assert_eq!(format!("{:o}", -1u8), ~"377");
-        assert_eq!(format!("{:#x}", -1u8), ~"0xff");
-        assert_eq!(format!("{:#X}", -1u8), ~"0xFF");
-        assert_eq!(format!("{:#t}", -1u8), ~"0b11111111");
-        assert_eq!(format!("{:#o}", -1u8), ~"0o377");
+        fail_unless_eq!(format!("{:3d}", 1), ~"  1");
+        fail_unless_eq!(format!("{:>3d}", 1), ~"  1");
+        fail_unless_eq!(format!("{:>+3d}", 1), ~" +1");
+        fail_unless_eq!(format!("{:<3d}", 1), ~"1  ");
+        fail_unless_eq!(format!("{:#d}", 1), ~"1");
+        fail_unless_eq!(format!("{:#x}", 10), ~"0xa");
+        fail_unless_eq!(format!("{:#X}", 10), ~"0xA");
+        fail_unless_eq!(format!("{:#5x}", 10), ~"  0xa");
+        fail_unless_eq!(format!("{:#o}", 10), ~"0o12");
+        fail_unless_eq!(format!("{:08x}", 10), ~"0000000a");
+        fail_unless_eq!(format!("{:8x}", 10), ~"       a");
+        fail_unless_eq!(format!("{:<8x}", 10), ~"a       ");
+        fail_unless_eq!(format!("{:>8x}", 10), ~"       a");
+        fail_unless_eq!(format!("{:#08x}", 10), ~"0x00000a");
+        fail_unless_eq!(format!("{:08d}", -10), ~"-0000010");
+        fail_unless_eq!(format!("{:x}", -1u8), ~"ff");
+        fail_unless_eq!(format!("{:X}", -1u8), ~"FF");
+        fail_unless_eq!(format!("{:t}", -1u8), ~"11111111");
+        fail_unless_eq!(format!("{:o}", -1u8), ~"377");
+        fail_unless_eq!(format!("{:#x}", -1u8), ~"0xff");
+        fail_unless_eq!(format!("{:#X}", -1u8), ~"0xFF");
+        fail_unless_eq!(format!("{:#t}", -1u8), ~"0b11111111");
+        fail_unless_eq!(format!("{:#o}", -1u8), ~"0o377");
     }
 
     #[test]
     fn test_format_int_sign_padding() {
-        assert_eq!(format!("{:+5d}", 1), ~"   +1");
-        assert_eq!(format!("{:+5d}", -1), ~"   -1");
-        assert_eq!(format!("{:05d}", 1), ~"00001");
-        assert_eq!(format!("{:05d}", -1), ~"-0001");
-        assert_eq!(format!("{:+05d}", 1), ~"+0001");
-        assert_eq!(format!("{:+05d}", -1), ~"-0001");
+        fail_unless_eq!(format!("{:+5d}", 1), ~"   +1");
+        fail_unless_eq!(format!("{:+5d}", -1), ~"   -1");
+        fail_unless_eq!(format!("{:05d}", 1), ~"00001");
+        fail_unless_eq!(format!("{:05d}", -1), ~"-0001");
+        fail_unless_eq!(format!("{:+05d}", 1), ~"+0001");
+        fail_unless_eq!(format!("{:+05d}", -1), ~"-0001");
     }
 
     #[test]
     fn test_format_int_twos_complement() {
         use {i8, i16, i32, i64};
-        assert_eq!(format!("{}", i8::MIN), ~"-128");
-        assert_eq!(format!("{}", i16::MIN), ~"-32768");
-        assert_eq!(format!("{}", i32::MIN), ~"-2147483648");
-        assert_eq!(format!("{}", i64::MIN), ~"-9223372036854775808");
+        fail_unless_eq!(format!("{}", i8::MIN), ~"-128");
+        fail_unless_eq!(format!("{}", i16::MIN), ~"-32768");
+        fail_unless_eq!(format!("{}", i32::MIN), ~"-2147483648");
+        fail_unless_eq!(format!("{}", i64::MIN), ~"-9223372036854775808");
     }
 
     #[test]
     fn test_format_radix() {
-        assert_eq!(format!("{:04}", radix(3, 2)), ~"0011");
-        assert_eq!(format!("{}", radix(55, 36)), ~"1j");
+        fail_unless_eq!(format!("{:04}", radix(3, 2)), ~"0011");
+        fail_unless_eq!(format!("{}", radix(55, 36)), ~"1j");
     }
 
     #[test]

@@ -378,7 +378,7 @@ unsafe C-like casting of same-sized types.
 ~~~~
 let x: f64 = 4.0;
 let y: uint = x as uint;
-assert!(y == 4u);
+fail_unless!(y == 4u);
 ~~~~
 
 [transmute]: http://static.rust-lang.org/doc/master/std/cast/fn.transmute.html
@@ -893,8 +893,8 @@ Ending the function with a semicolon like so is equivalent to returning `()`.
 fn line(a: int, b: int, x: int) -> int { a * x + b  }
 fn oops(a: int, b: int, x: int) -> ()  { a * x + b; }
 
-assert!(8 == line(5, 3, 1));
-assert!(() == oops(5, 3, 1));
+fail_unless!(8 == line(5, 3, 1));
+fail_unless!(() == oops(5, 3, 1));
 ~~~~
 
 As with `match` expressions and `let` bindings, function arguments support
@@ -1008,7 +1008,7 @@ struct Foo {
     d: u32
 }
 
-assert_eq!(size_of::<Foo>(), size_of::<u32>() * 4);
+fail_unless_eq!(size_of::<Foo>(), size_of::<u32>() * 4);
 
 struct Bar {
     a: Foo,
@@ -1017,7 +1017,7 @@ struct Bar {
     d: Foo
 }
 
-assert_eq!(size_of::<Bar>(), size_of::<u32>() * 16);
+fail_unless_eq!(size_of::<Bar>(), size_of::<u32>() * 16);
 ~~~
 
 Our previous attempt at defining the `List` type included an `u32` and a `List`
@@ -1204,7 +1204,7 @@ fn eq(xs: &List, ys: &List) -> bool {
 
 let xs = Cons(5, ~Cons(10, ~Nil));
 let ys = Cons(5, ~Cons(10, ~Nil));
-assert!(eq(&xs, &ys));
+fail_unless!(eq(&xs, &ys));
 ~~~
 
 Note that Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
@@ -1307,7 +1307,7 @@ fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
 
 let xs = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
 let ys = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
-assert!(eq(&xs, &ys));
+fail_unless!(eq(&xs, &ys));
 ~~~
 
 This would be a good opportunity to implement the `Eq` trait for our list type, making the `==` and
@@ -1336,10 +1336,10 @@ impl<T: Eq> Eq for List<T> {
 
 let xs = Cons(5, ~Cons(10, ~Nil));
 let ys = Cons(5, ~Cons(10, ~Nil));
-assert!(xs.eq(&ys));
-assert!(xs == ys);
-assert!(!xs.ne(&ys));
-assert!(!(xs != ys));
+fail_unless!(xs.eq(&ys));
+fail_unless!(xs == ys);
+fail_unless!(!xs.ne(&ys));
+fail_unless!(!(xs != ys));
 ~~~
 
 # More on boxes
@@ -1677,7 +1677,7 @@ let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x.clone(); // a new owner
 let z = x; // this moves `x` into `z`, rather than creating a new owner
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+fail_unless_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 // the variable is mutable, but not the contents of the box
 let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
@@ -1696,7 +1696,7 @@ let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x; // does not perform a move, unlike with `Rc`
 let z = x;
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+fail_unless_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ~~~
 
 With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,

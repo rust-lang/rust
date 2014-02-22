@@ -12,6 +12,6 @@
 struct Foo;
 
 pub fn main() {
-  assert_eq!(Foo, Foo);
-  assert!(!(Foo != Foo));
+  fail_unless_eq!(Foo, Foo);
+  fail_unless!(!(Foo != Foo));
 }

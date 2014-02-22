@@ -16,7 +16,7 @@ fn foo(s: @int) {
     info!("{:?}", ::std::managed::refcount(s));
     let count = ::std::managed::refcount(s);
     let x: t = make_t(s); // ref up
-    assert_eq!(::std::managed::refcount(s), count + 1u);
+    fail_unless_eq!(::std::managed::refcount(s), count + 1u);
     info!("{:?}", ::std::managed::refcount(s));
 
     match x {
@@ -27,7 +27,7 @@ fn foo(s: @int) {
       _ => { info!("?"); fail!(); }
     }
     info!("{:?}", ::std::managed::refcount(s));
-    assert_eq!(::std::managed::refcount(s), count + 1u);
+    fail_unless_eq!(::std::managed::refcount(s), count + 1u);
     let _ = ::std::managed::refcount(s); // don't get bitten by last-use.
 }
 
@@ -40,5 +40,5 @@ pub fn main() {
 
     info!("{}", ::std::managed::refcount(s));
     let count2 = ::std::managed::refcount(s);
-    assert_eq!(count, count2);
+    fail_unless_eq!(count, count2);
 }

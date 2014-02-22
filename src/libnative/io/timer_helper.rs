@@ -65,7 +65,7 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
 
 pub fn send(req: Req) {
     unsafe {
-        assert!(!HELPER_CHAN.is_null());
+        fail_unless!(!HELPER_CHAN.is_null());
         (*HELPER_CHAN).send(req);
         imp::signal(HELPER_SIGNAL);
     }
@@ -134,11 +134,11 @@ mod imp {
     }
 
     pub fn signal(handle: HANDLE) {
-        assert!(unsafe { SetEvent(handle) != 0 });
+        fail_unless!(unsafe { SetEvent(handle) != 0 });
     }
 
     pub fn close(handle: HANDLE) {
-        assert!(unsafe { CloseHandle(handle) != 0 });
+        fail_unless!(unsafe { CloseHandle(handle) != 0 });
     }
 
     extern "system" {

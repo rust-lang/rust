@@ -1075,7 +1075,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         match ty.node {
             ast::TyPath(ref path, ref bounds, _) if path.segments
                                                         .len() == 1 => {
-                assert!(bounds.is_none());
+                fail_unless!(bounds.is_none());
                 encode_impl_type_basename(ebml_w, ast_util::path_to_ident(path));
             }
             _ => {}
@@ -1163,7 +1163,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Now output the method info for each method.
         let r = ty::trait_method_def_ids(tcx, def_id);
         for (i, &method_def_id) in r.iter().enumerate() {
-            assert_eq!(method_def_id.krate, ast::LOCAL_CRATE);
+            fail_unless_eq!(method_def_id.krate, ast::LOCAL_CRATE);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1411,7 +1411,7 @@ fn encode_index<T:'static>(
         ebml_w.start_tag(tag_index_buckets_bucket);
         for elt in (**bucket).iter() {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
-            assert!(elt.pos < 0xffff_ffff);
+            fail_unless!(elt.pos < 0xffff_ffff);
             {
                 let wr: &mut MemWriter = ebml_w.writer;
                 wr.write_be_u32(elt.pos as u32);
@@ -1424,7 +1424,7 @@ fn encode_index<T:'static>(
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
     for pos in bucket_locs.iter() {
-        assert!(*pos < 0xffff_ffff);
+        fail_unless!(*pos < 0xffff_ffff);
         let wr: &mut MemWriter = ebml_w.writer;
         wr.write_be_u32(*pos as u32);
     }
@@ -1434,7 +1434,7 @@ fn encode_index<T:'static>(
 
 fn write_i64(writer: &mut MemWriter, &n: &i64) {
     let wr: &mut MemWriter = writer;
-    assert!(n < 0x7fff_ffff);
+    fail_unless!(n < 0x7fff_ffff);
     wr.write_be_u32(n as u32);
 }
 
@@ -1492,7 +1492,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
                           krate: &Crate) -> ~[Attribute] {
 
     fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
-        assert!(!ecx.link_meta.crateid.name.is_empty());
+        fail_unless!(!ecx.link_meta.crateid.name.is_empty());
 
         attr::mk_attr(
             attr::mk_name_value_item_str(
@@ -1531,7 +1531,7 @@ fn encode_crate_deps(ebml_w: &mut writer::Encoder, cstore: &cstore::CStore) {
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for n in deps.iter() {
-            assert_eq!(n.cnum, expected_cnum);
+            fail_unless_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
 

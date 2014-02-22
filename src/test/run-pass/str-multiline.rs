@@ -20,6 +20,6 @@ is a test";
                is \
                another \
                test";
-    assert_eq!(a, ~"this is a test");
-    assert_eq!(b, ~"this is another test");
+    fail_unless_eq!(a, ~"this is a test");
+    fail_unless_eq!(b, ~"this is another test");
 }

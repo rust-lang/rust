@@ -12,5 +12,5 @@ pub fn main() {
     let (p, c) = Chan::new();
     c.send(~100);
     let v = p.recv();
-    assert_eq!(v, ~100);
+    fail_unless_eq!(v, ~100);
 }

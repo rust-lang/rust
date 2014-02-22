@@ -201,7 +201,7 @@ impl Task {
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
     pub fn put_runtime(&mut self, ops: ~Runtime) {
-        assert!(self.imp.is_none());
+        fail_unless!(self.imp.is_none());
         self.imp = Some(ops);
     }
 
@@ -328,7 +328,7 @@ impl BlockedTask {
     // This assertion has two flavours because the wake involves an atomic op.
     // In the faster version, destructors will fail dramatically instead.
     #[cfg(not(test))] pub fn trash(self) { }
-    #[cfg(test)]      pub fn trash(self) { assert!(self.wake().is_none()); }
+    #[cfg(test)]      pub fn trash(self) { fail_unless!(self.wake().is_none()); }
 
     /// Create a blocked task, unless the task was already killed.
     pub fn block(task: ~Task) -> BlockedTask {
@@ -411,8 +411,8 @@ mod test {
     fn local_heap() {
         let a = @5;
         let b = a;
-        assert!(*a == 5);
-        assert!(*b == 5);
+        fail_unless!(*a == 5);
+        fail_unless!(*b == 5);
     }
 
     #[test]
@@ -420,20 +420,20 @@ mod test {
         use local_data;
         local_data_key!(key: @~str)
         local_data::set(key, @~"data");
-        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
+        fail_unless!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
         local_data_key!(key2: @~str)
         local_data::set(key2, @~"data");
-        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
+        fail_unless!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
     }
 
     #[test]
     fn unwind() {
         let result = task::try(proc()());
         rtdebug!("trying first assert");
-        assert!(result.is_ok());
+        fail_unless!(result.is_ok());
         let result = task::try::<()>(proc() fail!());
         rtdebug!("trying second assert");
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
 
     #[test]
@@ -452,14 +452,14 @@ mod test {
     fn comm_stream() {
         let (port, chan) = Chan::new();
         chan.send(10);
-        assert!(port.recv() == 10);
+        fail_unless!(port.recv() == 10);
     }
 
     #[test]
     fn comm_shared_chan() {
         let (port, chan) = Chan::new();
         chan.send(10);
-        assert!(port.recv() == 10);
+        fail_unless!(port.recv() == 10);
     }
 
     #[test]

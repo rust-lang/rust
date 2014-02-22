@@ -59,9 +59,9 @@ static TEST_S3_Foo: S3_Foo = S3_Foo { a: 1, b: 2, c: Baz };
 
 
 pub fn main() {
-    assert_eq!(mem::size_of::<S4>(), 4);
-    assert_eq!(mem::size_of::<S5>(), 5);
-    assert_eq!(mem::size_of::<S13_str>(), 13 + mem::size_of::<~str>());
-    assert_eq!(mem::size_of::<S3_Foo>(), 3 + mem::size_of::<Foo>());
-    assert_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<@f64>>());
+    fail_unless_eq!(mem::size_of::<S4>(), 4);
+    fail_unless_eq!(mem::size_of::<S5>(), 5);
+    fail_unless_eq!(mem::size_of::<S13_str>(), 13 + mem::size_of::<~str>());
+    fail_unless_eq!(mem::size_of::<S3_Foo>(), 3 + mem::size_of::<Foo>());
+    fail_unless_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<@f64>>());
 }

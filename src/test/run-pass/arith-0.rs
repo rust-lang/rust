@@ -13,5 +13,5 @@
 pub fn main() {
     let a: int = 10;
     info!("{}", a);
-    assert_eq!(a * (a - 1), 90);
+    fail_unless_eq!(a * (a - 1), 90);
 }

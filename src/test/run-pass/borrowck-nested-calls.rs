@@ -27,6 +27,6 @@ impl Foo {
 pub fn main() {
     let mut f = Foo {a: 22, b: 23};
     f.inc_a(f.next_b());
-    assert_eq!(f.a, 22+23);
-    assert_eq!(f.b, 24);
+    fail_unless_eq!(f.a, 22+23);
+    fail_unless_eq!(f.b, 24);
 }

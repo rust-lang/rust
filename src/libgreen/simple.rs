@@ -29,7 +29,7 @@ impl Runtime for SimpleTask {
     // a simple number of cases.
     fn deschedule(mut ~self, times: uint, mut cur_task: ~Task,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
-        assert!(times == 1);
+        fail_unless!(times == 1);
 
         let me = &mut *self as *mut SimpleTask;
         let cur_dupe = &*cur_task as *Task;

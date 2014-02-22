@@ -56,7 +56,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use cast::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
-    assert!(size <= 8u);
+    fail_unless!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
       2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_le16(n as i16)) }),
@@ -82,7 +82,7 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use cast::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
-    assert!(size <= 8u);
+    fail_unless!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
       2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_be16(n as i16)) }),
@@ -109,7 +109,7 @@ pub fn u64_from_be_bytes(data: &[u8],
     use mem::from_be64;
     use vec::MutableVector;
 
-    assert!(size <= 8u);
+    fail_unless!(size <= 8u);
 
     if data.len() - start < size {
         fail!("index out of bounds");
@@ -223,7 +223,7 @@ mod test {
     fn read_byte() {
         let mut reader = MemReader::new(~[10]);
         let byte = reader.read_byte();
-        assert!(byte == Ok(10));
+        fail_unless!(byte == Ok(10));
     }
 
     #[test]
@@ -232,21 +232,21 @@ mod test {
             count: 0,
         };
         let byte = reader.read_byte();
-        assert!(byte == Ok(10));
+        fail_unless!(byte == Ok(10));
     }
 
     #[test]
     fn read_byte_eof() {
         let mut reader = EofReader;
         let byte = reader.read_byte();
-        assert!(byte.is_err());
+        fail_unless!(byte.is_err());
     }
 
     #[test]
     fn read_byte_error() {
         let mut reader = ErroringReader;
         let byte = reader.read_byte();
-        assert!(byte.is_err());
+        fail_unless!(byte.is_err());
     }
 
     #[test]
@@ -255,14 +255,14 @@ mod test {
             count: 0,
         };
         let byte = reader.bytes().next();
-        assert!(byte == Some(10));
+        fail_unless!(byte == Some(10));
     }
 
     #[test]
     fn bytes_eof() {
         let mut reader = EofReader;
         let byte = reader.bytes().next();
-        assert!(byte.is_none());
+        fail_unless!(byte.is_none());
     }
 
     #[test]
@@ -270,14 +270,14 @@ mod test {
         let mut reader = ErroringReader;
         let mut it = reader.bytes();
         let byte = it.next();
-        assert!(byte.is_none());
+        fail_unless!(byte.is_none());
     }
 
     #[test]
     fn read_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let bytes = reader.read_bytes(4).unwrap();
-        assert!(bytes == ~[10, 11, 12, 13]);
+        fail_unless!(bytes == ~[10, 11, 12, 13]);
     }
 
     #[test]
@@ -286,13 +286,13 @@ mod test {
             count: 0,
         };
         let bytes = reader.read_bytes(4).unwrap();
-        assert!(bytes == ~[10, 11, 12, 13]);
+        fail_unless!(bytes == ~[10, 11, 12, 13]);
     }
 
     #[test]
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
-        assert!(reader.read_bytes(4).is_err());
+        fail_unless!(reader.read_bytes(4).is_err());
     }
 
     #[test]
@@ -300,7 +300,7 @@ mod test {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let mut buf = ~[8, 9];
         reader.push_bytes(&mut buf, 4).unwrap();
-        assert!(buf == ~[8, 9, 10, 11, 12, 13]);
+        fail_unless!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
@@ -310,15 +310,15 @@ mod test {
         };
         let mut buf = ~[8, 9];
         reader.push_bytes(&mut buf, 4).unwrap();
-        assert!(buf == ~[8, 9, 10, 11, 12, 13]);
+        fail_unless!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
     fn push_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4).is_err());
-        assert!(buf == ~[8, 9, 10, 11]);
+        fail_unless!(reader.push_bytes(&mut buf, 4).is_err());
+        fail_unless!(buf == ~[8, 9, 10, 11]);
     }
 
     #[test]
@@ -327,8 +327,8 @@ mod test {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4).is_err());
-        assert!(buf == ~[8, 9, 10]);
+        fail_unless!(reader.push_bytes(&mut buf, 4).is_err());
+        fail_unless!(buf == ~[8, 9, 10]);
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == ~[10, 11, 12, 13]);
+        fail_unless!(buf == ~[10, 11, 12, 13]);
     }
 
     #[test]
@@ -347,7 +347,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == ~[10, 11]);
+        fail_unless!(buf == ~[10, 11]);
     }
 
     #[test]
@@ -361,7 +361,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_le_u64().unwrap() == *i);
+            fail_unless!(reader.read_le_u64().unwrap() == *i);
         }
     }
 
@@ -377,7 +377,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
-            assert!(reader.read_be_u64().unwrap() == *i);
+            fail_unless!(reader.read_be_u64().unwrap() == *i);
         }
     }
 
@@ -394,7 +394,7 @@ mod test {
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
-            assert!(reader.read_be_int_n(4).unwrap() == *i as i64);
+            fail_unless!(reader.read_be_int_n(4).unwrap() == *i as i64);
         }
     }
 
@@ -408,7 +408,7 @@ mod test {
 
         let mut reader = MemReader::new(writer.unwrap());
         let f = reader.read_be_f32().unwrap();
-        assert!(f == 8.1250);
+        fail_unless!(f == 8.1250);
     }
 
     #[test]
@@ -420,8 +420,8 @@ mod test {
         writer.write_le_f32(f).unwrap();
 
         let mut reader = MemReader::new(writer.unwrap());
-        assert!(reader.read_be_f32().unwrap() == 8.1250);
-        assert!(reader.read_le_f32().unwrap() == 8.1250);
+        fail_unless!(reader.read_be_f32().unwrap() == 8.1250);
+        fail_unless!(reader.read_le_f32().unwrap() == 8.1250);
     }
 
     #[test]
@@ -431,26 +431,26 @@ mod test {
         let buf = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09];
 
         // Aligned access
-        assert_eq!(u64_from_be_bytes(buf, 0, 0), 0);
-        assert_eq!(u64_from_be_bytes(buf, 0, 1), 0x01);
-        assert_eq!(u64_from_be_bytes(buf, 0, 2), 0x0102);
-        assert_eq!(u64_from_be_bytes(buf, 0, 3), 0x010203);
-        assert_eq!(u64_from_be_bytes(buf, 0, 4), 0x01020304);
-        assert_eq!(u64_from_be_bytes(buf, 0, 5), 0x0102030405);
-        assert_eq!(u64_from_be_bytes(buf, 0, 6), 0x010203040506);
-        assert_eq!(u64_from_be_bytes(buf, 0, 7), 0x01020304050607);
-        assert_eq!(u64_from_be_bytes(buf, 0, 8), 0x0102030405060708);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 0), 0);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 1), 0x01);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 2), 0x0102);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 3), 0x010203);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 4), 0x01020304);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 5), 0x0102030405);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 6), 0x010203040506);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 7), 0x01020304050607);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 8), 0x0102030405060708);
 
         // Unaligned access
-        assert_eq!(u64_from_be_bytes(buf, 1, 0), 0);
-        assert_eq!(u64_from_be_bytes(buf, 1, 1), 0x02);
-        assert_eq!(u64_from_be_bytes(buf, 1, 2), 0x0203);
-        assert_eq!(u64_from_be_bytes(buf, 1, 3), 0x020304);
-        assert_eq!(u64_from_be_bytes(buf, 1, 4), 0x02030405);
-        assert_eq!(u64_from_be_bytes(buf, 1, 5), 0x0203040506);
-        assert_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
-        assert_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
-        assert_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 0), 0);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 1), 0x02);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 2), 0x0203);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 3), 0x020304);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 4), 0x02030405);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 5), 0x0203040506);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
     }
 }
 

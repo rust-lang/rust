@@ -19,16 +19,16 @@ pub fn main() {
         // Treat the output as initialization.
         asm!("mov $1, $0" : "=r"(x) : "r"(5u));
     }
-    assert_eq!(x, 5);
+    fail_unless_eq!(x, 5);
 
     let mut x = x + 1;
-    assert_eq!(x, 6);
+    fail_unless_eq!(x, 6);
 
     unsafe {
         // Assignment to mutable.
         asm!("mov $1, $0" : "=r"(x) : "r"(x + 7));
     }
-    assert_eq!(x, 13);
+    fail_unless_eq!(x, 13);
 }
 
 #[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
