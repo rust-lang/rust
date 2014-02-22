@@ -768,7 +768,7 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
         _ => {
             ccx.tcx.sess.span_fatal(
                 ast_trait_ref.path.span,
-                format!("{} is not a trait",
+                format!("`{}` is not a trait",
                     path_to_str(&ast_trait_ref.path)));
         }
     }
