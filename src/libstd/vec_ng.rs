@@ -18,6 +18,7 @@ use container::Container;
 use iter::{DoubleEndedIterator, FromIterator, Iterator};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
+use num;
 use num::CheckedMul;
 use ops::Drop;
 use option::{None, Option, Some};
@@ -134,6 +135,12 @@ impl<T> Vec<T> {
     #[inline]
     pub fn capacity(&self) -> uint {
         self.cap
+    }
+
+    pub fn reserve(&mut self, capacity: uint) {
+        if capacity >= self.len {
+            self.reserve_exact(num::next_power_of_two(capacity))
+        }
     }
 
     pub fn reserve_exact(&mut self, capacity: uint) {
@@ -296,7 +303,7 @@ impl<T> Vec<T> {
         let len = self.len();
         assert!(index <= len);
         // space for the new element
-        self.reserve_exact(len + 1);
+        self.reserve(len + 1);
 
         unsafe { // infallible
             // The spot to put the new value
