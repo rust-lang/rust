@@ -118,7 +118,7 @@ impl<T: Send> Queue<T> {
             // Acquire a node (which either uses a cached one or allocates a new
             // one), and then append this to the 'head' node.
             let n = self.alloc();
-            assert!((*n).value.is_none());
+            fail_unless!((*n).value.is_none());
             (*n).value = Some(t);
             (*n).next.store(0 as *mut Node<T>, Relaxed);
             (*self.head).next.store(n, Release);
@@ -168,7 +168,7 @@ impl<T: Send> Queue<T> {
             let tail = self.tail;
             let next = (*tail).next.load(Acquire);
             if next.is_null() { return None }
-            assert!((*next).value.is_some());
+            fail_unless!((*next).value.is_some());
             let ret = (*next).value.take();
 
             self.tail = next;

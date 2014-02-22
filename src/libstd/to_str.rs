@@ -143,7 +143,7 @@ mod tests {
         assert_eq!(x.to_str(), ~"[]");
         assert_eq!((~[1]).to_str(), ~"[1]");
         assert_eq!((~[1, 2, 3]).to_str(), ~"[1, 2, 3]");
-        assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
+        fail_unless!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
     }
 
@@ -167,7 +167,7 @@ mod tests {
 
         let table_str = table.to_str();
 
-        assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
+        fail_unless!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
         assert_eq!(empty.to_str(), ~"{}");
     }
 
@@ -181,7 +181,7 @@ mod tests {
 
         let set_str = set.to_str();
 
-        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        fail_unless!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
         assert_eq!(empty_set.to_str(), ~"{}");
     }
 }

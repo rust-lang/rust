@@ -74,7 +74,7 @@ impl Exp {
     /// Construct a new `Exp` with the given shape parameter
     /// `lambda`. Fails if `lambda <= 0`.
     pub fn new(lambda: f64) -> Exp {
-        assert!(lambda > 0.0, "Exp::new called with `lambda` <= 0");
+        fail_unless!(lambda > 0.0, "Exp::new called with `lambda` <= 0");
         Exp { lambda_inverse: 1.0 / lambda }
     }
 }
@@ -101,8 +101,8 @@ mod test {
         let mut exp = Exp::new(10.0);
         let mut rng = task_rng();
         for _ in range(0, 1000) {
-            assert!(exp.sample(&mut rng) >= 0.0);
-            assert!(exp.ind_sample(&mut rng) >= 0.0);
+            fail_unless!(exp.sample(&mut rng) >= 0.0);
+            fail_unless!(exp.ind_sample(&mut rng) >= 0.0);
         }
     }
     #[test]

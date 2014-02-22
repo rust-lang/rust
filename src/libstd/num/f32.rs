@@ -294,7 +294,7 @@ impl Round for f32 {
     ///
     /// ```rust
     /// let x = 1.65f32;
-    /// assert!(x == x.trunc() + x.fract())
+    /// fail_unless!(x == x.trunc() + x.fract())
     /// ```
     #[inline]
     fn fract(&self) -> f32 { *self - self.trunc() }
@@ -953,7 +953,7 @@ mod tests {
         let nan: f32 = Float::nan();
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
-        assert!(nan.asinh().is_nan());
+        fail_unless!(nan.asinh().is_nan());
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     }
@@ -961,14 +961,14 @@ mod tests {
     #[test]
     fn test_acosh() {
         assert_eq!(1.0f32.acosh(), 0.0f32);
-        assert!(0.999f32.acosh().is_nan());
+        fail_unless!(0.999f32.acosh().is_nan());
 
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
         assert_eq!(inf.acosh(), inf);
-        assert!(neg_inf.acosh().is_nan());
-        assert!(nan.acosh().is_nan());
+        fail_unless!(neg_inf.acosh().is_nan());
+        fail_unless!(nan.acosh().is_nan());
         assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
         assert_approx_eq!(3.0f32.acosh(), 1.76274717403908605046521864995958461f32);
     }
@@ -983,15 +983,15 @@ mod tests {
         assert_eq!(1.0f32.atanh(), inf32);
         assert_eq!((-1.0f32).atanh(), neg_inf32);
 
-        assert!(2f64.atanh().atanh().is_nan());
-        assert!((-2f64).atanh().atanh().is_nan());
+        fail_unless!(2f64.atanh().atanh().is_nan());
+        fail_unless!((-2f64).atanh().atanh().is_nan());
 
         let inf64: f32 = Float::infinity();
         let neg_inf64: f32 = Float::neg_infinity();
         let nan32: f32 = Float::nan();
-        assert!(inf64.atanh().is_nan());
-        assert!(neg_inf64.atanh().is_nan());
-        assert!(nan32.atanh().is_nan());
+        fail_unless!(inf64.atanh().is_nan());
+        fail_unless!(neg_inf64.atanh().is_nan());
+        fail_unless!(nan32.atanh().is_nan());
 
         assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
         assert_approx_eq!((-0.5f32).atanh(), -0.54930614433405484569762261846126285f32);
@@ -1043,7 +1043,7 @@ mod tests {
         assert_eq!((-1f32).abs(), 1f32);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
         assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
-        assert!(NAN.abs().is_nan());
+        fail_unless!(NAN.abs().is_nan());
     }
 
     #[test]
@@ -1060,8 +1060,8 @@ mod tests {
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
     fn test_abs_sub_nowin() {
-        assert!(NAN.abs_sub(&-1f32).is_nan());
-        assert!(1f32.abs_sub(&NAN).is_nan());
+        fail_unless!(NAN.abs_sub(&-1f32).is_nan());
+        fail_unless!(1f32.abs_sub(&NAN).is_nan());
     }
 
     #[test]
@@ -1073,31 +1073,31 @@ mod tests {
         assert_eq!((-1f32).signum(), -1f32);
         assert_eq!(NEG_INFINITY.signum(), -1f32);
         assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
-        assert!(NAN.signum().is_nan());
+        fail_unless!(NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_positive() {
-        assert!(INFINITY.is_positive());
-        assert!(1f32.is_positive());
-        assert!(0f32.is_positive());
-        assert!(!(-0f32).is_positive());
-        assert!(!(-1f32).is_positive());
-        assert!(!NEG_INFINITY.is_positive());
-        assert!(!(1f32/NEG_INFINITY).is_positive());
-        assert!(!NAN.is_positive());
+        fail_unless!(INFINITY.is_positive());
+        fail_unless!(1f32.is_positive());
+        fail_unless!(0f32.is_positive());
+        fail_unless!(!(-0f32).is_positive());
+        fail_unless!(!(-1f32).is_positive());
+        fail_unless!(!NEG_INFINITY.is_positive());
+        fail_unless!(!(1f32/NEG_INFINITY).is_positive());
+        fail_unless!(!NAN.is_positive());
     }
 
     #[test]
     fn test_is_negative() {
-        assert!(!INFINITY.is_negative());
-        assert!(!1f32.is_negative());
-        assert!(!0f32.is_negative());
-        assert!((-0f32).is_negative());
-        assert!((-1f32).is_negative());
-        assert!(NEG_INFINITY.is_negative());
-        assert!((1f32/NEG_INFINITY).is_negative());
-        assert!(!NAN.is_negative());
+        fail_unless!(!INFINITY.is_negative());
+        fail_unless!(!1f32.is_negative());
+        fail_unless!(!0f32.is_negative());
+        fail_unless!((-0f32).is_negative());
+        fail_unless!((-1f32).is_negative());
+        fail_unless!(NEG_INFINITY.is_negative());
+        fail_unless!((1f32/NEG_INFINITY).is_negative());
+        fail_unless!(!NAN.is_negative());
     }
 
     #[test]
@@ -1107,14 +1107,14 @@ mod tests {
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Zero::zero();
         let neg_zero: f32 = Float::neg_zero();
-        assert!(!nan.is_normal());
-        assert!(!inf.is_normal());
-        assert!(!neg_inf.is_normal());
-        assert!(!zero.is_normal());
-        assert!(!neg_zero.is_normal());
-        assert!(1f32.is_normal());
-        assert!(1e-37f32.is_normal());
-        assert!(!1e-38f32.is_normal());
+        fail_unless!(!nan.is_normal());
+        fail_unless!(!inf.is_normal());
+        fail_unless!(!neg_inf.is_normal());
+        fail_unless!(!zero.is_normal());
+        fail_unless!(!neg_zero.is_normal());
+        fail_unless!(1f32.is_normal());
+        fail_unless!(1e-37f32.is_normal());
+        fail_unless!(!1e-38f32.is_normal());
     }
 
     #[test]
@@ -1151,7 +1151,7 @@ mod tests {
         let nan: f32 = Float::nan();
         assert_eq!(Float::ldexp(inf, -123), inf);
         assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
-        assert!(Float::ldexp(nan, -123).is_nan());
+        fail_unless!(Float::ldexp(nan, -123).is_nan());
     }
 
     #[test]
@@ -1178,7 +1178,7 @@ mod tests {
         let nan: f32 = Float::nan();
         assert_eq!(match inf.frexp() { (x, _) => x }, inf)
         assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
-        assert!(match nan.frexp() { (x, _) => x.is_nan() })
+        fail_unless!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]

@@ -59,9 +59,9 @@ pub fn main() {
     let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
                      TypeId::of::<Test>());
 
-    assert!(a != b);
-    assert!(a != c);
-    assert!(b != c);
+    fail_unless!(a != b);
+    fail_unless!(a != c);
+    fail_unless!(b != c);
 
     assert_eq!(a, d);
     assert_eq!(b, e);

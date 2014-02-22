@@ -31,7 +31,7 @@ pub fn main() {
     }
     is_even = true;
   }
-  assert!(!is_even);
+  fail_unless!(!is_even);
   loop {
     error!("c");
     if i == 22u {
@@ -44,5 +44,5 @@ pub fn main() {
     }
     is_even = true;
   }
-  assert!(is_even);
+  fail_unless!(is_even);
 }

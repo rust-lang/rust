@@ -133,7 +133,7 @@ impl HomingMissile {
     /// Check at runtime that the task has *not* transplanted itself to a
     /// different I/O loop while executing.
     pub fn check(&self, msg: &'static str) {
-        assert!(local_id() == self.io_home, "{}", msg);
+        fail_unless!(local_id() == self.io_home, "{}", msg);
     }
 }
 

@@ -225,9 +225,9 @@ mod tests {
             .. ProcessConfig::new()
         };
         let p = Process::new(args);
-        assert!(p.is_ok());
+        fail_unless!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.wait().success());
+        fail_unless!(p.wait().success());
     })
 
     // FIXME(#10380)
@@ -252,9 +252,9 @@ mod tests {
             .. ProcessConfig::new()
         };
         let p = Process::new(args);
-        assert!(p.is_ok());
+        fail_unless!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.wait().matches_exit_status(1));
+        fail_unless!(p.wait().matches_exit_status(1));
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -265,7 +265,7 @@ mod tests {
             .. ProcessConfig::new()
         };
         let p = Process::new(args);
-        assert!(p.is_ok());
+        fail_unless!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait() {
             process::ExitSignal(1) => {},
@@ -279,12 +279,12 @@ mod tests {
 
     pub fn run_output(args: ProcessConfig) -> ~str {
         let p = Process::new(args);
-        assert!(p.is_ok());
+        fail_unless!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.io[0].is_none());
-        assert!(p.io[1].is_some());
+        fail_unless!(p.io[0].is_none());
+        fail_unless!(p.io[1].is_some());
         let ret = read_all(p.io[1].get_mut_ref() as &mut Reader);
-        assert!(p.wait().success());
+        fail_unless!(p.wait().success());
         return ret;
     }
 
@@ -331,7 +331,7 @@ mod tests {
         p.io[0].get_mut_ref().write("foobar".as_bytes()).unwrap();
         p.io[0] = None; // close stdin;
         let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
-        assert!(p.wait().success());
+        fail_unless!(p.wait().success());
         assert_eq!(out, ~"foobar\n");
     })
 
@@ -345,7 +345,7 @@ mod tests {
             .. ProcessConfig::new()
         };
         let mut p = Process::new(args).unwrap();
-        assert!(p.wait().success());
+        fail_unless!(p.wait().success());
     })
 
     #[cfg(windows)]
@@ -355,7 +355,7 @@ mod tests {
             uid: Some(10),
             .. ProcessConfig::new()
         };
-        assert!(Process::new(args).is_err());
+        fail_unless!(Process::new(args).is_err());
     })
 
     // FIXME(#10380)
@@ -370,7 +370,7 @@ mod tests {
             .. ProcessConfig::new()
         };
         let mut p = Process::new(args).unwrap();
-        assert!(p.wait().success());
+        fail_unless!(p.wait().success());
     })
 
     // FIXME(#10380)
@@ -387,6 +387,6 @@ mod tests {
             gid: Some(0),
             .. ProcessConfig::new()
         };
-        assert!(Process::new(args).is_err());
+        fail_unless!(Process::new(args).is_err());
     })
 }

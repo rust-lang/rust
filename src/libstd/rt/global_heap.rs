@@ -25,7 +25,7 @@ pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
 // of two.
 #[inline]
 fn align_to(size: uint, align: uint) -> uint {
-    assert!(align != 0);
+    fail_unless!(align != 0);
     (size + align - 1) & !(align - 1)
 }
 

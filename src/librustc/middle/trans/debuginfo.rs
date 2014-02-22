@@ -996,7 +996,7 @@ fn declare_local(bcx: &Block,
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx
+            fail_unless!(!bcx.fcx
                         .debug_context
                         .get_ref(cx, span)
                         .source_locations_enabled
@@ -1503,7 +1503,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
             FinalMetadata(discriminant_type_metadata(inttype))
         }
         adt::Univariant(ref struct_def, _) => {
-            assert!(variants.len() == 1);
+            fail_unless!(variants.len() == 1);
             let (metadata_stub,
                  variant_llvm_type,
                  member_description_factory) = describe_enum_variant(cx,
@@ -1738,7 +1738,7 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let box_llvm_type = Type::at_box(cx, content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
-    assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
+    fail_unless!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
 
     let int_type = ty::mk_int();
     let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
@@ -1876,7 +1876,7 @@ fn vec_metadata(cx: &CrateContext,
         }
     ];
 
-    assert!(member_descriptions.len() == member_llvm_types.len());
+    fail_unless!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
@@ -1903,7 +1903,7 @@ fn vec_slice_metadata(cx: &CrateContext,
     let slice_type_name = ppaux::ty_to_str(cx.tcx, vec_type);
 
     let member_llvm_types = slice_llvm_type.field_types();
-    assert!(slice_layout_is_correct(cx, member_llvm_types, element_type));
+    fail_unless!(slice_layout_is_correct(cx, member_llvm_types, element_type));
 
     let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::MutImmutable });
 
@@ -1922,7 +1922,7 @@ fn vec_slice_metadata(cx: &CrateContext,
         },
     ];
 
-    assert!(member_descriptions.len() == member_llvm_types.len());
+    fail_unless!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);

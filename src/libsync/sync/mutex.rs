@@ -174,7 +174,7 @@ impl StaticMutex {
         // FIXME: this can mess up the fairness of the mutex, seems bad
         match self.state.compare_and_swap(0, LOCKED, atomics::SeqCst) {
             0 => {
-                assert!(self.flavor == Unlocked);
+                fail_unless!(self.flavor == Unlocked);
                 self.flavor = TryLockAcquisition;
                 Some(Guard::new(self))
             }
@@ -191,7 +191,7 @@ impl StaticMutex {
         // FIXME: this can mess up the fairness of the mutex, seems bad
         match self.state.compare_and_swap(0, LOCKED, atomics::SeqCst) {
             0 => {
-                assert!(self.flavor == Unlocked);
+                fail_unless!(self.flavor == Unlocked);
                 self.flavor = TryLockAcquisition;
                 return Guard::new(self)
             }
@@ -358,7 +358,7 @@ impl StaticMutex {
         let mut unlocked = false;
         let task;
         loop {
-            assert!(state & LOCKED != 0);
+            fail_unless!(state & LOCKED != 0);
             if state & GREEN_BLOCKED != 0 {
                 self.unset(state, GREEN_BLOCKED);
                 task = unsafe {
@@ -407,7 +407,7 @@ impl StaticMutex {
     /// Loops around a CAS to unset the `bit` in `state`
     fn unset(&mut self, mut state: uint, bit: uint) {
         loop {
-            assert!(state & bit != 0);
+            fail_unless!(state & bit != 0);
             let new = state ^ bit;
             match self.state.compare_and_swap(state, new, atomics::SeqCst) {
                 n if n == state => break,
@@ -470,8 +470,8 @@ impl Mutex {
 impl<'a> Guard<'a> {
     fn new<'b>(lock: &'b mut StaticMutex) -> Guard<'b> {
         if cfg!(debug) {
-            assert!(lock.flavor != Unlocked);
-            assert!(lock.state.load(atomics::SeqCst) & LOCKED != 0);
+            fail_unless!(lock.flavor != Unlocked);
+            fail_unless!(lock.state.load(atomics::SeqCst) & LOCKED != 0);
         }
         Guard { lock: lock }
     }
@@ -553,6 +553,6 @@ mod test {
     #[test]
     fn trylock() {
         let mut m = Mutex::new();
-        assert!(m.try_lock().is_some());
+        fail_unless!(m.try_lock().is_some());
     }
 }

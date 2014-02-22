@@ -200,7 +200,7 @@ impl ExtendedDecodeContext {
          */
 
         // from_id_range should be non-empty
-        assert!(!self.from_id_range.empty());
+        fail_unless!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     pub fn tr_def_id(&self, did: ast::DefId) -> ast::DefId {
@@ -1483,7 +1483,7 @@ fn test_simplification() {
     ).unwrap());
     match (item_out, item_exp) {
       (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
-        assert!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
+        fail_unless!(pprust::item_to_str(item_out) == pprust::item_to_str(item_exp));
       }
       _ => fail!()
     }

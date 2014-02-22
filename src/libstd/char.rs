@@ -450,31 +450,31 @@ impl Default for char {
 
 #[test]
 fn test_is_lowercase() {
-    assert!('a'.is_lowercase());
-    assert!('ö'.is_lowercase());
-    assert!('ß'.is_lowercase());
-    assert!(!'Ü'.is_lowercase());
-    assert!(!'P'.is_lowercase());
+    fail_unless!('a'.is_lowercase());
+    fail_unless!('ö'.is_lowercase());
+    fail_unless!('ß'.is_lowercase());
+    fail_unless!(!'Ü'.is_lowercase());
+    fail_unless!(!'P'.is_lowercase());
 }
 
 #[test]
 fn test_is_uppercase() {
-    assert!(!'h'.is_uppercase());
-    assert!(!'ä'.is_uppercase());
-    assert!(!'ß'.is_uppercase());
-    assert!('Ö'.is_uppercase());
-    assert!('T'.is_uppercase());
+    fail_unless!(!'h'.is_uppercase());
+    fail_unless!(!'ä'.is_uppercase());
+    fail_unless!(!'ß'.is_uppercase());
+    fail_unless!('Ö'.is_uppercase());
+    fail_unless!('T'.is_uppercase());
 }
 
 #[test]
 fn test_is_whitespace() {
-    assert!(' '.is_whitespace());
-    assert!('\u2007'.is_whitespace());
-    assert!('\t'.is_whitespace());
-    assert!('\n'.is_whitespace());
-    assert!(!'a'.is_whitespace());
-    assert!(!'_'.is_whitespace());
-    assert!(!'\u0000'.is_whitespace());
+    fail_unless!(' '.is_whitespace());
+    fail_unless!('\u2007'.is_whitespace());
+    fail_unless!('\t'.is_whitespace());
+    fail_unless!('\n'.is_whitespace());
+    fail_unless!(!'a'.is_whitespace());
+    fail_unless!(!'_'.is_whitespace());
+    fail_unless!(!'\u0000'.is_whitespace());
 }
 
 #[test]
@@ -495,25 +495,25 @@ fn test_to_digit() {
 
 #[test]
 fn test_is_control() {
-    assert!('\u0000'.is_control());
-    assert!('\u0003'.is_control());
-    assert!('\u0006'.is_control());
-    assert!('\u0009'.is_control());
-    assert!('\u007f'.is_control());
-    assert!('\u0092'.is_control());
-    assert!(!'\u0020'.is_control());
-    assert!(!'\u0055'.is_control());
-    assert!(!'\u0068'.is_control());
+    fail_unless!('\u0000'.is_control());
+    fail_unless!('\u0003'.is_control());
+    fail_unless!('\u0006'.is_control());
+    fail_unless!('\u0009'.is_control());
+    fail_unless!('\u007f'.is_control());
+    fail_unless!('\u0092'.is_control());
+    fail_unless!(!'\u0020'.is_control());
+    fail_unless!(!'\u0055'.is_control());
+    fail_unless!(!'\u0068'.is_control());
 }
 
 #[test]
 fn test_is_digit() {
-   assert!('2'.is_digit());
-   assert!('7'.is_digit());
-   assert!(!'c'.is_digit());
-   assert!(!'i'.is_digit());
-   assert!(!'z'.is_digit());
-   assert!(!'Q'.is_digit());
+   fail_unless!('2'.is_digit());
+   fail_unless!('7'.is_digit());
+   fail_unless!(!'c'.is_digit());
+   fail_unless!(!'i'.is_digit());
+   fail_unless!(!'z'.is_digit());
+   fail_unless!(!'Q'.is_digit());
 }
 
 #[test]

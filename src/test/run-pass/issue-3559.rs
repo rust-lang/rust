@@ -22,6 +22,6 @@ pub fn main() {
     let mut table = HashMap::new();
     table.insert(~"one", 1);
     table.insert(~"two", 2);
-    assert!(check_strs(table.to_str(), "{one: 1, two: 2}") ||
+    fail_unless!(check_strs(table.to_str(), "{one: 1, two: 2}") ||
             check_strs(table.to_str(), "{two: 2, one: 1}"));
 }

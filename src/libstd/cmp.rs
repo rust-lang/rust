@@ -214,13 +214,13 @@ mod test {
 
     #[test]
     fn test_int_totaleq() {
-        assert!(5.equals(&5));
-        assert!(!2.equals(&17));
+        fail_unless!(5.equals(&5));
+        fail_unless!(!2.equals(&17));
     }
 
     #[test]
     fn test_ordering_order() {
-        assert!(Less < Equal);
+        fail_unless!(Less < Equal);
         assert_eq!(Greater.cmp(&Less), Greater);
     }
 

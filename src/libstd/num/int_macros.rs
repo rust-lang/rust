@@ -96,15 +96,15 @@ impl Div<$T,$T> for $T {
     /// # Examples
     ///
     /// ~~~
-    /// assert!( 8 /  3 ==  2);
-    /// assert!( 8 / -3 == -2);
-    /// assert!(-8 /  3 == -2);
-    /// assert!(-8 / -3 ==  2);
+    /// fail_unless!( 8 /  3 ==  2);
+    /// fail_unless!( 8 / -3 == -2);
+    /// fail_unless!(-8 /  3 == -2);
+    /// fail_unless!(-8 / -3 ==  2);
     ///
-    /// assert!( 1 /  2 ==  0);
-    /// assert!( 1 / -2 ==  0);
-    /// assert!(-1 /  2 ==  0);
-    /// assert!(-1 / -2 ==  0);
+    /// fail_unless!( 1 /  2 ==  0);
+    /// fail_unless!( 1 / -2 ==  0);
+    /// fail_unless!(-1 /  2 ==  0);
+    /// fail_unless!(-1 / -2 ==  0);
     /// ~~~
     #[inline]
     fn div(&self, other: &$T) -> $T { *self / *other }
@@ -117,21 +117,21 @@ impl Rem<$T,$T> for $T {
     /// ~~~
     /// # let n = 1;
     /// # let d = 2;
-    /// assert!((n / d) * d + (n % d) == n)
+    /// fail_unless!((n / d) * d + (n % d) == n)
     /// ~~~
     ///
     /// # Examples
     ///
     /// ~~~
-    /// assert!( 8 %  3 ==  2);
-    /// assert!( 8 % -3 ==  2);
-    /// assert!(-8 %  3 == -2);
-    /// assert!(-8 % -3 == -2);
+    /// fail_unless!( 8 %  3 ==  2);
+    /// fail_unless!( 8 % -3 ==  2);
+    /// fail_unless!(-8 %  3 == -2);
+    /// fail_unless!(-8 % -3 == -2);
     ///
-    /// assert!( 1 %  2 ==  1);
-    /// assert!( 1 % -2 ==  1);
-    /// assert!(-1 %  2 == -1);
-    /// assert!(-1 % -2 == -1);
+    /// fail_unless!( 1 %  2 ==  1);
+    /// fail_unless!( 1 % -2 ==  1);
+    /// fail_unless!(-1 %  2 == -1);
+    /// fail_unless!(-1 % -2 == -1);
     /// ~~~
     #[inline]
     fn rem(&self, other: &$T) -> $T { *self % *other }
@@ -308,8 +308,8 @@ mod tests {
 
     #[test]
     fn test_overflows() {
-        assert!(MAX > 0);
-        assert!(MIN <= 0);
+        fail_unless!(MAX > 0);
+        fail_unless!(MIN <= 0);
         assert_eq!(MIN + MAX + 1, 0);
     }
 
@@ -343,18 +343,18 @@ mod tests {
 
     #[test]
     fn test_is_positive() {
-        assert!((1 as $T).is_positive());
-        assert!(!(0 as $T).is_positive());
-        assert!(!(-0 as $T).is_positive());
-        assert!(!(-1 as $T).is_positive());
+        fail_unless!((1 as $T).is_positive());
+        fail_unless!(!(0 as $T).is_positive());
+        fail_unless!(!(-0 as $T).is_positive());
+        fail_unless!(!(-1 as $T).is_positive());
     }
 
     #[test]
     fn test_is_negative() {
-        assert!(!(1 as $T).is_negative());
-        assert!(!(0 as $T).is_negative());
-        assert!(!(-0 as $T).is_negative());
-        assert!((-1 as $T).is_negative());
+        fail_unless!(!(1 as $T).is_negative());
+        fail_unless!(!(0 as $T).is_negative());
+        fail_unless!(!(-0 as $T).is_negative());
+        fail_unless!((-1 as $T).is_negative());
     }
 
     #[test]
@@ -395,8 +395,8 @@ mod tests {
         assert_eq!(from_str::<i32>("-123456789"), Some(-123456789 as i32));
         assert_eq!(from_str::<$T>("-00100"), Some(-100 as $T));
 
-        assert!(from_str::<$T>(" ").is_none());
-        assert!(from_str::<$T>("x").is_none());
+        fail_unless!(from_str::<$T>(" ").is_none());
+        fail_unless!(from_str::<$T>("x").is_none());
     }
 
     #[test]
@@ -420,8 +420,8 @@ mod tests {
         assert_eq!(parse_bytes("-z".as_bytes(), 36u), Some(-35 as $T));
         assert_eq!(parse_bytes("-Z".as_bytes(), 36u), Some(-35 as $T));
 
-        assert!(parse_bytes("Z".as_bytes(), 35u).is_none());
-        assert!(parse_bytes("-9".as_bytes(), 2u).is_none());
+        fail_unless!(parse_bytes("Z".as_bytes(), 35u).is_none());
+        fail_unless!(parse_bytes("-9".as_bytes(), 2u).is_none());
     }
 
     #[test]
@@ -465,35 +465,35 @@ mod tests {
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
         assert_eq!(from_str::<i8>("127"), Some(i8_val));
-        assert!(from_str::<i8>("128").is_none());
+        fail_unless!(from_str::<i8>("128").is_none());
 
         i8_val += 1 as i8;
         assert_eq!(from_str::<i8>("-128"), Some(i8_val));
-        assert!(from_str::<i8>("-129").is_none());
+        fail_unless!(from_str::<i8>("-129").is_none());
 
         let mut i16_val: i16 = 32_767_i16;
         assert_eq!(from_str::<i16>("32767"), Some(i16_val));
-        assert!(from_str::<i16>("32768").is_none());
+        fail_unless!(from_str::<i16>("32768").is_none());
 
         i16_val += 1 as i16;
         assert_eq!(from_str::<i16>("-32768"), Some(i16_val));
-        assert!(from_str::<i16>("-32769").is_none());
+        fail_unless!(from_str::<i16>("-32769").is_none());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
         assert_eq!(from_str::<i32>("2147483647"), Some(i32_val));
-        assert!(from_str::<i32>("2147483648").is_none());
+        fail_unless!(from_str::<i32>("2147483648").is_none());
 
         i32_val += 1 as i32;
         assert_eq!(from_str::<i32>("-2147483648"), Some(i32_val));
-        assert!(from_str::<i32>("-2147483649").is_none());
+        fail_unless!(from_str::<i32>("-2147483649").is_none());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
         assert_eq!(from_str::<i64>("9223372036854775807"), Some(i64_val));
-        assert!(from_str::<i64>("9223372036854775808").is_none());
+        fail_unless!(from_str::<i64>("9223372036854775808").is_none());
 
         i64_val += 1 as i64;
         assert_eq!(from_str::<i64>("-9223372036854775808"), Some(i64_val));
-        assert!(from_str::<i64>("-9223372036854775809").is_none());
+        fail_unless!(from_str::<i64>("-9223372036854775809").is_none());
     }
 
     #[test]

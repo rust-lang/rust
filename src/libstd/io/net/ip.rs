@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
 
     fn read_ipv6_addr_impl(&mut self) -> Option<IpAddr> {
         fn ipv6_addr_from_head_tail(head: &[u16], tail: &[u16]) -> IpAddr {
-            assert!(head.len() + tail.len() <= 8);
+            fail_unless!(head.len() + tail.len() <= 8);
             let mut gs = [0u16, ..8];
             gs.copy_from(head);
             gs.mut_slice(8 - tail.len(), 8).copy_from(tail);
@@ -439,7 +439,7 @@ mod test {
     #[test]
     fn ipv6_addr_to_str() {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
-        assert!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
+        fail_unless!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
     }
 

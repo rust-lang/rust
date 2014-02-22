@@ -165,7 +165,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 loop {
                     match messages.try_recv() {
                         Data(Shutdown) => {
-                            assert!(active.len() == 0);
+                            fail_unless!(active.len() == 0);
                             break 'outer;
                         }
 

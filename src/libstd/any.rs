@@ -279,34 +279,34 @@ mod tests {
     fn any_referenced() {
         let (a, b, c) = (&5u as &Any, &TEST as &Any, &Test as &Any);
 
-        assert!(a.is::<uint>());
-        assert!(!b.is::<uint>());
-        assert!(!c.is::<uint>());
+        fail_unless!(a.is::<uint>());
+        fail_unless!(!b.is::<uint>());
+        fail_unless!(!c.is::<uint>());
 
-        assert!(!a.is::<&'static str>());
-        assert!(b.is::<&'static str>());
-        assert!(!c.is::<&'static str>());
+        fail_unless!(!a.is::<&'static str>());
+        fail_unless!(b.is::<&'static str>());
+        fail_unless!(!c.is::<&'static str>());
 
-        assert!(!a.is::<Test>());
-        assert!(!b.is::<Test>());
-        assert!(c.is::<Test>());
+        fail_unless!(!a.is::<Test>());
+        fail_unless!(!b.is::<Test>());
+        fail_unless!(c.is::<Test>());
     }
 
     #[test]
     fn any_owning() {
         let (a, b, c) = (~5u as ~Any, ~TEST as ~Any, ~Test as ~Any);
 
-        assert!(a.is::<uint>());
-        assert!(!b.is::<uint>());
-        assert!(!c.is::<uint>());
+        fail_unless!(a.is::<uint>());
+        fail_unless!(!b.is::<uint>());
+        fail_unless!(!c.is::<uint>());
 
-        assert!(!a.is::<&'static str>());
-        assert!(b.is::<&'static str>());
-        assert!(!c.is::<&'static str>());
+        fail_unless!(!a.is::<&'static str>());
+        fail_unless!(b.is::<&'static str>());
+        fail_unless!(!c.is::<&'static str>());
 
-        assert!(!a.is::<Test>());
-        assert!(!b.is::<Test>());
-        assert!(c.is::<Test>());
+        fail_unless!(!a.is::<Test>());
+        fail_unless!(!b.is::<Test>());
+        fail_unless!(c.is::<Test>());
     }
 
     #[test]
@@ -387,8 +387,8 @@ mod tests {
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert!(a.move::<~Test>().is_err());
-        assert!(b.move::<~uint>().is_err());
+        fail_unless!(a.move::<~Test>().is_err());
+        fail_unless!(b.move::<~uint>().is_err());
     }
 
     #[test]

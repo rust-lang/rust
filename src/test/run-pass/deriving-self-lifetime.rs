@@ -23,14 +23,14 @@ pub fn main() {
     assert_eq!(b, b);
 
 
-    assert!(a < b);
-    assert!(b > a);
+    fail_unless!(a < b);
+    fail_unless!(b > a);
 
-    assert!(a <= b);
-    assert!(a <= a);
-    assert!(b <= b);
+    fail_unless!(a <= b);
+    fail_unless!(a <= a);
+    fail_unless!(b <= b);
 
-    assert!(b >= a);
-    assert!(b >= b);
-    assert!(a >= a);
+    fail_unless!(b >= a);
+    fail_unless!(b >= b);
+    fail_unless!(a >= a);
 }

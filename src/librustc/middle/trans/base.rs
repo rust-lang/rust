@@ -420,7 +420,7 @@ pub fn malloc_general_dyn<'a>(
                           heap: heap,
                           size: ValueRef)
                           -> MallocResult<'a> {
-    assert!(heap != heap_exchange);
+    fail_unless!(heap != heap_exchange);
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
@@ -435,7 +435,7 @@ pub fn malloc_general_dyn<'a>(
 pub fn malloc_general<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
                       -> MallocResult<'a> {
     let ty = type_of(bcx.ccx(), t);
-    assert!(heap != heap_exchange);
+    fail_unless!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
 }
 
@@ -1128,7 +1128,7 @@ pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
-    assert!(!ty::type_has_params(t));
+    fail_unless!(!ty::type_has_params(t));
     let val = alloca(bcx, ty, name);
     return val;
 }
@@ -1484,7 +1484,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
     let dest = match fcx.llretptr.get() {
         Some(e) => {expr::SaveIn(e)}
         None => {
-            assert!(type_is_zero_size(bcx.ccx(), block_ty))
+            fail_unless!(type_is_zero_size(bcx.ccx(), block_ty))
             expr::Ignore
         }
     };
@@ -1783,7 +1783,7 @@ fn register_fn(ccx: @CrateContext,
                -> ValueRef {
     let f = match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            fail_unless!(f.abis.is_rust() || f.abis.is_intrinsic());
             f
         }
         _ => fail!("expected bare rust fn or an intrinsic")
@@ -2121,7 +2121,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     let llfn;
                     match v.node.kind {
                         ast::TupleVariantKind(ref args) => {
-                            assert!(args.len() != 0u);
+                            fail_unless!(args.len() != 0u);
                             let ty = ty::node_id_to_type(ccx.tcx, id);
                             let parent = ccx.tcx.map.get_parent(id);
                             let enm = ccx.tcx.map.expect_item(parent);

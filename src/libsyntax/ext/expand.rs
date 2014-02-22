@@ -1125,7 +1125,7 @@ mod test {
             let binding_name = mtwt_resolve(bindings[binding_idx]);
             let binding_marks = mtwt_marksof(bindings[binding_idx].ctxt,invalid_name);
             // shouldmatch can't name varrefs that don't exist:
-            assert!((shouldmatch.len() == 0) ||
+            fail_unless!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
             for (idx,varref) in varrefs.iter().enumerate() {
                 if shouldmatch.contains(&idx) {
@@ -1165,7 +1165,7 @@ mod test {
                         println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
-                    assert!(!fail);
+                    fail_unless!(!fail);
                 }
             }
         }

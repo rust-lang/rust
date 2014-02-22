@@ -150,11 +150,11 @@ mod test {
 
         let port = timer.oneshot(1);
         port.recv();
-        assert!(port.recv_opt().is_none());
+        fail_unless!(port.recv_opt().is_none());
 
         let port = timer.oneshot(1);
         port.recv();
-        assert!(port.recv_opt().is_none());
+        fail_unless!(port.recv_opt().is_none());
     })
 
     iotest!(fn override() {

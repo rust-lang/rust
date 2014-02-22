@@ -160,7 +160,7 @@ mod test {
     #[test]
     fn test_empty() {
         let e: EnumSet<Foo> = EnumSet::empty();
-        assert!(e.is_empty());
+        fail_unless!(e.is_empty());
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -170,7 +170,7 @@ mod test {
     fn test_two_empties_do_not_intersect() {
         let e1: EnumSet<Foo> = EnumSet::empty();
         let e2: EnumSet<Foo> = EnumSet::empty();
-        assert!(!e1.intersects(e2));
+        fail_unless!(!e1.intersects(e2));
     }
 
     #[test]
@@ -182,7 +182,7 @@ mod test {
         e2.add(B);
         e2.add(C);
 
-        assert!(!e1.intersects(e2));
+        fail_unless!(!e1.intersects(e2));
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod test {
         let mut e2: EnumSet<Foo> = EnumSet::empty();
         e2.add(B);
 
-        assert!(!e1.intersects(e2));
+        fail_unless!(!e1.intersects(e2));
     }
 
     #[test]
@@ -205,7 +205,7 @@ mod test {
         e2.add(A);
         e2.add(B);
 
-        assert!(e1.intersects(e2));
+        fail_unless!(e1.intersects(e2));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -220,23 +220,23 @@ mod test {
         e2.add(A);
         e2.add(B);
 
-        assert!(!e1.contains(e2));
-        assert!(e2.contains(e1));
+        fail_unless!(!e1.contains(e2));
+        fail_unless!(e2.contains(e1));
     }
 
     #[test]
     fn test_contains_elem() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
         e1.add(A);
-        assert!(e1.contains_elem(A));
-        assert!(!e1.contains_elem(B));
-        assert!(!e1.contains_elem(C));
+        fail_unless!(e1.contains_elem(A));
+        fail_unless!(!e1.contains_elem(B));
+        fail_unless!(!e1.contains_elem(C));
 
         e1.add(A);
         e1.add(B);
-        assert!(e1.contains_elem(A));
-        assert!(e1.contains_elem(B));
-        assert!(!e1.contains_elem(C));
+        fail_unless!(e1.contains_elem(A));
+        fail_unless!(e1.contains_elem(B));
+        fail_unless!(!e1.contains_elem(C));
     }
 
     ///////////////////////////////////////////////////////////////////////////

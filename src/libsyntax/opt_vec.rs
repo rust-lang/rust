@@ -105,7 +105,7 @@ impl<T> OptVec<T> {
         match *self {
             Empty => { fail!("index out of bounds"); }
             Vec(ref mut v) => {
-                assert!(index < v.len());
+                fail_unless!(index < v.len());
                 v.swap_remove(index);
             }
         }

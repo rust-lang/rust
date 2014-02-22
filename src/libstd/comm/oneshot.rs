@@ -96,7 +96,7 @@ impl<T: Send> Packet<T> {
             NothingSent => {}
             _ => fail!("sending on a oneshot that's already sent on "),
         }
-        assert!(self.data.is_none());
+        fail_unless!(self.data.is_none());
         self.data = Some(t);
         self.upgrade = SendUsed;
 
@@ -343,7 +343,7 @@ impl<T: Send> Packet<T> {
             // requested, and if so, the other end needs to have its selection
             // aborted.
             DISCONNECTED => {
-                assert!(self.data.is_none());
+                fail_unless!(self.data.is_none());
                 match mem::replace(&mut self.upgrade, SendUsed) {
                     GoUp(port) => Err(port),
                     _ => Ok(true),

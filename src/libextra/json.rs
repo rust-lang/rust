@@ -2260,7 +2260,7 @@ mod tests {
                               to_parse, expected_error),
             Err(e) => {
                 let err = e.as_ref::<~str>().unwrap();
-                assert!(err.contains(expected_error),
+                fail_unless!(err.contains(expected_error),
                         "`{}` errored incorrectly, found `{}` expecting `{}`",
                         to_parse, *err, expected_error);
             }

@@ -124,7 +124,7 @@ impl<T: Send> Packet<T> {
                 self.cnt.store(DISCONNECTED, atomics::SeqCst);
                 let first = self.queue.pop();
                 let second = self.queue.pop();
-                assert!(second.is_none());
+                fail_unless!(second.is_none());
 
                 match first {
                     Some(..) => UpSuccess,  // we failed to send the data
@@ -134,7 +134,7 @@ impl<T: Send> Packet<T> {
 
             // Otherwise we just sent some data on a non-waiting queue, so just
             // make sure the world is sane and carry on!
-            n => { assert!(n >= 0); UpSuccess }
+            n => { fail_unless!(n >= 0); UpSuccess }
         }
     }
 
@@ -142,7 +142,7 @@ impl<T: Send> Packet<T> {
     fn take_to_wake(&mut self) -> BlockedTask {
         let task = self.to_wake.load(atomics::SeqCst);
         self.to_wake.store(0, atomics::SeqCst);
-        assert!(task != 0);
+        fail_unless!(task != 0);
         unsafe { BlockedTask::cast_from_uint(task) }
     }
 
@@ -162,7 +162,7 @@ impl<T: Send> Packet<T> {
             // If we factor in our steals and notice that the channel has no
             // data, we successfully sleep
             n => {
-                assert!(n >= 0);
+                fail_unless!(n >= 0);
                 if n - steals <= 0 { return Ok(()) }
             }
         }
@@ -224,7 +224,7 @@ impl<T: Send> Packet<T> {
                             self.bump(n - m);
                         }
                     }
-                    assert!(self.steals >= 0);
+                    fail_unless!(self.steals >= 0);
                 }
                 self.steals += 1;
                 match data {
@@ -266,7 +266,7 @@ impl<T: Send> Packet<T> {
         match self.cnt.swap(DISCONNECTED, atomics::SeqCst) {
             -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
             DISCONNECTED => {}
-            n => { assert!(n >= 0); }
+            n => { fail_unless!(n >= 0); }
         }
     }
 
@@ -376,7 +376,7 @@ impl<T: Send> Packet<T> {
                 // Undo our decrement above, and we should be guaranteed that the
                 // previous value is positive because we're not going to sleep
                 let prev = self.bump(1);
-                assert!(prev == DISCONNECTED || prev >= 0);
+                fail_unless!(prev == DISCONNECTED || prev >= 0);
                 return ret;
             }
         }
@@ -417,7 +417,7 @@ impl<T: Send> Packet<T> {
             true // there is data, that data is that we're disconnected
         } else {
             let cur = prev + steals + 1;
-            assert!(cur >= 0);
+            fail_unless!(cur >= 0);
 
             // If the previous count was negative, then we just made things go
             // positive, hence we passed the -1 boundary and we're responsible

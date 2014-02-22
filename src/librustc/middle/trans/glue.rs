@@ -399,7 +399,7 @@ fn incr_refcnt_of_boxed<'a>(bcx: &'a Block<'a>,
 pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    assert!(!ccx.finished_tydescs.get());
+    fail_unless!(!ccx.finished_tydescs.get());
 
     let llty = type_of(ccx, t);
 

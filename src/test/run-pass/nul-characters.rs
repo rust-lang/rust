@@ -39,6 +39,6 @@ pub fn main()
     assert_eq!('\u0000', '\U00000000');
 
     // NUL characters should make a difference
-    assert!("Hello World" != "Hello \0World");
-    assert!("Hello World" != "Hello World\0");
+    fail_unless!("Hello World" != "Hello \0World");
+    fail_unless!("Hello World" != "Hello World\0");
 }

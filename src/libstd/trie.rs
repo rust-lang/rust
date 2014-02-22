@@ -624,7 +624,7 @@ impl<'a> Iterator<uint> for SetItems<'a> {
 
 #[cfg(test)]
 pub fn check_integrity<T>(trie: &TrieNode<T>) {
-    assert!(trie.count != 0);
+    fail_unless!(trie.count != 0);
 
     let mut sum = 0;
 
@@ -652,9 +652,9 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = TrieMap::new();
-        assert!(m.insert(1, 12));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
@@ -665,11 +665,11 @@ mod test_map {
     #[test]
     fn test_find_mut_missing() {
         let mut m = TrieMap::new();
-        assert!(m.find_mut(&0).is_none());
-        assert!(m.insert(1, 12));
-        assert!(m.find_mut(&0).is_none());
-        assert!(m.insert(2, 8));
-        assert!(m.find_mut(&0).is_none());
+        fail_unless!(m.find_mut(&0).is_none());
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.find_mut(&0).is_none());
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.find_mut(&0).is_none());
     }
 
     #[test]
@@ -678,32 +678,32 @@ mod test_map {
         let n = 300u;
 
         for x in range_step(1u, n, 2) {
-            assert!(trie.insert(x, x + 1));
-            assert!(trie.contains_key(&x));
+            fail_unless!(trie.insert(x, x + 1));
+            fail_unless!(trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for x in range_step(0u, n, 2) {
-            assert!(!trie.contains_key(&x));
-            assert!(trie.insert(x, x + 1));
+            fail_unless!(!trie.contains_key(&x));
+            fail_unless!(trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
 
         for x in range(0u, n) {
-            assert!(trie.contains_key(&x));
-            assert!(!trie.insert(x, x + 1));
+            fail_unless!(trie.contains_key(&x));
+            fail_unless!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
 
         for x in range_step(1u, n, 2) {
-            assert!(trie.remove(&x));
-            assert!(!trie.contains_key(&x));
+            fail_unless!(trie.remove(&x));
+            fail_unless!(!trie.contains_key(&x));
             check_integrity(&trie.root);
         }
 
         for x in range_step(0u, n, 2) {
-            assert!(trie.contains_key(&x));
-            assert!(!trie.insert(x, x + 1));
+            fail_unless!(trie.contains_key(&x));
+            fail_unless!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
     }
@@ -712,11 +712,11 @@ mod test_map {
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
-        assert!(m.insert(3, 6));
-        assert!(m.insert(0, 0));
-        assert!(m.insert(4, 8));
-        assert!(m.insert(2, 4));
-        assert!(m.insert(1, 2));
+        fail_unless!(m.insert(3, 6));
+        fail_unless!(m.insert(0, 0));
+        fail_unless!(m.insert(4, 8));
+        fail_unless!(m.insert(2, 4));
+        fail_unless!(m.insert(1, 2));
 
         let mut n = 4;
         m.each_reverse(|k, v| {
@@ -738,7 +738,7 @@ mod test_map {
         let mut n = uint::MAX - 1;
         m.each_reverse(|k, v| {
             if n == uint::MAX - 5000 { false } else {
-                assert!(n > uint::MAX - 5000);
+                fail_unless!(n > uint::MAX - 5000);
 
                 assert_eq!(*k, n);
                 assert_eq!(*v, n / 2);
@@ -800,7 +800,7 @@ mod test_map {
     #[test]
     fn test_mut_iter() {
         let mut empty_map : TrieMap<uint> = TrieMap::new();
-        assert!(empty_map.mut_iter().next().is_none());
+        fail_unless!(empty_map.mut_iter().next().is_none());
 
         let first = uint::MAX - 10000;
         let last = uint::MAX;
@@ -818,7 +818,7 @@ mod test_map {
         }
         assert_eq!(i, last - first);
 
-        assert!(map.iter().all(|(_, &v)| v == 0));
+        fail_unless!(map.iter().all(|(_, &v)| v == 0));
     }
 
     #[test]
@@ -833,7 +833,7 @@ mod test_map {
 
         let mut map : TrieMap<uint> = TrieMap::new();
         for x in range_step(0u, last, step) {
-            assert!(x % step == 0);
+            fail_unless!(x % step == 0);
             map.insert(x, value);
         }
 
@@ -892,11 +892,11 @@ mod test_map {
             *v -= k;
         }
 
-        assert!(m_lower.mut_lower_bound(199).next().is_none());
-        assert!(m_upper.mut_upper_bound(198).next().is_none());
+        fail_unless!(m_lower.mut_lower_bound(199).next().is_none());
+        fail_unless!(m_upper.mut_upper_bound(198).next().is_none());
 
-        assert!(m_lower.iter().all(|(_, &x)| x == 0));
-        assert!(m_upper.iter().all(|(_, &x)| x == 0));
+        fail_unless!(m_lower.iter().all(|(_, &x)| x == 0));
+        fail_unless!(m_upper.iter().all(|(_, &x)| x == 0));
     }
 }
 
@@ -1022,8 +1022,8 @@ mod test_set {
 
         let mut trie = TrieSet::new();
 
-        assert!(trie.insert(x));
-        assert!(trie.insert(y));
+        fail_unless!(trie.insert(x));
+        fail_unless!(trie.insert(y));
 
         assert_eq!(trie.len(), 2);
 
@@ -1041,7 +1041,7 @@ mod test_set {
         let set: TrieSet = xs.iter().map(|&x| x).collect();
 
         for x in xs.iter() {
-            assert!(set.contains(x));
+            fail_unless!(set.contains(x));
         }
     }
 }

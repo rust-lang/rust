@@ -575,7 +575,7 @@ pub trait Reader {
     ///
     /// `n` must be between 1 and 8, inclusive.
     fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
-        assert!(nbytes > 0 && nbytes <= 8);
+        fail_unless!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64;
         let mut pos = 0;
@@ -599,7 +599,7 @@ pub trait Reader {
     ///
     /// `n` must be between 1 and 8, inclusive.
     fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
-        assert!(nbytes > 0 && nbytes <= 8);
+        fail_unless!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0u64;
         let mut i = nbytes;

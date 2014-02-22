@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_to_base64_line_break() {
-        assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
+        fail_unless!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
                 .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
@@ -323,13 +323,13 @@ mod tests {
 
     #[test]
     fn test_from_base64_invalid_char() {
-        assert!("Zm$=".from_base64().is_err())
-        assert!("Zg==$".from_base64().is_err());
+        fail_unless!("Zm$=".from_base64().is_err())
+        fail_unless!("Zg==$".from_base64().is_err());
     }
 
     #[test]
     fn test_from_base64_invalid_padding() {
-        assert!("Z===".from_base64().is_err());
+        fail_unless!("Z===".from_base64().is_err());
     }
 
     #[test]

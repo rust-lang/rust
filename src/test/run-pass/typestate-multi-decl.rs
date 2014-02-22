@@ -11,5 +11,5 @@
 pub fn main() {
     let (x, y) = (10, 20);
     let z = x + y;
-    assert!((z == 30));
+    fail_unless!((z == 30));
 }

@@ -69,7 +69,7 @@ impl<'a> Condvar<'a> {
      */
     #[inline]
     pub fn wait_on(&self, condvar_id: uint) {
-        assert!(!*self.failed);
+        fail_unless!(!*self.failed);
         self.cond.wait_on(condvar_id);
         // This is why we need to wrap sync::condvar.
         check_poison(self.is_mutex, *self.failed);
@@ -85,7 +85,7 @@ impl<'a> Condvar<'a> {
      */
     #[inline]
     pub fn signal_on(&self, condvar_id: uint) -> bool {
-        assert!(!*self.failed);
+        fail_unless!(!*self.failed);
         self.cond.signal_on(condvar_id)
     }
 
@@ -99,7 +99,7 @@ impl<'a> Condvar<'a> {
      */
     #[inline]
     pub fn broadcast_on(&self, condvar_id: uint) -> uint {
-        assert!(!*self.failed);
+        fail_unless!(!*self.failed);
         self.cond.broadcast_on(condvar_id)
     }
 }
@@ -256,7 +256,7 @@ struct PoisonOnFail {
 impl Drop for PoisonOnFail {
     fn drop(&mut self) {
         unsafe {
-            /* assert!(!*self.failed);
+            /* fail_unless!(!*self.failed);
                -- might be false in case of cond.wait() */
             if !self.failed && task::failing() {
                 *self.flag = true;
@@ -434,7 +434,7 @@ impl<T:Freeze + Send> RWArc<T> {
             // of this cast is removing the mutability.)
             let new_data = data;
             // Downgrade ensured the token belonged to us. Just a sanity check.
-            assert!((&(*state).data as *T as uint) == (new_data as *mut T as uint));
+            fail_unless!((&(*state).data as *T as uint) == (new_data as *mut T as uint));
             // Produce new token
             RWReadMode {
                 data: new_data,
@@ -610,7 +610,7 @@ mod tests {
 
         arc.access_cond(|state, cond| {
             c.send(());
-            assert!(!*state);
+            fail_unless!(!*state);
             while !*state {
                 cond.wait();
             }
@@ -663,7 +663,7 @@ mod tests {
         task::spawn(proc() {
             (*arc2).access(|mutex| {
                 (*mutex).access(|one| {
-                    assert!(*one == 1);
+                    fail_unless!(*one == 1);
                 })
             })
         });
@@ -798,7 +798,7 @@ mod tests {
             children.push(builder.future_result());
             builder.spawn(proc() {
                 arc3.read(|num| {
-                    assert!(*num >= 0);
+                    fail_unless!(*num >= 0);
                 })
             });
         }
@@ -937,7 +937,7 @@ mod tests {
 
         x.write_downgrade(|mut write_mode| {
             write_mode.write_cond(|state, c| {
-                assert!(*state);
+                fail_unless!(*state);
                 // make writer contend in the cond-reacquire path
                 c.signal();
             });
@@ -956,7 +956,7 @@ mod tests {
                 // before we assert on it
                 for _ in range(0, 5) { task::deschedule(); }
                 // make sure writer didn't get in.
-                assert!(*state);
+                fail_unless!(*state);
             })
         });
     }
@@ -976,12 +976,12 @@ mod tests {
         let cow1 = cow0.clone();
         let cow2 = cow1.clone();
 
-        assert!(75 == *cow0.get());
-        assert!(75 == *cow1.get());
-        assert!(75 == *cow2.get());
+        fail_unless!(75 == *cow0.get());
+        fail_unless!(75 == *cow1.get());
+        fail_unless!(75 == *cow2.get());
 
-        assert!(cow0.get() == cow1.get());
-        assert!(cow0.get() == cow2.get());
+        fail_unless!(cow0.get() == cow1.get());
+        fail_unless!(cow0.get() == cow2.get());
     }
 
     #[test]
@@ -991,22 +991,22 @@ mod tests {
         let mut cow1 = cow0.clone();
         let mut cow2 = cow1.clone();
 
-        assert!(75 == *cow0.get_mut());
-        assert!(75 == *cow1.get_mut());
-        assert!(75 == *cow2.get_mut());
+        fail_unless!(75 == *cow0.get_mut());
+        fail_unless!(75 == *cow1.get_mut());
+        fail_unless!(75 == *cow2.get_mut());
 
         *cow0.get_mut() += 1;
         *cow1.get_mut() += 2;
         *cow2.get_mut() += 3;
 
-        assert!(76 == *cow0.get());
-        assert!(77 == *cow1.get());
-        assert!(78 == *cow2.get());
+        fail_unless!(76 == *cow0.get());
+        fail_unless!(77 == *cow1.get());
+        fail_unless!(78 == *cow2.get());
 
         // none should point to the same backing memory
-        assert!(cow0.get() != cow1.get());
-        assert!(cow0.get() != cow2.get());
-        assert!(cow1.get() != cow2.get());
+        fail_unless!(cow0.get() != cow1.get());
+        fail_unless!(cow0.get() != cow2.get());
+        fail_unless!(cow1.get() != cow2.get());
     }
 
     #[test]
@@ -1016,20 +1016,20 @@ mod tests {
         let cow1 = cow0.clone();
         let cow2 = cow1.clone();
 
-        assert!(75 == *cow0.get());
-        assert!(75 == *cow1.get());
-        assert!(75 == *cow2.get());
+        fail_unless!(75 == *cow0.get());
+        fail_unless!(75 == *cow1.get());
+        fail_unless!(75 == *cow2.get());
 
         *cow0.get_mut() += 1;
 
-        assert!(76 == *cow0.get());
-        assert!(75 == *cow1.get());
-        assert!(75 == *cow2.get());
+        fail_unless!(76 == *cow0.get());
+        fail_unless!(75 == *cow1.get());
+        fail_unless!(75 == *cow2.get());
 
         // cow1 and cow2 should share the same contents
         // cow0 should have a unique reference
-        assert!(cow0.get() != cow1.get());
-        assert!(cow0.get() != cow2.get());
-        assert!(cow1.get() == cow2.get());
+        fail_unless!(cow0.get() != cow1.get());
+        fail_unless!(cow0.get() != cow2.get());
+        fail_unless!(cow1.get() == cow2.get());
     }
 }

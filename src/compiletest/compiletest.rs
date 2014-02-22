@@ -78,7 +78,7 @@ pub fn parse_config(args: ~[~str]) -> config {
           optflag("h", "help", "show this message"),
          ];
 
-    assert!(!args.is_empty());
+    fail_unless!(!args.is_empty());
     let argv0 = args[0].clone();
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {

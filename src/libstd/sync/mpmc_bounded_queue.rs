@@ -180,7 +180,7 @@ mod tests {
             native::task::spawn(proc() {
                 let mut q = q;
                 for i in range(0, nmsgs) {
-                    assert!(q.push(i));
+                    fail_unless!(q.push(i));
                 }
                 chan.send(());
             });

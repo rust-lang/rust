@@ -59,7 +59,7 @@ impl PipeWatcher {
     pub fn new_home(loop_: &Loop, home: HomeHandle, ipc: bool) -> PipeWatcher {
         let handle = unsafe {
             let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
-            assert!(!handle.is_null());
+            fail_unless!(!handle.is_null());
             let ipc = ipc as libc::c_int;
             assert_eq!(uvll::uv_pipe_init(loop_.handle, handle, ipc), 0);
             handle
@@ -109,7 +109,7 @@ impl PipeWatcher {
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {;
             let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
+            fail_unless!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.result = status;
             wakeup(&mut cx.task);
@@ -219,7 +219,7 @@ impl UvHandle<uvll::uv_pipe_t> for PipeListener {
 }
 
 extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
-    assert!(status != uvll::ECANCELED);
+    fail_unless!(status != uvll::ECANCELED);
 
     let pipe: &mut PipeListener = unsafe { UvHandle::from_uv_handle(&server) };
     let msg = match status {
@@ -307,15 +307,15 @@ mod tests {
             chan.send(());
             let mut client = p.accept().unwrap();
             let mut buf = [0];
-            assert!(client.read(buf).unwrap() == 1);
+            fail_unless!(client.read(buf).unwrap() == 1);
             assert_eq!(buf[0], 1);
-            assert!(client.write([2]).is_ok());
+            fail_unless!(client.write([2]).is_ok());
         });
         port.recv();
         let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
-        assert!(c.write([1]).is_ok());
+        fail_unless!(c.write([1]).is_ok());
         let mut buf = [0];
-        assert!(c.read(buf).unwrap() == 1);
+        fail_unless!(c.read(buf).unwrap() == 1);
         assert_eq!(buf[0], 2);
     }
 

@@ -990,12 +990,12 @@ msgstr ""
 
 #. type: Plain text
 #: src/doc/tutorial.md:383
-msgid "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+msgid "~~~~ let x: f64 = 4.0; let y: uint = x as uint; fail_unless!(y == 4u); ~~~~"
 msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"
 "let y: uint = x as uint;\n"
-"assert!(y == 4u);\n"
+"fail_unless!(y == 4u);\n"
 "~~~~"
 
 #. type: Plain text
@@ -1980,10 +1980,10 @@ msgstr ""
 
 #. type: Plain text
 #: src/doc/tutorial.md:875
-msgid "assert!(8 == line(5, 3, 1)); assert!(() == oops(5, 3, 1)); ~~~~"
+msgid "fail_unless!(8 == line(5, 3, 1)); fail_unless!(() == oops(5, 3, 1)); ~~~~"
 msgstr ""
-"assert!(8 == line(5, 3, 1));\n"
-"assert!(() == oops(5, 3, 1));\n"
+"fail_unless!(8 == line(5, 3, 1));\n"
+"fail_unless!(() == oops(5, 3, 1));\n"
 "~~~~"
 
 #. type: Plain text

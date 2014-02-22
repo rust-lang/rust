@@ -63,7 +63,7 @@ fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
     let doc = ebml::reader::Doc(@w.get_ref());
     let mut dec = Decoder(doc);
     let obj2 = Decodable::decode(&mut dec);
-    assert!(obj == obj2);
+    fail_unless!(obj == obj2);
 }
 
 pub fn main() {

@@ -887,21 +887,21 @@ fn test_get_authority() {
         "//user:pass@rust-lang.org/something").unwrap();
     assert_eq!(u, Some(UserInfo::new(~"user", Some(~"pass"))));
     assert_eq!(h, ~"rust-lang.org");
-    assert!(p.is_none());
+    fail_unless!(p.is_none());
     assert_eq!(r, ~"/something");
 
     let (u, h, p, r) = get_authority(
         "//rust-lang.org:8000?something").unwrap();
-    assert!(u.is_none());
+    fail_unless!(u.is_none());
     assert_eq!(h, ~"rust-lang.org");
     assert_eq!(p, Some(~"8000"));
     assert_eq!(r, ~"?something");
 
     let (u, h, p, r) = get_authority(
         "//rust-lang.org#blah").unwrap();
-    assert!(u.is_none());
+    fail_unless!(u.is_none());
     assert_eq!(h, ~"rust-lang.org");
-    assert!(p.is_none());
+    fail_unless!(p.is_none());
     assert_eq!(r, ~"#blah");
 
     // ipv6 tests
@@ -922,11 +922,11 @@ fn test_get_authority() {
     assert_eq!(p, Some(~"8000"));
 
     // invalid authorities;
-    assert!(get_authority("//user:pass@rust-lang:something").is_err());
-    assert!(get_authority("//user@rust-lang:something:/path").is_err());
-    assert!(get_authority(
+    fail_unless!(get_authority("//user:pass@rust-lang:something").is_err());
+    fail_unless!(get_authority("//user@rust-lang:something:/path").is_err());
+    fail_unless!(get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a").is_err());
-    assert!(get_authority(
+    fail_unless!(get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00").is_err());
 
     // these parse as empty, because they don't start with '//'
@@ -949,7 +949,7 @@ fn test_get_path() {
     assert_eq!(r, ~"?q=v");
 
     //failure cases
-    assert!(get_path("something?q", true).is_err());
+    fail_unless!(get_path("something?q", true).is_err());
 }
 
 #[cfg(test)]
@@ -989,15 +989,15 @@ mod tests {
     fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).unwrap();
-        assert!(url.host == ~"0.42.42.42");
-        assert!(url.path == ~"/");
+        fail_unless!(url.host == ~"0.42.42.42");
+        fail_unless!(url.path == ~"/");
     }
 
     #[test]
     fn test_path_parse_host_slash() {
         let pathstr = ~"/";
         let path = path_from_str(pathstr).unwrap();
-        assert!(path.path == ~"/");
+        fail_unless!(path.path == ~"/");
     }
 
     #[test]
@@ -1020,39 +1020,39 @@ mod tests {
     fn test_url_with_underscores() {
         let urlstr = ~"http://dotcom.com/file_name.html";
         let url = from_str(urlstr).unwrap();
-        assert!(url.path == ~"/file_name.html");
+        fail_unless!(url.path == ~"/file_name.html");
     }
 
     #[test]
     fn test_path_with_underscores() {
         let pathstr = ~"/file_name.html";
         let path = path_from_str(pathstr).unwrap();
-        assert!(path.path == ~"/file_name.html");
+        fail_unless!(path.path == ~"/file_name.html");
     }
 
     #[test]
     fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).unwrap();
-        assert!(url.path == ~"/file-name.html");
+        fail_unless!(url.path == ~"/file-name.html");
     }
 
     #[test]
     fn test_path_with_dashes() {
         let pathstr = ~"/file-name.html";
         let path = path_from_str(pathstr).unwrap();
-        assert!(path.path == ~"/file-name.html");
+        fail_unless!(path.path == ~"/file-name.html");
     }
 
     #[test]
     fn test_no_scheme() {
-        assert!(get_scheme("noschemehere.html").is_err());
+        fail_unless!(get_scheme("noschemehere.html").is_err());
     }
 
     #[test]
     fn test_invalid_scheme_errors() {
-        assert!(from_str("99://something").is_err());
-        assert!(from_str("://something").is_err());
+        fail_unless!(from_str("99://something").is_err());
+        fail_unless!(from_str("://something").is_err());
     }
 
     #[test]
@@ -1120,16 +1120,16 @@ mod tests {
     fn test_url_component_encoding() {
         let url = ~"http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = from_str(url).unwrap();
-        assert!(u.path == ~"/doc uments");
-        assert!(u.query == ~[(~"ba%d ", ~"#&+")]);
+        fail_unless!(u.path == ~"/doc uments");
+        fail_unless!(u.query == ~[(~"ba%d ", ~"#&+")]);
     }
 
     #[test]
     fn test_path_component_encoding() {
         let path = ~"/doc%20uments?ba%25d%20=%23%26%2B";
         let p = path_from_str(path).unwrap();
-        assert!(p.path == ~"/doc uments");
-        assert!(p.query == ~[(~"ba%d ", ~"#&+")]);
+        fail_unless!(p.path == ~"/doc uments");
+        fail_unless!(p.query == ~[(~"ba%d ", ~"#&+")]);
     }
 
     #[test]
@@ -1169,9 +1169,9 @@ mod tests {
     #[test]
     fn test_encode_component() {
         assert_eq!(encode_component(""), ~"");
-        assert!(encode_component("http://example.com") ==
+        fail_unless!(encode_component("http://example.com") ==
             ~"http%3A%2F%2Fexample.com");
-        assert!(encode_component("foo bar% baz") ==
+        fail_unless!(encode_component("foo bar% baz") ==
             ~"foo%20bar%25%20baz");
         assert_eq!(encode_component(" "), ~"%20");
         assert_eq!(encode_component("!"), ~"%21");
@@ -1266,7 +1266,7 @@ mod tests {
 
         let mut m = HashMap::new();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
-        assert!(encode_form_urlencoded(&m) ==
+        fail_unless!(encode_form_urlencoded(&m) ==
             ~"foo+bar=abc&foo+bar=12+%3D+34");
     }
 

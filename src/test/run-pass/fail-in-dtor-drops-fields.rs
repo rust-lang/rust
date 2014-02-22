@@ -36,7 +36,7 @@ pub fn main() {
     let ret = task::try(proc() {
         let _a = A { b: B { foo: 3 } };
     });
-    assert!(ret.is_err());
-    unsafe { assert!(dropped); }
+    fail_unless!(ret.is_err());
+    unsafe { fail_unless!(dropped); }
 }
 

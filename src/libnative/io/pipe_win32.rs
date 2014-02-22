@@ -469,7 +469,7 @@ impl UnixAcceptor {
             // If our disconnection fails, then there's not really a whole lot
             // that we can do, so fail the task.
             let err = unsafe { libc::DisconnectNamedPipe(handle) };
-            assert!(err != 0);
+            fail_unless!(err != 0);
             return ret;
         } else {
             self.listener.handle = new_handle;

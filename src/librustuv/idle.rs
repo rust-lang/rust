@@ -143,7 +143,7 @@ mod test {
             let mut slot = chan.borrow().borrow_mut();
             match *slot.get() {
                 (ref mut slot, _) => {
-                    assert!(slot.is_none());
+                    fail_unless!(slot.is_none());
                     *slot = Some(task);
                 }
             }

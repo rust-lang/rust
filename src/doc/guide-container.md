@@ -256,7 +256,7 @@ for (x, y) in it {
 println!("last: {:?}", it.next());
 
 // the iterator is now fully consumed
-assert!(it.next().is_none());
+fail_unless!(it.next().is_none());
 ~~~
 
 ## Conversion

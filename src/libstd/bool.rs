@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn test_bool_from_str() {
         all_values(|v| {
-            assert!(Some(v) == FromStr::from_str(v.to_str()))
+            fail_unless!(Some(v) == FromStr::from_str(v.to_str()))
         });
     }
 
@@ -408,21 +408,21 @@ mod tests {
 
     #[test]
     fn test_bool_ord() {
-        assert!(true > false);
-        assert!(!(false > true));
+        fail_unless!(true > false);
+        fail_unless!(!(false > true));
 
-        assert!(false < true);
-        assert!(!(true < false));
+        fail_unless!(false < true);
+        fail_unless!(!(true < false));
 
-        assert!(false <= false);
-        assert!(false >= false);
-        assert!(true <= true);
-        assert!(true >= true);
+        fail_unless!(false <= false);
+        fail_unless!(false >= false);
+        fail_unless!(true <= true);
+        fail_unless!(true >= true);
 
-        assert!(false <= true);
-        assert!(!(false >= true));
-        assert!(true >= false);
-        assert!(!(true <= false));
+        fail_unless!(false <= true);
+        fail_unless!(!(false >= true));
+        fail_unless!(true >= false);
+        fail_unless!(!(true <= false));
     }
 
     #[test]

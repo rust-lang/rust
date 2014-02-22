@@ -446,7 +446,7 @@ impl<A> ExactSize<A> for Item<A> {}
 ///     }
 ///     let v = [1u, 2, 3];
 ///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
-///     assert!(res == Some(~[2u, 3, 4]));
+///     fail_unless!(res == Some(~[2u, 3, 4]));
 #[inline]
 pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
     // FIXME(#11084): This should be twice as fast once this bug is closed.
@@ -546,7 +546,7 @@ mod tests {
             y2 = y.take_unwrap();
         }
         assert_eq!(y2, 5);
-        assert!(y.is_none());
+        fail_unless!(y.is_none());
     }
 
     #[test] #[should_fail]
@@ -657,7 +657,7 @@ mod tests {
         let some_stuff = Some(42);
         let modified_stuff = some_stuff.filtered(|&x| {x < 10});
         assert_eq!(some_stuff.unwrap(), 42);
-        assert!(modified_stuff.is_none());
+        fail_unless!(modified_stuff.is_none());
     }
 
     #[test]
@@ -670,7 +670,7 @@ mod tests {
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next(), Some(&val));
         assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -689,11 +689,11 @@ mod tests {
                     assert_eq!(*interior, val);
                     *interior = new_val;
                 }
-                None => assert!(false),
+                None => fail_unless!(false),
             }
 
             assert_eq!(it.size_hint(), (0, Some(0)));
-            assert!(it.next().is_none());
+            fail_unless!(it.next().is_none());
         }
         assert_eq!(x, Some(new_val));
     }
@@ -703,24 +703,24 @@ mod tests {
         let small = Some(1.0);
         let big = Some(5.0);
         let nan = Some(0.0/0.0);
-        assert!(!(nan < big));
-        assert!(!(nan > big));
-        assert!(small < big);
-        assert!(None < big);
-        assert!(big > None);
+        fail_unless!(!(nan < big));
+        fail_unless!(!(nan > big));
+        fail_unless!(small < big);
+        fail_unless!(None < big);
+        fail_unless!(big > None);
     }
 
     #[test]
     fn test_mutate() {
         let mut x = Some(3i);
-        assert!(x.mutate(|i| i+1));
+        fail_unless!(x.mutate(|i| i+1));
         assert_eq!(x, Some(4i));
-        assert!(x.mutate_or_set(0, |i| i+1));
+        fail_unless!(x.mutate_or_set(0, |i| i+1));
         assert_eq!(x, Some(5i));
         x = None;
-        assert!(!x.mutate(|i| i+1));
+        fail_unless!(!x.mutate(|i| i+1));
         assert_eq!(x, None);
-        assert!(!x.mutate_or_set(0i, |i| i+1));
+        fail_unless!(!x.mutate_or_set(0i, |i| i+1));
         assert_eq!(x, Some(0i));
     }
 

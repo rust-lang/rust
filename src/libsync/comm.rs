@@ -57,7 +57,7 @@ pub struct SyncPort<T> { priv duplex_stream: DuplexStream<(), T> }
 
 impl<T: Send> SyncChan<T> {
     pub fn send(&self, val: T) {
-        assert!(self.try_send(val), "SyncChan.send: receiving port closed");
+        fail_unless!(self.try_send(val), "SyncChan.send: receiving port closed");
     }
 
     /// Sends a message, or report if the receiver has closed the connection
@@ -107,8 +107,8 @@ mod test {
         left.send(~"abc");
         right.send(123);
 
-        assert!(left.recv() == 123);
-        assert!(right.recv() == ~"abc");
+        fail_unless!(left.recv() == 123);
+        fail_unless!(right.recv() == ~"abc");
     }
 
     #[test]
@@ -119,7 +119,7 @@ mod test {
             chan.send("abc");
         });
 
-        assert!(port.recv() == "abc");
+        fail_unless!(port.recv() == "abc");
     }
 
     #[test]

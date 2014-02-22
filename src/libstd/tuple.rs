@@ -321,35 +321,35 @@ mod tests {
         // Eq
         assert_eq!(small, small);
         assert_eq!(big, big);
-        assert!(small != big);
-        assert!(big != small);
+        fail_unless!(small != big);
+        fail_unless!(big != small);
 
         // Ord
-        assert!(small < big);
-        assert!(!(small < small));
-        assert!(!(big < small));
-        assert!(!(big < big));
+        fail_unless!(small < big);
+        fail_unless!(!(small < small));
+        fail_unless!(!(big < small));
+        fail_unless!(!(big < big));
 
-        assert!(small <= small);
-        assert!(big <= big);
+        fail_unless!(small <= small);
+        fail_unless!(big <= big);
 
-        assert!(big > small);
-        assert!(small >= small);
-        assert!(big >= small);
-        assert!(big >= big);
+        fail_unless!(big > small);
+        fail_unless!(small >= small);
+        fail_unless!(big >= small);
+        fail_unless!(big >= big);
 
-        assert!(!((1.0, 2.0) < (nan, 3.0)));
-        assert!(!((1.0, 2.0) <= (nan, 3.0)));
-        assert!(!((1.0, 2.0) > (nan, 3.0)));
-        assert!(!((1.0, 2.0) >= (nan, 3.0)));
-        assert!(((1.0, 2.0) < (2.0, nan)));
-        assert!(!((2.0, 2.0) < (2.0, nan)));
+        fail_unless!(!((1.0, 2.0) < (nan, 3.0)));
+        fail_unless!(!((1.0, 2.0) <= (nan, 3.0)));
+        fail_unless!(!((1.0, 2.0) > (nan, 3.0)));
+        fail_unless!(!((1.0, 2.0) >= (nan, 3.0)));
+        fail_unless!(((1.0, 2.0) < (2.0, nan)));
+        fail_unless!(!((2.0, 2.0) < (2.0, nan)));
 
         // TotalEq
-        assert!(small.equals(&small));
-        assert!(big.equals(&big));
-        assert!(!small.equals(&big));
-        assert!(!big.equals(&small));
+        fail_unless!(small.equals(&small));
+        fail_unless!(big.equals(&big));
+        fail_unless!(!small.equals(&big));
+        fail_unless!(!big.equals(&small));
 
         // TotalOrd
         assert_eq!(small.cmp(&small), Equal);

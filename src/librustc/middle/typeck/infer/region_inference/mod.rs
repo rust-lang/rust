@@ -248,7 +248,7 @@ impl RegionVarBindings {
                           constraint: Constraint,
                           origin: SubregionOrigin) {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
+        fail_unless!(self.values_are_none());
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
@@ -268,7 +268,7 @@ impl RegionVarBindings {
                           sub: Region,
                           sup: Region) {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
+        fail_unless!(self.values_are_none());
 
         debug!("RegionVarBindings: make_subregion({}, {}) due to {}",
                sub.repr(self.tcx),
@@ -307,7 +307,7 @@ impl RegionVarBindings {
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
+        fail_unless!(self.values_are_none());
 
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -330,7 +330,7 @@ impl RegionVarBindings {
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values_are_none());
+        fail_unless!(self.values_are_none());
 
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {

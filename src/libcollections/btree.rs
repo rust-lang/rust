@@ -735,7 +735,7 @@ mod test_btree {
         let b = BTree::new(1, ~"abc", 2);
         let is_insert = b.insert(2, ~"xyz");
         //println!("{}", is_insert.clone().to_str());
-        assert!(is_insert.root.is_leaf());
+        fail_unless!(is_insert.root.is_leaf());
     }
 
     #[test]
@@ -746,7 +746,7 @@ mod test_btree {
         let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3]);
         let b = BTree::new_with_node_len(n, 3, 2);
         //println!("{}", b.clone().insert(4, ~"ddd").to_str());
-        assert!(b.insert(4, ~"ddd").root.is_leaf());
+        fail_unless!(b.insert(4, ~"ddd").root.is_leaf());
     }
 
     #[test]
@@ -758,7 +758,7 @@ mod test_btree {
         let n = Node::new_leaf(~[leaf_elt_1, leaf_elt_2, leaf_elt_3, leaf_elt_4]);
         let b = BTree::new_with_node_len(n, 3, 2);
         //println!("{}", b.clone().insert(5, ~"eee").to_str());
-        assert!(!b.insert(5, ~"eee").root.is_leaf());
+        fail_unless!(!b.insert(5, ~"eee").root.is_leaf());
     }
 
     #[test]
@@ -775,7 +775,7 @@ mod test_btree {
         b = b.clone().insert(8, ~"hhh");
         b = b.clone().insert(0, ~"omg");
         //println!("{}", b.clone().to_str());
-        assert!(!b.root.is_leaf());
+        fail_unless!(!b.root.is_leaf());
     }
 
     #[test]
@@ -825,7 +825,7 @@ mod test_btree {
     fn btree_clone_test() {
         let b = BTree::new(1, ~"abc", 2);
         let b2 = b.clone();
-        assert!(b.root.equals(&b2.root))
+        fail_unless!(b.root.equals(&b2.root))
     }
 
     //Tests the BTree's cmp() method when one node is "less than" another.
@@ -833,7 +833,7 @@ mod test_btree {
     fn btree_cmp_test_less() {
         let b = BTree::new(1, ~"abc", 2);
         let b2 = BTree::new(2, ~"bcd", 2);
-        assert!(&b.cmp(&b2) == &Less)
+        fail_unless!(&b.cmp(&b2) == &Less)
     }
 
     //Tests the BTree's cmp() method when two nodes are equal.
@@ -841,7 +841,7 @@ mod test_btree {
     fn btree_cmp_test_eq() {
         let b = BTree::new(1, ~"abc", 2);
         let b2 = BTree::new(1, ~"bcd", 2);
-        assert!(&b.cmp(&b2) == &Equal)
+        fail_unless!(&b.cmp(&b2) == &Equal)
     }
 
     //Tests the BTree's cmp() method when one node is "greater than" another.
@@ -849,7 +849,7 @@ mod test_btree {
     fn btree_cmp_test_greater() {
         let b = BTree::new(1, ~"abc", 2);
         let b2 = BTree::new(2, ~"bcd", 2);
-        assert!(&b2.cmp(&b) == &Greater)
+        fail_unless!(&b2.cmp(&b) == &Greater)
     }
 
     //Tests the BTree's to_str() method.

@@ -33,5 +33,5 @@ mod foo {
 }
 
 pub fn main() {
-    assert!(bar!())
+    fail_unless!(bar!())
 }

@@ -14,10 +14,10 @@
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
 pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
-    assert!(a == 1);
-    assert!(b == 2);
-    assert!(c == 3);
-    assert!(d == 4);
+    fail_unless!(a == 1);
+    fail_unless!(b == 2);
+    fail_unless!(c == 3);
+    fail_unless!(d == 4);
 
     println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
              a, b, c, d)
@@ -27,10 +27,10 @@ pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "arm")]
 pub extern fn foo(a: int, b: int, c: int, d: int) {
-    assert!(a == 1);
-    assert!(b == 2);
-    assert!(c == 3);
-    assert!(d == 4);
+    fail_unless!(a == 1);
+    fail_unless!(b == 2);
+    fail_unless!(c == 3);
+    fail_unless!(d == 4);
 
     println!("a: {:?}, b: {:?}, c: {:?}, d: {:?}",
              a, b, c, d)

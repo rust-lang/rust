@@ -78,7 +78,7 @@ pub fn main() {
                 unsafe {
                     for (i, &c) in drop_counts.iter().enumerate() {
                         let expected = if i < len {1} else {0};
-                        assert!(c == expected,
+                        fail_unless!(c == expected,
                                 "found drop count == {} for i == {}, len == {}",
                                 c, i, len);
                     }

@@ -12,7 +12,7 @@
 pub fn main() {
     let mut i = 1;
     while i > 0 {
-        assert!((i > 0));
+        fail_unless!((i > 0));
         info!("{}", i);
         i -= 1;
         continue;

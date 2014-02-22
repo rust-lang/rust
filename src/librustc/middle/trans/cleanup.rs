@@ -137,7 +137,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_and_trans_ast_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
+        fail_unless!(self.top_scope(|s| s.kind.is_ast_with_id(cleanup_scope)));
 
         let scope = self.pop_scope();
         self.trans_scope_cleanups(bcx, &scope)
@@ -156,7 +156,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("pop_loop_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(cleanup_scope));
 
-        assert!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
+        fail_unless!(self.top_scope(|s| s.kind.is_loop_with_id(cleanup_scope)));
 
         let _ = self.pop_scope();
     }
@@ -170,7 +170,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_custom_cleanup_scope({})", custom_scope.index);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_to_pop_custom_scope(custom_scope));
         let _ = self.pop_scope();
     }
 
@@ -185,7 +185,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
-        assert!(self.is_valid_to_pop_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_to_pop_custom_scope(custom_scope));
 
         let scope = self.pop_scope();
         self.trans_scope_cleanups(bcx, &scope)
@@ -346,7 +346,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("schedule_clean_in_custom_scope(custom_scope={})",
                custom_scope.index);
 
-        assert!(self.is_valid_custom_scope(custom_scope));
+        fail_unless!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
         let scope = &mut scopes.get()[custom_scope.index];
@@ -376,7 +376,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("get_landing_pad");
 
         let orig_scopes_len = self.scopes_len();
-        assert!(orig_scopes_len > 0);
+        fail_unless!(orig_scopes_len > 0);
 
         // Remove any scopes that do not have cleanups on failure:
         let mut popped_scopes = opt_vec::Empty;

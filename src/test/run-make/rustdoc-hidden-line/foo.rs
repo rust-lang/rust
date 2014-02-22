@@ -24,7 +24,7 @@
 ///
 /// fn test() {
 ///     let x = Bar(Foo);
-///     assert!(x == x); // check that the derivings worked
+///     fail_unless!(x == x); // check that the derivings worked
 /// }
 ///
 /// }

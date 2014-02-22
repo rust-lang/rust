@@ -194,7 +194,7 @@ impl<'a> CheckLoanCtxt<'a> {
                new_loan.repr(self.tcx()));
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.tcx().region_maps.scopes_intersect(old_loan.kill_scope,
+        fail_unless!(self.tcx().region_maps.scopes_intersect(old_loan.kill_scope,
                                                         new_loan.kill_scope));
 
         self.report_error_if_loan_conflicts_with_restriction(
@@ -405,7 +405,7 @@ impl<'a> CheckLoanCtxt<'a> {
         // For immutable local variables, assignments are legal
         // if they cannot already have been assigned
         if self.is_local_variable(cmt) {
-            assert!(cmt.mutbl.is_immutable()); // no "const" locals
+            fail_unless!(cmt.mutbl.is_immutable()); // no "const" locals
             let lp = opt_loan_path(cmt).unwrap();
             self.move_data.each_assignment_of(expr.id, lp, |assign| {
                 self.bccx.report_reassigned_immutable_variable(

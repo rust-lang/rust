@@ -525,7 +525,7 @@ impl SyntaxEnv {
     }
 
     pub fn pop_frame(&mut self) {
-        assert!(self.chain.len() > 1, "too many pops on MapChain!");
+        fail_unless!(self.chain.len() > 1, "too many pops on MapChain!");
         self.chain.pop();
     }
 

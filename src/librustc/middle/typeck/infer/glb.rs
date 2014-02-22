@@ -171,7 +171,7 @@ impl<'f> Combine for Glb<'f> {
                              b_vars: &[RegionVid],
                              r0: ty::Region) -> ty::Region {
             if !is_var_in_set(new_vars, r0) {
-                assert!(!r0.is_bound());
+                fail_unless!(!r0.is_bound());
                 return r0;
             }
 
@@ -224,7 +224,7 @@ impl<'f> Combine for Glb<'f> {
                 return rev_lookup(this, a_map, new_binder_id, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
-                assert!(!r0.is_bound());
+                fail_unless!(!r0.is_bound());
                 return r0;
             } else {
                 // Other:

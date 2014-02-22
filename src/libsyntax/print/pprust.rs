@@ -1384,8 +1384,8 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(print_fn_block_args(s, decl));
         try!(space(&mut s.s));
         // }
-        assert!(body.stmts.is_empty());
-        assert!(body.expr.is_some());
+        fail_unless!(body.stmts.is_empty());
+        fail_unless!(body.expr.is_some());
         // we extract the block, so as not to create another set of boxes
         match body.expr.unwrap().node {
             ast::ExprBlock(blk) => {
@@ -1411,8 +1411,8 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(print_proc_args(s, decl));
         try!(space(&mut s.s));
         // }
-        assert!(body.stmts.is_empty());
-        assert!(body.expr.is_some());
+        fail_unless!(body.stmts.is_empty());
+        fail_unless!(body.expr.is_some());
         // we extract the block, so as not to create another set of boxes
         match body.expr.unwrap().node {
             ast::ExprBlock(blk) => {

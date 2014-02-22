@@ -137,7 +137,7 @@ mod tests {
 
             for f in futures.mut_iter() { f.recv() }
 
-            total.with(|total| assert!(**total == num_tasks * count));
+            total.with(|total| fail_unless!(**total == num_tasks * count));
         }
     }
 

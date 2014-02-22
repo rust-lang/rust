@@ -27,16 +27,16 @@ fn static_bound_set(a: &'static mut libc::c_int) {
 }
 
 unsafe fn run() {
-    assert!(rust_dbg_static_mut == 3);
+    fail_unless!(rust_dbg_static_mut == 3);
     rust_dbg_static_mut = 4;
-    assert!(rust_dbg_static_mut == 4);
+    fail_unless!(rust_dbg_static_mut == 4);
     rust_dbg_static_mut_check_four();
     rust_dbg_static_mut += 1;
-    assert!(rust_dbg_static_mut == 5);
+    fail_unless!(rust_dbg_static_mut == 5);
     rust_dbg_static_mut *= 3;
-    assert!(rust_dbg_static_mut == 15);
+    fail_unless!(rust_dbg_static_mut == 15);
     rust_dbg_static_mut = -3;
-    assert!(rust_dbg_static_mut == -3);
+    fail_unless!(rust_dbg_static_mut == -3);
     static_bound(&rust_dbg_static_mut);
     static_bound_set(&mut rust_dbg_static_mut);
 }

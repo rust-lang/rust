@@ -364,7 +364,7 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
     for i in range(0, v.len()) {
         unsafe {
             let p = buf.offset(i as int);
-            assert!(*p != 0);
+            fail_unless!(*p != 0);
         }
     }
 }
@@ -436,7 +436,7 @@ mod tests {
                 assert_eq!(cbytes, it.next().unwrap().as_bytes());
             });
             assert_eq!(result, 2);
-            assert!(it.next().is_none());
+            fail_unless!(it.next().is_none());
         }
     }
 
@@ -494,8 +494,8 @@ mod tests {
     #[test]
     fn test_is_null() {
         let c_str = unsafe { CString::new(ptr::null(), false) };
-        assert!(c_str.is_null());
-        assert!(!c_str.is_not_null());
+        fail_unless!(c_str.is_null());
+        fail_unless!(!c_str.is_not_null());
     }
 
     #[test]
@@ -508,8 +508,8 @@ mod tests {
     fn test_with_ref() {
         let c_str = "hello".to_c_str();
         let len = unsafe { c_str.with_ref(|buf| libc::strlen(buf)) };
-        assert!(!c_str.is_null());
-        assert!(c_str.is_not_null());
+        fail_unless!(!c_str.is_null());
+        fail_unless!(c_str.is_not_null());
         assert_eq!(len, 5);
     }
 
@@ -539,7 +539,7 @@ mod tests {
     #[test]
     fn test_to_c_str_fail() {
         use task;
-        assert!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
+        fail_unless!(task::try(proc() { "he\x00llo".to_c_str() }).is_err());
     }
 
     #[test]
@@ -627,7 +627,7 @@ mod tests {
     fn test_clone() {
         let a = "hello".to_c_str();
         let b = a.clone();
-        assert!(a == b);
+        fail_unless!(a == b);
     }
 
     #[test]
@@ -658,7 +658,7 @@ mod tests {
     fn test_clone_eq_null() {
         let x = unsafe { CString::new(ptr::null(), false) };
         let y = x.clone();
-        assert!(x == y);
+        fail_unless!(x == y);
     }
 }
 

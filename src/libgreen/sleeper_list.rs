@@ -25,7 +25,7 @@ impl SleeperList {
     }
 
     pub fn push(&mut self, value: SchedHandle) {
-        assert!(self.q.push(value))
+        fail_unless!(self.q.push(value))
     }
 
     pub fn pop(&mut self) -> Option<SchedHandle> {

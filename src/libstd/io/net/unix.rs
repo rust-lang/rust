@@ -154,7 +154,7 @@ mod tests {
         match UnixListener::bind(&path) {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == PermissionDenied || e.kind == FileNotFound ||
+                fail_unless!(e.kind == PermissionDenied || e.kind == FileNotFound ||
                         e.kind == InvalidInput);
             }
         }
@@ -169,7 +169,7 @@ mod tests {
         match UnixStream::connect(&path) {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == FileNotFound || e.kind == OtherIoError);
+                fail_unless!(e.kind == FileNotFound || e.kind == OtherIoError);
             }
         }
     })
@@ -178,7 +178,7 @@ mod tests {
         smalltest(proc(mut server) {
             let mut buf = [0];
             server.read(buf).unwrap();
-            assert!(buf[0] == 99);
+            fail_unless!(buf[0] == 99);
         }, proc(mut client) {
             client.write([99]).unwrap();
         })
@@ -187,8 +187,8 @@ mod tests {
     iotest!(fn read_eof() {
         smalltest(proc(mut server) {
             let mut buf = [0];
-            assert!(server.read(buf).is_err());
-            assert!(server.read(buf).is_err());
+            fail_unless!(server.read(buf).is_err());
+            fail_unless!(server.read(buf).is_err());
         }, proc(_client) {
             // drop the client
         })
@@ -201,7 +201,7 @@ mod tests {
                 match server.write(buf) {
                     Ok(..) => {}
                     Err(e) => {
-                        assert!(e.kind == BrokenPipe ||
+                        fail_unless!(e.kind == BrokenPipe ||
                                 e.kind == NotConnected ||
                                 e.kind == ConnectionReset,
                                 "unknown error {:?}", e);
@@ -251,7 +251,7 @@ mod tests {
     iotest!(fn path_exists() {
         let path = next_test_unix();
         let _acceptor = UnixListener::bind(&path).listen();
-        assert!(path.exists());
+        fail_unless!(path.exists());
     })
 
     iotest!(fn unix_clone_smoke() {

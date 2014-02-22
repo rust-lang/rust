@@ -173,7 +173,7 @@ impl rtio::RtioTimer for Timer {
 impl Drop for Timer {
     fn drop(&mut self) {
         self.remove();
-        assert!(unsafe { libc::CloseHandle(self.obj) != 0 });
+        fail_unless!(unsafe { libc::CloseHandle(self.obj) != 0 });
     }
 }
 

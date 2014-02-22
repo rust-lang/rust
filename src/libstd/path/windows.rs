@@ -158,7 +158,7 @@ impl GenericPathUnsafe for Path {
     #[inline]
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let (prefix, path) = Path::normalize_(path.container_as_str().unwrap());
-        assert!(!path.is_empty());
+        fail_unless!(!path.is_empty());
         let mut ret = Path{ repr: path, prefix: prefix, sepidx: None };
         ret.update_sepidx();
         ret
@@ -1094,7 +1094,7 @@ mod tests {
                     let path = $path;
                     let exp = $exp;
                     let res = parse_prefix(path);
-                    assert!(res == exp,
+                    fail_unless!(res == exp,
                             "parse_prefix(\"{}\"): expected {:?}, found {:?}", path, exp, res);
                 }
             )
@@ -1252,17 +1252,17 @@ mod tests {
         let result = task::try(proc() {
             Path::new(b!("foo/bar", 0))
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
 
         let result = task::try(proc() {
             Path::new("test").set_filename(b!("f", 0, "o"))
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
 
         let result = task::try(proc() {
             Path::new("test").push(b!("f", 0, "o"));
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
 
     #[test]
@@ -1552,7 +1552,7 @@ mod tests {
                     let mut p = Path::new(pstr);
                     let result = p.pop();
                     let left = $left;
-                    assert!(p.as_str() == Some(left),
+                    fail_unless!(p.as_str() == Some(left),
                         "`{}`.pop() failed; expected remainder `{}`, found `{}`",
                         pstr, left, p.as_str().unwrap());
                     assert_eq!(result, $right);
@@ -1692,7 +1692,7 @@ mod tests {
                     let arg = $arg;
                     let res = path.$op(arg);
                     let exp = $res;
-                    assert!(res.as_str() == Some(exp),
+                    fail_unless!(res.as_str() == Some(exp),
                             "`{}`.{}(\"{}\"): Expected `{}`, found `{}`",
                             pstr, stringify!($op), arg, exp, res.as_str().unwrap());
                 }
@@ -1819,19 +1819,19 @@ mod tests {
                 {
                     let path = $path;
                     let filename = $filename;
-                    assert!(path.filename_str() == filename,
+                    fail_unless!(path.filename_str() == filename,
                             "`{}`.filename_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), filename, path.filename_str());
                     let dirname = $dirname;
-                    assert!(path.dirname_str() == dirname,
+                    fail_unless!(path.dirname_str() == dirname,
                             "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), dirname, path.dirname_str());
                     let filestem = $filestem;
-                    assert!(path.filestem_str() == filestem,
+                    fail_unless!(path.filestem_str() == filestem,
                             "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), filestem, path.filestem_str());
                     let ext = $ext;
-                    assert!(path.extension_str() == ext,
+                    fail_unless!(path.extension_str() == ext,
                             "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), ext, path.extension_str());
                 }
@@ -1886,16 +1886,16 @@ mod tests {
                     let path = Path::new($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
                     let b = path.is_absolute();
-                    assert!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
+                    fail_unless!(b == abs, "Path '{}'.is_absolute(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), abs, b);
                     let b = is_vol_relative(&path);
-                    assert!(b == vol, "is_vol_relative('{}'): expected {:?}, found {:?}",
+                    fail_unless!(b == vol, "is_vol_relative('{}'): expected {:?}, found {:?}",
                             path.as_str().unwrap(), vol, b);
                     let b = is_cwd_relative(&path);
-                    assert!(b == cwd, "is_cwd_relative('{}'): expected {:?}, found {:?}",
+                    fail_unless!(b == cwd, "is_cwd_relative('{}'): expected {:?}, found {:?}",
                             path.as_str().unwrap(), cwd, b);
                     let b = path.is_relative();
-                    assert!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
+                    fail_unless!(b == rel, "Path '{}'.is_relativf(): expected {:?}, found {:?}",
                             path.as_str().unwrap(), rel, b);
                 }
             )
@@ -1927,7 +1927,7 @@ mod tests {
                     let dest = Path::new($dest);
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
-                    assert!(res == exp,
+                    fail_unless!(res == exp,
                             "`{}`.is_ancestor_of(`{}`): Expected {:?}, found {:?}",
                             path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
                 }
@@ -2062,7 +2062,7 @@ mod tests {
                     let other = Path::new($other);
                     let res = path.path_relative_from(&other);
                     let exp = $exp;
-                    assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
+                    fail_unless!(res.as_ref().and_then(|x| x.as_str()) == exp,
                             "`{}`.path_relative_from(`{}`): Expected {:?}, got {:?}",
                             path.as_str().unwrap(), other.as_str().unwrap(), exp,
                             res.as_ref().and_then(|x| x.as_str()));
@@ -2195,12 +2195,12 @@ mod tests {
                     let path = Path::new($path);
                     let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
@@ -2210,12 +2210,12 @@ mod tests {
                     let path = Path::new(b!($($arg),+));
                     let comps = path.str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_str_components().map(|x|x.unwrap()).to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
@@ -2270,11 +2270,11 @@ mod tests {
                     let path = Path::new($path);
                     let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = $exp;
-                    assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
+                    fail_unless!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "rev_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }

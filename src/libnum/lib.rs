@@ -36,15 +36,15 @@ pub trait Integer: Num + Ord
     ///
     /// ~~~
     /// # use num::Integer;
-    /// assert!(( 8i).div_floor(& 3) ==  2);
-    /// assert!(( 8i).div_floor(&-3) == -3);
-    /// assert!((-8i).div_floor(& 3) == -3);
-    /// assert!((-8i).div_floor(&-3) ==  2);
+    /// fail_unless!(( 8i).div_floor(& 3) ==  2);
+    /// fail_unless!(( 8i).div_floor(&-3) == -3);
+    /// fail_unless!((-8i).div_floor(& 3) == -3);
+    /// fail_unless!((-8i).div_floor(&-3) ==  2);
     ///
-    /// assert!(( 1i).div_floor(& 2) ==  0);
-    /// assert!(( 1i).div_floor(&-2) == -1);
-    /// assert!((-1i).div_floor(& 2) == -1);
-    /// assert!((-1i).div_floor(&-2) ==  0);
+    /// fail_unless!(( 1i).div_floor(& 2) ==  0);
+    /// fail_unless!(( 1i).div_floor(&-2) == -1);
+    /// fail_unless!((-1i).div_floor(& 2) == -1);
+    /// fail_unless!((-1i).div_floor(&-2) ==  0);
     /// ~~~
     fn div_floor(&self, other: &Self) -> Self;
 
@@ -53,22 +53,22 @@ pub trait Integer: Num + Ord
     /// ~~~
     /// # use num::Integer;
     /// # let n = 1i; let d = 1i;
-    /// assert!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
+    /// fail_unless!(n.div_floor(&d) * d + n.mod_floor(&d) == n)
     /// ~~~
     ///
     /// # Examples
     ///
     /// ~~~
     /// # use num::Integer;
-    /// assert!(( 8i).mod_floor(& 3) ==  2);
-    /// assert!(( 8i).mod_floor(&-3) == -1);
-    /// assert!((-8i).mod_floor(& 3) ==  1);
-    /// assert!((-8i).mod_floor(&-3) == -2);
+    /// fail_unless!(( 8i).mod_floor(& 3) ==  2);
+    /// fail_unless!(( 8i).mod_floor(&-3) == -1);
+    /// fail_unless!((-8i).mod_floor(& 3) ==  1);
+    /// fail_unless!((-8i).mod_floor(&-3) == -2);
     ///
-    /// assert!(( 1i).mod_floor(& 2) ==  1);
-    /// assert!(( 1i).mod_floor(&-2) == -1);
-    /// assert!((-1i).mod_floor(& 2) ==  1);
-    /// assert!((-1i).mod_floor(&-2) == -1);
+    /// fail_unless!(( 1i).mod_floor(& 2) ==  1);
+    /// fail_unless!(( 1i).mod_floor(&-2) == -1);
+    /// fail_unless!((-1i).mod_floor(& 2) ==  1);
+    /// fail_unless!((-1i).mod_floor(&-2) == -1);
     /// ~~~
     fn mod_floor(&self, other: &Self) -> Self;
 
@@ -389,9 +389,9 @@ macro_rules! impl_integer_for_uint {
 
             #[test]
             fn test_divides() {
-                assert!((6 as $T).divides(&(6 as $T)));
-                assert!((6 as $T).divides(&(3 as $T)));
-                assert!((6 as $T).divides(&(1 as $T)));
+                fail_unless!((6 as $T).divides(&(6 as $T)));
+                fail_unless!((6 as $T).divides(&(3 as $T)));
+                fail_unless!((6 as $T).divides(&(1 as $T)));
             }
 
             #[test]

@@ -31,5 +31,5 @@ fn foo<T: RequiresRequiresFreezeAndSend>(val: T, chan: Chan<T>) {
 pub fn main() {
     let (p,c) = Chan::new();
     foo(X(31337), c);
-    assert!(p.recv() == X(31337));
+    fail_unless!(p.recv() == X(31337));
 }

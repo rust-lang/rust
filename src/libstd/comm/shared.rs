@@ -249,7 +249,7 @@ impl<T: Send> Packet<T> {
             // If we factor in our steals and notice that the channel has no
             // data, we successfully sleep
             n => {
-                assert!(n >= 0);
+                fail_unless!(n >= 0);
                 if n - steals <= 0 { return Ok(()) }
             }
         }
@@ -316,7 +316,7 @@ impl<T: Send> Packet<T> {
                             self.bump(n - m);
                         }
                     }
-                    assert!(self.steals >= 0);
+                    fail_unless!(self.steals >= 0);
                 }
                 self.steals += 1;
                 Ok(data)
@@ -359,7 +359,7 @@ impl<T: Send> Packet<T> {
         match self.cnt.swap(DISCONNECTED, atomics::SeqCst) {
             -1 => { self.take_to_wake().wake().map(|t| t.reawaken()); }
             DISCONNECTED => {}
-            n => { assert!(n >= 0); }
+            n => { fail_unless!(n >= 0); }
         }
     }
 
@@ -388,7 +388,7 @@ impl<T: Send> Packet<T> {
     fn take_to_wake(&mut self) -> BlockedTask {
         let task = self.to_wake.load(atomics::SeqCst);
         self.to_wake.store(0, atomics::SeqCst);
-        assert!(task != 0);
+        fail_unless!(task != 0);
         unsafe { BlockedTask::cast_from_uint(task) }
     }
 
@@ -428,7 +428,7 @@ impl<T: Send> Packet<T> {
             Ok(()) => Ok(()),
             Err(task) => {
                 let prev = self.bump(1);
-                assert!(prev == DISCONNECTED || prev >= 0);
+                fail_unless!(prev == DISCONNECTED || prev >= 0);
                 return Err(task);
             }
         }
@@ -465,7 +465,7 @@ impl<T: Send> Packet<T> {
             true
         } else {
             let cur = prev + steals + 1;
-            assert!(cur >= 0);
+            fail_unless!(cur >= 0);
             if prev < 0 {
                 self.take_to_wake().trash();
             } else {
@@ -476,7 +476,7 @@ impl<T: Send> Packet<T> {
             // if the number of steals is -1, it was the pre-emptive -1 steal
             // count from when we inherited a blocker. This is fine because
             // we're just going to overwrite it with a real value.
-            assert!(self.steals == 0 || self.steals == -1);
+            fail_unless!(self.steals == 0 || self.steals == -1);
             self.steals = steals;
             prev >= 0
         }

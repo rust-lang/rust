@@ -245,8 +245,8 @@ mod tests {
 
     #[test]
     fn test_overflows() {
-        assert!(MAX > 0);
-        assert!(MIN <= 0);
+        fail_unless!(MAX > 0);
+        fail_unless!(MIN <= 0);
         assert_eq!(MIN + MAX + 1, 0);
     }
 
@@ -298,9 +298,9 @@ mod tests {
         assert_eq!(from_str::<u32>("123456789"), Some(123456789 as u32));
         assert_eq!(from_str::<$T>("00100"), Some(100u as $T));
 
-        assert!(from_str::<$T>("").is_none());
-        assert!(from_str::<$T>(" ").is_none());
-        assert!(from_str::<$T>("x").is_none());
+        fail_unless!(from_str::<$T>("").is_none());
+        fail_unless!(from_str::<$T>(" ").is_none());
+        fail_unless!(from_str::<$T>("x").is_none());
     }
 
     #[test]
@@ -313,8 +313,8 @@ mod tests {
         assert_eq!(u16::parse_bytes("ffff".as_bytes(), 16u), Some(65535u as u16));
         assert_eq!(parse_bytes("z".as_bytes(), 36u), Some(35u as $T));
 
-        assert!(parse_bytes("Z".as_bytes(), 10u).is_none());
-        assert!(parse_bytes("_".as_bytes(), 2u).is_none());
+        fail_unless!(parse_bytes("Z".as_bytes(), 10u).is_none());
+        fail_unless!(parse_bytes("_".as_bytes(), 2u).is_none());
     }
 
     #[test]
@@ -348,35 +348,35 @@ mod tests {
     fn test_uint_from_str_overflow() {
         let mut u8_val: u8 = 255_u8;
         assert_eq!(from_str::<u8>("255"), Some(u8_val));
-        assert!(from_str::<u8>("256").is_none());
+        fail_unless!(from_str::<u8>("256").is_none());
 
         u8_val += 1 as u8;
         assert_eq!(from_str::<u8>("0"), Some(u8_val));
-        assert!(from_str::<u8>("-1").is_none());
+        fail_unless!(from_str::<u8>("-1").is_none());
 
         let mut u16_val: u16 = 65_535_u16;
         assert_eq!(from_str::<u16>("65535"), Some(u16_val));
-        assert!(from_str::<u16>("65536").is_none());
+        fail_unless!(from_str::<u16>("65536").is_none());
 
         u16_val += 1 as u16;
         assert_eq!(from_str::<u16>("0"), Some(u16_val));
-        assert!(from_str::<u16>("-1").is_none());
+        fail_unless!(from_str::<u16>("-1").is_none());
 
         let mut u32_val: u32 = 4_294_967_295_u32;
         assert_eq!(from_str::<u32>("4294967295"), Some(u32_val));
-        assert!(from_str::<u32>("4294967296").is_none());
+        fail_unless!(from_str::<u32>("4294967296").is_none());
 
         u32_val += 1 as u32;
         assert_eq!(from_str::<u32>("0"), Some(u32_val));
-        assert!(from_str::<u32>("-1").is_none());
+        fail_unless!(from_str::<u32>("-1").is_none());
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
         assert_eq!(from_str::<u64>("18446744073709551615"), Some(u64_val));
-        assert!(from_str::<u64>("18446744073709551616").is_none());
+        fail_unless!(from_str::<u64>("18446744073709551616").is_none());
 
         u64_val += 1 as u64;
         assert_eq!(from_str::<u64>("0"), Some(u64_val));
-        assert!(from_str::<u64>("-1").is_none());
+        fail_unless!(from_str::<u64>("-1").is_none());
     }
 
     #[test]

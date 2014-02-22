@@ -148,7 +148,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 }
 
                 Data(Shutdown) => {
-                    assert!(map.len() == 0);
+                    fail_unless!(map.len() == 0);
                     break 'outer;
                 }
 

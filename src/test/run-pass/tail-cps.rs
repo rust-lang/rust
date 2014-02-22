@@ -11,7 +11,7 @@
 
 
 
-fn checktrue(rs: bool) -> bool { assert!((rs)); return true; }
+fn checktrue(rs: bool) -> bool { fail_unless!((rs)); return true; }
 
 pub fn main() { let k = checktrue; evenk(42, k); oddk(45, k); }
 

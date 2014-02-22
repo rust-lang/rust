@@ -157,7 +157,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
                         len: uint) -> IoResult<ip::SocketAddr> {
     match storage.ss_family as libc::c_int {
         libc::AF_INET => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
+            fail_unless!(len as uint >= mem::size_of::<libc::sockaddr_in>());
             let storage: &libc::sockaddr_in = unsafe {
                 cast::transmute(storage)
             };
@@ -172,7 +172,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             })
         }
         libc::AF_INET6 => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
+            fail_unless!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
             let storage: &libc::sockaddr_in6 = unsafe {
                 cast::transmute(storage)
             };

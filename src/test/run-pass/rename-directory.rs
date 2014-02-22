@@ -36,7 +36,7 @@ fn rename_directory() {
                 libc::fopen(fromp, modebuf)
             })
         });
-        assert!((ostream as uint != 0u));
+        fail_unless!((ostream as uint != 0u));
         let s = ~"hello";
         "hello".with_c_str(|buf| {
             let write_len = libc::fwrite(buf as *libc::c_void,
@@ -50,8 +50,8 @@ fn rename_directory() {
         let new_path = tmpdir.join_many(["quux", "blat"]);
         fs::mkdir_recursive(&new_path, io::UserRWX);
         fs::rename(&old_path, &new_path.join("newdir"));
-        assert!(new_path.join("newdir").is_dir());
-        assert!(new_path.join_many(["newdir", "temp.txt"]).exists());
+        fail_unless!(new_path.join("newdir").is_dir());
+        fail_unless!(new_path.join_many(["newdir", "temp.txt"]).exists());
     }
 }
 

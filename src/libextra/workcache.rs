@@ -178,8 +178,8 @@ impl Database {
     }
 
     fn load(&mut self) {
-        assert!(!self.db_dirty);
-        assert!(self.db_filename.exists());
+        fail_unless!(!self.db_dirty);
+        fail_unless!(self.db_filename.exists());
         match File::open(&self.db_filename) {
             Err(e) => fail!("Couldn't load workcache database {}: {}",
                             self.db_filename.display(),

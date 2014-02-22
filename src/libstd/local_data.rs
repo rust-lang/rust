@@ -359,16 +359,16 @@ mod tests {
         set(my_key, ~"parent data");
         task::spawn(proc() {
             // TLS shouldn't carry over.
-            assert!(get(my_key, |k| k.map(|k| (*k).clone())).is_none());
+            fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).is_none());
             set(my_key, ~"child data");
-            assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() ==
+            fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() ==
                     ~"child data");
             // should be cleaned up for us
         });
         // Must work multiple times
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
     }
 
     #[test]
@@ -376,16 +376,16 @@ mod tests {
         static my_key: Key<~str> = &Key;
         set(my_key, ~"first data");
         set(my_key, ~"next data"); // Shouldn't leak.
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"next data");
+        fail_unless!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"next data");
     }
 
     #[test]
     fn test_tls_pop() {
         static my_key: Key<~str> = &Key;
         set(my_key, ~"weasel");
-        assert!(pop(my_key).unwrap() == ~"weasel");
+        fail_unless!(pop(my_key).unwrap() == ~"weasel");
         // Pop must remove the data from the map.
-        assert!(pop(my_key).is_none());
+        fail_unless!(pop(my_key).is_none());
     }
 
     #[test]
@@ -404,7 +404,7 @@ mod tests {
                 None                 => fail!("missing value")
             }
         });
-        assert!(pop(my_key).unwrap() == ~"next data");
+        fail_unless!(pop(my_key).unwrap() == ~"next data");
     }
 
     #[test]

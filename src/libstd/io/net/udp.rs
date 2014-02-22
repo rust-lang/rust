@@ -248,13 +248,13 @@ mod test {
     pub fn socket_name(addr: SocketAddr) {
         let server = UdpSocket::bind(addr);
 
-        assert!(server.is_ok());
+        fail_unless!(server.is_ok());
         let mut server = server.unwrap();
 
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = server.socket_name();
-        assert!(so_name.is_ok());
+        fail_unless!(so_name.is_ok());
         assert_eq!(addr, so_name.unwrap());
     }
 

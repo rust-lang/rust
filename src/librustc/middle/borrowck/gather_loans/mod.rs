@@ -769,7 +769,7 @@ impl<'a> GatherLoanCtxt<'a> {
         if rm.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
+            fail_unless!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

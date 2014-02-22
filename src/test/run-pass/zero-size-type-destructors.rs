@@ -25,5 +25,5 @@ pub fn foo() {
 
 pub fn main() {
   foo();
-  assert!((unsafe { destructions } == 0));
+  fail_unless!((unsafe { destructions } == 0));
 }

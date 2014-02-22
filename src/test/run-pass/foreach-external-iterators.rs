@@ -14,5 +14,5 @@ pub fn main() {
     for i in x.iter() {
         y += *i
     }
-    assert!(y == 100);
+    fail_unless!(y == 100);
 }

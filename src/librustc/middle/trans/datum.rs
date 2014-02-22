@@ -626,7 +626,7 @@ impl<K:KindOps> Datum<K> {
          * affine values (since they must never be duplicated).
          */
 
-        assert!(!ty::type_moves_by_default(bcx.tcx(), self.ty));
+        fail_unless!(!ty::type_moves_by_default(bcx.tcx(), self.ty));
         let mut bcx = bcx;
         bcx = self.shallow_copy(bcx, dst);
         glue::take_ty(bcx, dst, self.ty)
@@ -665,8 +665,8 @@ impl<K:KindOps> Datum<K> {
          * value, and not by reference.
          */
 
-        assert!(!ty::type_needs_drop(bcx.tcx(), self.ty));
-        assert!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
+        fail_unless!(!ty::type_needs_drop(bcx.tcx(), self.ty));
+        fail_unless!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
         if self.kind.is_by_ref() {
             load(bcx, self.val, self.ty)
         } else {
@@ -675,7 +675,7 @@ impl<K:KindOps> Datum<K> {
     }
 
     pub fn to_llbool<'a>(self, bcx: &'a Block<'a>) -> ValueRef {
-        assert!(ty::type_is_bool(self.ty) || ty::type_is_bot(self.ty))
+        fail_unless!(ty::type_is_bool(self.ty) || ty::type_is_bot(self.ty))
         let cond_val = self.to_llscalarish(bcx);
         bool_to_i1(bcx, cond_val)
     }
@@ -689,7 +689,7 @@ impl<'a, K:KindOps> DatumBlock<'a, K> {
 
 impl<'a> DatumBlock<'a, Expr> {
     pub fn assert_by_ref(self) -> DatumBlock<'a, Expr> {
-        assert!(self.datum.kind.is_by_ref());
+        fail_unless!(self.datum.kind.is_by_ref());
         self
     }
 

@@ -580,7 +580,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         }
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
-                    assert!(FindClose(find_handle) != 0);
+                    fail_unless!(FindClose(find_handle) != 0);
                     free(wfd_ptr as *mut c_void);
                     Ok(paths)
                 } else {
@@ -715,7 +715,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             Some(s) => Ok(Path::new(s)),
             None => Err(super::last_error()),
         };
-        assert!(unsafe { libc::CloseHandle(handle) } != 0);
+        fail_unless!(unsafe { libc::CloseHandle(handle) } != 0);
         return ret;
 
     }
@@ -734,7 +734,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         }) {
             -1 => Err(super::last_error()),
             n => {
-                assert!(n > 0);
+                fail_unless!(n > 0);
                 unsafe { buf.set_len(n as uint); }
                 Ok(Path::new(buf))
             }
@@ -965,8 +965,8 @@ mod tests {
                 r => fail!("invalid read: {:?}", r)
             }
 
-            assert!(writer.inner_read(buf).is_err());
-            assert!(reader.inner_write(buf).is_err());
+            fail_unless!(writer.inner_read(buf).is_err());
+            fail_unless!(reader.inner_write(buf).is_err());
         }
     }
 
@@ -975,7 +975,7 @@ mod tests {
     fn test_cfile() {
         unsafe {
             let f = libc::tmpfile();
-            assert!(!f.is_null());
+            fail_unless!(!f.is_null());
             let mut file = CFile::new(f);
 
             file.write(bytes!("test")).unwrap();

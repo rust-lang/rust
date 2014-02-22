@@ -112,7 +112,7 @@ extern fn on_exit(handle: *uvll::uv_process_t,
                   term_signal: libc::c_int) {
     let p: &mut Process = unsafe { UvHandle::from_uv_handle(&handle) };
 
-    assert!(p.exit_status.is_none());
+    fail_unless!(p.exit_status.is_none());
     p.exit_status = Some(match term_signal {
         0 => process::ExitStatus(exit_status as int),
         n => process::ExitSignal(n as int),
@@ -222,7 +222,7 @@ impl RtioProcess for Process {
                 // process's exit callback has yet to be invoked. We just
                 // need to deschedule ourselves and wait to be reawoken.
                 wait_until_woken_after(&mut self.to_wake, &self.uv_loop(), || {});
-                assert!(self.exit_status.is_some());
+                fail_unless!(self.exit_status.is_some());
             }
         }
 
@@ -233,7 +233,7 @@ impl RtioProcess for Process {
 impl Drop for Process {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        assert!(self.to_wake.is_none());
+        fail_unless!(self.to_wake.is_none());
         self.close();
     }
 }

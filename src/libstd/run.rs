@@ -366,10 +366,10 @@ mod tests {
     #[cfg(not(target_os="android"))] // FIXME(#10380)
     fn test_process_status() {
         let mut status = run::process_status("false", []).unwrap();
-        assert!(status.matches_exit_status(1));
+        fail_unless!(status.matches_exit_status(1));
 
         status = run::process_status("true", []).unwrap();
-        assert!(status.success());
+        fail_unless!(status.success());
     }
 
     #[test]
@@ -388,7 +388,7 @@ mod tests {
              = run::process_output("echo", [~"hello"]).unwrap();
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
+        fail_unless!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -403,9 +403,9 @@ mod tests {
         let run::ProcessOutput {status, output, error}
              = run::process_output("mkdir", [~"."]).unwrap();
 
-        assert!(status.matches_exit_status(1));
+        fail_unless!(status.matches_exit_status(1));
         assert_eq!(output, ~[]);
-        assert!(!error.is_empty());
+        fail_unless!(!error.is_empty());
     }
 
     #[test]
@@ -451,7 +451,7 @@ mod tests {
     fn test_finish_once() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
             .unwrap();
-        assert!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
@@ -459,8 +459,8 @@ mod tests {
     fn test_finish_twice() {
         let mut prog = run::Process::new("false", [], run::ProcessOptions::new())
             .unwrap();
-        assert!(prog.finish().matches_exit_status(1));
-        assert!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
+        fail_unless!(prog.finish().matches_exit_status(1));
     }
 
     #[test]
@@ -473,7 +473,7 @@ mod tests {
             = prog.finish_with_output();
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
+        fail_unless!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -492,7 +492,7 @@ mod tests {
 
         let output_str = str::from_utf8_owned(output).unwrap();
 
-        assert!(status.success());
+        fail_unless!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
@@ -502,7 +502,7 @@ mod tests {
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
-        assert!(status.success());
+        fail_unless!(status.success());
         assert_eq!(output, ~[]);
         // FIXME #7224
         if !running_on_valgrind() {
@@ -599,7 +599,7 @@ mod tests {
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
+            fail_unless!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
         }
     }
     #[test]
@@ -614,7 +614,7 @@ mod tests {
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
             if *k != ~"RANDOM" {
-                assert!(output.contains(format!("{}={}", *k, *v)) ||
+                fail_unless!(output.contains(format!("{}={}", *k, *v)) ||
                         output.contains(format!("{}=\'{}\'", *k, *v)));
             }
         }
@@ -629,6 +629,6 @@ mod tests {
         let mut prog = run_env(Some(new_env));
         let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
 
-        assert!(output.contains("RUN_TEST_NEW_ENV=123"));
+        fail_unless!(output.contains("RUN_TEST_NEW_ENV=123"));
     }
 }

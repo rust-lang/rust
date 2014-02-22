@@ -327,7 +327,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
         // crate module gets processed as well.
         if self.prev_exported {
             let exp_map2 = self.exp_map2.borrow();
-            assert!(exp_map2.get().contains_key(&id), "wut {:?}", id);
+            fail_unless!(exp_map2.get().contains_key(&id), "wut {:?}", id);
             for export in exp_map2.get().get(&id).iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
@@ -773,7 +773,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 // Method calls are now a special syntactic form,
                 // so `a.b` should always be a field.
                 let method_map = self.method_map.borrow();
-                assert!(!method_map.get().contains_key(&expr.id));
+                fail_unless!(!method_map.get().contains_key(&expr.id));
 
                 // With type_autoderef, make sure we don't
                 // allow pointers to violate privacy

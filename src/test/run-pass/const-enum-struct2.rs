@@ -14,6 +14,6 @@ static C: S = S { a: V0, b: 0x600D, c: 0xBAD };
 
 pub fn main() {
     let n = C.b;
-    assert!(n != 0xBAD);
+    fail_unless!(n != 0xBAD);
     assert_eq!(n, 0x600D);
 }

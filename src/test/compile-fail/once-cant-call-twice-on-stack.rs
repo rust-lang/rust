@@ -23,7 +23,7 @@ fn foo(blk: once ||) {
 fn main() {
     let x = Arc::new(true);
     foo(|| {
-        assert!(*x.get());
+        fail_unless!(*x.get());
         drop(x);
     })
 }

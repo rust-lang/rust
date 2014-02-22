@@ -133,9 +133,9 @@ mod tests {
         let x = Gc::new(5);
         let y = x.clone();
         let z = Gc::new(7);
-        assert!(x.ptr_eq(&x));
-        assert!(x.ptr_eq(&y));
-        assert!(!x.ptr_eq(&z));
+        fail_unless!(x.ptr_eq(&x));
+        fail_unless!(x.ptr_eq(&y));
+        fail_unless!(!x.ptr_eq(&z));
     }
 
     #[test]

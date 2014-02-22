@@ -295,7 +295,7 @@ impl<T> Vec<T> {
 
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
-        assert!(index <= len);
+        fail_unless!(index <= len);
         // space for the new element
         self.reserve_exact(len + 1);
 

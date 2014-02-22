@@ -899,21 +899,21 @@ mod tests {
         }
         assert_eq!(len, 0);
         let mut n = DList::new();
-        assert!(n.mut_iter().next().is_none());
+        fail_unless!(n.mut_iter().next().is_none());
         n.push_front(4);
         n.push_back(5);
         let mut it = n.mut_iter();
         assert_eq!(it.size_hint(), (2, Some(2)));
-        assert!(it.next().is_some());
-        assert!(it.next().is_some());
+        fail_unless!(it.next().is_some());
+        fail_unless!(it.next().is_some());
         assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
     fn test_iterator_mut_double_end() {
         let mut n = DList::new();
-        assert!(n.mut_iter().next_back().is_none());
+        fail_unless!(n.mut_iter().next_back().is_none());
         n.push_front(4);
         n.push_front(5);
         n.push_front(6);
@@ -924,8 +924,8 @@ mod tests {
         assert_eq!(*it.next_back().unwrap(), 4);
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(*it.next_back().unwrap(), 5);
-        assert!(it.next_back().is_none());
-        assert!(it.next().is_none());
+        fail_unless!(it.next_back().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -989,11 +989,11 @@ mod tests {
             assert_eq!((6-i) as int, *elt);
         }
         let mut n = DList::new();
-        assert!(n.mut_rev_iter().next().is_none());
+        fail_unless!(n.mut_rev_iter().next().is_none());
         n.push_front(4);
         let mut it = n.mut_rev_iter();
-        assert!(it.next().is_some());
-        assert!(it.next().is_none());
+        fail_unless!(it.next().is_some());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -1011,23 +1011,23 @@ mod tests {
         let mut m = list_from([]);
         assert_eq!(&n, &m);
         n.push_front(1);
-        assert!(n != m);
+        fail_unless!(n != m);
         m.push_back(1);
         assert_eq!(&n, &m);
 
         let n = list_from([2,3,4]);
         let m = list_from([1,2,3]);
-        assert!(n != m);
+        fail_unless!(n != m);
     }
 
     #[test]
     fn test_ord() {
         let n: DList<int> = list_from([]);
         let m = list_from([1,2,3]);
-        assert!(n < m);
-        assert!(m > n);
-        assert!(n <= n);
-        assert!(n >= n);
+        fail_unless!(n < m);
+        fail_unless!(m > n);
+        fail_unless!(n <= n);
+        fail_unless!(n >= n);
     }
 
     #[test]
@@ -1035,31 +1035,31 @@ mod tests {
         let nan = 0.0/0.0;
         let n = list_from([nan]);
         let m = list_from([nan]);
-        assert!(!(n < m));
-        assert!(!(n > m));
-        assert!(!(n <= m));
-        assert!(!(n >= m));
+        fail_unless!(!(n < m));
+        fail_unless!(!(n > m));
+        fail_unless!(!(n <= m));
+        fail_unless!(!(n >= m));
 
         let n = list_from([nan]);
         let one = list_from([1.0]);
-        assert!(!(n < one));
-        assert!(!(n > one));
-        assert!(!(n <= one));
-        assert!(!(n >= one));
+        fail_unless!(!(n < one));
+        fail_unless!(!(n > one));
+        fail_unless!(!(n <= one));
+        fail_unless!(!(n >= one));
 
         let u = list_from([1.0,2.0,nan]);
         let v = list_from([1.0,2.0,3.0]);
-        assert!(!(u < v));
-        assert!(!(u > v));
-        assert!(!(u <= v));
-        assert!(!(u >= v));
+        fail_unless!(!(u < v));
+        fail_unless!(!(u > v));
+        fail_unless!(!(u <= v));
+        fail_unless!(!(u >= v));
 
         let s = list_from([1.0,2.0,4.0,2.0]);
         let t = list_from([1.0,2.0,3.0,2.0]);
-        assert!(!(s < t));
-        assert!(s > one);
-        assert!(!(s <= one));
-        assert!(s >= one);
+        fail_unless!(!(s < t));
+        fail_unless!(s > one);
+        fail_unless!(!(s <= one));
+        fail_unless!(s >= one);
     }
 
     #[test]
@@ -1175,7 +1175,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.iter().len() == 128);
+            fail_unless!(m.iter().len() == 128);
         })
     }
     #[bench]
@@ -1183,7 +1183,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.mut_iter().len() == 128);
+            fail_unless!(m.mut_iter().len() == 128);
         })
     }
     #[bench]
@@ -1191,7 +1191,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.rev_iter().len() == 128);
+            fail_unless!(m.rev_iter().len() == 128);
         })
     }
     #[bench]
@@ -1199,7 +1199,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.mut_rev_iter().len() == 128);
+            fail_unless!(m.mut_rev_iter().len() == 128);
         })
     }
 }

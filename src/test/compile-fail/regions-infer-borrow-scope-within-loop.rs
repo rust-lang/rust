@@ -24,7 +24,7 @@ fn foo(cond: || -> bool, make_box: || -> @int) {
         assert_eq!(*x, *y);
         if cond() { break; }
     }
-    assert!(*y != 0);
+    fail_unless!(*y != 0);
 }
 
 fn main() {}

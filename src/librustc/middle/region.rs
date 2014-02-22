@@ -117,7 +117,7 @@ impl RegionMaps {
 
     pub fn record_encl_scope(&self, sub: ast::NodeId, sup: ast::NodeId) {
         debug!("record_encl_scope(sub={}, sup={})", sub, sup);
-        assert!(sub != sup);
+        fail_unless!(sub != sup);
 
         let mut scope_map = self.scope_map.borrow_mut();
         scope_map.get().insert(sub, sup);
@@ -125,7 +125,7 @@ impl RegionMaps {
 
     pub fn record_var_scope(&self, var: ast::NodeId, lifetime: ast::NodeId) {
         debug!("record_var_scope(sub={}, sup={})", var, lifetime);
-        assert!(var != lifetime);
+        fail_unless!(var != lifetime);
 
         let mut var_map = self.var_map.borrow_mut();
         var_map.get().insert(var, lifetime);
@@ -133,7 +133,7 @@ impl RegionMaps {
 
     pub fn record_rvalue_scope(&self, var: ast::NodeId, lifetime: ast::NodeId) {
         debug!("record_rvalue_scope(sub={}, sup={})", var, lifetime);
-        assert!(var != lifetime);
+        fail_unless!(var != lifetime);
 
         let mut rvalue_scopes = self.rvalue_scopes.borrow_mut();
         rvalue_scopes.get().insert(var, lifetime);

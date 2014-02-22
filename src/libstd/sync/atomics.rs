@@ -537,17 +537,17 @@ mod test {
     #[test]
     fn flag() {
         let mut flg = AtomicFlag::new();
-        assert!(!flg.test_and_set(SeqCst));
-        assert!(flg.test_and_set(SeqCst));
+        fail_unless!(!flg.test_and_set(SeqCst));
+        fail_unless!(flg.test_and_set(SeqCst));
 
         flg.clear(SeqCst);
-        assert!(!flg.test_and_set(SeqCst));
+        fail_unless!(!flg.test_and_set(SeqCst));
     }
 
     #[test]
     fn option_empty() {
         let mut option: AtomicOption<()> = AtomicOption::empty();
-        assert!(option.is_empty(SeqCst));
+        fail_unless!(option.is_empty(SeqCst));
     }
 
     #[test]
@@ -577,10 +577,10 @@ mod test {
     #[test]
     fn option_fill() {
         let mut p = AtomicOption::new(~1);
-        assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
+        fail_unless!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
         assert_eq!(p.take(SeqCst), Some(~1));
 
-        assert!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
+        fail_unless!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
         assert_eq!(p.take(SeqCst), Some(~2));
     }
 
@@ -599,10 +599,10 @@ mod test {
     #[test]
     fn static_init() {
         unsafe {
-            assert!(!S_FLAG.test_and_set(SeqCst));
-            assert!(!S_BOOL.load(SeqCst));
-            assert!(S_INT.load(SeqCst) == 0);
-            assert!(S_UINT.load(SeqCst) == 0);
+            fail_unless!(!S_FLAG.test_and_set(SeqCst));
+            fail_unless!(!S_BOOL.load(SeqCst));
+            fail_unless!(S_INT.load(SeqCst) == 0);
+            fail_unless!(S_UINT.load(SeqCst) == 0);
         }
     }
 

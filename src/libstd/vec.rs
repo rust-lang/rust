@@ -988,8 +988,8 @@ pub trait ImmutableVector<'a, T> {
 impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     #[inline]
     fn slice(&self, start: uint, end: uint) -> &'a [T] {
-        assert!(start <= end);
-        assert!(end <= self.len());
+        fail_unless!(start <= end);
+        fail_unless!(end <= self.len());
         unsafe {
             transmute(Slice {
                     data: self.as_ptr().offset(start as int),
@@ -1061,13 +1061,13 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     fn windows(self, size: uint) -> Windows<'a, T> {
-        assert!(size != 0);
+        fail_unless!(size != 0);
         Windows { v: self, size: size }
     }
 
     #[inline]
     fn chunks(self, size: uint) -> Chunks<'a, T> {
-        assert!(size != 0);
+        fail_unless!(size != 0);
         Chunks { v: self, size: size }
     }
 
@@ -1338,7 +1338,7 @@ pub trait OwnedVector<T> {
     /// ```rust
     /// let mut a = ~[~1];
     /// a.push_all_move(~[~2, ~3, ~4]);
-    /// assert!(a == ~[~1, ~2, ~3, ~4]);
+    /// fail_unless!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
     fn push_all_move(&mut self, rhs: ~[T]);
     /// Remove the last element from a vector and return it, or `None` if it is empty
@@ -1543,7 +1543,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     fn insert(&mut self, i: uint, x: T) {
         let len = self.len();
-        assert!(i <= len);
+        fail_unless!(i <= len);
         // space for the new element
         self.reserve_additional(1);
 
@@ -1592,7 +1592,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
     fn truncate(&mut self, newlen: uint) {
         let oldlen = self.len();
-        assert!(newlen <= oldlen);
+        fail_unless!(newlen <= oldlen);
 
         unsafe {
             let p = self.as_mut_ptr();
@@ -1668,7 +1668,7 @@ pub trait OwnedCloneableVector<T:Clone> {
     /// ```rust
     /// let mut a = ~[1];
     /// a.push_all([2, 3, 4]);
-    /// assert!(a == ~[1, 2, 3, 4]);
+    /// fail_unless!(a == ~[1, 2, 3, 4]);
     /// ```
     fn push_all(&mut self, rhs: &[T]);
 
@@ -2266,8 +2266,8 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn as_mut_slice(self) -> &'a mut [T] { self }
 
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
-        assert!(start <= end);
-        assert!(end <= self.len());
+        fail_unless!(start <= end);
+        fail_unless!(end <= self.len());
         unsafe {
             transmute(Slice {
                     data: self.as_mut_ptr().offset(start as int) as *T,
@@ -2331,7 +2331,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T> {
-        assert!(chunk_size > 0);
+        fail_unless!(chunk_size > 0);
         MutChunks { v: self, chunk_size: chunk_size }
     }
 
@@ -2406,7 +2406,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     unsafe fn copy_memory(self, src: &[T]) {
         let len_src = src.len();
-        assert!(self.len() >= len_src);
+        fail_unless!(self.len() >= len_src);
         ptr::copy_nonoverlapping_memory(self.as_mut_ptr(), src.as_ptr(), len_src)
     }
 }
@@ -3027,8 +3027,8 @@ mod tests {
     #[test]
     fn test_is_empty() {
         let xs: [int, ..0] = [];
-        assert!(xs.is_empty());
-        assert!(![0].is_empty());
+        fail_unless!(xs.is_empty());
+        fail_unless!(![0].is_empty());
     }
 
     #[test]
@@ -3430,13 +3430,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert!([].position_elem(&1).is_none());
+        fail_unless!([].position_elem(&1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
         assert_eq!(v1.position_elem(&1), Some(0u));
         assert_eq!(v1.position_elem(&2), Some(1u));
         assert_eq!(v1.position_elem(&5), Some(5u));
-        assert!(v1.position_elem(&4).is_none());
+        fail_unless!(v1.position_elem(&4).is_none());
     }
 
     #[test]
@@ -3474,10 +3474,10 @@ mod tests {
         assert_eq!([].bsearch_elem(&1), None);
         assert_eq!([].bsearch_elem(&5), None);
 
-        assert!([1,1,1,1,1].bsearch_elem(&1) != None);
-        assert!([1,1,1,1,2].bsearch_elem(&1) != None);
-        assert!([1,1,1,2,2].bsearch_elem(&1) != None);
-        assert!([1,1,2,2,2].bsearch_elem(&1) != None);
+        fail_unless!([1,1,1,1,1].bsearch_elem(&1) != None);
+        fail_unless!([1,1,1,1,2].bsearch_elem(&1) != None);
+        fail_unless!([1,1,1,2,2].bsearch_elem(&1) != None);
+        fail_unless!([1,1,2,2,2].bsearch_elem(&1) != None);
         assert_eq!([1,2,2,2,2].bsearch_elem(&1), Some(0));
 
         assert_eq!([1,2,3,4,5].bsearch_elem(&6), None);
@@ -3495,7 +3495,7 @@ mod tests {
 
         let mut v3: ~[int] = ~[];
         v3.reverse();
-        assert!(v3.is_empty());
+        fail_unless!(v3.is_empty());
     }
 
     #[test]
@@ -3506,13 +3506,13 @@ mod tests {
                 let mut v1 = v.clone();
 
                 v.sort();
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                fail_unless!(v.windows(2).all(|w| w[0] <= w[1]));
 
                 v1.sort_by(|a, b| a.cmp(b));
-                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+                fail_unless!(v1.windows(2).all(|w| w[0] <= w[1]));
 
                 v1.sort_by(|a, b| b.cmp(a));
-                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+                fail_unless!(v1.windows(2).all(|w| w[0] >= w[1]));
             }
         }
 
@@ -3551,7 +3551,7 @@ mod tests {
                 // will need to be ordered with increasing
                 // counts... i.e. exactly asserting that this sort is
                 // stable.
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                fail_unless!(v.windows(2).all(|w| w[0] <= w[1]));
             }
         }
     }
@@ -3818,7 +3818,7 @@ mod tests {
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &11);
         assert_eq!(it.size_hint(), (0, Some(0)));
-        assert!(it.next().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -3831,18 +3831,18 @@ mod tests {
         assert_eq!(it.idx(0).unwrap(), &1);
         assert_eq!(it.idx(2).unwrap(), &5);
         assert_eq!(it.idx(4).unwrap(), &11);
-        assert!(it.idx(5).is_none());
+        fail_unless!(it.idx(5).is_none());
 
         assert_eq!(it.next().unwrap(), &1);
         assert_eq!(it.indexable(), 4);
         assert_eq!(it.idx(0).unwrap(), &2);
         assert_eq!(it.idx(3).unwrap(), &11);
-        assert!(it.idx(4).is_none());
+        fail_unless!(it.idx(4).is_none());
 
         assert_eq!(it.next().unwrap(), &2);
         assert_eq!(it.indexable(), 3);
         assert_eq!(it.idx(1).unwrap(), &10);
-        assert!(it.idx(3).is_none());
+        fail_unless!(it.idx(3).is_none());
 
         assert_eq!(it.next().unwrap(), &5);
         assert_eq!(it.indexable(), 2);
@@ -3851,13 +3851,13 @@ mod tests {
         assert_eq!(it.next().unwrap(), &10);
         assert_eq!(it.indexable(), 1);
         assert_eq!(it.idx(0).unwrap(), &11);
-        assert!(it.idx(1).is_none());
+        fail_unless!(it.idx(1).is_none());
 
         assert_eq!(it.next().unwrap(), &11);
         assert_eq!(it.indexable(), 0);
-        assert!(it.idx(0).is_none());
+        fail_unless!(it.idx(0).is_none());
 
-        assert!(it.next().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -4001,7 +4001,7 @@ mod tests {
 
         assert_eq!(v.windows(2).collect::<~[&[int]]>(), ~[&[1,2], &[2,3], &[3,4]]);
         assert_eq!(v.windows(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[2,3,4]]);
-        assert!(v.windows(6).next().is_none());
+        fail_unless!(v.windows(6).next().is_none());
     }
 
     #[test]
@@ -4096,7 +4096,7 @@ mod tests {
         macro_rules! t (
             ($ty:ty) => {{
                 let v: $ty = Default::default();
-                assert!(v.is_empty());
+                fail_unless!(v.is_empty());
             }}
         );
 
@@ -4161,25 +4161,25 @@ mod tests {
         let mut cnt = 0;
 
         for f in v.iter() {
-            assert!(*f == Foo);
+            fail_unless!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 3);
 
         for f in v.slice(1, 3).iter() {
-            assert!(*f == Foo);
+            fail_unless!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 5);
 
         for f in v.mut_iter() {
-            assert!(*f == Foo);
+            fail_unless!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 8);
 
         for f in v.move_iter() {
-            assert!(f == Foo);
+            fail_unless!(f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 11);
@@ -4193,10 +4193,10 @@ mod tests {
                    ~"~[vec::tests::Foo, vec::tests::Foo]");
         cnt = 0;
         for f in xs.iter() {
-            assert!(*f == Foo);
+            fail_unless!(*f == Foo);
             cnt += 1;
         }
-        assert!(cnt == 3);
+        fail_unless!(cnt == 3);
     }
 
     #[test]
@@ -4213,30 +4213,30 @@ mod tests {
 
     #[test]
     fn test_starts_with() {
-        assert!(bytes!("foobar").starts_with(bytes!("foo")));
-        assert!(!bytes!("foobar").starts_with(bytes!("oob")));
-        assert!(!bytes!("foobar").starts_with(bytes!("bar")));
-        assert!(!bytes!("foo").starts_with(bytes!("foobar")));
-        assert!(!bytes!("bar").starts_with(bytes!("foobar")));
-        assert!(bytes!("foobar").starts_with(bytes!("foobar")));
+        fail_unless!(bytes!("foobar").starts_with(bytes!("foo")));
+        fail_unless!(!bytes!("foobar").starts_with(bytes!("oob")));
+        fail_unless!(!bytes!("foobar").starts_with(bytes!("bar")));
+        fail_unless!(!bytes!("foo").starts_with(bytes!("foobar")));
+        fail_unless!(!bytes!("bar").starts_with(bytes!("foobar")));
+        fail_unless!(bytes!("foobar").starts_with(bytes!("foobar")));
         let empty: &[u8] = [];
-        assert!(empty.starts_with(empty));
-        assert!(!empty.starts_with(bytes!("foo")));
-        assert!(bytes!("foobar").starts_with(empty));
+        fail_unless!(empty.starts_with(empty));
+        fail_unless!(!empty.starts_with(bytes!("foo")));
+        fail_unless!(bytes!("foobar").starts_with(empty));
     }
 
     #[test]
     fn test_ends_with() {
-        assert!(bytes!("foobar").ends_with(bytes!("bar")));
-        assert!(!bytes!("foobar").ends_with(bytes!("oba")));
-        assert!(!bytes!("foobar").ends_with(bytes!("foo")));
-        assert!(!bytes!("foo").ends_with(bytes!("foobar")));
-        assert!(!bytes!("bar").ends_with(bytes!("foobar")));
-        assert!(bytes!("foobar").ends_with(bytes!("foobar")));
+        fail_unless!(bytes!("foobar").ends_with(bytes!("bar")));
+        fail_unless!(!bytes!("foobar").ends_with(bytes!("oba")));
+        fail_unless!(!bytes!("foobar").ends_with(bytes!("foo")));
+        fail_unless!(!bytes!("foo").ends_with(bytes!("foobar")));
+        fail_unless!(!bytes!("bar").ends_with(bytes!("foobar")));
+        fail_unless!(bytes!("foobar").ends_with(bytes!("foobar")));
         let empty: &[u8] = [];
-        assert!(empty.ends_with(empty));
-        assert!(!empty.ends_with(bytes!("foo")));
-        assert!(bytes!("foobar").ends_with(empty));
+        fail_unless!(empty.ends_with(empty));
+        fail_unless!(!empty.ends_with(bytes!("foo")));
+        fail_unless!(bytes!("foobar").ends_with(empty));
     }
 
     #[test]
@@ -4262,7 +4262,7 @@ mod tests {
         assert_eq!(x[3], 4);
 
         let mut y: &[int] = [];
-        assert!(y.pop_ref().is_none());
+        fail_unless!(y.pop_ref().is_none());
     }
 
     #[test]
@@ -4331,7 +4331,7 @@ mod tests {
         assert_eq!(x[3], 5);
 
         let mut y: &mut [int] = [];
-        assert!(y.mut_shift_ref().is_none());
+        fail_unless!(y.mut_shift_ref().is_none());
     }
 
     #[test]
@@ -4344,7 +4344,7 @@ mod tests {
         assert_eq!(x[3], 4);
 
         let mut y: &mut [int] = [];
-        assert!(y.mut_pop_ref().is_none());
+        fail_unless!(y.mut_pop_ref().is_none());
     }
 
     #[test]
@@ -4354,7 +4354,7 @@ mod tests {
         assert_eq!(*h.unwrap(), 5);
 
         let y: &mut [int] = [];
-        assert!(y.mut_last().is_none());
+        fail_unless!(y.mut_last().is_none());
     }
 }
 

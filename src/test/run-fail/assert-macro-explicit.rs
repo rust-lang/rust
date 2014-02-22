@@ -11,5 +11,5 @@
 // error-pattern:failed at 'assertion failed: false'
 
 fn main() {
-    assert!(false);
+    fail_unless!(false);
 }

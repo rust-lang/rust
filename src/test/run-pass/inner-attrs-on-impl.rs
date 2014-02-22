@@ -29,5 +29,5 @@ impl Foo {
 
 
 pub fn main() {
-    assert!(Foo.method());
+    fail_unless!(Foo.method());
 }

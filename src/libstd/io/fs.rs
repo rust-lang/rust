@@ -718,13 +718,13 @@ mod test {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open_mode(filename, Open, Read);
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     })
 
     iotest!(fn file_test_iounlinking_invalid_path_should_raise_condition() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_another_file_that_does_not_exist.txt");
-        assert!(unlink(filename).is_err());
+        fail_unless!(unlink(filename).is_err());
     })
 
     iotest!(fn file_test_io_non_positional_read() {
@@ -798,7 +798,7 @@ mod test {
         }
         unlink(filename).unwrap();
         let read_str = str::from_utf8(read_mem).unwrap();
-        assert!(read_str == final_msg.to_owned());
+        fail_unless!(read_str == final_msg.to_owned());
     })
 
     iotest!(fn file_test_io_seek_shakedown() {
@@ -850,7 +850,7 @@ mod test {
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
         mkdir(filename, io::UserRWX).unwrap();
         let stat_res = filename.stat().unwrap();
-        assert!(stat_res.kind == io::TypeDirectory);
+        fail_unless!(stat_res.kind == io::TypeDirectory);
         rmdir(filename).unwrap();
     })
 
@@ -858,7 +858,7 @@ mod test {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
         mkdir(dir, io::UserRWX).unwrap();
-        assert!(dir.is_file() == false);
+        fail_unless!(dir.is_file() == false);
         rmdir(dir).unwrap();
     })
 
@@ -866,20 +866,20 @@ mod test {
         let tmpdir = tmpdir();
         let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
         File::create(file).write(bytes!("foo")).unwrap();
-        assert!(file.exists());
+        fail_unless!(file.exists());
         unlink(file).unwrap();
-        assert!(!file.exists());
+        fail_unless!(!file.exists());
     })
 
     iotest!(fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
-        assert!(!dir.exists());
+        fail_unless!(!dir.exists());
         mkdir(dir, io::UserRWX).unwrap();
-        assert!(dir.exists());
-        assert!(dir.is_dir());
+        fail_unless!(dir.exists());
+        fail_unless!(dir.is_dir());
         rmdir(dir).unwrap();
-        assert!(!dir.exists());
+        fail_unless!(!dir.exists());
     })
 
     iotest!(fn file_test_directoryinfo_readdir() {
@@ -918,33 +918,33 @@ mod test {
     })
 
     iotest!(fn unicode_path_is_dir() {
-        assert!(Path::new(".").is_dir());
-        assert!(!Path::new("test/stdtest/fs.rs").is_dir());
+        fail_unless!(Path::new(".").is_dir());
+        fail_unless!(!Path::new("test/stdtest/fs.rs").is_dir());
 
         let tmpdir = tmpdir();
 
         let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
         mkdir(&dirpath, io::UserRWX).unwrap();
-        assert!(dirpath.is_dir());
+        fail_unless!(dirpath.is_dir());
 
         let mut filepath = dirpath;
         filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
         File::create(&filepath).unwrap(); // ignore return; touch only
-        assert!(!filepath.is_dir());
-        assert!(filepath.exists());
+        fail_unless!(!filepath.is_dir());
+        fail_unless!(filepath.exists());
     })
 
     iotest!(fn unicode_path_exists() {
-        assert!(Path::new(".").exists());
-        assert!(!Path::new("test/nonexistent-bogus-path").exists());
+        fail_unless!(Path::new(".").exists());
+        fail_unless!(!Path::new("test/nonexistent-bogus-path").exists());
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
         mkdir(&unicode, io::UserRWX).unwrap();
-        assert!(unicode.exists());
-        assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
+        fail_unless!(unicode.exists());
+        fail_unless!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     })
 
     iotest!(fn copy_file_does_not_exist() {
@@ -953,8 +953,8 @@ mod test {
         match copy(&from, &to) {
             Ok(..) => fail!(),
             Err(..) => {
-                assert!(!from.exists());
-                assert!(!to.exists());
+                fail_unless!(!from.exists());
+                fail_unless!(!to.exists());
             }
         }
     })
@@ -1002,7 +1002,7 @@ mod test {
         match copy(tmpdir.path(), &out) {
             Ok(..) => fail!(), Err(..) => {}
         }
-        assert!(!out.exists());
+        fail_unless!(!out.exists());
     })
 
     iotest!(fn copy_file_preserves_perm_bits() {
@@ -1013,7 +1013,7 @@ mod test {
         File::create(&input).unwrap();
         chmod(&input, io::UserRead).unwrap();
         copy(&input, &out).unwrap();
-        assert!(out.stat().unwrap().perm & io::UserWrite == 0);
+        fail_unless!(out.stat().unwrap().perm & io::UserWrite == 0);
 
         chmod(&input, io::UserFile).unwrap();
         chmod(&out, io::UserFile).unwrap();
@@ -1040,7 +1040,7 @@ mod test {
         let tmpdir = tmpdir();
         // symlinks can point to things that don't exist
         symlink(&tmpdir.join("foo"), &tmpdir.join("bar")).unwrap();
-        assert!(readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("foo"));
+        fail_unless!(readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("foo"));
     })
 
     iotest!(fn readlink_not_symlink() {
@@ -1083,9 +1083,9 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         File::create(&file).unwrap();
-        assert!(stat(&file).unwrap().perm & io::UserWrite == io::UserWrite);
+        fail_unless!(stat(&file).unwrap().perm & io::UserWrite == io::UserWrite);
         chmod(&file, io::UserRead).unwrap();
-        assert!(stat(&file).unwrap().perm & io::UserWrite == 0);
+        fail_unless!(stat(&file).unwrap().perm & io::UserWrite == 0);
 
         match chmod(&tmpdir.join("foo"), io::UserRWX) {
             Ok(..) => fail!("wanted a failure"),

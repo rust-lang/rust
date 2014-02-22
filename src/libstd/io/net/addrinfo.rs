@@ -102,7 +102,7 @@ mod test {
         for addr in ipaddrs.iter() {
             found_local = found_local || addr == local_addr;
         }
-        assert!(found_local);
+        fail_unless!(found_local);
     })
 
     iotest!(fn issue_10663() {

@@ -33,13 +33,13 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:13
 #, fuzzy
 #| msgid ""
-#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; fail_unless!(y == 4u); ~~~~"
 msgid "~~~ let x: int = 42; let y: ~str = x.to_str(); ~~~"
 msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"
 "let y: uint = x as uint;\n"
-"assert!(y == 4u);\n"
+"fail_unless!(y == 4u);\n"
 "~~~~"
 
 #. type: Plain text
@@ -60,13 +60,13 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:22
 #, fuzzy
 #| msgid ""
-#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; fail_unless!(y == 4u); ~~~~"
 msgid "~~~ let x: Option<int> = from_str(\"42\"); let y: int = x.unwrap(); ~~~"
 msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"
 "let y: uint = x as uint;\n"
-"assert!(y == 4u);\n"
+"fail_unless!(y == 4u);\n"
 "~~~~"
 
 #. type: Plain text
@@ -95,13 +95,13 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:33
 #, fuzzy
 #| msgid ""
-#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; fail_unless!(y == 4u); ~~~~"
 msgid "let x: int = 42; let y: ~str = x.to_str_radix(16); ~~~"
 msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"
 "let y: uint = x as uint;\n"
-"assert!(y == 4u);\n"
+"fail_unless!(y == 4u);\n"
 "~~~~"
 
 #. type: Plain text
@@ -131,7 +131,7 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:44
 #, fuzzy
 #| msgid ""
-#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; fail_unless!(y == 4u); ~~~~"
 msgid ""
 "let x: Option<i64> = from_str_radix(\"deadbeef\", 16); let y: i64 = x."
 "unwrap(); ~~~"
@@ -139,7 +139,7 @@ msgstr ""
 "~~~~\n"
 "let x: f64 = 4.0;\n"
 "let y: uint = x as uint;\n"
-"assert!(y == 4u);\n"
+"fail_unless!(y == 4u);\n"
 "~~~~"
 
 #. type: Plain text

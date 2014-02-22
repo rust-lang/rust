@@ -12,7 +12,7 @@ fn test1() {
     enum bar { u(~int), w(int), }
 
     let x = u(~10);
-    assert!(match x {
+    fail_unless!(match x {
       u(a) => {
         error!("{:?}", a);
         *a

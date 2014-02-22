@@ -23,14 +23,14 @@ pub fn main() {
     let a = (1, 2, 3);
     let b = (1, 2, 3);
     assert_eq!(a, b);
-    assert!((a != (1, 2, 4)));
-    assert!((a < (1, 2, 4)));
-    assert!((a <= (1, 2, 4)));
-    assert!(((1, 2, 4) > a));
-    assert!(((1, 2, 4) >= a));
+    fail_unless!((a != (1, 2, 4)));
+    fail_unless!((a < (1, 2, 4)));
+    fail_unless!((a <= (1, 2, 4)));
+    fail_unless!(((1, 2, 4) > a));
+    fail_unless!(((1, 2, 4) >= a));
     let x = large;
     let y = small;
-    assert!((x != y));
+    fail_unless!((x != y));
     assert_eq!(x, large);
-    assert!((x != small));
+    fail_unless!((x != small));
 }

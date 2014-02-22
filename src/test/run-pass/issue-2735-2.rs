@@ -33,5 +33,5 @@ fn defer(b: @Cell<bool>) -> defer {
 pub fn main() {
     let dtor_ran = @Cell::new(false);
     let _  = defer(dtor_ran);
-    assert!(dtor_ran.get());
+    fail_unless!(dtor_ran.get());
 }

@@ -1833,7 +1833,7 @@ impl TypeNames {
 
     pub fn associate_type(&self, s: &str, t: &Type) {
         let mut named_types = self.named_types.borrow_mut();
-        assert!(named_types.get().insert(s.to_owned(), t.to_ref()));
+        fail_unless!(named_types.get().insert(s.to_owned(), t.to_ref()));
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {

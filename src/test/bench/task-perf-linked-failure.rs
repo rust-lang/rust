@@ -69,7 +69,7 @@ fn spawn_supervised_blocking(myname: &str, f: proc()) {
     builder.spawn(f);
     error!("{} group waiting", myname);
     let x = res.recv();
-    assert!(x.is_ok());
+    fail_unless!(x.is_ok());
 }
 
 fn main() {
@@ -99,5 +99,5 @@ fn main() {
         error!("Grandparent group wakes up and fails");
         fail!();
     });
-    assert!(x.is_err());
+    fail_unless!(x.is_err());
 }

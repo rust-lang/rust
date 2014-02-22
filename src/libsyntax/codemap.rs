@@ -225,7 +225,7 @@ impl FileMap {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();;
         let line_len = lines.get().len();
-        assert!(line_len == 0 || (lines.get()[line_len - 1] < pos))
+        fail_unless!(line_len == 0 || (lines.get()[line_len - 1] < pos))
         lines.get().push(pos);
     }
 
@@ -242,7 +242,7 @@ impl FileMap {
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
-        assert!(bytes >=2 && bytes <= 4);
+        fail_unless!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
             pos: pos,
             bytes: bytes,
@@ -429,7 +429,7 @@ impl CodeMap {
         debug!("codemap: char pos {:?} is on the line at char pos {:?}",
                chpos, linechpos);
         debug!("codemap: byte is on line: {:?}", line);
-        assert!(chpos >= linechpos);
+        fail_unless!(chpos >= linechpos);
         return Loc {
             file: f,
             line: line,
@@ -463,7 +463,7 @@ impl CodeMap {
                 total_extra_bytes += mbc.bytes;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos == mbc.pos ||
+                fail_unless!(bpos == mbc.pos ||
                         bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
             } else {
                 break;

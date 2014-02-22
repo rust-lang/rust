@@ -17,8 +17,8 @@ mod bar {
 }
 
 pub fn main() {
-    local_data::get(foo, |x| assert!(x.is_none()));
-    local_data::get(bar::baz, |y| assert!(y.is_none()));
+    local_data::get(foo, |x| fail_unless!(x.is_none()));
+    local_data::get(bar::baz, |y| fail_unless!(y.is_none()));
 
     local_data::set(foo, 3);
     local_data::set(bar::baz, -10.0);

@@ -17,7 +17,7 @@ fn sendable() {
     }
 
     fn g<T:Send + Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;
@@ -35,7 +35,7 @@ fn copyable() {
     }
 
     fn g<T:Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;
@@ -53,7 +53,7 @@ fn noncopyable() {
     }
 
     fn g<T:Eq>(i: T, j: T) {
-        assert!(i != j);
+        fail_unless!(i != j);
     }
 
     let i = ~100;

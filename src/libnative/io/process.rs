@@ -269,9 +269,9 @@ fn spawn_process_os(config: p::ProcessConfig,
             })
         });
 
-        assert!(CloseHandle(si.hStdInput) != 0);
-        assert!(CloseHandle(si.hStdOutput) != 0);
-        assert!(CloseHandle(si.hStdError) != 0);
+        fail_unless!(CloseHandle(si.hStdInput) != 0);
+        fail_unless!(CloseHandle(si.hStdOutput) != 0);
+        fail_unless!(CloseHandle(si.hStdError) != 0);
 
         match create_err {
             Some(err) => return Err(err),
@@ -283,7 +283,7 @@ fn spawn_process_os(config: p::ProcessConfig,
         // able to close it later. We don't close the process handle however
         // because std::we want the process id to stay valid at least until the
         // calling code closes the process handle.
-        assert!(CloseHandle(pi.hThread) != 0);
+        fail_unless!(CloseHandle(pi.hThread) != 0);
 
         Ok(SpawnProcessResult {
             pid: pi.dwProcessId as pid_t,
@@ -442,7 +442,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                     Err(super::translate_error(errno, false))
                 }
                 Err(e) => {
-                    assert!(e.kind == io::BrokenPipe ||
+                    fail_unless!(e.kind == io::BrokenPipe ||
                             e.kind == io::EndOfFile,
                             "unexpected error: {:?}", e);
                     Ok(SpawnProcessResult {
@@ -463,7 +463,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                 (errno <<  8) as u8,
                 (errno <<  0) as u8,
             ];
-            assert!(output.inner_write(bytes).is_ok());
+            fail_unless!(output.inner_write(bytes).is_ok());
             unsafe { libc::_exit(1) }
         }
 
@@ -628,7 +628,7 @@ fn with_dirp<T>(d: Option<&Path>, cb: |*libc::c_char| -> T) -> T {
 
 #[cfg(windows)]
 fn free_handle(handle: *()) {
-    assert!(unsafe {
+    fail_unless!(unsafe {
         libc::CloseHandle(cast::transmute(handle)) != 0
     })
 }
@@ -681,15 +681,15 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
             loop {
                 let mut status = 0;
                 if GetExitCodeProcess(process, &mut status) == FALSE {
-                    assert!(CloseHandle(process) != 0);
+                    fail_unless!(CloseHandle(process) != 0);
                     fail!("failure in GetExitCodeProcess: {}", os::last_os_error());
                 }
                 if status != STILL_ACTIVE {
-                    assert!(CloseHandle(process) != 0);
+                    fail_unless!(CloseHandle(process) != 0);
                     return p::ExitStatus(status as int);
                 }
                 if WaitForSingleObject(process, INFINITE) == WAIT_FAILED {
-                    assert!(CloseHandle(process) != 0);
+                    fail_unless!(CloseHandle(process) != 0);
                     fail!("failure in WaitForSingleObject: {}", os::last_os_error());
                 }
             }

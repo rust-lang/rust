@@ -223,7 +223,7 @@ pub struct CrateCtxt {
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
-    assert!(!ty::type_needs_infer(ty));
+    fail_unless!(!ty::type_needs_infer(ty));
     let mut node_types = tcx.node_types.borrow_mut();
     node_types.get().insert(node_id as uint, ty);
 }
@@ -233,7 +233,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
     if substs.len() > 0u {
         debug!("write_substs_to_tcx({}, {:?})", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
-        assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
+        fail_unless!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
         let mut node_type_substs = tcx.node_type_substs.borrow_mut();
         node_type_substs.get().insert(node_id, substs);

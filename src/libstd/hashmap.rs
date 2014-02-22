@@ -929,14 +929,14 @@ mod test_map {
     #[test]
     fn test_create_capacity_zero() {
         let mut m = HashMap::with_capacity(0);
-        assert!(m.insert(1, 1));
+        fail_unless!(m.insert(1, 1));
     }
 
     #[test]
     fn test_insert() {
         let mut m = HashMap::new();
-        assert!(m.insert(1, 2));
-        assert!(m.insert(2, 4));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(2, 4));
         assert_eq!(*m.get(&1), 2);
         assert_eq!(*m.get(&2), 4);
     }
@@ -944,9 +944,9 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = HashMap::new();
-        assert!(m.insert(1, 12));
-        assert!(m.insert(2, 8));
-        assert!(m.insert(5, 14));
+        fail_unless!(m.insert(1, 12));
+        fail_unless!(m.insert(2, 8));
+        fail_unless!(m.insert(5, 14));
         let new = 100;
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
@@ -957,18 +957,18 @@ mod test_map {
     #[test]
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
-        assert!(m.insert(1, 2));
+        fail_unless!(m.insert(1, 2));
         assert_eq!(*m.get(&1), 2);
-        assert!(!m.insert(1, 3));
+        fail_unless!(!m.insert(1, 3));
         assert_eq!(*m.get(&1), 3);
     }
 
     #[test]
     fn test_insert_conflicts() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
-        assert!(m.insert(5, 3));
-        assert!(m.insert(9, 4));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(5, 3));
+        fail_unless!(m.insert(9, 4));
         assert_eq!(*m.get(&9), 4);
         assert_eq!(*m.get(&5), 3);
         assert_eq!(*m.get(&1), 2);
@@ -977,10 +977,10 @@ mod test_map {
     #[test]
     fn test_conflict_remove() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
-        assert!(m.insert(5, 3));
-        assert!(m.insert(9, 4));
-        assert!(m.remove(&1));
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(m.insert(5, 3));
+        fail_unless!(m.insert(9, 4));
+        fail_unless!(m.remove(&1));
         assert_eq!(*m.get(&9), 4);
         assert_eq!(*m.get(&5), 3);
     }
@@ -988,10 +988,10 @@ mod test_map {
     #[test]
     fn test_is_empty() {
         let mut m = HashMap::with_capacity(4);
-        assert!(m.insert(1, 2));
-        assert!(!m.is_empty());
-        assert!(m.remove(&1));
-        assert!(m.is_empty());
+        fail_unless!(m.insert(1, 2));
+        fail_unless!(!m.is_empty());
+        fail_unless!(m.remove(&1));
+        fail_unless!(m.is_empty());
     }
 
     #[test]
@@ -1043,14 +1043,14 @@ mod test_map {
         };
 
         let v = hm.move_iter().collect::<~[(char, int)]>();
-        assert!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
+        fail_unless!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
     }
 
     #[test]
     fn test_iterate() {
         let mut m = HashMap::with_capacity(4);
         for i in range(0u, 32) {
-            assert!(m.insert(i, i*2));
+            fail_unless!(m.insert(i, i*2));
         }
         let mut observed = 0;
         for (k, v) in m.iter() {
@@ -1066,9 +1066,9 @@ mod test_map {
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<~[int]>();
         assert_eq!(keys.len(), 3);
-        assert!(keys.contains(&1));
-        assert!(keys.contains(&2));
-        assert!(keys.contains(&3));
+        fail_unless!(keys.contains(&1));
+        fail_unless!(keys.contains(&2));
+        fail_unless!(keys.contains(&3));
     }
 
     #[test]
@@ -1077,19 +1077,19 @@ mod test_map {
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<~[char]>();
         assert_eq!(values.len(), 3);
-        assert!(values.contains(&'a'));
-        assert!(values.contains(&'b'));
-        assert!(values.contains(&'c'));
+        fail_unless!(values.contains(&'a'));
+        fail_unless!(values.contains(&'b'));
+        fail_unless!(values.contains(&'c'));
     }
 
     #[test]
     fn test_find() {
         let mut m = HashMap::new();
-        assert!(m.find(&1).is_none());
+        fail_unless!(m.find(&1).is_none());
         m.insert(1, 2);
         match m.find(&1) {
             None => fail!(),
-            Some(v) => assert!(*v == 2)
+            Some(v) => fail_unless!(*v == 2)
         }
     }
 
@@ -1104,7 +1104,7 @@ mod test_map {
         m2.insert(1, 2);
         m2.insert(2, 3);
 
-        assert!(m1 != m2);
+        fail_unless!(m1 != m2);
 
         m2.insert(3, 4);
 
@@ -1116,7 +1116,7 @@ mod test_map {
         let mut m = HashMap::new();
 
         assert_eq!(m.len(), 0);
-        assert!(m.is_empty());
+        fail_unless!(m.is_empty());
 
         let mut i = 0u;
         let old_resize_at = m.resize_at;
@@ -1126,7 +1126,7 @@ mod test_map {
         }
 
         assert_eq!(m.len(), i);
-        assert!(!m.is_empty());
+        fail_unless!(!m.is_empty());
     }
 
     #[test]
@@ -1177,7 +1177,7 @@ mod test_map {
 
         let table_str = format!("{}", table);
 
-        assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
+        fail_unless!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
         assert_eq!(format!("{}", empty), ~"{}");
     }
 }
@@ -1193,58 +1193,58 @@ mod test_set {
     fn test_disjoint() {
         let mut xs = HashSet::new();
         let mut ys = HashSet::new();
-        assert!(xs.is_disjoint(&ys));
-        assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert(5));
-        assert!(ys.insert(11));
-        assert!(xs.is_disjoint(&ys));
-        assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert(7));
-        assert!(xs.insert(19));
-        assert!(xs.insert(4));
-        assert!(ys.insert(2));
-        assert!(ys.insert(-11));
-        assert!(xs.is_disjoint(&ys));
-        assert!(ys.is_disjoint(&xs));
-        assert!(ys.insert(7));
-        assert!(!xs.is_disjoint(&ys));
-        assert!(!ys.is_disjoint(&xs));
+        fail_unless!(xs.is_disjoint(&ys));
+        fail_unless!(ys.is_disjoint(&xs));
+        fail_unless!(xs.insert(5));
+        fail_unless!(ys.insert(11));
+        fail_unless!(xs.is_disjoint(&ys));
+        fail_unless!(ys.is_disjoint(&xs));
+        fail_unless!(xs.insert(7));
+        fail_unless!(xs.insert(19));
+        fail_unless!(xs.insert(4));
+        fail_unless!(ys.insert(2));
+        fail_unless!(ys.insert(-11));
+        fail_unless!(xs.is_disjoint(&ys));
+        fail_unless!(ys.is_disjoint(&xs));
+        fail_unless!(ys.insert(7));
+        fail_unless!(!xs.is_disjoint(&ys));
+        fail_unless!(!ys.is_disjoint(&xs));
     }
 
     #[test]
     fn test_subset_and_superset() {
         let mut a = HashSet::new();
-        assert!(a.insert(0));
-        assert!(a.insert(5));
-        assert!(a.insert(11));
-        assert!(a.insert(7));
+        fail_unless!(a.insert(0));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(11));
+        fail_unless!(a.insert(7));
 
         let mut b = HashSet::new();
-        assert!(b.insert(0));
-        assert!(b.insert(7));
-        assert!(b.insert(19));
-        assert!(b.insert(250));
-        assert!(b.insert(11));
-        assert!(b.insert(200));
+        fail_unless!(b.insert(0));
+        fail_unless!(b.insert(7));
+        fail_unless!(b.insert(19));
+        fail_unless!(b.insert(250));
+        fail_unless!(b.insert(11));
+        fail_unless!(b.insert(200));
 
-        assert!(!a.is_subset(&b));
-        assert!(!a.is_superset(&b));
-        assert!(!b.is_subset(&a));
-        assert!(!b.is_superset(&a));
+        fail_unless!(!a.is_subset(&b));
+        fail_unless!(!a.is_superset(&b));
+        fail_unless!(!b.is_subset(&a));
+        fail_unless!(!b.is_superset(&a));
 
-        assert!(b.insert(5));
+        fail_unless!(b.insert(5));
 
-        assert!(a.is_subset(&b));
-        assert!(!a.is_superset(&b));
-        assert!(!b.is_subset(&a));
-        assert!(b.is_superset(&a));
+        fail_unless!(a.is_subset(&b));
+        fail_unless!(!a.is_superset(&b));
+        fail_unless!(!b.is_subset(&a));
+        fail_unless!(b.is_superset(&a));
     }
 
     #[test]
     fn test_iterate() {
         let mut a = HashSet::new();
         for i in range(0u, 32) {
-            assert!(a.insert(i));
+            fail_unless!(a.insert(i));
         }
         let mut observed = 0;
         for k in a.iter() {
@@ -1258,26 +1258,26 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(11));
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(77));
-        assert!(a.insert(103));
-        assert!(a.insert(5));
-        assert!(a.insert(-5));
+        fail_unless!(a.insert(11));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(77));
+        fail_unless!(a.insert(103));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(-5));
 
-        assert!(b.insert(2));
-        assert!(b.insert(11));
-        assert!(b.insert(77));
-        assert!(b.insert(-9));
-        assert!(b.insert(-42));
-        assert!(b.insert(5));
-        assert!(b.insert(3));
+        fail_unless!(b.insert(2));
+        fail_unless!(b.insert(11));
+        fail_unless!(b.insert(77));
+        fail_unless!(b.insert(-9));
+        fail_unless!(b.insert(-42));
+        fail_unless!(b.insert(5));
+        fail_unless!(b.insert(3));
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for x in a.intersection(&b) {
-            assert!(expected.contains(x));
+            fail_unless!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -1288,19 +1288,19 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
-        assert!(a.insert(11));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(9));
+        fail_unless!(a.insert(11));
 
-        assert!(b.insert(3));
-        assert!(b.insert(9));
+        fail_unless!(b.insert(3));
+        fail_unless!(b.insert(9));
 
         let mut i = 0;
         let expected = [1, 5, 11];
         for x in a.difference(&b) {
-            assert!(expected.contains(x));
+            fail_unless!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -1311,22 +1311,22 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
-        assert!(a.insert(11));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(9));
+        fail_unless!(a.insert(11));
 
-        assert!(b.insert(-2));
-        assert!(b.insert(3));
-        assert!(b.insert(9));
-        assert!(b.insert(14));
-        assert!(b.insert(22));
+        fail_unless!(b.insert(-2));
+        fail_unless!(b.insert(3));
+        fail_unless!(b.insert(9));
+        fail_unless!(b.insert(14));
+        fail_unless!(b.insert(22));
 
         let mut i = 0;
         let expected = [-2, 1, 5, 11, 14, 22];
         for x in a.symmetric_difference(&b) {
-            assert!(expected.contains(x));
+            fail_unless!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -1337,26 +1337,26 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
-        assert!(a.insert(11));
-        assert!(a.insert(16));
-        assert!(a.insert(19));
-        assert!(a.insert(24));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(9));
+        fail_unless!(a.insert(11));
+        fail_unless!(a.insert(16));
+        fail_unless!(a.insert(19));
+        fail_unless!(a.insert(24));
 
-        assert!(b.insert(-2));
-        assert!(b.insert(1));
-        assert!(b.insert(5));
-        assert!(b.insert(9));
-        assert!(b.insert(13));
-        assert!(b.insert(19));
+        fail_unless!(b.insert(-2));
+        fail_unless!(b.insert(1));
+        fail_unless!(b.insert(5));
+        fail_unless!(b.insert(9));
+        fail_unless!(b.insert(13));
+        fail_unless!(b.insert(19));
 
         let mut i = 0;
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
         for x in a.union(&b) {
-            assert!(expected.contains(x));
+            fail_unless!(expected.contains(x));
             i += 1
         }
         assert_eq!(i, expected.len());
@@ -1369,7 +1369,7 @@ mod test_set {
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
         for x in xs.iter() {
-            assert!(set.contains(x));
+            fail_unless!(set.contains(x));
         }
     }
 
@@ -1385,7 +1385,7 @@ mod test_set {
         };
 
         let v = hs.move_iter().collect::<~[char]>();
-        assert!(['a', 'b'] == v || ['b', 'a'] == v);
+        fail_unless!(['a', 'b'] == v || ['b', 'a'] == v);
     }
 
     #[test]
@@ -1399,7 +1399,7 @@ mod test_set {
         s2.insert(1);
         s2.insert(2);
 
-        assert!(s1 != s2);
+        fail_unless!(s1 != s2);
 
         s2.insert(3);
 
@@ -1416,7 +1416,7 @@ mod test_set {
 
         let set_str = format!("{}", set);
 
-        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        fail_unless!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
         assert_eq!(format!("{}", empty), ~"{}");
     }
 }

@@ -75,7 +75,7 @@
 //!
 //! for _ in range(0, 10) {
 //!     let j = port.recv();
-//!     assert!(0 <= j && j < 10);
+//!     fail_unless!(0 <= j && j < 10);
 //! }
 //!
 //! // The call to recv() will fail!() because the channel has already hung
@@ -943,37 +943,37 @@ mod test {
             port.recv();
         });
         // What is our res?
-        assert!(res.is_err());
+        fail_unless!(res.is_err());
     })
 
     test!(fn oneshot_single_thread_send_then_recv() {
         let (port, chan) = Chan::<~int>::new();
         chan.send(~10);
-        assert!(port.recv() == ~10);
+        fail_unless!(port.recv() == ~10);
     })
 
     test!(fn oneshot_single_thread_try_send_open() {
         let (port, chan) = Chan::<int>::new();
-        assert!(chan.try_send(10));
-        assert!(port.recv() == 10);
+        fail_unless!(chan.try_send(10));
+        fail_unless!(port.recv() == 10);
     })
 
     test!(fn oneshot_single_thread_try_send_closed() {
         let (port, chan) = Chan::<int>::new();
         { let _p = port; }
-        assert!(!chan.try_send(10));
+        fail_unless!(!chan.try_send(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_open() {
         let (port, chan) = Chan::<int>::new();
         chan.send(10);
-        assert!(port.recv_opt() == Some(10));
+        fail_unless!(port.recv_opt() == Some(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_closed() {
         let (port, chan) = Chan::<int>::new();
         { let _c = chan; }
-        assert!(port.recv_opt() == None);
+        fail_unless!(port.recv_opt() == None);
     })
 
     test!(fn oneshot_single_thread_peek_data() {
@@ -998,7 +998,7 @@ mod test {
     test!(fn oneshot_multi_task_recv_then_send() {
         let (port, chan) = Chan::<~int>::new();
         spawn(proc() {
-            assert!(port.recv() == ~10);
+            fail_unless!(port.recv() == ~10);
         });
 
         chan.send(~10);
@@ -1010,9 +1010,9 @@ mod test {
             let _chan = chan;
         });
         let res = task::try(proc() {
-            assert!(port.recv() == ~10);
+            fail_unless!(port.recv() == ~10);
         });
-        assert!(res.is_err());
+        fail_unless!(res.is_err());
     })
 
     test!(fn oneshot_multi_thread_close_stress() {
@@ -1045,7 +1045,7 @@ mod test {
                 let res = task::try(proc() {
                     port.recv();
                 });
-                assert!(res.is_err());
+                fail_unless!(res.is_err());
             });
             spawn(proc() {
                 let chan = chan;
@@ -1063,7 +1063,7 @@ mod test {
                 chan.send(~10);
             });
             spawn(proc() {
-                assert!(port.recv() == ~10);
+                fail_unless!(port.recv() == ~10);
             });
         }
     })
@@ -1088,7 +1088,7 @@ mod test {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    assert!(port.recv() == ~i);
+                    fail_unless!(port.recv() == ~i);
                     recv(port, i + 1);
                 });
             }

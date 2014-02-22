@@ -129,7 +129,7 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
             }
             ast::DefVariant(tid, vid, _) => {
                 // nullary variants are not callable
-                assert!(ty::enum_variant_with_id(bcx.tcx(),
+                fail_unless!(ty::enum_variant_with_id(bcx.tcx(),
                                                       tid,
                                                       vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ref_expr.id))
@@ -273,7 +273,7 @@ pub fn trans_fn_ref_with_vtables(
            type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
 
-    assert!(type_params.iter().all(|t| !ty::type_needs_infer(*t)));
+    fail_unless!(type_params.iter().all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
@@ -644,7 +644,7 @@ pub fn trans_call_inner<'a>(
     // not care about the result, just make a stack slot.
     let opt_llretslot = match dest {
         None => {
-            assert!(!type_of::return_uses_outptr(ccx, ret_ty));
+            fail_unless!(!type_of::return_uses_outptr(ccx, ret_ty));
             None
         }
         Some(expr::SaveIn(dst)) => Some(dst),
@@ -731,7 +731,7 @@ pub fn trans_call_inner<'a>(
     } else {
         // Lang items are the only case where dest is None, and
         // they are always Rust fns.
-        assert!(dest.is_some());
+        fail_unless!(dest.is_some());
 
         let mut llargs = ~[];
         bcx = trans_args(bcx, args, callee_ty, &mut llargs,
@@ -749,7 +749,7 @@ pub fn trans_call_inner<'a>(
     // drop the temporary slot we made.
     match dest {
         None => {
-            assert!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
+            fail_unless!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
         }
         Some(expr::Ignore) => {
             // drop the value if it is not being saved.
@@ -796,7 +796,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
                     continue;
                 }
                 let arg_ty = if i >= num_formal_args {
-                    assert!(variadic);
+                    fail_unless!(variadic);
                     expr_ty_adjusted(cx, *arg_expr)
                 } else {
                     arg_tys[i]
@@ -809,7 +809,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
             }
         }
         ArgAutorefSecond(arg_expr, arg2) => {
-            assert!(!variadic);
+            fail_unless!(!variadic);
 
             llargs.push(unpack_result!(bcx, {
                 trans_arg_expr(bcx, arg_tys[0], arg_expr,

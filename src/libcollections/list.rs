@@ -184,9 +184,9 @@ mod tests {
         let full1 = from_vec([1]);
         let full2 = from_vec(['r', 'u']);
 
-        assert!(is_empty(empty));
-        assert!(!is_empty(full1));
-        assert!(!is_empty(full2));
+        fail_unless!(is_empty(empty));
+        fail_unless!(!is_empty(full1));
+        fail_unless!(!is_empty(full2));
     }
 
     #[test]
@@ -255,10 +255,10 @@ mod tests {
     fn test_has() {
         let l = from_vec([5, 8, 6]);
         let empty = @list::Nil::<int>;
-        assert!((list::has(l, 5)));
-        assert!((!list::has(l, 7)));
-        assert!((list::has(l, 8)));
-        assert!((!list::has(empty, 5)));
+        fail_unless!((list::has(l, 5)));
+        fail_unless!((!list::has(l, 7)));
+        fail_unless!((list::has(l, 8)));
+        fail_unless!((!list::has(empty, 5)));
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_append() {
-        assert!(from_vec([1,2,3,4])
+        fail_unless!(from_vec([1,2,3,4])
             == list::append(list::from_vec([1,2]), list::from_vec([3,4])));
     }
 }

@@ -406,7 +406,7 @@ pub fn parse<R: Reader>(sess: @ParseSess,
             }
         }
 
-        assert!(cur_eis.len() > 0u);
+        fail_unless!(cur_eis.len() > 0u);
     }
 }
 

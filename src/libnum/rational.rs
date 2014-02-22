@@ -375,16 +375,16 @@ mod test {
 
     #[test]
     fn test_cmp() {
-        assert!(_0 == _0 && _1 == _1);
-        assert!(_0 != _1 && _1 != _0);
-        assert!(_0 < _1 && !(_1 < _0));
-        assert!(_1 > _0 && !(_0 > _1));
+        fail_unless!(_0 == _0 && _1 == _1);
+        fail_unless!(_0 != _1 && _1 != _0);
+        fail_unless!(_0 < _1 && !(_1 < _0));
+        fail_unless!(_1 > _0 && !(_0 > _1));
 
-        assert!(_0 <= _0 && _1 <= _1);
-        assert!(_0 <= _1 && !(_1 <= _0));
+        fail_unless!(_0 <= _0 && _1 <= _1);
+        fail_unless!(_0 <= _1 && !(_1 <= _0));
 
-        assert!(_0 >= _0 && _1 >= _1);
-        assert!(_1 >= _0 && !(_0 >= _1));
+        fail_unless!(_0 >= _0 && _1 >= _1);
+        fail_unless!(_1 >= _0 && !(_0 >= _1));
     }
 
 
@@ -421,12 +421,12 @@ mod test {
 
     #[test]
     fn test_is_integer() {
-        assert!(_0.is_integer());
-        assert!(_1.is_integer());
-        assert!(_2.is_integer());
-        assert!(!_1_2.is_integer());
-        assert!(!_3_2.is_integer());
-        assert!(!_neg1_2.is_integer());
+        fail_unless!(_0.is_integer());
+        fail_unless!(_1.is_integer());
+        fail_unless!(_2.is_integer());
+        fail_unless!(!_1_2.is_integer());
+        fail_unless!(!_3_2.is_integer());
+        fail_unless!(!_neg1_2.is_integer());
     }
 
 

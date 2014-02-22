@@ -57,7 +57,7 @@ impl Access {
                 inner.queue.push(task);
                 Ok(())
             });
-            assert!(inner.held);
+            fail_unless!(inner.held);
         } else {
             inner.held = true;
         }
@@ -77,7 +77,7 @@ impl<'a> Drop for Guard<'a> {
     fn drop(&mut self) {
         // This guard's homing missile is still armed, so we're guaranteed to be
         // on the same I/O event loop, so this unsafety should be ok.
-        assert!(self.missile.is_some());
+        fail_unless!(self.missile.is_some());
         let inner: &mut Inner = unsafe {
             cast::transmute(self.access.inner.get())
         };
@@ -103,7 +103,7 @@ impl<'a> Drop for Guard<'a> {
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        assert!(!self.held);
+        fail_unless!(!self.held);
         assert_eq!(self.queue.len(), 0);
     }
 }

@@ -218,6 +218,6 @@ mod test {
         for &x in v.iter() {
             sum += x as f64;
         }
-        assert!(sum / v.len() as f64 != 0.0);
+        fail_unless!(sum / v.len() as f64 != 0.0);
     }
 }

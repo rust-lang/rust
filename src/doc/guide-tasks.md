@@ -427,7 +427,7 @@ The `arc` module also implements Arcs around mutable data that are not covered h
 
 Rust has a built-in mechanism for raising exceptions. The `fail!()` macro
 (which can also be written with an error string as an argument: `fail!(
-~reason)`) and the `assert!` construct (which effectively calls `fail!()`
+~reason)`) and the `fail_unless!` construct (which effectively calls `fail!()`
 if a boolean expression is false) are both ways to raise exceptions. When a
 task raises an exception the task unwinds its stack---running destructors and
 freeing memory along the way---and then exits. Unlike exceptions in C++,
@@ -455,7 +455,7 @@ let result: Result<int, ()> = task::try(proc() {
         fail!("oops!");
     }
 });
-assert!(result.is_err());
+fail_unless!(result.is_err());
 ~~~
 
 Unlike `spawn`, the function spawned using `try` may return a value,
@@ -540,13 +540,13 @@ spawn(proc() {
 });
 
 from_child.send(22);
-assert!(from_child.recv() == ~"22");
+fail_unless!(from_child.recv() == ~"22");
 
 from_child.send(23);
 from_child.send(0);
 
-assert!(from_child.recv() == ~"23");
-assert!(from_child.recv() == ~"0");
+fail_unless!(from_child.recv() == ~"23");
+fail_unless!(from_child.recv() == ~"0");
 
 # }
 ~~~~

@@ -146,7 +146,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
         match self_type.node {
             TyPath(_, ref bounds, path_node_id) => {
-                assert!(bounds.is_none());
+                fail_unless!(bounds.is_none());
                 let struct_def = def_map.get().get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
                 check_struct_safe_for_destructor(cx, self_type.span, struct_did);

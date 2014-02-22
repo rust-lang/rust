@@ -467,7 +467,7 @@ mod imp {
         }
 
         pub unsafe fn signal(&mut self) {
-            assert!(SetEvent(self.getcond() as HANDLE) != 0);
+            fail_unless!(SetEvent(self.getcond() as HANDLE) != 0);
         }
 
         /// This function is especially unsafe because there are no guarantees made

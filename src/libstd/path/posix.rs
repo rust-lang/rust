@@ -116,7 +116,7 @@ impl<'a> BytesContainer for &'a Path {
 impl GenericPathUnsafe for Path {
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let path = Path::normalize(path.container_as_bytes());
-        assert!(!path.is_empty());
+        fail_unless!(!path.is_empty());
         let idx = path.rposition_elem(&SEP_BYTE);
         Path{ repr: path, sepidx: idx }
     }
@@ -531,17 +531,17 @@ mod tests {
         let result = task::try(proc() {
             Path::new(b!("foo/bar", 0))
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
 
         let result = task::try(proc() {
             Path::new("test").set_filename(b!("f", 0, "o"))
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
 
         let result = task::try(proc() {
             Path::new("test").push(b!("f", 0, "o"));
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
 
     #[test]
@@ -969,19 +969,19 @@ mod tests {
                 {
                     let path = $path;
                     let filename = $filename;
-                    assert!(path.filename_str() == filename,
+                    fail_unless!(path.filename_str() == filename,
                             "{}.filename_str(): Expected `{:?}`, found {:?}",
                             path.as_str().unwrap(), filename, path.filename_str());
                     let dirname = $dirname;
-                    assert!(path.dirname_str() == dirname,
+                    fail_unless!(path.dirname_str() == dirname,
                             "`{}`.dirname_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), dirname, path.dirname_str());
                     let filestem = $filestem;
-                    assert!(path.filestem_str() == filestem,
+                    fail_unless!(path.filestem_str() == filestem,
                             "`{}`.filestem_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), filestem, path.filestem_str());
                     let ext = $ext;
-                    assert!(path.extension_str() == ext,
+                    fail_unless!(path.extension_str() == ext,
                             "`{}`.extension_str(): Expected `{:?}`, found `{:?}`",
                             path.as_str().unwrap(), ext, path.extension_str());
                 }
@@ -1180,11 +1180,11 @@ mod tests {
                     let comps = path.components().to_owned_vec();
                     let exp: &[&str] = $exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).to_owned_vec();
-                    assert!(comps == exps, "components: Expected {:?}, found {:?}",
+                    fail_unless!(comps == exps, "components: Expected {:?}, found {:?}",
                             comps, exps);
                     let comps = path.rev_components().to_owned_vec();
                     let exps = exps.move_rev_iter().to_owned_vec();
-                    assert!(comps == exps, "rev_components: Expected {:?}, found {:?}",
+                    fail_unless!(comps == exps, "rev_components: Expected {:?}, found {:?}",
                             comps, exps);
                 }
             );
@@ -1193,11 +1193,11 @@ mod tests {
                     let path = Path::new(b!($($arg),+));
                     let comps = path.components().to_owned_vec();
                     let exp: &[&[u8]] = [$(b!($($exp),*)),*];
-                    assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
+                    fail_unless!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "rev_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }
@@ -1228,12 +1228,12 @@ mod tests {
                     let path = Path::new(b!($($arg),+));
                     let comps = path.str_components().to_owned_vec();
                     let exp: &[Option<&str>] = $exp;
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                     let comps = path.rev_str_components().to_owned_vec();
                     let exp = exp.rev_iter().map(|&x|x).to_owned_vec();
-                    assert!(comps.as_slice() == exp,
+                    fail_unless!(comps.as_slice() == exp,
                             "rev_str_components: Expected {:?}, found {:?}",
                             comps.as_slice(), exp);
                 }

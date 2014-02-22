@@ -1454,7 +1454,7 @@ impl Resolver {
                     match view_path.node {
                         ViewPathSimple(_, ref full_path, _) => {
                             let path_len = full_path.segments.len();
-                            assert!(path_len != 0);
+                            fail_unless!(path_len != 0);
 
                             for (i, segment) in full_path.segments
                                                          .iter()
@@ -1926,7 +1926,7 @@ impl Resolver {
         if !module.populated.get() {
             self.populate_external_module(module)
         }
-        assert!(module.populated.get())
+        fail_unless!(module.populated.get())
     }
 
     /// Builds the reduced graph rooted at the 'use' directive for an external
@@ -2221,7 +2221,7 @@ impl Resolver {
         // Decrement the count of unresolved imports.
         match resolution_result {
             Success(()) => {
-                assert!(self.unresolved_imports >= 1);
+                fail_unless!(self.unresolved_imports >= 1);
                 self.unresolved_imports -= 1;
             }
             _ => {
@@ -2237,7 +2237,7 @@ impl Resolver {
         if !resolution_result.indeterminate() {
             match *import_directive.subclass {
                 GlobImport => {
-                    assert!(module_.glob_count.get() >= 1);
+                    fail_unless!(module_.glob_count.get() >= 1);
                     module_.glob_count.set(module_.glob_count.get() - 1);
                 }
                 SingleImport(..) => {
@@ -2431,7 +2431,7 @@ impl Resolver {
         // We've successfully resolved the import. Write the results in.
         let import_resolution = {
             let import_resolutions = module_.import_resolutions.borrow();
-            assert!(import_resolutions.get().contains_key(&target.name));
+            fail_unless!(import_resolutions.get().contains_key(&target.name));
             import_resolutions.get().get_copy(&target.name)
         };
 
@@ -2475,7 +2475,7 @@ impl Resolver {
         let value_used_public = value_used_reexport || value_used_public;
         let type_used_public = type_used_reexport || type_used_public;
 
-        assert!(import_resolution.outstanding_references.get() >= 1);
+        fail_unless!(import_resolution.outstanding_references.get() >= 1);
         import_resolution.outstanding_references.set(
             import_resolution.outstanding_references.get() - 1);
 
@@ -2807,7 +2807,7 @@ impl Resolver {
                            name_search_type: NameSearchType)
                                -> ResolveResult<(@Module, LastPrivate)> {
         let module_path_len = module_path.len();
-        assert!(module_path_len > 0);
+        fail_unless!(module_path_len > 0);
 
         debug!("(resolving module path for import) processing `{}` rooted at \
                `{}`",
@@ -4619,7 +4619,7 @@ impl Resolver {
                             self.record_def(pattern.id, (class_def, lp));
                         }
                         Some(definition @ (DefStruct(class_id), _)) => {
-                            assert!(self.structs.contains(&class_id));
+                            fail_unless!(self.structs.contains(&class_id));
                             self.record_def(pattern.id, definition);
                         }
                         Some(definition @ (DefVariant(_, variant_id, _), _))
@@ -5430,7 +5430,7 @@ impl Resolver {
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {
         debug!("(recording def) recording {:?} for {:?}, last private {:?}",
                 def, node_id, lp);
-        assert!(match lp {LastImport{..} => false, _ => true},
+        fail_unless!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
         let mut def_map = self.def_map.borrow_mut();

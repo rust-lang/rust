@@ -19,8 +19,8 @@ struct A<'a> {
 pub fn main() {
     let (a, b) = (A { x: &1 }, A { x: &2 });
 
-    assert!(a.equals(&a));
-    assert!(b.equals(&b));
+    fail_unless!(a.equals(&a));
+    fail_unless!(b.equals(&b));
 
 
     assert_eq!(a.cmp(&a), Equal);

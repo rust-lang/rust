@@ -28,5 +28,5 @@ fn main() {
         let _a = A;
         fail!();
     });
-    assert!(unsafe { !HIT });
+    fail_unless!(unsafe { !HIT });
 }

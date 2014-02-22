@@ -259,7 +259,7 @@ macro_rules! debug_assert_eq {
 /// struct Item { weight: uint }
 ///
 /// fn choose_weighted_item(v: &[Item]) -> Item {
-///     assert!(!v.is_empty());
+///     fail_unless!(!v.is_empty());
 ///     let mut so_far = 0u;
 ///     for item in v.iter() {
 ///         so_far += item.weight;

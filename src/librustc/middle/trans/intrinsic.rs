@@ -208,7 +208,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
     // "atomic_<operation>[_<ordering>], and no ordering means SeqCst
     if name.get().starts_with("atomic_") {
         let split: ~[&str] = name.get().split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        fail_unless!(split.len() >= 2, "Atomic intrinsic not correct format");
         let order = if split.len() == 2 {
             lib::llvm::SequentiallyConsistent
         } else {

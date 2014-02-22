@@ -392,8 +392,8 @@ pub fn pipe() -> Pipe {
         let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert_eq!(res, 0);
-        assert!((fds.input != -1 && fds.input != 0 ));
-        assert!((fds.out != -1 && fds.input != 0));
+        fail_unless!((fds.input != -1 && fds.input != 0 ));
+        fail_unless!((fds.out != -1 && fds.input != 0));
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -1405,13 +1405,13 @@ mod tests {
     #[test]
     pub fn test_args() {
         let a = args();
-        assert!(a.len() >= 1);
+        fail_unless!(a.len() >= 1);
     }
 
     fn make_rand_name() -> ~str {
         let mut rng = rand::rng();
         let n = ~"TEST" + rng.gen_ascii_str(10u);
-        assert!(getenv(n).is_none());
+        fail_unless!(getenv(n).is_none());
         n
     }
 
@@ -1461,30 +1461,30 @@ mod tests {
     #[test]
     fn test_self_exe_name() {
         let path = os::self_exe_name();
-        assert!(path.is_some());
+        fail_unless!(path.is_some());
         let path = path.unwrap();
         debug!("{:?}", path.clone());
 
         // Hard to test this function
-        assert!(path.is_absolute());
+        fail_unless!(path.is_absolute());
     }
 
     #[test]
     fn test_self_exe_path() {
         let path = os::self_exe_path();
-        assert!(path.is_some());
+        fail_unless!(path.is_some());
         let path = path.unwrap();
         debug!("{:?}", path.clone());
 
         // Hard to test this function
-        assert!(path.is_absolute());
+        fail_unless!(path.is_absolute());
     }
 
     #[test]
     #[ignore]
     fn test_env_getenv() {
         let e = env();
-        assert!(e.len() > 0u);
+        fail_unless!(e.len() > 0u);
         for p in e.iter() {
             let (n, v) = (*p).clone();
             debug!("{:?}", n.clone());
@@ -1492,7 +1492,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert!(v2.is_none() || v2 == option::Some(v));
+            fail_unless!(v2.is_none() || v2 == option::Some(v));
         }
     }
 
@@ -1512,15 +1512,15 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!e.contains(&(n.clone(), ~"VALUE")));
+        fail_unless!(!e.contains(&(n.clone(), ~"VALUE")));
 
         e = env();
-        assert!(e.contains(&(n, ~"VALUE")));
+        fail_unless!(e.contains(&(n, ~"VALUE")));
     }
 
     #[test]
     fn test() {
-        assert!((!Path::new("test-path").is_absolute()));
+        fail_unless!((!Path::new("test-path").is_absolute()));
 
         let cwd = getcwd();
         debug!("Current working directory: {}", cwd.display());
@@ -1538,7 +1538,7 @@ mod tests {
         assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
-        assert!(os::homedir().is_none());
+        fail_unless!(os::homedir().is_none());
 
         for s in oldhome.iter() { setenv("HOME", *s) }
     }
@@ -1553,7 +1553,7 @@ mod tests {
         setenv("HOME", "");
         setenv("USERPROFILE", "");
 
-        assert!(os::homedir().is_none());
+        fail_unless!(os::homedir().is_none());
 
         setenv("HOME", "/home/MountainView");
         assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
@@ -1582,11 +1582,11 @@ mod tests {
             Ok(chunk) => chunk,
             Err(msg) => fail!("{}", msg)
         };
-        assert!(chunk.len >= 16);
+        fail_unless!(chunk.len >= 16);
 
         unsafe {
             *chunk.data = 0xBE;
-            assert!(*chunk.data == 0xBE);
+            fail_unless!(*chunk.data == 0xBE);
         }
     }
 
@@ -1600,13 +1600,13 @@ mod tests {
         #[cfg(unix)]
         fn lseek_(fd: c_int, size: uint) {
             unsafe {
-                assert!(lseek(fd, size as off_t, SEEK_SET) == size as off_t);
+                fail_unless!(lseek(fd, size as off_t, SEEK_SET) == size as off_t);
             }
         }
         #[cfg(windows)]
         fn lseek_(fd: c_int, size: uint) {
            unsafe {
-               assert!(lseek(fd, size as c_long, SEEK_SET) == size as c_long);
+               fail_unless!(lseek(fd, size as c_long, SEEK_SET) == size as c_long);
            }
         }
 
@@ -1619,7 +1619,7 @@ mod tests {
                 open(path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR)
             });
             lseek_(fd, size);
-            "x".with_c_str(|x| assert!(write(fd, x as *c_void, 1) == 1));
+            "x".with_c_str(|x| fail_unless!(write(fd, x as *c_void, 1) == 1));
             fd
         };
         let chunk = match MemoryMap::new(size / 2, [
@@ -1631,11 +1631,11 @@ mod tests {
             Ok(chunk) => chunk,
             Err(msg) => fail!("{}", msg)
         };
-        assert!(chunk.len > 0);
+        fail_unless!(chunk.len > 0);
 
         unsafe {
             *chunk.data = 0xbe;
-            assert!(*chunk.data == 0xbe);
+            fail_unless!(*chunk.data == 0xbe);
             close(fd);
         }
         drop(chunk);

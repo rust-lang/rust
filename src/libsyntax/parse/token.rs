@@ -722,9 +722,9 @@ mod test {
     }
 
     #[test] fn mtwt_token_eq_test() {
-        assert!(mtwt_token_eq(&GT,&GT));
+        fail_unless!(mtwt_token_eq(&GT,&GT));
         let a = str_to_ident("bac");
         let a1 = mark_ident(a,92);
-        assert!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
+        fail_unless!(mtwt_token_eq(&IDENT(a,true),&IDENT(a1,false)));
     }
 }

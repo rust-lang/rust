@@ -29,7 +29,7 @@ pub fn main() {
     assert_eq!(size_of::<u>(), 3 as uint);
     // Alignment causes padding before the char and the u32.
 
-    assert!(size_of::<v>() ==
+    fail_unless!(size_of::<v>() ==
                 16 as uint);
     assert_eq!(size_of::<int>(), size_of::<uint>());
     assert_eq!(size_of::<w>(), size_of::<int>());

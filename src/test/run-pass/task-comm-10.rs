@@ -21,10 +21,10 @@ fn start(c: &Chan<Chan<~str>>) {
     let mut a;
     let mut b;
     a = p.recv();
-    assert!(a == ~"A");
+    fail_unless!(a == ~"A");
     error!("{:?}", a);
     b = p.recv();
-    assert!(b == ~"B");
+    fail_unless!(b == ~"B");
     error!("{:?}", b);
 }
 

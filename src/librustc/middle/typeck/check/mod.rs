@@ -2384,7 +2384,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
         if check_completeness && !error_happened {
             // Make sure the programmer specified all the fields.
-            assert!(fields_found <= field_types.len());
+            fail_unless!(fields_found <= field_types.len());
             if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
                 for class_field in field_types.iter() {
@@ -3985,7 +3985,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
     let name = token::get_ident(it.ident);
     let (n_tps, inputs, output) = if name.get().starts_with("atomic_") {
         let split : ~[&str] = name.get().split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        fail_unless!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here
         match split[1] {

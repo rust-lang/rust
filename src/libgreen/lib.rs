@@ -331,7 +331,7 @@ impl SchedPool {
             event_loop_factory: factory
         } = config;
         let factory = factory.unwrap_or(default_event_loop_factory());
-        assert!(nscheds > 0);
+        fail_unless!(nscheds > 0);
 
         // The pool of schedulers that will be returned from this function
         let (p, state) = TaskState::new();

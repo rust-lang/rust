@@ -944,7 +944,7 @@ impl<'a> LookupContext<'a> {
         self.enforce_drop_trait_limitations(candidate);
 
         // static methods should never have gotten this far:
-        assert!(candidate.method_ty.explicit_self != SelfStatic);
+        fail_unless!(candidate.method_ty.explicit_self != SelfStatic);
 
         // Determine the values for the type parameters of the method.
         // If they were not explicitly supplied, just construct fresh

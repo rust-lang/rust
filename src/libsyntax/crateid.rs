@@ -122,7 +122,7 @@ fn bare_name_single_char() {
 #[test]
 fn empty_crateid() {
     let crateid: Option<CrateId> = from_str("");
-    assert!(crateid.is_none());
+    fail_unless!(crateid.is_none());
 }
 
 #[test]
@@ -144,13 +144,13 @@ fn simple_version() {
 #[test]
 fn absolute_path() {
     let crateid: Option<CrateId> = from_str("/foo/bar");
-    assert!(crateid.is_none());
+    fail_unless!(crateid.is_none());
 }
 
 #[test]
 fn path_ends_with_slash() {
     let crateid: Option<CrateId> = from_str("foo/bar/");
-    assert!(crateid.is_none());
+    fail_unless!(crateid.is_none());
 }
 
 #[test]

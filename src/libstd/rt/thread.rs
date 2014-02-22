@@ -123,10 +123,10 @@ impl<T: Send> Thread<T> {
     /// Wait for this thread to finish, returning the result of the thread's
     /// calculation.
     pub fn join(mut self) -> T {
-        assert!(!self.joined);
+        fail_unless!(!self.joined);
         unsafe { imp::join(self.native) };
         self.joined = true;
-        assert!(self.packet.is_some());
+        fail_unless!(self.packet.is_some());
         self.packet.take_unwrap()
     }
 }
@@ -177,7 +177,7 @@ mod imp {
     }
 
     pub unsafe fn detach(native: rust_thread) {
-        assert!(libc::CloseHandle(native) != 0);
+        fail_unless!(libc::CloseHandle(native) != 0);
     }
 
     pub unsafe fn yield_now() {

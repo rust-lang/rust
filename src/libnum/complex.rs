@@ -267,7 +267,7 @@ mod test {
     #[test]
     fn test_arg() {
         fn test(c: Complex64, arg: f64) {
-            assert!((c.arg() - arg).abs() < 1.0e-6)
+            fail_unless!((c.arg() - arg).abs() < 1.0e-6)
         }
         test(_1_0i, 0.0);
         test(_1_1i, 0.25 * Float::pi());
@@ -279,7 +279,7 @@ mod test {
     fn test_polar_conv() {
         fn test(c: Complex64) {
             let (r, theta) = c.to_polar();
-            assert!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
+            fail_unless!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
         }
         for &c in all_consts.iter() { test(c); }
     }

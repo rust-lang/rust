@@ -151,8 +151,8 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with the given index
     pub fn swap(&mut self, i: uint, j: uint) {
-        assert!(i < self.len());
-        assert!(j < self.len());
+        fail_unless!(i < self.len());
+        fail_unless!(j < self.len());
         let ri = self.raw_index(i);
         let rj = self.raw_index(j);
         self.elts.swap(ri, rj);
@@ -301,7 +301,7 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
         let r = if self.remaining1.len() > 0 {
             &mut self.remaining1
         } else {
-            assert!(self.remaining2.len() > 0);
+            fail_unless!(self.remaining2.len() > 0);
             &mut self.remaining2
         };
         self.nelts -= 1;
@@ -323,7 +323,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
         let r = if self.remaining2.len() > 0 {
             &mut self.remaining2
         } else {
-            assert!(self.remaining1.len() > 0);
+            fail_unless!(self.remaining1.len() > 0);
             &mut self.remaining1
         };
         self.nelts -= 1;
@@ -355,7 +355,7 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
       B [o o o|. . . . . . . .|o o o o o]
      */
 
-    assert!(newlen - nelts/2 >= nelts);
+    fail_unless!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A
         for i in range(0u, lo) {
             elts.swap(i, nelts + i);
@@ -745,7 +745,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iter_wrap() {
         let mut d = RingBuf::with_capacity(3);
-        assert!(d.mut_rev_iter().next().is_none());
+        fail_unless!(d.mut_rev_iter().next().is_none());
 
         d.push_back(1);
         d.push_back(2);
@@ -760,7 +760,7 @@ mod tests {
     #[test]
     fn test_mut_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_iter().next().is_none());
+        fail_unless!(d.mut_iter().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
@@ -776,14 +776,14 @@ mod tests {
             assert_eq!(*it.next().unwrap(), 0);
             assert_eq!(*it.next().unwrap(), 1);
             assert_eq!(*it.next().unwrap(), 2);
-            assert!(it.next().is_none());
+            fail_unless!(it.next().is_none());
         }
     }
 
     #[test]
     fn test_mut_rev_iter() {
         let mut d = RingBuf::new();
-        assert!(d.mut_rev_iter().next().is_none());
+        fail_unless!(d.mut_rev_iter().next().is_none());
 
         for i in range(0u, 3) {
             d.push_front(i);
@@ -799,7 +799,7 @@ mod tests {
             assert_eq!(*it.next().unwrap(), 0);
             assert_eq!(*it.next().unwrap(), 1);
             assert_eq!(*it.next().unwrap(), 2);
-            assert!(it.next().is_none());
+            fail_unless!(it.next().is_none());
         }
     }
 
@@ -852,7 +852,7 @@ mod tests {
         assert_eq!(&e, &d);
         e.pop_back();
         e.push_back(0);
-        assert!(e != d);
+        fail_unless!(e != d);
         e.clear();
         assert_eq!(e, RingBuf::new());
     }

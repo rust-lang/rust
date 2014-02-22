@@ -328,7 +328,7 @@ pub enum uv_membership {
 }
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
-    assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
+    fail_unless!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
     let size = uv_handle_size(handle);
     malloc_raw(size as uint) as *c_void
 }
@@ -338,7 +338,7 @@ pub unsafe fn free_handle(v: *c_void) {
 }
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
-    assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
+    fail_unless!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
     let size = uv_req_size(req);
     malloc_raw(size as uint) as *c_void
 }

@@ -372,6 +372,6 @@ mod tests {
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();
-        assert!(s.contains("my special message"));
+        fail_unless!(s.contains("my special message"));
     })
 }

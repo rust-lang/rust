@@ -84,7 +84,7 @@ impl WaitQueue {
 
     fn wait_end(&self) -> WaitEnd {
         let (wait_end, signal_end) = Chan::new();
-        assert!(self.tail.try_send(signal_end));
+        fail_unless!(self.tail.try_send(signal_end));
         wait_end
     }
 }
@@ -509,9 +509,9 @@ impl RWLock {
                 blk()
             }).finally(|| {
                 let state = &mut *self.state.get();
-                assert!(state.read_mode);
+                fail_unless!(state.read_mode);
                 let old_count = state.read_count.fetch_sub(1, atomics::Release);
-                assert!(old_count > 0);
+                fail_unless!(old_count > 0);
                 if old_count == 1 {
                     state.read_mode = false;
                     // Note: this release used to be outside of a locked access
@@ -617,7 +617,7 @@ impl RWLock {
             if state.read_mode {
                 // Releasing from read mode.
                 let old_count = state.read_count.fetch_sub(1, atomics::Release);
-                assert!(old_count > 0);
+                fail_unless!(old_count > 0);
                 // Check if other readers remain.
                 if old_count == 1 {
                     // Case 1: Writer downgraded & was the last reader
@@ -646,7 +646,7 @@ impl RWLock {
         }
         unsafe {
             let state = &mut *self.state.get();
-            assert!(!state.read_mode);
+            fail_unless!(!state.read_mode);
             state.read_mode = true;
             // If a reader attempts to enter at this point, both the
             // downgrader and reader will set the mode flag. This is fine.
@@ -906,7 +906,7 @@ mod tests {
             task::spawn(proc() {
                 m2.lock_cond(|cond| {
                     let woken = cond.signal();
-                    assert!(woken);
+                    fail_unless!(woken);
                 })
             });
             cond.wait();
@@ -924,7 +924,7 @@ mod tests {
         let _ = port.recv(); // Wait until child gets in the mutex
         m.lock_cond(|cond| {
             let woken = cond.signal();
-            assert!(woken);
+            fail_unless!(woken);
         });
         let _ = port.recv(); // Wait until child wakes up
     }
@@ -971,7 +971,7 @@ mod tests {
             m.lock_cond(|_x| { })
         });
         m2.lock_cond(|cond| {
-            assert!(!cond.signal());
+            fail_unless!(!cond.signal());
         })
     }
     #[test]
@@ -985,7 +985,7 @@ mod tests {
                 fail!();
             })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         // child task must have finished by the time try returns
         m.lock(|| { })
     }
@@ -1009,11 +1009,11 @@ mod tests {
                 cond.wait(); // block forever
             })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         // child task must have finished by the time try returns
         m.lock_cond(|cond| {
             let woken = cond.signal();
-            assert!(!woken);
+            fail_unless!(!woken);
         })
     }
     #[ignore(reason = "linked failure")]
@@ -1052,7 +1052,7 @@ mod tests {
             c.send(sibling_convos); // let parent wait on all children
             fail!();
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         // child task must have finished by the time try returns
         let mut r = p.recv();
         for p in r.mut_iter() { p.recv(); } // wait on all its siblings
@@ -1095,7 +1095,7 @@ mod tests {
                 }
             })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
     #[test]
     fn test_mutex_no_condvars() {
@@ -1103,17 +1103,17 @@ mod tests {
             let m = Mutex::new_with_condvars(0);
             m.lock_cond(|cond| { cond.wait(); })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         let result = task::try(proc() {
             let m = Mutex::new_with_condvars(0);
             m.lock_cond(|cond| { cond.signal(); })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         let result = task::try(proc() {
             let m = Mutex::new_with_condvars(0);
             m.lock_cond(|cond| { cond.broadcast(); })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
     }
     /************************************************************************
      * Reader/writer lock tests
@@ -1253,7 +1253,7 @@ mod tests {
             task::spawn(proc() {
                 x2.write_cond(|cond| {
                     let woken = cond.signal();
-                    assert!(woken);
+                    fail_unless!(woken);
                 })
             });
             cond.wait();
@@ -1272,7 +1272,7 @@ mod tests {
         x.read(|| { }); // Must be able to get in as a reader in the meantime
         x.write_cond(|cond| { // Or as another writer
             let woken = cond.signal();
-            assert!(woken);
+            fail_unless!(woken);
         });
         let _ = port.recv(); // Wait until child wakes up
         x.read(|| { }); // Just for good measure
@@ -1338,7 +1338,7 @@ mod tests {
                 fail!();
             })
         });
-        assert!(result.is_err());
+        fail_unless!(result.is_err());
         // child task must have finished by the time try returns
         lock_rwlock_in_mode(&x, mode2, || { })
     }
@@ -1406,7 +1406,7 @@ mod tests {
 
         // At this point, all spawned tasks should be blocked,
         // so we shouldn't get anything from the port
-        assert!(match port.try_recv() {
+        fail_unless!(match port.try_recv() {
             Empty => true,
             _ => false,
         });

@@ -250,7 +250,7 @@ mod test {
     fn test_null_reader() {
         let mut r = NullReader;
         let mut buf = ~[0];
-        assert!(r.read(buf).is_err());
+        fail_unless!(r.read(buf).is_err());
     }
 
     #[test]

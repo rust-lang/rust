@@ -146,7 +146,7 @@ pub trait AsciiCast<T> {
     /// Convert to an ascii type, fail on non-ASCII input.
     #[inline]
     fn to_ascii(&self) -> T {
-        assert!(self.is_ascii());
+        fail_unless!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
@@ -226,7 +226,7 @@ pub trait OwnedAsciiCast {
     /// Take ownership and cast to an ascii vector. Fail on non-ASCII input.
     #[inline]
     fn into_ascii(self) -> ~[Ascii] {
-        assert!(self.is_ascii());
+        fail_unless!(self.is_ascii());
         unsafe {self.into_ascii_nocheck()}
     }
 
@@ -513,17 +513,17 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
-        assert!('0'.to_ascii().is_digit());
-        assert!('9'.to_ascii().is_digit());
-        assert!(!'/'.to_ascii().is_digit());
-        assert!(!':'.to_ascii().is_digit());
+        fail_unless!('0'.to_ascii().is_digit());
+        fail_unless!('9'.to_ascii().is_digit());
+        fail_unless!(!'/'.to_ascii().is_digit());
+        fail_unless!(!':'.to_ascii().is_digit());
 
-        assert!((0x1fu8).to_ascii().is_control());
-        assert!(!' '.to_ascii().is_control());
-        assert!((0x7fu8).to_ascii().is_control());
+        fail_unless!((0x1fu8).to_ascii().is_control());
+        fail_unless!(!' '.to_ascii().is_control());
+        fail_unless!((0x7fu8).to_ascii().is_control());
 
-        assert!("banana".chars().all(|c| c.is_ascii()));
-        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
+        fail_unless!("banana".chars().all(|c| c.is_ascii()));
+        fail_unless!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
     }
 
     #[test]
@@ -543,11 +543,11 @@ mod tests {
         assert_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
         assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
 
-        assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
+        fail_unless!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
-        assert!("".is_ascii());
-        assert!("a".is_ascii());
-        assert!(!"\u2009".is_ascii());
+        fail_unless!("".is_ascii());
+        fail_unless!("a".is_ascii());
+        fail_unless!(!"\u2009".is_ascii());
 
     }
 
@@ -680,20 +680,20 @@ mod tests {
 
     #[test]
     fn test_eq_ignore_ascii_case() {
-        assert!("url()URL()uRl()Ürl".eq_ignore_ascii_case("url()url()url()Ürl"));
-        assert!(!"Ürl".eq_ignore_ascii_case("ürl"));
+        fail_unless!("url()URL()uRl()Ürl".eq_ignore_ascii_case("url()url()url()Ürl"));
+        fail_unless!(!"Ürl".eq_ignore_ascii_case("ürl"));
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert!("HİKß".eq_ignore_ascii_case("hİKß"));
-        assert!(!"İ".eq_ignore_ascii_case("i"));
-        assert!(!"K".eq_ignore_ascii_case("k"));
-        assert!(!"ß".eq_ignore_ascii_case("s"));
+        fail_unless!("HİKß".eq_ignore_ascii_case("hİKß"));
+        fail_unless!(!"İ".eq_ignore_ascii_case("i"));
+        fail_unless!(!"K".eq_ignore_ascii_case("k"));
+        fail_unless!(!"ß".eq_ignore_ascii_case("s"));
 
         let mut i = 0;
         while i <= 500 {
             let c = i;
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
-            assert!(from_char(from_u32(i).unwrap()).
+            fail_unless!(from_char(from_u32(i).unwrap()).
                 eq_ignore_ascii_case(from_char(from_u32(lower).unwrap())));
             i += 1;
         }

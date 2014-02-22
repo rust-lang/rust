@@ -12,23 +12,23 @@
 
 fn test_nil() {
     assert_eq!((), ());
-    assert!((!(() != ())));
-    assert!((!(() < ())));
-    assert!((() <= ()));
-    assert!((!(() > ())));
-    assert!((() >= ()));
+    fail_unless!((!(() != ())));
+    fail_unless!((!(() < ())));
+    fail_unless!((() <= ()));
+    fail_unless!((!(() > ())));
+    fail_unless!((() >= ()));
 }
 
 fn test_bool() {
-    assert!((!(true < false)));
-    assert!((!(true <= false)));
-    assert!((true > false));
-    assert!((true >= false));
+    fail_unless!((!(true < false)));
+    fail_unless!((!(true <= false)));
+    fail_unless!((true > false));
+    fail_unless!((true >= false));
 
-    assert!((false < true));
-    assert!((false <= true));
-    assert!((!(false > true)));
-    assert!((!(false >= true)));
+    fail_unless!((false < true));
+    fail_unless!((false <= true));
+    fail_unless!((!(false > true)));
+    fail_unless!((!(false >= true)));
 
     // Bools support bitwise binops
     assert_eq!(false & false, false);
@@ -53,13 +53,13 @@ fn test_ptr() {
         let p3: *u8 = ::std::cast::transmute(1);
 
         assert_eq!(p1, p2);
-        assert!(p1 != p3);
-        assert!(p1 < p3);
-        assert!(p1 <= p3);
-        assert!(p3 > p1);
-        assert!(p3 >= p3);
-        assert!(p1 <= p2);
-        assert!(p1 >= p2);
+        fail_unless!(p1 != p3);
+        fail_unless!(p1 < p3);
+        fail_unless!(p1 <= p3);
+        fail_unless!(p3 > p1);
+        fail_unless!(p3 >= p3);
+        fail_unless!(p1 <= p2);
+        fail_unless!(p1 >= p2);
     }
 }
 
@@ -87,9 +87,9 @@ fn test_class() {
   }
   assert_eq!(q, r);
   r.y = 17;
-  assert!((r.y != q.y));
+  fail_unless!((r.y != q.y));
   assert_eq!(r.y, 17);
-  assert!((q != r));
+  fail_unless!((q != r));
 }
 
 pub fn main() {

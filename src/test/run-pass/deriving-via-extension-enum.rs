@@ -18,7 +18,7 @@ pub fn main() {
     let a = Bar(1, 2);
     let b = Bar(1, 2);
     assert_eq!(a, b);
-    assert!(!(a != b));
-    assert!(a.eq(&b));
-    assert!(!a.ne(&b));
+    fail_unless!(!(a != b));
+    fail_unless!(a.eq(&b));
+    fail_unless!(!a.ne(&b));
 }

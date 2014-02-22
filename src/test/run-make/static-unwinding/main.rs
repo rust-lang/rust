@@ -29,7 +29,7 @@ fn main() {
     });
 
     unsafe {
-        assert!(lib::statik == 1);
-        assert!(statik == 1);
+        fail_unless!(lib::statik == 1);
+        fail_unless!(statik == 1);
     }
 }

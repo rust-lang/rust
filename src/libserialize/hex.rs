@@ -158,13 +158,13 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_odd_len() {
-        assert!("666".from_hex().is_err());
-        assert!("66 6".from_hex().is_err());
+        fail_unless!("666".from_hex().is_err());
+        fail_unless!("66 6".from_hex().is_err());
     }
 
     #[test]
     pub fn test_from_hex_invalid_char() {
-        assert!("66y6".from_hex().is_err());
+        fail_unless!("66y6".from_hex().is_err());
     }
 
     #[test]

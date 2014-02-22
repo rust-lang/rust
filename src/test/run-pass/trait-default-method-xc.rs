@@ -78,13 +78,13 @@ pub fn main () {
 
 
     // Trying out a real one
-    assert!(12.test_neq(&10));
-    assert!(!10.test_neq(&10));
-    assert!(a.test_neq(&b));
-    assert!(!a.test_neq(&a));
+    fail_unless!(12.test_neq(&10));
+    fail_unless!(!10.test_neq(&10));
+    fail_unless!(a.test_neq(&b));
+    fail_unless!(!a.test_neq(&a));
 
-    assert!(neq(&12, &10));
-    assert!(!neq(&10, &10));
-    assert!(neq(&a, &b));
-    assert!(!neq(&a, &a));
+    fail_unless!(neq(&12, &10));
+    fail_unless!(!neq(&10, &10));
+    fail_unless!(neq(&a, &b));
+    fail_unless!(!neq(&a, &a));
 }

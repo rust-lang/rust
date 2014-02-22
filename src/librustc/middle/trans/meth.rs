@@ -199,7 +199,7 @@ pub fn trans_static_method_callee(bcx: &Block,
 
     match vtbls[bound_index][0] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
-            assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
+            fail_unless!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
@@ -367,7 +367,7 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
         self_datum.add_clean(bcx.fcx, arg_cleanup_scope)
     } else {
         // We don't have to do anything about cleanups for &Trait and &mut Trait.
-        assert!(self_datum.kind.is_by_ref());
+        fail_unless!(self_datum.kind.is_by_ref());
         self_datum.val
     };
 

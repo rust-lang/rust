@@ -29,8 +29,8 @@ fn baz() { }
 pub fn test() {
     let lib = DynamicLibrary::open(None).unwrap();
     unsafe {
-        assert!(lib.symbol::<int>("foo").is_ok());
-        assert!(lib.symbol::<int>("baz").is_err());
-        assert!(lib.symbol::<int>("bar").is_err());
+        fail_unless!(lib.symbol::<int>("foo").is_ok());
+        fail_unless!(lib.symbol::<int>("baz").is_err());
+        fail_unless!(lib.symbol::<int>("bar").is_err());
     }
 }

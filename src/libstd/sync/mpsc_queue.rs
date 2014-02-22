@@ -117,8 +117,8 @@ impl<T: Send> Queue<T> {
 
             if !next.is_null() {
                 self.tail = next;
-                assert!((*tail).value.is_none());
-                assert!((*next).value.is_some());
+                fail_unless!((*tail).value.is_none());
+                fail_unless!((*next).value.is_some());
                 let ret = (*next).value.take_unwrap();
                 let _: ~Node<T> = cast::transmute(tail);
                 return Data(ret);

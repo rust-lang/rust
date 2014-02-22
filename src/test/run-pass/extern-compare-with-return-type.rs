@@ -21,7 +21,7 @@ extern fn uintuintuintuintret(x: uint, y: uint, z: uint) -> uint { x+y+z }
 
 pub fn main() {
     assert_eq!(voidret1, voidret1);
-    assert!(voidret1 != voidret2);
+    fail_unless!(voidret1 != voidret2);
 
     assert_eq!(uintret, uintret);
 

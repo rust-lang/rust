@@ -98,7 +98,7 @@ pub fn trans_block<'a>(bcx: &'a Block<'a>,
             bcx = expr::trans_into(bcx, e, dest);
         }
         None => {
-            assert!(dest == expr::Ignore || bcx.unreachable.get());
+            fail_unless!(dest == expr::Ignore || bcx.unreachable.get());
         }
     }
 

@@ -346,7 +346,7 @@ impl<T: Send> Buffer<T> {
     unsafe fn new(log_size: int) -> Buffer<T> {
         let size = (1 << log_size) * mem::size_of::<T>();
         let buffer = libc::malloc(size as libc::size_t);
-        assert!(!buffer.is_null());
+        fail_unless!(!buffer.is_null());
         Buffer {
             storage: buffer as *T,
             log_size: log_size,

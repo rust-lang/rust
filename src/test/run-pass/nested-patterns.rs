@@ -15,7 +15,7 @@ struct C { c: int }
 
 pub fn main() {
     match A {a: 10, b: 20} {
-        x@A {a, b: 20} => { assert!(x.a == 10); assert!(a == 10); }
+        x@A {a, b: 20} => { fail_unless!(x.a == 10); fail_unless!(a == 10); }
         A {b: _b, ..} => { fail!(); }
     }
     let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};

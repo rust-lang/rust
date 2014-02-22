@@ -31,6 +31,6 @@ impl Eq for colour {
     fn ne(&self, other: &colour) -> bool { !(*self).eq(other) }
 }
 
-fn f() { let x = red(1, 2); let y = green; assert!((x != y)); }
+fn f() { let x = red(1, 2); let y = green; fail_unless!((x != y)); }
 
 pub fn main() { f(); }

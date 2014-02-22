@@ -141,7 +141,7 @@ impl FileSearch {
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
     let mut p = Path::new(libdir());
-    assert!(p.is_relative());
+    fail_unless!(p.is_relative());
     p.push(rustlibdir());
     p.push(target_triple);
     p.push("lib");

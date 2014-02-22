@@ -52,7 +52,7 @@ impl Results {
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i));
+                    fail_unless!(set.contains(&i));
                 }
             })
         }
@@ -74,7 +74,7 @@ impl Results {
 
             timed(&mut self.delete_ints, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i));
+                    fail_unless!(set.remove(&i));
                 }
             })
         }
@@ -94,7 +94,7 @@ impl Results {
                 }
 
                 for i in range(0u, num_keys) {
-                    assert!(set.contains(&i.to_str()));
+                    fail_unless!(set.contains(&i.to_str()));
                 }
             })
         }
@@ -116,7 +116,7 @@ impl Results {
             }
             timed(&mut self.delete_strings, || {
                 for i in range(0u, num_keys) {
-                    assert!(set.remove(&i.to_str()));
+                    fail_unless!(set.remove(&i.to_str()));
                 }
             })
         }

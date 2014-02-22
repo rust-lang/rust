@@ -57,17 +57,17 @@ fn compare<F:Float>(f1: F) -> bool {
 }
 
 pub fn main() {
-    assert!(compare::<f32>(6.28318530717958647692528676655900576));
-    assert!(compare::<f32>(6.29));
-    assert!(compare::<f32>(6.3));
-    assert!(compare::<f32>(6.19));
-    assert!(!compare::<f32>(7.28318530717958647692528676655900576));
-    assert!(!compare::<f32>(6.18));
+    fail_unless!(compare::<f32>(6.28318530717958647692528676655900576));
+    fail_unless!(compare::<f32>(6.29));
+    fail_unless!(compare::<f32>(6.3));
+    fail_unless!(compare::<f32>(6.19));
+    fail_unless!(!compare::<f32>(7.28318530717958647692528676655900576));
+    fail_unless!(!compare::<f32>(6.18));
 
-    assert!(compare::<f64>(6.28318530717958647692528676655900576));
-    assert!(compare::<f64>(6.29));
-    assert!(compare::<f64>(6.3));
-    assert!(compare::<f64>(6.19));
-    assert!(!compare::<f64>(7.28318530717958647692528676655900576));
-    assert!(!compare::<f64>(6.18));
+    fail_unless!(compare::<f64>(6.28318530717958647692528676655900576));
+    fail_unless!(compare::<f64>(6.29));
+    fail_unless!(compare::<f64>(6.3));
+    fail_unless!(compare::<f64>(6.19));
+    fail_unless!(!compare::<f64>(7.28318530717958647692528676655900576));
+    fail_unless!(!compare::<f64>(6.18));
 }

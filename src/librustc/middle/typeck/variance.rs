@@ -310,7 +310,7 @@ impl<'a> TermsContext<'a> {
                                                 param_id: param_id,
                                                 term: term });
         let newly_added = self.inferred_map.insert(param_id, inf_index);
-        assert!(newly_added);
+        fail_unless!(newly_added);
 
         debug!("add_inferred(item_id={}, \
                 kind={:?}, \
@@ -366,7 +366,7 @@ impl<'a> Visitor<()> for TermsContext<'a> {
                     let newly_added = item_variance_map.get().insert(
                         ast_util::local_def(item.id),
                         self.empty_variances);
-                    assert!(newly_added);
+                    fail_unless!(newly_added);
                 }
 
                 visit::walk_item(self, item, ());
@@ -913,7 +913,7 @@ impl<'a> SolveContext<'a> {
                 let info = &inferred_infos[index];
                 match info.kind {
                     SelfParam => {
-                        assert!(item_variances.self_param.is_none());
+                        fail_unless!(item_variances.self_param.is_none());
                         item_variances.self_param = Some(solutions[index]);
                     }
                     TypeParam => {
@@ -942,7 +942,7 @@ impl<'a> SolveContext<'a> {
             let mut item_variance_map = tcx.item_variance_map.borrow_mut();
             let newly_added = item_variance_map.get().insert(item_def_id,
                                                              @item_variances);
-            assert!(newly_added);
+            fail_unless!(newly_added);
         }
     }
 

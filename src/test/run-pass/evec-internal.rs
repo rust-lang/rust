@@ -27,25 +27,25 @@ pub fn main() {
 
     log(debug, a);
 
-    assert!(a < b);
-    assert!(a <= b);
-    assert!(a != b);
-    assert!(b >= a);
-    assert!(b > a);
+    fail_unless!(a < b);
+    fail_unless!(a <= b);
+    fail_unless!(a != b);
+    fail_unless!(b >= a);
+    fail_unless!(b > a);
 
     log(debug, b);
 
-    assert!(b < c);
-    assert!(b <= c);
-    assert!(b != c);
-    assert!(c >= b);
-    assert!(c > b);
+    fail_unless!(b < c);
+    fail_unless!(b <= c);
+    fail_unless!(b != c);
+    fail_unless!(c >= b);
+    fail_unless!(c > b);
 
-    assert!(a < c);
-    assert!(a <= c);
-    assert!(a != c);
-    assert!(c >= a);
-    assert!(c > a);
+    fail_unless!(a < c);
+    fail_unless!(a <= c);
+    fail_unless!(a != c);
+    fail_unless!(c >= a);
+    fail_unless!(c > a);
 
     log(debug, c);
 

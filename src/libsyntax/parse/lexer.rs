@@ -251,7 +251,7 @@ pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if current_byte_offset < (rdr.filemap.src).len() {
-        assert!(rdr.curr.get().is_some());
+        fail_unless!(rdr.curr.get().is_some());
         let last_char = rdr.curr.get().unwrap();
         let next = rdr.filemap.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
@@ -1127,9 +1127,9 @@ mod test {
     }
 
     #[test] fn line_doc_comments() {
-        assert!(!is_line_non_doc_comment("///"));
-        assert!(!is_line_non_doc_comment("/// blah"));
-        assert!(is_line_non_doc_comment("////"));
+        fail_unless!(!is_line_non_doc_comment("///"));
+        fail_unless!(!is_line_non_doc_comment("/// blah"));
+        fail_unless!(is_line_non_doc_comment("////"));
     }
 
     #[test] fn nested_block_comments() {

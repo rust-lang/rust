@@ -391,12 +391,12 @@ impl Printer {
         } else {
             self.top += 1u;
             self.top %= self.buf_len;
-            assert!((self.top != self.bottom));
+            fail_unless!((self.top != self.bottom));
         }
         self.scan_stack[self.top] = x;
     }
     pub fn scan_pop(&mut self) -> uint {
-        assert!((!self.scan_stack_empty));
+        fail_unless!((!self.scan_stack_empty));
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -404,11 +404,11 @@ impl Printer {
         return x;
     }
     pub fn scan_top(&mut self) -> uint {
-        assert!((!self.scan_stack_empty));
+        fail_unless!((!self.scan_stack_empty));
         return self.scan_stack[self.top];
     }
     pub fn scan_pop_bottom(&mut self) -> uint {
-        assert!((!self.scan_stack_empty));
+        fail_unless!((!self.scan_stack_empty));
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -418,7 +418,7 @@ impl Printer {
     pub fn advance_right(&mut self) {
         self.right += 1u;
         self.right %= self.buf_len;
-        assert!((self.right != self.left));
+        fail_unless!((self.right != self.left));
     }
     pub fn advance_left(&mut self, x: Token, L: int) -> io::IoResult<()> {
         debug!("advnce_left ~[{},{}], sizeof({})={}", self.left, self.right,
@@ -525,7 +525,7 @@ impl Printer {
           End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((print_stack.len() != 0u));
+            fail_unless!((print_stack.len() != 0u));
             print_stack.pop().unwrap();
             Ok(())
           }
@@ -565,7 +565,7 @@ impl Printer {
           String(s, len) => {
             debug!("print String({})", s);
             assert_eq!(L, len);
-            // assert!(L <= space);
+            // fail_unless!(L <= space);
             self.space -= len;
             self.print_str(s)
           }

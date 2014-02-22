@@ -758,7 +758,7 @@ pub fn Trap(cx: &Block) {
 pub fn LandingPad(cx: &Block, Ty: Type, PersFn: ValueRef,
                   NumClauses: uint) -> ValueRef {
     check_not_terminated(cx);
-    assert!(!cx.unreachable.get());
+    fail_unless!(!cx.unreachable.get());
     B(cx).landing_pad(Ty, PersFn, NumClauses)
 }
 

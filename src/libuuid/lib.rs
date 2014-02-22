@@ -418,8 +418,8 @@ impl Uuid {
         let vs = hex_groups.concat();
 
         // At this point, we know we have a valid hex string, without hyphens
-        assert!(vs.len() == 32);
-        assert!(vs.chars().all(|c| c.is_digit_radix(16)));
+        fail_unless!(vs.len() == 32);
+        fail_unless!(vs.chars().all(|c| c.is_digit_radix(16)));
 
         // Allocate output UUID buffer
         let mut ub = [0u8, ..16];
@@ -531,8 +531,8 @@ mod test {
         let nil = Uuid::nil();
         let not_nil = Uuid::new_v4();
 
-        assert!(nil.is_nil());
-        assert!(!not_nil.is_nil());
+        fail_unless!(nil.is_nil());
+        fail_unless!(!not_nil.is_nil());
     }
 
     #[test]
@@ -541,30 +541,30 @@ mod test {
         let uuid1 = Uuid::new(Version4Random).unwrap();
         let s = uuid1.to_simple_str();
 
-        assert!(s.len() == 32);
-        assert!(uuid1.get_version().unwrap() == Version4Random);
+        fail_unless!(s.len() == 32);
+        fail_unless!(uuid1.get_version().unwrap() == Version4Random);
 
         // Test unsupported versions
-        assert!(Uuid::new(Version1Mac) == None);
-        assert!(Uuid::new(Version2Dce) == None);
-        assert!(Uuid::new(Version3Md5) == None);
-        assert!(Uuid::new(Version5Sha1) == None);
+        fail_unless!(Uuid::new(Version1Mac) == None);
+        fail_unless!(Uuid::new(Version2Dce) == None);
+        fail_unless!(Uuid::new(Version3Md5) == None);
+        fail_unless!(Uuid::new(Version5Sha1) == None);
     }
 
     #[test]
     fn test_new_v4() {
         let uuid1 = Uuid::new_v4();
 
-        assert!(uuid1.get_version().unwrap() == Version4Random);
-        assert!(uuid1.get_variant().unwrap() == VariantRFC4122);
+        fail_unless!(uuid1.get_version().unwrap() == Version4Random);
+        fail_unless!(uuid1.get_variant().unwrap() == VariantRFC4122);
     }
 
     #[test]
     fn test_get_version() {
         let uuid1 = Uuid::new_v4();
 
-        assert!(uuid1.get_version().unwrap() == Version4Random);
-        assert!(uuid1.get_version_num() == 4);
+        fail_unless!(uuid1.get_version().unwrap() == Version4Random);
+        fail_unless!(uuid1.get_version_num() == 4);
     }
 
     #[test]
@@ -576,12 +576,12 @@ mod test {
         let uuid5 = Uuid::parse_string("F9168C5E-CEB2-4faa-D6BF-329BF39FA1E4").unwrap();
         let uuid6 = Uuid::parse_string("f81d4fae-7dec-11d0-7765-00a0c91e6bf6").unwrap();
 
-        assert!(uuid1.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid2.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid3.get_variant().unwrap() == VariantRFC4122);
-        assert!(uuid4.get_variant().unwrap() == VariantMicrosoft);
-        assert!(uuid5.get_variant().unwrap() == VariantMicrosoft);
-        assert!(uuid6.get_variant().unwrap() == VariantNCS);
+        fail_unless!(uuid1.get_variant().unwrap() == VariantRFC4122);
+        fail_unless!(uuid2.get_variant().unwrap() == VariantRFC4122);
+        fail_unless!(uuid3.get_variant().unwrap() == VariantRFC4122);
+        fail_unless!(uuid4.get_variant().unwrap() == VariantMicrosoft);
+        fail_unless!(uuid5.get_variant().unwrap() == VariantMicrosoft);
+        fail_unless!(uuid6.get_variant().unwrap() == VariantNCS);
     }
 
     #[test]
@@ -590,53 +590,53 @@ mod test {
                     ErrorInvalidGroupLength, ErrorInvalidLength};
 
         // Invalid
-        assert!(Uuid::parse_string("").is_err());
-        assert!(Uuid::parse_string("!").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF-329BF39FA1E45").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa-BBF-329BF39FA1E4").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa-BGBF-329BF39FA1E4").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BFF329BF39FA1E4").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faaXB6BFF329BF39FA1E4").is_err());
-        assert!(Uuid::parse_string("F9168C5E-CEB-24fa-eB6BFF32-BF39FA1E4").is_err());
-        assert!(Uuid::parse_string("01020304-1112-2122-3132-41424344").is_err());
-        assert!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").is_err());
-        assert!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c88").is_err());
-        assert!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0cg8").is_err());
-        assert!(Uuid::parse_string("67e5504410b1426%9247bb680e5fe0c8").is_err());
+        fail_unless!(Uuid::parse_string("").is_err());
+        fail_unless!(Uuid::parse_string("!").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF-329BF39FA1E45").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa-BBF-329BF39FA1E4").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa-BGBF-329BF39FA1E4").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BFF329BF39FA1E4").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faaXB6BFF329BF39FA1E4").is_err());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB-24fa-eB6BFF32-BF39FA1E4").is_err());
+        fail_unless!(Uuid::parse_string("01020304-1112-2122-3132-41424344").is_err());
+        fail_unless!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").is_err());
+        fail_unless!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c88").is_err());
+        fail_unless!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0cg8").is_err());
+        fail_unless!(Uuid::parse_string("67e5504410b1426%9247bb680e5fe0c8").is_err());
 
         // Valid
-        assert!(Uuid::parse_string("00000000000000000000000000000000").is_ok());
-        assert!(Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
-        assert!(Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
-        assert!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").is_ok());
-        assert!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c8").is_ok());
-        assert!(Uuid::parse_string("01020304-1112-2122-3132-414243444546").is_ok());
-        assert!(Uuid::parse_string("urn:uuid:67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
+        fail_unless!(Uuid::parse_string("00000000000000000000000000000000").is_ok());
+        fail_unless!(Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
+        fail_unless!(Uuid::parse_string("67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
+        fail_unless!(Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").is_ok());
+        fail_unless!(Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c8").is_ok());
+        fail_unless!(Uuid::parse_string("01020304-1112-2122-3132-414243444546").is_ok());
+        fail_unless!(Uuid::parse_string("urn:uuid:67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
 
         // Nil
         let nil = Uuid::nil();
-        assert!(Uuid::parse_string("00000000000000000000000000000000").unwrap()  == nil);
-        assert!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").unwrap() == nil);
+        fail_unless!(Uuid::parse_string("00000000000000000000000000000000").unwrap()  == nil);
+        fail_unless!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").unwrap() == nil);
 
         // Round-trip
         let uuid_orig = Uuid::new_v4();
         let orig_str = uuid_orig.to_str();
         let uuid_out = Uuid::parse_string(orig_str).unwrap();
-        assert!(uuid_orig == uuid_out);
+        fail_unless!(uuid_orig == uuid_out);
 
         // Test error reporting
         let e = Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match e { ErrorInvalidLength(n) => n==31, _ => false });
+        fail_unless!(match e { ErrorInvalidLength(n) => n==31, _ => false });
 
         let e = Uuid::parse_string("67e550X410b1426f9247bb680e5fe0cd").unwrap_err();
-        assert!(match e { ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
+        fail_unless!(match e { ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
 
         let e = Uuid::parse_string("67e550-4105b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match e { ErrorInvalidGroups(n) => n==2, _ => false });
+        fail_unless!(match e { ErrorInvalidGroups(n) => n==2, _ => false });
 
         let e = Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF1-02BF39FA1E4").unwrap_err();
-        assert!(match e { ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
+        fail_unless!(match e { ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
     }
 
     #[test]
@@ -644,8 +644,8 @@ mod test {
         let uuid1 = Uuid::new_v4();
         let s = uuid1.to_simple_str();
 
-        assert!(s.len() == 32);
-        assert!(s.chars().all(|c| c.is_digit_radix(16)));
+        fail_unless!(s.len() == 32);
+        fail_unless!(s.chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -653,8 +653,8 @@ mod test {
         let uuid1 = Uuid::new_v4();
         let s = uuid1.to_str();
 
-        assert!(s.len() == 32);
-        assert!(s.chars().all(|c| c.is_digit_radix(16)));
+        fail_unless!(s.len() == 32);
+        fail_unless!(s.chars().all(|c| c.is_digit_radix(16)));
     }
 
     #[test]
@@ -662,8 +662,8 @@ mod test {
         let uuid1 = Uuid::new_v4();
         let s = uuid1.to_hyphenated_str();
 
-        assert!(s.len() == 36);
-        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
+        fail_unless!(s.len() == 36);
+        fail_unless!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
@@ -672,9 +672,9 @@ mod test {
         let ss = uuid1.to_urn_str();
         let s = ss.slice(9, ss.len());
 
-        assert!(ss.starts_with("urn:uuid:"));
-        assert!(s.len() == 36);
-        assert!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
+        fail_unless!(ss.starts_with("urn:uuid:"));
+        fail_unless!(s.len() == 36);
+        fail_unless!(s.chars().all(|c| c.is_digit_radix(16) || c == '-'));
     }
 
     #[test]
@@ -686,7 +686,7 @@ mod test {
 
         let hsn = str::from_chars(hs.chars().filter(|&c| c != '-').collect::<~[char]>());
 
-        assert!(hsn == ss);
+        fail_unless!(hsn == ss);
     }
 
     #[test]
@@ -695,11 +695,11 @@ mod test {
 
         let hs = uuid.to_hyphenated_str();
         let uuid_hs = Uuid::parse_string(hs).unwrap();
-        assert!(uuid_hs == uuid);
+        fail_unless!(uuid_hs == uuid);
 
         let ss = uuid.to_str();
         let uuid_ss = Uuid::parse_string(ss).unwrap();
-        assert!(uuid_ss == uuid);
+        fail_unless!(uuid_ss == uuid);
     }
 
     #[test]
@@ -707,10 +707,10 @@ mod test {
         let uuid1 = Uuid::new_v4();
         let uuid2 = Uuid::new_v4();
 
-        assert!(uuid1 == uuid1);
-        assert!(uuid2 == uuid2);
-        assert!(uuid1 != uuid2);
-        assert!(uuid2 != uuid1);
+        fail_unless!(uuid1 == uuid1);
+        fail_unless!(uuid2 == uuid2);
+        fail_unless!(uuid1 != uuid2);
+        fail_unless!(uuid2 != uuid1);
     }
 
     #[test]
@@ -724,7 +724,7 @@ mod test {
 
         let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
         let result = u.to_simple_str();
-        assert!(result == expected);
+        fail_unless!(result == expected);
     }
 
     #[test]
@@ -735,7 +735,7 @@ mod test {
         let u = Uuid::from_bytes(b).unwrap();
         let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
 
-        assert!(u.to_simple_str() == expected);
+        fail_unless!(u.to_simple_str() == expected);
     }
 
     #[test]
@@ -743,8 +743,8 @@ mod test {
         let u = Uuid::new_v4();
         let ub = u.to_bytes();
 
-        assert!(ub.len() == 16);
-        assert!(! ub.iter().all(|&b| b == 0));
+        fail_unless!(ub.len() == 16);
+        fail_unless!(! ub.iter().all(|&b| b == 0));
     }
 
     #[test]
@@ -756,7 +756,7 @@ mod test {
 
         let b_out = u.to_bytes();
 
-        assert!(b_in == b_out);
+        fail_unless!(b_in == b_out);
     }
 
     #[test]
@@ -765,14 +765,14 @@ mod test {
         let u2 = u1.clone();
         let u3 = Uuid::new_v4();
 
-        assert!(u1 == u1);
-        assert!(u1 == u2);
-        assert!(u2 == u1);
+        fail_unless!(u1 == u1);
+        fail_unless!(u1 == u2);
+        fail_unless!(u2 == u1);
 
-        assert!(u1 != u3);
-        assert!(u3 != u1);
-        assert!(u2 != u3);
-        assert!(u3 != u2);
+        fail_unless!(u1 != u3);
+        fail_unless!(u3 != u1);
+        fail_unless!(u2 != u3);
+        fail_unless!(u3 != u2);
     }
 
     #[test]
@@ -781,8 +781,8 @@ mod test {
         let u: ~Uuid = rand::Rand::rand(&mut rng);
         let ub = u.to_bytes();
 
-        assert!(ub.len() == 16);
-        assert!(! ub.iter().all(|&b| b == 0));
+        fail_unless!(ub.len() == 16);
+        fail_unless!(! ub.iter().all(|&b| b == 0));
     }
 
     #[test]
@@ -805,8 +805,8 @@ mod test {
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();
         set.insert(id1);
-        assert!(set.contains(&id1));
-        assert!(!set.contains(&id2));
+        fail_unless!(set.contains(&id1));
+        fail_unless!(!set.contains(&id2));
     }
 }
 

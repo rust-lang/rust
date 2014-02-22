@@ -15,7 +15,7 @@
 macro_rules! assert_approx_eq(
     ($a:expr, $b:expr) => ({
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6,
+        fail_unless!((*a - *b).abs() < 1.0e-6,
                 "{} is not approximately equal to {}", *a, *b);
     })
 )
@@ -103,13 +103,13 @@ pub fn main() {
 
         // Causes linker error
         // undefined reference to llvm.ceil.f32/64
-        //assert!((ceilf32(-2.3f32) == -2.0f32));
-        //assert!((ceilf64(3.8f64) == 4.0f64));
+        //fail_unless!((ceilf32(-2.3f32) == -2.0f32));
+        //fail_unless!((ceilf64(3.8f64) == 4.0f64));
 
         // Causes linker error
         // undefined reference to llvm.trunc.f32/64
-        //assert!((truncf32(0.1f32) == 0.0f32));
-        //assert!((truncf64(-0.1f64) == 0.0f64));
+        //fail_unless!((truncf32(0.1f32) == 0.0f32));
+        //fail_unless!((truncf64(-0.1f64) == 0.0f64));
     }
 
 }

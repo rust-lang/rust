@@ -33,7 +33,7 @@ static mut hit: bool = false;
 impl Drop for A {
     fn drop(&mut self) {
         unsafe {
-            assert!(!hit);
+            fail_unless!(!hit);
             hit = true;
         }
     }
@@ -42,7 +42,7 @@ impl Drop for A {
 impl Drop for B {
     fn drop(&mut self) {
         unsafe {
-            assert!(hit);
+            fail_unless!(hit);
         }
     }
 }

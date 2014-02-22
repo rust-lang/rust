@@ -213,7 +213,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             }
 
             // The general case.
-            assert!((cases.len() - 1) as i64 >= 0);
+            fail_unless!((cases.len() - 1) as i64 >= 0);
             let bounds = IntBounds { ulo: 0, uhi: (cases.len() - 1) as u64,
                                      slo: 0, shi: (cases.len() - 1) as i64 };
             let ity = range_to_inttype(cx, hint, &bounds);
@@ -528,7 +528,7 @@ fn load_discr(bcx: &Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     let llty = ll_inttype(bcx.ccx(), ity);
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
-    assert!(bits <= 64);
+    fail_unless!(bits <= 64);
     let mask = (-1u64 >> (64 - bits)) as Disr;
     if (max + 1) & mask == min & mask {
         // i.e., if the range is everything.  The lo==hi case would be
@@ -566,7 +566,7 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
             bcx.ccx().sess.bug("no cases for univariants or structs")
         }
         NullablePointer{ .. } => {
-            assert!(discr == 0 || discr == 1);
+            fail_unless!(discr == 0 || discr == 1);
             _match::single_result(rslt(bcx, C_i1(discr != 0)))
         }
     }
@@ -608,8 +608,8 @@ pub fn trans_start_init(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
 
 fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     match ity {
-        attr::UnsignedInt(_) => assert!(min <= discr && discr <= max),
-        attr::SignedInt(_) => assert!(min as i64 <= discr as i64 && discr as i64 <= max as i64)
+        attr::UnsignedInt(_) => fail_unless!(min <= discr && discr <= max),
+        attr::SignedInt(_) => fail_unless!(min as i64 <= discr as i64 && discr as i64 <= max as i64)
     }
 }
 
@@ -642,7 +642,7 @@ pub fn deref_ty(ccx: &CrateContext, r: &Repr) -> ty::t {
             st.fields[0]
         }
         General(_, ref cases) => {
-            assert!(cases.len() == 1);
+            fail_unless!(cases.len() == 1);
             cases[0].fields[0]
         }
         NullablePointer{ .. } => {
@@ -745,7 +745,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             C_struct(contents + &[padding(max_sz - case.size)], false)
         }
         Univariant(ref st, _dro) => {
-            assert!(discr == 0);
+            fail_unless!(discr == 0);
             let contents = build_const_struct(ccx, st, vals);
             C_struct(contents, st.packed)
         }
@@ -793,7 +793,7 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
         }
         let val = if is_undef(vals[i]) {
             let wrapped = C_struct([vals[i]], false);
-            assert!(!is_undef(wrapped));
+            fail_unless!(!is_undef(wrapped));
             wrapped
         } else {
             vals[i]

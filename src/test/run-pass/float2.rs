@@ -23,12 +23,12 @@ pub fn main() {
     let j = 3.1e+9;
     let k = 3.2e-10;
     assert_eq!(a, b);
-    assert!((c < b));
+    fail_unless!((c < b));
     assert_eq!(c, d);
-    assert!((e < g));
-    assert!((f < h));
+    fail_unless!((e < g));
+    fail_unless!((f < h));
     assert_eq!(g, 1000000.0f32);
     assert_eq!(h, i);
-    assert!((j > k));
-    assert!((k < a));
+    fail_unless!((j > k));
+    fail_unless!((k < a));
 }

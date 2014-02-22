@@ -412,7 +412,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str, line: uint) ->
     begin_unwind_inner(~fmt::format(msg), file, line)
 }
 
-/// This is the entry point of unwinding for fail!() and assert!().
+/// This is the entry point of unwinding for fail!() and fail_unless!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
 pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
     // Note that this should be the only allocation performed in this code path.

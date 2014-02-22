@@ -68,7 +68,7 @@ impl Sudoku {
     }
 
     pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
-        assert!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
+        fail_unless!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         for line in reader.lines() {
@@ -269,7 +269,7 @@ fn check_DEFAULT_SUDOKU_solution() {
     sudoku.solve();
 
     // THEN
-    assert!(sudoku.equal(&solution));
+    fail_unless!(sudoku.equal(&solution));
 }
 
 fn main() {

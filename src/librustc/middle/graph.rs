@@ -354,7 +354,7 @@ mod test {
         let mut counter = 0;
         graph.each_incoming_edge(start_index, |edge_index, edge| {
             assert_eq!(graph.edge_data(edge_index), &edge.data);
-            assert!(counter < expected_incoming.len());
+            fail_unless!(counter < expected_incoming.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
@@ -372,7 +372,7 @@ mod test {
         let mut counter = 0;
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
             assert_eq!(graph.edge_data(edge_index), &edge.data);
-            assert!(counter < expected_outgoing.len());
+            fail_unless!(counter < expected_outgoing.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {

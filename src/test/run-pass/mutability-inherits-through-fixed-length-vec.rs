@@ -17,7 +17,7 @@ fn test1() {
 fn test2() {
     let mut ints = [0, ..32];
     for i in ints.mut_iter() { *i += 22; }
-    for i in ints.iter() { assert!(*i == 22); }
+    for i in ints.iter() { fail_unless!(*i == 22); }
 }
 
 pub fn main() {

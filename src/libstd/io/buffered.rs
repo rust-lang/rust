@@ -96,7 +96,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 
     fn consume(&mut self, amt: uint) {
         self.pos += amt;
-        assert!(self.pos <= self.cap);
+        fail_unless!(self.pos <= self.cap);
     }
 }
 
@@ -407,7 +407,7 @@ mod test {
         assert_eq!(Ok(1), nread);
         assert_eq!([4, 0, 0], buf);
 
-        assert!(reader.read(buf).is_err());
+        fail_unless!(reader.read(buf).is_err());
     }
 
     #[test]
@@ -475,7 +475,7 @@ mod test {
 
         let mut stream = BufferedStream::new(S);
         let mut buf = [];
-        assert!(stream.read(buf).is_err());
+        fail_unless!(stream.read(buf).is_err());
         stream.write(buf).unwrap();
         stream.flush().unwrap();
     }
@@ -488,7 +488,7 @@ mod test {
         assert_eq!(reader.read_until(2), Ok(~[1, 2]));
         assert_eq!(reader.read_until(1), Ok(~[1]));
         assert_eq!(reader.read_until(8), Ok(~[0]));
-        assert!(reader.read_until(9).is_err());
+        fail_unless!(reader.read_until(9).is_err());
     }
 
     #[test]
@@ -518,7 +518,7 @@ mod test {
         assert_eq!(reader.read_line(), Ok(~"a\n"));
         assert_eq!(reader.read_line(), Ok(~"b\n"));
         assert_eq!(reader.read_line(), Ok(~"c"));
-        assert!(reader.read_line().is_err());
+        fail_unless!(reader.read_line().is_err());
     }
 
     #[test]
@@ -543,7 +543,7 @@ mod test {
         assert_eq!(reader.read(buf), Ok(0));
         assert_eq!(reader.read(buf), Ok(1));
         assert_eq!(reader.read(buf), Ok(0));
-        assert!(reader.read(buf).is_err());
+        fail_unless!(reader.read(buf).is_err());
     }
 
     #[test]

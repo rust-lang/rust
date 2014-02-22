@@ -55,7 +55,7 @@ impl UvHandle<uvll::uv_async_t> for AsyncWatcher {
 }
 
 extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-    assert!(status == 0);
+    fail_unless!(status == 0);
     let payload: &mut Payload = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };

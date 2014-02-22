@@ -144,10 +144,10 @@ mod test {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
-                        assert!(!run);
+                        fail_unless!(!run);
                         run = true;
                     });
-                    assert!(run);
+                    fail_unless!(run);
                 }
                 c.send(());
             });
@@ -155,10 +155,10 @@ mod test {
 
         unsafe {
             o.doit(|| {
-                assert!(!run);
+                fail_unless!(!run);
                 run = true;
             });
-            assert!(run);
+            fail_unless!(run);
         }
 
         for _ in range(0, 10) {

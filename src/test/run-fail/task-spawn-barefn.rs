@@ -19,5 +19,5 @@ fn main() {
 }
 
 fn startfn() {
-    assert!("Ensure that the child task runs by failing".is_empty());
+    fail_unless!("Ensure that the child task runs by failing".is_empty());
 }

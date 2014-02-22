@@ -18,6 +18,6 @@ pub fn main() {
     //info!("%?", bt0);
     cci_iter_lib::iter([1, 2, 3], |i| {
         println!("{}", *i);
-        //assert!(bt0 == sys::rusti::frame_address(2u32));
+        //fail_unless!(bt0 == sys::rusti::frame_address(2u32));
     })
 }

@@ -1637,7 +1637,7 @@ mod tests {
                      assert_eq!(checked_next_power_of_two(i), Some(next_power));
                      if i == next_power { next_power *= 2 }
                 }
-                assert!(checked_next_power_of_two::<$T>($T::MAX / 2).is_some());
+                fail_unless!(checked_next_power_of_two::<$T>($T::MAX / 2).is_some());
                 assert_eq!(checked_next_power_of_two::<$T>($T::MAX - 1), None);
                 assert_eq!(checked_next_power_of_two::<$T>($T::MAX), None);
             }

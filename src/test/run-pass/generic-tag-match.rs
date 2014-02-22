@@ -15,7 +15,7 @@ enum foo<T> { arm(T), }
 fn altfoo<T>(f: foo<T>) {
     let mut hit = false;
     match f { arm::<T>(_x) => { info!("in arm"); hit = true; } }
-    assert!((hit));
+    fail_unless!((hit));
 }
 
 pub fn main() { altfoo::<int>(arm::<int>(10)); }

@@ -30,10 +30,10 @@ pub mod bar {
 pub fn main() {
     unsafe {
         let a = DynamicLibrary::open(None).unwrap();
-        assert!(a.symbol::<int>("fun1").is_ok());
-        assert!(a.symbol::<int>("fun2").is_err());
-        assert!(a.symbol::<int>("fun3").is_err());
-        assert!(a.symbol::<int>("fun4").is_ok());
-        assert!(a.symbol::<int>("fun5").is_err());
+        fail_unless!(a.symbol::<int>("fun1").is_ok());
+        fail_unless!(a.symbol::<int>("fun2").is_err());
+        fail_unless!(a.symbol::<int>("fun3").is_err());
+        fail_unless!(a.symbol::<int>("fun4").is_ok());
+        fail_unless!(a.symbol::<int>("fun5").is_err());
     }
 }

@@ -18,36 +18,36 @@ pub fn main() {
     let s: ~str = str::from_chars(chs);
     let schs: ~[char] = s.chars().collect();
 
-    assert!(s.len() == 10u);
-    assert!(s.char_len() == 4u);
-    assert!(schs.len() == 4u);
-    assert!(str::from_chars(schs) == s);
-    assert!(s.char_at(0u) == 'e');
-    assert!(s.char_at(1u) == 'é');
+    fail_unless!(s.len() == 10u);
+    fail_unless!(s.char_len() == 4u);
+    fail_unless!(schs.len() == 4u);
+    fail_unless!(str::from_chars(schs) == s);
+    fail_unless!(s.char_at(0u) == 'e');
+    fail_unless!(s.char_at(1u) == 'é');
 
-    assert!((str::is_utf8(s.as_bytes())));
+    fail_unless!((str::is_utf8(s.as_bytes())));
     // invalid prefix
-    assert!((!str::is_utf8([0x80_u8])));
+    fail_unless!((!str::is_utf8([0x80_u8])));
     // invalid 2 byte prefix
-    assert!((!str::is_utf8([0xc0_u8])));
-    assert!((!str::is_utf8([0xc0_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xc0_u8])));
+    fail_unless!((!str::is_utf8([0xc0_u8, 0x10_u8])));
     // invalid 3 byte prefix
-    assert!((!str::is_utf8([0xe0_u8])));
-    assert!((!str::is_utf8([0xe0_u8, 0x10_u8])));
-    assert!((!str::is_utf8([0xe0_u8, 0xff_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xe0_u8])));
+    fail_unless!((!str::is_utf8([0xe0_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xe0_u8, 0xff_u8, 0x10_u8])));
     // invalid 4 byte prefix
-    assert!((!str::is_utf8([0xf0_u8])));
-    assert!((!str::is_utf8([0xf0_u8, 0x10_u8])));
-    assert!((!str::is_utf8([0xf0_u8, 0xff_u8, 0x10_u8])));
-    assert!((!str::is_utf8([0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xf0_u8])));
+    fail_unless!((!str::is_utf8([0xf0_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xf0_u8, 0xff_u8, 0x10_u8])));
+    fail_unless!((!str::is_utf8([0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8])));
 
     let mut stack = ~"a×c€";
     assert_eq!(stack.pop_char(), '€');
     assert_eq!(stack.pop_char(), 'c');
     stack.push_char('u');
-    assert!(stack == ~"a×u");
+    fail_unless!(stack == ~"a×u");
     assert_eq!(stack.shift_char(), 'a');
     assert_eq!(stack.shift_char(), '×');
     stack.unshift_char('ß');
-    assert!(stack == ~"ßu");
+    fail_unless!(stack == ~"ßu");
 }

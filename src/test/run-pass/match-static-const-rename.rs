@@ -25,12 +25,12 @@ fn f() {
         (0, A) => 0,
         (x, y) => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
     let r = match (0,97) {
         (0, A) => 0,
         (x, y) => 1 + x + y,
     };
-    assert!(r == 0);
+    fail_unless!(r == 0);
 }
 
 mod m {
@@ -43,12 +43,12 @@ fn g() {
         (0, AHA) => 0,
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
     let r = match (0,7) {
         (0, AHA) => 0,
         (x, y)   => 1 + x + y,
     };
-    assert!(r == 0);
+    fail_unless!(r == 0);
 }
 
 fn h() {
@@ -56,12 +56,12 @@ fn h() {
         (0, self::m::aha) => 0,
         (x, y)      => 1 + x + y,
     };
-    assert!(r == 1);
+    fail_unless!(r == 1);
     let r = match (0,7) {
         (0, self::m::aha) => 0,
         (x, y)      => 1 + x + y,
     };
-    assert!(r == 0);
+    fail_unless!(r == 0);
 }
 
 pub fn main () {

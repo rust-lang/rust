@@ -125,7 +125,7 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
                                  -> ~str {
     use std::os;
 
-    assert!(not_win32(os));
+    fail_unless!(not_win32(os));
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
@@ -203,13 +203,13 @@ mod test {
         debug!("test_prefix_path: {} vs. {}",
                res,
                d.display());
-        assert!(res.as_bytes().ends_with(d.as_vec()));
+        fail_unless!(res.as_bytes().ends_with(d.as_vec()));
     }
 
     #[test]
     fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("triple");
-        assert!(Path::new(res).is_absolute());
+        fail_unless!(Path::new(res).is_absolute());
     }
 
     #[test]

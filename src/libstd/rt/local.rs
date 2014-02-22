@@ -116,7 +116,7 @@ mod test {
 
             let t: ~Task = Local::try_take().unwrap();
             let u: Option<~Task> = Local::try_take();
-            assert!(u.is_none());
+            fail_unless!(u.is_none());
 
             cleanup_task(t);
         });

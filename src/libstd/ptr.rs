@@ -418,14 +418,14 @@ pub mod ptr_tests {
 
             copy_memory(v1.as_mut_ptr().offset(1),
                         v0.as_ptr().offset(1), 1);
-            assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
+            fail_unless!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
             copy_memory(v1.as_mut_ptr(),
                         v0.as_ptr().offset(2), 1);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+            fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 0u16));
             copy_memory(v1.as_mut_ptr().offset(2),
                         v0.as_ptr(), 1u);
-            assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
+            fail_unless!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 32000u16));
         }
     }
@@ -436,9 +436,9 @@ pub mod ptr_tests {
 
         "hello".with_c_str(|p| {
             unsafe {
-                assert!(2u == position(p, |c| *c == 'l' as c_char));
-                assert!(4u == position(p, |c| *c == 'o' as c_char));
-                assert!(5u == position(p, |c| *c == 0 as c_char));
+                fail_unless!(2u == position(p, |c| *c == 'l' as c_char));
+                fail_unless!(4u == position(p, |c| *c == 'o' as c_char));
+                fail_unless!(5u == position(p, |c| *c == 0 as c_char));
             }
         })
     }
@@ -460,20 +460,20 @@ pub mod ptr_tests {
     #[test]
     fn test_is_null() {
         let p: *int = null();
-        assert!(p.is_null());
-        assert!(!p.is_not_null());
+        fail_unless!(p.is_null());
+        fail_unless!(!p.is_not_null());
 
         let q = unsafe { p.offset(1) };
-        assert!(!q.is_null());
-        assert!(q.is_not_null());
+        fail_unless!(!q.is_null());
+        fail_unless!(q.is_not_null());
 
         let mp: *mut int = mut_null();
-        assert!(mp.is_null());
-        assert!(!mp.is_not_null());
+        fail_unless!(mp.is_null());
+        fail_unless!(!mp.is_not_null());
 
         let mq = unsafe { mp.offset(1) };
-        assert!(!mq.is_null());
-        assert!(mq.is_not_null());
+        fail_unless!(!mq.is_null());
+        fail_unless!(mq.is_not_null());
     }
 
     #[test]

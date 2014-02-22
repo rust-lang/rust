@@ -32,6 +32,6 @@ pub fn main() {
 
         info!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);
-        assert!(&(*x.f) as *int != &(*b_x) as *int);
+        fail_unless!(&(*x.f) as *int != &(*b_x) as *int);
     })
 }

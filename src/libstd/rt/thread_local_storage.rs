@@ -65,12 +65,12 @@ pub type Key = DWORD;
 pub unsafe fn create(key: &mut Key) {
     static TLS_OUT_OF_INDEXES: DWORD = 0xFFFFFFFF;
     *key = TlsAlloc();
-    assert!(*key != TLS_OUT_OF_INDEXES);
+    fail_unless!(*key != TLS_OUT_OF_INDEXES);
 }
 
 #[cfg(windows)]
 pub unsafe fn set(key: Key, value: *mut u8) {
-    assert!(0 != TlsSetValue(key, value as *mut ::libc::c_void))
+    fail_unless!(0 != TlsSetValue(key, value as *mut ::libc::c_void))
 }
 
 #[cfg(windows)]
@@ -80,7 +80,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 
 #[cfg(windows)]
 pub unsafe fn destroy(key: Key) {
-    assert!(TlsFree(key) != 0);
+    fail_unless!(TlsFree(key) != 0);
 }
 
 #[cfg(windows)]

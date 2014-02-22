@@ -184,7 +184,7 @@ impl Select {
                     return (*p).id;
                 }
             }
-            assert!(amt > 0);
+            fail_unless!(amt > 0);
 
             let mut ready_index = amt;
             let mut ready_id = uint::MAX;
@@ -234,7 +234,7 @@ impl Select {
                 }
             }
 
-            assert!(ready_id != uint::MAX);
+            fail_unless!(ready_id != uint::MAX);
             return ready_id;
         }
     }
@@ -271,7 +271,7 @@ impl<'port, T: Send> Handle<'port, T> {
             selector.tail = me;
         } else {
             (*me).prev = selector.tail;
-            assert!((*me).next.is_null());
+            fail_unless!((*me).next.is_null());
             (*selector.tail).next = me;
             selector.tail = me;
         }
@@ -310,8 +310,8 @@ impl<'port, T: Send> Handle<'port, T> {
 #[unsafe_destructor]
 impl Drop for Select {
     fn drop(&mut self) {
-        assert!(self.head.is_null());
-        assert!(self.tail.is_null());
+        fail_unless!(self.head.is_null());
+        fail_unless!(self.tail.is_null());
     }
 }
 
@@ -458,8 +458,8 @@ mod test {
 
         for i in range(0, AMT) {
             select! (
-                i1 = p1.recv() => { assert!(i % 2 == 0 && i == i1); },
-                i2 = p2.recv() => { assert!(i % 2 == 1 && i == i2); }
+                i1 = p1.recv() => { fail_unless!(i % 2 == 0 && i == i1); },
+                i2 = p2.recv() => { fail_unless!(i % 2 == 1 && i == i2); }
             )
             c3.send(());
         }

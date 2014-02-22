@@ -488,7 +488,7 @@ impl<'a> Builder<'a> {
         debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
-        assert!(self.llbuilder.is_not_null());
+        fail_unless!(self.llbuilder.is_not_null());
         self.count_insn("store");
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr);
@@ -499,7 +499,7 @@ impl<'a> Builder<'a> {
         debug!("Store {} -> {}",
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
-        assert!(self.llbuilder.is_not_null());
+        fail_unless!(self.llbuilder.is_not_null());
         self.count_insn("store.volatile");
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
@@ -908,7 +908,7 @@ impl<'a> Builder<'a> {
             let T: ValueRef = "llvm.trap".with_c_str(|buf| {
                 llvm::LLVMGetNamedFunction(M, buf)
             });
-            assert!((T as int != 0));
+            fail_unless!((T as int != 0));
             let args: &[ValueRef] = [];
             self.count_insn("trap");
             llvm::LLVMBuildCall(

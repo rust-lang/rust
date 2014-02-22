@@ -244,8 +244,8 @@ mod tests {
     #[test]
     fn floating_point_edge_cases() {
         // the test for exact equality is correct here.
-        assert!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0)
-        assert!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0)
+        fail_unless!(ConstantRng(0xffff_ffff).gen::<f32>() != 1.0)
+        fail_unless!(ConstantRng(0xffff_ffff_ffff_ffff).gen::<f64>() != 1.0)
     }
 
     #[test]
@@ -256,10 +256,10 @@ mod tests {
         for _ in range(0, 1_000) {
             // strict inequalities
             let Open01(f) = rng.gen::<Open01<f64>>();
-            assert!(0.0 < f && f < 1.0);
+            fail_unless!(0.0 < f && f < 1.0);
 
             let Open01(f) = rng.gen::<Open01<f32>>();
-            assert!(0.0 < f && f < 1.0);
+            fail_unless!(0.0 < f && f < 1.0);
         }
     }
 
@@ -269,10 +269,10 @@ mod tests {
         for _ in range(0, 1_000) {
             // strict inequalities
             let Closed01(f) = rng.gen::<Closed01<f64>>();
-            assert!(0.0 <= f && f <= 1.0);
+            fail_unless!(0.0 <= f && f <= 1.0);
 
             let Closed01(f) = rng.gen::<Closed01<f32>>();
-            assert!(0.0 <= f && f <= 1.0);
+            fail_unless!(0.0 <= f && f <= 1.0);
         }
     }
 }

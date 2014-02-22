@@ -322,7 +322,7 @@ impl Bitv {
     /// Retrieve the value at index `i`
     #[inline]
     pub fn get(&self, i: uint) -> bool {
-        assert!((i < self.nbits));
+        fail_unless!((i < self.nbits));
         match self.rep {
             Big(ref b)   => b.get(i),
             Small(ref s) => s.get(i)
@@ -336,7 +336,7 @@ impl Bitv {
      */
     #[inline]
     pub fn set(&mut self, i: uint, x: bool) {
-      assert!((i < self.nbits));
+      fail_unless!((i < self.nbits));
       match self.rep {
         Big(ref mut b)   => b.set(i, x),
         Small(ref mut s) => s.set(i, x)
@@ -846,7 +846,7 @@ impl MutableSet<uint> for BitvSet {
         let nbits = self.capacity();
         if value >= nbits {
             let newsize = cmp::max(value, nbits * 2) / uint::BITS + 1;
-            assert!(newsize > self.bitv.storage.len());
+            fail_unless!(newsize > self.bitv.storage.len());
             self.bitv.storage.grow(newsize, &0);
         }
         self.size += 1;
@@ -965,15 +965,15 @@ mod tests {
     fn test_0_elements() {
         let act = Bitv::new(0u, false);
         let exp = vec::from_elem::<bool>(0u, false);
-        assert!(act.eq_vec(exp));
+        fail_unless!(act.eq_vec(exp));
     }
 
     #[test]
     fn test_1_element() {
         let mut act = Bitv::new(1u, false);
-        assert!(act.eq_vec([false]));
+        fail_unless!(act.eq_vec([false]));
         act = Bitv::new(1u, true);
-        assert!(act.eq_vec([true]));
+        fail_unless!(act.eq_vec([true]));
     }
 
     #[test]
@@ -990,12 +990,12 @@ mod tests {
         // all 0
 
         act = Bitv::new(10u, false);
-        assert!((act.eq_vec(
+        fail_unless!((act.eq_vec(
                     [false, false, false, false, false, false, false, false, false, false])));
         // all 1
 
         act = Bitv::new(10u, true);
-        assert!((act.eq_vec([true, true, true, true, true, true, true, true, true, true])));
+        fail_unless!((act.eq_vec([true, true, true, true, true, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -1004,7 +1004,7 @@ mod tests {
         act.set(2u, true);
         act.set(3u, true);
         act.set(4u, true);
-        assert!((act.eq_vec([true, true, true, true, true, false, false, false, false, false])));
+        fail_unless!((act.eq_vec([true, true, true, true, true, false, false, false, false, false])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -1013,7 +1013,7 @@ mod tests {
         act.set(7u, true);
         act.set(8u, true);
         act.set(9u, true);
-        assert!((act.eq_vec([false, false, false, false, false, true, true, true, true, true])));
+        fail_unless!((act.eq_vec([false, false, false, false, false, true, true, true, true, true])));
         // mixed
 
         act = Bitv::new(10u, false);
@@ -1021,7 +1021,7 @@ mod tests {
         act.set(3u, true);
         act.set(6u, true);
         act.set(9u, true);
-        assert!((act.eq_vec([true, false, false, true, false, false, true, false, false, true])));
+        fail_unless!((act.eq_vec([true, false, false, true, false, false, true, false, false, true])));
     }
 
     #[test]
@@ -1030,14 +1030,14 @@ mod tests {
         // all 0
 
         act = Bitv::new(31u, false);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(31u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true]));
@@ -1052,7 +1052,7 @@ mod tests {
         act.set(5u, true);
         act.set(6u, true);
         act.set(7u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false]));
@@ -1067,7 +1067,7 @@ mod tests {
         act.set(21u, true);
         act.set(22u, true);
         act.set(23u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false]));
@@ -1081,7 +1081,7 @@ mod tests {
         act.set(28u, true);
         act.set(29u, true);
         act.set(30u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true]));
@@ -1091,7 +1091,7 @@ mod tests {
         act.set(3u, true);
         act.set(17u, true);
         act.set(30u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true]));
@@ -1103,14 +1103,14 @@ mod tests {
         // all 0
 
         act = Bitv::new(32u, false);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(32u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true]));
@@ -1125,7 +1125,7 @@ mod tests {
         act.set(5u, true);
         act.set(6u, true);
         act.set(7u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false]));
@@ -1140,7 +1140,7 @@ mod tests {
         act.set(21u, true);
         act.set(22u, true);
         act.set(23u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false, false]));
@@ -1155,7 +1155,7 @@ mod tests {
         act.set(29u, true);
         act.set(30u, true);
         act.set(31u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true, true]));
@@ -1166,7 +1166,7 @@ mod tests {
         act.set(17u, true);
         act.set(30u, true);
         act.set(31u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true, true]));
@@ -1178,14 +1178,14 @@ mod tests {
         // all 0
 
         act = Bitv::new(33u, false);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false]));
         // all 1
 
         act = Bitv::new(33u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true]));
@@ -1200,7 +1200,7 @@ mod tests {
         act.set(5u, true);
         act.set(6u, true);
         act.set(7u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [true, true, true, true, true, true, true, true, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false]));
@@ -1215,7 +1215,7 @@ mod tests {
         act.set(21u, true);
         act.set(22u, true);
         act.set(23u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false, false, false]));
@@ -1230,7 +1230,7 @@ mod tests {
         act.set(29u, true);
         act.set(30u, true);
         act.set(31u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false, false, false, false,
                 false, true, true, true, true, true, true, true, true, false]));
@@ -1242,7 +1242,7 @@ mod tests {
         act.set(30u, true);
         act.set(31u, true);
         act.set(32u, true);
-        assert!(act.eq_vec(
+        fail_unless!(act.eq_vec(
                 [false, false, false, true, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, true, false, false, false, false, false, false,
                 false, false, false, false, false, false, true, true, true]));
@@ -1252,14 +1252,14 @@ mod tests {
     fn test_equal_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(11u, false);
-        assert!(!v0.equal(&v1));
+        fail_unless!(!v0.equal(&v1));
     }
 
     #[test]
     fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv::new(10u, false);
         let v1 = Bitv::new(110u, false);
-        assert!(!v0.equal(&v1));
+        fail_unless!(!v0.equal(&v1));
     }
 
     #[test]
@@ -1270,7 +1270,7 @@ mod tests {
         let mut b = bitv::Bitv::new(1, true);
         b.set(0, true);
 
-        assert!(a.equal(&b));
+        fail_unless!(a.equal(&b));
     }
 
     #[test]
@@ -1285,7 +1285,7 @@ mod tests {
             b.set(i, true);
         }
 
-        assert!(a.equal(&b));
+        fail_unless!(a.equal(&b));
     }
 
     #[test]
@@ -1309,7 +1309,7 @@ mod tests {
 
     #[test]
     fn test_from_bools() {
-        assert!(from_bools([true, false, true, true]).to_str() ==
+        fail_unless!(from_bools([true, false, true, true]).to_str() ==
             ~"1011");
     }
 
@@ -1347,7 +1347,7 @@ mod tests {
                 let bitset = BitvSet::from_bitv(Bitv::new(l, b));
                 assert_eq!(bitset.contains(&1u), b)
                 assert_eq!(bitset.contains(&(l-1u)), b)
-                assert!(!bitset.contains(&l))
+                fail_unless!(!bitset.contains(&l))
             }
         }
     }
@@ -1360,10 +1360,10 @@ mod tests {
         b1.set(1, true);
         b2.set(1, true);
         b2.set(2, true);
-        assert!(b1.difference(&b2));
-        assert!(b1[0]);
-        assert!(!b1[1]);
-        assert!(!b1[2]);
+        fail_unless!(b1.difference(&b2));
+        fail_unless!(b1[0]);
+        fail_unless!(!b1[1]);
+        fail_unless!(!b1[2]);
     }
 
     #[test]
@@ -1374,10 +1374,10 @@ mod tests {
         b1.set(40, true);
         b2.set(40, true);
         b2.set(80, true);
-        assert!(b1.difference(&b2));
-        assert!(b1[0]);
-        assert!(!b1[40]);
-        assert!(!b1[80]);
+        fail_unless!(b1.difference(&b2));
+        fail_unless!(b1[0]);
+        fail_unless!(!b1[40]);
+        fail_unless!(!b1[80]);
     }
 
     #[test]
@@ -1401,12 +1401,12 @@ mod tests {
     #[test]
     fn test_bitv_set_basic() {
         let mut b = BitvSet::new();
-        assert!(b.insert(3));
-        assert!(!b.insert(3));
-        assert!(b.contains(&3));
-        assert!(b.insert(400));
-        assert!(!b.insert(400));
-        assert!(b.contains(&400));
+        fail_unless!(b.insert(3));
+        fail_unless!(!b.insert(3));
+        fail_unless!(b.contains(&3));
+        fail_unless!(b.insert(400));
+        fail_unless!(!b.insert(400));
+        fail_unless!(b.contains(&400));
         assert_eq!(b.len(), 2);
     }
 
@@ -1415,18 +1415,18 @@ mod tests {
         let mut a = BitvSet::new();
         let mut b = BitvSet::new();
 
-        assert!(a.insert(11));
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(77));
-        assert!(a.insert(103));
-        assert!(a.insert(5));
+        fail_unless!(a.insert(11));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(77));
+        fail_unless!(a.insert(103));
+        fail_unless!(a.insert(5));
 
-        assert!(b.insert(2));
-        assert!(b.insert(11));
-        assert!(b.insert(77));
-        assert!(b.insert(5));
-        assert!(b.insert(3));
+        fail_unless!(b.insert(2));
+        fail_unless!(b.insert(11));
+        fail_unless!(b.insert(77));
+        fail_unless!(b.insert(5));
+        fail_unless!(b.insert(3));
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
@@ -1443,14 +1443,14 @@ mod tests {
         let mut a = BitvSet::new();
         let mut b = BitvSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(200));
-        assert!(a.insert(500));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(200));
+        fail_unless!(a.insert(500));
 
-        assert!(b.insert(3));
-        assert!(b.insert(200));
+        fail_unless!(b.insert(3));
+        fail_unless!(b.insert(200));
 
         let mut i = 0;
         let expected = [1, 5, 500];
@@ -1467,16 +1467,16 @@ mod tests {
         let mut a = BitvSet::new();
         let mut b = BitvSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
-        assert!(a.insert(11));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(9));
+        fail_unless!(a.insert(11));
 
-        assert!(b.insert(3));
-        assert!(b.insert(9));
-        assert!(b.insert(14));
-        assert!(b.insert(220));
+        fail_unless!(b.insert(3));
+        fail_unless!(b.insert(9));
+        fail_unless!(b.insert(14));
+        fail_unless!(b.insert(220));
 
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
@@ -1492,20 +1492,20 @@ mod tests {
     fn test_bitv_set_union() {
         let mut a = BitvSet::new();
         let mut b = BitvSet::new();
-        assert!(a.insert(1));
-        assert!(a.insert(3));
-        assert!(a.insert(5));
-        assert!(a.insert(9));
-        assert!(a.insert(11));
-        assert!(a.insert(160));
-        assert!(a.insert(19));
-        assert!(a.insert(24));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(3));
+        fail_unless!(a.insert(5));
+        fail_unless!(a.insert(9));
+        fail_unless!(a.insert(11));
+        fail_unless!(a.insert(160));
+        fail_unless!(a.insert(19));
+        fail_unless!(a.insert(24));
 
-        assert!(b.insert(1));
-        assert!(b.insert(5));
-        assert!(b.insert(9));
-        assert!(b.insert(13));
-        assert!(b.insert(19));
+        fail_unless!(b.insert(1));
+        fail_unless!(b.insert(5));
+        fail_unless!(b.insert(9));
+        fail_unless!(b.insert(13));
+        fail_unless!(b.insert(19));
 
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
@@ -1521,14 +1521,14 @@ mod tests {
     fn test_bitv_remove() {
         let mut a = BitvSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.remove(&1));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.remove(&1));
 
-        assert!(a.insert(100));
-        assert!(a.remove(&100));
+        fail_unless!(a.insert(100));
+        fail_unless!(a.remove(&100));
 
-        assert!(a.insert(1000));
-        assert!(a.remove(&1000));
+        fail_unless!(a.insert(1000));
+        fail_unless!(a.remove(&1000));
         assert_eq!(a.capacity(), uint::BITS);
     }
 
@@ -1536,19 +1536,19 @@ mod tests {
     fn test_bitv_clone() {
         let mut a = BitvSet::new();
 
-        assert!(a.insert(1));
-        assert!(a.insert(100));
-        assert!(a.insert(1000));
+        fail_unless!(a.insert(1));
+        fail_unless!(a.insert(100));
+        fail_unless!(a.insert(1000));
 
         let mut b = a.clone();
 
         assert_eq!(&a, &b);
 
-        assert!(b.remove(&1));
-        assert!(a.contains(&1));
+        fail_unless!(b.remove(&1));
+        fail_unless!(a.contains(&1));
 
-        assert!(a.remove(&1000));
-        assert!(b.contains(&1000));
+        fail_unless!(a.remove(&1000));
+        fail_unless!(b.contains(&1000));
     }
 
     fn rng() -> rand::IsaacRng {

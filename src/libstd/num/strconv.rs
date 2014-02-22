@@ -134,7 +134,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * - Fails if `radix` < 2 or `radix` > 36.
  */
 pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
-    assert!(2 <= radix && radix <= 36);
+    fail_unless!(2 <= radix && radix <= 36);
 
     let _0: T = Zero::zero();
 
@@ -240,7 +240,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
         ) -> (~[u8], bool) {
-    assert!(2 <= radix && radix <= 36);
+    fail_unless!(2 <= radix && radix <= 36);
     match exp_format {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
           => fail!("float_to_str_bytes_common: radix {} incompatible with \

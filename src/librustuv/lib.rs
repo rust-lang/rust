@@ -103,7 +103,7 @@ pub trait UvHandle<T> {
     fn alloc(_: Option<Self>, ty: uvll::uv_handle_type) -> *T {
         unsafe {
             let handle = uvll::malloc_handle(ty);
-            assert!(!handle.is_null());
+            fail_unless!(!handle.is_null());
             handle as *T
         }
     }
@@ -173,7 +173,7 @@ impl ForbidSwitch {
 
 impl Drop for ForbidSwitch {
     fn drop(&mut self) {
-        assert!(self.io == homing::local_id(),
+        fail_unless!(self.io == homing::local_id(),
                 "didnt want a scheduler switch: {}",
                 self.msg);
     }
@@ -194,7 +194,7 @@ impl ForbidUnwind {
 
 impl Drop for ForbidUnwind {
     fn drop(&mut self) {
-        assert!(self.failing_before == task::failing(),
+        fail_unless!(self.failing_before == task::failing(),
                 "didnt want an unwind during: {}", self.msg);
     }
 }
@@ -204,7 +204,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
                           f: ||) {
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
-        assert!((*slot).is_none());
+        fail_unless!((*slot).is_none());
         let task: ~Task = Local::take();
         loop_.modify_blockers(1);
         task.deschedule(1, |task| {
@@ -217,7 +217,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
 }
 
 fn wakeup(slot: &mut Option<BlockedTask>) {
-    assert!(slot.is_some());
+    fail_unless!(slot.is_some());
     let _ = slot.take_unwrap().wake().map(|t| t.reawaken());
 }
 
@@ -245,7 +245,7 @@ impl Request {
 
     pub unsafe fn get_data<T>(&self) -> &'static mut T {
         let data = uvll::get_data_for_req(self.handle);
-        assert!(data != null());
+        fail_unless!(data != null());
         cast::transmute(data)
     }
 
@@ -280,7 +280,7 @@ pub struct Loop {
 impl Loop {
     pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
-        assert!(handle.is_not_null());
+        fail_unless!(handle.is_not_null());
         unsafe { uvll::set_data_for_uv_loop(handle, 0 as *c_void) }
         Loop::wrap(handle)
     }
@@ -319,7 +319,7 @@ impl UvError {
         unsafe {
             let inner = match self { &UvError(a) => a };
             let name_str = uvll::uv_err_name(inner);
-            assert!(name_str.is_not_null());
+            fail_unless!(name_str.is_not_null());
             from_c_str(name_str)
         }
     }
@@ -328,7 +328,7 @@ impl UvError {
         unsafe {
             let inner = match self { &UvError(a) => a };
             let desc_str = uvll::uv_strerror(inner);
-            assert!(desc_str.is_not_null());
+            fail_unless!(desc_str.is_not_null());
             from_c_str(desc_str)
         }
     }
@@ -450,8 +450,8 @@ mod test {
             (*base.offset(1)) = 2;
         }
 
-        assert!(slice[0] == 1);
-        assert!(slice[1] == 2);
+        fail_unless!(slice[0] == 1);
+        fail_unless!(slice[1] == 2);
     }
 
 

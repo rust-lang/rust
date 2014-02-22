@@ -662,7 +662,7 @@ impl CoherenceChecker {
         let associated_traits = get_impl_trait(tcx, implementation.did);
 
         // Do a sanity check.
-        assert!(associated_traits.is_some());
+        fail_unless!(associated_traits.is_some());
 
         // Record all the trait methods.
         for trait_ref in associated_traits.iter() {

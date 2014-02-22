@@ -81,7 +81,7 @@ impl <T> CVec<T> {
      * * len - The number of elements in the buffer
      */
     pub unsafe fn new(base: *mut T, len: uint) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        fail_unless!(base != ptr::mut_null());
         CVec {
             base: base,
             len: len,
@@ -103,7 +103,7 @@ impl <T> CVec<T> {
      *          for freeing the buffer, etc.
      */
     pub unsafe fn new_with_dtor(base: *mut T, len: uint, dtor: proc()) -> CVec<T> {
-        assert!(base != ptr::mut_null());
+        fail_unless!(base != ptr::mut_null());
         CVec {
             base: base,
             len: len,
@@ -117,7 +117,7 @@ impl <T> CVec<T> {
      * Fails if `ofs` is greater or equal to the length of the vector
      */
     pub fn get<'a>(&'a self, ofs: uint) -> &'a T {
-        assert!(ofs < self.len);
+        fail_unless!(ofs < self.len);
         unsafe {
             &*self.base.offset(ofs as int)
         }
@@ -129,7 +129,7 @@ impl <T> CVec<T> {
      * Fails if `ofs` is greater or equal to the length of the vector
      */
     pub fn get_mut<'a>(&'a mut self, ofs: uint) -> &'a mut T {
-        assert!(ofs < self.len);
+        fail_unless!(ofs < self.len);
         unsafe {
             &mut *self.base.offset(ofs as int)
         }

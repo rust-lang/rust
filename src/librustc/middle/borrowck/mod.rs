@@ -509,7 +509,7 @@ impl BorrowckCtxt {
                        pat: @ast::Pat,
                        op: |mc::cmt, &ast::Pat|) {
         let r = self.mc().cat_pattern(cmt, pat, |_,x,y| op(x,y));
-        assert!(r.is_ok());
+        fail_unless!(r.is_ok());
     }
 
     pub fn report(&self, err: BckError) {

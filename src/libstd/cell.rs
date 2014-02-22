@@ -84,7 +84,7 @@ impl<T> RefCell<T> {
 
     /// Consumes the `RefCell`, returning the wrapped value.
     pub fn unwrap(self) -> T {
-        assert!(self.borrow == UNUSED);
+        fail_unless!(self.borrow == UNUSED);
         self.value
     }
 
@@ -232,7 +232,7 @@ pub struct Ref<'b, T> {
 #[unsafe_destructor]
 impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
+        fail_unless!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
         unsafe { self.parent.as_mut().borrow -= 1; }
     }
 }
@@ -253,7 +253,7 @@ pub struct RefMut<'b, T> {
 #[unsafe_destructor]
 impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow == WRITING);
+        fail_unless!(self.parent.borrow == WRITING);
         self.parent.borrow = UNUSED;
     }
 }
@@ -292,21 +292,21 @@ mod test {
     fn no_mut_then_imm_borrow() {
         let x = RefCell::new(0);
         let _b1 = x.borrow_mut();
-        assert!(x.try_borrow().is_none());
+        fail_unless!(x.try_borrow().is_none());
     }
 
     #[test]
     fn no_imm_then_borrow_mut() {
         let x = RefCell::new(0);
         let _b1 = x.borrow();
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]
     fn no_double_borrow_mut() {
         let x = RefCell::new(0);
         let _b1 = x.borrow_mut();
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]
@@ -334,7 +334,7 @@ mod test {
         {
             let _b2 = x.borrow();
         }
-        assert!(x.try_borrow_mut().is_none());
+        fail_unless!(x.try_borrow_mut().is_none());
     }
 
     #[test]

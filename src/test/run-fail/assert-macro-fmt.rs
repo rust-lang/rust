@@ -11,5 +11,5 @@
 // error-pattern:failed at 'test-assert-fmt 42 rust'
 
 fn main() {
-    assert!(false, "test-assert-fmt {} {}", 42, "rust");
+    fail_unless!(false, "test-assert-fmt {} {}", 42, "rust");
 }

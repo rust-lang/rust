@@ -208,7 +208,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         stream.read(buf).unwrap();
-        assert!(buf[0] == 99);
+        fail_unless!(buf[0] == 99);
     })
 
     iotest!(fn smoke_test_ip6() {
@@ -226,7 +226,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         stream.read(buf).unwrap();
-        assert!(buf[0] == 99);
+        fail_unless!(buf[0] == 99);
     })
 
     iotest!(fn read_eof_ip4() {
@@ -244,7 +244,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_err());
+        fail_unless!(nread.is_err());
     })
 
     iotest!(fn read_eof_ip6() {
@@ -262,7 +262,7 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_err());
+        fail_unless!(nread.is_err());
     })
 
     iotest!(fn read_eof_twice_ip4() {
@@ -280,12 +280,12 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_err());
+        fail_unless!(nread.is_err());
 
         match stream.read(buf) {
             Ok(..) => fail!(),
             Err(ref e) => {
-                assert!(e.kind == NotConnected || e.kind == EndOfFile,
+                fail_unless!(e.kind == NotConnected || e.kind == EndOfFile,
                         "unknown kind: {:?}", e.kind);
             }
         }
@@ -306,12 +306,12 @@ mod test {
         let mut stream = acceptor.accept();
         let mut buf = [0];
         let nread = stream.read(buf);
-        assert!(nread.is_err());
+        fail_unless!(nread.is_err());
 
         match stream.read(buf) {
             Ok(..) => fail!(),
             Err(ref e) => {
-                assert!(e.kind == NotConnected || e.kind == EndOfFile,
+                fail_unless!(e.kind == NotConnected || e.kind == EndOfFile,
                         "unknown kind: {:?}", e.kind);
             }
         }
@@ -335,7 +335,7 @@ mod test {
             match stream.write(buf) {
                 Ok(..) => {}
                 Err(e) => {
-                    assert!(e.kind == ConnectionReset ||
+                    fail_unless!(e.kind == ConnectionReset ||
                             e.kind == BrokenPipe ||
                             e.kind == ConnectionAborted,
                             "unknown error: {:?}", e);
@@ -363,7 +363,7 @@ mod test {
             match stream.write(buf) {
                 Ok(..) => {}
                 Err(e) => {
-                    assert!(e.kind == ConnectionReset ||
+                    fail_unless!(e.kind == ConnectionReset ||
                             e.kind == BrokenPipe ||
                             e.kind == ConnectionAborted,
                             "unknown error: {:?}", e);
@@ -431,7 +431,7 @@ mod test {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf).unwrap();
-                    assert!(buf[0] == i as u8);
+                    fail_unless!(buf[0] == i as u8);
                     debug!("read");
                 });
             }
@@ -468,7 +468,7 @@ mod test {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf).unwrap();
-                    assert!(buf[0] == i as u8);
+                    fail_unless!(buf[0] == i as u8);
                     debug!("read");
                 });
             }
@@ -505,7 +505,7 @@ mod test {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf).unwrap();
-                    assert!(buf[0] == 99);
+                    fail_unless!(buf[0] == 99);
                     debug!("read");
                 });
             }
@@ -542,7 +542,7 @@ mod test {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf).unwrap();
-                    assert!(buf[0] == 99);
+                    fail_unless!(buf[0] == 99);
                     debug!("read");
                 });
             }
@@ -571,7 +571,7 @@ mod test {
         // Make sure socket_name gives
         // us the socket we binded to.
         let so_name = listener.socket_name();
-        assert!(so_name.is_ok());
+        fail_unless!(so_name.is_ok());
         assert_eq!(addr, so_name.unwrap());
     }
 
@@ -587,14 +587,14 @@ mod test {
         port.recv();
         let stream = TcpStream::connect(addr);
 
-        assert!(stream.is_ok());
+        fail_unless!(stream.is_ok());
         let mut stream = stream.unwrap();
 
         // Make sure peer_name gives us the
         // address/port of the peer we've
         // connected to.
         let peer_name = stream.peer_name();
-        assert!(peer_name.is_ok());
+        fail_unless!(peer_name.is_ok());
         assert_eq!(addr, peer_name.unwrap());
     }
 
@@ -633,11 +633,11 @@ mod test {
     iotest!(fn double_bind() {
         let addr = next_test_ip4();
         let listener = TcpListener::bind(addr).unwrap().listen();
-        assert!(listener.is_ok());
+        fail_unless!(listener.is_ok());
         match TcpListener::bind(addr).listen() {
             Ok(..) => fail!(),
             Err(e) => {
-                assert!(e.kind == ConnectionRefused || e.kind == OtherIoError);
+                fail_unless!(e.kind == ConnectionRefused || e.kind == OtherIoError);
             }
         }
     })

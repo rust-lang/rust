@@ -23,5 +23,5 @@ fn foo<T: Foo>(val: T, chan: Chan<T>) {
 pub fn main() {
     let (p,c) = Chan::new();
     foo(31337, c);
-    assert!(p.recv() == 31337);
+    fail_unless!(p.recv() == 31337);
 }

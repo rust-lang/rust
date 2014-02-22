@@ -20,5 +20,5 @@ pub fn main() {
     let c: extern "C" fn() = g;
 
     assert_eq!(a, b);
-    assert!(a != c);
+    fail_unless!(a != c);
 }

@@ -219,7 +219,7 @@ pub trait Rng {
     /// println!("{}", m);
     /// ```
     fn gen_range<T: Ord + SampleRange>(&mut self, low: T, high: T) -> T {
-        assert!(low < high, "Rng.gen_range called with low >= high");
+        fail_unless!(low < high, "Rng.gen_range called with low >= high");
         Range::new(low, high).ind_sample(self)
     }
 
@@ -493,7 +493,7 @@ impl Rng for XorShiftRng {
 impl SeedableRng<[u32, .. 4]> for XorShiftRng {
     /// Reseed an XorShiftRng. This will fail if `seed` is entirely 0.
     fn reseed(&mut self, seed: [u32, .. 4]) {
-        assert!(!seed.iter().all(|&x| x == 0),
+        fail_unless!(!seed.iter().all(|&x| x == 0),
                 "XorShiftRng.reseed called with an all zero seed.");
 
         self.x = seed[0];
@@ -504,7 +504,7 @@ impl SeedableRng<[u32, .. 4]> for XorShiftRng {
 
     /// Create a new XorShiftRng. This will fail if `seed` is entirely 0.
     fn from_seed(seed: [u32, .. 4]) -> XorShiftRng {
-        assert!(!seed.iter().all(|&x| x == 0),
+        fail_unless!(!seed.iter().all(|&x| x == 0),
                 "XorShiftRng::from_seed called with an all zero seed.");
 
         XorShiftRng {
@@ -694,14 +694,14 @@ mod test {
         let mut r = rng();
         for _ in range(0, 1000) {
             let a = r.gen_range(-3i, 42);
-            assert!(a >= -3 && a < 42);
+            fail_unless!(a >= -3 && a < 42);
             assert_eq!(r.gen_range(0, 1), 0);
             assert_eq!(r.gen_range(-12, -11), -12);
         }
 
         for _ in range(0, 1000) {
             let a = r.gen_range(10, 42);
-            assert!(a >= 10 && a < 42);
+            fail_unless!(a >= 10 && a < 42);
             assert_eq!(r.gen_range(0, 1), 0);
             assert_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
         }
@@ -766,7 +766,7 @@ mod test {
     fn test_choose_option() {
         let mut r = rng();
         let v: &[int] = &[];
-        assert!(r.choose_option(v).is_none());
+        fail_unless!(r.choose_option(v).is_none());
 
         let i = 1;
         let v = [1,1,1];
@@ -814,7 +814,7 @@ mod test {
         assert_eq!(small_sample.len(), 5);
         assert_eq!(large_sample.len(), vals.len());
 
-        assert!(small_sample.iter().all(|e| {
+        fail_unless!(small_sample.iter().all(|e| {
             **e >= MIN_VAL && **e <= MAX_VAL
         }));
     }

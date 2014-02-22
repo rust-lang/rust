@@ -40,7 +40,7 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 pub fn main() {
     let x = ~[0,1,2,3];
     // Call a method
-    x.iterate(|y| { assert!(x[*y] == *y); true });
+    x.iterate(|y| { fail_unless!(x[*y] == *y); true });
     // Call a parameterized function
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require
@@ -50,7 +50,7 @@ pub fn main() {
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];
     // Call a method
-    z.iterate(|y| { assert!(z[*y] == *y); true });
+    z.iterate(|y| { fail_unless!(z[*y] == *y); true });
     // Call a parameterized function
     assert_eq!(length::<int, &[int]>(z), z.len());
 }

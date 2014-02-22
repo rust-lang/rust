@@ -674,7 +674,7 @@ mod tests {
     fn musterr(s: &str) {
         let mut p = Parser::new(s);
         p.next();
-        assert!(p.errors.len() != 0);
+        fail_unless!(p.errors.len() != 0);
     }
 
     #[test]

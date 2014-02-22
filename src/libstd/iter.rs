@@ -117,7 +117,7 @@ pub trait Iterator<A> {
     /// let mut it = a.iter().chain(b.iter());
     /// assert_eq!(it.next().unwrap(), &0);
     /// assert_eq!(it.next().unwrap(), &1);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn chain<U: Iterator<A>>(self, other: U) -> Chain<Self, U> {
@@ -136,7 +136,7 @@ pub trait Iterator<A> {
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
     /// assert_eq!(it.next().unwrap(), (&0, &1));
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn zip<B, U: Iterator<B>>(self, other: U) -> Zip<Self, U> {
@@ -153,7 +153,7 @@ pub trait Iterator<A> {
     /// let mut it = a.iter().map(|&x| 2 * x);
     /// assert_eq!(it.next().unwrap(), 2);
     /// assert_eq!(it.next().unwrap(), 4);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn map<'r, B>(self, f: 'r |A| -> B) -> Map<'r, A, B, Self> {
@@ -170,7 +170,7 @@ pub trait Iterator<A> {
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
     /// assert_eq!(it.next().unwrap(), &2);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn filter<'r>(self, predicate: 'r |&A| -> bool) -> Filter<'r, A, Self> {
@@ -187,7 +187,7 @@ pub trait Iterator<A> {
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
     /// assert_eq!(it.next().unwrap(), 4);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn filter_map<'r, B>(self, f: 'r |A| -> Option<B>) -> FilterMap<'r, A, B, Self> {
@@ -204,7 +204,7 @@ pub trait Iterator<A> {
     /// let mut it = a.iter().enumerate();
     /// assert_eq!(it.next().unwrap(), (0, &100));
     /// assert_eq!(it.next().unwrap(), (1, &200));
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn enumerate(self) -> Enumerate<Self> {
@@ -226,8 +226,8 @@ pub trait Iterator<A> {
     /// assert_eq!(it.peek().unwrap(), &300);
     /// assert_eq!(it.peek().unwrap(), &300);
     /// assert_eq!(it.next().unwrap(), 300);
-    /// assert!(it.peek().is_none());
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.peek().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn peekable(self) -> Peekable<A, Self> {
@@ -246,7 +246,7 @@ pub trait Iterator<A> {
     /// assert_eq!(it.next().unwrap(), &3);
     /// assert_eq!(it.next().unwrap(), &2);
     /// assert_eq!(it.next().unwrap(), &1);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn skip_while<'r>(self, predicate: 'r |&A| -> bool) -> SkipWhile<'r, A, Self> {
@@ -264,7 +264,7 @@ pub trait Iterator<A> {
     /// let mut it = a.iter().take_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn take_while<'r>(self, predicate: 'r |&A| -> bool) -> TakeWhile<'r, A, Self> {
@@ -281,7 +281,7 @@ pub trait Iterator<A> {
     /// let mut it = a.iter().skip(3);
     /// assert_eq!(it.next().unwrap(), &4);
     /// assert_eq!(it.next().unwrap(), &5);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn skip(self, n: uint) -> Skip<Self> {
@@ -299,7 +299,7 @@ pub trait Iterator<A> {
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
     /// assert_eq!(it.next().unwrap(), &3);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn take(self, n: uint) -> Take<Self> {
@@ -324,7 +324,7 @@ pub trait Iterator<A> {
     /// assert_eq!(it.next().unwrap(), 6);
     /// assert_eq!(it.next().unwrap(), 24);
     /// assert_eq!(it.next().unwrap(), 120);
-    /// assert!(it.next().is_none());
+    /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
     fn scan<'r, St, B>(self, initial_state: St, f: 'r |&mut St, A| -> Option<B>)
@@ -420,9 +420,9 @@ pub trait Iterator<A> {
     /// let mut xs = range(0, 10);
     /// // sum the first five values
     /// let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
-    /// assert!(partial_sum == 10);
+    /// fail_unless!(partial_sum == 10);
     /// // xs.next() is now `5`
-    /// assert!(xs.next() == Some(5));
+    /// fail_unless!(xs.next() == Some(5));
     /// ```
     fn by_ref<'r>(&'r mut self) -> ByRef<'r, Self> {
         ByRef{iter: self}
@@ -456,7 +456,7 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let b: ~[int] = a.iter().map(|&x| x).collect();
-    /// assert!(a == b);
+    /// fail_unless!(a == b);
     /// ```
     #[inline]
     fn collect<B: FromIterator<A>>(&mut self) -> B {
@@ -471,7 +471,7 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let b: ~[int] = a.iter().map(|&x| x).to_owned_vec();
-    /// assert!(a == b);
+    /// fail_unless!(a == b);
     /// ```
     #[inline]
     fn to_owned_vec(&mut self) -> ~[A] {
@@ -486,8 +486,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.nth(2).unwrap() == &3);
-    /// assert!(it.nth(2) == None);
+    /// fail_unless!(it.nth(2).unwrap() == &3);
+    /// fail_unless!(it.nth(2) == None);
     /// ```
     #[inline]
     fn nth(&mut self, mut n: uint) -> Option<A> {
@@ -507,7 +507,7 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().unwrap() == &5);
+    /// fail_unless!(a.iter().last().unwrap() == &5);
     /// ```
     #[inline]
     fn last(&mut self) -> Option<A> {
@@ -523,7 +523,7 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
+    /// fail_unless!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
     fn fold<B>(&mut self, init: B, f: |B, A| -> B) -> B {
@@ -544,8 +544,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.len() == 5);
-    /// assert!(it.len() == 0);
+    /// fail_unless!(it.len() == 5);
+    /// fail_unless!(it.len() == 0);
     /// ```
     #[inline]
     fn len(&mut self) -> uint {
@@ -558,8 +558,8 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().all(|x| *x > 0));
-    /// assert!(!a.iter().all(|x| *x > 2));
+    /// fail_unless!(a.iter().all(|x| *x > 0));
+    /// fail_unless!(!a.iter().all(|x| *x > 2));
     /// ```
     #[inline]
     fn all(&mut self, f: |A| -> bool) -> bool {
@@ -575,8 +575,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.any(|x| *x == 3));
-    /// assert!(!it.any(|x| *x == 3));
+    /// fail_unless!(it.any(|x| *x == 3));
+    /// fail_unless!(!it.any(|x| *x == 3));
     /// ```
     #[inline]
     fn any(&mut self, f: |A| -> bool) -> bool {
@@ -735,7 +735,7 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
     #[inline]
     fn rposition(&mut self, predicate: |A| -> bool) -> Option<uint> {
         let (lower, upper) = self.size_hint();
-        assert!(upper == Some(lower));
+        fail_unless!(upper == Some(lower));
         let mut i = lower;
         loop {
             match self.next_back() {
@@ -819,7 +819,7 @@ pub trait AdditiveIterator<A> {
     ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
-    /// assert!(it.sum() == 15);
+    /// fail_unless!(it.sum() == 15);
     /// ```
     fn sum(&mut self) -> A;
 }
@@ -845,9 +845,9 @@ pub trait MultiplicativeIterator<A> {
     /// fn factorial(n: uint) -> uint {
     ///     count(1u, 1).take_while(|&i| i <= n).product()
     /// }
-    /// assert!(factorial(0) == 1);
-    /// assert!(factorial(1) == 1);
-    /// assert!(factorial(5) == 120);
+    /// fail_unless!(factorial(0) == 1);
+    /// fail_unless!(factorial(1) == 1);
+    /// fail_unless!(factorial(5) == 120);
     /// ```
     fn product(&mut self) -> A;
 }
@@ -869,7 +869,7 @@ pub trait OrdIterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().max().unwrap() == &5);
+    /// fail_unless!(a.iter().max().unwrap() == &5);
     /// ```
     fn max(&mut self) -> Option<A>;
 
@@ -879,7 +879,7 @@ pub trait OrdIterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().min().unwrap() == &1);
+    /// fail_unless!(a.iter().min().unwrap() == &1);
     /// ```
     fn min(&mut self) -> Option<A>;
 
@@ -903,16 +903,16 @@ pub trait OrdIterator<A> {
     /// assert_eq!(v.iter().min_max(), NoElements);
     ///
     /// let v = [1i];
-    /// assert!(v.iter().min_max() == OneElement(&1));
+    /// fail_unless!(v.iter().min_max() == OneElement(&1));
     ///
     /// let v = [1i, 2, 3, 4, 5];
-    /// assert!(v.iter().min_max() == MinMax(&1, &5));
+    /// fail_unless!(v.iter().min_max() == MinMax(&1, &5));
     ///
     /// let v = [1i, 2, 3, 4, 5, 6];
-    /// assert!(v.iter().min_max() == MinMax(&1, &6));
+    /// fail_unless!(v.iter().min_max() == MinMax(&1, &6));
     ///
     /// let v = [1i, 1, 1, 1];
-    /// assert!(v.iter().min_max() == MinMax(&1, &1));
+    /// fail_unless!(v.iter().min_max() == MinMax(&1, &1));
     /// ```
     fn min_max(&mut self) -> MinMaxResult<A>;
 }
@@ -1211,8 +1211,8 @@ for Zip<T, U> {
     fn next_back(&mut self) -> Option<(A, B)> {
         let (a_sz, a_upper) = self.a.size_hint();
         let (b_sz, b_upper) = self.b.size_hint();
-        assert!(a_upper == Some(a_sz));
-        assert!(b_upper == Some(b_sz));
+        fail_unless!(a_upper == Some(a_sz));
+        fail_unless!(b_upper == Some(b_sz));
         if a_sz < b_sz {
             for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
         } else if a_sz > b_sz {
@@ -1220,7 +1220,7 @@ for Zip<T, U> {
         }
         let (a_sz, _) = self.a.size_hint();
         let (b_sz, _) = self.b.size_hint();
-        assert!(a_sz == b_sz);
+        fail_unless!(a_sz == b_sz);
         match (self.a.next_back(), self.b.next_back()) {
             (Some(x), Some(y)) => Some((x, y)),
             _ => None
@@ -1415,7 +1415,7 @@ impl<A, T: ExactSize<A>> DoubleEndedIterator<(uint, A)> for Enumerate<T> {
         match self.iter.next_back() {
             Some(a) => {
                 let (lower, upper) = self.iter.size_hint();
-                assert!(upper == Some(lower));
+                fail_unless!(upper == Some(lower));
                 Some((self.count + lower, a))
             }
             _ => None
@@ -2299,43 +2299,43 @@ pub mod order {
         let xs = [1,2,3];
         let ys = [1,2,0];
 
-        assert!(!lt(xs.iter(), ys.iter()));
-        assert!(!le(xs.iter(), ys.iter()));
-        assert!( gt(xs.iter(), ys.iter()));
-        assert!( ge(xs.iter(), ys.iter()));
+        fail_unless!(!lt(xs.iter(), ys.iter()));
+        fail_unless!(!le(xs.iter(), ys.iter()));
+        fail_unless!( gt(xs.iter(), ys.iter()));
+        fail_unless!( ge(xs.iter(), ys.iter()));
 
-        assert!( lt(ys.iter(), xs.iter()));
-        assert!( le(ys.iter(), xs.iter()));
-        assert!(!gt(ys.iter(), xs.iter()));
-        assert!(!ge(ys.iter(), xs.iter()));
+        fail_unless!( lt(ys.iter(), xs.iter()));
+        fail_unless!( le(ys.iter(), xs.iter()));
+        fail_unless!(!gt(ys.iter(), xs.iter()));
+        fail_unless!(!ge(ys.iter(), xs.iter()));
 
-        assert!( lt(empty.iter(), xs.iter()));
-        assert!( le(empty.iter(), xs.iter()));
-        assert!(!gt(empty.iter(), xs.iter()));
-        assert!(!ge(empty.iter(), xs.iter()));
+        fail_unless!( lt(empty.iter(), xs.iter()));
+        fail_unless!( le(empty.iter(), xs.iter()));
+        fail_unless!(!gt(empty.iter(), xs.iter()));
+        fail_unless!(!ge(empty.iter(), xs.iter()));
 
         // Sequence with NaN
         let u = [1.0, 2.0];
         let v = [0.0/0.0, 3.0];
 
-        assert!(!lt(u.iter(), v.iter()));
-        assert!(!le(u.iter(), v.iter()));
-        assert!(!gt(u.iter(), v.iter()));
-        assert!(!ge(u.iter(), v.iter()));
+        fail_unless!(!lt(u.iter(), v.iter()));
+        fail_unless!(!le(u.iter(), v.iter()));
+        fail_unless!(!gt(u.iter(), v.iter()));
+        fail_unless!(!ge(u.iter(), v.iter()));
 
         let a = [0.0/0.0];
         let b = [1.0];
         let c = [2.0];
 
-        assert!(lt(a.iter(), b.iter()) == (a[0] <  b[0]));
-        assert!(le(a.iter(), b.iter()) == (a[0] <= b[0]));
-        assert!(gt(a.iter(), b.iter()) == (a[0] >  b[0]));
-        assert!(ge(a.iter(), b.iter()) == (a[0] >= b[0]));
+        fail_unless!(lt(a.iter(), b.iter()) == (a[0] <  b[0]));
+        fail_unless!(le(a.iter(), b.iter()) == (a[0] <= b[0]));
+        fail_unless!(gt(a.iter(), b.iter()) == (a[0] >  b[0]));
+        fail_unless!(ge(a.iter(), b.iter()) == (a[0] >= b[0]));
 
-        assert!(lt(c.iter(), b.iter()) == (c[0] <  b[0]));
-        assert!(le(c.iter(), b.iter()) == (c[0] <= b[0]));
-        assert!(gt(c.iter(), b.iter()) == (c[0] >  b[0]));
-        assert!(ge(c.iter(), b.iter()) == (c[0] >= b[0]));
+        fail_unless!(lt(c.iter(), b.iter()) == (c[0] <  b[0]));
+        fail_unless!(le(c.iter(), b.iter()) == (c[0] <= b[0]));
+        fail_unless!(gt(c.iter(), b.iter()) == (c[0] >  b[0]));
+        fail_unless!(ge(c.iter(), b.iter()) == (c[0] >= b[0]));
     }
 }
 
@@ -2408,8 +2408,8 @@ mod tests {
         assert_eq!(it.next().unwrap(), 4);
         assert_eq!(it.peek().unwrap(), &5);
         assert_eq!(it.next().unwrap(), 5);
-        assert!(it.peek().is_none());
-        assert!(it.next().is_none());
+        fail_unless!(it.peek().is_none());
+        fail_unless!(it.next().is_none());
     }
 
     #[test]
@@ -2647,19 +2647,19 @@ mod tests {
     #[test]
     fn test_all() {
         let v: ~&[int] = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().all(|&x| x < 10));
-        assert!(!v.iter().all(|&x| x % 2 == 0));
-        assert!(!v.iter().all(|&x| x > 100));
-        assert!(v.slice(0, 0).iter().all(|_| fail!()));
+        fail_unless!(v.iter().all(|&x| x < 10));
+        fail_unless!(!v.iter().all(|&x| x % 2 == 0));
+        fail_unless!(!v.iter().all(|&x| x > 100));
+        fail_unless!(v.slice(0, 0).iter().all(|_| fail!()));
     }
 
     #[test]
     fn test_any() {
         let v: ~&[int] = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().any(|&x| x < 10));
-        assert!(v.iter().any(|&x| x % 2 == 0));
-        assert!(!v.iter().any(|&x| x > 100));
-        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+        fail_unless!(v.iter().any(|&x| x < 10));
+        fail_unless!(v.iter().any(|&x| x % 2 == 0));
+        fail_unless!(!v.iter().any(|&x| x > 100));
+        fail_unless!(!v.slice(0, 0).iter().any(|_| fail!()));
     }
 
     #[test]
@@ -2667,7 +2667,7 @@ mod tests {
         let v: &[int] = &[1, 3, 9, 27, 103, 14, 11];
         assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
         assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
-        assert!(v.iter().find(|x| *x % 12 == 0).is_none());
+        fail_unless!(v.iter().find(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
@@ -2675,7 +2675,7 @@ mod tests {
         let v = &[1, 3, 9, 27, 103, 14, 11];
         assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
         assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
-        assert!(v.iter().position(|x| *x % 12 == 0).is_none());
+        fail_unless!(v.iter().position(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
@@ -2799,7 +2799,7 @@ mod tests {
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert_eq!(v.iter().rposition(f), Some(3u));
-        assert!(v.iter().rposition(g).is_none());
+        fail_unless!(v.iter().rposition(g).is_none());
     }
 
     #[test]
@@ -2862,7 +2862,7 @@ mod tests {
         assert_eq!(it.idx(0).unwrap(), &1);
         assert_eq!(it.idx(5).unwrap(), &7);
         assert_eq!(it.idx(7).unwrap(), &11);
-        assert!(it.idx(8).is_none());
+        fail_unless!(it.idx(8).is_none());
 
         it.next();
         it.next();
@@ -2870,7 +2870,7 @@ mod tests {
 
         assert_eq!(it.idx(0).unwrap(), &3);
         assert_eq!(it.idx(4).unwrap(), &9);
-        assert!(it.idx(6).is_none());
+        fail_unless!(it.idx(6).is_none());
 
         check_randacc_iter(it, xs.len() + ys.len() - 3);
     }
@@ -3058,9 +3058,9 @@ mod tests {
     fn test_peekable_is_empty() {
         let a = [1];
         let mut it = a.iter().peekable();
-        assert!( !it.is_empty() );
+        fail_unless!( !it.is_empty() );
         it.next();
-        assert!( it.is_empty() );
+        fail_unless!( it.is_empty() );
     }
 
     #[test]
@@ -3069,16 +3069,16 @@ mod tests {
         assert_eq!(v.iter().min_max(), NoElements);
 
         let v = [1i];
-        assert!(v.iter().min_max() == OneElement(&1));
+        fail_unless!(v.iter().min_max() == OneElement(&1));
 
         let v = [1i, 2, 3, 4, 5];
-        assert!(v.iter().min_max() == MinMax(&1, &5));
+        fail_unless!(v.iter().min_max() == MinMax(&1, &5));
 
         let v = [1i, 2, 3, 4, 5, 6];
-        assert!(v.iter().min_max() == MinMax(&1, &6));
+        fail_unless!(v.iter().min_max() == MinMax(&1, &6));
 
         let v = [1i, 1, 1, 1];
-        assert!(v.iter().min_max() == MinMax(&1, &1));
+        fail_unless!(v.iter().min_max() == MinMax(&1, &1));
     }
 
     #[test]

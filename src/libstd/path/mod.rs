@@ -159,7 +159,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See individual Path impls for additional restrictions.
     #[inline]
     fn new<T: BytesContainer>(path: T) -> Self {
-        assert!(!contains_nul(path.container_as_bytes()));
+        fail_unless!(!contains_nul(path.container_as_bytes()));
         unsafe { GenericPathUnsafe::new_unchecked(path) }
     }
 
@@ -275,7 +275,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
-        assert!(!contains_nul(filename.container_as_bytes()));
+        fail_unless!(!contains_nul(filename.container_as_bytes()));
         unsafe { self.set_filename_unchecked(filename) }
     }
     /// Replaces the extension with the given byte vector or string.
@@ -287,7 +287,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
-        assert!(!contains_nul(extension.container_as_bytes()));
+        fail_unless!(!contains_nul(extension.container_as_bytes()));
         // borrowck causes problems here too
         let val = {
             match self.filename() {
@@ -377,7 +377,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
-        assert!(!contains_nul(path.container_as_bytes()));
+        fail_unless!(!contains_nul(path.container_as_bytes()));
         unsafe { self.push_unchecked(path) }
     }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.

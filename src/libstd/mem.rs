@@ -259,8 +259,8 @@ mod tests {
     fn test_replace() {
         let mut x = Some(~"test");
         let y = replace(&mut x, None);
-        assert!(x.is_none());
-        assert!(y.is_some());
+        fail_unless!(x.is_none());
+        fail_unless!(y.is_some());
     }
 }
 

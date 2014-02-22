@@ -121,7 +121,7 @@ fn test_success() {
             *i = 10;
         },
         |i| {
-            assert!(!failing());
+            fail_unless!(!failing());
             assert_eq!(*i, 10);
             *i = 20;
         });
@@ -139,7 +139,7 @@ fn test_fail() {
             fail!();
         },
         |i| {
-            assert!(failing());
+            fail_unless!(failing());
             assert_eq!(*i, 10);
         })
 }

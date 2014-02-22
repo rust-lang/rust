@@ -22,5 +22,5 @@ impl <T: Freeze> Foo for T { }
 fn main() {
     let (p,c) = Chan::new();
     1193182.foo(c);
-    assert!(p.recv() == 1193182);
+    fail_unless!(p.recv() == 1193182);
 }

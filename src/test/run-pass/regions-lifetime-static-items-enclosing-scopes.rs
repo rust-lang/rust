@@ -15,7 +15,7 @@ extern crate extra;
 use std::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {
-    assert!(*o == None);
+    fail_unless!(*o == None);
 }
 
 pub fn main() {

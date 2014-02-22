@@ -973,11 +973,11 @@ mod test {
     }
 
     #[test] fn idents_name_eq_test() {
-        assert!(segments_name_eq([Ident{name:3,ctxt:4},
+        fail_unless!(segments_name_eq([Ident{name:3,ctxt:4},
                                    Ident{name:78,ctxt:82}].map(ident_to_segment),
                                  [Ident{name:3,ctxt:104},
                                    Ident{name:78,ctxt:182}].map(ident_to_segment)));
-        assert!(!segments_name_eq([Ident{name:3,ctxt:4},
+        fail_unless!(!segments_name_eq([Ident{name:3,ctxt:4},
                                     Ident{name:78,ctxt:82}].map(ident_to_segment),
                                   [Ident{name:3,ctxt:104},
                                     Ident{name:77,ctxt:182}].map(ident_to_segment)));

@@ -16,9 +16,9 @@ use std::rc::Rc;
 pub fn main() {
    let mut x = ~3;
    x = x;
-   assert!(*x == 3);
+   fail_unless!(*x == 3);
 
    let mut x = Rc::new(3);
    x = x;
-   assert!(*x.borrow() == 3);
+   fail_unless!(*x.borrow() == 3);
 }

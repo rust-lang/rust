@@ -23,7 +23,7 @@ use serialize::hex::ToHex;
 fn write_u32_be(dst: &mut[u8], input: u32) {
     use std::cast::transmute;
     use std::mem::to_be32;
-    assert!(dst.len() == 4);
+    fail_unless!(dst.len() == 4);
     unsafe {
         let x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         *x = to_be32(input as i32);
@@ -34,7 +34,7 @@ fn write_u32_be(dst: &mut[u8], input: u32) {
 fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     use std::cast::transmute;
     use std::mem::to_be32;
-    assert!(dst.len() * 4 == input.len());
+    fail_unless!(dst.len() * 4 == input.len());
     unsafe {
         let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         let mut y: *i32 = transmute(input.unsafe_ref(0));
@@ -171,7 +171,7 @@ impl FixedBuffer for FixedBuffer64 {
     }
 
     fn zero_until(&mut self, idx: uint) {
-        assert!(idx >= self.buffer_idx);
+        fail_unless!(idx >= self.buffer_idx);
         self.buffer.mut_slice(self.buffer_idx, idx).set_memory(0);
         self.buffer_idx = idx;
     }
@@ -182,7 +182,7 @@ impl FixedBuffer for FixedBuffer64 {
     }
 
     fn full_buffer<'s>(&'s mut self) -> &'s [u8] {
-        assert!(self.buffer_idx == 64);
+        fail_unless!(self.buffer_idx == 64);
         self.buffer_idx = 0;
         return self.buffer.slice_to(64);
     }
@@ -450,7 +450,7 @@ impl Engine256 {
     }
 
     fn input(&mut self, input: &[u8]) {
-        assert!(!self.finished)
+        fail_unless!(!self.finished)
         // Assumes that input.len() can be converted to u64 without overflow
         self.length_bits = add_bytes_to_bits(self.length_bits, input.len() as u64);
         let self_state = &mut self.state;
@@ -534,7 +534,7 @@ mod tests {
     // A normal addition - no overflow occurs
     #[test]
     fn test_add_bytes_to_bits_ok() {
-        assert!(super::add_bytes_to_bits::<u64>(100, 10) == 180);
+        fail_unless!(super::add_bytes_to_bits::<u64>(100, 10) == 180);
     }
 
     // A simple failure case - adding 1 to the max value
@@ -555,7 +555,7 @@ mod tests {
             sh.reset();
             sh.input_str(t.input);
             let out_str = sh.result_str();
-            assert!(out_str == t.output_str);
+            fail_unless!(out_str == t.output_str);
         }
 
         // Test that it works when accepting the message in pieces
@@ -569,7 +569,7 @@ mod tests {
                 left = left - take;
             }
             let out_str = sh.result_str();
-            assert!(out_str == t.output_str);
+            fail_unless!(out_str == t.output_str);
         }
     }
 

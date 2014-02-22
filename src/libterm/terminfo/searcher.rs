@@ -96,10 +96,10 @@ fn test_get_dbpath_for_term() {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.as_str().unwrap().to_owned()
     };
-    assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
-    assert!(get_dbpath_for_term("") == None);
+    fail_unless!(x("screen") == ~"/usr/share/terminfo/s/screen");
+    fail_unless!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");
-    assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
+    fail_unless!(x("screen") == ~"/usr/share/terminfo/s/screen");
     unsetenv("TERMINFO_DIRS");
 }
 
@@ -108,5 +108,5 @@ fn test_get_dbpath_for_term() {
 fn test_open() {
     open("screen").unwrap();
     let t = open("nonexistent terminal that hopefully does not exist");
-    assert!(t.is_err());
+    fail_unless!(t.is_err());
 }

@@ -239,7 +239,7 @@ fn lookup_vtable(vcx: &VtableContext,
         Some(ty) => ty,
         None => {
             // fixup_ty can only fail if this is early resolution
-            assert!(is_early);
+            fail_unless!(is_early);
             // The type has unconstrained type variables in it, so we can't
             // do early resolution on it. Return some completely bogus vtable
             // information: we aren't storing it anyways.
@@ -436,7 +436,7 @@ fn search_for_vtable(vcx: &VtableContext,
                                           is_early) {
             Some(ref substs) => (*substs).clone(),
             None => {
-                assert!(is_early);
+                fail_unless!(is_early);
                 // Bail out with a bogus answer
                 return Some(vtable_param(param_self, 0));
             }

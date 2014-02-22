@@ -317,7 +317,7 @@ pub fn unindent(s: &str) -> ~str {
             if line.is_whitespace() {
                 line
             } else {
-                assert!(line.len() >= min_indent);
+                fail_unless!(line.len() >= min_indent);
                 line.slice_from(min_indent)
             }
         }));

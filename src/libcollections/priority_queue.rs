@@ -246,44 +246,44 @@ mod tests {
     fn test_push() {
         let mut heap = PriorityQueue::from_vec(~[2, 4, 9]);
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top() == 9);
+        fail_unless!(*heap.top() == 9);
         heap.push(11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top() == 11);
+        fail_unless!(*heap.top() == 11);
         heap.push(5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top() == 11);
+        fail_unless!(*heap.top() == 11);
         heap.push(27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top() == 27);
+        fail_unless!(*heap.top() == 27);
         heap.push(3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top() == 27);
+        fail_unless!(*heap.top() == 27);
         heap.push(103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top() == 103);
+        fail_unless!(*heap.top() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = PriorityQueue::from_vec(~[~2, ~4, ~9]);
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top() == ~9);
+        fail_unless!(*heap.top() == ~9);
         heap.push(~11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top() == ~11);
+        fail_unless!(*heap.top() == ~11);
         heap.push(~5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top() == ~11);
+        fail_unless!(*heap.top() == ~11);
         heap.push(~27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top() == ~27);
+        fail_unless!(*heap.top() == ~27);
         heap.push(~3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top() == ~27);
+        fail_unless!(*heap.top() == ~27);
         heap.push(~103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top() == ~103);
+        fail_unless!(*heap.top() == ~103);
     }
 
     #[test]
@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn test_empty_maybe_pop() {
         let mut heap: PriorityQueue<int> = PriorityQueue::new();
-        assert!(heap.maybe_pop().is_none());
+        fail_unless!(heap.maybe_pop().is_none());
     }
 
     #[test]
@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn test_empty_maybe_top() {
         let empty: PriorityQueue<int> = PriorityQueue::new();
-        assert!(empty.maybe_top().is_none());
+        fail_unless!(empty.maybe_top().is_none());
     }
 
     #[test]

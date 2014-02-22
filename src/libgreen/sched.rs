@@ -272,7 +272,7 @@ impl Scheduler {
     fn run_sched_once(mut ~self, stask: ~GreenTask) {
         // Make sure that we're not lying in that the `stask` argument is indeed
         // the scheduler task for this scheduler.
-        assert!(self.sched_task.is_none());
+        fail_unless!(self.sched_task.is_none());
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
@@ -577,7 +577,7 @@ impl Scheduler {
     pub fn enqueue_task(&mut self, task: ~GreenTask) {
 
         // We push the task onto our local queue clone.
-        assert!(!task.is_sched());
+        fail_unless!(!task.is_sched());
         self.work_queue.push(task);
         match self.idle_callback {
             Some(ref mut idle) => idle.resume(),
@@ -695,9 +695,9 @@ impl Scheduler {
 
     pub fn resume_task_immediately(~self, cur: ~GreenTask,
                                    next: ~GreenTask) -> (~Scheduler, ~GreenTask) {
-        assert!(cur.is_sched());
+        fail_unless!(cur.is_sched());
         let mut cur = self.change_task_context(cur, next, |sched, stask| {
-            assert!(sched.sched_task.is_none());
+            fail_unless!(sched.sched_task.is_none());
             sched.sched_task = Some(stask);
         });
         (cur.sched.take_unwrap(), cur)
@@ -777,7 +777,7 @@ impl Scheduler {
                    next: ~GreenTask) -> (~Scheduler, ~GreenTask) {
         let mut cur = sched.change_task_context(cur, next, |sched, last_task| {
             if last_task.is_sched() {
-                assert!(sched.sched_task.is_none());
+                fail_unless!(sched.sched_task.is_none());
                 sched.sched_task = Some(last_task);
             } else {
                 sched.enqueue_task(last_task);
@@ -823,7 +823,7 @@ impl Scheduler {
         // task, which eventually gets us to here. See comments in SchedRunner
         // for more info on this.
         if cur.is_sched() {
-            assert!(self.sched_task.is_none());
+            fail_unless!(self.sched_task.is_none());
             self.run_sched_once(cur);
         } else {
             self.yield_check_count = reset_yield_check(&mut self.rng);
@@ -1039,7 +1039,7 @@ mod test {
             unsafe { *task_ran_ptr = true };
             rtdebug!("executed from the new scheduler")
         });
-        assert!(task_ran);
+        fail_unless!(task_ran);
     }
 
     #[test]
@@ -1056,7 +1056,7 @@ mod test {
                 });
             }
         });
-        assert!(task_run_count == total);
+        fail_unless!(task_run_count == total);
     }
 
     #[test]
@@ -1074,7 +1074,7 @@ mod test {
                 })
             })
         });
-        assert!(task_run_count == 3);
+        fail_unless!(task_run_count == 3);
     }
 
     // A very simple test that confirms that a task executing on the
