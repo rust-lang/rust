@@ -171,7 +171,9 @@ endif
 # Main test targets
 ######################################################################
 
-check: cleantestlibs cleantmptestlogs tidy all check-stage2
+check: cleantmptestlogs cleantestlibs tidy check-notidy
+
+check-notidy: cleantmptestlogs cleantestlibs all check-stage2
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-lite: cleantestlibs cleantmptestlogs \
