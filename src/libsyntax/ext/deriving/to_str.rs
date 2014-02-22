@@ -24,6 +24,7 @@ pub fn expand_deriving_to_str(cx: &mut ExtCtxt,
                               push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new(~["std", "to_str", "ToStr"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),

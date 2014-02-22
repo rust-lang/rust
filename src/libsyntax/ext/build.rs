@@ -242,6 +242,9 @@ pub trait AstBuilder {
 
     fn view_use(&self, sp: Span,
                 vis: ast::Visibility, vp: ~[@ast::ViewPath]) -> ast::ViewItem;
+    fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem;
+    fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
+                        ident: ast::Ident, path: ast::Path) -> ast::ViewItem;
     fn view_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: ~[ast::Ident], imports: &[ast::Ident]) -> ast::ViewItem;
     fn view_use_glob(&self, sp: Span,
@@ -898,6 +901,20 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             vis: vis,
             span: sp
         }
+    }
+
+    fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem {
+        let last = path.segments.last().unwrap().identifier;
+        self.view_use_simple_(sp, vis, last, path)
+    }
+
+    fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
+                        ident: ast::Ident, path: ast::Path) -> ast::ViewItem {
+        self.view_use(sp, vis,
+                      ~[@respan(sp,
+                                ast::ViewPathSimple(ident,
+                                                    path,
+                                                    ast::DUMMY_NODE_ID))])
     }
 
     fn view_use_list(&self, sp: Span, vis: ast::Visibility,

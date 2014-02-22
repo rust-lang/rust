@@ -26,6 +26,7 @@ pub mod clone;
 pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
+pub mod hash;
 pub mod rand;
 pub mod to_str;
 pub mod show;
@@ -74,6 +75,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
                             "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
+                            "Hash" => expand!(hash::expand_deriving_hash),
 
                             "Encodable" => expand!(encodable::expand_deriving_encodable),
                             "Decodable" => expand!(decodable::expand_deriving_decodable),

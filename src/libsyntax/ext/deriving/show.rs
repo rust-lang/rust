@@ -31,6 +31,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
 
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new(~["std", "fmt", "Show"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
