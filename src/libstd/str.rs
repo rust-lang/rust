@@ -17,7 +17,7 @@ Unicode string manipulation (`str` type)
 Rust's string type is one of the core primitive types of the language. While
 represented by the name `str`, the name `str` is not actually a valid type in
 Rust. Each string must also be decorated with its ownership. This means that
-there are two common kinds of strings in rust:
+there are two common kinds of strings in Rust:
 
 * `~str` - This is an owned string. This type obeys all of the normal semantics
            of the `~T` types, meaning that it has one, and only one, owner. This
@@ -39,7 +39,7 @@ fn main() {
 }
  ```
 
-From the example above, you can see that rust has 2 different kinds of string
+From the example above, you can see that Rust has 2 different kinds of string
 literals. The owned literals correspond to the owned string types, but the
 "borrowed literal" is actually more akin to C's concept of a static string.
 
@@ -51,7 +51,7 @@ inferred from the type, these static strings are not mutable.
 
 # Mutability
 
-Many languages have immutable strings by default, and rust has a particular
+Many languages have immutable strings by default, and Rust has a particular
 flavor on this idea. As with the rest of Rust types, strings are immutable by
 default. If a string is declared as `mut`, however, it may be mutated. This
 works the same way as the rest of Rust's type system in the sense that if
