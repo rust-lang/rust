@@ -67,6 +67,18 @@ pub struct ArchiveMetadata {
     priv data: &'static [u8],
 }
 
+// FIXME(#11857) this should be a "real" realpath
+fn realpath(p: &Path) -> Path {
+    use std::os;
+    use std::io::fs;
+
+    let path = os::make_absolute(p);
+    match fs::readlink(&path) {
+        Ok(p) => p,
+        Err(..) => path
+    }
+}
+
 impl Context {
     pub fn load_library_crate(&self, root_ident: Option<~str>) -> Library {
         match self.find_library_crate() {
@@ -121,7 +133,7 @@ impl Context {
                             (HashSet::new(), HashSet::new())
                         });
                         let (ref mut rlibs, _) = *slot;
-                        rlibs.insert(path.clone());
+                        rlibs.insert(realpath(path));
                         FileMatches
                     }
                     None => {
@@ -138,7 +150,7 @@ impl Context {
                             (HashSet::new(), HashSet::new())
                         });
                         let (_, ref mut dylibs) = *slot;
-                        dylibs.insert(path.clone());
+                        dylibs.insert(realpath(path));
                         FileMatches
                     }
                     None => {
