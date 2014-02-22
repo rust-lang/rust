@@ -215,7 +215,7 @@ impl fmt::Binary for Vector2D {
         // for details, and the function `pad` can be used to pad strings.
         let decimals = f.precision.unwrap_or(3);
         let string = f64::to_str_exact(magnitude, decimals);
-        f.pad_integral(string.as_bytes(), "", true)
+        f.pad_integral(true, "", string.as_bytes())
     }
 }
 
@@ -493,6 +493,11 @@ use str;
 use vec::ImmutableVector;
 use vec;
 
+pub use self::num::radix;
+pub use self::num::Radix;
+pub use self::num::RadixFmt;
+
+mod num;
 pub mod parse;
 pub mod rt;
 
@@ -891,58 +896,60 @@ impl<'a> Formatter<'a> {
     ///
     /// # Arguments
     ///
-    ///     * s - the byte array that the number has been formatted into
-    ///     * alternate_prefix - if the '#' character (FlagAlternate) is
-    ///       provided, this is the prefix to put in front of the number.
-    ///       Currently this is 0x/0o/0b/etc.
-    ///     * positive - whether the original integer was positive or not.
+    ///     * is_positive - whether the original integer was positive or not.
+    ///     * prefix - if the '#' character (FlagAlternate) is provided, this
+    ///       is the prefix to put in front of the number.
+    ///     * buf - the byte array that the number has been formatted into
     ///
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
-    pub fn pad_integral(&mut self, s: &[u8], alternate_prefix: &str,
-                        positive: bool) -> Result {
+    pub fn pad_integral(&mut self, is_positive: bool, prefix: &str, buf: &[u8]) -> Result {
         use fmt::parse::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
 
-        let mut actual_len = s.len();
-        if self.flags & 1 << (FlagAlternate as uint) != 0 {
-            actual_len += alternate_prefix.len();
-        }
-        if self.flags & 1 << (FlagSignPlus as uint) != 0 {
-            actual_len += 1;
-        } else if !positive {
-            actual_len += 1;
+        let mut width = buf.len();
+
+        let mut sign = None;
+        if !is_positive {
+            sign = Some('-'); width += 1;
+        } else if self.flags & (1 << (FlagSignPlus as uint)) != 0 {
+            sign = Some('+'); width += 1;
         }
 
-        let mut signprinted = false;
-        let sign = |this: &mut Formatter| {
-            if !signprinted {
-                if this.flags & 1 << (FlagSignPlus as uint) != 0 && positive {
-                    try!(this.buf.write(['+' as u8]));
-                } else if !positive {
-                    try!(this.buf.write(['-' as u8]));
-                }
-                if this.flags & 1 << (FlagAlternate as uint) != 0 {
-                    try!(this.buf.write(alternate_prefix.as_bytes()));
-                }
-                signprinted = true;
-            }
-            Ok(())
+        let mut prefixed = false;
+        if self.flags & (1 << (FlagAlternate as uint)) != 0 {
+            prefixed = true; width += prefix.len();
+        }
+
+        // Writes the sign if it exists, and then the prefix if it was requested
+        let write_prefix = |f: &mut Formatter| {
+            for c in sign.move_iter() { try!(f.buf.write_char(c)); }
+            if prefixed { f.buf.write_str(prefix) }
+            else { Ok(()) }
         };
 
-        let emit = |this: &mut Formatter| {
-            sign(this).and_then(|()| this.buf.write(s))
-        };
-
+        // The `width` field is more of a `min-width` parameter at this point.
         match self.width {
-            None => emit(self),
-            Some(min) if actual_len >= min => emit(self),
+            // If there's no minimum length requirements then we can just
+            // write the bytes.
+            None => {
+                try!(write_prefix(self)); self.buf.write(buf)
+            }
+            // Check if we're over the minimum width, if so then we can also
+            // just write the bytes.
+            Some(min) if width >= min => {
+                try!(write_prefix(self)); self.buf.write(buf)
+            }
+            // The sign and prefix goes before the padding if the fill character
+            // is zero
+            Some(min) if self.flags & (1 << (FlagSignAwareZeroPad as uint)) != 0 => {
+                self.fill = '0';
+                try!(write_prefix(self));
+                self.with_padding(min - width, parse::AlignRight, |f| f.buf.write(buf))
+            }
+            // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                if self.flags & 1 << (FlagSignAwareZeroPad as uint) != 0 {
-                    self.fill = '0';
-                    try!(sign(self));
-                }
-                self.with_padding(min - actual_len, parse::AlignRight, |me| {
-                    emit(me)
+                self.with_padding(min - width, parse::AlignRight, |f| {
+                    try!(write_prefix(f)); f.buf.write(buf)
                 })
             }
         }
@@ -979,19 +986,16 @@ impl<'a> Formatter<'a> {
             }
             None => {}
         }
-
         // The `width` field is more of a `min-width` parameter at this point.
         match self.width {
             // If we're under the maximum length, and there's no minimum length
             // requirements, then we can just emit the string
             None => self.buf.write(s.as_bytes()),
-
             // If we're under the maximum width, check if we're over the minimum
             // width, if so it's as easy as just emitting the string.
             Some(width) if s.char_len() >= width => {
                 self.buf.write(s.as_bytes())
             }
-
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
@@ -1002,6 +1006,8 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    /// Runs a callback, emitting the correct padding either before or
+    /// afterwards depending on whether right or left alingment is requested.
     fn with_padding(&mut self,
                     padding: uint,
                     default: parse::Alignment,
@@ -1075,67 +1081,6 @@ impl Char for char {
     }
 }
 
-macro_rules! int_base(($ty:ident, $into:ident, $base:expr,
-                       $name:ident, $prefix:expr) => {
-    impl $name for $ty {
-        fn fmt(&self, f: &mut Formatter) -> Result {
-            ::$into::to_str_bytes(*self as $into, $base, |buf| {
-                f.pad_integral(buf, $prefix, true)
-            })
-        }
-    }
-})
-macro_rules! upper_hex(($ty:ident, $into:ident) => {
-    impl UpperHex for $ty {
-        fn fmt(&self, f: &mut Formatter) -> Result {
-            ::$into::to_str_bytes(*self as $into, 16, |buf| {
-                upperhex(buf, f)
-            })
-        }
-    }
-})
-// Not sure why, but this causes an "unresolved enum variant, struct or const"
-// when inlined into the above macro...
-#[doc(hidden)]
-pub fn upperhex(buf: &[u8], f: &mut Formatter) -> Result {
-    let mut local = [0u8, ..16];
-    for i in ::iter::range(0, buf.len()) {
-        local[i] = match buf[i] as char {
-            'a' .. 'f' => (buf[i] - 'a' as u8) + 'A' as u8,
-            c => c as u8,
-        }
-    }
-    f.pad_integral(local.slice_to(buf.len()), "0x", true)
-}
-
-macro_rules! integer(($signed:ident, $unsigned:ident) => {
-    // Signed is special because it actuall emits the negative sign,
-    // nothing else should do that, however.
-    impl Signed for $signed {
-        fn fmt(&self, f: &mut Formatter) -> Result {
-            ::$unsigned::to_str_bytes(self.abs() as $unsigned, 10, |buf| {
-                f.pad_integral(buf, "", *self >= 0)
-            })
-        }
-    }
-    int_base!($signed, $unsigned, 2, Binary, "0b")
-    int_base!($signed, $unsigned, 8, Octal, "0o")
-    int_base!($signed, $unsigned, 16, LowerHex, "0x")
-    upper_hex!($signed, $unsigned)
-
-    int_base!($unsigned, $unsigned, 2, Binary, "0b")
-    int_base!($unsigned, $unsigned, 8, Octal, "0o")
-    int_base!($unsigned, $unsigned, 10, Unsigned, "")
-    int_base!($unsigned, $unsigned, 16, LowerHex, "0x")
-    upper_hex!($unsigned, $unsigned)
-})
-
-integer!(int, uint)
-integer!(i8, u8)
-integer!(i16, u16)
-integer!(i32, u32)
-integer!(i64, u64)
-
 macro_rules! floating(($ty:ident) => {
     impl Float for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
@@ -1144,7 +1089,7 @@ macro_rules! floating(($ty:ident) => {
                 Some(i) => ::$ty::to_str_exact(self.abs(), i),
                 None => ::$ty::to_str_digits(self.abs(), 6)
             };
-            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
+            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
         }
     }
 
@@ -1155,7 +1100,7 @@ macro_rules! floating(($ty:ident) => {
                 Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, false),
                 None => ::$ty::to_str_exp_digits(self.abs(), 6, false)
             };
-            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
+            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
         }
     }
 
@@ -1166,7 +1111,7 @@ macro_rules! floating(($ty:ident) => {
                 Some(i) => ::$ty::to_str_exp_exact(self.abs(), i, true),
                 None => ::$ty::to_str_exp_digits(self.abs(), 6, true)
             };
-            fmt.pad_integral(s.as_bytes(), "", *self >= 0.0)
+            fmt.pad_integral(*self >= 0.0, "", s.as_bytes())
         }
     }
 })
@@ -1193,9 +1138,7 @@ impl<T> Poly for T {
 impl<T> Pointer for *T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (parse::FlagAlternate as uint);
-        ::uint::to_str_bytes(*self as uint, 16, |buf| {
-            f.pad_integral(buf, "0x", true)
-        })
+        secret_lower_hex::<uint>(&(*self as uint), f)
     }
 }
 impl<T> Pointer for *mut T {
@@ -1223,16 +1166,6 @@ macro_rules! delegate(($ty:ty to $other:ident) => {
         }
     }
 })
-delegate!(int to signed)
-delegate!( i8 to signed)
-delegate!(i16 to signed)
-delegate!(i32 to signed)
-delegate!(i64 to signed)
-delegate!(uint to unsigned)
-delegate!(  u8 to unsigned)
-delegate!( u16 to unsigned)
-delegate!( u32 to unsigned)
-delegate!( u64 to unsigned)
 delegate!(~str to string)
 delegate!(&'a str to string)
 delegate!(bool to bool)

@@ -792,24 +792,88 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
-    use rand::{XorShiftRng, Rng};
-    use to_str::ToStr;
-    use f64;
 
-    #[bench]
-    fn uint_to_str_rand(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        bh.iter(|| {
-            rng.gen::<uint>().to_str();
-        })
+    mod uint {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use num::ToStrRadix;
+
+        #[bench]
+        fn to_str_bin(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(2); })
+        }
+
+        #[bench]
+        fn to_str_oct(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(8); })
+        }
+
+        #[bench]
+        fn to_str_dec(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(10); })
+        }
+
+        #[bench]
+        fn to_str_hex(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(16); })
+        }
+
+        #[bench]
+        fn to_str_base_36(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(36); })
+        }
     }
 
-    #[bench]
-    fn float_to_str_rand(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        bh.iter(|| {
-            f64::to_str(rng.gen());
-        })
+    mod int {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use num::ToStrRadix;
+
+        #[bench]
+        fn to_str_bin(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(2); })
+        }
+
+        #[bench]
+        fn to_str_oct(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(8); })
+        }
+
+        #[bench]
+        fn to_str_dec(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(10); })
+        }
+
+        #[bench]
+        fn to_str_hex(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(16); })
+        }
+
+        #[bench]
+        fn to_str_base_36(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(36); })
+        }
+    }
+
+    mod f64 {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use f64;
+
+        #[bench]
+        fn float_to_str(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { f64::to_str(rng.gen()); })
+        }
     }
 }

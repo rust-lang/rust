@@ -17,10 +17,12 @@
 
 use clone::{Clone, DeepClone};
 use cmp::{Eq, Ord};
+use kinds::Pod;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
+use fmt::{Show, Binary, Octal, LowerHex, UpperHex};
 
 pub mod strconv;
 
@@ -243,7 +245,8 @@ pub trait Bitwise: Bounded
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
-pub trait Primitive: Clone
+pub trait Primitive: Pod
+                   + Clone
                    + DeepClone
                    + Num
                    + NumCast
@@ -256,7 +259,12 @@ pub trait Int: Primitive
              + CheckedAdd
              + CheckedSub
              + CheckedMul
-             + CheckedDiv {}
+             + CheckedDiv
+             + Show
+             + Binary
+             + Octal
+             + LowerHex
+             + UpperHex {}
 
 /// Returns the smallest power of 2 greater than or equal to `n`.
 #[inline]

@@ -29,7 +29,6 @@
 use container::Container;
 use io::{Writer, IoResult};
 use iter::Iterator;
-use num::ToStrRadix;
 use option::{Some, None};
 use result::Ok;
 use str::OwnedStr;
@@ -281,7 +280,7 @@ impl Streaming for SipState {
         let r = self.result_bytes();
         let mut s = ~"";
         for b in r.iter() {
-            s.push_str((*b as uint).to_str_radix(16u));
+            s.push_str(format!("{:x}", *b));
         }
         s
     }
@@ -391,7 +390,7 @@ mod tests {
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
             for b in r.iter() {
-                s.push_str((*b as uint).to_str_radix(16u));
+                s.push_str(format!("{:x}", *b));
             }
             s
         }
