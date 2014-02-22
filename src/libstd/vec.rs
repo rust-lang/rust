@@ -1368,13 +1368,24 @@ pub trait OwnedVector<T> {
     /// ```
     fn remove(&mut self, i: uint) -> Option<T>;
 
-    /**
-     * Remove an element from anywhere in the vector and return it, replacing it
-     * with the last element. This does not preserve ordering, but is O(1).
-     *
-     * Fails if index >= length.
-     */
-    fn swap_remove(&mut self, index: uint) -> T;
+    /// Remove an element from anywhere in the vector and return it, replacing it
+    /// with the last element. This does not preserve ordering, but is O(1).
+    ///
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// let mut v = ~[~"foo", ~"bar", ~"baz", ~"qux"];
+    ///
+    /// assert_eq!(v.swap_remove(1), Some(~"bar"));
+    /// assert_eq!(v, ~[~"foo", ~"qux", ~"baz"]);
+    ///
+    /// assert_eq!(v.swap_remove(0), Some(~"foo"));
+    /// assert_eq!(v, ~[~"baz", ~"qux"]);
+    ///
+    /// assert_eq!(v.swap_remove(2), None);
+    /// ```
+    fn swap_remove(&mut self, index: uint) -> Option<T>;
 
     /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint);
@@ -1580,15 +1591,14 @@ impl<T> OwnedVector<T> for ~[T] {
             None
         }
     }
-    fn swap_remove(&mut self, index: uint) -> T {
+    fn swap_remove(&mut self, index: uint) -> Option<T> {
         let ln = self.len();
-        if index >= ln {
-            fail!("vec::swap_remove - index {} >= length {}", index, ln);
-        }
         if index < ln - 1 {
             self.swap(index, ln - 1);
+        } else if index >= ln {
+            return None
         }
-        self.pop().unwrap()
+        self.pop()
     }
     fn truncate(&mut self, newlen: uint) {
         let oldlen = self.len();
@@ -3194,15 +3204,15 @@ mod tests {
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        assert_eq!(v.len(), 4);
-        assert_eq!(e, 1);
-        assert_eq!(v[0], 5);
+        assert_eq!(e, Some(1));
+        assert_eq!(v, ~[5, 2, 3, 4]);
         e = v.swap_remove(3);
-        assert_eq!(v.len(), 3);
-        assert_eq!(e, 4);
-        assert_eq!(v[0], 5);
-        assert_eq!(v[1], 2);
-        assert_eq!(v[2], 3);
+        assert_eq!(e, Some(4));
+        assert_eq!(v, ~[5, 2, 3]);
+
+        e = v.swap_remove(3);
+        assert_eq!(e, None);
+        assert_eq!(v, ~[5, 2, 3]);
     }
 
     #[test]
