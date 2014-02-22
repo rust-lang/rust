@@ -22,4 +22,7 @@ fn main() {
     match (true) { //~ ERROR unnecessary parentheses around `match` head expression
         _ => {}
     }
+    let mut _a = (0); //~ ERROR unnecessary parentheses around assigned value
+    _a = (0); //~ ERROR unnecessary parentheses around assigned value
+    _a += (1); //~ ERROR unnecessary parentheses around assigned value
 }

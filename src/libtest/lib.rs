@@ -1047,7 +1047,7 @@ impl MetricMap {
             let r = match selfmap.find(k) {
                 None => MetricRemoved,
                 Some(v) => {
-                    let delta = (v.value - vold.value);
+                    let delta = v.value - vold.value;
                     let noise = match noise_pct {
                         None => f64::max(vold.noise.abs(), v.noise.abs()),
                         Some(pct) => vold.value * pct / 100.0

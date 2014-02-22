@@ -891,7 +891,7 @@ fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
         let old_val = *out_elt;
         let new_val = op(old_val, *in_elt);
         *out_elt = new_val;
-        changed |= (old_val != new_val);
+        changed |= old_val != new_val;
     }
     changed
 }

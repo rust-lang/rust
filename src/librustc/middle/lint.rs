@@ -1167,15 +1167,7 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     }
 }
 
-fn check_unnecessary_parens(cx: &Context, e: &ast::Expr) {
-    let (value, msg) = match e.node {
-        ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
-        ast::ExprWhile(cond, _) => (cond, "`while` condition"),
-        ast::ExprMatch(head, _) => (head, "`match` head expression"),
-        ast::ExprRet(Some(value)) => (value, "`return` value"),
-        _ => return
-    };
-
+fn check_unnecessary_parens_core(cx: &Context, value: &ast::Expr, msg: &str) {
     match value.node {
         ast::ExprParen(_) => {
             cx.span_lint(UnnecessaryParens, value.span,
@@ -1183,6 +1175,33 @@ fn check_unnecessary_parens(cx: &Context, e: &ast::Expr) {
         }
         _ => {}
     }
+}
+
+fn check_unnecessary_parens_expr(cx: &Context, e: &ast::Expr) {
+    let (value, msg) = match e.node {
+        ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
+        ast::ExprWhile(cond, _) => (cond, "`while` condition"),
+        ast::ExprMatch(head, _) => (head, "`match` head expression"),
+        ast::ExprRet(Some(value)) => (value, "`return` value"),
+        ast::ExprAssign(_, value) => (value, "assigned value"),
+        ast::ExprAssignOp(_, _, _, value) => (value, "assigned value"),
+        _ => return
+    };
+    check_unnecessary_parens_core(cx, value, msg);
+}
+
+fn check_unnecessary_parens_stmt(cx: &Context, s: &ast::Stmt) {
+    let (value, msg) = match s.node {
+        ast::StmtDecl(decl, _) => match decl.node {
+            ast::DeclLocal(local) => match local.init {
+                Some(value) => (value, "assigned value"),
+                None => return
+            },
+            _ => return
+        },
+        _ => return
+    };
+    check_unnecessary_parens_core(cx, value, msg);
 }
 
 fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
@@ -1534,7 +1553,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_while_true_expr(self, e);
         check_stability(self, e);
-        check_unnecessary_parens(self, e);
+        check_unnecessary_parens_expr(self, e);
         check_unused_unsafe(self, e);
         check_unsafe_block(self, e);
         check_unnecessary_allocation(self, e);
@@ -1549,6 +1568,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
         check_path_statement(self, s);
         check_unused_result(self, s);
+        check_unnecessary_parens_stmt(self, s);
 
         visit::walk_stmt(self, s, ());
     }

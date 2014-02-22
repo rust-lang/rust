@@ -329,7 +329,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
         for _ in range(0, skip) { s.push_char(' '); }
         let orig = fm.get_line(lines.lines[0] as int);
         for pos in range(0u, left-skip) {
-            let curChar = (orig[pos] as char);
+            let curChar = orig[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
             // That way the squiggly line will usually appear in the correct
