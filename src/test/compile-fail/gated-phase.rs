@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:macro_crate_test.rs
+// ignore-stage1
 
 #[phase(syntax)]
 //~^ ERROR compile time crate loading is experimental and possibly buggy
