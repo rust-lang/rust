@@ -145,7 +145,10 @@ impl Archive {
     /// Lists all files in an archive
     pub fn files(&self) -> ~[~str] {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
-        str::from_utf8(output.output).unwrap().lines().map(|s| s.to_owned()).collect()
+        let output = str::from_utf8(output.output).unwrap();
+        // use lines_any because windows delimits output with `\r\n` instead of
+        // just `\n`
+        output.lines_any().map(|s| s.to_owned()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str,
