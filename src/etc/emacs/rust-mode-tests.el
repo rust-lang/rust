@@ -425,6 +425,44 @@ fn foo()
 "
    ))
 
+(ert-deftest indent-match ()
+  (test-indent
+   "
+fn foo() {
+    match blah {
+        Pattern => stuff(),
+        _ => whatever
+    }
+}
+"
+   ))
+
+(ert-deftest indent-match-multiline-pattern ()
+  (test-indent
+   "
+fn foo() {
+    match blah {
+        Pattern |
+        Pattern2 => {
+            hello()
+        },
+        _ => whatever
+    }
+}
+"
+   ))
+
+;; Make sure that in effort to cover match patterns we don't mistreat || or expressions
+(ert-deftest indent-nonmatch-or-expression ()
+  (test-indent
+   "
+fn foo() {
+    let x = foo() ||
+        bar();
+}
+"
+   ))
+
 (setq rust-test-motion-string
       "
 fn fn1(arg: int) -> bool {
