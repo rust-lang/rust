@@ -114,14 +114,14 @@
 
               ;; Otherwise we're in a column-zero definition
               (t 0))))))
-    (cond
-     ;; If we're to the left of the indentation, reindent and jump to it.
-     ((<= (current-column) indent)
-      (indent-line-to indent))
-
-     ;; We're to the right; if it needs indent, do so but save excursion.
-     ((not (eq (current-indentation) indent))
-      (save-excursion (indent-line-to indent))))))
+    (when (not (eq (current-indentation) indent))
+      ;; If we're at the beginning of the line (before or at the current
+      ;; indentation), jump with the indentation change.  Otherwise, save the
+      ;; excursion so that adding the indentations will leave us at the
+      ;; equivalent position within the line to where we were before.
+      (if (<= (current-column) (current-indentation))
+          (indent-line-to indent)
+        (save-excursion (indent-line-to indent))))))
 
 
 ;; Font-locking definitions and helpers
