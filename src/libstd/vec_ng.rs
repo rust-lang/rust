@@ -277,15 +277,14 @@ impl<T> Vec<T> {
     }
 
     #[inline]
-    pub fn swap_remove(&mut self, index: uint) -> T {
+    pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
-        if index >= length {
-            fail!("Vec::swap_remove - index {} >= length {}", index, length);
-        }
         if index < length - 1 {
             self.as_mut_slice().swap(index, length - 1);
+        } else if index >= length {
+            return None
         }
-        self.pop().unwrap()
+        self.pop()
     }
 
     #[inline]
@@ -392,4 +391,3 @@ impl<T> Drop for MoveItems<T> {
         }
     }
 }
-
