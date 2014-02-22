@@ -85,7 +85,7 @@
               ;;  - { means indent to either nesting-level * rust-indent-offset,
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
-              ;;    semi, comma or brace (other than whitespace and line
+              ;;    semi, comma, brace or single pipe (other than whitespace and line
               ;;    comments) , and wasn't an attribute.  But if we have
               ;;    something after the open brace and ending with a comma,
               ;;    treat it as fields and align them.  PHEW.
@@ -105,8 +105,7 @@
                            (beginning-of-line)
                            (rust-rewind-irrelevant)
                            (end-of-line)
-                           (if (looking-back
-                                "[[,;{}(][[:space:]]*\\(?://.*\\)?")
+                           (if (looking-back "\\(?:[(,:;?[{}]\\|[^|]|\\)[[:space:]]*\\(?://.*\\)?")
                                (* rust-indent-offset level)
                              (back-to-indentation)
                              (if (looking-at "#")
