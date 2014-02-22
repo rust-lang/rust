@@ -2267,29 +2267,14 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
           word(&mut s.s, res)
       }
       ast::LitInt(i, t) => {
-        if i < 0_i64 {
-            word(&mut s.s,
-                 ~"-" + (-i as u64).to_str_radix(10u)
-                 + ast_util::int_ty_to_str(t))
-        } else {
-            word(&mut s.s,
-                 (i as u64).to_str_radix(10u)
-                 + ast_util::int_ty_to_str(t))
-        }
+        word(&mut s.s, format!("{}{}", i, ast_util::int_ty_to_str(t)))
       }
       ast::LitUint(u, t) => {
-        word(&mut s.s,
-             u.to_str_radix(10u)
-             + ast_util::uint_ty_to_str(t))
+        word(&mut s.s, format!("{}{}", u, ast_util::uint_ty_to_str(t)))
       }
       ast::LitIntUnsuffixed(i) => {
-        if i < 0_i64 {
-            word(&mut s.s, ~"-" + (-i as u64).to_str_radix(10u))
-        } else {
-            word(&mut s.s, (i as u64).to_str_radix(10u))
-        }
+        word(&mut s.s, format!("{}", i))
       }
-
       ast::LitFloat(ref f, t) => {
         word(&mut s.s, f.get() + ast_util::float_ty_to_str(t))
       }

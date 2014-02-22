@@ -36,7 +36,6 @@ impl fmt::Signed for B {
 macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
 
 pub fn main() {
-
     // Make sure there's a poly formatter that takes anything
     t!(format!("{:?}", 1), "1");
     t!(format!("{:?}", A), "A");
@@ -49,16 +48,6 @@ pub fn main() {
     t!(format!("hello \\{"), "hello {");
 
     // default formatters should work
-    t!(format!("{}", 1i), "1");
-    t!(format!("{}", 1i8), "1");
-    t!(format!("{}", 1i16), "1");
-    t!(format!("{}", 1i32), "1");
-    t!(format!("{}", 1i64), "1");
-    t!(format!("{}", 1u), "1");
-    t!(format!("{}", 1u8), "1");
-    t!(format!("{}", 1u16), "1");
-    t!(format!("{}", 1u32), "1");
-    t!(format!("{}", 1u64), "1");
     t!(format!("{}", 1.0f32), "1");
     t!(format!("{}", 1.0f64), "1");
     t!(format!("{}", "a"), "a");
@@ -125,94 +114,6 @@ pub fn main() {
     t!(format!("{:a$s}", "a", a=4), "a   ");
     t!(format!("{:-#s}", "a"), "a");
     t!(format!("{:+#s}", "a"), "a");
-
-    // Formatting integers should select the right implementation based off the
-    // type of the argument. Also, hex/octal/binary should be defined for
-    // integers, but they shouldn't emit the negative sign.
-    t!(format!("{:d}", -1i), "-1");
-    t!(format!("{:d}", -1i8), "-1");
-    t!(format!("{:d}", -1i16), "-1");
-    t!(format!("{:d}", -1i32), "-1");
-    t!(format!("{:d}", -1i64), "-1");
-    t!(format!("{:t}", 1i), "1");
-    t!(format!("{:t}", 1i8), "1");
-    t!(format!("{:t}", 1i16), "1");
-    t!(format!("{:t}", 1i32), "1");
-    t!(format!("{:t}", 1i64), "1");
-    t!(format!("{:x}", 1i), "1");
-    t!(format!("{:x}", 1i8), "1");
-    t!(format!("{:x}", 1i16), "1");
-    t!(format!("{:x}", 1i32), "1");
-    t!(format!("{:x}", 1i64), "1");
-    t!(format!("{:X}", 1i), "1");
-    t!(format!("{:X}", 1i8), "1");
-    t!(format!("{:X}", 1i16), "1");
-    t!(format!("{:X}", 1i32), "1");
-    t!(format!("{:X}", 1i64), "1");
-    t!(format!("{:o}", 1i), "1");
-    t!(format!("{:o}", 1i8), "1");
-    t!(format!("{:o}", 1i16), "1");
-    t!(format!("{:o}", 1i32), "1");
-    t!(format!("{:o}", 1i64), "1");
-
-    t!(format!("{:u}", 1u), "1");
-    t!(format!("{:u}", 1u8), "1");
-    t!(format!("{:u}", 1u16), "1");
-    t!(format!("{:u}", 1u32), "1");
-    t!(format!("{:u}", 1u64), "1");
-    t!(format!("{:t}", 1u), "1");
-    t!(format!("{:t}", 1u8), "1");
-    t!(format!("{:t}", 1u16), "1");
-    t!(format!("{:t}", 1u32), "1");
-    t!(format!("{:t}", 1u64), "1");
-    t!(format!("{:x}", 1u), "1");
-    t!(format!("{:x}", 1u8), "1");
-    t!(format!("{:x}", 1u16), "1");
-    t!(format!("{:x}", 1u32), "1");
-    t!(format!("{:x}", 1u64), "1");
-    t!(format!("{:X}", 1u), "1");
-    t!(format!("{:X}", 1u8), "1");
-    t!(format!("{:X}", 1u16), "1");
-    t!(format!("{:X}", 1u32), "1");
-    t!(format!("{:X}", 1u64), "1");
-    t!(format!("{:o}", 1u), "1");
-    t!(format!("{:o}", 1u8), "1");
-    t!(format!("{:o}", 1u16), "1");
-    t!(format!("{:o}", 1u32), "1");
-    t!(format!("{:o}", 1u64), "1");
-
-    // Test the flags for formatting integers
-    t!(format!("{:3d}", 1),  "  1");
-    t!(format!("{:>3d}", 1),  "  1");
-    t!(format!("{:>+3d}", 1), " +1");
-    t!(format!("{:<3d}", 1), "1  ");
-    t!(format!("{:#d}", 1), "1");
-    t!(format!("{:#x}", 10), "0xa");
-    t!(format!("{:#X}", 10), "0xA");
-    t!(format!("{:#5x}", 10), "  0xa");
-    t!(format!("{:#o}", 10), "0o12");
-    t!(format!("{:08x}", 10),  "0000000a");
-    t!(format!("{:8x}", 10),   "       a");
-    t!(format!("{:<8x}", 10),  "a       ");
-    t!(format!("{:>8x}", 10),  "       a");
-    t!(format!("{:#08x}", 10), "0x00000a");
-    t!(format!("{:08d}", -10), "-0000010");
-    t!(format!("{:x}", -1u8), "ff");
-    t!(format!("{:X}", -1u8), "FF");
-    t!(format!("{:t}", -1u8), "11111111");
-    t!(format!("{:o}", -1u8), "377");
-    t!(format!("{:#x}", -1u8), "0xff");
-    t!(format!("{:#X}", -1u8), "0xFF");
-    t!(format!("{:#t}", -1u8), "0b11111111");
-    t!(format!("{:#o}", -1u8), "0o377");
-
-    // Signed combinations
-    t!(format!("{:+5d}", 1),  "   +1");
-    t!(format!("{:+5d}", -1), "   -1");
-    t!(format!("{:05d}", 1),   "00001");
-    t!(format!("{:05d}", -1),  "-0001");
-    t!(format!("{:+05d}", 1),  "+0001");
-    t!(format!("{:+05d}", -1), "-0001");
 
     // Some float stuff
     t!(format!("{:f}", 1.0f32), "1");

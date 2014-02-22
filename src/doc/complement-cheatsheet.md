@@ -22,13 +22,14 @@ let y: int = x.unwrap();
 
 **Int to string, in non-base-10**
 
-Use [`ToStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.ToStrRadix.html).
+Use the `format!` syntax extension.
 
 ~~~
-use std::num::ToStrRadix;
-
 let x: int = 42;
-let y: ~str = x.to_str_radix(16);
+let y: ~str = format!("{:t}", x);   // binary
+let y: ~str = format!("{:o}", x);   // octal
+let y: ~str = format!("{:x}", x);   // lowercase hexadecimal
+let y: ~str = format!("{:X}", x);   // uppercase hexidecimal
 ~~~
 
 **String to int, in non-base-10**
