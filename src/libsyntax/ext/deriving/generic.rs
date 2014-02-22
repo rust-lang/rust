@@ -416,11 +416,11 @@ impl<'a> TraitDef<'a> {
                           self_type, methods.map(|x| *x)))
     }
 
-    pub fn expand_struct_def(&self,
-                             cx: &mut ExtCtxt,
-                             struct_def: &StructDef,
-                             type_ident: Ident,
-                             generics: &Generics) -> @ast::Item {
+    fn expand_struct_def(&self,
+                         cx: &mut ExtCtxt,
+                         struct_def: &StructDef,
+                         type_ident: Ident,
+                         generics: &Generics) -> @ast::Item {
         let methods = self.methods.map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(
@@ -450,7 +450,7 @@ impl<'a> TraitDef<'a> {
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
 
-    pub fn expand_enum_def(&self,
+    fn expand_enum_def(&self,
                        cx: &mut ExtCtxt,
                        enum_def: &EnumDef,
                        type_ident: Ident,

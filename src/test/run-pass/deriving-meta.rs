@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::hash_old::Hash;
+
 #[deriving(Eq, Clone, IterBytes)]
 struct Foo {
     bar: uint,

@@ -4916,7 +4916,7 @@ pub fn trait_method_of_method(tcx: ctxt,
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
-    use std::hash::{SipState, Streaming};
+    use std::hash_old::{SipState, Streaming};
 
     let mut hash = SipState::new(0, 0);
     let region = |_hash: &mut SipState, r: Region| {
