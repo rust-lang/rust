@@ -3691,15 +3691,15 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             }
         }
         terr_integer_as_char => {
-            format!("expected an integral type but found char")
+            format!("expected an integral type but found `char`")
         }
         terr_int_mismatch(ref values) => {
-            format!("expected {} but found {}",
+            format!("expected `{}` but found `{}`",
                  values.expected.to_str(),
                  values.found.to_str())
         }
         terr_float_mismatch(ref values) => {
-            format!("expected {} but found {}",
+            format!("expected `{}` but found `{}`",
                  values.expected.to_str(),
                  values.found.to_str())
         }
@@ -3767,13 +3767,13 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
                         }
                         _ => {
                             cx.sess.bug(format!("provided_trait_methods: \
-                                                 {:?} is not a trait",
+                                                 `{:?}` is not a trait",
                                                 id))
                         }
                     }
                 }
                 _ => {
-                    cx.sess.bug(format!("provided_trait_methods: {:?} is not \
+                    cx.sess.bug(format!("provided_trait_methods: `{:?}` is not \
                                          a trait",
                                         id))
                 }

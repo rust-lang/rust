@@ -17,7 +17,7 @@ struct S {
     name: int
 }
 
-impl Foo for S { //~ ERROR: Foo is not a trait
+impl Foo for S { //~ ERROR: `Foo` is not a trait
     fn bar() { }
 }
 
