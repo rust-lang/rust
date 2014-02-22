@@ -54,6 +54,10 @@
 
 #[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args, simd)];
 
+// Turn on default type parameters.
+#[feature(default_type_params)];
+#[allow(default_type_param_usage)];
+
 // Don't link to std. We are std.
 #[no_std];
 
@@ -141,6 +145,7 @@ pub mod iter;
 pub mod to_str;
 pub mod to_bytes;
 pub mod clone;
+pub mod hash_old;
 pub mod hash;
 pub mod container;
 pub mod default;
@@ -213,6 +218,7 @@ mod std {
     pub use cmp;
     pub use comm;
     pub use fmt;
+    pub use hash;
     pub use io;
     pub use kinds;
     pub use local_data;

@@ -15,6 +15,7 @@
 extern crate other1 = "typeid-intrinsic";
 extern crate other2 = "typeid-intrinsic2";
 
+use std::hash_old::Hash;
 use std::unstable::intrinsics;
 use std::unstable::intrinsics::TypeId;
 

@@ -27,6 +27,7 @@ use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
 use std::u64;
+use std::hash_old::Hash;
 use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;

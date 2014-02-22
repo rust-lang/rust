@@ -57,7 +57,7 @@ use clone::Clone;
 use cmp::{Eq, Equiv, max};
 use default::Default;
 use fmt;
-use hash::Hash;
+use hash_old::Hash;
 use iter;
 use iter::{Iterator, FromIterator, Extendable};
 use iter::{FilterMap, Chain, Repeat, Zip};
