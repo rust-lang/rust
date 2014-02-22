@@ -114,7 +114,7 @@ struct LanguageItemVisitor<'a> {
 
 impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        match extract(item.attrs) {
+        match extract(self.this.session, item.attrs) {
             Some(value) => {
                 let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
 
@@ -183,13 +183,25 @@ impl LanguageItemCollector {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
+pub fn extract(_: Session, attrs: &[ast::Attribute]) -> Option<InternedString> {
     for attribute in attrs.iter() {
         match attribute.name_str_pair() {
             Some((ref key, ref value)) if key.equiv(&("lang")) => {
+                // Raise error after snapshot landed
+                //session.err(format!("`lang = {}` was replaced by `lang({})`",
+                //                         *value, *value));
                 return Some((*value).clone());
             }
             Some(..) | None => {}
+        }
+
+        if attribute.name().equiv(&("lang")) {
+            match attribute.meta_item_list() {
+                Some(ref l) if l.len() == 1 => {
+                    return Some(l[0].name().clone());
+                }
+                _ => {}
+            }
         }
     }
 
