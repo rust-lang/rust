@@ -36,7 +36,7 @@ use to_bytes::IterBytes;
 use vec::ImmutableVector;
 
 // Alias `SipState` to `State`.
-pub use State = hash::SipState;
+pub use State = hash_old::SipState;
 
 /**
  * Types that can meaningfully be hashed should implement this.
@@ -298,9 +298,13 @@ impl Streaming for SipState {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::*;
-    use super::SipState;
+    use super::{Hash, Streaming, SipState};
+    use iter::Iterator;
+    use num::ToStrRadix;
+    use option::Some;
+    use str::OwnedStr;
+    use to_bytes::IterBytes;
+    use vec::{Vector, OwnedVector, ImmutableVector};
 
     // Hash just the bytes of the slice, without length prefix
     struct Bytes<'a>(&'a [u8]);

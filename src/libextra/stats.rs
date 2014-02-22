@@ -11,6 +11,7 @@
 #[allow(missing_doc)];
 
 use std::cmp;
+use std::hash_old::Hash;
 use std::hashmap;
 use std::io;
 use std::mem;

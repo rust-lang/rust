@@ -26,6 +26,7 @@ use middle;
 use serialize::Encodable;
 use std::cast;
 use std::cell::{Cell, RefCell};
+use std::hash_old::Hash;
 use std::hashmap::{HashMap, HashSet};
 use std::io::MemWriter;
 use std::str;
