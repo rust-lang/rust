@@ -14,7 +14,7 @@
 //
 // I *think* it's the same, more or less.
 
-extern crate extra;
+extern crate time;
 
 use std::os;
 use std::task;
@@ -52,7 +52,7 @@ fn run(args: &[~str]) {
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();
     let num_bytes = 100;
-    let start = extra::time::precise_time_s();
+    let start = time::precise_time_s();
     let mut worker_results = ~[];
     let from_parent = if workers == 1 {
         let (from_parent, to_child) = Chan::new();
@@ -94,7 +94,7 @@ fn run(args: &[~str]) {
     //to_child.send(stop);
     //move_out(to_child);
     let result = from_child.recv();
-    let end = extra::time::precise_time_s();
+    let end = time::precise_time_s();
     let elapsed = end - start;
     print!("Count is {:?}\n", result);
     print!("Test took {:?} seconds\n", elapsed);

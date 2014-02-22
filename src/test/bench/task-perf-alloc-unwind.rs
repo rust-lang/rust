@@ -10,11 +10,11 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
 extern crate collections;
+extern crate time;
 
 use collections::list::{List, Cons, Nil};
-use extra::time::precise_time_s;
+use time::precise_time_s;
 use std::os;
 use std::task;
 
