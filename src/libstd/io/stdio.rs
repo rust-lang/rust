@@ -30,7 +30,7 @@ out.write(bytes!("Hello, world!"));
 use container::Container;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
-         standard_error, EndOfFile, LineBufferedWriter};
+         standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use libc;
 use mem::replace;
 use option::{Option, Some, None};
@@ -86,8 +86,21 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
 
 /// Creates a new non-blocking handle to the stdin of the current process.
 ///
-/// See `stdout()` for notes about this function.
-pub fn stdin() -> StdReader {
+/// The returned handled is buffered by default with a `BufferedReader`. If
+/// buffered access is not desired, the `stdin_raw` function is provided to
+/// provided unbuffered access to stdin.
+///
+/// See `stdout()` for more notes about this function.
+pub fn stdin() -> BufferedReader<StdReader> {
+    BufferedReader::new(stdin_raw())
+}
+
+/// Creates a new non-blocking handle to the stdin of the current process.
+///
+/// Unlike `stdin()`, the returned reader is *not* a buffered reader.
+///
+/// See `stdout()` for more notes about this function.
+pub fn stdin_raw() -> StdReader {
     src(libc::STDIN_FILENO, true, |src| StdReader { inner: src })
 }
 
