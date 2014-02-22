@@ -24,7 +24,7 @@
  * struct Person {
  *     id: uint,
  *     name: ~str,
- *     phone: uint,
+ *     phone: u64,
  * }
  *
  * let person1 = Person { id: 5, name: ~"Janet", phone: 555_666_7777 };
@@ -44,7 +44,7 @@
  * struct Person {
  *     id: uint,
  *     name: ~str,
- *     phone: uint,
+ *     phone: u64,
  * }
  *
  * impl Hash for Person {
