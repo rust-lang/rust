@@ -404,11 +404,23 @@ pub fn find_reachable(tcx: ty::ctxt,
     let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
-    //         a result of the privacy pass
+    //         a result of the privacy pass along with all local lang items. If
+    //         other crates link to us, they're going to expect to be able to
+    //         use the lang items, so we need to be sure to mark them as
+    //         exported.
+    let mut worklist = reachable_context.worklist.borrow_mut();
     for &id in exported_items.iter() {
-        let mut worklist = reachable_context.worklist.borrow_mut();
         worklist.get().push(id);
     }
+    for (_, item) in tcx.lang_items.items() {
+        match *item {
+            Some(did) if is_local(did) => {
+                worklist.get().push(did.node);
+            }
+            _ => {}
+        }
+    }
+    drop(worklist);
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     reachable_context.propagate();
