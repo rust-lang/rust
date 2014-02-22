@@ -160,9 +160,9 @@ impl <T> Container for CVec<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::CVec;
 
-    use std::libc::*;
+    use std::libc::{malloc, c_void};
     use std::libc;
     use std::ptr;
     use std::rt::global_heap::malloc_raw;
