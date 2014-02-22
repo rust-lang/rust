@@ -32,8 +32,8 @@ pub fn main() {
 
     let v = 46;
 
-    assert_eq!(map.find(&Owned(~"foo")), Some(&v));
-    assert_eq!(map.find(&Slice("foo")), Some(&v));
+    fail_unless_eq!(map.find(&Owned(~"foo")), Some(&v));
+    fail_unless_eq!(map.find(&Slice("foo")), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
@@ -52,23 +52,23 @@ pub fn main() {
     fail_unless!(!map.insert(Owned(~"cde"), c));
     fail_unless!(!map.insert(Slice("def"), d));
 
-    assert_eq!(map.find_equiv(&("abc")), Some(&a));
-    assert_eq!(map.find_equiv(&("bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&("cde")), Some(&c));
-    assert_eq!(map.find_equiv(&("def")), Some(&d));
+    fail_unless_eq!(map.find_equiv(&("abc")), Some(&a));
+    fail_unless_eq!(map.find_equiv(&("bcd")), Some(&b));
+    fail_unless_eq!(map.find_equiv(&("cde")), Some(&c));
+    fail_unless_eq!(map.find_equiv(&("def")), Some(&d));
 
-    assert_eq!(map.find_equiv(&(~"abc")), Some(&a));
-    assert_eq!(map.find_equiv(&(~"bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&(~"cde")), Some(&c));
-    assert_eq!(map.find_equiv(&(~"def")), Some(&d));
+    fail_unless_eq!(map.find_equiv(&(~"abc")), Some(&a));
+    fail_unless_eq!(map.find_equiv(&(~"bcd")), Some(&b));
+    fail_unless_eq!(map.find_equiv(&(~"cde")), Some(&c));
+    fail_unless_eq!(map.find_equiv(&(~"def")), Some(&d));
 
-    assert_eq!(map.find_equiv(&Slice("abc")), Some(&a));
-    assert_eq!(map.find_equiv(&Slice("bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&Slice("cde")), Some(&c));
-    assert_eq!(map.find_equiv(&Slice("def")), Some(&d));
+    fail_unless_eq!(map.find_equiv(&Slice("abc")), Some(&a));
+    fail_unless_eq!(map.find_equiv(&Slice("bcd")), Some(&b));
+    fail_unless_eq!(map.find_equiv(&Slice("cde")), Some(&c));
+    fail_unless_eq!(map.find_equiv(&Slice("def")), Some(&d));
 
-    assert_eq!(map.find_equiv(&Owned(~"abc")), Some(&a));
-    assert_eq!(map.find_equiv(&Owned(~"bcd")), Some(&b));
-    assert_eq!(map.find_equiv(&Owned(~"cde")), Some(&c));
-    assert_eq!(map.find_equiv(&Owned(~"def")), Some(&d));
+    fail_unless_eq!(map.find_equiv(&Owned(~"abc")), Some(&a));
+    fail_unless_eq!(map.find_equiv(&Owned(~"bcd")), Some(&b));
+    fail_unless_eq!(map.find_equiv(&Owned(~"cde")), Some(&c));
+    fail_unless_eq!(map.find_equiv(&Owned(~"def")), Some(&d));
 }

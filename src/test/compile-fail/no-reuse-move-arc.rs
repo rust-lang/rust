@@ -19,10 +19,10 @@ fn main() {
 
     task::spawn(proc() {
         let v = arc_v.get();
-        assert_eq!(v[3], 4);
+        fail_unless_eq!(v[3], 4);
     });
 
-    assert_eq!((arc_v.get())[2], 3); //~ ERROR use of moved value: `arc_v`
+    fail_unless_eq!((arc_v.get())[2], 3); //~ ERROR use of moved value: `arc_v`
 
     info!("{:?}", arc_v); //~ ERROR use of moved value: `arc_v`
 }

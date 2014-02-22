@@ -283,7 +283,7 @@ mod tests {
     fn test_clone() {
         let a = (1, ~"2");
         let b = a.clone();
-        assert_eq!(a, b);
+        fail_unless_eq!(a, b);
     }
 
     #[test]
@@ -291,10 +291,10 @@ mod tests {
         macro_rules! test_getter(
             ($x:expr, $valN:ident, $refN:ident, $mutN:ident,
              $init:expr, $incr:expr, $result:expr) => ({
-                assert_eq!($x.$valN(), $init);
-                assert_eq!(*$x.$refN(), $init);
+                fail_unless_eq!($x.$valN(), $init);
+                fail_unless_eq!(*$x.$refN(), $init);
                 *$x.$mutN() += $incr;
-                assert_eq!(*$x.$refN(), $result);
+                fail_unless_eq!(*$x.$refN(), $result);
             })
         )
         let mut x = (0u8, 1u16, 2u32, 3u64, 4u, 5i8, 6i16, 7i32, 8i64, 9i, 10f32, 11f64);
@@ -319,8 +319,8 @@ mod tests {
         let nan = 0.0/0.0;
 
         // Eq
-        assert_eq!(small, small);
-        assert_eq!(big, big);
+        fail_unless_eq!(small, small);
+        fail_unless_eq!(big, big);
         fail_unless!(small != big);
         fail_unless!(big != small);
 
@@ -352,16 +352,16 @@ mod tests {
         fail_unless!(!big.equals(&small));
 
         // TotalOrd
-        assert_eq!(small.cmp(&small), Equal);
-        assert_eq!(big.cmp(&big), Equal);
-        assert_eq!(small.cmp(&big), Less);
-        assert_eq!(big.cmp(&small), Greater);
+        fail_unless_eq!(small.cmp(&small), Equal);
+        fail_unless_eq!(big.cmp(&big), Equal);
+        fail_unless_eq!(small.cmp(&big), Less);
+        fail_unless_eq!(big.cmp(&small), Greater);
     }
 
     #[test]
     fn test_show() {
-        assert_eq!(format!("{}", (1,)), ~"(1,)");
-        assert_eq!(format!("{}", (1, true)), ~"(1, true)");
-        assert_eq!(format!("{}", (1, ~"hi", true)), ~"(1, hi, true)");
+        fail_unless_eq!(format!("{}", (1,)), ~"(1,)");
+        fail_unless_eq!(format!("{}", (1, true)), ~"(1, true)");
+        fail_unless_eq!(format!("{}", (1, ~"hi", true)), ~"(1, hi, true)");
     }
 }

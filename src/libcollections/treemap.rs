@@ -1091,7 +1091,7 @@ mod test_treemap {
         fail_unless!(m.insert(1, 2));
         fail_unless!(m.insert(5, 3));
         fail_unless!(m.insert(9, 3));
-        assert_eq!(m.find(&2), None);
+        fail_unless_eq!(m.find(&2), None);
     }
 
     #[test]
@@ -1104,7 +1104,7 @@ mod test_treemap {
         match m.find_mut(&5) {
           None => fail!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        fail_unless_eq!(m.find(&5), Some(&new));
     }
 
     #[test]
@@ -1113,7 +1113,7 @@ mod test_treemap {
         fail_unless!(m.insert(5, 2));
         fail_unless!(m.insert(2, 9));
         fail_unless!(!m.insert(2, 11));
-        assert_eq!(m.find(&2).unwrap(), &11);
+        fail_unless_eq!(m.find(&2).unwrap(), &11);
     }
 
     #[test]
@@ -1142,13 +1142,13 @@ mod test_treemap {
         m.insert(k1.clone(), v1.clone());
         m.insert(k2.clone(), v2.clone());
 
-        assert_eq!(m.find(&k2), Some(&v2));
-        assert_eq!(m.find(&k1), Some(&v1));
+        fail_unless_eq!(m.find(&k2), Some(&v2));
+        fail_unless_eq!(m.find(&k1), Some(&v1));
     }
 
     fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
-        assert_eq!(ctrl.is_empty(), map.is_empty());
+        fail_unless_eq!(ctrl.is_empty(), map.is_empty());
         for x in ctrl.iter() {
             let &(ref k, ref v) = x;
             fail_unless!(map.find(k).unwrap() == v)
@@ -1171,7 +1171,7 @@ mod test_treemap {
                                   parent: &~TreeNode<K, V>) {
         match *node {
           Some(ref r) => {
-            assert_eq!(r.key.cmp(&parent.key), Less);
+            fail_unless_eq!(r.key.cmp(&parent.key), Less);
             fail_unless!(r.level == parent.level - 1); // left is black
             check_left(&r.left, r);
             check_right(&r.right, r, false);
@@ -1185,7 +1185,7 @@ mod test_treemap {
                                    parent_red: bool) {
         match *node {
           Some(ref r) => {
-            assert_eq!(r.key.cmp(&parent.key), Greater);
+            fail_unless_eq!(r.key.cmp(&parent.key), Greater);
             let red = r.level == parent.level;
             if parent_red { fail_unless!(!red) } // no dual horizontal links
             // Right red or black
@@ -1243,19 +1243,19 @@ mod test_treemap {
     fn test_len() {
         let mut m = TreeMap::new();
         fail_unless!(m.insert(3, 6));
-        assert_eq!(m.len(), 1);
+        fail_unless_eq!(m.len(), 1);
         fail_unless!(m.insert(0, 0));
-        assert_eq!(m.len(), 2);
+        fail_unless_eq!(m.len(), 2);
         fail_unless!(m.insert(4, 8));
-        assert_eq!(m.len(), 3);
+        fail_unless_eq!(m.len(), 3);
         fail_unless!(m.remove(&3));
-        assert_eq!(m.len(), 2);
+        fail_unless_eq!(m.len(), 2);
         fail_unless!(!m.remove(&5));
-        assert_eq!(m.len(), 2);
+        fail_unless_eq!(m.len(), 2);
         fail_unless!(m.insert(2, 4));
-        assert_eq!(m.len(), 3);
+        fail_unless_eq!(m.len(), 3);
         fail_unless!(m.insert(1, 2));
-        assert_eq!(m.len(), 4);
+        fail_unless_eq!(m.len(), 4);
     }
 
     #[test]
@@ -1270,11 +1270,11 @@ mod test_treemap {
 
         let mut n = 0;
         for (k, v) in m.iter() {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
+            fail_unless_eq!(*k, n);
+            fail_unless_eq!(*v, n * 2);
             n += 1;
         }
-        assert_eq!(n, 5);
+        fail_unless_eq!(n, 5);
     }
 
     #[test]
@@ -1288,17 +1288,17 @@ mod test_treemap {
             let mut lb_it = m.lower_bound(&i);
             let (&k, &v) = lb_it.next().unwrap();
             let lb = i + i % 2;
-            assert_eq!(lb, k);
-            assert_eq!(lb * 2, v);
+            fail_unless_eq!(lb, k);
+            fail_unless_eq!(lb * 2, v);
 
             let mut ub_it = m.upper_bound(&i);
             let (&k, &v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
-            assert_eq!(ub, k);
-            assert_eq!(ub * 2, v);
+            fail_unless_eq!(ub, k);
+            fail_unless_eq!(ub * 2, v);
         }
         let mut end_it = m.lower_bound(&199);
-        assert_eq!(end_it.next(), None);
+        fail_unless_eq!(end_it.next(), None);
     }
 
     #[test]
@@ -1313,8 +1313,8 @@ mod test_treemap {
 
         let mut n = 4;
         for (k, v) in m.rev_iter() {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
+            fail_unless_eq!(*k, n);
+            fail_unless_eq!(*v, n * 2);
             n -= 1;
         }
     }
@@ -1331,7 +1331,7 @@ mod test_treemap {
         }
 
         for (&k, &v) in m.iter() {
-            assert_eq!(v, 111 * k);
+            fail_unless_eq!(v, 111 * k);
         }
     }
     #[test]
@@ -1346,7 +1346,7 @@ mod test_treemap {
         }
 
         for (&k, &v) in m.iter() {
-            assert_eq!(v, 111 * k);
+            fail_unless_eq!(v, 111 * k);
         }
     }
 
@@ -1363,14 +1363,14 @@ mod test_treemap {
             let mut lb_it = m_lower.mut_lower_bound(&i);
             let (&k, v) = lb_it.next().unwrap();
             let lb = i + i % 2;
-            assert_eq!(lb, k);
+            fail_unless_eq!(lb, k);
             *v -= k;
         }
         for i in range(0, 198) {
             let mut ub_it = m_upper.mut_upper_bound(&i);
             let (&k, v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
-            assert_eq!(ub, k);
+            fail_unless_eq!(ub, k);
             *v -= k;
         }
 
@@ -1450,11 +1450,11 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        assert_eq!(a.next().unwrap(), (&x1, &y1));
-        assert_eq!(a.next().unwrap(), (&x2, &y2));
-        assert_eq!(a.next().unwrap(), (&x3, &y3));
-        assert_eq!(a.next().unwrap(), (&x4, &y4));
-        assert_eq!(a.next().unwrap(), (&x5, &y5));
+        fail_unless_eq!(a.next().unwrap(), (&x1, &y1));
+        fail_unless_eq!(a.next().unwrap(), (&x2, &y2));
+        fail_unless_eq!(a.next().unwrap(), (&x3, &y3));
+        fail_unless_eq!(a.next().unwrap(), (&x4, &y4));
+        fail_unless_eq!(a.next().unwrap(), (&x5, &y5));
 
         fail_unless!(a.next().is_none());
 
@@ -1465,7 +1465,7 @@ mod test_treemap {
         let mut i = 0;
 
         for x in b {
-            assert_eq!(expected[i], x);
+            fail_unless_eq!(expected[i], x);
             i += 1;
 
             if i == 2 {
@@ -1474,7 +1474,7 @@ mod test_treemap {
         }
 
         for x in b {
-            assert_eq!(expected[i], x);
+            fail_unless_eq!(expected[i], x);
             i += 1;
         }
     }
@@ -1486,7 +1486,7 @@ mod test_treemap {
         let map: TreeMap<int, int> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+            fail_unless_eq!(map.find(&k), Some(&v));
         }
     }
 
@@ -1634,7 +1634,7 @@ mod test_set {
 
         let mut n = 0;
         for x in m.iter() {
-            assert_eq!(*x, n);
+            fail_unless_eq!(*x, n);
             n += 1
         }
     }
@@ -1651,7 +1651,7 @@ mod test_set {
 
         let mut n = 4;
         for x in m.rev_iter() {
-            assert_eq!(*x, n);
+            fail_unless_eq!(*x, n);
             n -= 1;
         }
     }
@@ -1678,11 +1678,11 @@ mod test_set {
 
         let mut i = 0;
         f(&set_a, &set_b, |x| {
-            assert_eq!(*x, expected[i]);
+            fail_unless_eq!(*x, expected[i]);
             i += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1765,10 +1765,10 @@ mod test_set {
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&5u, & &"bar"));
+        fail_unless_eq!(result.unwrap(), (&5u, & &"bar"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&11u, & &"foo"));
+        fail_unless_eq!(result.unwrap(), (&11u, & &"foo"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
         fail_unless!(result.is_none());
@@ -1777,17 +1777,17 @@ mod test_set {
     #[test]
     fn test_swap() {
         let mut m = TreeMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        fail_unless_eq!(m.swap(1, 2), None);
+        fail_unless_eq!(m.swap(1, 3), Some(2));
+        fail_unless_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TreeMap::new();
         m.insert(1, 2);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        fail_unless_eq!(m.pop(&1), Some(2));
+        fail_unless_eq!(m.pop(&1), None);
     }
 
     #[test]

@@ -16,5 +16,5 @@ fn main() {
     let z = match 3 {
         x() => x
     };
-    assert_eq!(z,3);
+    fail_unless_eq!(z,3);
 }

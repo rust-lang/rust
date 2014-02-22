@@ -14,5 +14,5 @@
 struct Point { x : int }
 
 fn main() {
-    assert_eq!(14,15);
+    fail_unless_eq!(14,15);
 }

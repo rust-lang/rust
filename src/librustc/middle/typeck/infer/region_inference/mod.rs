@@ -164,7 +164,7 @@ impl RegionVarBindings {
               Snapshot => {}
               AddVar(vid) => {
                 let mut var_origins = self.var_origins.borrow_mut();
-                assert_eq!(var_origins.get().len(), vid.to_uint() + 1);
+                fail_unless_eq!(var_origins.get().len(), vid.to_uint() + 1);
                 var_origins.get().pop().unwrap();
               }
               AddConstraint(ref constraint) => {
@@ -905,7 +905,7 @@ impl RegionVarBindings {
 
         return match a_data.value {
             NoValue => {
-                assert_eq!(a_data.classification, Contracting);
+                fail_unless_eq!(a_data.classification, Contracting);
                 a_data.value = Value(b_region);
                 true // changed
             }

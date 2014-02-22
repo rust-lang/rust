@@ -529,7 +529,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                     paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);
                 }
-                assert_eq!(closedir(dir_ptr), 0);
+                fail_unless_eq!(closedir(dir_ptr), 0);
                 Ok(paths)
             } else {
                 Err(super::last_error())
@@ -957,10 +957,10 @@ mod tests {
             let mut buf = [0u8, ..4];
             match reader.inner_read(buf) {
                 Ok(4) => {
-                    assert_eq!(buf[0], 't' as u8);
-                    assert_eq!(buf[1], 'e' as u8);
-                    assert_eq!(buf[2], 's' as u8);
-                    assert_eq!(buf[3], 't' as u8);
+                    fail_unless_eq!(buf[0], 't' as u8);
+                    fail_unless_eq!(buf[1], 'e' as u8);
+                    fail_unless_eq!(buf[2], 's' as u8);
+                    fail_unless_eq!(buf[3], 't' as u8);
                 }
                 r => fail!("invalid read: {:?}", r)
             }
@@ -983,10 +983,10 @@ mod tests {
             let _ = file.seek(0, io::SeekSet).unwrap();
             match file.read(buf) {
                 Ok(4) => {
-                    assert_eq!(buf[0], 't' as u8);
-                    assert_eq!(buf[1], 'e' as u8);
-                    assert_eq!(buf[2], 's' as u8);
-                    assert_eq!(buf[3], 't' as u8);
+                    fail_unless_eq!(buf[0], 't' as u8);
+                    fail_unless_eq!(buf[1], 'e' as u8);
+                    fail_unless_eq!(buf[2], 's' as u8);
+                    fail_unless_eq!(buf[3], 't' as u8);
                 }
                 r => fail!("invalid read: {:?}", r)
             }

@@ -238,15 +238,15 @@ impl StaticMutex {
         t.deschedule(1, |task| {
             let task = unsafe { task.cast_to_uint() };
             if can_block {
-                assert_eq!(self.native_blocker, 0);
+                fail_unless_eq!(self.native_blocker, 0);
                 self.native_blocker = task;
             } else {
-                assert_eq!(self.green_blocker, 0);
+                fail_unless_eq!(self.green_blocker, 0);
                 self.green_blocker = task;
             }
 
             loop {
-                assert_eq!(old & native_bit, 0);
+                fail_unless_eq!(old & native_bit, 0);
                 // If the old state was locked, then we need to flag ourselves
                 // as blocking in the state. If the old state was unlocked, then
                 // we attempt to acquire the mutex. Everything here is a CAS
@@ -259,12 +259,12 @@ impl StaticMutex {
                         n => n
                     };
                 } else {
-                    assert_eq!(old, 0);
+                    fail_unless_eq!(old, 0);
                     old = match self.state.compare_and_swap(old,
                                                             old | LOCKED,
                                                             atomics::SeqCst) {
                         n if n == old => {
-                            assert_eq!(self.flavor, Unlocked);
+                            fail_unless_eq!(self.flavor, Unlocked);
                             if can_block {
                                 self.native_blocker = 0;
                                 self.flavor = NativeAcquisition;
@@ -376,7 +376,7 @@ impl StaticMutex {
                 self.flavor = NativeAcquisition;
                 break;
             } else {
-                assert_eq!(state, LOCKED);
+                fail_unless_eq!(state, LOCKED);
                 if !unlocked {
                     match flavor {
                         GreenAcquisition => { self.green_unlock(); }
@@ -544,7 +544,7 @@ mod test {
         for _ in range(0, 2 * N) {
             p.recv();
         }
-        assert_eq!(unsafe {CNT}, M * N * 2);
+        fail_unless_eq!(unsafe {CNT}, M * N * 2);
         unsafe {
             m.destroy();
         }

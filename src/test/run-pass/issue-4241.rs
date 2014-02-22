@@ -33,13 +33,13 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
   let res =
       if (len > 0) {
       let bytes = io.read_bytes(len as uint);
-      assert_eq!(bytes.len(), len);
+      fail_unless_eq!(bytes.len(), len);
       Data(bytes)
   } else {
       Data(~[])
   };
-  assert_eq!(io.read_char(), '\r');
-  assert_eq!(io.read_char(), '\n');
+  fail_unless_eq!(io.read_char(), '\r');
+  fail_unless_eq!(io.read_char(), '\n');
   return res;
 }
 

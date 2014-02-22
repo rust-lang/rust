@@ -247,23 +247,23 @@ mod test {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
 
         let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[], elems)
+        fail_unless_eq!(~[], elems)
 
         e1.add(A);
         let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A], elems)
+        fail_unless_eq!(~[A], elems)
 
         e1.add(C);
         let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,C], elems)
+        fail_unless_eq!(~[A,C], elems)
 
         e1.add(C);
         let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,C], elems)
+        fail_unless_eq!(~[A,C], elems)
 
         e1.add(B);
         let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,B,C], elems)
+        fail_unless_eq!(~[A,B,C], elems)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -281,14 +281,14 @@ mod test {
 
         let e_union = e1 | e2;
         let elems: ~[Foo] = e_union.iter().collect();
-        assert_eq!(~[A,B,C], elems)
+        fail_unless_eq!(~[A,B,C], elems)
 
         let e_intersection = e1 & e2;
         let elems: ~[Foo] = e_intersection.iter().collect();
-        assert_eq!(~[C], elems)
+        fail_unless_eq!(~[C], elems)
 
         let e_subtract = e1 - e2;
         let elems: ~[Foo] = e_subtract.iter().collect();
-        assert_eq!(~[A], elems)
+        fail_unless_eq!(~[A], elems)
     }
 }

@@ -127,9 +127,9 @@ mod test {
         static mut o: Once = ONCE_INIT;
         let mut a = 0;
         unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
+        fail_unless_eq!(a, 1);
         unsafe { o.doit(|| a += 1); }
-        assert_eq!(a, 1);
+        fail_unless_eq!(a, 1);
     }
 
     #[test]

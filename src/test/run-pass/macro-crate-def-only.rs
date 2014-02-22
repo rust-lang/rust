@@ -17,5 +17,5 @@
 extern crate macro_crate_def_only;
 
 pub fn main() {
-    assert_eq!(5, make_a_5!());
+    fail_unless_eq!(5, make_a_5!());
 }

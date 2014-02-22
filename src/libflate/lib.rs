@@ -119,7 +119,7 @@ mod tests {
             debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
-            assert_eq!(input, out);
+            fail_unless_eq!(input, out);
         }
     }
 
@@ -128,6 +128,6 @@ mod tests {
         let bytes = ~[1, 2, 3, 4, 5];
         let deflated = deflate_bytes(bytes);
         let inflated = inflate_bytes(deflated);
-        assert_eq!(inflated, bytes);
+        fail_unless_eq!(inflated, bytes);
     }
 }

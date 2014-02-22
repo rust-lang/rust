@@ -32,8 +32,8 @@ impl Foo<char> {
 impl Foo {
     fn bar(&self) {
         let (i, c): (int, char) = self.a;
-        assert_eq!(Foo { a: i }.bar_int(), i);
-        assert_eq!(Foo { a: c }.bar_char(), c);
+        fail_unless_eq!(Foo { a: i }.bar_int(), i);
+        fail_unless_eq!(Foo { a: c }.bar_char(), c);
     }
 }
 
@@ -45,11 +45,11 @@ impl<A: Clone> Foo<A> {
 
 fn default_foo(x: Foo) {
     let (i, c): (int, char) = x.a;
-    assert_eq!(i, 1);
-    assert_eq!(c, 'a');
+    fail_unless_eq!(i, 1);
+    fail_unless_eq!(c, 'a');
 
     x.bar();
-    assert_eq!(x.baz(), (1, 'a'));
+    fail_unless_eq!(x.baz(), (1, 'a'));
 }
 
 #[deriving(Eq)]
@@ -63,5 +63,5 @@ fn main() {
     default_foo(Foo { a: (1, 'a') });
 
     let x: Baz<bool> = Baz(true, BazHelper(false), Some(BazHelper(true)));
-    assert_eq!(x, Baz(true, BazHelper(false), Some(BazHelper(true))));
+    fail_unless_eq!(x, Baz(true, BazHelper(false), Some(BazHelper(true))));
 }

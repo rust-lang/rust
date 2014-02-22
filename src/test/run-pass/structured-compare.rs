@@ -22,7 +22,7 @@ impl Eq for foo {
 pub fn main() {
     let a = (1, 2, 3);
     let b = (1, 2, 3);
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
     fail_unless!((a != (1, 2, 4)));
     fail_unless!((a < (1, 2, 4)));
     fail_unless!((a <= (1, 2, 4)));
@@ -31,6 +31,6 @@ pub fn main() {
     let x = large;
     let y = small;
     fail_unless!((x != y));
-    assert_eq!(x, large);
+    fail_unless_eq!(x, large);
     fail_unless!((x != small));
 }

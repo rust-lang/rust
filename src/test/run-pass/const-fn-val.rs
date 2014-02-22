@@ -17,5 +17,5 @@ struct Bar<'a> { f: 'a || -> int }
 static b : Bar<'static> = Bar { f: foo };
 
 pub fn main() {
-    assert_eq!((b.f)(), 0xca7f000d);
+    fail_unless_eq!((b.f)(), 0xca7f000d);
 }

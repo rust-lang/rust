@@ -27,6 +27,6 @@ fn atoll(s: ~str) -> i64 {
 }
 
 pub fn main() {
-    assert_eq!(atol(~"1024") * 10, atol(~"10240"));
+    fail_unless_eq!(atol(~"1024") * 10, atol(~"10240"));
     fail_unless!((atoll(~"11111111111111111") * 10) == atoll(~"111111111111111110"));
 }

@@ -15,8 +15,8 @@ fn f(i: int, f: |int| -> int) -> int { f(i) }
 fn g(_g: ||) { }
 
 pub fn main() {
-    assert_eq!(f(10, |a| a), 10);
+    fail_unless_eq!(f(10, |a| a), 10);
     g(||());
-    assert_eq!(f(10, |a| a), 10);
+    fail_unless_eq!(f(10, |a| a), 10);
     g(||{});
 }

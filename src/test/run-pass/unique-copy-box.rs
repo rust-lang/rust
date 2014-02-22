@@ -20,5 +20,5 @@ pub fn main() {
     let j = i.clone();
     let rc2 = managed::refcount(*i);
     error!("rc1: {} rc2: {}", rc1, rc2);
-    assert_eq!(rc1 + 1u, rc2);
+    fail_unless_eq!(rc1 + 1u, rc2);
 }

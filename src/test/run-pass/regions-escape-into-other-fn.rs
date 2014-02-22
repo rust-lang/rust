@@ -15,5 +15,5 @@ fn bar(x: &uint) -> uint { *x }
 
 pub fn main() {
     let p = @3u;
-    assert_eq!(bar(foo(p)), 3);
+    fail_unless_eq!(bar(foo(p)), 3);
 }

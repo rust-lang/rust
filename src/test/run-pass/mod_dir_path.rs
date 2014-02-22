@@ -17,5 +17,5 @@ mod mod_dir_simple {
 }
 
 pub fn main() {
-    assert_eq!(mod_dir_simple::syrup::foo(), 10);
+    fail_unless_eq!(mod_dir_simple::syrup::foo(), 10);
 }

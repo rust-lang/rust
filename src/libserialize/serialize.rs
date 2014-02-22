@@ -495,7 +495,7 @@ impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
 impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
     fn decode(d: &mut D) -> (T0, T1) {
         d.read_seq(|d, len| {
-            assert_eq!(len, 2);
+            fail_unless_eq!(len, 2);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d))
@@ -531,7 +531,7 @@ impl<
 > Decodable<D> for (T0, T1, T2) {
     fn decode(d: &mut D) -> (T0, T1, T2) {
         d.read_seq(|d, len| {
-            assert_eq!(len, 3);
+            fail_unless_eq!(len, 3);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d)),
@@ -571,7 +571,7 @@ impl<
 > Decodable<D> for (T0, T1, T2, T3) {
     fn decode(d: &mut D) -> (T0, T1, T2, T3) {
         d.read_seq(|d, len| {
-            assert_eq!(len, 4);
+            fail_unless_eq!(len, 4);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d)),
@@ -615,7 +615,7 @@ impl<
 > Decodable<D> for (T0, T1, T2, T3, T4) {
     fn decode(d: &mut D) -> (T0, T1, T2, T3, T4) {
         d.read_seq(|d, len| {
-            assert_eq!(len, 5);
+            fail_unless_eq!(len, 5);
             (
                 d.read_seq_elt(0, |d| Decodable::decode(d)),
                 d.read_seq_elt(1, |d| Decodable::decode(d)),

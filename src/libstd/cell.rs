@@ -273,12 +273,12 @@ mod test {
     #[test]
     fn smoketest_cell() {
         let x = Cell::new(10);
-        assert_eq!(x.get(), 10);
+        fail_unless_eq!(x.get(), 10);
         x.set(20);
-        assert_eq!(x.get(), 20);
+        fail_unless_eq!(x.get(), 20);
 
         let y = Cell::new((30, 40));
-        assert_eq!(y.get(), (30, 40));
+        fail_unless_eq!(y.get(), (30, 40));
     }
 
     #[test]
@@ -340,7 +340,7 @@ mod test {
     #[test]
     fn with_ok() {
         let x = RefCell::new(0);
-        assert_eq!(1, x.with(|x| *x+1));
+        fail_unless_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
@@ -355,7 +355,7 @@ mod test {
     fn borrow_with() {
         let x = RefCell::new(0);
         let _b1 = x.borrow();
-        assert_eq!(1, x.with(|x| *x+1));
+        fail_unless_eq!(1, x.with(|x| *x+1));
     }
 
     #[test]
@@ -363,7 +363,7 @@ mod test {
         let x = RefCell::new(0);
         x.with_mut(|x| *x += 1);
         let b = x.borrow();
-        assert_eq!(1, *b.get());
+        fail_unless_eq!(1, *b.get());
     }
 
     #[test]

@@ -20,8 +20,8 @@ pub fn main() {
     let z = ~Pair { a : 10, b : 12};
 
     let f: proc() = proc() {
-        assert_eq!(z.a, 10);
-        assert_eq!(z.b, 12);
+        fail_unless_eq!(z.a, 10);
+        fail_unless_eq!(z.b, 12);
     };
 
     spawn(f);

@@ -52,5 +52,5 @@ pub fn main() {
     let foo = Foo;
     let bar = Bar;
     let r = use_c(&bar, &foo);
-    assert_eq!(r, 102);
+    fail_unless_eq!(r, 102);
 }

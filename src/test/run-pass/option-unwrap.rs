@@ -39,5 +39,5 @@ pub fn main() {
         let _c = unwrap(b);
     }
 
-    assert_eq!(x.get(), 0);
+    fail_unless_eq!(x.get(), 0);
 }

@@ -29,14 +29,14 @@ impl Foo for uint {
 fn do_it_mut(obj: &mut Foo) {
     let x = obj.bar();
     let y = obj.foo();
-    assert_eq!(x, y);
+    fail_unless_eq!(x, y);
 
     do_it_imm(obj, y);
 }
 
 fn do_it_imm(obj: &Foo, v: uint) {
     let y = obj.foo();
-    assert_eq!(v, y);
+    fail_unless_eq!(v, y);
 }
 
 pub fn main() {

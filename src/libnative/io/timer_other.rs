@@ -90,7 +90,7 @@ pub enum Req {
 fn now() -> u64 {
     unsafe {
         let mut now: libc::timeval = mem::init();
-        assert_eq!(imp::gettimeofday(&mut now, ptr::null()), 0);
+        fail_unless_eq!(imp::gettimeofday(&mut now, ptr::null()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
@@ -187,7 +187,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
                 // drain the file descriptor
                 let mut buf = [0];
-                assert_eq!(fd.inner_read(buf).unwrap(), 1);
+                fail_unless_eq!(fd.inner_read(buf).unwrap(), 1);
             }
 
             -1 if os::errno() == libc::EINTR as int => {}

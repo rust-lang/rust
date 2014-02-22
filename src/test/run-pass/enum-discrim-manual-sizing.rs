@@ -71,14 +71,14 @@ enum Euint {
 }
 
 pub fn main() {
-    assert_eq!(size_of::<Ei8>(), 1);
-    assert_eq!(size_of::<Eu8>(), 1);
-    assert_eq!(size_of::<Ei16>(), 2);
-    assert_eq!(size_of::<Eu16>(), 2);
-    assert_eq!(size_of::<Ei32>(), 4);
-    assert_eq!(size_of::<Eu32>(), 4);
-    assert_eq!(size_of::<Ei64>(), 8);
-    assert_eq!(size_of::<Eu64>(), 8);
-    assert_eq!(size_of::<Eint>(), size_of::<int>());
-    assert_eq!(size_of::<Euint>(), size_of::<uint>());
+    fail_unless_eq!(size_of::<Ei8>(), 1);
+    fail_unless_eq!(size_of::<Eu8>(), 1);
+    fail_unless_eq!(size_of::<Ei16>(), 2);
+    fail_unless_eq!(size_of::<Eu16>(), 2);
+    fail_unless_eq!(size_of::<Ei32>(), 4);
+    fail_unless_eq!(size_of::<Eu32>(), 4);
+    fail_unless_eq!(size_of::<Ei64>(), 8);
+    fail_unless_eq!(size_of::<Eu64>(), 8);
+    fail_unless_eq!(size_of::<Eint>(), size_of::<int>());
+    fail_unless_eq!(size_of::<Euint>(), size_of::<uint>());
 }

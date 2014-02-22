@@ -275,7 +275,7 @@ mod tests {
             let _c = c;
             fail!()
         });
-        assert_eq!(p.recv_opt(), None);
+        fail_unless_eq!(p.recv_opt(), None);
     }
 
     #[test]

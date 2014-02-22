@@ -16,7 +16,7 @@ trait A {
 impl A for int { }
 
 fn f<T:A>(i: T) {
-    assert_eq!(i.g(), 10);
+    fail_unless_eq!(i.g(), 10);
 }
 
 pub fn main () {

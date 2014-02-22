@@ -156,7 +156,7 @@ pub trait Round {
 /// ```rust
 /// use std::num;
 ///
-/// assert_eq!(num::pow(2, 4), 16);
+/// fail_unless_eq!(num::pow(2, 4), 16);
 /// ```
 #[inline]
 pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
@@ -196,7 +196,7 @@ pub trait Bitwise: Bounded
     /// use std::num::Bitwise;
     ///
     /// let n = 0b01001100u8;
-    /// assert_eq!(n.count_ones(), 3);
+    /// fail_unless_eq!(n.count_ones(), 3);
     /// ```
     fn count_ones(&self) -> Self;
 
@@ -208,7 +208,7 @@ pub trait Bitwise: Bounded
     /// use std::num::Bitwise;
     ///
     /// let n = 0b01001100u8;
-    /// assert_eq!(n.count_zeros(), 5);
+    /// fail_unless_eq!(n.count_zeros(), 5);
     /// ```
     #[inline]
     fn count_zeros(&self) -> Self {
@@ -224,7 +224,7 @@ pub trait Bitwise: Bounded
     /// use std::num::Bitwise;
     ///
     /// let n = 0b0101000u16;
-    /// assert_eq!(n.leading_zeros(), 10);
+    /// fail_unless_eq!(n.leading_zeros(), 10);
     /// ```
     fn leading_zeros(&self) -> Self;
 
@@ -237,7 +237,7 @@ pub trait Bitwise: Bounded
     /// use std::num::Bitwise;
     ///
     /// let n = 0b0101000u16;
-    /// assert_eq!(n.trailing_zeros(), 3);
+    /// fail_unless_eq!(n.trailing_zeros(), 3);
     /// ```
     fn trailing_zeros(&self) -> Self;
 }
@@ -468,7 +468,7 @@ pub trait Float: Signed
 /// use std::num;
 ///
 /// let sixteen: f64 = num::powf(2.0, 4.0);
-/// assert_eq!(sixteen, 16.0);
+/// fail_unless_eq!(sixteen, 16.0);
 /// ```
 #[inline(always)] pub fn powf<T: Float>(value: T, n: T) -> T { value.powf(&n) }
 /// Take the square root of a number.
@@ -968,7 +968,7 @@ impl_from_primitive!(f64, n.to_f64())
 /// use std::num;
 ///
 /// let twenty: f32 = num::cast(0x14).unwrap();
-/// assert_eq!(twenty, 20f32);
+/// fail_unless_eq!(twenty, 20f32);
 /// ```
 ///
 #[inline]
@@ -1076,17 +1076,17 @@ pub trait CheckedDiv: Div<Self, Self> {
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20).unwrap());
-    assert_eq!(ten.div(&two),  cast(5).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0).unwrap());
+    fail_unless_eq!(ten.add(&two),  cast(12).unwrap());
+    fail_unless_eq!(ten.sub(&two),  cast(8).unwrap());
+    fail_unless_eq!(ten.mul(&two),  cast(20).unwrap());
+    fail_unless_eq!(ten.div(&two),  cast(5).unwrap());
+    fail_unless_eq!(ten.rem(&two),  cast(0).unwrap());
 
-    assert_eq!(ten.add(&two),  ten + two);
-    assert_eq!(ten.sub(&two),  ten - two);
-    assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.div(&two),  ten / two);
-    assert_eq!(ten.rem(&two),  ten % two);
+    fail_unless_eq!(ten.add(&two),  ten + two);
+    fail_unless_eq!(ten.sub(&two),  ten - two);
+    fail_unless_eq!(ten.mul(&two),  ten * two);
+    fail_unless_eq!(ten.div(&two),  ten / two);
+    fail_unless_eq!(ten.rem(&two),  ten % two);
 }
 
 #[cfg(test)]
@@ -1108,44 +1108,44 @@ mod tests {
         ($_20:expr) => ({
             let _20 = $_20;
 
-            assert_eq!(20u,   _20.to_uint().unwrap());
-            assert_eq!(20u8,  _20.to_u8().unwrap());
-            assert_eq!(20u16, _20.to_u16().unwrap());
-            assert_eq!(20u32, _20.to_u32().unwrap());
-            assert_eq!(20u64, _20.to_u64().unwrap());
-            assert_eq!(20i,   _20.to_int().unwrap());
-            assert_eq!(20i8,  _20.to_i8().unwrap());
-            assert_eq!(20i16, _20.to_i16().unwrap());
-            assert_eq!(20i32, _20.to_i32().unwrap());
-            assert_eq!(20i64, _20.to_i64().unwrap());
-            assert_eq!(20f32, _20.to_f32().unwrap());
-            assert_eq!(20f64, _20.to_f64().unwrap());
+            fail_unless_eq!(20u,   _20.to_uint().unwrap());
+            fail_unless_eq!(20u8,  _20.to_u8().unwrap());
+            fail_unless_eq!(20u16, _20.to_u16().unwrap());
+            fail_unless_eq!(20u32, _20.to_u32().unwrap());
+            fail_unless_eq!(20u64, _20.to_u64().unwrap());
+            fail_unless_eq!(20i,   _20.to_int().unwrap());
+            fail_unless_eq!(20i8,  _20.to_i8().unwrap());
+            fail_unless_eq!(20i16, _20.to_i16().unwrap());
+            fail_unless_eq!(20i32, _20.to_i32().unwrap());
+            fail_unless_eq!(20i64, _20.to_i64().unwrap());
+            fail_unless_eq!(20f32, _20.to_f32().unwrap());
+            fail_unless_eq!(20f64, _20.to_f64().unwrap());
 
-            assert_eq!(_20, NumCast::from(20u).unwrap());
-            assert_eq!(_20, NumCast::from(20u8).unwrap());
-            assert_eq!(_20, NumCast::from(20u16).unwrap());
-            assert_eq!(_20, NumCast::from(20u32).unwrap());
-            assert_eq!(_20, NumCast::from(20u64).unwrap());
-            assert_eq!(_20, NumCast::from(20i).unwrap());
-            assert_eq!(_20, NumCast::from(20i8).unwrap());
-            assert_eq!(_20, NumCast::from(20i16).unwrap());
-            assert_eq!(_20, NumCast::from(20i32).unwrap());
-            assert_eq!(_20, NumCast::from(20i64).unwrap());
-            assert_eq!(_20, NumCast::from(20f32).unwrap());
-            assert_eq!(_20, NumCast::from(20f64).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20u).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20u8).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20u16).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20u32).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20u64).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20i).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20i8).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20i16).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20i32).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20i64).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20f32).unwrap());
+            fail_unless_eq!(_20, NumCast::from(20f64).unwrap());
 
-            assert_eq!(_20, cast(20u).unwrap());
-            assert_eq!(_20, cast(20u8).unwrap());
-            assert_eq!(_20, cast(20u16).unwrap());
-            assert_eq!(_20, cast(20u32).unwrap());
-            assert_eq!(_20, cast(20u64).unwrap());
-            assert_eq!(_20, cast(20i).unwrap());
-            assert_eq!(_20, cast(20i8).unwrap());
-            assert_eq!(_20, cast(20i16).unwrap());
-            assert_eq!(_20, cast(20i32).unwrap());
-            assert_eq!(_20, cast(20i64).unwrap());
-            assert_eq!(_20, cast(20f32).unwrap());
-            assert_eq!(_20, cast(20f64).unwrap());
+            fail_unless_eq!(_20, cast(20u).unwrap());
+            fail_unless_eq!(_20, cast(20u8).unwrap());
+            fail_unless_eq!(_20, cast(20u16).unwrap());
+            fail_unless_eq!(_20, cast(20u32).unwrap());
+            fail_unless_eq!(_20, cast(20u64).unwrap());
+            fail_unless_eq!(_20, cast(20i).unwrap());
+            fail_unless_eq!(_20, cast(20i8).unwrap());
+            fail_unless_eq!(_20, cast(20i16).unwrap());
+            fail_unless_eq!(_20, cast(20i32).unwrap());
+            fail_unless_eq!(_20, cast(20i64).unwrap());
+            fail_unless_eq!(_20, cast(20f32).unwrap());
+            fail_unless_eq!(_20, cast(20f64).unwrap());
         })
     )
 
@@ -1164,25 +1164,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_min() {
-        assert_eq!(int::MIN.to_int(),  Some(int::MIN as int));
-        assert_eq!(int::MIN.to_i8(),   None);
-        assert_eq!(int::MIN.to_i16(),  None);
+        fail_unless_eq!(int::MIN.to_int(),  Some(int::MIN as int));
+        fail_unless_eq!(int::MIN.to_i8(),   None);
+        fail_unless_eq!(int::MIN.to_i16(),  None);
         // int::MIN.to_i32() is word-size specific
-        assert_eq!(int::MIN.to_i64(),  Some(int::MIN as i64));
-        assert_eq!(int::MIN.to_uint(), None);
-        assert_eq!(int::MIN.to_u8(),   None);
-        assert_eq!(int::MIN.to_u16(),  None);
-        assert_eq!(int::MIN.to_u32(),  None);
-        assert_eq!(int::MIN.to_u64(),  None);
+        fail_unless_eq!(int::MIN.to_i64(),  Some(int::MIN as i64));
+        fail_unless_eq!(int::MIN.to_uint(), None);
+        fail_unless_eq!(int::MIN.to_u8(),   None);
+        fail_unless_eq!(int::MIN.to_u16(),  None);
+        fail_unless_eq!(int::MIN.to_u32(),  None);
+        fail_unless_eq!(int::MIN.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::MIN.to_i32(), Some(int::MIN as i32));
+            fail_unless_eq!(int::MIN.to_i32(), Some(int::MIN as i32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::MIN.to_i32(), None);
+            fail_unless_eq!(int::MIN.to_i32(), None);
         }
 
         check_word_size();
@@ -1190,67 +1190,67 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_min() {
-        assert_eq!(i8::MIN.to_int(),  Some(i8::MIN as int));
-        assert_eq!(i8::MIN.to_i8(),   Some(i8::MIN as i8));
-        assert_eq!(i8::MIN.to_i16(),  Some(i8::MIN as i16));
-        assert_eq!(i8::MIN.to_i32(),  Some(i8::MIN as i32));
-        assert_eq!(i8::MIN.to_i64(),  Some(i8::MIN as i64));
-        assert_eq!(i8::MIN.to_uint(), None);
-        assert_eq!(i8::MIN.to_u8(),   None);
-        assert_eq!(i8::MIN.to_u16(),  None);
-        assert_eq!(i8::MIN.to_u32(),  None);
-        assert_eq!(i8::MIN.to_u64(),  None);
+        fail_unless_eq!(i8::MIN.to_int(),  Some(i8::MIN as int));
+        fail_unless_eq!(i8::MIN.to_i8(),   Some(i8::MIN as i8));
+        fail_unless_eq!(i8::MIN.to_i16(),  Some(i8::MIN as i16));
+        fail_unless_eq!(i8::MIN.to_i32(),  Some(i8::MIN as i32));
+        fail_unless_eq!(i8::MIN.to_i64(),  Some(i8::MIN as i64));
+        fail_unless_eq!(i8::MIN.to_uint(), None);
+        fail_unless_eq!(i8::MIN.to_u8(),   None);
+        fail_unless_eq!(i8::MIN.to_u16(),  None);
+        fail_unless_eq!(i8::MIN.to_u32(),  None);
+        fail_unless_eq!(i8::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i16_min() {
-        assert_eq!(i16::MIN.to_int(),  Some(i16::MIN as int));
-        assert_eq!(i16::MIN.to_i8(),   None);
-        assert_eq!(i16::MIN.to_i16(),  Some(i16::MIN as i16));
-        assert_eq!(i16::MIN.to_i32(),  Some(i16::MIN as i32));
-        assert_eq!(i16::MIN.to_i64(),  Some(i16::MIN as i64));
-        assert_eq!(i16::MIN.to_uint(), None);
-        assert_eq!(i16::MIN.to_u8(),   None);
-        assert_eq!(i16::MIN.to_u16(),  None);
-        assert_eq!(i16::MIN.to_u32(),  None);
-        assert_eq!(i16::MIN.to_u64(),  None);
+        fail_unless_eq!(i16::MIN.to_int(),  Some(i16::MIN as int));
+        fail_unless_eq!(i16::MIN.to_i8(),   None);
+        fail_unless_eq!(i16::MIN.to_i16(),  Some(i16::MIN as i16));
+        fail_unless_eq!(i16::MIN.to_i32(),  Some(i16::MIN as i32));
+        fail_unless_eq!(i16::MIN.to_i64(),  Some(i16::MIN as i64));
+        fail_unless_eq!(i16::MIN.to_uint(), None);
+        fail_unless_eq!(i16::MIN.to_u8(),   None);
+        fail_unless_eq!(i16::MIN.to_u16(),  None);
+        fail_unless_eq!(i16::MIN.to_u32(),  None);
+        fail_unless_eq!(i16::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i32_min() {
-        assert_eq!(i32::MIN.to_int(),  Some(i32::MIN as int));
-        assert_eq!(i32::MIN.to_i8(),   None);
-        assert_eq!(i32::MIN.to_i16(),  None);
-        assert_eq!(i32::MIN.to_i32(),  Some(i32::MIN as i32));
-        assert_eq!(i32::MIN.to_i64(),  Some(i32::MIN as i64));
-        assert_eq!(i32::MIN.to_uint(), None);
-        assert_eq!(i32::MIN.to_u8(),   None);
-        assert_eq!(i32::MIN.to_u16(),  None);
-        assert_eq!(i32::MIN.to_u32(),  None);
-        assert_eq!(i32::MIN.to_u64(),  None);
+        fail_unless_eq!(i32::MIN.to_int(),  Some(i32::MIN as int));
+        fail_unless_eq!(i32::MIN.to_i8(),   None);
+        fail_unless_eq!(i32::MIN.to_i16(),  None);
+        fail_unless_eq!(i32::MIN.to_i32(),  Some(i32::MIN as i32));
+        fail_unless_eq!(i32::MIN.to_i64(),  Some(i32::MIN as i64));
+        fail_unless_eq!(i32::MIN.to_uint(), None);
+        fail_unless_eq!(i32::MIN.to_u8(),   None);
+        fail_unless_eq!(i32::MIN.to_u16(),  None);
+        fail_unless_eq!(i32::MIN.to_u32(),  None);
+        fail_unless_eq!(i32::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i64_min() {
         // i64::MIN.to_int() is word-size specific
-        assert_eq!(i64::MIN.to_i8(),   None);
-        assert_eq!(i64::MIN.to_i16(),  None);
-        assert_eq!(i64::MIN.to_i32(),  None);
-        assert_eq!(i64::MIN.to_i64(),  Some(i64::MIN as i64));
-        assert_eq!(i64::MIN.to_uint(), None);
-        assert_eq!(i64::MIN.to_u8(),   None);
-        assert_eq!(i64::MIN.to_u16(),  None);
-        assert_eq!(i64::MIN.to_u32(),  None);
-        assert_eq!(i64::MIN.to_u64(),  None);
+        fail_unless_eq!(i64::MIN.to_i8(),   None);
+        fail_unless_eq!(i64::MIN.to_i16(),  None);
+        fail_unless_eq!(i64::MIN.to_i32(),  None);
+        fail_unless_eq!(i64::MIN.to_i64(),  Some(i64::MIN as i64));
+        fail_unless_eq!(i64::MIN.to_uint(), None);
+        fail_unless_eq!(i64::MIN.to_u8(),   None);
+        fail_unless_eq!(i64::MIN.to_u16(),  None);
+        fail_unless_eq!(i64::MIN.to_u32(),  None);
+        fail_unless_eq!(i64::MIN.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::MIN.to_int(), None);
+            fail_unless_eq!(i64::MIN.to_int(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::MIN.to_int(), Some(i64::MIN as int));
+            fail_unless_eq!(i64::MIN.to_int(), Some(i64::MIN as int));
         }
 
         check_word_size();
@@ -1258,26 +1258,26 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_max() {
-        assert_eq!(int::MAX.to_int(),  Some(int::MAX as int));
-        assert_eq!(int::MAX.to_i8(),   None);
-        assert_eq!(int::MAX.to_i16(),  None);
+        fail_unless_eq!(int::MAX.to_int(),  Some(int::MAX as int));
+        fail_unless_eq!(int::MAX.to_i8(),   None);
+        fail_unless_eq!(int::MAX.to_i16(),  None);
         // int::MAX.to_i32() is word-size specific
-        assert_eq!(int::MAX.to_i64(),  Some(int::MAX as i64));
-        assert_eq!(int::MAX.to_u8(),   None);
-        assert_eq!(int::MAX.to_u16(),  None);
+        fail_unless_eq!(int::MAX.to_i64(),  Some(int::MAX as i64));
+        fail_unless_eq!(int::MAX.to_u8(),   None);
+        fail_unless_eq!(int::MAX.to_u16(),  None);
         // int::MAX.to_u32() is word-size specific
-        assert_eq!(int::MAX.to_u64(),  Some(int::MAX as u64));
+        fail_unless_eq!(int::MAX.to_u64(),  Some(int::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::MAX.to_i32(), Some(int::MAX as i32));
-            assert_eq!(int::MAX.to_u32(), Some(int::MAX as u32));
+            fail_unless_eq!(int::MAX.to_i32(), Some(int::MAX as i32));
+            fail_unless_eq!(int::MAX.to_u32(), Some(int::MAX as u32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::MAX.to_i32(), None);
-            assert_eq!(int::MAX.to_u32(), None);
+            fail_unless_eq!(int::MAX.to_i32(), None);
+            fail_unless_eq!(int::MAX.to_u32(), None);
         }
 
         check_word_size();
@@ -1285,69 +1285,69 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_max() {
-        assert_eq!(i8::MAX.to_int(),  Some(i8::MAX as int));
-        assert_eq!(i8::MAX.to_i8(),   Some(i8::MAX as i8));
-        assert_eq!(i8::MAX.to_i16(),  Some(i8::MAX as i16));
-        assert_eq!(i8::MAX.to_i32(),  Some(i8::MAX as i32));
-        assert_eq!(i8::MAX.to_i64(),  Some(i8::MAX as i64));
-        assert_eq!(i8::MAX.to_uint(), Some(i8::MAX as uint));
-        assert_eq!(i8::MAX.to_u8(),   Some(i8::MAX as u8));
-        assert_eq!(i8::MAX.to_u16(),  Some(i8::MAX as u16));
-        assert_eq!(i8::MAX.to_u32(),  Some(i8::MAX as u32));
-        assert_eq!(i8::MAX.to_u64(),  Some(i8::MAX as u64));
+        fail_unless_eq!(i8::MAX.to_int(),  Some(i8::MAX as int));
+        fail_unless_eq!(i8::MAX.to_i8(),   Some(i8::MAX as i8));
+        fail_unless_eq!(i8::MAX.to_i16(),  Some(i8::MAX as i16));
+        fail_unless_eq!(i8::MAX.to_i32(),  Some(i8::MAX as i32));
+        fail_unless_eq!(i8::MAX.to_i64(),  Some(i8::MAX as i64));
+        fail_unless_eq!(i8::MAX.to_uint(), Some(i8::MAX as uint));
+        fail_unless_eq!(i8::MAX.to_u8(),   Some(i8::MAX as u8));
+        fail_unless_eq!(i8::MAX.to_u16(),  Some(i8::MAX as u16));
+        fail_unless_eq!(i8::MAX.to_u32(),  Some(i8::MAX as u32));
+        fail_unless_eq!(i8::MAX.to_u64(),  Some(i8::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i16_max() {
-        assert_eq!(i16::MAX.to_int(),  Some(i16::MAX as int));
-        assert_eq!(i16::MAX.to_i8(),   None);
-        assert_eq!(i16::MAX.to_i16(),  Some(i16::MAX as i16));
-        assert_eq!(i16::MAX.to_i32(),  Some(i16::MAX as i32));
-        assert_eq!(i16::MAX.to_i64(),  Some(i16::MAX as i64));
-        assert_eq!(i16::MAX.to_uint(), Some(i16::MAX as uint));
-        assert_eq!(i16::MAX.to_u8(),   None);
-        assert_eq!(i16::MAX.to_u16(),  Some(i16::MAX as u16));
-        assert_eq!(i16::MAX.to_u32(),  Some(i16::MAX as u32));
-        assert_eq!(i16::MAX.to_u64(),  Some(i16::MAX as u64));
+        fail_unless_eq!(i16::MAX.to_int(),  Some(i16::MAX as int));
+        fail_unless_eq!(i16::MAX.to_i8(),   None);
+        fail_unless_eq!(i16::MAX.to_i16(),  Some(i16::MAX as i16));
+        fail_unless_eq!(i16::MAX.to_i32(),  Some(i16::MAX as i32));
+        fail_unless_eq!(i16::MAX.to_i64(),  Some(i16::MAX as i64));
+        fail_unless_eq!(i16::MAX.to_uint(), Some(i16::MAX as uint));
+        fail_unless_eq!(i16::MAX.to_u8(),   None);
+        fail_unless_eq!(i16::MAX.to_u16(),  Some(i16::MAX as u16));
+        fail_unless_eq!(i16::MAX.to_u32(),  Some(i16::MAX as u32));
+        fail_unless_eq!(i16::MAX.to_u64(),  Some(i16::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i32_max() {
-        assert_eq!(i32::MAX.to_int(),  Some(i32::MAX as int));
-        assert_eq!(i32::MAX.to_i8(),   None);
-        assert_eq!(i32::MAX.to_i16(),  None);
-        assert_eq!(i32::MAX.to_i32(),  Some(i32::MAX as i32));
-        assert_eq!(i32::MAX.to_i64(),  Some(i32::MAX as i64));
-        assert_eq!(i32::MAX.to_uint(), Some(i32::MAX as uint));
-        assert_eq!(i32::MAX.to_u8(),   None);
-        assert_eq!(i32::MAX.to_u16(),  None);
-        assert_eq!(i32::MAX.to_u32(),  Some(i32::MAX as u32));
-        assert_eq!(i32::MAX.to_u64(),  Some(i32::MAX as u64));
+        fail_unless_eq!(i32::MAX.to_int(),  Some(i32::MAX as int));
+        fail_unless_eq!(i32::MAX.to_i8(),   None);
+        fail_unless_eq!(i32::MAX.to_i16(),  None);
+        fail_unless_eq!(i32::MAX.to_i32(),  Some(i32::MAX as i32));
+        fail_unless_eq!(i32::MAX.to_i64(),  Some(i32::MAX as i64));
+        fail_unless_eq!(i32::MAX.to_uint(), Some(i32::MAX as uint));
+        fail_unless_eq!(i32::MAX.to_u8(),   None);
+        fail_unless_eq!(i32::MAX.to_u16(),  None);
+        fail_unless_eq!(i32::MAX.to_u32(),  Some(i32::MAX as u32));
+        fail_unless_eq!(i32::MAX.to_u64(),  Some(i32::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i64_max() {
         // i64::MAX.to_int() is word-size specific
-        assert_eq!(i64::MAX.to_i8(),   None);
-        assert_eq!(i64::MAX.to_i16(),  None);
-        assert_eq!(i64::MAX.to_i32(),  None);
-        assert_eq!(i64::MAX.to_i64(),  Some(i64::MAX as i64));
+        fail_unless_eq!(i64::MAX.to_i8(),   None);
+        fail_unless_eq!(i64::MAX.to_i16(),  None);
+        fail_unless_eq!(i64::MAX.to_i32(),  None);
+        fail_unless_eq!(i64::MAX.to_i64(),  Some(i64::MAX as i64));
         // i64::MAX.to_uint() is word-size specific
-        assert_eq!(i64::MAX.to_u8(),   None);
-        assert_eq!(i64::MAX.to_u16(),  None);
-        assert_eq!(i64::MAX.to_u32(),  None);
-        assert_eq!(i64::MAX.to_u64(),  Some(i64::MAX as u64));
+        fail_unless_eq!(i64::MAX.to_u8(),   None);
+        fail_unless_eq!(i64::MAX.to_u16(),  None);
+        fail_unless_eq!(i64::MAX.to_u32(),  None);
+        fail_unless_eq!(i64::MAX.to_u64(),  Some(i64::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::MAX.to_int(),  None);
-            assert_eq!(i64::MAX.to_uint(), None);
+            fail_unless_eq!(i64::MAX.to_int(),  None);
+            fail_unless_eq!(i64::MAX.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::MAX.to_int(),  Some(i64::MAX as int));
-            assert_eq!(i64::MAX.to_uint(), Some(i64::MAX as uint));
+            fail_unless_eq!(i64::MAX.to_int(),  Some(i64::MAX as int));
+            fail_unless_eq!(i64::MAX.to_uint(), Some(i64::MAX as uint));
         }
 
         check_word_size();
@@ -1355,96 +1355,96 @@ mod tests {
 
     #[test]
     fn test_cast_range_uint_min() {
-        assert_eq!(uint::MIN.to_int(),  Some(uint::MIN as int));
-        assert_eq!(uint::MIN.to_i8(),   Some(uint::MIN as i8));
-        assert_eq!(uint::MIN.to_i16(),  Some(uint::MIN as i16));
-        assert_eq!(uint::MIN.to_i32(),  Some(uint::MIN as i32));
-        assert_eq!(uint::MIN.to_i64(),  Some(uint::MIN as i64));
-        assert_eq!(uint::MIN.to_uint(), Some(uint::MIN as uint));
-        assert_eq!(uint::MIN.to_u8(),   Some(uint::MIN as u8));
-        assert_eq!(uint::MIN.to_u16(),  Some(uint::MIN as u16));
-        assert_eq!(uint::MIN.to_u32(),  Some(uint::MIN as u32));
-        assert_eq!(uint::MIN.to_u64(),  Some(uint::MIN as u64));
+        fail_unless_eq!(uint::MIN.to_int(),  Some(uint::MIN as int));
+        fail_unless_eq!(uint::MIN.to_i8(),   Some(uint::MIN as i8));
+        fail_unless_eq!(uint::MIN.to_i16(),  Some(uint::MIN as i16));
+        fail_unless_eq!(uint::MIN.to_i32(),  Some(uint::MIN as i32));
+        fail_unless_eq!(uint::MIN.to_i64(),  Some(uint::MIN as i64));
+        fail_unless_eq!(uint::MIN.to_uint(), Some(uint::MIN as uint));
+        fail_unless_eq!(uint::MIN.to_u8(),   Some(uint::MIN as u8));
+        fail_unless_eq!(uint::MIN.to_u16(),  Some(uint::MIN as u16));
+        fail_unless_eq!(uint::MIN.to_u32(),  Some(uint::MIN as u32));
+        fail_unless_eq!(uint::MIN.to_u64(),  Some(uint::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u8_min() {
-        assert_eq!(u8::MIN.to_int(),  Some(u8::MIN as int));
-        assert_eq!(u8::MIN.to_i8(),   Some(u8::MIN as i8));
-        assert_eq!(u8::MIN.to_i16(),  Some(u8::MIN as i16));
-        assert_eq!(u8::MIN.to_i32(),  Some(u8::MIN as i32));
-        assert_eq!(u8::MIN.to_i64(),  Some(u8::MIN as i64));
-        assert_eq!(u8::MIN.to_uint(), Some(u8::MIN as uint));
-        assert_eq!(u8::MIN.to_u8(),   Some(u8::MIN as u8));
-        assert_eq!(u8::MIN.to_u16(),  Some(u8::MIN as u16));
-        assert_eq!(u8::MIN.to_u32(),  Some(u8::MIN as u32));
-        assert_eq!(u8::MIN.to_u64(),  Some(u8::MIN as u64));
+        fail_unless_eq!(u8::MIN.to_int(),  Some(u8::MIN as int));
+        fail_unless_eq!(u8::MIN.to_i8(),   Some(u8::MIN as i8));
+        fail_unless_eq!(u8::MIN.to_i16(),  Some(u8::MIN as i16));
+        fail_unless_eq!(u8::MIN.to_i32(),  Some(u8::MIN as i32));
+        fail_unless_eq!(u8::MIN.to_i64(),  Some(u8::MIN as i64));
+        fail_unless_eq!(u8::MIN.to_uint(), Some(u8::MIN as uint));
+        fail_unless_eq!(u8::MIN.to_u8(),   Some(u8::MIN as u8));
+        fail_unless_eq!(u8::MIN.to_u16(),  Some(u8::MIN as u16));
+        fail_unless_eq!(u8::MIN.to_u32(),  Some(u8::MIN as u32));
+        fail_unless_eq!(u8::MIN.to_u64(),  Some(u8::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u16_min() {
-        assert_eq!(u16::MIN.to_int(),  Some(u16::MIN as int));
-        assert_eq!(u16::MIN.to_i8(),   Some(u16::MIN as i8));
-        assert_eq!(u16::MIN.to_i16(),  Some(u16::MIN as i16));
-        assert_eq!(u16::MIN.to_i32(),  Some(u16::MIN as i32));
-        assert_eq!(u16::MIN.to_i64(),  Some(u16::MIN as i64));
-        assert_eq!(u16::MIN.to_uint(), Some(u16::MIN as uint));
-        assert_eq!(u16::MIN.to_u8(),   Some(u16::MIN as u8));
-        assert_eq!(u16::MIN.to_u16(),  Some(u16::MIN as u16));
-        assert_eq!(u16::MIN.to_u32(),  Some(u16::MIN as u32));
-        assert_eq!(u16::MIN.to_u64(),  Some(u16::MIN as u64));
+        fail_unless_eq!(u16::MIN.to_int(),  Some(u16::MIN as int));
+        fail_unless_eq!(u16::MIN.to_i8(),   Some(u16::MIN as i8));
+        fail_unless_eq!(u16::MIN.to_i16(),  Some(u16::MIN as i16));
+        fail_unless_eq!(u16::MIN.to_i32(),  Some(u16::MIN as i32));
+        fail_unless_eq!(u16::MIN.to_i64(),  Some(u16::MIN as i64));
+        fail_unless_eq!(u16::MIN.to_uint(), Some(u16::MIN as uint));
+        fail_unless_eq!(u16::MIN.to_u8(),   Some(u16::MIN as u8));
+        fail_unless_eq!(u16::MIN.to_u16(),  Some(u16::MIN as u16));
+        fail_unless_eq!(u16::MIN.to_u32(),  Some(u16::MIN as u32));
+        fail_unless_eq!(u16::MIN.to_u64(),  Some(u16::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u32_min() {
-        assert_eq!(u32::MIN.to_int(),  Some(u32::MIN as int));
-        assert_eq!(u32::MIN.to_i8(),   Some(u32::MIN as i8));
-        assert_eq!(u32::MIN.to_i16(),  Some(u32::MIN as i16));
-        assert_eq!(u32::MIN.to_i32(),  Some(u32::MIN as i32));
-        assert_eq!(u32::MIN.to_i64(),  Some(u32::MIN as i64));
-        assert_eq!(u32::MIN.to_uint(), Some(u32::MIN as uint));
-        assert_eq!(u32::MIN.to_u8(),   Some(u32::MIN as u8));
-        assert_eq!(u32::MIN.to_u16(),  Some(u32::MIN as u16));
-        assert_eq!(u32::MIN.to_u32(),  Some(u32::MIN as u32));
-        assert_eq!(u32::MIN.to_u64(),  Some(u32::MIN as u64));
+        fail_unless_eq!(u32::MIN.to_int(),  Some(u32::MIN as int));
+        fail_unless_eq!(u32::MIN.to_i8(),   Some(u32::MIN as i8));
+        fail_unless_eq!(u32::MIN.to_i16(),  Some(u32::MIN as i16));
+        fail_unless_eq!(u32::MIN.to_i32(),  Some(u32::MIN as i32));
+        fail_unless_eq!(u32::MIN.to_i64(),  Some(u32::MIN as i64));
+        fail_unless_eq!(u32::MIN.to_uint(), Some(u32::MIN as uint));
+        fail_unless_eq!(u32::MIN.to_u8(),   Some(u32::MIN as u8));
+        fail_unless_eq!(u32::MIN.to_u16(),  Some(u32::MIN as u16));
+        fail_unless_eq!(u32::MIN.to_u32(),  Some(u32::MIN as u32));
+        fail_unless_eq!(u32::MIN.to_u64(),  Some(u32::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u64_min() {
-        assert_eq!(u64::MIN.to_int(),  Some(u64::MIN as int));
-        assert_eq!(u64::MIN.to_i8(),   Some(u64::MIN as i8));
-        assert_eq!(u64::MIN.to_i16(),  Some(u64::MIN as i16));
-        assert_eq!(u64::MIN.to_i32(),  Some(u64::MIN as i32));
-        assert_eq!(u64::MIN.to_i64(),  Some(u64::MIN as i64));
-        assert_eq!(u64::MIN.to_uint(), Some(u64::MIN as uint));
-        assert_eq!(u64::MIN.to_u8(),   Some(u64::MIN as u8));
-        assert_eq!(u64::MIN.to_u16(),  Some(u64::MIN as u16));
-        assert_eq!(u64::MIN.to_u32(),  Some(u64::MIN as u32));
-        assert_eq!(u64::MIN.to_u64(),  Some(u64::MIN as u64));
+        fail_unless_eq!(u64::MIN.to_int(),  Some(u64::MIN as int));
+        fail_unless_eq!(u64::MIN.to_i8(),   Some(u64::MIN as i8));
+        fail_unless_eq!(u64::MIN.to_i16(),  Some(u64::MIN as i16));
+        fail_unless_eq!(u64::MIN.to_i32(),  Some(u64::MIN as i32));
+        fail_unless_eq!(u64::MIN.to_i64(),  Some(u64::MIN as i64));
+        fail_unless_eq!(u64::MIN.to_uint(), Some(u64::MIN as uint));
+        fail_unless_eq!(u64::MIN.to_u8(),   Some(u64::MIN as u8));
+        fail_unless_eq!(u64::MIN.to_u16(),  Some(u64::MIN as u16));
+        fail_unless_eq!(u64::MIN.to_u32(),  Some(u64::MIN as u32));
+        fail_unless_eq!(u64::MIN.to_u64(),  Some(u64::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_uint_max() {
-        assert_eq!(uint::MAX.to_int(),  None);
-        assert_eq!(uint::MAX.to_i8(),   None);
-        assert_eq!(uint::MAX.to_i16(),  None);
-        assert_eq!(uint::MAX.to_i32(),  None);
+        fail_unless_eq!(uint::MAX.to_int(),  None);
+        fail_unless_eq!(uint::MAX.to_i8(),   None);
+        fail_unless_eq!(uint::MAX.to_i16(),  None);
+        fail_unless_eq!(uint::MAX.to_i32(),  None);
         // uint::MAX.to_i64() is word-size specific
-        assert_eq!(uint::MAX.to_u8(),   None);
-        assert_eq!(uint::MAX.to_u16(),  None);
+        fail_unless_eq!(uint::MAX.to_u8(),   None);
+        fail_unless_eq!(uint::MAX.to_u16(),  None);
         // uint::MAX.to_u32() is word-size specific
-        assert_eq!(uint::MAX.to_u64(),  Some(uint::MAX as u64));
+        fail_unless_eq!(uint::MAX.to_u64(),  Some(uint::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(uint::MAX.to_u32(), Some(uint::MAX as u32));
-            assert_eq!(uint::MAX.to_i64(), Some(uint::MAX as i64));
+            fail_unless_eq!(uint::MAX.to_u32(), Some(uint::MAX as u32));
+            fail_unless_eq!(uint::MAX.to_i64(), Some(uint::MAX as i64));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(uint::MAX.to_u32(), None);
-            assert_eq!(uint::MAX.to_i64(), None);
+            fail_unless_eq!(uint::MAX.to_u32(), None);
+            fail_unless_eq!(uint::MAX.to_i64(), None);
         }
 
         check_word_size();
@@ -1452,53 +1452,53 @@ mod tests {
 
     #[test]
     fn test_cast_range_u8_max() {
-        assert_eq!(u8::MAX.to_int(),  Some(u8::MAX as int));
-        assert_eq!(u8::MAX.to_i8(),   None);
-        assert_eq!(u8::MAX.to_i16(),  Some(u8::MAX as i16));
-        assert_eq!(u8::MAX.to_i32(),  Some(u8::MAX as i32));
-        assert_eq!(u8::MAX.to_i64(),  Some(u8::MAX as i64));
-        assert_eq!(u8::MAX.to_uint(), Some(u8::MAX as uint));
-        assert_eq!(u8::MAX.to_u8(),   Some(u8::MAX as u8));
-        assert_eq!(u8::MAX.to_u16(),  Some(u8::MAX as u16));
-        assert_eq!(u8::MAX.to_u32(),  Some(u8::MAX as u32));
-        assert_eq!(u8::MAX.to_u64(),  Some(u8::MAX as u64));
+        fail_unless_eq!(u8::MAX.to_int(),  Some(u8::MAX as int));
+        fail_unless_eq!(u8::MAX.to_i8(),   None);
+        fail_unless_eq!(u8::MAX.to_i16(),  Some(u8::MAX as i16));
+        fail_unless_eq!(u8::MAX.to_i32(),  Some(u8::MAX as i32));
+        fail_unless_eq!(u8::MAX.to_i64(),  Some(u8::MAX as i64));
+        fail_unless_eq!(u8::MAX.to_uint(), Some(u8::MAX as uint));
+        fail_unless_eq!(u8::MAX.to_u8(),   Some(u8::MAX as u8));
+        fail_unless_eq!(u8::MAX.to_u16(),  Some(u8::MAX as u16));
+        fail_unless_eq!(u8::MAX.to_u32(),  Some(u8::MAX as u32));
+        fail_unless_eq!(u8::MAX.to_u64(),  Some(u8::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_u16_max() {
-        assert_eq!(u16::MAX.to_int(),  Some(u16::MAX as int));
-        assert_eq!(u16::MAX.to_i8(),   None);
-        assert_eq!(u16::MAX.to_i16(),  None);
-        assert_eq!(u16::MAX.to_i32(),  Some(u16::MAX as i32));
-        assert_eq!(u16::MAX.to_i64(),  Some(u16::MAX as i64));
-        assert_eq!(u16::MAX.to_uint(), Some(u16::MAX as uint));
-        assert_eq!(u16::MAX.to_u8(),   None);
-        assert_eq!(u16::MAX.to_u16(),  Some(u16::MAX as u16));
-        assert_eq!(u16::MAX.to_u32(),  Some(u16::MAX as u32));
-        assert_eq!(u16::MAX.to_u64(),  Some(u16::MAX as u64));
+        fail_unless_eq!(u16::MAX.to_int(),  Some(u16::MAX as int));
+        fail_unless_eq!(u16::MAX.to_i8(),   None);
+        fail_unless_eq!(u16::MAX.to_i16(),  None);
+        fail_unless_eq!(u16::MAX.to_i32(),  Some(u16::MAX as i32));
+        fail_unless_eq!(u16::MAX.to_i64(),  Some(u16::MAX as i64));
+        fail_unless_eq!(u16::MAX.to_uint(), Some(u16::MAX as uint));
+        fail_unless_eq!(u16::MAX.to_u8(),   None);
+        fail_unless_eq!(u16::MAX.to_u16(),  Some(u16::MAX as u16));
+        fail_unless_eq!(u16::MAX.to_u32(),  Some(u16::MAX as u32));
+        fail_unless_eq!(u16::MAX.to_u64(),  Some(u16::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_u32_max() {
         // u32::MAX.to_int() is word-size specific
-        assert_eq!(u32::MAX.to_i8(),   None);
-        assert_eq!(u32::MAX.to_i16(),  None);
-        assert_eq!(u32::MAX.to_i32(),  None);
-        assert_eq!(u32::MAX.to_i64(),  Some(u32::MAX as i64));
-        assert_eq!(u32::MAX.to_uint(), Some(u32::MAX as uint));
-        assert_eq!(u32::MAX.to_u8(),   None);
-        assert_eq!(u32::MAX.to_u16(),  None);
-        assert_eq!(u32::MAX.to_u32(),  Some(u32::MAX as u32));
-        assert_eq!(u32::MAX.to_u64(),  Some(u32::MAX as u64));
+        fail_unless_eq!(u32::MAX.to_i8(),   None);
+        fail_unless_eq!(u32::MAX.to_i16(),  None);
+        fail_unless_eq!(u32::MAX.to_i32(),  None);
+        fail_unless_eq!(u32::MAX.to_i64(),  Some(u32::MAX as i64));
+        fail_unless_eq!(u32::MAX.to_uint(), Some(u32::MAX as uint));
+        fail_unless_eq!(u32::MAX.to_u8(),   None);
+        fail_unless_eq!(u32::MAX.to_u16(),  None);
+        fail_unless_eq!(u32::MAX.to_u32(),  Some(u32::MAX as u32));
+        fail_unless_eq!(u32::MAX.to_u64(),  Some(u32::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u32::MAX.to_int(),  None);
+            fail_unless_eq!(u32::MAX.to_int(),  None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u32::MAX.to_int(),  Some(u32::MAX as int));
+            fail_unless_eq!(u32::MAX.to_int(),  Some(u32::MAX as int));
         }
 
         check_word_size();
@@ -1506,25 +1506,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_u64_max() {
-        assert_eq!(u64::MAX.to_int(),  None);
-        assert_eq!(u64::MAX.to_i8(),   None);
-        assert_eq!(u64::MAX.to_i16(),  None);
-        assert_eq!(u64::MAX.to_i32(),  None);
-        assert_eq!(u64::MAX.to_i64(),  None);
+        fail_unless_eq!(u64::MAX.to_int(),  None);
+        fail_unless_eq!(u64::MAX.to_i8(),   None);
+        fail_unless_eq!(u64::MAX.to_i16(),  None);
+        fail_unless_eq!(u64::MAX.to_i32(),  None);
+        fail_unless_eq!(u64::MAX.to_i64(),  None);
         // u64::MAX.to_uint() is word-size specific
-        assert_eq!(u64::MAX.to_u8(),   None);
-        assert_eq!(u64::MAX.to_u16(),  None);
-        assert_eq!(u64::MAX.to_u32(),  None);
-        assert_eq!(u64::MAX.to_u64(),  Some(u64::MAX as u64));
+        fail_unless_eq!(u64::MAX.to_u8(),   None);
+        fail_unless_eq!(u64::MAX.to_u16(),  None);
+        fail_unless_eq!(u64::MAX.to_u32(),  None);
+        fail_unless_eq!(u64::MAX.to_u64(),  Some(u64::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u64::MAX.to_uint(), None);
+            fail_unless_eq!(u64::MAX.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u64::MAX.to_uint(), Some(u64::MAX as uint));
+            fail_unless_eq!(u64::MAX.to_uint(), Some(u64::MAX as uint));
         }
 
         check_word_size();
@@ -1533,88 +1533,88 @@ mod tests {
     #[test]
     fn test_saturating_add_uint() {
         use uint::MAX;
-        assert_eq!(3u.saturating_add(5u), 8u);
-        assert_eq!(3u.saturating_add(MAX-1), MAX);
-        assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX-2).saturating_add(1), MAX-1);
+        fail_unless_eq!(3u.saturating_add(5u), 8u);
+        fail_unless_eq!(3u.saturating_add(MAX-1), MAX);
+        fail_unless_eq!(MAX.saturating_add(MAX), MAX);
+        fail_unless_eq!((MAX-2).saturating_add(1), MAX-1);
     }
 
     #[test]
     fn test_saturating_sub_uint() {
         use uint::MAX;
-        assert_eq!(5u.saturating_sub(3u), 2u);
-        assert_eq!(3u.saturating_sub(5u), 0u);
-        assert_eq!(0u.saturating_sub(1u), 0u);
-        assert_eq!((MAX-1).saturating_sub(MAX), 0);
+        fail_unless_eq!(5u.saturating_sub(3u), 2u);
+        fail_unless_eq!(3u.saturating_sub(5u), 0u);
+        fail_unless_eq!(0u.saturating_sub(1u), 0u);
+        fail_unless_eq!((MAX-1).saturating_sub(MAX), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
         use int::{MIN,MAX};
-        assert_eq!(3i.saturating_add(5i), 8i);
-        assert_eq!(3i.saturating_add(MAX-1), MAX);
-        assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX-2).saturating_add(1), MAX-1);
-        assert_eq!(3i.saturating_add(-5i), -2i);
-        assert_eq!(MIN.saturating_add(-1i), MIN);
-        assert_eq!((-2i).saturating_add(-MAX), MIN);
+        fail_unless_eq!(3i.saturating_add(5i), 8i);
+        fail_unless_eq!(3i.saturating_add(MAX-1), MAX);
+        fail_unless_eq!(MAX.saturating_add(MAX), MAX);
+        fail_unless_eq!((MAX-2).saturating_add(1), MAX-1);
+        fail_unless_eq!(3i.saturating_add(-5i), -2i);
+        fail_unless_eq!(MIN.saturating_add(-1i), MIN);
+        fail_unless_eq!((-2i).saturating_add(-MAX), MIN);
     }
 
     #[test]
     fn test_saturating_sub_int() {
         use int::{MIN,MAX};
-        assert_eq!(3i.saturating_sub(5i), -2i);
-        assert_eq!(MIN.saturating_sub(1i), MIN);
-        assert_eq!((-2i).saturating_sub(MAX), MIN);
-        assert_eq!(3i.saturating_sub(-5i), 8i);
-        assert_eq!(3i.saturating_sub(-(MAX-1)), MAX);
-        assert_eq!(MAX.saturating_sub(-MAX), MAX);
-        assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
+        fail_unless_eq!(3i.saturating_sub(5i), -2i);
+        fail_unless_eq!(MIN.saturating_sub(1i), MIN);
+        fail_unless_eq!((-2i).saturating_sub(MAX), MIN);
+        fail_unless_eq!(3i.saturating_sub(-5i), 8i);
+        fail_unless_eq!(3i.saturating_sub(-(MAX-1)), MAX);
+        fail_unless_eq!(MAX.saturating_sub(-MAX), MAX);
+        fail_unless_eq!((MAX-2).saturating_sub(-1), MAX-1);
     }
 
     #[test]
     fn test_checked_add() {
         let five_less = uint::MAX - 5;
-        assert_eq!(five_less.checked_add(&0), Some(uint::MAX - 5));
-        assert_eq!(five_less.checked_add(&1), Some(uint::MAX - 4));
-        assert_eq!(five_less.checked_add(&2), Some(uint::MAX - 3));
-        assert_eq!(five_less.checked_add(&3), Some(uint::MAX - 2));
-        assert_eq!(five_less.checked_add(&4), Some(uint::MAX - 1));
-        assert_eq!(five_less.checked_add(&5), Some(uint::MAX));
-        assert_eq!(five_less.checked_add(&6), None);
-        assert_eq!(five_less.checked_add(&7), None);
+        fail_unless_eq!(five_less.checked_add(&0), Some(uint::MAX - 5));
+        fail_unless_eq!(five_less.checked_add(&1), Some(uint::MAX - 4));
+        fail_unless_eq!(five_less.checked_add(&2), Some(uint::MAX - 3));
+        fail_unless_eq!(five_less.checked_add(&3), Some(uint::MAX - 2));
+        fail_unless_eq!(five_less.checked_add(&4), Some(uint::MAX - 1));
+        fail_unless_eq!(five_less.checked_add(&5), Some(uint::MAX));
+        fail_unless_eq!(five_less.checked_add(&6), None);
+        fail_unless_eq!(five_less.checked_add(&7), None);
     }
 
     #[test]
     fn test_checked_sub() {
-        assert_eq!(5u.checked_sub(&0), Some(5));
-        assert_eq!(5u.checked_sub(&1), Some(4));
-        assert_eq!(5u.checked_sub(&2), Some(3));
-        assert_eq!(5u.checked_sub(&3), Some(2));
-        assert_eq!(5u.checked_sub(&4), Some(1));
-        assert_eq!(5u.checked_sub(&5), Some(0));
-        assert_eq!(5u.checked_sub(&6), None);
-        assert_eq!(5u.checked_sub(&7), None);
+        fail_unless_eq!(5u.checked_sub(&0), Some(5));
+        fail_unless_eq!(5u.checked_sub(&1), Some(4));
+        fail_unless_eq!(5u.checked_sub(&2), Some(3));
+        fail_unless_eq!(5u.checked_sub(&3), Some(2));
+        fail_unless_eq!(5u.checked_sub(&4), Some(1));
+        fail_unless_eq!(5u.checked_sub(&5), Some(0));
+        fail_unless_eq!(5u.checked_sub(&6), None);
+        fail_unless_eq!(5u.checked_sub(&7), None);
     }
 
     #[test]
     fn test_checked_mul() {
         let third = uint::MAX / 3;
-        assert_eq!(third.checked_mul(&0), Some(0));
-        assert_eq!(third.checked_mul(&1), Some(third));
-        assert_eq!(third.checked_mul(&2), Some(third * 2));
-        assert_eq!(third.checked_mul(&3), Some(third * 3));
-        assert_eq!(third.checked_mul(&4), None);
+        fail_unless_eq!(third.checked_mul(&0), Some(0));
+        fail_unless_eq!(third.checked_mul(&1), Some(third));
+        fail_unless_eq!(third.checked_mul(&2), Some(third * 2));
+        fail_unless_eq!(third.checked_mul(&3), Some(third * 3));
+        fail_unless_eq!(third.checked_mul(&4), None);
     }
 
     macro_rules! test_next_power_of_two(
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #[test];
-                assert_eq!(next_power_of_two::<$T>(0), 0);
+                fail_unless_eq!(next_power_of_two::<$T>(0), 0);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
-                     assert_eq!(next_power_of_two(i), next_power);
+                     fail_unless_eq!(next_power_of_two(i), next_power);
                      if i == next_power { next_power *= 2 }
                 }
             }
@@ -1631,15 +1631,15 @@ mod tests {
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
                 #[test];
-                assert_eq!(checked_next_power_of_two::<$T>(0), None);
+                fail_unless_eq!(checked_next_power_of_two::<$T>(0), None);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
-                     assert_eq!(checked_next_power_of_two(i), Some(next_power));
+                     fail_unless_eq!(checked_next_power_of_two(i), Some(next_power));
                      if i == next_power { next_power *= 2 }
                 }
                 fail_unless!(checked_next_power_of_two::<$T>($T::MAX / 2).is_some());
-                assert_eq!(checked_next_power_of_two::<$T>($T::MAX - 1), None);
-                assert_eq!(checked_next_power_of_two::<$T>($T::MAX), None);
+                fail_unless_eq!(checked_next_power_of_two::<$T>($T::MAX - 1), None);
+                fail_unless_eq!(checked_next_power_of_two::<$T>($T::MAX), None);
             }
         )
     )
@@ -1666,34 +1666,34 @@ mod tests {
     #[test]
     fn test_to_primitive() {
         let value = Value { x: 5 };
-        assert_eq!(value.to_int(),  Some(5));
-        assert_eq!(value.to_i8(),   Some(5));
-        assert_eq!(value.to_i16(),  Some(5));
-        assert_eq!(value.to_i32(),  Some(5));
-        assert_eq!(value.to_i64(),  Some(5));
-        assert_eq!(value.to_uint(), Some(5));
-        assert_eq!(value.to_u8(),   Some(5));
-        assert_eq!(value.to_u16(),  Some(5));
-        assert_eq!(value.to_u32(),  Some(5));
-        assert_eq!(value.to_u64(),  Some(5));
-        assert_eq!(value.to_f32(),  Some(5f32));
-        assert_eq!(value.to_f64(),  Some(5f64));
+        fail_unless_eq!(value.to_int(),  Some(5));
+        fail_unless_eq!(value.to_i8(),   Some(5));
+        fail_unless_eq!(value.to_i16(),  Some(5));
+        fail_unless_eq!(value.to_i32(),  Some(5));
+        fail_unless_eq!(value.to_i64(),  Some(5));
+        fail_unless_eq!(value.to_uint(), Some(5));
+        fail_unless_eq!(value.to_u8(),   Some(5));
+        fail_unless_eq!(value.to_u16(),  Some(5));
+        fail_unless_eq!(value.to_u32(),  Some(5));
+        fail_unless_eq!(value.to_u64(),  Some(5));
+        fail_unless_eq!(value.to_f32(),  Some(5f32));
+        fail_unless_eq!(value.to_f64(),  Some(5f64));
     }
 
     #[test]
     fn test_from_primitive() {
-        assert_eq!(from_int(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i8(5),     Some(Value { x: 5 }));
-        assert_eq!(from_i16(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i32(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i64(5),    Some(Value { x: 5 }));
-        assert_eq!(from_uint(5),   Some(Value { x: 5 }));
-        assert_eq!(from_u8(5),     Some(Value { x: 5 }));
-        assert_eq!(from_u16(5),    Some(Value { x: 5 }));
-        assert_eq!(from_u32(5),    Some(Value { x: 5 }));
-        assert_eq!(from_u64(5),    Some(Value { x: 5 }));
-        assert_eq!(from_f32(5f32), Some(Value { x: 5 }));
-        assert_eq!(from_f64(5f64), Some(Value { x: 5 }));
+        fail_unless_eq!(from_int(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_i8(5),     Some(Value { x: 5 }));
+        fail_unless_eq!(from_i16(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_i32(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_i64(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_uint(5),   Some(Value { x: 5 }));
+        fail_unless_eq!(from_u8(5),     Some(Value { x: 5 }));
+        fail_unless_eq!(from_u16(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_u32(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_u64(5),    Some(Value { x: 5 }));
+        fail_unless_eq!(from_f32(5f32), Some(Value { x: 5 }));
+        fail_unless_eq!(from_f64(5f64), Some(Value { x: 5 }));
     }
 
     #[test]
@@ -1704,8 +1704,8 @@ mod tests {
         macro_rules! assert_pow(
             (($num:expr, $exp:expr) => $expected:expr) => {{
                 let result = pow($num, $exp);
-                assert_eq!(result, $expected);
-                assert_eq!(result, naive_pow($num, $exp));
+                fail_unless_eq!(result, $expected);
+                fail_unless_eq!(result, naive_pow($num, $exp));
             }}
         )
         assert_pow!((3,    0 ) => 1);

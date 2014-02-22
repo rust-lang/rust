@@ -13,12 +13,12 @@
 
 pub fn main() {
     let v: ~[int] = ~[10, 20];
-    assert_eq!(v[0], 10);
-    assert_eq!(v[1], 20);
+    fail_unless_eq!(v[0], 10);
+    fail_unless_eq!(v[1], 20);
     let mut x: int = 0;
-    assert_eq!(v[x], 10);
-    assert_eq!(v[x + 1], 20);
+    fail_unless_eq!(v[x], 10);
+    fail_unless_eq!(v[x + 1], 20);
     x = x + 1;
-    assert_eq!(v[x], 20);
-    assert_eq!(v[x - 1], 10);
+    fail_unless_eq!(v[x], 20);
+    fail_unless_eq!(v[x - 1], 10);
 }

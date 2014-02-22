@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!(format!(concat!("foo", "bar", "{}"), "baz"), ~"foobarbaz");
-    assert_eq!(format!(concat!()), ~"");
+    fail_unless_eq!(format!(concat!("foo", "bar", "{}"), "baz"), ~"foobarbaz");
+    fail_unless_eq!(format!(concat!()), ~"");
 
-    assert_eq!(
+    fail_unless_eq!(
         concat!(1, 2i, 3u, 4f32, 4.0, 'a', true, ()),
         "12344.0atrue"
     );

@@ -59,12 +59,12 @@ pub fn main() {
         info!("y = {}", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
-        assert_eq!(rusti::min_align_of::<Inner>(), m::align());
+        fail_unless_eq!(rusti::min_align_of::<Inner>(), m::align());
 
         // per clang/gcc the size of `outer` should be 12
         // because `inner`s alignment was 4.
-        assert_eq!(mem::size_of::<Outer>(), m::size());
+        fail_unless_eq!(mem::size_of::<Outer>(), m::size());
 
-        assert_eq!(y, ~"Outer{c8: 22u8, t: Inner{c64: 44u32}}");
+        fail_unless_eq!(y, ~"Outer{c8: 22u8, t: Inner{c64: 44u32}}");
     }
 }

@@ -1030,17 +1030,17 @@ mod test {
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
-        assert_eq!(tok1,tok2);
+        fail_unless_eq!(tok1,tok2);
         // the 'main' id is already read:
-        assert_eq!(string_reader.last_pos.get().clone(), BytePos(28));
+        fail_unless_eq!(string_reader.last_pos.get().clone(), BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
             tok:token::IDENT(str_to_ident("main"), false),
             sp:Span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
-        assert_eq!(tok3,tok4);
+        fail_unless_eq!(tok3,tok4);
         // the lparen is already read:
-        assert_eq!(string_reader.last_pos.get().clone(), BytePos(29))
+        fail_unless_eq!(string_reader.last_pos.get().clone(), BytePos(29))
     }
 
     // check that the given reader produces the desired stream
@@ -1049,7 +1049,7 @@ mod test {
         for expected_tok in expected.iter() {
             let TokenAndSpan {tok:actual_tok, sp: _} =
                 env.string_reader.next_token();
-            assert_eq!(&actual_tok,expected_tok);
+            fail_unless_eq!(&actual_tok,expected_tok);
         }
     }
 
@@ -1093,21 +1093,21 @@ mod test {
         let env = setup(~"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok,token::LIT_CHAR('a' as u32));
+        fail_unless_eq!(tok,token::LIT_CHAR('a' as u32));
     }
 
     #[test] fn character_space() {
         let env = setup(~"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_CHAR(' ' as u32));
+        fail_unless_eq!(tok, token::LIT_CHAR(' ' as u32));
     }
 
     #[test] fn character_escaped() {
         let env = setup(~"'\\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_CHAR('\n' as u32));
+        fail_unless_eq!(tok, token::LIT_CHAR('\n' as u32));
     }
 
     #[test] fn lifetime_name() {
@@ -1115,7 +1115,7 @@ mod test {
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("abc");
-        assert_eq!(tok, token::LIFETIME(id));
+        fail_unless_eq!(tok, token::LIFETIME(id));
     }
 
     #[test] fn raw_string() {
@@ -1123,7 +1123,7 @@ mod test {
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("\"#a\\b\x00c\"");
-        assert_eq!(tok, token::LIT_STR_RAW(id, 3));
+        fail_unless_eq!(tok, token::LIT_STR_RAW(id, 3));
     }
 
     #[test] fn line_doc_comments() {
@@ -1136,7 +1136,7 @@ mod test {
         let env = setup(~"/* /* */ */'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        assert_eq!(tok,token::LIT_CHAR('a' as u32));
+        fail_unless_eq!(tok,token::LIT_CHAR('a' as u32));
     }
 
 }

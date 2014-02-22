@@ -14,5 +14,5 @@
 extern crate foo = "xcrate_address_insignificant";
 
 pub fn main() {
-    assert_eq!(foo::foo::<f64>(), foo::bar());
+    fail_unless_eq!(foo::foo::<f64>(), foo::bar());
 }

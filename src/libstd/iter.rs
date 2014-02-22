@@ -115,8 +115,8 @@ pub trait Iterator<A> {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
-    /// assert_eq!(it.next().unwrap(), &0);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// fail_unless_eq!(it.next().unwrap(), &0);
+    /// fail_unless_eq!(it.next().unwrap(), &1);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -135,7 +135,7 @@ pub trait Iterator<A> {
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// assert_eq!(it.next().unwrap(), (&0, &1));
+    /// fail_unless_eq!(it.next().unwrap(), (&0, &1));
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -151,8 +151,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// fail_unless_eq!(it.next().unwrap(), 2);
+    /// fail_unless_eq!(it.next().unwrap(), 4);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -169,7 +169,7 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// fail_unless_eq!(it.next().unwrap(), &2);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -186,7 +186,7 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
-    /// assert_eq!(it.next().unwrap(), 4);
+    /// fail_unless_eq!(it.next().unwrap(), 4);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -202,8 +202,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// assert_eq!(it.next().unwrap(), (0, &100));
-    /// assert_eq!(it.next().unwrap(), (1, &200));
+    /// fail_unless_eq!(it.next().unwrap(), (0, &100));
+    /// fail_unless_eq!(it.next().unwrap(), (1, &200));
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -220,12 +220,12 @@ pub trait Iterator<A> {
     /// ```rust
     /// let xs = [100, 200, 300];
     /// let mut it = xs.iter().map(|x| *x).peekable();
-    /// assert_eq!(it.peek().unwrap(), &100);
-    /// assert_eq!(it.next().unwrap(), 100);
-    /// assert_eq!(it.next().unwrap(), 200);
-    /// assert_eq!(it.peek().unwrap(), &300);
-    /// assert_eq!(it.peek().unwrap(), &300);
-    /// assert_eq!(it.next().unwrap(), 300);
+    /// fail_unless_eq!(it.peek().unwrap(), &100);
+    /// fail_unless_eq!(it.next().unwrap(), 100);
+    /// fail_unless_eq!(it.next().unwrap(), 200);
+    /// fail_unless_eq!(it.peek().unwrap(), &300);
+    /// fail_unless_eq!(it.peek().unwrap(), &300);
+    /// fail_unless_eq!(it.next().unwrap(), 300);
     /// fail_unless!(it.peek().is_none());
     /// fail_unless!(it.next().is_none());
     /// ```
@@ -243,9 +243,9 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &3);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// fail_unless_eq!(it.next().unwrap(), &3);
+    /// fail_unless_eq!(it.next().unwrap(), &2);
+    /// fail_unless_eq!(it.next().unwrap(), &1);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -262,8 +262,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
+    /// fail_unless_eq!(it.next().unwrap(), &1);
+    /// fail_unless_eq!(it.next().unwrap(), &2);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -279,8 +279,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
-    /// assert_eq!(it.next().unwrap(), &4);
-    /// assert_eq!(it.next().unwrap(), &5);
+    /// fail_unless_eq!(it.next().unwrap(), &4);
+    /// fail_unless_eq!(it.next().unwrap(), &5);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -296,9 +296,9 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &3);
+    /// fail_unless_eq!(it.next().unwrap(), &1);
+    /// fail_unless_eq!(it.next().unwrap(), &2);
+    /// fail_unless_eq!(it.next().unwrap(), &3);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -319,11 +319,11 @@ pub trait Iterator<A> {
     ///   *fac = *fac * x;
     ///   Some(*fac)
     /// });
-    /// assert_eq!(it.next().unwrap(), 1);
-    /// assert_eq!(it.next().unwrap(), 2);
-    /// assert_eq!(it.next().unwrap(), 6);
-    /// assert_eq!(it.next().unwrap(), 24);
-    /// assert_eq!(it.next().unwrap(), 120);
+    /// fail_unless_eq!(it.next().unwrap(), 1);
+    /// fail_unless_eq!(it.next().unwrap(), 2);
+    /// fail_unless_eq!(it.next().unwrap(), 6);
+    /// fail_unless_eq!(it.next().unwrap(), 24);
+    /// fail_unless_eq!(it.next().unwrap(), 120);
     /// fail_unless!(it.next().is_none());
     /// ```
     #[inline]
@@ -346,7 +346,7 @@ pub trait Iterator<A> {
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
     /// for x in it {
-    ///     assert_eq!(x, ys[i]);
+    ///     fail_unless_eq!(x, ys[i]);
     ///     i += 1;
     /// }
     /// ```
@@ -379,7 +379,7 @@ pub trait Iterator<A> {
     ///     sum
     /// }
     /// let x = ~[1,2,3,7,8,9];
-    /// assert_eq!(process(x.move_iter()), 1006);
+    /// fail_unless_eq!(process(x.move_iter()), 1006);
     /// ```
     #[inline]
     fn fuse(self) -> Fuse<Self> {
@@ -623,7 +623,7 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// fail_unless_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
     fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
@@ -647,7 +647,7 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// fail_unless_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
     fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
@@ -900,7 +900,7 @@ pub trait OrdIterator<A> {
     /// use std::iter::{NoElements, OneElement, MinMax};
     ///
     /// let v: [int, ..0] = [];
-    /// assert_eq!(v.iter().min_max(), NoElements);
+    /// fail_unless_eq!(v.iter().min_max(), NoElements);
     ///
     /// let v = [1i];
     /// fail_unless!(v.iter().min_max() == OneElement(&1));
@@ -1007,13 +1007,13 @@ impl<T: Clone> MinMaxResult<T> {
     /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
     ///
     /// let r: MinMaxResult<int> = NoElements;
-    /// assert_eq!(r.into_option(), None)
+    /// fail_unless_eq!(r.into_option(), None)
     ///
     /// let r = OneElement(1);
-    /// assert_eq!(r.into_option(), Some((1,1)));
+    /// fail_unless_eq!(r.into_option(), Some((1,1)));
     ///
     /// let r = MinMax(1,2);
-    /// assert_eq!(r.into_option(), Some((1,2)));
+    /// fail_unless_eq!(r.into_option(), Some((1,2)));
     /// ```
     pub fn into_option(self) -> Option<(T,T)> {
         match self {
@@ -1035,8 +1035,8 @@ pub trait CloneableIterator {
     ///
     /// let a = count(1,1).take(1);
     /// let mut cy = a.cycle();
-    /// assert_eq!(cy.next(), Some(1));
-    /// assert_eq!(cy.next(), Some(1));
+    /// fail_unless_eq!(cy.next(), Some(1));
+    /// fail_unless_eq!(cy.next(), Some(1));
     /// ```
     fn cycle(self) -> Cycle<Self>;
 }
@@ -2352,7 +2352,7 @@ mod tests {
     fn test_counter_from_iter() {
         let mut it = count(0, 5).take(10);
         let xs: ~[int] = FromIterator::from_iterator(&mut it);
-        assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
+        fail_unless_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
     #[test]
@@ -2363,26 +2363,26 @@ mod tests {
         let mut it = xs.iter().chain(ys.iter());
         let mut i = 0;
         for &x in it {
-            assert_eq!(x, expected[i]);
+            fail_unless_eq!(x, expected[i]);
             i += 1;
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
 
         let ys = count(30u, 10).take(4);
         let mut it = xs.iter().map(|&x| x).chain(ys);
         let mut i = 0;
         for x in it {
-            assert_eq!(x, expected[i]);
+            fail_unless_eq!(x, expected[i]);
             i += 1;
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
     fn test_filter_map() {
         let mut it = count(0u, 1u).take(10)
             .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
-        assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
+        fail_unless_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
@@ -2390,7 +2390,7 @@ mod tests {
         let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
         for (i, &x) in it {
-            assert_eq!(i, x);
+            fail_unless_eq!(i, x);
         }
     }
 
@@ -2398,16 +2398,16 @@ mod tests {
     fn test_iterator_peekable() {
         let xs = ~[0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().map(|&x|x).peekable();
-        assert_eq!(it.peek().unwrap(), &0);
-        assert_eq!(it.next().unwrap(), 0);
-        assert_eq!(it.next().unwrap(), 1);
-        assert_eq!(it.next().unwrap(), 2);
-        assert_eq!(it.peek().unwrap(), &3);
-        assert_eq!(it.peek().unwrap(), &3);
-        assert_eq!(it.next().unwrap(), 3);
-        assert_eq!(it.next().unwrap(), 4);
-        assert_eq!(it.peek().unwrap(), &5);
-        assert_eq!(it.next().unwrap(), 5);
+        fail_unless_eq!(it.peek().unwrap(), &0);
+        fail_unless_eq!(it.next().unwrap(), 0);
+        fail_unless_eq!(it.next().unwrap(), 1);
+        fail_unless_eq!(it.next().unwrap(), 2);
+        fail_unless_eq!(it.peek().unwrap(), &3);
+        fail_unless_eq!(it.peek().unwrap(), &3);
+        fail_unless_eq!(it.next().unwrap(), 3);
+        fail_unless_eq!(it.next().unwrap(), 4);
+        fail_unless_eq!(it.peek().unwrap(), &5);
+        fail_unless_eq!(it.next().unwrap(), 5);
         fail_unless!(it.peek().is_none());
         fail_unless!(it.next().is_none());
     }
@@ -2419,10 +2419,10 @@ mod tests {
         let mut it = xs.iter().take_while(|&x| *x < 15u);
         let mut i = 0;
         for &x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2432,10 +2432,10 @@ mod tests {
         let mut it = xs.iter().skip_while(|&x| *x < 15u);
         let mut i = 0;
         for &x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2445,10 +2445,10 @@ mod tests {
         let mut it = xs.iter().skip(5);
         let mut i = 0;
         for &x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2458,10 +2458,10 @@ mod tests {
         let mut it = xs.iter().take(5);
         let mut i = 0;
         for &x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2477,10 +2477,10 @@ mod tests {
         let mut it = xs.iter().scan(0, add);
         let mut i = 0;
         for x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2490,10 +2490,10 @@ mod tests {
         let mut it = xs.iter().flat_map(|&x| count(x, 1).take(3));
         let mut i = 0;
         for x in it {
-            assert_eq!(x, ys[i]);
+            fail_unless_eq!(x, ys[i]);
             i += 1;
         }
-        assert_eq!(i, ys.len());
+        fail_unless_eq!(i, ys.len());
     }
 
     #[test]
@@ -2506,8 +2506,8 @@ mod tests {
                    .inspect(|_| n += 1)
                    .collect::<~[uint]>();
 
-        assert_eq!(n, xs.len());
-        assert_eq!(xs, ys.as_slice());
+        fail_unless_eq!(n, xs.len());
+        fail_unless_eq!(xs, ys.as_slice());
     }
 
     #[test]
@@ -2525,79 +2525,79 @@ mod tests {
         let mut it = Unfold::new(0, count);
         let mut i = 0;
         for counted in it {
-            assert_eq!(counted, i);
+            fail_unless_eq!(counted, i);
             i += 1;
         }
-        assert_eq!(i, 10);
+        fail_unless_eq!(i, 10);
     }
 
     #[test]
     fn test_cycle() {
         let cycle_len = 3;
         let it = count(0u, 1).take(cycle_len).cycle();
-        assert_eq!(it.size_hint(), (uint::MAX, None));
+        fail_unless_eq!(it.size_hint(), (uint::MAX, None));
         for (i, x) in it.take(100).enumerate() {
-            assert_eq!(i % cycle_len, x);
+            fail_unless_eq!(i % cycle_len, x);
         }
 
         let mut it = count(0u, 1).take(0).cycle();
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
         for i in range(0u, v.len()) {
-            assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
+            fail_unless_eq!(v.iter().nth(i).unwrap(), &v[i]);
         }
     }
 
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+        fail_unless_eq!(v.iter().last().unwrap(), &4);
+        fail_unless_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
     }
 
     #[test]
     fn test_iterator_len() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().len(), 4);
-        assert_eq!(v.slice(0, 10).iter().len(), 10);
-        assert_eq!(v.slice(0, 0).iter().len(), 0);
+        fail_unless_eq!(v.slice(0, 4).iter().len(), 4);
+        fail_unless_eq!(v.slice(0, 10).iter().len(), 10);
+        fail_unless_eq!(v.slice(0, 0).iter().len(), 0);
     }
 
     #[test]
     fn test_iterator_sum() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().map(|&x| x).sum(), 6);
-        assert_eq!(v.iter().map(|&x| x).sum(), 55);
-        assert_eq!(v.slice(0, 0).iter().map(|&x| x).sum(), 0);
+        fail_unless_eq!(v.slice(0, 4).iter().map(|&x| x).sum(), 6);
+        fail_unless_eq!(v.iter().map(|&x| x).sum(), 55);
+        fail_unless_eq!(v.slice(0, 0).iter().map(|&x| x).sum(), 0);
     }
 
     #[test]
     fn test_iterator_product() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().map(|&x| x).product(), 0);
-        assert_eq!(v.slice(1, 5).iter().map(|&x| x).product(), 24);
-        assert_eq!(v.slice(0, 0).iter().map(|&x| x).product(), 1);
+        fail_unless_eq!(v.slice(0, 4).iter().map(|&x| x).product(), 0);
+        fail_unless_eq!(v.slice(1, 5).iter().map(|&x| x).product(), 24);
+        fail_unless_eq!(v.slice(0, 0).iter().map(|&x| x).product(), 1);
     }
 
     #[test]
     fn test_iterator_max() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().map(|&x| x).max(), Some(3));
-        assert_eq!(v.iter().map(|&x| x).max(), Some(10));
-        assert_eq!(v.slice(0, 0).iter().map(|&x| x).max(), None);
+        fail_unless_eq!(v.slice(0, 4).iter().map(|&x| x).max(), Some(3));
+        fail_unless_eq!(v.iter().map(|&x| x).max(), Some(10));
+        fail_unless_eq!(v.slice(0, 0).iter().map(|&x| x).max(), None);
     }
 
     #[test]
     fn test_iterator_min() {
         let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(v.slice(0, 4).iter().map(|&x| x).min(), Some(0));
-        assert_eq!(v.iter().map(|&x| x).min(), Some(0));
-        assert_eq!(v.slice(0, 0).iter().map(|&x| x).min(), None);
+        fail_unless_eq!(v.slice(0, 4).iter().map(|&x| x).min(), Some(0));
+        fail_unless_eq!(v.iter().map(|&x| x).min(), Some(0));
+        fail_unless_eq!(v.slice(0, 0).iter().map(|&x| x).min(), None);
     }
 
     #[test]
@@ -2607,41 +2607,41 @@ mod tests {
         let v2 = &[10, 11, 12];
         let vi = v.iter();
 
-        assert_eq!(c.size_hint(), (uint::MAX, None));
-        assert_eq!(vi.size_hint(), (10, Some(10)));
+        fail_unless_eq!(c.size_hint(), (uint::MAX, None));
+        fail_unless_eq!(vi.size_hint(), (10, Some(10)));
 
-        assert_eq!(c.take(5).size_hint(), (5, Some(5)));
-        assert_eq!(c.skip(5).size_hint().val1(), None);
-        assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
-        assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
-        assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));
-        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX, None));
-        assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
-        assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
-        assert_eq!(c.filter(|_| false).size_hint(), (0, None));
-        assert_eq!(c.map(|_| 0).size_hint(), (uint::MAX, None));
-        assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
+        fail_unless_eq!(c.take(5).size_hint(), (5, Some(5)));
+        fail_unless_eq!(c.skip(5).size_hint().val1(), None);
+        fail_unless_eq!(c.take_while(|_| false).size_hint(), (0, None));
+        fail_unless_eq!(c.skip_while(|_| false).size_hint(), (0, None));
+        fail_unless_eq!(c.enumerate().size_hint(), (uint::MAX, None));
+        fail_unless_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX, None));
+        fail_unless_eq!(c.zip(vi).size_hint(), (10, Some(10)));
+        fail_unless_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
+        fail_unless_eq!(c.filter(|_| false).size_hint(), (0, None));
+        fail_unless_eq!(c.map(|_| 0).size_hint(), (uint::MAX, None));
+        fail_unless_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
-        assert_eq!(vi.take(5).size_hint(), (5, Some(5)));
-        assert_eq!(vi.take(12).size_hint(), (10, Some(10)));
-        assert_eq!(vi.skip(3).size_hint(), (7, Some(7)));
-        assert_eq!(vi.skip(12).size_hint(), (0, Some(0)));
-        assert_eq!(vi.take_while(|_| false).size_hint(), (0, Some(10)));
-        assert_eq!(vi.skip_while(|_| false).size_hint(), (0, Some(10)));
-        assert_eq!(vi.enumerate().size_hint(), (10, Some(10)));
-        assert_eq!(vi.chain(v2.iter()).size_hint(), (13, Some(13)));
-        assert_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
-        assert_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
-        assert_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
-        assert_eq!(vi.map(|i| i+1).size_hint(), (10, Some(10)));
-        assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
+        fail_unless_eq!(vi.take(5).size_hint(), (5, Some(5)));
+        fail_unless_eq!(vi.take(12).size_hint(), (10, Some(10)));
+        fail_unless_eq!(vi.skip(3).size_hint(), (7, Some(7)));
+        fail_unless_eq!(vi.skip(12).size_hint(), (0, Some(0)));
+        fail_unless_eq!(vi.take_while(|_| false).size_hint(), (0, Some(10)));
+        fail_unless_eq!(vi.skip_while(|_| false).size_hint(), (0, Some(10)));
+        fail_unless_eq!(vi.enumerate().size_hint(), (10, Some(10)));
+        fail_unless_eq!(vi.chain(v2.iter()).size_hint(), (13, Some(13)));
+        fail_unless_eq!(vi.zip(v2.iter()).size_hint(), (3, Some(3)));
+        fail_unless_eq!(vi.scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
+        fail_unless_eq!(vi.filter(|_| false).size_hint(), (0, Some(10)));
+        fail_unless_eq!(vi.map(|i| i+1).size_hint(), (10, Some(10)));
+        fail_unless_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));
     }
 
     #[test]
     fn test_collect() {
         let a = ~[1, 2, 3, 4, 5];
         let b: ~[int] = a.iter().map(|&x| x).collect();
-        assert_eq!(a, b);
+        fail_unless_eq!(a, b);
     }
 
     #[test]
@@ -2665,37 +2665,37 @@ mod tests {
     #[test]
     fn test_find() {
         let v: &[int] = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
-        assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
+        fail_unless_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
+        fail_unless_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
         fail_unless!(v.iter().find(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
     fn test_position() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
-        assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
+        fail_unless_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
+        fail_unless_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
         fail_unless!(v.iter().position(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
     fn test_count() {
         let xs = &[1, 2, 2, 1, 5, 9, 0, 2];
-        assert_eq!(xs.iter().count(|x| *x == 2), 3);
-        assert_eq!(xs.iter().count(|x| *x == 5), 1);
-        assert_eq!(xs.iter().count(|x| *x == 95), 0);
+        fail_unless_eq!(xs.iter().count(|x| *x == 2), 3);
+        fail_unless_eq!(xs.iter().count(|x| *x == 5), 1);
+        fail_unless_eq!(xs.iter().count(|x| *x == 95), 0);
     }
 
     #[test]
     fn test_max_by() {
         let xs: &[int] = &[-3, 0, 1, 5, -10];
-        assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+        fail_unless_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     }
 
     #[test]
     fn test_min_by() {
         let xs: &[int] = &[-3, 0, 1, 5, -10];
-        assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+        fail_unless_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     }
 
     #[test]
@@ -2703,8 +2703,8 @@ mod tests {
         let mut xs = range(0, 10);
         // sum the first five values
         let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
-        assert_eq!(partial_sum, 10);
-        assert_eq!(xs.next(), Some(5));
+        fail_unless_eq!(partial_sum, 10);
+        fail_unless_eq!(xs.next(), Some(5));
     }
 
     #[test]
@@ -2713,33 +2713,33 @@ mod tests {
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.rev().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+        fail_unless_eq!(it.rev().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
     fn test_double_ended_map() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().map(|&x| x * -1);
-        assert_eq!(it.next(), Some(-1));
-        assert_eq!(it.next(), Some(-2));
-        assert_eq!(it.next_back(), Some(-6));
-        assert_eq!(it.next_back(), Some(-5));
-        assert_eq!(it.next(), Some(-3));
-        assert_eq!(it.next_back(), Some(-4));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.next(), Some(-1));
+        fail_unless_eq!(it.next(), Some(-2));
+        fail_unless_eq!(it.next_back(), Some(-6));
+        fail_unless_eq!(it.next_back(), Some(-5));
+        fail_unless_eq!(it.next(), Some(-3));
+        fail_unless_eq!(it.next_back(), Some(-4));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
     fn test_double_ended_enumerate() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().map(|&x| x).enumerate();
-        assert_eq!(it.next(), Some((0, 1)));
-        assert_eq!(it.next(), Some((1, 2)));
-        assert_eq!(it.next_back(), Some((5, 6)));
-        assert_eq!(it.next_back(), Some((4, 5)));
-        assert_eq!(it.next_back(), Some((3, 4)));
-        assert_eq!(it.next_back(), Some((2, 3)));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.next(), Some((0, 1)));
+        fail_unless_eq!(it.next(), Some((1, 2)));
+        fail_unless_eq!(it.next_back(), Some((5, 6)));
+        fail_unless_eq!(it.next_back(), Some((4, 5)));
+        fail_unless_eq!(it.next_back(), Some((3, 4)));
+        fail_unless_eq!(it.next_back(), Some((2, 3)));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
@@ -2749,31 +2749,31 @@ mod tests {
         let a = xs.iter().map(|&x| x);
         let b = ys.iter().map(|&x| x);
         let mut it = a.zip(b);
-        assert_eq!(it.next(), Some((1, 1)));
-        assert_eq!(it.next(), Some((2, 2)));
-        assert_eq!(it.next_back(), Some((4, 7)));
-        assert_eq!(it.next_back(), Some((3, 3)));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.next(), Some((1, 1)));
+        fail_unless_eq!(it.next(), Some((2, 2)));
+        fail_unless_eq!(it.next_back(), Some((4, 7)));
+        fail_unless_eq!(it.next_back(), Some((3, 3)));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
     fn test_double_ended_filter() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter(|&x| *x & 1 == 0);
-        assert_eq!(it.next_back().unwrap(), &6);
-        assert_eq!(it.next_back().unwrap(), &4);
-        assert_eq!(it.next().unwrap(), &2);
-        assert_eq!(it.next_back(), None);
+        fail_unless_eq!(it.next_back().unwrap(), &6);
+        fail_unless_eq!(it.next_back().unwrap(), &4);
+        fail_unless_eq!(it.next().unwrap(), &2);
+        fail_unless_eq!(it.next_back(), None);
     }
 
     #[test]
     fn test_double_ended_filter_map() {
         let xs = [1, 2, 3, 4, 5, 6];
         let mut it = xs.iter().filter_map(|&x| if x & 1 == 0 { Some(x * 2) } else { None });
-        assert_eq!(it.next_back().unwrap(), 12);
-        assert_eq!(it.next_back().unwrap(), 8);
-        assert_eq!(it.next().unwrap(), 4);
-        assert_eq!(it.next_back(), None);
+        fail_unless_eq!(it.next_back().unwrap(), 12);
+        fail_unless_eq!(it.next_back().unwrap(), 8);
+        fail_unless_eq!(it.next().unwrap(), 4);
+        fail_unless_eq!(it.next_back(), None);
     }
 
     #[test]
@@ -2781,15 +2781,15 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
         let mut it = xs.iter().chain(ys.iter()).rev();
-        assert_eq!(it.next().unwrap(), &11)
-        assert_eq!(it.next().unwrap(), &9)
-        assert_eq!(it.next_back().unwrap(), &1)
-        assert_eq!(it.next_back().unwrap(), &2)
-        assert_eq!(it.next_back().unwrap(), &3)
-        assert_eq!(it.next_back().unwrap(), &4)
-        assert_eq!(it.next_back().unwrap(), &5)
-        assert_eq!(it.next_back().unwrap(), &7)
-        assert_eq!(it.next_back(), None)
+        fail_unless_eq!(it.next().unwrap(), &11)
+        fail_unless_eq!(it.next().unwrap(), &9)
+        fail_unless_eq!(it.next_back().unwrap(), &1)
+        fail_unless_eq!(it.next_back().unwrap(), &2)
+        fail_unless_eq!(it.next_back().unwrap(), &3)
+        fail_unless_eq!(it.next_back().unwrap(), &4)
+        fail_unless_eq!(it.next_back().unwrap(), &5)
+        fail_unless_eq!(it.next_back().unwrap(), &7)
+        fail_unless_eq!(it.next_back(), None)
     }
 
     #[test]
@@ -2798,7 +2798,7 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert_eq!(v.iter().rposition(f), Some(3u));
+        fail_unless_eq!(v.iter().rposition(f), Some(3u));
         fail_unless!(v.iter().rposition(g).is_none());
     }
 
@@ -2821,14 +2821,14 @@ mod tests {
     fn check_randacc_iter<A: Eq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
     {
         let mut b = a.clone();
-        assert_eq!(len, b.indexable());
+        fail_unless_eq!(len, b.indexable());
         let mut n = 0;
         for (i, elt) in a.enumerate() {
-            assert_eq!(Some(elt), b.idx(i));
+            fail_unless_eq!(Some(elt), b.idx(i));
             n += 1;
         }
-        assert_eq!(n, len);
-        assert_eq!(None, b.idx(n));
+        fail_unless_eq!(n, len);
+        fail_unless_eq!(None, b.idx(n));
         // call recursively to check after picking off an element
         if len > 0 {
             b.next();
@@ -2842,16 +2842,16 @@ mod tests {
         let u = [0u,1];
         let v = [5,6,7,8];
         let mut it = u.iter().flat_map(|x| v.slice(*x, v.len()).iter());
-        assert_eq!(it.next_back().unwrap(), &8);
-        assert_eq!(it.next().unwrap(),      &5);
-        assert_eq!(it.next_back().unwrap(), &7);
-        assert_eq!(it.next_back().unwrap(), &6);
-        assert_eq!(it.next_back().unwrap(), &8);
-        assert_eq!(it.next().unwrap(),      &6);
-        assert_eq!(it.next_back().unwrap(), &7);
-        assert_eq!(it.next_back(), None);
-        assert_eq!(it.next(),      None);
-        assert_eq!(it.next_back(), None);
+        fail_unless_eq!(it.next_back().unwrap(), &8);
+        fail_unless_eq!(it.next().unwrap(),      &5);
+        fail_unless_eq!(it.next_back().unwrap(), &7);
+        fail_unless_eq!(it.next_back().unwrap(), &6);
+        fail_unless_eq!(it.next_back().unwrap(), &8);
+        fail_unless_eq!(it.next().unwrap(),      &6);
+        fail_unless_eq!(it.next_back().unwrap(), &7);
+        fail_unless_eq!(it.next_back(), None);
+        fail_unless_eq!(it.next(),      None);
+        fail_unless_eq!(it.next_back(), None);
     }
 
     #[test]
@@ -2859,17 +2859,17 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
         let mut it = xs.iter().chain(ys.iter());
-        assert_eq!(it.idx(0).unwrap(), &1);
-        assert_eq!(it.idx(5).unwrap(), &7);
-        assert_eq!(it.idx(7).unwrap(), &11);
+        fail_unless_eq!(it.idx(0).unwrap(), &1);
+        fail_unless_eq!(it.idx(5).unwrap(), &7);
+        fail_unless_eq!(it.idx(7).unwrap(), &11);
         fail_unless!(it.idx(8).is_none());
 
         it.next();
         it.next();
         it.next_back();
 
-        assert_eq!(it.idx(0).unwrap(), &3);
-        assert_eq!(it.idx(4).unwrap(), &9);
+        fail_unless_eq!(it.idx(0).unwrap(), &3);
+        fail_unless_eq!(it.idx(4).unwrap(), &9);
         fail_unless!(it.idx(6).is_none());
 
         check_randacc_iter(it, xs.len() + ys.len() - 3);
@@ -2923,9 +2923,9 @@ mod tests {
 
         // test .map and .inspect that don't implement Clone
         let it = xs.iter().inspect(|_| {});
-        assert_eq!(xs.len(), it.indexable());
+        fail_unless_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
-            assert_eq!(Some(elt), it.idx(i));
+            fail_unless_eq!(Some(elt), it.idx(i));
         }
 
     }
@@ -2935,9 +2935,9 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
 
         let it = xs.iter().map(|x| *x);
-        assert_eq!(xs.len(), it.indexable());
+        fail_unless_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
-            assert_eq!(Some(*elt), it.idx(i));
+            fail_unless_eq!(Some(*elt), it.idx(i));
         }
     }
 
@@ -2951,12 +2951,12 @@ mod tests {
 
     #[test]
     fn test_double_ended_range() {
-        assert_eq!(range(11i, 14).rev().collect::<~[int]>(), ~[13i, 12, 11]);
+        fail_unless_eq!(range(11i, 14).rev().collect::<~[int]>(), ~[13i, 12, 11]);
         for _ in range(10i, 0).rev() {
             fail!("unreachable");
         }
 
-        assert_eq!(range(11u, 14).rev().collect::<~[uint]>(), ~[13u, 12, 11]);
+        fail_unless_eq!(range(11u, 14).rev().collect::<~[uint]>(), ~[13u, 12, 11]);
         for _ in range(10u, 0).rev() {
             fail!("unreachable");
         }
@@ -3002,56 +3002,56 @@ mod tests {
             }
         }
 
-        assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
-        assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-        assert_eq!(range(0i, 5).rev().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
-        assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, -5).rev().collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).rev().collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
+        fail_unless_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
+        fail_unless_eq!(range(0i, 5).rev().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
+        fail_unless_eq!(range(200, -5).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range(200, -5).rev().collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range(200, 200).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range(200, 200).rev().collect::<~[int]>(), ~[]);
 
-        assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
+        fail_unless_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
-        assert_eq!(range(uint::MAX - 1, uint::MAX).size_hint(), (1, Some(1)));
-        assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
-        assert_eq!(range(Foo, Foo).size_hint(), (0, None));
+        fail_unless_eq!(range(uint::MAX - 1, uint::MAX).size_hint(), (1, Some(1)));
+        fail_unless_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
+        fail_unless_eq!(range(Foo, Foo).size_hint(), (0, None));
     }
 
     #[test]
     fn test_range_inclusive() {
-        assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
-        assert_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
-        assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
-        assert_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), ~[200]);
+        fail_unless_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
+        fail_unless_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+        fail_unless_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
+        fail_unless_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), ~[200]);
     }
 
     #[test]
     fn test_range_step() {
-        assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
-        assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
-        assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
-        assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
-        assert_eq!(range_step(200, -5, 1).collect::<~[int]>(), ~[]);
-        assert_eq!(range_step(200, 200, 1).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
+        fail_unless_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
+        fail_unless_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
+        fail_unless_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        fail_unless_eq!(range_step(200, -5, 1).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range_step(200, 200, 1).collect::<~[int]>(), ~[]);
     }
 
     #[test]
     fn test_range_step_inclusive() {
-        assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
-        assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
-        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
-        assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
-        assert_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), ~[]);
-        assert_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), ~[200]);
+        fail_unless_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
+        fail_unless_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
+        fail_unless_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
+        fail_unless_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
+        fail_unless_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), ~[]);
+        fail_unless_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), ~[200]);
     }
 
     #[test]
     fn test_reverse() {
         let mut ys = [1, 2, 3, 4, 5];
         ys.mut_iter().reverse_();
-        assert_eq!(ys, [5, 4, 3, 2, 1]);
+        fail_unless_eq!(ys, [5, 4, 3, 2, 1]);
     }
 
     #[test]
@@ -3066,7 +3066,7 @@ mod tests {
     #[test]
     fn test_min_max() {
         let v: [int, ..0] = [];
-        assert_eq!(v.iter().min_max(), NoElements);
+        fail_unless_eq!(v.iter().min_max(), NoElements);
 
         let v = [1i];
         fail_unless!(v.iter().min_max() == OneElement(&1));
@@ -3084,12 +3084,12 @@ mod tests {
     #[test]
     fn test_MinMaxResult() {
         let r: MinMaxResult<int> = NoElements;
-        assert_eq!(r.into_option(), None)
+        fail_unless_eq!(r.into_option(), None)
 
         let r = OneElement(1);
-        assert_eq!(r.into_option(), Some((1,1)));
+        fail_unless_eq!(r.into_option(), Some((1,1)));
 
         let r = MinMax(1,2);
-        assert_eq!(r.into_option(), Some((1,2)));
+        fail_unless_eq!(r.into_option(), Some((1,2)));
     }
 }

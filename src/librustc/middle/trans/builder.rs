@@ -734,7 +734,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn phi(&self, ty: Type, vals: &[ValueRef], bbs: &[BasicBlockRef]) -> ValueRef {
-        assert_eq!(vals.len(), bbs.len());
+        fail_unless_eq!(vals.len(), bbs.len());
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
         unsafe {

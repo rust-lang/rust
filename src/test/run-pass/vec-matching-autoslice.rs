@@ -13,7 +13,7 @@ pub fn main() {
     match x {
         [2, _, _] => fail!(),
         [1, a, b] => {
-            assert_eq!([a, b], [2, 3]);
+            fail_unless_eq!([a, b], [2, 3]);
         }
         [_, _, _] => fail!(),
     }
@@ -21,8 +21,8 @@ pub fn main() {
     let y = ([(1, true), (2, false)], 0.5);
     match y {
         ([(1, a), (b, false)], _) => {
-            assert_eq!(a, true);
-            assert_eq!(b, 2);
+            fail_unless_eq!(a, true);
+            fail_unless_eq!(b, 2);
         }
         ([_, _], 0.5) => fail!(),
         ([_, _], _) => fail!(),

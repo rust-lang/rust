@@ -494,7 +494,7 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
             ast::ItemStruct(..) => {
                 let struct_fields = ty::lookup_struct_fields(tcx, did);
                 for field_info in struct_fields.iter() {
-                    assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
+                    fail_unless_eq!(field_info.id.krate, ast::LOCAL_CRATE);
                     let field_ty = ty::node_id_to_type(tcx, field_info.id.node);
                     self.add_constraints_from_ty(field_ty, self.covariant);
                 }
@@ -548,7 +548,7 @@ impl<'a> ConstraintContext<'a> {
          * the type/region parameter with the given id.
          */
 
-        assert_eq!(param_def_id.krate, item_def_id.krate);
+        fail_unless_eq!(param_def_id.krate, item_def_id.krate);
 
         if self.invariant_lang_items[kind as uint] == Some(item_def_id) {
             self.invariant
@@ -682,7 +682,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_param(ty::param_ty { def_id: ref def_id, .. }) => {
-                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+                fail_unless_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.find(&def_id.node) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
@@ -696,7 +696,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_self(ref def_id) => {
-                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+                fail_unless_eq!(def_id.krate, ast::LOCAL_CRATE);
                 let index = self.inferred_index(def_id.node);
                 self.add_constraint(index, variance);
             }

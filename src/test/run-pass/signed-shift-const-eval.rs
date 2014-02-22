@@ -10,5 +10,5 @@
 
 enum test { thing = -5 >> 1u }
 pub fn main() {
-    assert_eq!(thing as int, -3);
+    fail_unless_eq!(thing as int, -3);
 }

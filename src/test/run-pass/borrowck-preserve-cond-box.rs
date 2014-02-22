@@ -28,15 +28,15 @@ fn testfn(cond: bool) {
     }
 
     info!("*r = {}, exp = {}", *r, exp);
-    assert_eq!(*r, exp);
+    fail_unless_eq!(*r, exp);
 
     x = @5;
     y = @6;
 
     info!("*r = {}, exp = {}", *r, exp);
-    assert_eq!(*r, exp);
-    assert_eq!(x, @5);
-    assert_eq!(y, @6);
+    fail_unless_eq!(*r, exp);
+    fail_unless_eq!(x, @5);
+    fail_unless_eq!(y, @6);
 }
 
 pub fn main() {

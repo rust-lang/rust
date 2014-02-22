@@ -750,15 +750,15 @@ mod test {
     fn from_str_ignore_underscores() {
         let s : Option<u8> = from_str_common("__1__", 2, false, false, false,
                                              ExpNone, false, true);
-        assert_eq!(s, Some(1u8));
+        fail_unless_eq!(s, Some(1u8));
 
         let n : Option<u8> = from_str_common("__1__", 2, false, false, false,
                                              ExpNone, false, false);
-        assert_eq!(n, None);
+        fail_unless_eq!(n, None);
 
         let f : Option<f32> = from_str_common("_1_._5_e_1_", 10, false, true, false,
                                               ExpDec, false, true);
-        assert_eq!(f, Some(1.5e1f32));
+        fail_unless_eq!(f, Some(1.5e1f32));
     }
 
     #[test]
@@ -768,24 +768,24 @@ mod test {
         // detected.
         let n : Option<u8> = from_str_common("111111111", 2, false, false, false,
                                              ExpNone, false, false);
-        assert_eq!(n, None);
+        fail_unless_eq!(n, None);
     }
 
     #[test]
     fn from_str_issue7588() {
         let u : Option<u8> = from_str_common("1000", 10, false, false, false,
                                             ExpNone, false, false);
-        assert_eq!(u, None);
+        fail_unless_eq!(u, None);
         let s : Option<i16> = from_str_common("80000", 10, false, false, false,
                                              ExpNone, false, false);
-        assert_eq!(s, None);
+        fail_unless_eq!(s, None);
         let f : Option<f32> = from_str_common(
             "10000000000000000000000000000000000000000", 10, false, false, false,
             ExpNone, false, false);
-        assert_eq!(f, NumStrConv::inf())
+        fail_unless_eq!(f, NumStrConv::inf())
         let fe : Option<f32> = from_str_common("1e40", 10, false, false, false,
                                             ExpDec, false, false);
-        assert_eq!(fe, NumStrConv::inf())
+        fail_unless_eq!(fe, NumStrConv::inf())
     }
 }
 

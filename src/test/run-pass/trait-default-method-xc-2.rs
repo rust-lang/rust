@@ -24,12 +24,12 @@ pub fn main () {
     let a = a_struct { x: 0 };
     let b = a_struct { x: 1 };
 
-    assert_eq!(0i.g(), 10);
-    assert_eq!(a.g(), 10);
-    assert_eq!(a.h(), 11);
-    assert_eq!(b.g(), 10);
-    assert_eq!(b.h(), 11);
-    assert_eq!(A::lurr(&a, &b), 21);
+    fail_unless_eq!(0i.g(), 10);
+    fail_unless_eq!(a.g(), 10);
+    fail_unless_eq!(a.h(), 11);
+    fail_unless_eq!(b.g(), 10);
+    fail_unless_eq!(b.h(), 11);
+    fail_unless_eq!(A::lurr(&a, &b), 21);
 
     welp(&0);
 }

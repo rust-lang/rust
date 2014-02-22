@@ -156,5 +156,5 @@ pub fn main() {
     for s in v.types.iter() {
         println!("type: {}", (*s).clone());
     }
-    assert_eq!(v.types.clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
+    fail_unless_eq!(v.types.clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
 }

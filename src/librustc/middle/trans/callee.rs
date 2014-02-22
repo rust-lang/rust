@@ -378,7 +378,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+        fail_unless_eq!(def_id.krate, ast::LOCAL_CRATE);
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
@@ -819,7 +819,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
 
             match arg2 {
                 Some(arg2_expr) => {
-                    assert_eq!(arg_tys.len(), 2);
+                    fail_unless_eq!(arg_tys.len(), 2);
 
                     llargs.push(unpack_result!(bcx, {
                         trans_arg_expr(bcx, arg_tys[1], arg2_expr,
@@ -827,7 +827,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
                                        DoAutorefArg)
                     }));
                 }
-                None => assert_eq!(arg_tys.len(), 1)
+                None => fail_unless_eq!(arg_tys.len(), 1)
             }
         }
         ArgVals(vs) => {

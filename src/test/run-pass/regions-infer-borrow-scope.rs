@@ -19,5 +19,5 @@ fn x_coord<'r>(p: &'r Point) -> &'r int {
 pub fn main() {
     let p = @Point {x: 3, y: 4};
     let xc = x_coord(p);
-    assert_eq!(*xc, 3);
+    fail_unless_eq!(*xc, 3);
 }

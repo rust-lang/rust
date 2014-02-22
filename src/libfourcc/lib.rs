@@ -27,9 +27,9 @@ extern crate fourcc;
 
 fn main() {
     let val = fourcc!("\xC0\xFF\xEE!");
-    assert_eq!(val, 0xC0FFEE21u32);
+    fail_unless_eq!(val, 0xC0FFEE21u32);
     let little_val = fourcc!("foo ", little);
-    assert_eq!(little_val, 0x21EEFFC0u32);
+    fail_unless_eq!(little_val, 0x21EEFFC0u32);
 }
  ```
 

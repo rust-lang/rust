@@ -18,7 +18,7 @@ pub fn main() {
 
   let inf: f64 = Float::infinity();
   let neg_inf: f64 = Float::neg_infinity();
-  assert_eq!(-inf, neg_inf);
+  fail_unless_eq!(-inf, neg_inf);
 
   fail_unless!( nan !=  nan);
   fail_unless!( nan != -nan);

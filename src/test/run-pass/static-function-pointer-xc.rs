@@ -15,12 +15,12 @@ extern crate aux = "static-function-pointer-aux";
 fn f(x: int) -> int { x }
 
 pub fn main() {
-    assert_eq!(aux::F(42), -42);
+    fail_unless_eq!(aux::F(42), -42);
     unsafe {
-        assert_eq!(aux::MutF(42), -42);
+        fail_unless_eq!(aux::MutF(42), -42);
         aux::MutF = f;
-        assert_eq!(aux::MutF(42), 42);
+        fail_unless_eq!(aux::MutF(42), 42);
         aux::MutF = aux::f;
-        assert_eq!(aux::MutF(42), -42);
+        fail_unless_eq!(aux::MutF(42), -42);
     }
 }

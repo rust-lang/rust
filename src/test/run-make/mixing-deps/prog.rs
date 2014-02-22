@@ -14,6 +14,6 @@ extern crate both;
 use std::cast;
 
 fn main() {
-    assert_eq!(unsafe { cast::transmute::<&int, uint>(&both::foo) },
+    fail_unless_eq!(unsafe { cast::transmute::<&int, uint>(&both::foo) },
                dylib::addr());
 }

@@ -14,7 +14,7 @@ static y : &'static [int] = &[1,2,3,4];
 pub fn main() {
     println!("{:?}", x[1]);
     println!("{:?}", y[1]);
-    assert_eq!(x[1], 2);
-    assert_eq!(x[3], 4);
-    assert_eq!(x[3], y[3]);
+    fail_unless_eq!(x[1], 2);
+    fail_unless_eq!(x[3], 4);
+    fail_unless_eq!(x[3], y[3]);
 }

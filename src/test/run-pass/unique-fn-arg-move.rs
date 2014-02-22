@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f(i: ~int) {
-    assert_eq!(*i, 100);
+    fail_unless_eq!(*i, 100);
 }
 
 pub fn main() {

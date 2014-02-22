@@ -310,7 +310,7 @@ mod tests {
     fn test_overflows() {
         fail_unless!(MAX > 0);
         fail_unless!(MIN <= 0);
-        assert_eq!(MIN + MAX + 1, 0);
+        fail_unless_eq!(MIN + MAX + 1, 0);
     }
 
     #[test]
@@ -320,25 +320,25 @@ mod tests {
 
     #[test]
     pub fn test_abs() {
-        assert_eq!((1 as $T).abs(), 1 as $T);
-        assert_eq!((0 as $T).abs(), 0 as $T);
-        assert_eq!((-1 as $T).abs(), 1 as $T);
+        fail_unless_eq!((1 as $T).abs(), 1 as $T);
+        fail_unless_eq!((0 as $T).abs(), 0 as $T);
+        fail_unless_eq!((-1 as $T).abs(), 1 as $T);
     }
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-1 as $T).abs_sub(&(1 as $T)), 0 as $T);
-        assert_eq!((1 as $T).abs_sub(&(1 as $T)), 0 as $T);
-        assert_eq!((1 as $T).abs_sub(&(0 as $T)), 1 as $T);
-        assert_eq!((1 as $T).abs_sub(&(-1 as $T)), 2 as $T);
+        fail_unless_eq!((-1 as $T).abs_sub(&(1 as $T)), 0 as $T);
+        fail_unless_eq!((1 as $T).abs_sub(&(1 as $T)), 0 as $T);
+        fail_unless_eq!((1 as $T).abs_sub(&(0 as $T)), 1 as $T);
+        fail_unless_eq!((1 as $T).abs_sub(&(-1 as $T)), 2 as $T);
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!((1 as $T).signum(), 1 as $T);
-        assert_eq!((0 as $T).signum(), 0 as $T);
-        assert_eq!((-0 as $T).signum(), 0 as $T);
-        assert_eq!((-1 as $T).signum(), -1 as $T);
+        fail_unless_eq!((1 as $T).signum(), 1 as $T);
+        fail_unless_eq!((0 as $T).signum(), 0 as $T);
+        fail_unless_eq!((-0 as $T).signum(), 0 as $T);
+        fail_unless_eq!((-1 as $T).signum(), -1 as $T);
     }
 
     #[test]
@@ -359,41 +359,41 @@ mod tests {
 
     #[test]
     fn test_bitwise() {
-        assert_eq!(0b1110 as $T, (0b1100 as $T).bitor(&(0b1010 as $T)));
-        assert_eq!(0b1000 as $T, (0b1100 as $T).bitand(&(0b1010 as $T)));
-        assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
-        assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
-        assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
-        assert_eq!(-(0b11 as $T) - (1 as $T), (0b11 as $T).not());
+        fail_unless_eq!(0b1110 as $T, (0b1100 as $T).bitor(&(0b1010 as $T)));
+        fail_unless_eq!(0b1000 as $T, (0b1100 as $T).bitand(&(0b1010 as $T)));
+        fail_unless_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
+        fail_unless_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
+        fail_unless_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
+        fail_unless_eq!(-(0b11 as $T) - (1 as $T), (0b11 as $T).not());
     }
 
     #[test]
     fn test_count_ones() {
-        assert_eq!((0b0101100 as $T).count_ones(), 3);
-        assert_eq!((0b0100001 as $T).count_ones(), 2);
-        assert_eq!((0b1111001 as $T).count_ones(), 5);
+        fail_unless_eq!((0b0101100 as $T).count_ones(), 3);
+        fail_unless_eq!((0b0100001 as $T).count_ones(), 2);
+        fail_unless_eq!((0b1111001 as $T).count_ones(), 5);
     }
 
     #[test]
     fn test_count_zeros() {
-        assert_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
-        assert_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
-        assert_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
+        fail_unless_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
+        fail_unless_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
+        fail_unless_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
     }
 
     #[test]
     fn test_from_str() {
-        assert_eq!(from_str::<$T>("0"), Some(0 as $T));
-        assert_eq!(from_str::<$T>("3"), Some(3 as $T));
-        assert_eq!(from_str::<$T>("10"), Some(10 as $T));
-        assert_eq!(from_str::<i32>("123456789"), Some(123456789 as i32));
-        assert_eq!(from_str::<$T>("00100"), Some(100 as $T));
+        fail_unless_eq!(from_str::<$T>("0"), Some(0 as $T));
+        fail_unless_eq!(from_str::<$T>("3"), Some(3 as $T));
+        fail_unless_eq!(from_str::<$T>("10"), Some(10 as $T));
+        fail_unless_eq!(from_str::<i32>("123456789"), Some(123456789 as i32));
+        fail_unless_eq!(from_str::<$T>("00100"), Some(100 as $T));
 
-        assert_eq!(from_str::<$T>("-1"), Some(-1 as $T));
-        assert_eq!(from_str::<$T>("-3"), Some(-3 as $T));
-        assert_eq!(from_str::<$T>("-10"), Some(-10 as $T));
-        assert_eq!(from_str::<i32>("-123456789"), Some(-123456789 as i32));
-        assert_eq!(from_str::<$T>("-00100"), Some(-100 as $T));
+        fail_unless_eq!(from_str::<$T>("-1"), Some(-1 as $T));
+        fail_unless_eq!(from_str::<$T>("-3"), Some(-3 as $T));
+        fail_unless_eq!(from_str::<$T>("-10"), Some(-10 as $T));
+        fail_unless_eq!(from_str::<i32>("-123456789"), Some(-123456789 as i32));
+        fail_unless_eq!(from_str::<$T>("-00100"), Some(-100 as $T));
 
         fail_unless!(from_str::<$T>(" ").is_none());
         fail_unless!(from_str::<$T>("x").is_none());
@@ -402,23 +402,23 @@ mod tests {
     #[test]
     fn test_parse_bytes() {
         use str::StrSlice;
-        assert_eq!(parse_bytes("123".as_bytes(), 10u), Some(123 as $T));
-        assert_eq!(parse_bytes("1001".as_bytes(), 2u), Some(9 as $T));
-        assert_eq!(parse_bytes("123".as_bytes(), 8u), Some(83 as $T));
-        assert_eq!(i32::parse_bytes("123".as_bytes(), 16u), Some(291 as i32));
-        assert_eq!(i32::parse_bytes("ffff".as_bytes(), 16u), Some(65535 as i32));
-        assert_eq!(i32::parse_bytes("FFFF".as_bytes(), 16u), Some(65535 as i32));
-        assert_eq!(parse_bytes("z".as_bytes(), 36u), Some(35 as $T));
-        assert_eq!(parse_bytes("Z".as_bytes(), 36u), Some(35 as $T));
+        fail_unless_eq!(parse_bytes("123".as_bytes(), 10u), Some(123 as $T));
+        fail_unless_eq!(parse_bytes("1001".as_bytes(), 2u), Some(9 as $T));
+        fail_unless_eq!(parse_bytes("123".as_bytes(), 8u), Some(83 as $T));
+        fail_unless_eq!(i32::parse_bytes("123".as_bytes(), 16u), Some(291 as i32));
+        fail_unless_eq!(i32::parse_bytes("ffff".as_bytes(), 16u), Some(65535 as i32));
+        fail_unless_eq!(i32::parse_bytes("FFFF".as_bytes(), 16u), Some(65535 as i32));
+        fail_unless_eq!(parse_bytes("z".as_bytes(), 36u), Some(35 as $T));
+        fail_unless_eq!(parse_bytes("Z".as_bytes(), 36u), Some(35 as $T));
 
-        assert_eq!(parse_bytes("-123".as_bytes(), 10u), Some(-123 as $T));
-        assert_eq!(parse_bytes("-1001".as_bytes(), 2u), Some(-9 as $T));
-        assert_eq!(parse_bytes("-123".as_bytes(), 8u), Some(-83 as $T));
-        assert_eq!(i32::parse_bytes("-123".as_bytes(), 16u), Some(-291 as i32));
-        assert_eq!(i32::parse_bytes("-ffff".as_bytes(), 16u), Some(-65535 as i32));
-        assert_eq!(i32::parse_bytes("-FFFF".as_bytes(), 16u), Some(-65535 as i32));
-        assert_eq!(parse_bytes("-z".as_bytes(), 36u), Some(-35 as $T));
-        assert_eq!(parse_bytes("-Z".as_bytes(), 36u), Some(-35 as $T));
+        fail_unless_eq!(parse_bytes("-123".as_bytes(), 10u), Some(-123 as $T));
+        fail_unless_eq!(parse_bytes("-1001".as_bytes(), 2u), Some(-9 as $T));
+        fail_unless_eq!(parse_bytes("-123".as_bytes(), 8u), Some(-83 as $T));
+        fail_unless_eq!(i32::parse_bytes("-123".as_bytes(), 16u), Some(-291 as i32));
+        fail_unless_eq!(i32::parse_bytes("-ffff".as_bytes(), 16u), Some(-65535 as i32));
+        fail_unless_eq!(i32::parse_bytes("-FFFF".as_bytes(), 16u), Some(-65535 as i32));
+        fail_unless_eq!(parse_bytes("-z".as_bytes(), 36u), Some(-35 as $T));
+        fail_unless_eq!(parse_bytes("-Z".as_bytes(), 36u), Some(-35 as $T));
 
         fail_unless!(parse_bytes("Z".as_bytes(), 35u).is_none());
         fail_unless!(parse_bytes("-9".as_bytes(), 2u).is_none());
@@ -426,81 +426,81 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!((0 as $T).to_str_radix(10u), ~"0");
-        assert_eq!((1 as $T).to_str_radix(10u), ~"1");
-        assert_eq!((-1 as $T).to_str_radix(10u), ~"-1");
-        assert_eq!((127 as $T).to_str_radix(16u), ~"7f");
-        assert_eq!((100 as $T).to_str_radix(10u), ~"100");
+        fail_unless_eq!((0 as $T).to_str_radix(10u), ~"0");
+        fail_unless_eq!((1 as $T).to_str_radix(10u), ~"1");
+        fail_unless_eq!((-1 as $T).to_str_radix(10u), ~"-1");
+        fail_unless_eq!((127 as $T).to_str_radix(16u), ~"7f");
+        fail_unless_eq!((100 as $T).to_str_radix(10u), ~"100");
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8_val.to_str(), ~"127");
+        fail_unless_eq!(i8_val.to_str(), ~"127");
 
         i8_val += 1 as i8;
-        assert_eq!(i8_val.to_str(), ~"-128");
+        fail_unless_eq!(i8_val.to_str(), ~"-128");
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16_val.to_str(), ~"32767");
+        fail_unless_eq!(i16_val.to_str(), ~"32767");
 
         i16_val += 1 as i16;
-        assert_eq!(i16_val.to_str(), ~"-32768");
+        fail_unless_eq!(i16_val.to_str(), ~"-32768");
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32_val.to_str(), ~"2147483647");
+        fail_unless_eq!(i32_val.to_str(), ~"2147483647");
 
         i32_val += 1 as i32;
-        assert_eq!(i32_val.to_str(), ~"-2147483648");
+        fail_unless_eq!(i32_val.to_str(), ~"-2147483648");
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64_val.to_str(), ~"9223372036854775807");
+        fail_unless_eq!(i64_val.to_str(), ~"9223372036854775807");
 
         i64_val += 1 as i64;
-        assert_eq!(i64_val.to_str(), ~"-9223372036854775808");
+        fail_unless_eq!(i64_val.to_str(), ~"-9223372036854775808");
     }
 
     #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(from_str::<i8>("127"), Some(i8_val));
+        fail_unless_eq!(from_str::<i8>("127"), Some(i8_val));
         fail_unless!(from_str::<i8>("128").is_none());
 
         i8_val += 1 as i8;
-        assert_eq!(from_str::<i8>("-128"), Some(i8_val));
+        fail_unless_eq!(from_str::<i8>("-128"), Some(i8_val));
         fail_unless!(from_str::<i8>("-129").is_none());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(from_str::<i16>("32767"), Some(i16_val));
+        fail_unless_eq!(from_str::<i16>("32767"), Some(i16_val));
         fail_unless!(from_str::<i16>("32768").is_none());
 
         i16_val += 1 as i16;
-        assert_eq!(from_str::<i16>("-32768"), Some(i16_val));
+        fail_unless_eq!(from_str::<i16>("-32768"), Some(i16_val));
         fail_unless!(from_str::<i16>("-32769").is_none());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(from_str::<i32>("2147483647"), Some(i32_val));
+        fail_unless_eq!(from_str::<i32>("2147483647"), Some(i32_val));
         fail_unless!(from_str::<i32>("2147483648").is_none());
 
         i32_val += 1 as i32;
-        assert_eq!(from_str::<i32>("-2147483648"), Some(i32_val));
+        fail_unless_eq!(from_str::<i32>("-2147483648"), Some(i32_val));
         fail_unless!(from_str::<i32>("-2147483649").is_none());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(from_str::<i64>("9223372036854775807"), Some(i64_val));
+        fail_unless_eq!(from_str::<i64>("9223372036854775807"), Some(i64_val));
         fail_unless!(from_str::<i64>("9223372036854775808").is_none());
 
         i64_val += 1 as i64;
-        assert_eq!(from_str::<i64>("-9223372036854775808"), Some(i64_val));
+        fail_unless_eq!(from_str::<i64>("-9223372036854775808"), Some(i64_val));
         fail_unless!(from_str::<i64>("-9223372036854775809").is_none());
     }
 
     #[test]
     fn test_signed_checked_div() {
-        assert_eq!(10i.checked_div(&2), Some(5));
-        assert_eq!(5i.checked_div(&0), None);
-        assert_eq!(int::MIN.checked_div(&-1), None);
+        fail_unless_eq!(10i.checked_div(&2), Some(5));
+        fail_unless_eq!(5i.checked_div(&0), None);
+        fail_unless_eq!(int::MIN.checked_div(&-1), None);
     }
 }
 

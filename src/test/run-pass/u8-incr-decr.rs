@@ -23,5 +23,5 @@ pub fn main() {
 
     y = y - 9u8; // 0x9
 
-    assert_eq!(x, y);
+    fail_unless_eq!(x, y);
 }

@@ -102,7 +102,7 @@ fn test_in_fn_ctxt() {
     #[cfg(bogus)]
     static i: int = 0;
     static i: int = 1;
-    assert_eq!(i, 1);
+    fail_unless_eq!(i, 1);
 }
 
 mod test_foreign_items {

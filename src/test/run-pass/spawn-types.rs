@@ -19,7 +19,7 @@ use std::task;
 type ctx = Chan<int>;
 
 fn iotask(_cx: &ctx, ip: ~str) {
-    assert_eq!(ip, ~"localhost");
+    fail_unless_eq!(ip, ~"localhost");
 }
 
 pub fn main() {

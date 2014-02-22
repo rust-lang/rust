@@ -34,5 +34,5 @@ mod kitty {
 }
 
 pub fn main() {
-  assert_eq!(cat(~"Spreckles").get_name(), ~"Spreckles");
+  fail_unless_eq!(cat(~"Spreckles").get_name(), ~"Spreckles");
 }

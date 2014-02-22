@@ -491,7 +491,7 @@ mod tests {
             let opt = Some(x);
             let y = opt.unwrap();
             let addr_y: *int = ::cast::transmute(&*y);
-            assert_eq!(addr_x, addr_y);
+            fail_unless_eq!(addr_x, addr_y);
         }
     }
 
@@ -502,7 +502,7 @@ mod tests {
         let opt = Some(x);
         let y = opt.unwrap();
         let addr_y = y.as_ptr();
-        assert_eq!(addr_x, addr_y);
+        fail_unless_eq!(addr_x, addr_y);
     }
 
     #[test]
@@ -534,7 +534,7 @@ mod tests {
             let opt = Some(x);
             let _y = opt.unwrap();
         }
-        assert_eq!(i.borrow().get(), 1);
+        fail_unless_eq!(i.borrow().get(), 1);
     }
 
     #[test]
@@ -545,7 +545,7 @@ mod tests {
         for _x in x.iter() {
             y2 = y.take_unwrap();
         }
-        assert_eq!(y2, 5);
+        fail_unless_eq!(y2, 5);
         fail_unless!(y.is_none());
     }
 
@@ -559,45 +559,45 @@ mod tests {
     #[test]
     fn test_and() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.and(Some(2)), Some(2));
-        assert_eq!(x.and(None::<int>), None);
+        fail_unless_eq!(x.and(Some(2)), Some(2));
+        fail_unless_eq!(x.and(None::<int>), None);
 
         let x: Option<int> = None;
-        assert_eq!(x.and(Some(2)), None);
-        assert_eq!(x.and(None::<int>), None);
+        fail_unless_eq!(x.and(Some(2)), None);
+        fail_unless_eq!(x.and(None::<int>), None);
     }
 
     #[test]
     fn test_and_then() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.and_then(|x| Some(x + 1)), Some(2));
-        assert_eq!(x.and_then(|_| None::<int>), None);
+        fail_unless_eq!(x.and_then(|x| Some(x + 1)), Some(2));
+        fail_unless_eq!(x.and_then(|_| None::<int>), None);
 
         let x: Option<int> = None;
-        assert_eq!(x.and_then(|x| Some(x + 1)), None);
-        assert_eq!(x.and_then(|_| None::<int>), None);
+        fail_unless_eq!(x.and_then(|x| Some(x + 1)), None);
+        fail_unless_eq!(x.and_then(|_| None::<int>), None);
     }
 
     #[test]
     fn test_or() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.or(Some(2)), Some(1));
-        assert_eq!(x.or(None), Some(1));
+        fail_unless_eq!(x.or(Some(2)), Some(1));
+        fail_unless_eq!(x.or(None), Some(1));
 
         let x: Option<int> = None;
-        assert_eq!(x.or(Some(2)), Some(2));
-        assert_eq!(x.or(None), None);
+        fail_unless_eq!(x.or(Some(2)), Some(2));
+        fail_unless_eq!(x.or(None), None);
     }
 
     #[test]
     fn test_or_else() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.or_else(|| Some(2)), Some(1));
-        assert_eq!(x.or_else(|| None), Some(1));
+        fail_unless_eq!(x.or_else(|| Some(2)), Some(1));
+        fail_unless_eq!(x.or_else(|| None), Some(1));
 
         let x: Option<int> = None;
-        assert_eq!(x.or_else(|| Some(2)), Some(2));
-        assert_eq!(x.or_else(|| None), None);
+        fail_unless_eq!(x.or_else(|| Some(2)), Some(2));
+        fail_unless_eq!(x.or_else(|| None), None);
     }
 
     #[test]
@@ -611,13 +611,13 @@ mod tests {
                 None
             }
         });
-        assert_eq!(i, 11);
+        fail_unless_eq!(i, 11);
     }
 
     #[test]
     fn test_unwrap() {
-        assert_eq!(Some(1).unwrap(), 1);
-        assert_eq!(Some(~"hello").unwrap(), ~"hello");
+        fail_unless_eq!(Some(1).unwrap(), 1);
+        fail_unless_eq!(Some(~"hello").unwrap(), ~"hello");
     }
 
     #[test]
@@ -637,26 +637,26 @@ mod tests {
     #[test]
     fn test_unwrap_or() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.unwrap_or(2), 1);
+        fail_unless_eq!(x.unwrap_or(2), 1);
 
         let x: Option<int> = None;
-        assert_eq!(x.unwrap_or(2), 2);
+        fail_unless_eq!(x.unwrap_or(2), 2);
     }
 
     #[test]
     fn test_unwrap_or_else() {
         let x: Option<int> = Some(1);
-        assert_eq!(x.unwrap_or_else(|| 2), 1);
+        fail_unless_eq!(x.unwrap_or_else(|| 2), 1);
 
         let x: Option<int> = None;
-        assert_eq!(x.unwrap_or_else(|| 2), 2);
+        fail_unless_eq!(x.unwrap_or_else(|| 2), 2);
     }
 
     #[test]
     fn test_filtered() {
         let some_stuff = Some(42);
         let modified_stuff = some_stuff.filtered(|&x| {x < 10});
-        assert_eq!(some_stuff.unwrap(), 42);
+        fail_unless_eq!(some_stuff.unwrap(), 42);
         fail_unless!(modified_stuff.is_none());
     }
 
@@ -667,9 +667,9 @@ mod tests {
         let x = Some(val);
         let mut it = x.iter();
 
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next(), Some(&val));
-        assert_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless_eq!(it.size_hint(), (1, Some(1)));
+        fail_unless_eq!(it.next(), Some(&val));
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
         fail_unless!(it.next().is_none());
     }
 
@@ -682,20 +682,20 @@ mod tests {
         {
             let mut it = x.mut_iter();
 
-            assert_eq!(it.size_hint(), (1, Some(1)));
+            fail_unless_eq!(it.size_hint(), (1, Some(1)));
 
             match it.next() {
                 Some(interior) => {
-                    assert_eq!(*interior, val);
+                    fail_unless_eq!(*interior, val);
                     *interior = new_val;
                 }
                 None => fail_unless!(false),
             }
 
-            assert_eq!(it.size_hint(), (0, Some(0)));
+            fail_unless_eq!(it.size_hint(), (0, Some(0)));
             fail_unless!(it.next().is_none());
         }
-        assert_eq!(x, Some(new_val));
+        fail_unless_eq!(x, Some(new_val));
     }
 
     #[test]
@@ -714,35 +714,35 @@ mod tests {
     fn test_mutate() {
         let mut x = Some(3i);
         fail_unless!(x.mutate(|i| i+1));
-        assert_eq!(x, Some(4i));
+        fail_unless_eq!(x, Some(4i));
         fail_unless!(x.mutate_or_set(0, |i| i+1));
-        assert_eq!(x, Some(5i));
+        fail_unless_eq!(x, Some(5i));
         x = None;
         fail_unless!(!x.mutate(|i| i+1));
-        assert_eq!(x, None);
+        fail_unless_eq!(x, None);
         fail_unless!(!x.mutate_or_set(0i, |i| i+1));
-        assert_eq!(x, Some(0i));
+        fail_unless_eq!(x, Some(0i));
     }
 
     #[test]
     fn test_collect() {
         let v: Option<~[int]> = collect(range(0, 0)
                                         .map(|_| Some(0)));
-        assert_eq!(v, Some(~[]));
+        fail_unless_eq!(v, Some(~[]));
 
         let v: Option<~[int]> = collect(range(0, 3)
                                         .map(|x| Some(x)));
-        assert_eq!(v, Some(~[0, 1, 2]));
+        fail_unless_eq!(v, Some(~[0, 1, 2]));
 
         let v: Option<~[int]> = collect(range(0, 3)
                                         .map(|x| if x > 1 { None } else { Some(x) }));
-        assert_eq!(v, None);
+        fail_unless_eq!(v, None);
 
         // test that it does not take more elements than it needs
         let functions = [|| Some(()), || None, || fail!()];
 
         let v: Option<~[()]> = collect(functions.iter().map(|f| (*f)()));
 
-        assert_eq!(v, None);
+        fail_unless_eq!(v, None);
     }
 }

@@ -19,8 +19,8 @@ pub fn main() {
     two(|i| {
         two(|j| { a[p] = 10 * i + j; p += 1; })
     });
-    assert_eq!(a[0], 0);
-    assert_eq!(a[1], 1);
-    assert_eq!(a[2], 10);
-    assert_eq!(a[3], 11);
+    fail_unless_eq!(a[0], 0);
+    fail_unless_eq!(a[1], 1);
+    fail_unless_eq!(a[2], 10);
+    fail_unless_eq!(a[3], 11);
 }

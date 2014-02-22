@@ -61,10 +61,10 @@ impl Super for X {
 pub fn main() {
     let n = X;
     let s = &n as &Super;
-    assert_eq!(s.bar(),~"super bar");
-    assert_eq!(s.foo(),~"base foo");
-    assert_eq!(s.foo1(),~"base foo1");
-    assert_eq!(s.foo2(),~"base foo2");
-    assert_eq!(s.baz(),~"base2 baz");
-    assert_eq!(s.root(),~"base3 root");
+    fail_unless_eq!(s.bar(),~"super bar");
+    fail_unless_eq!(s.foo(),~"base foo");
+    fail_unless_eq!(s.foo1(),~"base foo1");
+    fail_unless_eq!(s.foo2(),~"base foo2");
+    fail_unless_eq!(s.baz(),~"base2 baz");
+    fail_unless_eq!(s.root(),~"base3 root");
 }

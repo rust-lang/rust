@@ -1068,7 +1068,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
-            assert_eq!(meta_items.len(), 1u);
+            fail_unless_eq!(meta_items.len(), 1u);
             let meta_item = meta_items[0];
             attrs.push(
                 codemap::Spanned {

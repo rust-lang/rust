@@ -727,7 +727,7 @@ pub unsafe fn write_unsafe(output: &mut io::Writer,
 /// use std::fmt;
 ///
 /// let s = format_args!(fmt::format, "Hello, {}!", "world");
-/// assert_eq!(s, ~"Hello, world!");
+/// fail_unless_eq!(s, ~"Hello, world!");
 /// ```
 pub fn format(args: &Arguments) -> ~str {
     unsafe { format_unsafe(args.fmt, args.args) }

@@ -668,7 +668,7 @@ mod tests {
         let mut last_ptr: Option<&Node<T>> = None;
         let mut node_ptr: &Node<T>;
         match list.list_head {
-            None => { assert_eq!(0u, list.length); return }
+            None => { fail_unless_eq!(0u, list.length); return }
             Some(ref node) => node_ptr = &**node,
         }
         loop {
@@ -676,7 +676,7 @@ mod tests {
                 (None   , None      ) => {}
                 (None   , _         ) => fail!("prev link for list_head"),
                 (Some(p), Some(pptr)) => {
-                    assert_eq!(p as *Node<T>, pptr as *Node<T>);
+                    fail_unless_eq!(p as *Node<T>, pptr as *Node<T>);
                 }
                 _ => fail!("prev link is none, not good"),
             }
@@ -692,47 +692,47 @@ mod tests {
                 }
             }
         }
-        assert_eq!(len, list.length);
+        fail_unless_eq!(len, list.length);
     }
 
     #[test]
     fn test_basic() {
         let mut m: DList<~int> = DList::new();
-        assert_eq!(m.pop_front(), None);
-        assert_eq!(m.pop_back(), None);
-        assert_eq!(m.pop_front(), None);
+        fail_unless_eq!(m.pop_front(), None);
+        fail_unless_eq!(m.pop_back(), None);
+        fail_unless_eq!(m.pop_front(), None);
         m.push_front(~1);
-        assert_eq!(m.pop_front(), Some(~1));
+        fail_unless_eq!(m.pop_front(), Some(~1));
         m.push_back(~2);
         m.push_back(~3);
-        assert_eq!(m.len(), 2);
-        assert_eq!(m.pop_front(), Some(~2));
-        assert_eq!(m.pop_front(), Some(~3));
-        assert_eq!(m.len(), 0);
-        assert_eq!(m.pop_front(), None);
+        fail_unless_eq!(m.len(), 2);
+        fail_unless_eq!(m.pop_front(), Some(~2));
+        fail_unless_eq!(m.pop_front(), Some(~3));
+        fail_unless_eq!(m.len(), 0);
+        fail_unless_eq!(m.pop_front(), None);
         m.push_back(~1);
         m.push_back(~3);
         m.push_back(~5);
         m.push_back(~7);
-        assert_eq!(m.pop_front(), Some(~1));
+        fail_unless_eq!(m.pop_front(), Some(~1));
 
         let mut n = DList::new();
         n.push_front(2);
         n.push_front(3);
         {
-            assert_eq!(n.front().unwrap(), &3);
+            fail_unless_eq!(n.front().unwrap(), &3);
             let x = n.front_mut().unwrap();
-            assert_eq!(*x, 3);
+            fail_unless_eq!(*x, 3);
             *x = 0;
         }
         {
-            assert_eq!(n.back().unwrap(), &2);
+            fail_unless_eq!(n.back().unwrap(), &2);
             let y = n.back_mut().unwrap();
-            assert_eq!(*y, 2);
+            fail_unless_eq!(*y, 2);
             *y = 1;
         }
-        assert_eq!(n.pop_front(), Some(0));
-        assert_eq!(n.pop_front(), Some(1));
+        fail_unless_eq!(n.pop_front(), Some(0));
+        fail_unless_eq!(n.pop_front(), Some(1));
     }
 
     #[cfg(test)]
@@ -752,8 +752,8 @@ mod tests {
             let mut n = DList::new();
             n.push_back(2);
             m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            fail_unless_eq!(m.len(), 1);
+            fail_unless_eq!(m.pop_back(), Some(2));
             check_links(&m);
         }
         {
@@ -761,8 +761,8 @@ mod tests {
             let n = DList::new();
             m.push_back(2);
             m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            fail_unless_eq!(m.len(), 1);
+            fail_unless_eq!(m.pop_back(), Some(2));
             check_links(&m);
         }
 
@@ -772,9 +772,9 @@ mod tests {
         m.append(list_from(u));
         check_links(&m);
         let sum = v + u;
-        assert_eq!(sum.len(), m.len());
+        fail_unless_eq!(sum.len(), m.len());
         for elt in sum.move_iter() {
-            assert_eq!(m.pop_front(), Some(elt))
+            fail_unless_eq!(m.pop_front(), Some(elt))
         }
     }
 
@@ -785,8 +785,8 @@ mod tests {
             let mut n = DList::new();
             n.push_back(2);
             m.prepend(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
+            fail_unless_eq!(m.len(), 1);
+            fail_unless_eq!(m.pop_back(), Some(2));
             check_links(&m);
         }
 
@@ -796,9 +796,9 @@ mod tests {
         m.prepend(list_from(u));
         check_links(&m);
         let sum = u + v;
-        assert_eq!(sum.len(), m.len());
+        fail_unless_eq!(sum.len(), m.len());
         for elt in sum.move_iter() {
-            assert_eq!(m.pop_front(), Some(elt))
+            fail_unless_eq!(m.pop_front(), Some(elt))
         }
     }
 
@@ -806,15 +806,15 @@ mod tests {
     fn test_rotate() {
         let mut n: DList<int> = DList::new();
         n.rotate_backward(); check_links(&n);
-        assert_eq!(n.len(), 0);
+        fail_unless_eq!(n.len(), 0);
         n.rotate_forward(); check_links(&n);
-        assert_eq!(n.len(), 0);
+        fail_unless_eq!(n.len(), 0);
 
         let v = ~[1,2,3,4,5];
         let mut m = list_from(v);
         m.rotate_backward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<~[&int]>(), m.iter().collect());
+        fail_unless_eq!(v.iter().collect::<~[&int]>(), m.iter().collect());
         m.rotate_forward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
         m.pop_front(); check_links(&m);
@@ -822,23 +822,23 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(~[3,9,5,1,2], m.move_iter().collect());
+        fail_unless_eq!(~[3,9,5,1,2], m.move_iter().collect());
     }
 
     #[test]
     fn test_iterator() {
         let m = generate_test();
         for (i, elt) in m.iter().enumerate() {
-            assert_eq!(i as int, *elt);
+            fail_unless_eq!(i as int, *elt);
         }
         let mut n = DList::new();
-        assert_eq!(n.iter().next(), None);
+        fail_unless_eq!(n.iter().next(), None);
         n.push_front(4);
         let mut it = n.iter();
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.size_hint(), (1, Some(1)));
+        fail_unless_eq!(it.next().unwrap(), &4);
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
@@ -850,43 +850,43 @@ mod tests {
         let mut it = n.iter();
         it.next();
         let mut jt = it.clone();
-        assert_eq!(it.next(), jt.next());
-        assert_eq!(it.next_back(), jt.next_back());
-        assert_eq!(it.next(), jt.next());
+        fail_unless_eq!(it.next(), jt.next());
+        fail_unless_eq!(it.next_back(), jt.next_back());
+        fail_unless_eq!(it.next(), jt.next());
     }
 
     #[test]
     fn test_iterator_double_end() {
         let mut n = DList::new();
-        assert_eq!(n.iter().next(), None);
+        fail_unless_eq!(n.iter().next(), None);
         n.push_front(4);
         n.push_front(5);
         n.push_front(6);
         let mut it = n.iter();
-        assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(it.next().unwrap(), &6);
-        assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(it.next_back().unwrap(), &4);
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next_back().unwrap(), &5);
-        assert_eq!(it.next_back(), None);
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.size_hint(), (3, Some(3)));
+        fail_unless_eq!(it.next().unwrap(), &6);
+        fail_unless_eq!(it.size_hint(), (2, Some(2)));
+        fail_unless_eq!(it.next_back().unwrap(), &4);
+        fail_unless_eq!(it.size_hint(), (1, Some(1)));
+        fail_unless_eq!(it.next_back().unwrap(), &5);
+        fail_unless_eq!(it.next_back(), None);
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
     fn test_rev_iter() {
         let m = generate_test();
         for (i, elt) in m.rev_iter().enumerate() {
-            assert_eq!((6 - i) as int, *elt);
+            fail_unless_eq!((6 - i) as int, *elt);
         }
         let mut n = DList::new();
-        assert_eq!(n.rev_iter().next(), None);
+        fail_unless_eq!(n.rev_iter().next(), None);
         n.push_front(4);
         let mut it = n.rev_iter();
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(it.next().unwrap(), &4);
-        assert_eq!(it.size_hint(), (0, Some(0)));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.size_hint(), (1, Some(1)));
+        fail_unless_eq!(it.next().unwrap(), &4);
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
@@ -894,19 +894,19 @@ mod tests {
         let mut m = generate_test();
         let mut len = m.len();
         for (i, elt) in m.mut_iter().enumerate() {
-            assert_eq!(i as int, *elt);
+            fail_unless_eq!(i as int, *elt);
             len -= 1;
         }
-        assert_eq!(len, 0);
+        fail_unless_eq!(len, 0);
         let mut n = DList::new();
         fail_unless!(n.mut_iter().next().is_none());
         n.push_front(4);
         n.push_back(5);
         let mut it = n.mut_iter();
-        assert_eq!(it.size_hint(), (2, Some(2)));
+        fail_unless_eq!(it.size_hint(), (2, Some(2)));
         fail_unless!(it.next().is_some());
         fail_unless!(it.next().is_some());
-        assert_eq!(it.size_hint(), (0, Some(0)));
+        fail_unless_eq!(it.size_hint(), (0, Some(0)));
         fail_unless!(it.next().is_none());
     }
 
@@ -918,12 +918,12 @@ mod tests {
         n.push_front(5);
         n.push_front(6);
         let mut it = n.mut_iter();
-        assert_eq!(it.size_hint(), (3, Some(3)));
-        assert_eq!(*it.next().unwrap(), 6);
-        assert_eq!(it.size_hint(), (2, Some(2)));
-        assert_eq!(*it.next_back().unwrap(), 4);
-        assert_eq!(it.size_hint(), (1, Some(1)));
-        assert_eq!(*it.next_back().unwrap(), 5);
+        fail_unless_eq!(it.size_hint(), (3, Some(3)));
+        fail_unless_eq!(*it.next().unwrap(), 6);
+        fail_unless_eq!(it.size_hint(), (2, Some(2)));
+        fail_unless_eq!(*it.next_back().unwrap(), 4);
+        fail_unless_eq!(it.size_hint(), (1, Some(1)));
+        fail_unless_eq!(*it.next_back().unwrap(), 5);
         fail_unless!(it.next_back().is_none());
         fail_unless!(it.next().is_none());
     }
@@ -941,8 +941,8 @@ mod tests {
                     Some(elt) => {
                         it.insert_next(*elt + 1);
                         match it.peek_next() {
-                            Some(x) => assert_eq!(*x, *elt + 2),
-                            None => assert_eq!(8, *elt),
+                            Some(x) => fail_unless_eq!(*x, *elt + 2),
+                            None => fail_unless_eq!(8, *elt),
                         }
                     }
                 }
@@ -951,8 +951,8 @@ mod tests {
             it.insert_next(1);
         }
         check_links(&m);
-        assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.move_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        fail_unless_eq!(m.len(), 3 + len * 2);
+        fail_unless_eq!(m.move_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -961,32 +961,32 @@ mod tests {
         let n = list_from([-1, 0, 0, 7, 7, 9]);
         let len = m.len() + n.len();
         m.merge(n, |a, b| a <= b);
-        assert_eq!(m.len(), len);
+        fail_unless_eq!(m.len(), len);
         check_links(&m);
         let res = m.move_iter().collect::<~[int]>();
-        assert_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
+        fail_unless_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
     #[test]
     fn test_insert_ordered() {
         let mut n = DList::new();
         n.insert_ordered(1);
-        assert_eq!(n.len(), 1);
-        assert_eq!(n.pop_front(), Some(1));
+        fail_unless_eq!(n.len(), 1);
+        fail_unless_eq!(n.pop_front(), Some(1));
 
         let mut m = DList::new();
         m.push_back(2);
         m.push_back(4);
         m.insert_ordered(3);
         check_links(&m);
-        assert_eq!(~[2,3,4], m.move_iter().collect::<~[int]>());
+        fail_unless_eq!(~[2,3,4], m.move_iter().collect::<~[int]>());
     }
 
     #[test]
     fn test_mut_rev_iter() {
         let mut m = generate_test();
         for (i, elt) in m.mut_rev_iter().enumerate() {
-            assert_eq!((6-i) as int, *elt);
+            fail_unless_eq!((6-i) as int, *elt);
         }
         let mut n = DList::new();
         fail_unless!(n.mut_rev_iter().next().is_none());
@@ -1001,7 +1001,7 @@ mod tests {
         let n = list_from([1,2,3]);
         spawn(proc() {
             check_links(&n);
-            assert_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
+            fail_unless_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
         });
     }
 
@@ -1009,11 +1009,11 @@ mod tests {
     fn test_eq() {
         let mut n: DList<u8> = list_from([]);
         let mut m = list_from([]);
-        assert_eq!(&n, &m);
+        fail_unless_eq!(&n, &m);
         n.push_front(1);
         fail_unless!(n != m);
         m.push_back(1);
-        assert_eq!(&n, &m);
+        fail_unless_eq!(&n, &m);
 
         let n = list_from([2,3,4]);
         let m = list_from([1,2,3]);
@@ -1103,9 +1103,9 @@ mod tests {
         let mut i = 0u;
         for (a, &b) in m.move_iter().zip(v.iter()) {
             i += 1;
-            assert_eq!(a, b);
+            fail_unless_eq!(a, b);
         }
-        assert_eq!(i, v.len());
+        fail_unless_eq!(i, v.len());
     }
 
     #[bench]

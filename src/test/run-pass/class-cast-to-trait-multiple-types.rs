@@ -97,6 +97,6 @@ pub fn main() {
   let mut whitefang: dog = dog();
   annoy_neighbors(&mut nyan);
   annoy_neighbors(&mut whitefang);
-  assert_eq!(nyan.meow_count(), 10u);
-  assert_eq!(whitefang.volume, 1);
+  fail_unless_eq!(nyan.meow_count(), 10u);
+  fail_unless_eq!(whitefang.volume, 1);
 }

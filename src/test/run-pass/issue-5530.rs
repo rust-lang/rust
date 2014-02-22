@@ -37,13 +37,13 @@ pub fn main() {
     let foo = Foo { foo: 1 };
     let bar = Bar { bar: 1 };
 
-    assert_eq!(fun1(&foo, &foo), 0);
-    assert_eq!(fun1(&foo, &bar), 1);
-    assert_eq!(fun1(&bar, &bar), 2);
-    assert_eq!(fun1(&bar, &foo), 3);
+    fail_unless_eq!(fun1(&foo, &foo), 0);
+    fail_unless_eq!(fun1(&foo, &bar), 1);
+    fail_unless_eq!(fun1(&bar, &bar), 2);
+    fail_unless_eq!(fun1(&bar, &foo), 3);
 
-    assert_eq!(fun2(&foo, &foo), 0);
-    assert_eq!(fun2(&foo, &bar), 1); // fun2 returns 0
-    assert_eq!(fun2(&bar, &bar), 2);
-    assert_eq!(fun2(&bar, &foo), 3); // fun2 returns 2
+    fail_unless_eq!(fun2(&foo, &foo), 0);
+    fail_unless_eq!(fun2(&foo, &bar), 1); // fun2 returns 0
+    fail_unless_eq!(fun2(&bar, &bar), 2);
+    fail_unless_eq!(fun2(&bar, &foo), 3); // fun2 returns 2
 }

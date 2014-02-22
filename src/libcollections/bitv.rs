@@ -142,7 +142,7 @@ impl BigBitv {
                    op: |uint, uint| -> uint)
                    -> bool {
         let len = b.storage.len();
-        assert_eq!(self.storage.len(), len);
+        fail_unless_eq!(self.storage.len(), len);
         let mut changed = false;
         for (i, (a, b)) in self.storage.mut_iter()
                                .zip(b.storage.iter())
@@ -517,7 +517,7 @@ impl Bitv {
      * Both the bitvector and vector must have the same length.
      */
     pub fn eq_vec(&self, v: &[bool]) -> bool {
-        assert_eq!(self.nbits, v.len());
+        fail_unless_eq!(self.nbits, v.len());
         let mut i = 0;
         while i < self.nbits {
             if self.get(i) != v[i] { return false; }
@@ -955,10 +955,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new(0u, false);
-        assert_eq!(zerolen.to_str(), ~"");
+        fail_unless_eq!(zerolen.to_str(), ~"");
 
         let eightbits = Bitv::new(8u, false);
-        assert_eq!(eightbits.to_str(), ~"00000000");
+        fail_unless_eq!(eightbits.to_str(), ~"00000000");
     }
 
     #[test]
@@ -981,7 +981,7 @@ mod tests {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_str(), ~"10");
+        fail_unless_eq!(b.to_str(), ~"10");
     }
 
     #[test]
@@ -1292,19 +1292,19 @@ mod tests {
     fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = ~"10110110" + "00000000" + "11111111";
-        assert_eq!(bitv.to_str(), str);
+        fail_unless_eq!(bitv.to_str(), str);
     }
 
     #[test]
     fn test_to_bytes() {
         let mut bv = Bitv::new(3, true);
         bv.set(1, false);
-        assert_eq!(bv.to_bytes(), ~[0b10100000]);
+        fail_unless_eq!(bv.to_bytes(), ~[0b10100000]);
 
         let mut bv = Bitv::new(9, false);
         bv.set(2, true);
         bv.set(8, true);
-        assert_eq!(bv.to_bytes(), ~[0b00100000, 0b10000000]);
+        fail_unless_eq!(bv.to_bytes(), ~[0b00100000, 0b10000000]);
     }
 
     #[test]
@@ -1316,7 +1316,7 @@ mod tests {
     #[test]
     fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
-        assert_eq!(from_bytes([0b00100110]).to_bools(), bools);
+        fail_unless_eq!(from_bytes([0b00100110]).to_bools(), bools);
     }
 
     #[test]
@@ -1325,7 +1325,7 @@ mod tests {
         let bitv = from_bools(bools);
 
         for (act, &ex) in bitv.iter().zip(bools.iter()) {
-            assert_eq!(ex, act);
+            fail_unless_eq!(ex, act);
         }
     }
 
@@ -1335,7 +1335,7 @@ mod tests {
         let bitv = BitvSet::from_bitv(from_bools(bools));
 
         let idxs: ~[uint] = bitv.iter().collect();
-        assert_eq!(idxs, ~[0, 2, 3]);
+        fail_unless_eq!(idxs, ~[0, 2, 3]);
     }
 
     #[test]
@@ -1345,8 +1345,8 @@ mod tests {
         for &b in bools.iter() {
             for &l in lengths.iter() {
                 let bitset = BitvSet::from_bitv(Bitv::new(l, b));
-                assert_eq!(bitset.contains(&1u), b)
-                assert_eq!(bitset.contains(&(l-1u)), b)
+                fail_unless_eq!(bitset.contains(&1u), b)
+                fail_unless_eq!(bitset.contains(&(l-1u)), b)
                 fail_unless!(!bitset.contains(&l))
             }
         }
@@ -1407,7 +1407,7 @@ mod tests {
         fail_unless!(b.insert(400));
         fail_unless!(!b.insert(400));
         fail_unless!(b.contains(&400));
-        assert_eq!(b.len(), 2);
+        fail_unless_eq!(b.len(), 2);
     }
 
     #[test]
@@ -1431,11 +1431,11 @@ mod tests {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         a.intersection(&b, |x| {
-            assert_eq!(*x, expected[i]);
+            fail_unless_eq!(*x, expected[i]);
             i += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1455,11 +1455,11 @@ mod tests {
         let mut i = 0;
         let expected = [1, 5, 500];
         a.difference(&b, |x| {
-            assert_eq!(*x, expected[i]);
+            fail_unless_eq!(*x, expected[i]);
             i += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1481,11 +1481,11 @@ mod tests {
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
         a.symmetric_difference(&b, |x| {
-            assert_eq!(*x, expected[i]);
+            fail_unless_eq!(*x, expected[i]);
             i += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1510,11 +1510,11 @@ mod tests {
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
         a.union(&b, |x| {
-            assert_eq!(*x, expected[i]);
+            fail_unless_eq!(*x, expected[i]);
             i += 1;
             true
         });
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1529,7 +1529,7 @@ mod tests {
 
         fail_unless!(a.insert(1000));
         fail_unless!(a.remove(&1000));
-        assert_eq!(a.capacity(), uint::BITS);
+        fail_unless_eq!(a.capacity(), uint::BITS);
     }
 
     #[test]
@@ -1542,7 +1542,7 @@ mod tests {
 
         let mut b = a.clone();
 
-        assert_eq!(&a, &b);
+        fail_unless_eq!(&a, &b);
 
         fail_unless!(b.remove(&1));
         fail_unless!(a.contains(&1));

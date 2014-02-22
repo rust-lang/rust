@@ -25,7 +25,7 @@ pub struct IdleWatcher {
 impl IdleWatcher {
     pub fn new(loop_: &mut Loop, cb: ~Callback) -> ~IdleWatcher {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_idle_init(loop_.handle, handle)
         }, 0);
         let me = ~IdleWatcher {
@@ -40,19 +40,19 @@ impl IdleWatcher {
     pub fn onetime(loop_: &mut Loop, f: proc()) {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         unsafe {
-            assert_eq!(uvll::uv_idle_init(loop_.handle, handle), 0);
+            fail_unless_eq!(uvll::uv_idle_init(loop_.handle, handle), 0);
             let data: *c_void = cast::transmute(~f);
             uvll::set_data_for_uv_handle(handle, data);
-            assert_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)
+            fail_unless_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)
         }
 
         extern fn onetime_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            assert_eq!(status, 0);
+            fail_unless_eq!(status, 0);
             unsafe {
                 let data = uvll::get_data_for_uv_handle(handle);
                 let f: ~proc() = cast::transmute(data);
                 (*f)();
-                assert_eq!(uvll::uv_idle_stop(handle), 0);
+                fail_unless_eq!(uvll::uv_idle_stop(handle), 0);
                 uvll::uv_close(handle, close_cb);
             }
         }
@@ -66,13 +66,13 @@ impl IdleWatcher {
 impl PausableIdleCallback for IdleWatcher {
     fn pause(&mut self) {
         if self.idle_flag == true {
-            assert_eq!(unsafe {uvll::uv_idle_stop(self.handle) }, 0);
+            fail_unless_eq!(unsafe {uvll::uv_idle_stop(self.handle) }, 0);
             self.idle_flag = false;
         }
     }
     fn resume(&mut self) {
         if self.idle_flag == false {
-            assert_eq!(unsafe { uvll::uv_idle_start(self.handle, idle_cb) }, 0)
+            fail_unless_eq!(unsafe { uvll::uv_idle_start(self.handle, idle_cb) }, 0)
             self.idle_flag = true;
         }
     }
@@ -83,7 +83,7 @@ impl UvHandle<uvll::uv_idle_t> for IdleWatcher {
 }
 
 extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-    assert_eq!(status, 0);
+    fail_unless_eq!(status, 0);
     let idle: &mut IdleWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     idle.callback.call();
 }
@@ -163,7 +163,7 @@ mod test {
     fn smoke_test() {
         let (mut idle, chan) = mk(1);
         idle.resume();
-        assert_eq!(sleep(&chan), 1);
+        fail_unless_eq!(sleep(&chan), 1);
     }
 
     #[test] #[should_fail]
@@ -189,15 +189,15 @@ mod test {
     fn fun_combinations_of_methods() {
         let (mut idle, chan) = mk(1);
         idle.resume();
-        assert_eq!(sleep(&chan), 1);
+        fail_unless_eq!(sleep(&chan), 1);
         idle.pause();
         idle.resume();
         idle.resume();
-        assert_eq!(sleep(&chan), 1);
+        fail_unless_eq!(sleep(&chan), 1);
         idle.pause();
         idle.pause();
         idle.resume();
-        assert_eq!(sleep(&chan), 1);
+        fail_unless_eq!(sleep(&chan), 1);
     }
 
     #[test]
@@ -205,9 +205,9 @@ mod test {
         let (mut idle1, chan1) = mk(1);
         let (mut idle2, chan2) = mk(2);
         idle2.resume();
-        assert_eq!(sleep(&chan2), 2);
+        fail_unless_eq!(sleep(&chan2), 2);
         idle2.pause();
         idle1.resume();
-        assert_eq!(sleep(&chan1), 1);
+        fail_unless_eq!(sleep(&chan1), 1);
     }
 }

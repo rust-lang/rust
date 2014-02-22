@@ -14,5 +14,5 @@ pub fn main() {
     let s = ~"hello";
     let c: u8 = s[4];
     info!("{:?}", c);
-    assert_eq!(c, 0x6f as u8);
+    fail_unless_eq!(c, 0x6f as u8);
 }

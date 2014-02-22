@@ -43,7 +43,7 @@ fn c() -> int {
 }
 
 pub fn main() {
-    assert_eq!(a(), 1280);
-    assert_eq!(b(), 1024);
-    assert_eq!(c(), 1280);
+    fail_unless_eq!(a(), 1280);
+    fail_unless_eq!(b(), 1024);
+    fail_unless_eq!(c(), 1280);
 }

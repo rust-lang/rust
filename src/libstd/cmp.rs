@@ -197,19 +197,19 @@ mod test {
 
     #[test]
     fn test_int_totalord() {
-        assert_eq!(5.cmp(&10), Less);
-        assert_eq!(10.cmp(&5), Greater);
-        assert_eq!(5.cmp(&5), Equal);
-        assert_eq!((-5).cmp(&12), Less);
-        assert_eq!(12.cmp(-5), Greater);
+        fail_unless_eq!(5.cmp(&10), Less);
+        fail_unless_eq!(10.cmp(&5), Greater);
+        fail_unless_eq!(5.cmp(&5), Equal);
+        fail_unless_eq!((-5).cmp(&12), Less);
+        fail_unless_eq!(12.cmp(-5), Greater);
     }
 
     #[test]
     fn test_cmp2() {
-        assert_eq!(cmp2(1, 2, 3, 4), Less);
-        assert_eq!(cmp2(3, 2, 3, 4), Less);
-        assert_eq!(cmp2(5, 2, 3, 4), Greater);
-        assert_eq!(cmp2(5, 5, 5, 4), Greater);
+        fail_unless_eq!(cmp2(1, 2, 3, 4), Less);
+        fail_unless_eq!(cmp2(3, 2, 3, 4), Less);
+        fail_unless_eq!(cmp2(5, 2, 3, 4), Greater);
+        fail_unless_eq!(cmp2(5, 5, 5, 4), Greater);
     }
 
     #[test]
@@ -221,13 +221,13 @@ mod test {
     #[test]
     fn test_ordering_order() {
         fail_unless!(Less < Equal);
-        assert_eq!(Greater.cmp(&Less), Greater);
+        fail_unless_eq!(Greater.cmp(&Less), Greater);
     }
 
     #[test]
     fn test_lexical_ordering() {
         fn t(o1: Ordering, o2: Ordering, e: Ordering) {
-            assert_eq!(lexical_ordering(o1, o2), e);
+            fail_unless_eq!(lexical_ordering(o1, o2), e);
         }
 
         let xs = [Less, Equal, Greater];

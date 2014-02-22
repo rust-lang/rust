@@ -12,5 +12,5 @@ pub fn main() {
     let x = ~[10, 20, 30];
     let mut sum = 0;
     for x in x.iter() { sum += *x; }
-    assert_eq!(sum, 60);
+    fail_unless_eq!(sum, 60);
 }

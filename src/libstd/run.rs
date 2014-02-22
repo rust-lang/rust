@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn test_process_output_fail_to_start() {
         match run::process_output("/no-binary-by-this-name-should-exist", []) {
-            Err(e) => assert_eq!(e.kind, FileNotFound),
+            Err(e) => fail_unless_eq!(e.kind, FileNotFound),
             Ok(..) => fail!()
         }
     }
@@ -389,10 +389,10 @@ mod tests {
         let output_str = str::from_utf8_owned(output).unwrap();
 
         fail_unless!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -404,7 +404,7 @@ mod tests {
              = run::process_output("mkdir", [~"."]).unwrap();
 
         fail_unless!(status.matches_exit_status(1));
-        assert_eq!(output, ~[]);
+        fail_unless_eq!(output, ~[]);
         fail_unless!(!error.is_empty());
     }
 
@@ -434,7 +434,7 @@ mod tests {
         readclose(pipe_err.input);
         process.finish();
 
-        assert_eq!(~"test", actual);
+        fail_unless_eq!(~"test", actual);
     }
 
     fn writeclose(fd: c_int, s: &str) {
@@ -474,10 +474,10 @@ mod tests {
         let output_str = str::from_utf8_owned(output).unwrap();
 
         fail_unless!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -493,20 +493,20 @@ mod tests {
         let output_str = str::from_utf8_owned(output).unwrap();
 
         fail_unless!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        fail_unless_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
 
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
         fail_unless!(status.success());
-        assert_eq!(output, ~[]);
+        fail_unless_eq!(output, ~[]);
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            fail_unless_eq!(error, ~[]);
         }
     }
 
@@ -544,8 +544,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+        fail_unless_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        fail_unless_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     }
 
     #[test]
@@ -561,8 +561,8 @@ mod tests {
         let parent_stat = parent_dir.stat().unwrap();
         let child_stat = child_dir.stat().unwrap();
 
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+        fail_unless_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        fail_unless_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     }
 
     #[cfg(unix,not(target_os="android"))]

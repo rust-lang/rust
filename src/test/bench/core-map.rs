@@ -37,7 +37,7 @@ fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
 
     timed("search", || {
         for i in range(0u, n_keys) {
-            assert_eq!(map.find(&i).unwrap(), &(i + 1));
+            fail_unless_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     });
 
@@ -59,7 +59,7 @@ fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
 
     timed("search", || {
         for i in range(0, n_keys).rev() {
-            assert_eq!(map.find(&i).unwrap(), &(i + 1));
+            fail_unless_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     });
 
@@ -79,7 +79,7 @@ fn vector<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
     timed("search", || {
         for i in range(0u, n_keys) {
-            assert_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
+            fail_unless_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
         }
     });
 

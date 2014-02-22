@@ -20,13 +20,13 @@ extern fn uintvoidret(_x: uint) {}
 extern fn uintuintuintuintret(x: uint, y: uint, z: uint) -> uint { x+y+z }
 
 pub fn main() {
-    assert_eq!(voidret1, voidret1);
+    fail_unless_eq!(voidret1, voidret1);
     fail_unless!(voidret1 != voidret2);
 
-    assert_eq!(uintret, uintret);
+    fail_unless_eq!(uintret, uintret);
 
-    assert_eq!(uintvoidret, uintvoidret);
+    fail_unless_eq!(uintvoidret, uintvoidret);
 
-    assert_eq!(uintuintuintuintret, uintuintuintuintret);
+    fail_unless_eq!(uintuintuintuintret, uintuintuintuintret);
 }
 

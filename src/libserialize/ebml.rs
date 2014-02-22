@@ -250,22 +250,22 @@ pub mod reader {
 
 
     pub fn doc_as_u8(d: Doc) -> u8 {
-        assert_eq!(d.end, d.start + 1u);
+        fail_unless_eq!(d.end, d.start + 1u);
         d.data[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
-        assert_eq!(d.end, d.start + 2u);
+        fail_unless_eq!(d.end, d.start + 2u);
         u64_from_be_bytes(d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
-        assert_eq!(d.end, d.start + 4u);
+        fail_unless_eq!(d.end, d.start + 4u);
         u64_from_be_bytes(d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert_eq!(d.end, d.start + 8u);
+        fail_unless_eq!(d.end, d.start + 8u);
         u64_from_be_bytes(d.data, d.start, 8u)
     }
 
@@ -982,35 +982,35 @@ mod tests {
 
         // Class A
         res = reader::vuint_at(data, 0);
-        assert_eq!(res.val, 0);
-        assert_eq!(res.next, 1);
+        fail_unless_eq!(res.val, 0);
+        fail_unless_eq!(res.next, 1);
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, (1 << 7) - 1);
-        assert_eq!(res.next, 2);
+        fail_unless_eq!(res.val, (1 << 7) - 1);
+        fail_unless_eq!(res.next, 2);
 
         // Class B
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, 0);
-        assert_eq!(res.next, 4);
+        fail_unless_eq!(res.val, 0);
+        fail_unless_eq!(res.next, 4);
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, (1 << 14) - 1);
-        assert_eq!(res.next, 6);
+        fail_unless_eq!(res.val, (1 << 14) - 1);
+        fail_unless_eq!(res.next, 6);
 
         // Class C
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, 0);
-        assert_eq!(res.next, 9);
+        fail_unless_eq!(res.val, 0);
+        fail_unless_eq!(res.next, 9);
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, (1 << 21) - 1);
-        assert_eq!(res.next, 12);
+        fail_unless_eq!(res.val, (1 << 21) - 1);
+        fail_unless_eq!(res.next, 12);
 
         // Class D
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, 0);
-        assert_eq!(res.next, 16);
+        fail_unless_eq!(res.val, 0);
+        fail_unless_eq!(res.next, 16);
         res = reader::vuint_at(data, res.next);
-        assert_eq!(res.val, (1 << 28) - 1);
-        assert_eq!(res.next, 20);
+        fail_unless_eq!(res.val, (1 << 28) - 1);
+        fail_unless_eq!(res.next, 20);
     }
 
     #[test]
@@ -1026,7 +1026,7 @@ mod tests {
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = Decodable::decode(&mut deser);
             debug!("v1 == {:?}", v1);
-            assert_eq!(v, v1);
+            fail_unless_eq!(v, v1);
         }
 
         test_v(Some(22));

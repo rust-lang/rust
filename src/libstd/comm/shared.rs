@@ -91,8 +91,8 @@ impl<T: Send> Packet<T> {
     pub fn inherit_blocker(&mut self, task: Option<BlockedTask>) {
         match task {
             Some(task) => {
-                assert_eq!(self.cnt.load(atomics::SeqCst), 0);
-                assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+                fail_unless_eq!(self.cnt.load(atomics::SeqCst), 0);
+                fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
                 self.to_wake.store(unsafe { task.cast_to_uint() },
                                    atomics::SeqCst);
                 self.cnt.store(-1, atomics::SeqCst);
@@ -237,7 +237,7 @@ impl<T: Send> Packet<T> {
 
     // Essentially the exact same thing as the stream decrement function.
     fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
         let n = unsafe { task.cast_to_uint() };
         self.to_wake.store(n, atomics::SeqCst);
 
@@ -461,7 +461,7 @@ impl<T: Send> Packet<T> {
         let prev = self.bump(steals + 1);
 
         if prev == DISCONNECTED {
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
             true
         } else {
             let cur = prev + steals + 1;
@@ -490,8 +490,8 @@ impl<T: Send> Drop for Packet<T> {
         // disconnection, but also a proper fence before the read of
         // `to_wake`, so this assert cannot be removed with also removing
         // the `to_wake` assert.
-        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-        assert_eq!(self.channels.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.channels.load(atomics::SeqCst), 0);
     }
 }

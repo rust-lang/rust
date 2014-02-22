@@ -16,11 +16,11 @@ pub static global2: &'static int = &global0;
 pub fn verify_same(a: &'static int) {
     let a = a as *int as uint;
     let b = &global as *int as uint;
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
 }
 
 pub fn verify_same2(a: &'static int) {
     let a = a as *int as uint;
     let b = global2 as *int as uint;
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
 }

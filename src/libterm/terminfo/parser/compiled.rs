@@ -345,9 +345,9 @@ mod test {
 
     #[test]
     fn test_veclens() {
-        assert_eq!(boolfnames.len(), boolnames.len());
-        assert_eq!(numfnames.len(), numnames.len());
-        assert_eq!(stringfnames.len(), stringnames.len());
+        fail_unless_eq!(boolfnames.len(), boolnames.len());
+        fail_unless_eq!(numfnames.len(), numnames.len());
+        fail_unless_eq!(stringfnames.len(), stringnames.len());
     }
 
     #[test]

@@ -10,7 +10,7 @@
 
 fn f(mut y: ~int) {
     *y = 5;
-    assert_eq!(*y, 5);
+    fail_unless_eq!(*y, 5);
 }
 
 fn g() {

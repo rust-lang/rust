@@ -30,6 +30,6 @@ pub fn main() {
 extern fn callback(data: libc::uintptr_t) {
     unsafe {
         let data: *int = cast::transmute(data);
-        assert_eq!(*data, 100);
+        fail_unless_eq!(*data, 100);
     }
 }

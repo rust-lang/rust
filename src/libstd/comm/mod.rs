@@ -62,7 +62,7 @@
 //! spawn(proc() {
 //!     chan.send(10);
 //! });
-//! assert_eq!(port.recv(), 10);
+//! fail_unless_eq!(port.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks
 //! let (port, chan) = Chan::new();
@@ -727,7 +727,7 @@ mod test {
     test!(fn smoke() {
         let (p, c) = Chan::new();
         c.send(1);
-        assert_eq!(p.recv(), 1);
+        fail_unless_eq!(p.recv(), 1);
     })
 
     test!(fn drop_full() {
@@ -743,10 +743,10 @@ mod test {
     test!(fn smoke_shared() {
         let (p, c) = Chan::new();
         c.send(1);
-        assert_eq!(p.recv(), 1);
+        fail_unless_eq!(p.recv(), 1);
         let c = c.clone();
         c.send(1);
-        assert_eq!(p.recv(), 1);
+        fail_unless_eq!(p.recv(), 1);
     })
 
     test!(fn smoke_threads() {
@@ -754,7 +754,7 @@ mod test {
         spawn(proc() {
             c.send(1);
         });
-        assert_eq!(p.recv(), 1);
+        fail_unless_eq!(p.recv(), 1);
     })
 
     test!(fn smoke_port_gone() {
@@ -826,7 +826,7 @@ mod test {
             for _ in range(0, 10000) { c.send(1); }
         });
         for _ in range(0, 10000) {
-            assert_eq!(p.recv(), 1);
+            fail_unless_eq!(p.recv(), 1);
         }
     })
 
@@ -838,7 +838,7 @@ mod test {
 
         spawn(proc() {
             for _ in range(0, AMT * NTHREADS) {
-                assert_eq!(p.recv(), 1);
+                fail_unless_eq!(p.recv(), 1);
             }
             match p.try_recv() {
                 Data(..) => fail!(),
@@ -865,7 +865,7 @@ mod test {
         spawn(proc() {
             c1.send(());
             for _ in range(0, 40) {
-                assert_eq!(p.recv(), 1);
+                fail_unless_eq!(p.recv(), 1);
             }
             chan2.send(());
         });
@@ -886,7 +886,7 @@ mod test {
         let (dp, dc) = Chan::new();
         native::task::spawn(proc() {
             for _ in range(0, 40) {
-                assert_eq!(p.recv(), 1);
+                fail_unless_eq!(p.recv(), 1);
             }
             dc.send(());
         });
@@ -903,13 +903,13 @@ mod test {
         let (port, chan) = Chan::new();
         let chan2 = chan.clone();
         native::task::spawn(proc() {
-            assert_eq!(p1.recv(), 1);
+            fail_unless_eq!(p1.recv(), 1);
             c2.send(2);
             chan2.send(());
         });
         native::task::spawn(proc() {
             c1.send(1);
-            assert_eq!(p2.recv(), 2);
+            fail_unless_eq!(p2.recv(), 2);
             chan.send(());
         });
         port.recv();
@@ -978,21 +978,21 @@ mod test {
 
     test!(fn oneshot_single_thread_peek_data() {
         let (port, chan) = Chan::<int>::new();
-        assert_eq!(port.try_recv(), Empty)
+        fail_unless_eq!(port.try_recv(), Empty)
         chan.send(10);
-        assert_eq!(port.try_recv(), Data(10));
+        fail_unless_eq!(port.try_recv(), Data(10));
     })
 
     test!(fn oneshot_single_thread_peek_close() {
         let (port, chan) = Chan::<int>::new();
         { let _c = chan; }
-        assert_eq!(port.try_recv(), Disconnected);
-        assert_eq!(port.try_recv(), Disconnected);
+        fail_unless_eq!(port.try_recv(), Disconnected);
+        fail_unless_eq!(port.try_recv(), Disconnected);
     })
 
     test!(fn oneshot_single_thread_peek_open() {
         let (port, _chan) = Chan::<int>::new();
-        assert_eq!(port.try_recv(), Empty);
+        fail_unless_eq!(port.try_recv(), Empty);
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
@@ -1133,7 +1133,7 @@ mod test {
         chan.send(1);
         chan.send(2);
         drop(chan);
-        assert_eq!(total_port.recv(), 6);
+        fail_unless_eq!(total_port.recv(), 6);
     })
 
     test!(fn test_recv_iter_break() {
@@ -1157,7 +1157,7 @@ mod test {
         chan.send(2);
         chan.try_send(2);
         drop(chan);
-        assert_eq!(count_port.recv(), 4);
+        fail_unless_eq!(count_port.recv(), 4);
     })
 
     test!(fn try_recv_states() {
@@ -1173,14 +1173,14 @@ mod test {
             c2.send(());
         });
 
-        assert_eq!(p.try_recv(), Empty);
+        fail_unless_eq!(p.try_recv(), Empty);
         c1.send(());
         p2.recv();
-        assert_eq!(p.try_recv(), Data(1));
-        assert_eq!(p.try_recv(), Empty);
+        fail_unless_eq!(p.try_recv(), Data(1));
+        fail_unless_eq!(p.try_recv(), Empty);
         c1.send(());
         p2.recv();
-        assert_eq!(p.try_recv(), Disconnected);
+        fail_unless_eq!(p.try_recv(), Disconnected);
     })
 
     // This bug used to end up in a livelock inside of the Port destructor

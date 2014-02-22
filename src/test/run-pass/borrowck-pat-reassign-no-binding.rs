@@ -18,5 +18,5 @@ pub fn main() {
       }
       Some(_) => { }
     }
-    assert_eq!(x, Some(0));
+    fail_unless_eq!(x, Some(0));
 }

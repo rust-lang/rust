@@ -25,6 +25,6 @@ impl Value {
 pub fn main() {
     let x = Value { n: 3 };
     let y = x.squared();
-    assert_eq!(x.n, 3);
-    assert_eq!(y.n, 9);
+    fail_unless_eq!(x.n, 3);
+    fail_unless_eq!(y.n, 9);
 }

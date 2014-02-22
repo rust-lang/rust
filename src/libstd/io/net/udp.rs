@@ -98,7 +98,7 @@ mod test {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
         match UdpSocket::bind(addr) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, PermissionDenied),
+            Err(e) => fail_unless_eq!(e.kind, PermissionDenied),
         }
     } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
@@ -125,9 +125,9 @@ mod test {
                 let mut buf = [0];
                 match server.recvfrom(buf) {
                     Ok((nread, src)) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
-                        assert_eq!(src, client_ip);
+                        fail_unless_eq!(nread, 1);
+                        fail_unless_eq!(buf[0], 99);
+                        fail_unless_eq!(src, client_ip);
                     }
                     Err(..) => fail!()
                 }
@@ -158,9 +158,9 @@ mod test {
                 let mut buf = [0];
                 match server.recvfrom(buf) {
                     Ok((nread, src)) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
-                        assert_eq!(src, client_ip);
+                        fail_unless_eq!(nread, 1);
+                        fail_unless_eq!(buf[0], 99);
+                        fail_unless_eq!(src, client_ip);
                     }
                     Err(..) => fail!()
                 }
@@ -196,8 +196,8 @@ mod test {
                 let mut buf = [0];
                 match stream.read(buf) {
                     Ok(nread) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
+                        fail_unless_eq!(nread, 1);
+                        fail_unless_eq!(buf[0], 99);
                     }
                     Err(..) => fail!()
                 }
@@ -234,8 +234,8 @@ mod test {
                 let mut buf = [0];
                 match stream.read(buf) {
                     Ok(nread) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
+                        fail_unless_eq!(nread, 1);
+                        fail_unless_eq!(buf[0], 99);
                     }
                     Err(..) => fail!()
                 }
@@ -255,7 +255,7 @@ mod test {
         // us the socket we binded to.
         let so_name = server.socket_name();
         fail_unless!(so_name.is_ok());
-        assert_eq!(addr, so_name.unwrap());
+        fail_unless_eq!(addr, so_name.unwrap());
     }
 
     iotest!(fn socket_name_ip4() {
@@ -275,8 +275,8 @@ mod test {
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
-            assert_eq!(sock2.recvfrom(buf), Ok((1, addr1)));
-            assert_eq!(buf[0], 1);
+            fail_unless_eq!(sock2.recvfrom(buf), Ok((1, addr1)));
+            fail_unless_eq!(buf[0], 1);
             sock2.sendto([2], addr1).unwrap();
         });
 
@@ -292,7 +292,7 @@ mod test {
         });
         c1.send(());
         let mut buf = [0, 0];
-        assert_eq!(sock1.recvfrom(buf), Ok((1, addr2)));
+        fail_unless_eq!(sock1.recvfrom(buf), Ok((1, addr2)));
         p2.recv();
     })
 

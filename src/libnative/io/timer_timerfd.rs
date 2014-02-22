@@ -66,14 +66,14 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
         let ret = unsafe {
             imp::epoll_ctl(efd, imp::EPOLL_CTL_ADD, fd, &event)
         };
-        assert_eq!(ret, 0);
+        fail_unless_eq!(ret, 0);
     }
     fn del(efd: libc::c_int, fd: libc::c_int) {
         let event = imp::epoll_event { events: 0, data: 0 };
         let ret = unsafe {
             imp::epoll_ctl(efd, imp::EPOLL_CTL_DEL, fd, &event)
         };
-        assert_eq!(ret, 0);
+        fail_unless_eq!(ret, 0);
     }
 
     add(efd, input);
@@ -137,7 +137,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                     let ret = unsafe {
                         imp::timerfd_settime(fd, 0, &timeval, ptr::null())
                     };
-                    assert_eq!(ret, 0);
+                    fail_unless_eq!(ret, 0);
                 }
 
                 Data(RemoveTimer(fd, chan)) => {

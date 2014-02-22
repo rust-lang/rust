@@ -614,10 +614,10 @@ mod tests {
     fn test_cstring() {
         let input = "/foo/bar/baz";
         let path: PosixPath = PosixPath::new(input.to_c_str());
-        assert_eq!(path.as_vec(), input.as_bytes());
+        fail_unless_eq!(path.as_vec(), input.as_bytes());
 
         let input = r"\foo\bar\baz";
         let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input.as_slice());
+        fail_unless_eq!(path.as_str().unwrap(), input.as_slice());
     }
 }

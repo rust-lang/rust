@@ -374,7 +374,7 @@ pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {input: 0,
                             out: 0};
-        assert_eq!(libc::pipe(&mut fds.input), 0);
+        fail_unless_eq!(libc::pipe(&mut fds.input), 0);
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -391,7 +391,7 @@ pub fn pipe() -> Pipe {
                     out: 0};
         let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
-        assert_eq!(res, 0);
+        fail_unless_eq!(res, 0);
         fail_unless!((fds.input != -1 && fds.input != 0 ));
         fail_unless!((fds.out != -1 && fds.input != 0));
         return Pipe {input: fds.input, out: fds.out};
@@ -1419,7 +1419,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, "VALUE");
-        assert_eq!(getenv(n), option::Some(~"VALUE"));
+        fail_unless_eq!(getenv(n), option::Some(~"VALUE"));
     }
 
     #[test]
@@ -1427,7 +1427,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, "VALUE");
         unsetenv(n);
-        assert_eq!(getenv(n), option::None);
+        fail_unless_eq!(getenv(n), option::None);
     }
 
     #[test]
@@ -1436,9 +1436,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, "1");
         setenv(n, "2");
-        assert_eq!(getenv(n), option::Some(~"2"));
+        fail_unless_eq!(getenv(n), option::Some(~"2"));
         setenv(n, "");
-        assert_eq!(getenv(n), option::Some(~""));
+        fail_unless_eq!(getenv(n), option::Some(~""));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1455,7 +1455,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         debug!("{}", s.clone());
-        assert_eq!(getenv(n), option::Some(s));
+        fail_unless_eq!(getenv(n), option::Some(s));
     }
 
     #[test]
@@ -1501,9 +1501,9 @@ mod tests {
         let n = make_rand_name();
         let s = "x".repeat(10000);
         setenv(n, s);
-        assert_eq!(getenv(n), Some(s));
+        fail_unless_eq!(getenv(n), Some(s));
         unsetenv(n);
-        assert_eq!(getenv(n), None);
+        fail_unless_eq!(getenv(n), None);
     }
 
     #[test]
@@ -1535,7 +1535,7 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        fail_unless_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
         fail_unless!(os::homedir().is_none());
@@ -1556,16 +1556,16 @@ mod tests {
         fail_unless!(os::homedir().is_none());
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        fail_unless_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
 
         setenv("USERPROFILE", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        fail_unless_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "/home/MountainView");
         setenv("USERPROFILE", "/home/PaloAlto");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        fail_unless_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() { setenv("HOME", *s) }
         for s in olduserprofile.iter() { setenv("USERPROFILE", *s) }

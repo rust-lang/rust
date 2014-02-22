@@ -68,9 +68,9 @@ impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
     let y = ~thing(A {a: 10});
-    assert_eq!(y.clone().bar(), 10);
-    assert_eq!(y.quux(), 10);
+    fail_unless_eq!(y.clone().bar(), 10);
+    fail_unless_eq!(y.quux(), 10);
 
     let z = thing(A {a: 11});
-    assert_eq!(z.spam(), 11);
+    fail_unless_eq!(z.spam(), 11);
 }

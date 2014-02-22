@@ -1095,7 +1095,7 @@ mod test {
             let sched1_id = port.recv();
 
             let mut task = pool.task(TaskOpts::new(), proc() {
-                assert_eq!(sched_id(), sched1_id);
+                fail_unless_eq!(sched_id(), sched1_id);
                 dchan.send(());
             });
             task.give_home(HomeSched(handle1));
@@ -1282,13 +1282,13 @@ mod test {
             let id = sched_id();
             chan1.send(());
             port2.recv();
-            assert_eq!(id, sched_id());
+            fail_unless_eq!(id, sched_id());
         });
 
         pool2.spawn(TaskOpts::new(), proc() {
             let id = sched_id();
             port1.recv();
-            assert_eq!(id, sched_id());
+            fail_unless_eq!(id, sched_id());
             chan2.send(());
         });
 

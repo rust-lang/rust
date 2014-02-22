@@ -22,5 +22,5 @@ mod WHATGOESHERE {
 }
 
 pub fn main() {
-    assert_eq!(IDONTKNOW(), 0x_BAD_DOOD_u32);
+    fail_unless_eq!(IDONTKNOW(), 0x_BAD_DOOD_u32);
 }

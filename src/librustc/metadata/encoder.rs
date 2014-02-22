@@ -1163,7 +1163,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Now output the method info for each method.
         let r = ty::trait_method_def_ids(tcx, def_id);
         for (i, &method_def_id) in r.iter().enumerate() {
-            assert_eq!(method_def_id.krate, ast::LOCAL_CRATE);
+            fail_unless_eq!(method_def_id.krate, ast::LOCAL_CRATE);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1531,7 +1531,7 @@ fn encode_crate_deps(ebml_w: &mut writer::Encoder, cstore: &cstore::CStore) {
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for n in deps.iter() {
-            assert_eq!(n.cnum, expected_cnum);
+            fail_unless_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
 

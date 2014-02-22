@@ -937,8 +937,8 @@ mod test_map {
         let mut m = HashMap::new();
         fail_unless!(m.insert(1, 2));
         fail_unless!(m.insert(2, 4));
-        assert_eq!(*m.get(&1), 2);
-        assert_eq!(*m.get(&2), 4);
+        fail_unless_eq!(*m.get(&1), 2);
+        fail_unless_eq!(*m.get(&2), 4);
     }
 
     #[test]
@@ -951,16 +951,16 @@ mod test_map {
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        fail_unless_eq!(m.find(&5), Some(&new));
     }
 
     #[test]
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
         fail_unless!(m.insert(1, 2));
-        assert_eq!(*m.get(&1), 2);
+        fail_unless_eq!(*m.get(&1), 2);
         fail_unless!(!m.insert(1, 3));
-        assert_eq!(*m.get(&1), 3);
+        fail_unless_eq!(*m.get(&1), 3);
     }
 
     #[test]
@@ -969,9 +969,9 @@ mod test_map {
         fail_unless!(m.insert(1, 2));
         fail_unless!(m.insert(5, 3));
         fail_unless!(m.insert(9, 4));
-        assert_eq!(*m.get(&9), 4);
-        assert_eq!(*m.get(&5), 3);
-        assert_eq!(*m.get(&1), 2);
+        fail_unless_eq!(*m.get(&9), 4);
+        fail_unless_eq!(*m.get(&5), 3);
+        fail_unless_eq!(*m.get(&1), 2);
     }
 
     #[test]
@@ -981,8 +981,8 @@ mod test_map {
         fail_unless!(m.insert(5, 3));
         fail_unless!(m.insert(9, 4));
         fail_unless!(m.remove(&1));
-        assert_eq!(*m.get(&9), 4);
-        assert_eq!(*m.get(&5), 3);
+        fail_unless_eq!(*m.get(&9), 4);
+        fail_unless_eq!(*m.get(&5), 3);
     }
 
     #[test]
@@ -998,37 +998,37 @@ mod test_map {
     fn test_pop() {
         let mut m = HashMap::new();
         m.insert(1, 2);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        fail_unless_eq!(m.pop(&1), Some(2));
+        fail_unless_eq!(m.pop(&1), None);
     }
 
     #[test]
     fn test_swap() {
         let mut m = HashMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        fail_unless_eq!(m.swap(1, 2), None);
+        fail_unless_eq!(m.swap(1, 3), Some(2));
+        fail_unless_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_find_or_insert() {
         let mut m: HashMap<int,int> = HashMap::new();
-        assert_eq!(*m.find_or_insert(1, 2), 2);
-        assert_eq!(*m.find_or_insert(1, 3), 2);
+        fail_unless_eq!(*m.find_or_insert(1, 2), 2);
+        fail_unless_eq!(*m.find_or_insert(1, 3), 2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
         let mut m: HashMap<int,int> = HashMap::new();
-        assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
-        assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
+        fail_unless_eq!(*m.find_or_insert_with(1, |_| 2), 2);
+        fail_unless_eq!(*m.find_or_insert_with(1, |_| 3), 2);
     }
 
     #[test]
     fn test_insert_or_update_with() {
         let mut m: HashMap<int,int> = HashMap::new();
-        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
-        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
+        fail_unless_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        fail_unless_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]
@@ -1054,10 +1054,10 @@ mod test_map {
         }
         let mut observed = 0;
         for (k, v) in m.iter() {
-            assert_eq!(*v, *k * 2);
+            fail_unless_eq!(*v, *k * 2);
             observed |= (1 << *k);
         }
-        assert_eq!(observed, 0xFFFF_FFFF);
+        fail_unless_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
@@ -1065,7 +1065,7 @@ mod test_map {
         let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let keys = map.keys().map(|&k| k).collect::<~[int]>();
-        assert_eq!(keys.len(), 3);
+        fail_unless_eq!(keys.len(), 3);
         fail_unless!(keys.contains(&1));
         fail_unless!(keys.contains(&2));
         fail_unless!(keys.contains(&3));
@@ -1076,7 +1076,7 @@ mod test_map {
         let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
         let values = map.values().map(|&v| v).collect::<~[char]>();
-        assert_eq!(values.len(), 3);
+        fail_unless_eq!(values.len(), 3);
         fail_unless!(values.contains(&'a'));
         fail_unless!(values.contains(&'b'));
         fail_unless!(values.contains(&'c'));
@@ -1108,14 +1108,14 @@ mod test_map {
 
         m2.insert(3, 4);
 
-        assert_eq!(m1, m2);
+        fail_unless_eq!(m1, m2);
     }
 
     #[test]
     fn test_expand() {
         let mut m = HashMap::new();
 
-        assert_eq!(m.len(), 0);
+        fail_unless_eq!(m.len(), 0);
         fail_unless!(m.is_empty());
 
         let mut i = 0u;
@@ -1125,7 +1125,7 @@ mod test_map {
             i += 1;
         }
 
-        assert_eq!(m.len(), i);
+        fail_unless_eq!(m.len(), i);
         fail_unless!(!m.is_empty());
     }
 
@@ -1139,11 +1139,11 @@ mod test_map {
         m.insert(~"baz", baz);
 
 
-        assert_eq!(m.find_equiv(&("foo")), Some(&foo));
-        assert_eq!(m.find_equiv(&("bar")), Some(&bar));
-        assert_eq!(m.find_equiv(&("baz")), Some(&baz));
+        fail_unless_eq!(m.find_equiv(&("foo")), Some(&foo));
+        fail_unless_eq!(m.find_equiv(&("bar")), Some(&bar));
+        fail_unless_eq!(m.find_equiv(&("baz")), Some(&baz));
 
-        assert_eq!(m.find_equiv(&("qux")), None);
+        fail_unless_eq!(m.find_equiv(&("qux")), None);
     }
 
     #[test]
@@ -1153,7 +1153,7 @@ mod test_map {
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+            fail_unless_eq!(map.find(&k), Some(&v));
         }
     }
 
@@ -1178,7 +1178,7 @@ mod test_map {
         let table_str = format!("{}", table);
 
         fail_unless!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
-        assert_eq!(format!("{}", empty), ~"{}");
+        fail_unless_eq!(format!("{}", empty), ~"{}");
     }
 }
 
@@ -1250,7 +1250,7 @@ mod test_set {
         for k in a.iter() {
             observed |= (1 << *k);
         }
-        assert_eq!(observed, 0xFFFF_FFFF);
+        fail_unless_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
@@ -1280,7 +1280,7 @@ mod test_set {
             fail_unless!(expected.contains(x));
             i += 1
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1303,7 +1303,7 @@ mod test_set {
             fail_unless!(expected.contains(x));
             i += 1
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1329,7 +1329,7 @@ mod test_set {
             fail_unless!(expected.contains(x));
             i += 1
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1359,7 +1359,7 @@ mod test_set {
             fail_unless!(expected.contains(x));
             i += 1
         }
-        assert_eq!(i, expected.len());
+        fail_unless_eq!(i, expected.len());
     }
 
     #[test]
@@ -1403,7 +1403,7 @@ mod test_set {
 
         s2.insert(3);
 
-        assert_eq!(s1, s2);
+        fail_unless_eq!(s1, s2);
     }
 
     #[test]
@@ -1417,6 +1417,6 @@ mod test_set {
         let set_str = format!("{}", set);
 
         fail_unless!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
-        assert_eq!(format!("{}", empty), ~"{}");
+        fail_unless_eq!(format!("{}", empty), ~"{}");
     }
 }

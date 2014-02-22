@@ -661,7 +661,7 @@ mod test {
     #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
-        assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
+        fail_unless_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
         fail_unless!(Pattern::new(Pattern::escape(s)).matches(s));
     }
 

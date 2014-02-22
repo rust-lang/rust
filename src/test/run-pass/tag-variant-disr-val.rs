@@ -39,8 +39,8 @@ pub fn main() {
 
 fn test_color(color: color, val: int, name: ~str) {
     //fail_unless!(unsafe::transmute(color) == val);
-    assert_eq!(color as int, val);
-    assert_eq!(color as f64, val as f64);
+    fail_unless_eq!(color as int, val);
+    fail_unless_eq!(color as f64, val as f64);
     fail_unless!(get_color_alt(color) == name);
     fail_unless!(get_color_if(color) == name);
 }

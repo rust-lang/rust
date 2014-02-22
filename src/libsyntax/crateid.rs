@@ -106,17 +106,17 @@ impl CrateId {
 #[test]
 fn bare_name() {
     let crateid: CrateId = from_str("foo").expect("valid crateid");
-    assert_eq!(crateid.name, ~"foo");
-    assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, ~"foo");
+    fail_unless_eq!(crateid.name, ~"foo");
+    fail_unless_eq!(crateid.version, None);
+    fail_unless_eq!(crateid.path, ~"foo");
 }
 
 #[test]
 fn bare_name_single_char() {
     let crateid: CrateId = from_str("f").expect("valid crateid");
-    assert_eq!(crateid.name, ~"f");
-    assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, ~"f");
+    fail_unless_eq!(crateid.name, ~"f");
+    fail_unless_eq!(crateid.version, None);
+    fail_unless_eq!(crateid.path, ~"f");
 }
 
 #[test]
@@ -128,17 +128,17 @@ fn empty_crateid() {
 #[test]
 fn simple_path() {
     let crateid: CrateId = from_str("example.com/foo/bar").expect("valid crateid");
-    assert_eq!(crateid.name, ~"bar");
-    assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, ~"example.com/foo/bar");
+    fail_unless_eq!(crateid.name, ~"bar");
+    fail_unless_eq!(crateid.version, None);
+    fail_unless_eq!(crateid.path, ~"example.com/foo/bar");
 }
 
 #[test]
 fn simple_version() {
     let crateid: CrateId = from_str("foo#1.0").expect("valid crateid");
-    assert_eq!(crateid.name, ~"foo");
-    assert_eq!(crateid.version, Some(~"1.0"));
-    assert_eq!(crateid.path, ~"foo");
+    fail_unless_eq!(crateid.name, ~"foo");
+    fail_unless_eq!(crateid.version, Some(~"1.0"));
+    fail_unless_eq!(crateid.path, ~"foo");
 }
 
 #[test]
@@ -156,39 +156,39 @@ fn path_ends_with_slash() {
 #[test]
 fn path_and_version() {
     let crateid: CrateId = from_str("example.com/foo/bar#1.0").expect("valid crateid");
-    assert_eq!(crateid.name, ~"bar");
-    assert_eq!(crateid.version, Some(~"1.0"));
-    assert_eq!(crateid.path, ~"example.com/foo/bar");
+    fail_unless_eq!(crateid.name, ~"bar");
+    fail_unless_eq!(crateid.version, Some(~"1.0"));
+    fail_unless_eq!(crateid.path, ~"example.com/foo/bar");
 }
 
 #[test]
 fn single_chars() {
     let crateid: CrateId = from_str("a/b#1").expect("valid crateid");
-    assert_eq!(crateid.name, ~"b");
-    assert_eq!(crateid.version, Some(~"1"));
-    assert_eq!(crateid.path, ~"a/b");
+    fail_unless_eq!(crateid.name, ~"b");
+    fail_unless_eq!(crateid.version, Some(~"1"));
+    fail_unless_eq!(crateid.path, ~"a/b");
 }
 
 #[test]
 fn missing_version() {
     let crateid: CrateId = from_str("foo#").expect("valid crateid");
-    assert_eq!(crateid.name, ~"foo");
-    assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, ~"foo");
+    fail_unless_eq!(crateid.name, ~"foo");
+    fail_unless_eq!(crateid.version, None);
+    fail_unless_eq!(crateid.path, ~"foo");
 }
 
 #[test]
 fn path_and_name() {
     let crateid: CrateId = from_str("foo/rust-bar#bar:1.0").expect("valid crateid");
-    assert_eq!(crateid.name, ~"bar");
-    assert_eq!(crateid.version, Some(~"1.0"));
-    assert_eq!(crateid.path, ~"foo/rust-bar");
+    fail_unless_eq!(crateid.name, ~"bar");
+    fail_unless_eq!(crateid.version, Some(~"1.0"));
+    fail_unless_eq!(crateid.path, ~"foo/rust-bar");
 }
 
 #[test]
 fn empty_name() {
     let crateid: CrateId = from_str("foo/bar#:1.0").expect("valid crateid");
-    assert_eq!(crateid.name, ~"bar");
-    assert_eq!(crateid.version, Some(~"1.0"));
-    assert_eq!(crateid.path, ~"foo/bar");
+    fail_unless_eq!(crateid.name, ~"bar");
+    fail_unless_eq!(crateid.version, Some(~"1.0"));
+    fail_unless_eq!(crateid.path, ~"foo/bar");
 }

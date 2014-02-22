@@ -157,8 +157,8 @@ pub trait Combine {
                             b_rs.repr(tcx),
                             region_params.repr(tcx));
 
-                    assert_eq!(num_region_params, a_rs.len());
-                    assert_eq!(num_region_params, b_rs.len());
+                    fail_unless_eq!(num_region_params, a_rs.len());
+                    fail_unless_eq!(num_region_params, b_rs.len());
                     let mut rs = opt_vec::Empty;
                     for i in range(0, num_region_params) {
                         let a_r = *a_rs.get(i);

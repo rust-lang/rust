@@ -195,7 +195,7 @@ macro_rules! impl_integer_for_int {
             /// - `qr`: quotient and remainder
             #[cfg(test)]
             fn test_division_rule((n,d): ($T,$T), (q,r): ($T,$T)) {
-                assert_eq!(d * q + r, n);
+                fail_unless_eq!(d * q + r, n);
             }
 
             #[test]
@@ -205,8 +205,8 @@ macro_rules! impl_integer_for_int {
                     let separate_div_rem = (n / d, n % d);
                     let combined_div_rem = n.div_rem(&d);
 
-                    assert_eq!(separate_div_rem, qr);
-                    assert_eq!(combined_div_rem, qr);
+                    fail_unless_eq!(separate_div_rem, qr);
+                    fail_unless_eq!(combined_div_rem, qr);
 
                     test_division_rule(nd, separate_div_rem);
                     test_division_rule(nd, combined_div_rem);
@@ -230,8 +230,8 @@ macro_rules! impl_integer_for_int {
                     let separate_div_mod_floor = (n.div_floor(&d), n.mod_floor(&d));
                     let combined_div_mod_floor = n.div_mod_floor(&d);
 
-                    assert_eq!(separate_div_mod_floor, dm);
-                    assert_eq!(combined_div_mod_floor, dm);
+                    fail_unless_eq!(separate_div_mod_floor, dm);
+                    fail_unless_eq!(combined_div_mod_floor, dm);
 
                     test_division_rule(nd, separate_div_mod_floor);
                     test_division_rule(nd, combined_div_mod_floor);
@@ -250,52 +250,52 @@ macro_rules! impl_integer_for_int {
 
             #[test]
             fn test_gcd() {
-                assert_eq!((10 as $T).gcd(&2), 2 as $T);
-                assert_eq!((10 as $T).gcd(&3), 1 as $T);
-                assert_eq!((0 as $T).gcd(&3), 3 as $T);
-                assert_eq!((3 as $T).gcd(&3), 3 as $T);
-                assert_eq!((56 as $T).gcd(&42), 14 as $T);
-                assert_eq!((3 as $T).gcd(&-3), 3 as $T);
-                assert_eq!((-6 as $T).gcd(&3), 3 as $T);
-                assert_eq!((-4 as $T).gcd(&-2), 2 as $T);
+                fail_unless_eq!((10 as $T).gcd(&2), 2 as $T);
+                fail_unless_eq!((10 as $T).gcd(&3), 1 as $T);
+                fail_unless_eq!((0 as $T).gcd(&3), 3 as $T);
+                fail_unless_eq!((3 as $T).gcd(&3), 3 as $T);
+                fail_unless_eq!((56 as $T).gcd(&42), 14 as $T);
+                fail_unless_eq!((3 as $T).gcd(&-3), 3 as $T);
+                fail_unless_eq!((-6 as $T).gcd(&3), 3 as $T);
+                fail_unless_eq!((-4 as $T).gcd(&-2), 2 as $T);
             }
 
             #[test]
             fn test_lcm() {
-                assert_eq!((1 as $T).lcm(&0), 0 as $T);
-                assert_eq!((0 as $T).lcm(&1), 0 as $T);
-                assert_eq!((1 as $T).lcm(&1), 1 as $T);
-                assert_eq!((-1 as $T).lcm(&1), 1 as $T);
-                assert_eq!((1 as $T).lcm(&-1), 1 as $T);
-                assert_eq!((-1 as $T).lcm(&-1), 1 as $T);
-                assert_eq!((8 as $T).lcm(&9), 72 as $T);
-                assert_eq!((11 as $T).lcm(&5), 55 as $T);
+                fail_unless_eq!((1 as $T).lcm(&0), 0 as $T);
+                fail_unless_eq!((0 as $T).lcm(&1), 0 as $T);
+                fail_unless_eq!((1 as $T).lcm(&1), 1 as $T);
+                fail_unless_eq!((-1 as $T).lcm(&1), 1 as $T);
+                fail_unless_eq!((1 as $T).lcm(&-1), 1 as $T);
+                fail_unless_eq!((-1 as $T).lcm(&-1), 1 as $T);
+                fail_unless_eq!((8 as $T).lcm(&9), 72 as $T);
+                fail_unless_eq!((11 as $T).lcm(&5), 55 as $T);
             }
 
             #[test]
             fn test_even() {
-                assert_eq!((-4 as $T).is_even(), true);
-                assert_eq!((-3 as $T).is_even(), false);
-                assert_eq!((-2 as $T).is_even(), true);
-                assert_eq!((-1 as $T).is_even(), false);
-                assert_eq!((0 as $T).is_even(), true);
-                assert_eq!((1 as $T).is_even(), false);
-                assert_eq!((2 as $T).is_even(), true);
-                assert_eq!((3 as $T).is_even(), false);
-                assert_eq!((4 as $T).is_even(), true);
+                fail_unless_eq!((-4 as $T).is_even(), true);
+                fail_unless_eq!((-3 as $T).is_even(), false);
+                fail_unless_eq!((-2 as $T).is_even(), true);
+                fail_unless_eq!((-1 as $T).is_even(), false);
+                fail_unless_eq!((0 as $T).is_even(), true);
+                fail_unless_eq!((1 as $T).is_even(), false);
+                fail_unless_eq!((2 as $T).is_even(), true);
+                fail_unless_eq!((3 as $T).is_even(), false);
+                fail_unless_eq!((4 as $T).is_even(), true);
             }
 
             #[test]
             fn test_odd() {
-                assert_eq!((-4 as $T).is_odd(), false);
-                assert_eq!((-3 as $T).is_odd(), true);
-                assert_eq!((-2 as $T).is_odd(), false);
-                assert_eq!((-1 as $T).is_odd(), true);
-                assert_eq!((0 as $T).is_odd(), false);
-                assert_eq!((1 as $T).is_odd(), true);
-                assert_eq!((2 as $T).is_odd(), false);
-                assert_eq!((3 as $T).is_odd(), true);
-                assert_eq!((4 as $T).is_odd(), false);
+                fail_unless_eq!((-4 as $T).is_odd(), false);
+                fail_unless_eq!((-3 as $T).is_odd(), true);
+                fail_unless_eq!((-2 as $T).is_odd(), false);
+                fail_unless_eq!((-1 as $T).is_odd(), true);
+                fail_unless_eq!((0 as $T).is_odd(), false);
+                fail_unless_eq!((1 as $T).is_odd(), true);
+                fail_unless_eq!((2 as $T).is_odd(), false);
+                fail_unless_eq!((3 as $T).is_odd(), true);
+                fail_unless_eq!((4 as $T).is_odd(), false);
             }
         }
     )
@@ -357,34 +357,34 @@ macro_rules! impl_integer_for_uint {
 
             #[test]
             fn test_div_mod_floor() {
-                assert_eq!((10 as $T).div_floor(&(3 as $T)), 3 as $T);
-                assert_eq!((10 as $T).mod_floor(&(3 as $T)), 1 as $T);
-                assert_eq!((10 as $T).div_mod_floor(&(3 as $T)), (3 as $T, 1 as $T));
-                assert_eq!((5 as $T).div_floor(&(5 as $T)), 1 as $T);
-                assert_eq!((5 as $T).mod_floor(&(5 as $T)), 0 as $T);
-                assert_eq!((5 as $T).div_mod_floor(&(5 as $T)), (1 as $T, 0 as $T));
-                assert_eq!((3 as $T).div_floor(&(7 as $T)), 0 as $T);
-                assert_eq!((3 as $T).mod_floor(&(7 as $T)), 3 as $T);
-                assert_eq!((3 as $T).div_mod_floor(&(7 as $T)), (0 as $T, 3 as $T));
+                fail_unless_eq!((10 as $T).div_floor(&(3 as $T)), 3 as $T);
+                fail_unless_eq!((10 as $T).mod_floor(&(3 as $T)), 1 as $T);
+                fail_unless_eq!((10 as $T).div_mod_floor(&(3 as $T)), (3 as $T, 1 as $T));
+                fail_unless_eq!((5 as $T).div_floor(&(5 as $T)), 1 as $T);
+                fail_unless_eq!((5 as $T).mod_floor(&(5 as $T)), 0 as $T);
+                fail_unless_eq!((5 as $T).div_mod_floor(&(5 as $T)), (1 as $T, 0 as $T));
+                fail_unless_eq!((3 as $T).div_floor(&(7 as $T)), 0 as $T);
+                fail_unless_eq!((3 as $T).mod_floor(&(7 as $T)), 3 as $T);
+                fail_unless_eq!((3 as $T).div_mod_floor(&(7 as $T)), (0 as $T, 3 as $T));
             }
 
             #[test]
             fn test_gcd() {
-                assert_eq!((10 as $T).gcd(&2), 2 as $T);
-                assert_eq!((10 as $T).gcd(&3), 1 as $T);
-                assert_eq!((0 as $T).gcd(&3), 3 as $T);
-                assert_eq!((3 as $T).gcd(&3), 3 as $T);
-                assert_eq!((56 as $T).gcd(&42), 14 as $T);
+                fail_unless_eq!((10 as $T).gcd(&2), 2 as $T);
+                fail_unless_eq!((10 as $T).gcd(&3), 1 as $T);
+                fail_unless_eq!((0 as $T).gcd(&3), 3 as $T);
+                fail_unless_eq!((3 as $T).gcd(&3), 3 as $T);
+                fail_unless_eq!((56 as $T).gcd(&42), 14 as $T);
             }
 
             #[test]
             fn test_lcm() {
-                assert_eq!((1 as $T).lcm(&0), 0 as $T);
-                assert_eq!((0 as $T).lcm(&1), 0 as $T);
-                assert_eq!((1 as $T).lcm(&1), 1 as $T);
-                assert_eq!((8 as $T).lcm(&9), 72 as $T);
-                assert_eq!((11 as $T).lcm(&5), 55 as $T);
-                assert_eq!((99 as $T).lcm(&17), 1683 as $T);
+                fail_unless_eq!((1 as $T).lcm(&0), 0 as $T);
+                fail_unless_eq!((0 as $T).lcm(&1), 0 as $T);
+                fail_unless_eq!((1 as $T).lcm(&1), 1 as $T);
+                fail_unless_eq!((8 as $T).lcm(&9), 72 as $T);
+                fail_unless_eq!((11 as $T).lcm(&5), 55 as $T);
+                fail_unless_eq!((99 as $T).lcm(&17), 1683 as $T);
             }
 
             #[test]
@@ -396,20 +396,20 @@ macro_rules! impl_integer_for_uint {
 
             #[test]
             fn test_even() {
-                assert_eq!((0 as $T).is_even(), true);
-                assert_eq!((1 as $T).is_even(), false);
-                assert_eq!((2 as $T).is_even(), true);
-                assert_eq!((3 as $T).is_even(), false);
-                assert_eq!((4 as $T).is_even(), true);
+                fail_unless_eq!((0 as $T).is_even(), true);
+                fail_unless_eq!((1 as $T).is_even(), false);
+                fail_unless_eq!((2 as $T).is_even(), true);
+                fail_unless_eq!((3 as $T).is_even(), false);
+                fail_unless_eq!((4 as $T).is_even(), true);
             }
 
             #[test]
             fn test_odd() {
-                assert_eq!((0 as $T).is_odd(), false);
-                assert_eq!((1 as $T).is_odd(), true);
-                assert_eq!((2 as $T).is_odd(), false);
-                assert_eq!((3 as $T).is_odd(), true);
-                assert_eq!((4 as $T).is_odd(), false);
+                fail_unless_eq!((0 as $T).is_odd(), false);
+                fail_unless_eq!((1 as $T).is_odd(), true);
+                fail_unless_eq!((2 as $T).is_odd(), false);
+                fail_unless_eq!((3 as $T).is_odd(), true);
+                fail_unless_eq!((4 as $T).is_odd(), false);
             }
         }
     )

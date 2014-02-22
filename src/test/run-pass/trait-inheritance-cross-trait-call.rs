@@ -22,5 +22,5 @@ impl Bar for A {
 
 pub fn main() {
     let a = &A { x: 3 };
-    assert_eq!(a.g(), 10);
+    fail_unless_eq!(a.g(), 10);
 }

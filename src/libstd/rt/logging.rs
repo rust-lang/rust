@@ -198,53 +198,53 @@ pub fn init() {
 #[test]
 fn parse_logging_spec_valid() {
     let dirs = parse_logging_spec(~"crate1::mod1=1,crate1::mod2,crate2=4");
-    assert_eq!(dirs.len(), 3);
+    fail_unless_eq!(dirs.len(), 3);
     fail_unless!(dirs[0].name == Some(~"crate1::mod1"));
-    assert_eq!(dirs[0].level, 1);
+    fail_unless_eq!(dirs[0].level, 1);
 
     fail_unless!(dirs[1].name == Some(~"crate1::mod2"));
-    assert_eq!(dirs[1].level, MAX_LOG_LEVEL);
+    fail_unless_eq!(dirs[1].level, MAX_LOG_LEVEL);
 
     fail_unless!(dirs[2].name == Some(~"crate2"));
-    assert_eq!(dirs[2].level, 4);
+    fail_unless_eq!(dirs[2].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_invalid_crate() {
     // test parse_logging_spec with multiple = in specification
     let dirs = parse_logging_spec(~"crate1::mod1=1=2,crate2=4");
-    assert_eq!(dirs.len(), 1);
+    fail_unless_eq!(dirs.len(), 1);
     fail_unless!(dirs[0].name == Some(~"crate2"));
-    assert_eq!(dirs[0].level, 4);
+    fail_unless_eq!(dirs[0].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_invalid_log_level() {
     // test parse_logging_spec with 'noNumber' as log level
     let dirs = parse_logging_spec(~"crate1::mod1=noNumber,crate2=4");
-    assert_eq!(dirs.len(), 1);
+    fail_unless_eq!(dirs.len(), 1);
     fail_unless!(dirs[0].name == Some(~"crate2"));
-    assert_eq!(dirs[0].level, 4);
+    fail_unless_eq!(dirs[0].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_string_log_level() {
     // test parse_logging_spec with 'warn' as log level
     let dirs = parse_logging_spec(~"crate1::mod1=wrong,crate2=warn");
-    assert_eq!(dirs.len(), 1);
+    fail_unless_eq!(dirs.len(), 1);
     fail_unless!(dirs[0].name == Some(~"crate2"));
-    assert_eq!(dirs[0].level, 2);
+    fail_unless_eq!(dirs[0].level, 2);
 }
 
 #[test]
 fn parse_logging_spec_global() {
     // test parse_logging_spec with no crate
     let dirs = parse_logging_spec(~"warn,crate2=4");
-    assert_eq!(dirs.len(), 2);
+    fail_unless_eq!(dirs.len(), 2);
     fail_unless!(dirs[0].name == None);
-    assert_eq!(dirs[0].level, 2);
+    fail_unless_eq!(dirs[0].level, 2);
     fail_unless!(dirs[1].name == Some(~"crate2"));
-    assert_eq!(dirs[1].level, 4);
+    fail_unless_eq!(dirs[1].level, 4);
 }
 
 // Tests for update_entry

@@ -619,8 +619,8 @@ mod tests {
         let result_str = digest.result_str();
         let result_bytes = digest.result_bytes();
 
-        assert_eq!(expected, result_str.as_slice());
-        assert_eq!(expected.from_hex().unwrap(), result_bytes);
+        fail_unless_eq!(expected, result_str.as_slice());
+        fail_unless_eq!(expected.from_hex().unwrap(), result_bytes);
     }
 
     #[test]

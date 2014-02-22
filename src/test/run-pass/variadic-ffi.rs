@@ -19,7 +19,7 @@ unsafe fn check<T>(expected: &str, f: |*mut c_char| -> T) {
     let mut x = [0i8, ..50];
     f(&mut x[0] as *mut c_char);
     let res = CString::new(&x[0], false);
-    assert_eq!(expected, res.as_str().unwrap());
+    fail_unless_eq!(expected, res.as_str().unwrap());
 }
 
 pub fn main() {

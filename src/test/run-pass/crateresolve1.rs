@@ -16,5 +16,5 @@
 extern crate crateresolve1 = "crateresolve1#0.2";
 
 pub fn main() {
-    assert_eq!(crateresolve1::f(), 20);
+    fail_unless_eq!(crateresolve1::f(), 20);
 }

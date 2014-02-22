@@ -709,7 +709,7 @@ mod test {
                 -1|0 => fail!("shouldn't happen"),
                 n => str::from_utf8_owned(read_buf.slice_to(n).to_owned()).unwrap()
             };
-            assert_eq!(read_str, message.to_owned());
+            fail_unless_eq!(read_str, message.to_owned());
         }
         unlink(filename).unwrap();
     })
@@ -749,7 +749,7 @@ mod test {
         }
         unlink(filename).unwrap();
         let read_str = str::from_utf8(read_mem).unwrap();
-        assert_eq!(read_str, message);
+        fail_unless_eq!(read_str, message);
     })
 
     iotest!(fn file_test_io_seek_and_tell_smoke_test() {
@@ -773,9 +773,9 @@ mod test {
         }
         unlink(filename).unwrap();
         let read_str = str::from_utf8(read_mem).unwrap();
-        assert_eq!(read_str, message.slice(4, 8));
-        assert_eq!(tell_pos_pre_read, set_cursor);
-        assert_eq!(tell_pos_post_read, message.len() as u64);
+        fail_unless_eq!(read_str, message.slice(4, 8));
+        fail_unless_eq!(tell_pos_pre_read, set_cursor);
+        fail_unless_eq!(tell_pos_post_read, message.len() as u64);
     })
 
     iotest!(fn file_test_io_seek_and_write() {
@@ -819,15 +819,15 @@ mod test {
 
             read_stream.seek(-4, SeekEnd).unwrap();
             read_stream.read(read_mem).unwrap();
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_three);
+            fail_unless_eq!(str::from_utf8(read_mem).unwrap(), chunk_three);
 
             read_stream.seek(-9, SeekCur).unwrap();
             read_stream.read(read_mem).unwrap();
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_two);
+            fail_unless_eq!(str::from_utf8(read_mem).unwrap(), chunk_two);
 
             read_stream.seek(0, SeekSet).unwrap();
             read_stream.read(read_mem).unwrap();
-            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_one);
+            fail_unless_eq!(str::from_utf8(read_mem).unwrap(), chunk_one);
         }
         unlink(filename).unwrap();
     })
@@ -841,7 +841,7 @@ mod test {
             fs.write(msg.as_bytes()).unwrap();
         }
         let stat_res = stat(filename).unwrap();
-        assert_eq!(stat_res.kind, io::TypeFile);
+        fail_unless_eq!(stat_res.kind, io::TypeFile);
         unlink(filename).unwrap();
     })
 
@@ -906,7 +906,7 @@ mod test {
                     None|Some("") => fail!("really shouldn't happen.."),
                     Some(n) => prefix+n
                 };
-                assert_eq!(expected.as_slice(), read_str);
+                fail_unless_eq!(expected.as_slice(), read_str);
             }
             unlink(f).unwrap();
         }
@@ -967,9 +967,9 @@ mod test {
         File::create(&input).write(bytes!("hello")).unwrap();
         copy(&input, &out).unwrap();
         let contents = File::open(&out).read_to_end().unwrap();
-        assert_eq!(contents.as_slice(), bytes!("hello"));
+        fail_unless_eq!(contents.as_slice(), bytes!("hello"));
 
-        assert_eq!(input.stat().unwrap().perm, out.stat().unwrap().perm);
+        fail_unless_eq!(input.stat().unwrap().perm, out.stat().unwrap().perm);
     })
 
     iotest!(fn copy_file_dst_dir() {
@@ -991,7 +991,7 @@ mod test {
         File::create(&output).write("bar".as_bytes()).unwrap();
         copy(&input, &output).unwrap();
 
-        assert_eq!(File::open(&output).read_to_end().unwrap(),
+        fail_unless_eq!(File::open(&output).read_to_end().unwrap(),
                    (bytes!("foo")).to_owned());
     })
 
@@ -1028,10 +1028,10 @@ mod test {
         File::create(&input).write("foobar".as_bytes()).unwrap();
         symlink(&input, &out).unwrap();
         if cfg!(not(windows)) {
-            assert_eq!(lstat(&out).unwrap().kind, io::TypeSymlink);
+            fail_unless_eq!(lstat(&out).unwrap().kind, io::TypeSymlink);
         }
-        assert_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
-        assert_eq!(File::open(&out).read_to_end().unwrap(),
+        fail_unless_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
+        fail_unless_eq!(File::open(&out).read_to_end().unwrap(),
                    (bytes!("foobar")).to_owned());
     })
 
@@ -1059,11 +1059,11 @@ mod test {
         File::create(&input).write("foobar".as_bytes()).unwrap();
         link(&input, &out).unwrap();
         if cfg!(not(windows)) {
-            assert_eq!(lstat(&out).unwrap().kind, io::TypeFile);
-            assert_eq!(stat(&out).unwrap().unstable.nlink, 2);
+            fail_unless_eq!(lstat(&out).unwrap().kind, io::TypeFile);
+            fail_unless_eq!(stat(&out).unwrap().unstable.nlink, 2);
         }
-        assert_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
-        assert_eq!(File::open(&out).read_to_end().unwrap(),
+        fail_unless_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
+        fail_unless_eq!(File::open(&out).read_to_end().unwrap(),
                    (bytes!("foobar")).to_owned());
 
         // can't link to yourself
@@ -1117,24 +1117,24 @@ mod test {
         file.fsync().unwrap();
 
         // Do some simple things with truncation
-        assert_eq!(stat(&path).unwrap().size, 3);
+        fail_unless_eq!(stat(&path).unwrap().size, 3);
         file.truncate(10).unwrap();
-        assert_eq!(stat(&path).unwrap().size, 10);
+        fail_unless_eq!(stat(&path).unwrap().size, 10);
         file.write(bytes!("bar")).unwrap();
         file.fsync().unwrap();
-        assert_eq!(stat(&path).unwrap().size, 10);
-        assert_eq!(File::open(&path).read_to_end().unwrap(),
+        fail_unless_eq!(stat(&path).unwrap().size, 10);
+        fail_unless_eq!(File::open(&path).read_to_end().unwrap(),
                    (bytes!("foobar", 0, 0, 0, 0)).to_owned());
 
         // Truncate to a smaller length, don't seek, and then write something.
         // Ensure that the intermediate zeroes are all filled in (we're seeked
         // past the end of the file).
         file.truncate(2).unwrap();
-        assert_eq!(stat(&path).unwrap().size, 2);
+        fail_unless_eq!(stat(&path).unwrap().size, 2);
         file.write(bytes!("wut")).unwrap();
         file.fsync().unwrap();
-        assert_eq!(stat(&path).unwrap().size, 9);
-        assert_eq!(File::open(&path).read_to_end().unwrap(),
+        fail_unless_eq!(stat(&path).unwrap().size, 9);
+        fail_unless_eq!(File::open(&path).read_to_end().unwrap(),
                    (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
         drop(file);
     })
@@ -1161,19 +1161,19 @@ mod test {
                 Ok(..) => fail!(), Err(..) => {}
             }
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
+        fail_unless_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
         {
             let mut f = File::open_mode(&tmpdir.join("h"), io::Append,
                                         io::Write).unwrap();
             f.write("bar".as_bytes()).unwrap();
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 6);
+        fail_unless_eq!(stat(&tmpdir.join("h")).unwrap().size, 6);
         {
             let mut f = File::open_mode(&tmpdir.join("h"), io::Truncate,
                                         io::Write).unwrap();
             f.write("bar".as_bytes()).unwrap();
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
+        fail_unless_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
     })
 
     #[test]
@@ -1183,8 +1183,8 @@ mod test {
         File::create(&path).unwrap();
 
         change_file_times(&path, 1000, 2000).unwrap();
-        assert_eq!(path.stat().unwrap().accessed, 1000);
-        assert_eq!(path.stat().unwrap().modified, 2000);
+        fail_unless_eq!(path.stat().unwrap().accessed, 1000);
+        fail_unless_eq!(path.stat().unwrap().modified, 2000);
     }
 
     #[test]

@@ -17,8 +17,8 @@ fn box_imm() {
     borrow(v,
            |w| { //~ ERROR cannot borrow `v` as mutable
             v = ~4;
-            assert_eq!(*v, 3);
-            assert_eq!(*w, 4);
+            fail_unless_eq!(*v, 3);
+            fail_unless_eq!(*w, 4);
         })
 }
 

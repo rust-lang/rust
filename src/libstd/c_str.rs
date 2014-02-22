@@ -433,9 +433,9 @@ mod tests {
             let mut it = expected.iter();
             let result = from_c_multistring(ptr as *libc::c_char, None, |c| {
                 let cbytes = c.as_bytes_no_nul();
-                assert_eq!(cbytes, it.next().unwrap().as_bytes());
+                fail_unless_eq!(cbytes, it.next().unwrap().as_bytes());
             });
-            assert_eq!(result, 2);
+            fail_unless_eq!(result, 2);
             fail_unless!(it.next().is_none());
         }
     }
@@ -444,18 +444,18 @@ mod tests {
     fn test_str_to_c_str() {
         "".to_c_str().with_ref(|buf| {
             unsafe {
-                assert_eq!(*buf.offset(0), 0);
+                fail_unless_eq!(*buf.offset(0), 0);
             }
         });
 
         "hello".to_c_str().with_ref(|buf| {
             unsafe {
-                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
-                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
-                assert_eq!(*buf.offset(2), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(4), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(5), 0);
+                fail_unless_eq!(*buf.offset(0), 'h' as libc::c_char);
+                fail_unless_eq!(*buf.offset(1), 'e' as libc::c_char);
+                fail_unless_eq!(*buf.offset(2), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(3), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(4), 'o' as libc::c_char);
+                fail_unless_eq!(*buf.offset(5), 0);
             }
         })
     }
@@ -465,28 +465,28 @@ mod tests {
         let b: &[u8] = [];
         b.to_c_str().with_ref(|buf| {
             unsafe {
-                assert_eq!(*buf.offset(0), 0);
+                fail_unless_eq!(*buf.offset(0), 0);
             }
         });
 
         let _ = bytes!("hello").to_c_str().with_ref(|buf| {
             unsafe {
-                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
-                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
-                assert_eq!(*buf.offset(2), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(4), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(5), 0);
+                fail_unless_eq!(*buf.offset(0), 'h' as libc::c_char);
+                fail_unless_eq!(*buf.offset(1), 'e' as libc::c_char);
+                fail_unless_eq!(*buf.offset(2), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(3), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(4), 'o' as libc::c_char);
+                fail_unless_eq!(*buf.offset(5), 0);
             }
         });
 
         let _ = bytes!("foo", 0xff).to_c_str().with_ref(|buf| {
             unsafe {
-                assert_eq!(*buf.offset(0), 'f' as libc::c_char);
-                assert_eq!(*buf.offset(1), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(2), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(3), 0xff as i8);
-                assert_eq!(*buf.offset(4), 0);
+                fail_unless_eq!(*buf.offset(0), 'f' as libc::c_char);
+                fail_unless_eq!(*buf.offset(1), 'o' as libc::c_char);
+                fail_unless_eq!(*buf.offset(2), 'o' as libc::c_char);
+                fail_unless_eq!(*buf.offset(3), 0xff as i8);
+                fail_unless_eq!(*buf.offset(4), 0);
             }
         });
     }
@@ -510,7 +510,7 @@ mod tests {
         let len = unsafe { c_str.with_ref(|buf| libc::strlen(buf)) };
         fail_unless!(!c_str.is_null());
         fail_unless!(c_str.is_not_null());
-        assert_eq!(len, 5);
+        fail_unless_eq!(len, 5);
     }
 
     #[test]
@@ -524,16 +524,16 @@ mod tests {
     fn test_iterator() {
         let c_str = "".to_c_str();
         let mut iter = c_str.iter();
-        assert_eq!(iter.next(), None);
+        fail_unless_eq!(iter.next(), None);
 
         let c_str = "hello".to_c_str();
         let mut iter = c_str.iter();
-        assert_eq!(iter.next(), Some('h' as libc::c_char));
-        assert_eq!(iter.next(), Some('e' as libc::c_char));
-        assert_eq!(iter.next(), Some('l' as libc::c_char));
-        assert_eq!(iter.next(), Some('l' as libc::c_char));
-        assert_eq!(iter.next(), Some('o' as libc::c_char));
-        assert_eq!(iter.next(), None);
+        fail_unless_eq!(iter.next(), Some('h' as libc::c_char));
+        fail_unless_eq!(iter.next(), Some('e' as libc::c_char));
+        fail_unless_eq!(iter.next(), Some('l' as libc::c_char));
+        fail_unless_eq!(iter.next(), Some('l' as libc::c_char));
+        fail_unless_eq!(iter.next(), Some('o' as libc::c_char));
+        fail_unless_eq!(iter.next(), None);
     }
 
     #[test]
@@ -546,13 +546,13 @@ mod tests {
     fn test_to_c_str_unchecked() {
         unsafe {
             "he\x00llo".to_c_str_unchecked().with_ref(|buf| {
-                assert_eq!(*buf.offset(0), 'h' as libc::c_char);
-                assert_eq!(*buf.offset(1), 'e' as libc::c_char);
-                assert_eq!(*buf.offset(2), 0);
-                assert_eq!(*buf.offset(3), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(4), 'l' as libc::c_char);
-                assert_eq!(*buf.offset(5), 'o' as libc::c_char);
-                assert_eq!(*buf.offset(6), 0);
+                fail_unless_eq!(*buf.offset(0), 'h' as libc::c_char);
+                fail_unless_eq!(*buf.offset(1), 'e' as libc::c_char);
+                fail_unless_eq!(*buf.offset(2), 0);
+                fail_unless_eq!(*buf.offset(3), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(4), 'l' as libc::c_char);
+                fail_unless_eq!(*buf.offset(5), 'o' as libc::c_char);
+                fail_unless_eq!(*buf.offset(6), 0);
             })
         }
     }
@@ -560,22 +560,22 @@ mod tests {
     #[test]
     fn test_as_bytes() {
         let c_str = "hello".to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!("hello", 0));
+        fail_unless_eq!(c_str.as_bytes(), bytes!("hello", 0));
         let c_str = "".to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!(0));
+        fail_unless_eq!(c_str.as_bytes(), bytes!(0));
         let c_str = bytes!("foo", 0xff).to_c_str();
-        assert_eq!(c_str.as_bytes(), bytes!("foo", 0xff, 0));
+        fail_unless_eq!(c_str.as_bytes(), bytes!("foo", 0xff, 0));
     }
 
     #[test]
     fn test_as_bytes_no_nul() {
         let c_str = "hello".to_c_str();
-        assert_eq!(c_str.as_bytes_no_nul(), bytes!("hello"));
+        fail_unless_eq!(c_str.as_bytes_no_nul(), bytes!("hello"));
         let c_str = "".to_c_str();
         let exp: &[u8] = [];
-        assert_eq!(c_str.as_bytes_no_nul(), exp);
+        fail_unless_eq!(c_str.as_bytes_no_nul(), exp);
         let c_str = bytes!("foo", 0xff).to_c_str();
-        assert_eq!(c_str.as_bytes_no_nul(), bytes!("foo", 0xff));
+        fail_unless_eq!(c_str.as_bytes_no_nul(), bytes!("foo", 0xff));
     }
 
     #[test]
@@ -595,11 +595,11 @@ mod tests {
     #[test]
     fn test_as_str() {
         let c_str = "hello".to_c_str();
-        assert_eq!(c_str.as_str(), Some("hello"));
+        fail_unless_eq!(c_str.as_str(), Some("hello"));
         let c_str = "".to_c_str();
-        assert_eq!(c_str.as_str(), Some(""));
+        fail_unless_eq!(c_str.as_str(), Some(""));
         let c_str = bytes!("foo", 0xff).to_c_str();
-        assert_eq!(c_str.as_str(), None);
+        fail_unless_eq!(c_str.as_str(), None);
     }
 
     #[test]
@@ -674,7 +674,7 @@ mod bench {
         let s_buf = s.as_ptr();
         for i in range(0, s.len()) {
             unsafe {
-                assert_eq!(
+                fail_unless_eq!(
                     *s_buf.offset(i as int) as libc::c_char,
                     *c_str.offset(i as int));
             }

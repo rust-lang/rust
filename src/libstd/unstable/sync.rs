@@ -149,9 +149,9 @@ mod tests {
             let x = Exclusive::new(1);
             let x2 = x.clone();
             let _ = task::try(proc() {
-                x2.with(|one| assert_eq!(*one, 2))
+                x2.with(|one| fail_unless_eq!(*one, 2))
             });
-            x.with(|one| assert_eq!(*one, 1));
+            x.with(|one| fail_unless_eq!(*one, 1));
         }
     }
 }

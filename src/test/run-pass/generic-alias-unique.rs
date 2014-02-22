@@ -16,5 +16,5 @@ pub fn main() {
     let expected = ~100;
     let actual = id::<~int>(expected.clone());
     info!("{:?}", *actual);
-    assert_eq!(*expected, *actual);
+    fail_unless_eq!(*expected, *actual);
 }

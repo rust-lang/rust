@@ -451,7 +451,7 @@ fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     });
 
     let x_in_child = p.recv();
-    assert_eq!(x_in_parent, x_in_child);
+    fail_unless_eq!(x_in_parent, x_in_child);
 }
 
 #[test]
@@ -508,7 +508,7 @@ fn test_try_fail_message_static_str() {
         Err(e) => {
             type T = &'static str;
             fail_unless!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), "static string");
+            fail_unless_eq!(*e.move::<T>().unwrap(), "static string");
         }
         Ok(()) => fail!()
     }
@@ -522,7 +522,7 @@ fn test_try_fail_message_owned_str() {
         Err(e) => {
             type T = ~str;
             fail_unless!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), ~"owned string");
+            fail_unless_eq!(*e.move::<T>().unwrap(), ~"owned string");
         }
         Ok(()) => fail!()
     }
@@ -538,7 +538,7 @@ fn test_try_fail_message_any() {
             fail_unless!(e.is::<T>());
             let any = e.move::<T>().unwrap();
             fail_unless!(any.is::<u16>());
-            assert_eq!(*any.move::<u16>().unwrap(), 413u16);
+            fail_unless_eq!(*any.move::<u16>().unwrap(), 413u16);
         }
         Ok(()) => fail!()
     }

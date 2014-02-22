@@ -122,7 +122,7 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
         None => v
     };
     unsafe {
-        assert_eq!(llvm::LLVMIsGlobalConstant(v), True);
+        fail_unless_eq!(llvm::LLVMIsGlobalConstant(v), True);
         llvm::LLVMGetInitializer(v)
     }
 }
@@ -250,8 +250,8 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                 }
                                 ty::AutoBorrowVec(ty::ReStatic, m) => {
                                     fail_unless!(m != ast::MutMutable);
-                                    assert_eq!(abi::slice_elt_base, 0);
-                                    assert_eq!(abi::slice_elt_len, 1);
+                                    fail_unless_eq!(abi::slice_elt_base, 0);
+                                    fail_unless_eq!(abi::slice_elt_len, 1);
                                     match ty::get(ty).sty {
                                         ty::ty_vec(_,
                                                    ty::vstore_fixed(len)) => {

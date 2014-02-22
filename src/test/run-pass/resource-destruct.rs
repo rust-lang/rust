@@ -37,5 +37,5 @@ pub fn main() {
     let my_total = @@Cell::new(10);
     { let pt = shrinky_pointer(my_total); fail_unless!((pt.look_at() == 10)); }
     error!("my_total = {}", my_total.get());
-    assert_eq!(my_total.get(), 9);
+    fail_unless_eq!(my_total.get(), 9);
 }

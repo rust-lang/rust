@@ -195,7 +195,7 @@ mod test {
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);
-        assert_eq!(s2.port.try_recv(), Empty);
+        fail_unless_eq!(s2.port.try_recv(), Empty);
     }
 
     #[cfg(windows)]

@@ -10,5 +10,5 @@
 
 pub fn main() {
     let i = ~~[100];
-    assert_eq!(i[0], 100);
+    fail_unless_eq!(i[0], 100);
 }

@@ -68,7 +68,7 @@ fn stress_task(id: int) {
     let mut i = 0;
     loop {
         let n = 15;
-        assert_eq!(fib(n), fib(n));
+        fail_unless_eq!(fib(n), fib(n));
         i += 1;
         error!("{}: Completed {} iterations", id, i);
     }

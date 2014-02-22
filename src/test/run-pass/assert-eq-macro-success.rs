@@ -12,9 +12,9 @@
 struct Point { x : int }
 
 pub fn main() {
-    assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
-    assert_eq!(~Point{x:34},~Point{x:34});
-    assert_eq!(&Point{x:34},&Point{x:34});
-    assert_eq!(@Point{x:34},@Point{x:34});
+    fail_unless_eq!(14,14);
+    fail_unless_eq!(~"abc",~"abc");
+    fail_unless_eq!(~Point{x:34},~Point{x:34});
+    fail_unless_eq!(&Point{x:34},&Point{x:34});
+    fail_unless_eq!(@Point{x:34},@Point{x:34});
 }

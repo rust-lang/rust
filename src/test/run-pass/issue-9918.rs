@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!((0 + 0u8) as char, '\0');
+    fail_unless_eq!((0 + 0u8) as char, '\0');
 }

@@ -17,11 +17,11 @@ pub fn main() {
     info!("{}", x);
     info!("{}", y);
 
-    assert_eq!(x[0], 'h' as u8);
-    assert_eq!(x[4], 'o' as u8);
+    fail_unless_eq!(x[0], 'h' as u8);
+    fail_unless_eq!(x[4], 'o' as u8);
 
     let z : &str = &"thing";
-    assert_eq!(v, x);
+    fail_unless_eq!(v, x);
     fail_unless!(x != z);
 
     let a = &"aaaa";

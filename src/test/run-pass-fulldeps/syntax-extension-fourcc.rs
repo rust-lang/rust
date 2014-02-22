@@ -25,21 +25,21 @@ static static_val_target: u32 = fourcc!("foo ", target);
 
 fn main() {
     let val = fourcc!("foo ", big);
-    assert_eq!(val, 0x666f6f20u32);
-    assert_eq!(val, fourcc!("foo "));
+    fail_unless_eq!(val, 0x666f6f20u32);
+    fail_unless_eq!(val, fourcc!("foo "));
 
     let val = fourcc!("foo ", little);
-    assert_eq!(val, 0x206f6f66u32);
+    fail_unless_eq!(val, 0x206f6f66u32);
 
     let val = fourcc!("foo ", target);
     let exp = if cfg!(target_endian = "big") { 0x666f6f20u32 } else { 0x206f6f66u32 };
-    assert_eq!(val, exp);
+    fail_unless_eq!(val, exp);
 
-    assert_eq!(static_val_be, 0x666f6f20u32);
-    assert_eq!(static_val, static_val_be);
-    assert_eq!(static_val_le, 0x206f6f66u32);
+    fail_unless_eq!(static_val_be, 0x666f6f20u32);
+    fail_unless_eq!(static_val, static_val_be);
+    fail_unless_eq!(static_val_le, 0x206f6f66u32);
     let exp = if cfg!(target_endian = "big") { 0x666f6f20u32 } else { 0x206f6f66u32 };
-    assert_eq!(static_val_target, exp);
+    fail_unless_eq!(static_val_target, exp);
 
-    assert_eq!(fourcc!("\xC0\xFF\xEE!"), 0xC0FFEE21);
+    fail_unless_eq!(fourcc!("\xC0\xFF\xEE!"), 0xC0FFEE21);
 }

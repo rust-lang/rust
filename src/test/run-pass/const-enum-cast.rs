@@ -20,12 +20,12 @@ pub fn main () {
     let a2 = B2 as int;
     let a3 = A2 as f64;
     let a4 = B2 as f64;
-    assert_eq!(c1, 1);
-    assert_eq!(c2, 2);
-    assert_eq!(c3, 1.0);
-    assert_eq!(c4, 2.0);
-    assert_eq!(a1, 1);
-    assert_eq!(a2, 2);
-    assert_eq!(a3, 1.0);
-    assert_eq!(a4, 2.0);
+    fail_unless_eq!(c1, 1);
+    fail_unless_eq!(c2, 2);
+    fail_unless_eq!(c3, 1.0);
+    fail_unless_eq!(c4, 2.0);
+    fail_unless_eq!(a1, 1);
+    fail_unless_eq!(a2, 2);
+    fail_unless_eq!(a3, 1.0);
+    fail_unless_eq!(a4, 2.0);
 }

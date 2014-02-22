@@ -21,7 +21,7 @@ fn foo(cond: || -> bool, make_box: || -> @int) {
         // of this borrow is the fn body as a whole.
         y = borrow(x); //~ ERROR cannot root
 
-        assert_eq!(*x, *y);
+        fail_unless_eq!(*x, *y);
         if cond() { break; }
     }
     fail_unless!(*y != 0);

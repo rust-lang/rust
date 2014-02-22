@@ -234,14 +234,14 @@ mod test {
         let mut q = Queue::new(0);
         q.push(1);
         q.push(2);
-        assert_eq!(q.pop(), Some(1));
-        assert_eq!(q.pop(), Some(2));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(1));
+        fail_unless_eq!(q.pop(), Some(2));
+        fail_unless_eq!(q.pop(), None);
         q.push(3);
         q.push(4);
-        assert_eq!(q.pop(), Some(3));
-        assert_eq!(q.pop(), Some(4));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(3));
+        fail_unless_eq!(q.pop(), Some(4));
+        fail_unless_eq!(q.pop(), None);
     }
 
     #[test]
@@ -256,14 +256,14 @@ mod test {
         let mut q = Queue::new(1);
         q.push(1);
         q.push(2);
-        assert_eq!(q.pop(), Some(1));
-        assert_eq!(q.pop(), Some(2));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(1));
+        fail_unless_eq!(q.pop(), Some(2));
+        fail_unless_eq!(q.pop(), None);
         q.push(3);
         q.push(4);
-        assert_eq!(q.pop(), Some(3));
-        assert_eq!(q.pop(), Some(4));
-        assert_eq!(q.pop(), None);
+        fail_unless_eq!(q.pop(), Some(3));
+        fail_unless_eq!(q.pop(), Some(4));
+        fail_unless_eq!(q.pop(), None);
     }
 
     #[test]

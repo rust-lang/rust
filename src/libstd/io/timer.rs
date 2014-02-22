@@ -117,7 +117,7 @@ mod test {
         let port1 = timer.oneshot(10000);
         let port = timer.oneshot(1);
         port.recv();
-        assert_eq!(port1.recv_opt(), None);
+        fail_unless_eq!(port1.recv_opt(), None);
     })
 
     iotest!(fn test_io_timer_oneshot_then_sleep() {
@@ -125,7 +125,7 @@ mod test {
         let port = timer.oneshot(100000000000);
         timer.sleep(1); // this should invalidate the port
 
-        assert_eq!(port.recv_opt(), None);
+        fail_unless_eq!(port.recv_opt(), None);
     })
 
     iotest!(fn test_io_timer_sleep_periodic() {
@@ -162,8 +162,8 @@ mod test {
         let oport = timer.oneshot(100);
         let pport = timer.periodic(100);
         timer.sleep(1);
-        assert_eq!(oport.recv_opt(), None);
-        assert_eq!(pport.recv_opt(), None);
+        fail_unless_eq!(oport.recv_opt(), None);
+        fail_unless_eq!(pport.recv_opt(), None);
         timer.oneshot(1).recv();
     })
 
@@ -242,7 +242,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.oneshot(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        fail_unless_eq!(port.recv_opt(), None);
     })
 
     iotest!(fn sender_goes_away_period() {
@@ -250,7 +250,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.periodic(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        fail_unless_eq!(port.recv_opt(), None);
     })
 
     iotest!(fn receiver_goes_away_oneshot() {

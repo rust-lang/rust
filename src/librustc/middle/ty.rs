@@ -2186,7 +2186,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
+                fail_unless_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
                 let ty_param_defs = cx.ty_param_defs.borrow();
                 let tp_def = ty_param_defs.get().get(&p.def_id.node);

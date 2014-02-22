@@ -21,5 +21,5 @@ pub fn main() {
         });
     });
     error!("{:?}", sum);
-    assert_eq!(sum, 225);
+    fail_unless_eq!(sum, 225);
 }

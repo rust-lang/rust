@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_transmute_copy() {
-        assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
+        fail_unless_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
     }
 
     #[test]
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert_eq!(~[76u8], transmute(~"L"));
+            fail_unless_eq!(~[76u8], transmute(~"L"));
         }
     }
 }

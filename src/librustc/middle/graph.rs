@@ -327,8 +327,8 @@ mod test {
         let graph = create_graph();
         let expected = ["A", "B", "C", "D", "E", "F"];
         graph.each_node(|idx, node| {
-            assert_eq!(&expected[idx.get()], graph.node_data(idx));
-            assert_eq!(expected[idx.get()], node.data);
+            fail_unless_eq!(&expected[idx.get()], graph.node_data(idx));
+            fail_unless_eq!(expected[idx.get()], node.data);
             true
         });
     }
@@ -338,8 +338,8 @@ mod test {
         let graph = create_graph();
         let expected = ["AB", "BC", "BD", "DE", "EC", "FB"];
         graph.each_edge(|idx, edge| {
-            assert_eq!(&expected[idx.get()], graph.edge_data(idx));
-            assert_eq!(expected[idx.get()], edge.data);
+            fail_unless_eq!(&expected[idx.get()], graph.edge_data(idx));
+            fail_unless_eq!(expected[idx.get()], edge.data);
             true
         });
     }
@@ -349,43 +349,43 @@ mod test {
                                       start_data: N,
                                       expected_incoming: &[(E,N)],
                                       expected_outgoing: &[(E,N)]) {
-        assert_eq!(graph.node_data(start_index), &start_data);
+        fail_unless_eq!(graph.node_data(start_index), &start_data);
 
         let mut counter = 0;
         graph.each_incoming_edge(start_index, |edge_index, edge| {
-            assert_eq!(graph.edge_data(edge_index), &edge.data);
+            fail_unless_eq!(graph.edge_data(edge_index), &edge.data);
             fail_unless!(counter < expected_incoming.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
                 (ref e, ref n) => {
-                    assert_eq!(e, &edge.data);
-                    assert_eq!(n, graph.node_data(edge.source));
-                    assert_eq!(start_index, edge.target);
+                    fail_unless_eq!(e, &edge.data);
+                    fail_unless_eq!(n, graph.node_data(edge.source));
+                    fail_unless_eq!(start_index, edge.target);
                 }
             }
             counter += 1;
             true
         });
-        assert_eq!(counter, expected_incoming.len());
+        fail_unless_eq!(counter, expected_incoming.len());
 
         let mut counter = 0;
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
-            assert_eq!(graph.edge_data(edge_index), &edge.data);
+            fail_unless_eq!(graph.edge_data(edge_index), &edge.data);
             fail_unless!(counter < expected_outgoing.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {
                 (ref e, ref n) => {
-                    assert_eq!(e, &edge.data);
-                    assert_eq!(start_index, edge.source);
-                    assert_eq!(n, graph.node_data(edge.target));
+                    fail_unless_eq!(e, &edge.data);
+                    fail_unless_eq!(start_index, edge.source);
+                    fail_unless_eq!(n, graph.node_data(edge.target));
                 }
             }
             counter += 1;
             true
         });
-        assert_eq!(counter, expected_outgoing.len());
+        fail_unless_eq!(counter, expected_outgoing.len());
     }
 
     #[test]

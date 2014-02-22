@@ -34,8 +34,8 @@ pub fn main() {
     let x = [1, 2, 3, 4, 5];
 
     let product = foldl(x, 1, |a, b| a * *b);
-    assert_eq!(product, 120);
+    fail_unless_eq!(product, 120);
 
     let sum = foldr(x, 0, |a, b| *a + b);
-    assert_eq!(sum, 15);
+    fail_unless_eq!(sum, 15);
 }

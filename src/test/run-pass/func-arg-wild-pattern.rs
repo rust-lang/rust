@@ -16,5 +16,5 @@ fn foo((x, _): (int, int)) -> int {
 }
 
 pub fn main() {
-    assert_eq!(foo((22, 23)), 22);
+    fail_unless_eq!(foo((22, 23)), 22);
 }

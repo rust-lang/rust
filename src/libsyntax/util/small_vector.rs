@@ -139,46 +139,46 @@ mod test {
     #[test]
     fn test_len() {
         let v: SmallVector<int> = SmallVector::zero();
-        assert_eq!(0, v.len());
+        fail_unless_eq!(0, v.len());
 
-        assert_eq!(1, SmallVector::one(1).len());
-        assert_eq!(5, SmallVector::many(~[1, 2, 3, 4, 5]).len());
+        fail_unless_eq!(1, SmallVector::one(1).len());
+        fail_unless_eq!(5, SmallVector::many(~[1, 2, 3, 4, 5]).len());
     }
 
     #[test]
     fn test_push_get() {
         let mut v = SmallVector::zero();
         v.push(1);
-        assert_eq!(1, v.len());
-        assert_eq!(&1, v.get(0));
+        fail_unless_eq!(1, v.len());
+        fail_unless_eq!(&1, v.get(0));
         v.push(2);
-        assert_eq!(2, v.len());
-        assert_eq!(&2, v.get(1));
+        fail_unless_eq!(2, v.len());
+        fail_unless_eq!(&2, v.get(1));
         v.push(3);
-        assert_eq!(3, v.len());
-        assert_eq!(&3, v.get(2));
+        fail_unless_eq!(3, v.len());
+        fail_unless_eq!(&3, v.get(2));
     }
 
     #[test]
     fn test_from_iterator() {
         let v: SmallVector<int> = (~[1, 2, 3]).move_iter().collect();
-        assert_eq!(3, v.len());
-        assert_eq!(&1, v.get(0));
-        assert_eq!(&2, v.get(1));
-        assert_eq!(&3, v.get(2));
+        fail_unless_eq!(3, v.len());
+        fail_unless_eq!(&1, v.get(0));
+        fail_unless_eq!(&2, v.get(1));
+        fail_unless_eq!(&3, v.get(2));
     }
 
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
         let v: ~[int] = v.move_iter().collect();
-        assert_eq!(~[], v);
+        fail_unless_eq!(~[], v);
 
         let v = SmallVector::one(1);
-        assert_eq!(~[1], v.move_iter().collect());
+        fail_unless_eq!(~[1], v.move_iter().collect());
 
         let v = SmallVector::many(~[1, 2, 3]);
-        assert_eq!(~[1, 2, 3], v.move_iter().collect());
+        fail_unless_eq!(~[1, 2, 3], v.move_iter().collect());
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod test {
 
     #[test]
     fn test_expect_one_one() {
-        assert_eq!(1, SmallVector::one(1).expect_one(""));
-        assert_eq!(1, SmallVector::many(~[1]).expect_one(""));
+        fail_unless_eq!(1, SmallVector::one(1).expect_one(""));
+        fail_unless_eq!(1, SmallVector::many(~[1]).expect_one(""));
     }
 }

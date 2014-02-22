@@ -20,9 +20,9 @@ static mut DROP_T: int = 0i;
 fn start(argc: int, argv: **u8) -> int {
     let ret = green::start(argc, argv, main);
     unsafe {
-        assert_eq!(2, DROP);
-        assert_eq!(1, DROP_S);
-        assert_eq!(1, DROP_T);
+        fail_unless_eq!(2, DROP);
+        fail_unless_eq!(1, DROP_S);
+        fail_unless_eq!(1, DROP_T);
     }
     ret
 }
@@ -53,10 +53,10 @@ fn main() {
     let s = S;
     f(s);
     unsafe {
-        assert_eq!(1, DROP);
-        assert_eq!(1, DROP_S);
+        fail_unless_eq!(1, DROP);
+        fail_unless_eq!(1, DROP_S);
     }
     let t = T { i: 1 };
     g(t);
-    unsafe { assert_eq!(1, DROP_T); }
+    unsafe { fail_unless_eq!(1, DROP_T); }
 }

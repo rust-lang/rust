@@ -19,8 +19,8 @@ pub fn main() {
     let a = A { x: &1 };
     let b = A { x: &2 };
 
-    assert_eq!(a, a);
-    assert_eq!(b, b);
+    fail_unless_eq!(a, a);
+    fail_unless_eq!(b, b);
 
 
     fail_unless!(a < b);

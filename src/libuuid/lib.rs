@@ -795,7 +795,7 @@ mod test {
         u.encode(&mut ebml::writer::Encoder(&mut wr));
         let doc = ebml::reader::Doc(wr.get_ref());
         let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
-        assert_eq!(u, u2);
+        fail_unless_eq!(u, u2);
     }
 
     #[test]

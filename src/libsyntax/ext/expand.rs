@@ -988,9 +988,9 @@ mod test {
         let attr2 = make_dummy_attr ("bar");
         let escape_attr = make_dummy_attr ("macro_escape");
         let attrs1 = ~[attr1, escape_attr, attr2];
-        assert_eq!(contains_macro_escape (attrs1),true);
+        fail_unless_eq!(contains_macro_escape (attrs1),true);
         let attrs2 = ~[attr1,attr2];
-        assert_eq!(contains_macro_escape (attrs2),false);
+        fail_unless_eq!(contains_macro_escape (attrs2),false);
     }
 
     // make a MetaWord outer attribute with the given name
@@ -1120,7 +1120,7 @@ mod test {
         let varrefs = path_finder.path_accumulator;
 
         // must be one check clause for each binding:
-        assert_eq!(bindings.len(),bound_connections.len());
+        fail_unless_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
             let binding_name = mtwt_resolve(bindings[binding_idx]);
             let binding_marks = mtwt_marksof(bindings[binding_idx].ctxt,invalid_name);
@@ -1131,7 +1131,7 @@ mod test {
                 if shouldmatch.contains(&idx) {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
-                    assert_eq!(varref.segments.len(),1);
+                    fail_unless_eq!(varref.segments.len(),1);
                     let varref_name = mtwt_resolve(varref.segments[0].identifier);
                     let varref_marks = mtwt_marksof(varref.segments[0].identifier.ctxt,
                                                     invalid_name);
@@ -1141,11 +1141,11 @@ mod test {
                         println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
                     }
-                    assert_eq!(varref_name,binding_name);
+                    fail_unless_eq!(varref_name,binding_name);
                     if bound_ident_check {
                         // we're checking bound-identifier=?, and the marks
                         // should be the same, too:
-                        assert_eq!(varref_marks,binding_marks.clone());
+                        fail_unless_eq!(varref_marks,binding_marks.clone());
                     }
                 } else {
                     let fail = (varref.segments.len() == 1)
@@ -1222,7 +1222,7 @@ foo_module!()
                     }
                 }
             }
-            assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);
+            fail_unless_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);
         };
     }
 
@@ -1231,7 +1231,7 @@ foo_module!()
         let pat = string_to_pat(~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
         let mut pat_idents = new_name_finder(~[]);
         pat_idents.visit_pat(pat, ());
-        assert_eq!(pat_idents.ident_accumulator,
+        fail_unless_eq!(pat_idents.ident_accumulator,
                    strs_to_idents(~["a","c","b","d"]));
     }
 

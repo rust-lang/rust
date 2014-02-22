@@ -18,7 +18,7 @@ fn test1(x: @~int) {
     borrow(&*(*x).clone(), |p| {
         let x_a = &**x as *int;
         fail_unless!((x_a as uint) != (p as *int as uint));
-        assert_eq!(unsafe{*x_a}, *p);
+        fail_unless_eq!(unsafe{*x_a}, *p);
     })
 }
 

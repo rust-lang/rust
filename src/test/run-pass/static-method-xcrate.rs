@@ -17,7 +17,7 @@ use static_methods_crate::read;
 
 pub fn main() {
     let result: int = read(~"5");
-    assert_eq!(result, 5);
-    assert_eq!(read::readMaybe(~"false"), Some(false));
-    assert_eq!(read::readMaybe(~"foo"), None::<bool>);
+    fail_unless_eq!(result, 5);
+    fail_unless_eq!(read::readMaybe(~"false"), Some(false));
+    fail_unless_eq!(read::readMaybe(~"foo"), None::<bool>);
 }

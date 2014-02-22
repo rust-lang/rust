@@ -40,7 +40,7 @@ fn to_foo<T:Clone>(t: T) {
     let v = &3;
     struct F<T> { f: T }
     let x = @F {f:t} as @foo;
-    assert_eq!(x.foo(v), 3);
+    fail_unless_eq!(x.foo(v), 3);
 }
 
 fn to_foo_2<T:Clone>(t: T) -> @foo {

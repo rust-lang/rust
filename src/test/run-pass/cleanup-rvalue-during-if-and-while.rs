@@ -37,7 +37,7 @@ pub fn main() {
     // `drop` 6 times.
     while borrow().do_stuff() {
         i += 1;
-        unsafe { assert_eq!(DROPPED, i) }
+        unsafe { fail_unless_eq!(DROPPED, i) }
         if i > 5 {
             break;
         }
@@ -46,6 +46,6 @@ pub fn main() {
     // This if condition should
     // call it 1 time
     if borrow().do_stuff() {
-        unsafe { assert_eq!(DROPPED, i + 1) }
+        unsafe { fail_unless_eq!(DROPPED, i + 1) }
     }
 }

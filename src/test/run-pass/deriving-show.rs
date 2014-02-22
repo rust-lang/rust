@@ -28,7 +28,7 @@ enum Enum {
 
 macro_rules! t {
     ($x:expr, $expected:expr) => {
-        assert_eq!(format!("{}", $x), $expected.to_owned())
+        fail_unless_eq!(format!("{}", $x), $expected.to_owned())
     }
 }
 

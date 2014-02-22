@@ -30,6 +30,6 @@
 extern crate macro_crate_test;
 
 fn main() {
-    assert_eq!(1, make_a_1!());
+    fail_unless_eq!(1, make_a_1!());
     macro_crate_test::foo();
 }

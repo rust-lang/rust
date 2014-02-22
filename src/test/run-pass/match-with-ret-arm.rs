@@ -18,6 +18,6 @@ pub fn main() {
         None => return (),
         Some(num) => num as u32
     };
-    assert_eq!(f, 1234u32);
+    fail_unless_eq!(f, 1234u32);
     error!("{}", f)
 }

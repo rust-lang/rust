@@ -225,7 +225,7 @@ mod tests {
         let pq = PriorityQueue::from_vec(data);
         let mut i = 0;
         for el in pq.iter() {
-            assert_eq!(*el, iterout[i]);
+            fail_unless_eq!(*el, iterout[i]);
             i += 1;
         }
     }
@@ -237,81 +237,81 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top(), sorted.last().unwrap());
-            assert_eq!(heap.pop(), sorted.pop().unwrap());
+            fail_unless_eq!(heap.top(), sorted.last().unwrap());
+            fail_unless_eq!(heap.pop(), sorted.pop().unwrap());
         }
     }
 
     #[test]
     fn test_push() {
         let mut heap = PriorityQueue::from_vec(~[2, 4, 9]);
-        assert_eq!(heap.len(), 3);
+        fail_unless_eq!(heap.len(), 3);
         fail_unless!(*heap.top() == 9);
         heap.push(11);
-        assert_eq!(heap.len(), 4);
+        fail_unless_eq!(heap.len(), 4);
         fail_unless!(*heap.top() == 11);
         heap.push(5);
-        assert_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.len(), 5);
         fail_unless!(*heap.top() == 11);
         heap.push(27);
-        assert_eq!(heap.len(), 6);
+        fail_unless_eq!(heap.len(), 6);
         fail_unless!(*heap.top() == 27);
         heap.push(3);
-        assert_eq!(heap.len(), 7);
+        fail_unless_eq!(heap.len(), 7);
         fail_unless!(*heap.top() == 27);
         heap.push(103);
-        assert_eq!(heap.len(), 8);
+        fail_unless_eq!(heap.len(), 8);
         fail_unless!(*heap.top() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = PriorityQueue::from_vec(~[~2, ~4, ~9]);
-        assert_eq!(heap.len(), 3);
+        fail_unless_eq!(heap.len(), 3);
         fail_unless!(*heap.top() == ~9);
         heap.push(~11);
-        assert_eq!(heap.len(), 4);
+        fail_unless_eq!(heap.len(), 4);
         fail_unless!(*heap.top() == ~11);
         heap.push(~5);
-        assert_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.len(), 5);
         fail_unless!(*heap.top() == ~11);
         heap.push(~27);
-        assert_eq!(heap.len(), 6);
+        fail_unless_eq!(heap.len(), 6);
         fail_unless!(*heap.top() == ~27);
         heap.push(~3);
-        assert_eq!(heap.len(), 7);
+        fail_unless_eq!(heap.len(), 7);
         fail_unless!(*heap.top() == ~27);
         heap.push(~103);
-        assert_eq!(heap.len(), 8);
+        fail_unless_eq!(heap.len(), 8);
         fail_unless!(*heap.top() == ~103);
     }
 
     #[test]
     fn test_push_pop() {
         let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.push_pop(6), 6);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.push_pop(0), 5);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.push_pop(4), 5);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.push_pop(1), 4);
-        assert_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.push_pop(6), 6);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.push_pop(0), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.push_pop(4), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.push_pop(1), 4);
+        fail_unless_eq!(heap.len(), 5);
     }
 
     #[test]
     fn test_replace() {
         let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(6), 5);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(0), 6);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(4), 5);
-        assert_eq!(heap.len(), 5);
-        assert_eq!(heap.replace(1), 4);
-        assert_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.replace(6), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.replace(0), 6);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.replace(4), 5);
+        fail_unless_eq!(heap.len(), 5);
+        fail_unless_eq!(heap.replace(1), 4);
+        fail_unless_eq!(heap.len(), 5);
     }
 
     fn check_to_vec(mut data: ~[int]) {
@@ -320,8 +320,8 @@ mod tests {
         v.sort();
         data.sort();
 
-        assert_eq!(v, data);
-        assert_eq!(heap.to_sorted_vec(), data);
+        fail_unless_eq!(v, data);
+        fail_unless_eq!(heap.to_sorted_vec(), data);
     }
 
     #[test]
@@ -381,7 +381,7 @@ mod tests {
         let mut q: PriorityQueue<uint> = xs.rev_iter().map(|&x| x).collect();
 
         for &x in xs.iter() {
-            assert_eq!(q.pop(), x);
+            fail_unless_eq!(q.pop(), x);
         }
     }
 }

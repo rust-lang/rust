@@ -170,10 +170,10 @@ mod tests {
 
     #[test]
     fn size_of_basic() {
-        assert_eq!(size_of::<u8>(), 1u);
-        assert_eq!(size_of::<u16>(), 2u);
-        assert_eq!(size_of::<u32>(), 4u);
-        assert_eq!(size_of::<u64>(), 8u);
+        fail_unless_eq!(size_of::<u8>(), 1u);
+        fail_unless_eq!(size_of::<u16>(), 2u);
+        fail_unless_eq!(size_of::<u32>(), 4u);
+        fail_unless_eq!(size_of::<u64>(), 8u);
     }
 
     #[test]
@@ -181,46 +181,46 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     fn size_of_32() {
-        assert_eq!(size_of::<uint>(), 4u);
-        assert_eq!(size_of::<*uint>(), 4u);
+        fail_unless_eq!(size_of::<uint>(), 4u);
+        fail_unless_eq!(size_of::<*uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn size_of_64() {
-        assert_eq!(size_of::<uint>(), 8u);
-        assert_eq!(size_of::<*uint>(), 8u);
+        fail_unless_eq!(size_of::<uint>(), 8u);
+        fail_unless_eq!(size_of::<*uint>(), 8u);
     }
 
     #[test]
     fn size_of_val_basic() {
-        assert_eq!(size_of_val(&1u8), 1);
-        assert_eq!(size_of_val(&1u16), 2);
-        assert_eq!(size_of_val(&1u32), 4);
-        assert_eq!(size_of_val(&1u64), 8);
+        fail_unless_eq!(size_of_val(&1u8), 1);
+        fail_unless_eq!(size_of_val(&1u16), 2);
+        fail_unless_eq!(size_of_val(&1u32), 4);
+        fail_unless_eq!(size_of_val(&1u64), 8);
     }
 
     #[test]
     fn nonzero_size_of_basic() {
         type Z = [i8, ..0];
-        assert_eq!(size_of::<Z>(), 0u);
-        assert_eq!(nonzero_size_of::<Z>(), 1u);
-        assert_eq!(nonzero_size_of::<uint>(), size_of::<uint>());
+        fail_unless_eq!(size_of::<Z>(), 0u);
+        fail_unless_eq!(nonzero_size_of::<Z>(), 1u);
+        fail_unless_eq!(nonzero_size_of::<uint>(), size_of::<uint>());
     }
 
     #[test]
     fn nonzero_size_of_val_basic() {
         let z = [0u8, ..0];
-        assert_eq!(size_of_val(&z), 0u);
-        assert_eq!(nonzero_size_of_val(&z), 1u);
-        assert_eq!(nonzero_size_of_val(&1u), size_of_val(&1u));
+        fail_unless_eq!(size_of_val(&z), 0u);
+        fail_unless_eq!(nonzero_size_of_val(&z), 1u);
+        fail_unless_eq!(nonzero_size_of_val(&1u), size_of_val(&1u));
     }
 
     #[test]
     fn align_of_basic() {
-        assert_eq!(pref_align_of::<u8>(), 1u);
-        assert_eq!(pref_align_of::<u16>(), 2u);
-        assert_eq!(pref_align_of::<u32>(), 4u);
+        fail_unless_eq!(pref_align_of::<u8>(), 1u);
+        fail_unless_eq!(pref_align_of::<u16>(), 2u);
+        fail_unless_eq!(pref_align_of::<u32>(), 4u);
     }
 
     #[test]
@@ -228,22 +228,22 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     fn align_of_32() {
-        assert_eq!(pref_align_of::<uint>(), 4u);
-        assert_eq!(pref_align_of::<*uint>(), 4u);
+        fail_unless_eq!(pref_align_of::<uint>(), 4u);
+        fail_unless_eq!(pref_align_of::<*uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn align_of_64() {
-        assert_eq!(pref_align_of::<uint>(), 8u);
-        assert_eq!(pref_align_of::<*uint>(), 8u);
+        fail_unless_eq!(pref_align_of::<uint>(), 8u);
+        fail_unless_eq!(pref_align_of::<*uint>(), 8u);
     }
 
     #[test]
     fn align_of_val_basic() {
-        assert_eq!(pref_align_of_val(&1u8), 1u);
-        assert_eq!(pref_align_of_val(&1u16), 2u);
-        assert_eq!(pref_align_of_val(&1u32), 4u);
+        fail_unless_eq!(pref_align_of_val(&1u8), 1u);
+        fail_unless_eq!(pref_align_of_val(&1u16), 2u);
+        fail_unless_eq!(pref_align_of_val(&1u32), 4u);
     }
 
     #[test]
@@ -251,8 +251,8 @@ mod tests {
         let mut x = 31337;
         let mut y = 42;
         swap(&mut x, &mut y);
-        assert_eq!(x, 42);
-        assert_eq!(y, 31337);
+        fail_unless_eq!(x, 42);
+        fail_unless_eq!(y, 31337);
     }
 
     #[test]

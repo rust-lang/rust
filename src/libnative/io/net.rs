@@ -229,7 +229,7 @@ pub fn init() {
             let mut data: WSADATA = mem::init();
             let ret = WSAStartup(0x202,      // version 2.2
                                  &mut data);
-            assert_eq!(ret, 0);
+            fail_unless_eq!(ret, 0);
             INITIALIZED = true;
         }
     }

@@ -16,5 +16,5 @@ fn test(f: |uint| -> uint) -> uint {
 
 pub fn main() {
     let y = test(|x| 4u * x);
-    assert_eq!(y, 88u);
+    fail_unless_eq!(y, 88u);
 }

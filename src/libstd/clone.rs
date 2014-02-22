@@ -215,14 +215,14 @@ extern_fn_deep_clone!(A, B, C, D, E, F, G, H)
 fn test_owned_clone() {
     let a = ~5i;
     let b: ~int = a.clone();
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
 }
 
 #[test]
 fn test_managed_clone() {
     let a = @5i;
     let b: @int = a.clone();
-    assert_eq!(a, b);
+    fail_unless_eq!(a, b);
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn test_borrowed_clone() {
     let x = 5i;
     let y: &int = &x;
     let z: &int = (&y).clone();
-    assert_eq!(*z, 5);
+    fail_unless_eq!(*z, 5);
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn test_clone_from() {
     let a = ~5;
     let mut b = ~10;
     b.clone_from(&a);
-    assert_eq!(*b, 5);
+    fail_unless_eq!(*b, 5);
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn test_deep_clone_from() {
     let a = ~5;
     let mut b = ~10;
     b.deep_clone_from(&a);
-    assert_eq!(*b, 5);
+    fail_unless_eq!(*b, 5);
 }
 
 #[test]

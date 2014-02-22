@@ -13,5 +13,5 @@ fn foo() -> int { 22 }
 pub fn main() {
     let mut x: ~[extern "Rust" fn() -> int] = ~[];
     x.push(foo);
-    assert_eq!((x[0])(), 22);
+    fail_unless_eq!((x[0])(), 22);
 }

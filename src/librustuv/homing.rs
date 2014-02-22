@@ -107,7 +107,7 @@ pub trait HomingIO {
             });
 
             // Once we wake up, assert that we're in the right location
-            assert_eq!(local_id(), destination);
+            fail_unless_eq!(local_id(), destination);
         }
 
         return destination;
@@ -203,7 +203,7 @@ mod test {
         let task = pool.task(TaskOpts::new(), proc() {
             let (mut watcher, addr) = port.recv();
             let mut buf = [0, ..10];
-            assert_eq!(watcher.recvfrom(buf).unwrap(), (4, addr));
+            fail_unless_eq!(watcher.recvfrom(buf).unwrap(), (4, addr));
         });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 

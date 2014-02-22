@@ -29,10 +29,10 @@ local_data_key!(key_int: int)
 local_data_key!(key_vector: ~[int])
 
 local_data::set(key_int, 3);
-local_data::get(key_int, |opt| assert_eq!(opt.map(|x| *x), Some(3)));
+local_data::get(key_int, |opt| fail_unless_eq!(opt.map(|x| *x), Some(3)));
 
 local_data::set(key_vector, ~[4]);
-local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
+local_data::get(key_vector, |opt| fail_unless_eq!(*opt.unwrap(), ~[4]));
  ```
 
 */
@@ -488,15 +488,15 @@ mod tests {
         get(key, |v| {
             get(key, |v| {
                 get(key, |v| {
-                    assert_eq!(**v.unwrap(), 1);
+                    fail_unless_eq!(**v.unwrap(), 1);
                 });
-                assert_eq!(**v.unwrap(), 1);
+                fail_unless_eq!(**v.unwrap(), 1);
             });
-            assert_eq!(**v.unwrap(), 1);
+            fail_unless_eq!(**v.unwrap(), 1);
         });
         set(key, ~2);
         get(key, |v| {
-            assert_eq!(**v.unwrap(), 2);
+            fail_unless_eq!(**v.unwrap(), 2);
         })
     }
 
@@ -510,7 +510,7 @@ mod tests {
         });
 
         get(key, |v| {
-            assert_eq!(*v.unwrap(), 2);
+            fail_unless_eq!(*v.unwrap(), 2);
         })
     }
 
@@ -527,11 +527,11 @@ mod tests {
         set(key4, 4);
         set(key5, 5);
 
-        get(key1, |x| assert_eq!(*x.unwrap(), 1));
-        get(key2, |x| assert_eq!(*x.unwrap(), 2));
-        get(key3, |x| assert_eq!(*x.unwrap(), 3));
-        get(key4, |x| assert_eq!(*x.unwrap(), 4));
-        get(key5, |x| assert_eq!(*x.unwrap(), 5));
+        get(key1, |x| fail_unless_eq!(*x.unwrap(), 1));
+        get(key2, |x| fail_unless_eq!(*x.unwrap(), 2));
+        get(key3, |x| fail_unless_eq!(*x.unwrap(), 3));
+        get(key4, |x| fail_unless_eq!(*x.unwrap(), 4));
+        get(key5, |x| fail_unless_eq!(*x.unwrap(), 5));
     }
 
     #[test]

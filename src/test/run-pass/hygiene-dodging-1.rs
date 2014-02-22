@@ -17,5 +17,5 @@ pub fn main(){
     let x = 9;
     // use it to avoid warnings:
     x+3;
-    assert_eq!(x::g(),14);
+    fail_unless_eq!(x::g(),14);
 }

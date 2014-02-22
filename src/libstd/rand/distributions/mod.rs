@@ -281,8 +281,8 @@ mod tests {
     fn test_rand_sample() {
         let mut rand_sample = RandSample::<ConstRand>;
 
-        assert_eq!(rand_sample.sample(&mut task_rng()), ConstRand(0));
-        assert_eq!(rand_sample.ind_sample(&mut task_rng()), ConstRand(0));
+        fail_unless_eq!(rand_sample.sample(&mut task_rng()), ConstRand(0));
+        fail_unless_eq!(rand_sample.ind_sample(&mut task_rng()), ConstRand(0));
     }
     #[test]
     fn test_weighted_choice() {
@@ -299,7 +299,7 @@ mod tests {
                 let mut rng = CountingRng { i: 0 };
 
                 for &val in expected.iter() {
-                    assert_eq!(wc.ind_sample(&mut rng), val)
+                    fail_unless_eq!(wc.ind_sample(&mut rng), val)
                 }
             }}
         );

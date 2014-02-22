@@ -148,29 +148,29 @@ mod test {
         let mut buf = ~[0u8, ..3];
 
 
-        assert_eq!(Ok(0), reader.read([]));
+        fail_unless_eq!(Ok(0), reader.read([]));
 
-        assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(~[1,2,3], buf);
+        fail_unless_eq!(Ok(3), reader.read(buf));
+        fail_unless_eq!(~[1,2,3], buf);
 
-        assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(~[4,5,6], buf);
+        fail_unless_eq!(Ok(3), reader.read(buf));
+        fail_unless_eq!(~[4,5,6], buf);
 
-        assert_eq!(Ok(2), reader.read(buf));
-        assert_eq!(~[7,8,6], buf);
+        fail_unless_eq!(Ok(2), reader.read(buf));
+        fail_unless_eq!(~[7,8,6], buf);
 
         match reader.read(buf) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => fail_unless_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(~[7,8,6], buf);
+        fail_unless_eq!(~[7,8,6], buf);
 
         // Ensure it continues to fail in the same way.
         match reader.read(buf) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => fail_unless_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(~[7,8,6], buf);
+        fail_unless_eq!(~[7,8,6], buf);
     }
 
     #[test]
@@ -181,11 +181,11 @@ mod test {
 
         let wanted = ~[0u8, 0u8, 0u8, 42u8];
         let got = task::try(proc() { port.recv() }).unwrap();
-        assert_eq!(wanted, got);
+        fail_unless_eq!(wanted, got);
 
         match writer.write_u8(1) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, io::BrokenPipe),
+            Err(e) => fail_unless_eq!(e.kind, io::BrokenPipe),
         }
     }
 }

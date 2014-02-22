@@ -639,7 +639,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
         }
     }
 
-    assert_eq!(sum, trie.count);
+    fail_unless_eq!(sum, trie.count);
 }
 
 #[cfg(test)]
@@ -659,7 +659,7 @@ mod test_map {
         match m.find_mut(&5) {
             None => fail!(), Some(x) => *x = new
         }
-        assert_eq!(m.find(&5), Some(&new));
+        fail_unless_eq!(m.find(&5), Some(&new));
     }
 
     #[test]
@@ -720,8 +720,8 @@ mod test_map {
 
         let mut n = 4;
         m.each_reverse(|k, v| {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
+            fail_unless_eq!(*k, n);
+            fail_unless_eq!(*v, n * 2);
             n -= 1;
             true
         });
@@ -740,8 +740,8 @@ mod test_map {
             if n == uint::MAX - 5000 { false } else {
                 fail_unless!(n > uint::MAX - 5000);
 
-                assert_eq!(*k, n);
-                assert_eq!(*v, n / 2);
+                fail_unless_eq!(*k, n);
+                fail_unless_eq!(*v, n / 2);
                 n -= 1;
                 true
             }
@@ -751,17 +751,17 @@ mod test_map {
     #[test]
     fn test_swap() {
         let mut m = TrieMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        fail_unless_eq!(m.swap(1, 2), None);
+        fail_unless_eq!(m.swap(1, 3), Some(2));
+        fail_unless_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TrieMap::new();
         m.insert(1, 2);
-        assert_eq!(m.pop(&1), Some(2));
-        assert_eq!(m.pop(&1), None);
+        fail_unless_eq!(m.pop(&1), Some(2));
+        fail_unless_eq!(m.pop(&1), None);
     }
 
     #[test]
@@ -771,14 +771,14 @@ mod test_map {
         let map: TrieMap<int> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
-            assert_eq!(map.find(&k), Some(&v));
+            fail_unless_eq!(map.find(&k), Some(&v));
         }
     }
 
     #[test]
     fn test_iteration() {
         let empty_map : TrieMap<uint> = TrieMap::new();
-        assert_eq!(empty_map.iter().next(), None);
+        fail_unless_eq!(empty_map.iter().next(), None);
 
         let first = uint::MAX - 10000;
         let last = uint::MAX;
@@ -790,11 +790,11 @@ mod test_map {
 
         let mut i = 0;
         for (k, &v) in map.iter() {
-            assert_eq!(k, first + i);
-            assert_eq!(v, k / 2);
+            fail_unless_eq!(k, first + i);
+            fail_unless_eq!(v, k / 2);
             i += 1;
         }
-        assert_eq!(i, last - first);
+        fail_unless_eq!(i, last - first);
     }
 
     #[test]
@@ -812,11 +812,11 @@ mod test_map {
 
         let mut i = 0;
         for (k, v) in map.mut_iter() {
-            assert_eq!(k, first + i);
+            fail_unless_eq!(k, first + i);
             *v -= k / 2;
             i += 1;
         }
-        assert_eq!(i, last - first);
+        fail_unless_eq!(i, last - first);
 
         fail_unless!(map.iter().all(|(_, &v)| v == 0));
     }
@@ -824,8 +824,8 @@ mod test_map {
     #[test]
     fn test_bound() {
         let empty_map : TrieMap<uint> = TrieMap::new();
-        assert_eq!(empty_map.lower_bound(0).next(), None);
-        assert_eq!(empty_map.upper_bound(0).next(), None);
+        fail_unless_eq!(empty_map.lower_bound(0).next(), None);
+        fail_unless_eq!(empty_map.upper_bound(0).next(), None);
 
         let last = 999u;
         let step = 3u;
@@ -843,31 +843,31 @@ mod test_map {
             let next_key = i - i % step + step;
             let next_pair = (next_key, &value);
             if i % step == 0 {
-                assert_eq!(lb.next(), Some((i, &value)));
+                fail_unless_eq!(lb.next(), Some((i, &value)));
             } else {
-                assert_eq!(lb.next(), Some(next_pair));
+                fail_unless_eq!(lb.next(), Some(next_pair));
             }
-            assert_eq!(ub.next(), Some(next_pair));
+            fail_unless_eq!(ub.next(), Some(next_pair));
         }
 
         let mut lb = map.lower_bound(last - step);
-        assert_eq!(lb.next(), Some((last - step, &value)));
+        fail_unless_eq!(lb.next(), Some((last - step, &value)));
         let mut ub = map.upper_bound(last - step);
-        assert_eq!(ub.next(), None);
+        fail_unless_eq!(ub.next(), None);
 
         for i in range(last - step + 1, last) {
             let mut lb = map.lower_bound(i);
-            assert_eq!(lb.next(), None);
+            fail_unless_eq!(lb.next(), None);
             let mut ub = map.upper_bound(i);
-            assert_eq!(ub.next(), None);
+            fail_unless_eq!(ub.next(), None);
         }
     }
 
     #[test]
     fn test_mut_bound() {
         let empty_map : TrieMap<uint> = TrieMap::new();
-        assert_eq!(empty_map.lower_bound(0).next(), None);
-        assert_eq!(empty_map.upper_bound(0).next(), None);
+        fail_unless_eq!(empty_map.lower_bound(0).next(), None);
+        fail_unless_eq!(empty_map.upper_bound(0).next(), None);
 
         let mut m_lower = TrieMap::new();
         let mut m_upper = TrieMap::new();
@@ -880,7 +880,7 @@ mod test_map {
             let mut lb_it = m_lower.mut_lower_bound(i);
             let (k, v) = lb_it.next().unwrap();
             let lb = i + i % 2;
-            assert_eq!(lb, k);
+            fail_unless_eq!(lb, k);
             *v -= k;
         }
 
@@ -888,7 +888,7 @@ mod test_map {
             let mut ub_it = m_upper.mut_upper_bound(i);
             let (k, v) = ub_it.next().unwrap();
             let ub = i + 2 - i % 2;
-            assert_eq!(ub, k);
+            fail_unless_eq!(ub, k);
             *v -= k;
         }
 
@@ -1025,12 +1025,12 @@ mod test_set {
         fail_unless!(trie.insert(x));
         fail_unless!(trie.insert(y));
 
-        assert_eq!(trie.len(), 2);
+        fail_unless_eq!(trie.len(), 2);
 
         let expected = [x, y];
 
         for (i, x) in trie.iter().enumerate() {
-            assert_eq!(expected[i], x);
+            fail_unless_eq!(expected[i], x);
         }
     }
 

@@ -22,6 +22,6 @@ mod gravy {
 }
 
 pub fn main() {
-    assert_eq!(biscuits::test::foo(), 10);
-    assert_eq!(gravy::test::foo(), 10);
+    fail_unless_eq!(biscuits::test::foo(), 10);
+    fail_unless_eq!(gravy::test::foo(), 10);
 }

@@ -42,5 +42,5 @@ pub fn main() {
     fail_unless!(a != b);
     fail_unless!(a < b);
     fail_unless!(!a.equals(&b));
-    assert_eq!(a.cmp(&b), ::std::cmp::Less);
+    fail_unless_eq!(a.cmp(&b), ::std::cmp::Less);
 }

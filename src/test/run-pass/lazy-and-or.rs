@@ -17,6 +17,6 @@ pub fn main() {
     fail_unless!((x));
     let mut y: int = 10;
     info!("{:?}", x || incr(&mut y));
-    assert_eq!(y, 10);
+    fail_unless_eq!(y, 10);
     if true && x { fail_unless!((true)); } else { fail_unless!((false)); }
 }

@@ -483,10 +483,10 @@ mod test {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         fm.next_line(BytePos(0));
-        assert_eq!(&fm.get_line(0),&~"first line.");
+        fail_unless_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        assert_eq!(&fm.get_line(1),&~".");
+        fail_unless_eq!(&fm.get_line(1),&~".");
     }
 
     #[test]
@@ -521,12 +521,12 @@ mod test {
         let cm = init_code_map();
 
         let fmabp1 = cm.lookup_byte_offset(BytePos(22));
-        assert_eq!(fmabp1.fm.name, ~"blork.rs");
-        assert_eq!(fmabp1.pos, BytePos(22));
+        fail_unless_eq!(fmabp1.fm.name, ~"blork.rs");
+        fail_unless_eq!(fmabp1.pos, BytePos(22));
 
         let fmabp2 = cm.lookup_byte_offset(BytePos(23));
-        assert_eq!(fmabp2.fm.name, ~"blork2.rs");
-        assert_eq!(fmabp2.pos, BytePos(0));
+        fail_unless_eq!(fmabp2.fm.name, ~"blork2.rs");
+        fail_unless_eq!(fmabp2.pos, BytePos(0));
     }
 
     #[test]
@@ -535,10 +535,10 @@ mod test {
         let cm = init_code_map();
 
         let cp1 = cm.bytepos_to_charpos(BytePos(22));
-        assert_eq!(cp1, CharPos(22));
+        fail_unless_eq!(cp1, CharPos(22));
 
         let cp2 = cm.bytepos_to_charpos(BytePos(23));
-        assert_eq!(cp2, CharPos(23));
+        fail_unless_eq!(cp2, CharPos(23));
     }
 
     #[test]
@@ -547,13 +547,13 @@ mod test {
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
-        assert_eq!(loc1.file.name, ~"blork.rs");
-        assert_eq!(loc1.line, 2);
-        assert_eq!(loc1.col, CharPos(10));
+        fail_unless_eq!(loc1.file.name, ~"blork.rs");
+        fail_unless_eq!(loc1.line, 2);
+        fail_unless_eq!(loc1.col, CharPos(10));
 
         let loc2 = cm.lookup_char_pos(BytePos(23));
-        assert_eq!(loc2.file.name, ~"blork2.rs");
-        assert_eq!(loc2.line, 1);
-        assert_eq!(loc2.col, CharPos(0));
+        fail_unless_eq!(loc2.file.name, ~"blork2.rs");
+        fail_unless_eq!(loc2.line, 1);
+        fail_unless_eq!(loc2.col, CharPos(0));
     }
 }

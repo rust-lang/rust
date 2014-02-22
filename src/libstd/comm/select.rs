@@ -34,10 +34,10 @@
 //!
 //! select! (
 //!     val = p1.recv() => {
-//!         assert_eq!(val, 1);
+//!         fail_unless_eq!(val, 1);
 //!     }
 //!     val = p2.recv() => {
-//!         assert_eq!(val, 2);
+//!         fail_unless_eq!(val, 2);
 //!     }
 //! )
 //! ```
@@ -288,13 +288,13 @@ impl<'port, T: Send> Handle<'port, T> {
         let me: *mut Handle<'static, ()> = cast::transmute(&*self);
 
         if self.prev.is_null() {
-            assert_eq!(selector.head, me);
+            fail_unless_eq!(selector.head, me);
             selector.head = self.next;
         } else {
             (*self.prev).next = self.next;
         }
         if self.next.is_null() {
-            assert_eq!(selector.tail, me);
+            fail_unless_eq!(selector.tail, me);
             selector.tail = self.prev;
         } else {
             (*self.next).prev = self.prev;
@@ -345,22 +345,22 @@ mod test {
         let (p2, c2) = Chan::<int>::new();
         c1.send(1);
         select! (
-            foo = p1.recv() => { assert_eq!(foo, 1); },
+            foo = p1.recv() => { fail_unless_eq!(foo, 1); },
             _bar = p2.recv() => { fail!() }
         )
         c2.send(2);
         select! (
             _foo = p1.recv() => { fail!() },
-            bar = p2.recv() => { assert_eq!(bar, 2) }
+            bar = p2.recv() => { fail_unless_eq!(bar, 2) }
         )
         drop(c1);
         select! (
-            foo = p1.recv_opt() => { assert_eq!(foo, None); },
+            foo = p1.recv_opt() => { fail_unless_eq!(foo, None); },
             _bar = p2.recv() => { fail!() }
         )
         drop(c2);
         select! (
-            bar = p2.recv_opt() => { assert_eq!(bar, None); }
+            bar = p2.recv_opt() => { fail_unless_eq!(bar, None); }
         )
     })
 
@@ -376,7 +376,7 @@ mod test {
             _foo = p2.recv() => { fail!("2") },
             _foo = p3.recv() => { fail!("3") },
             _foo = p4.recv() => { fail!("4") },
-            foo = p5.recv() => { assert_eq!(foo, 4); }
+            foo = p5.recv() => { fail_unless_eq!(foo, 4); }
         )
     })
 
@@ -387,7 +387,7 @@ mod test {
 
         select! (
             _a1 = p1.recv_opt() => { fail!() },
-            a2 = p2.recv_opt() => { assert_eq!(a2, None); }
+            a2 = p2.recv_opt() => { fail_unless_eq!(a2, None); }
         )
     })
 
@@ -404,12 +404,12 @@ mod test {
         });
 
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
+            a = p1.recv() => { fail_unless_eq!(a, 1); },
             _b = p2.recv() => { fail!() }
         )
         c3.send(1);
         select! (
-            a = p1.recv_opt() => { assert_eq!(a, None); },
+            a = p1.recv_opt() => { fail_unless_eq!(a, None); },
             _b = p2.recv() => { fail!() }
         )
     })
@@ -427,15 +427,15 @@ mod test {
         });
 
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
-            a = p2.recv() => { assert_eq!(a, 2); }
+            a = p1.recv() => { fail_unless_eq!(a, 1); },
+            a = p2.recv() => { fail_unless_eq!(a, 2); }
         )
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
-            a = p2.recv() => { assert_eq!(a, 2); }
+            a = p1.recv() => { fail_unless_eq!(a, 1); },
+            a = p2.recv() => { fail_unless_eq!(a, 2); }
         )
-        assert_eq!(p1.try_recv(), Empty);
-        assert_eq!(p2.try_recv(), Empty);
+        fail_unless_eq!(p1.try_recv(), Empty);
+        fail_unless_eq!(p2.try_recv(), Empty);
         c3.send(());
     })
 
@@ -473,7 +473,7 @@ mod test {
         spawn(proc() {
             p3.recv();
             c1.clone();
-            assert_eq!(p3.try_recv(), Empty);
+            fail_unless_eq!(p3.try_recv(), Empty);
             c1.send(2);
             p3.recv();
         });
@@ -494,7 +494,7 @@ mod test {
         spawn(proc() {
             p3.recv();
             c1.clone();
-            assert_eq!(p3.try_recv(), Empty);
+            fail_unless_eq!(p3.try_recv(), Empty);
             c1.send(2);
             p3.recv();
         });
@@ -517,7 +517,7 @@ mod test {
             let mut h2 = s.handle(&p2);
             unsafe { h2.add(); }
             unsafe { h1.add(); }
-            assert_eq!(s.wait(), h2.id);
+            fail_unless_eq!(s.wait(), h2.id);
             c.send(());
         });
 
@@ -559,7 +559,7 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight5() {
@@ -569,7 +569,7 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight6() {
@@ -579,7 +579,7 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight7() {
@@ -588,7 +588,7 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight8() {
@@ -599,7 +599,7 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight9() {
@@ -611,6 +611,6 @@ mod test {
         let s = Select::new();
         let mut h = s.handle(&p);
         unsafe { h.add(); }
-        assert_eq!(s.wait2(false), h.id);
+        fail_unless_eq!(s.wait2(false), h.id);
     })
 }

@@ -16,8 +16,8 @@ pub fn main() {
     }
     match f {
         Foo { ref x, ref y } => {
-            assert_eq!(f.x, 11);
-            assert_eq!(f.y, 0);
+            fail_unless_eq!(f.x, 11);
+            fail_unless_eq!(f.y, 0);
         }
     }
     match f {
@@ -26,6 +26,6 @@ pub fn main() {
             *y = 1;
         }
     }
-    assert_eq!(f.x, 11);
-    assert_eq!(f.y, 1);
+    fail_unless_eq!(f.x, 11);
+    fail_unless_eq!(f.y, 1);
 }

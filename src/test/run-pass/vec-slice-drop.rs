@@ -34,7 +34,7 @@ pub fn main() {
     let x = @Cell::new(0);
     {
         let l = &[foo(x)];
-        assert_eq!(l[0].x.get(), 0);
+        fail_unless_eq!(l[0].x.get(), 0);
     }
-    assert_eq!(x.get(), 1);
+    fail_unless_eq!(x.get(), 1);
 }

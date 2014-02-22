@@ -33,16 +33,16 @@ struct S3_Foo(u8, u16, Foo);
 struct S7_Option(f32, u8, u16, Option<@f64>);
 
 pub fn main() {
-    assert_eq!(mem::size_of::<S4>(), 4);
+    fail_unless_eq!(mem::size_of::<S4>(), 4);
 
-    assert_eq!(mem::size_of::<S5>(), 5);
+    fail_unless_eq!(mem::size_of::<S5>(), 5);
 
-    assert_eq!(mem::size_of::<S13_str>(),
+    fail_unless_eq!(mem::size_of::<S13_str>(),
                13 + mem::size_of::<~str>());
 
-    assert_eq!(mem::size_of::<S3_Foo>(),
+    fail_unless_eq!(mem::size_of::<S3_Foo>(),
                3 + mem::size_of::<Foo>());
 
-    assert_eq!(mem::size_of::<S7_Option>(),
+    fail_unless_eq!(mem::size_of::<S7_Option>(),
               7 + mem::size_of::<Option<@f64>>());
 }

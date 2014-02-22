@@ -303,88 +303,88 @@ mod tests {
 
     #[test]
     pub fn test_and() {
-        assert_eq!(op1().and(Ok(667)).unwrap(), 667);
-        assert_eq!(op1().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"bad");
+        fail_unless_eq!(op1().and(Ok(667)).unwrap(), 667);
+        fail_unless_eq!(op1().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"bad");
 
-        assert_eq!(op2().and(Ok(667)).unwrap_err(), ~"sadface");
-        assert_eq!(op2().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"sadface");
+        fail_unless_eq!(op2().and(Ok(667)).unwrap_err(), ~"sadface");
+        fail_unless_eq!(op2().and(Err::<(), ~str>(~"bad")).unwrap_err(), ~"sadface");
     }
 
     #[test]
     pub fn test_and_then() {
-        assert_eq!(op1().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap(), 667);
-        assert_eq!(op1().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"bad");
+        fail_unless_eq!(op1().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap(), 667);
+        fail_unless_eq!(op1().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"bad");
 
-        assert_eq!(op2().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap_err(), ~"sadface");
-        assert_eq!(op2().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"sadface");
+        fail_unless_eq!(op2().and_then(|i| Ok::<int, ~str>(i + 1)).unwrap_err(), ~"sadface");
+        fail_unless_eq!(op2().and_then(|_| Err::<int, ~str>(~"bad")).unwrap_err(), ~"sadface");
     }
 
     #[test]
     pub fn test_or() {
-        assert_eq!(op1().or(Ok(667)).unwrap(), 666);
-        assert_eq!(op1().or(Err(~"bad")).unwrap(), 666);
+        fail_unless_eq!(op1().or(Ok(667)).unwrap(), 666);
+        fail_unless_eq!(op1().or(Err(~"bad")).unwrap(), 666);
 
-        assert_eq!(op2().or(Ok(667)).unwrap(), 667);
-        assert_eq!(op2().or(Err(~"bad")).unwrap_err(), ~"bad");
+        fail_unless_eq!(op2().or(Ok(667)).unwrap(), 667);
+        fail_unless_eq!(op2().or(Err(~"bad")).unwrap_err(), ~"bad");
     }
 
     #[test]
     pub fn test_or_else() {
-        assert_eq!(op1().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 666);
-        assert_eq!(op1().or_else(|e| Err::<int, ~str>(e + "!")).unwrap(), 666);
+        fail_unless_eq!(op1().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 666);
+        fail_unless_eq!(op1().or_else(|e| Err::<int, ~str>(e + "!")).unwrap(), 666);
 
-        assert_eq!(op2().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 667);
-        assert_eq!(op2().or_else(|e| Err::<int, ~str>(e + "!")).unwrap_err(), ~"sadface!");
+        fail_unless_eq!(op2().or_else(|_| Ok::<int, ~str>(667)).unwrap(), 667);
+        fail_unless_eq!(op2().or_else(|e| Err::<int, ~str>(e + "!")).unwrap_err(), ~"sadface!");
     }
 
     #[test]
     pub fn test_impl_map() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map(|x| x + "b"), Ok(~"ab"));
-        assert_eq!(Err::<~str, ~str>(~"a").map(|x| x + "b"), Err(~"a"));
+        fail_unless_eq!(Ok::<~str, ~str>(~"a").map(|x| x + "b"), Ok(~"ab"));
+        fail_unless_eq!(Err::<~str, ~str>(~"a").map(|x| x + "b"), Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|x| x + "b"), Ok(~"a"));
-        assert_eq!(Err::<~str, ~str>(~"a").map_err(|x| x + "b"), Err(~"ab"));
+        fail_unless_eq!(Ok::<~str, ~str>(~"a").map_err(|x| x + "b"), Ok(~"a"));
+        fail_unless_eq!(Err::<~str, ~str>(~"a").map_err(|x| x + "b"), Err(~"ab"));
     }
 
     #[test]
     fn test_collect() {
         let v: Result<~[int], ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
-        assert_eq!(v, Ok(~[]));
+        fail_unless_eq!(v, Ok(~[]));
 
         let v: Result<~[int], ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
-        assert_eq!(v, Ok(~[0, 1, 2]));
+        fail_unless_eq!(v, Ok(~[0, 1, 2]));
 
         let v: Result<~[int], int> = collect(range(0, 3)
                                              .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
-        assert_eq!(v, Err(2));
+        fail_unless_eq!(v, Err(2));
 
         // test that it does not take more elements than it needs
         let functions = [|| Ok(()), || Err(1), || fail!()];
 
         let v: Result<~[()], int> = collect(functions.iter().map(|f| (*f)()));
-        assert_eq!(v, Err(1));
+        fail_unless_eq!(v, Err(1));
     }
 
     #[test]
     fn test_fold() {
-        assert_eq!(fold_(range(0, 0)
+        fail_unless_eq!(fold_(range(0, 0)
                         .map(|_| Ok::<(), ()>(()))),
                    Ok(()));
-        assert_eq!(fold(range(0, 3)
+        fail_unless_eq!(fold(range(0, 3)
                         .map(|x| Ok::<int, ()>(x)),
                         0, |a, b| a + b),
                    Ok(3));
-        assert_eq!(fold_(range(0, 3)
+        fail_unless_eq!(fold_(range(0, 3)
                         .map(|x| if x > 1 { Err(x) } else { Ok(()) })),
                    Err(2));
 
         // test that it does not take more elements than it needs
         let functions = [|| Ok(()), || Err(1), || fail!()];
 
-        assert_eq!(fold_(functions.iter()
+        fail_unless_eq!(fold_(functions.iter()
                         .map(|f| (*f)())),
                    Err(1));
     }
@@ -394,8 +394,8 @@ mod tests {
         let ok: Result<int, ~str> = Ok(100);
         let err: Result<int, ~str> = Err(~"Err");
 
-        assert_eq!(ok.to_str(), ~"Ok(100)");
-        assert_eq!(err.to_str(), ~"Err(Err)");
+        fail_unless_eq!(ok.to_str(), ~"Ok(100)");
+        fail_unless_eq!(err.to_str(), ~"Err(Err)");
     }
 
     #[test]
@@ -403,7 +403,7 @@ mod tests {
         let ok: Result<int, ~str> = Ok(100);
         let err: Result<int, ~str> = Err(~"Err");
 
-        assert_eq!(format!("{}", ok), ~"Ok(100)");
-        assert_eq!(format!("{}", err), ~"Err(Err)");
+        fail_unless_eq!(format!("{}", ok), ~"Ok(100)");
+        fail_unless_eq!(format!("{}", err), ~"Err(Err)");
     }
 }

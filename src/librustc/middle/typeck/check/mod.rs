@@ -3811,7 +3811,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
             substs.tps.push(fcx.infcx().next_ty_vars(1)[0])
         }
 
-        assert_eq!(substs.tps.len(), ty_param_count)
+        fail_unless_eq!(substs.tps.len(), ty_param_count)
 
         let substs {tps, regions, ..} = substs;
         (tps, regions)

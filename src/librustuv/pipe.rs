@@ -61,7 +61,7 @@ impl PipeWatcher {
             let handle = uvll::malloc_handle(uvll::UV_NAMED_PIPE);
             fail_unless!(!handle.is_null());
             let ipc = ipc as libc::c_int;
-            assert_eq!(uvll::uv_pipe_init(loop_.handle, handle, ipc), 0);
+            fail_unless_eq!(uvll::uv_pipe_init(loop_.handle, handle, ipc), 0);
             handle
         };
         PipeWatcher {
@@ -228,7 +228,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
                 uvll::get_loop_for_uv_handle(server)
             });
             let client = PipeWatcher::new_home(&loop_, pipe.home().clone(), false);
-            assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
+            fail_unless_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
             Ok(~client as ~RtioPipe)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
@@ -275,7 +275,7 @@ mod tests {
     fn bind_err() {
         match PipeListener::bind(local_loop(), &"path/to/nowhere".to_c_str()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"EACCES"),
+            Err(e) => fail_unless_eq!(e.name(), ~"EACCES"),
         }
     }
 
@@ -308,7 +308,7 @@ mod tests {
             let mut client = p.accept().unwrap();
             let mut buf = [0];
             fail_unless!(client.read(buf).unwrap() == 1);
-            assert_eq!(buf[0], 1);
+            fail_unless_eq!(buf[0], 1);
             fail_unless!(client.write([2]).is_ok());
         });
         port.recv();
@@ -316,7 +316,7 @@ mod tests {
         fail_unless!(c.write([1]).is_ok());
         let mut buf = [0];
         fail_unless!(c.read(buf).unwrap() == 1);
-        assert_eq!(buf[0], 2);
+        fail_unless_eq!(buf[0], 2);
     }
 
     #[test] #[should_fail]

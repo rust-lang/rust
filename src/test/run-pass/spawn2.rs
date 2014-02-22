@@ -23,13 +23,13 @@ fn child(args: (int, int, int, int, int, int, int, int, int)) {
     error!("{}", i7);
     error!("{}", i8);
     error!("{}", i9);
-    assert_eq!(i1, 10);
-    assert_eq!(i2, 20);
-    assert_eq!(i3, 30);
-    assert_eq!(i4, 40);
-    assert_eq!(i5, 50);
-    assert_eq!(i6, 60);
-    assert_eq!(i7, 70);
-    assert_eq!(i8, 80);
-    assert_eq!(i9, 90);
+    fail_unless_eq!(i1, 10);
+    fail_unless_eq!(i2, 20);
+    fail_unless_eq!(i3, 30);
+    fail_unless_eq!(i4, 40);
+    fail_unless_eq!(i5, 50);
+    fail_unless_eq!(i6, 60);
+    fail_unless_eq!(i7, 70);
+    fail_unless_eq!(i8, 80);
+    fail_unless_eq!(i9, 90);
 }

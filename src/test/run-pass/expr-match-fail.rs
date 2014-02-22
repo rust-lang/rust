@@ -10,12 +10,12 @@
 
 fn test_simple() {
     let r = match true { true => { true } false => { fail!() } };
-    assert_eq!(r, true);
+    fail_unless_eq!(r, true);
 }
 
 fn test_box() {
     let r = match true { true => { ~[10] } false => { fail!() } };
-    assert_eq!(r[0], 10);
+    fail_unless_eq!(r[0], 10);
 }
 
 pub fn main() { test_simple(); test_box(); }

@@ -178,7 +178,7 @@ mod test {
 
         let mut i = 0;
         for _ in range(0, 1000) {
-            assert_eq!(rs.next_u32(), i % 100);
+            fail_unless_eq!(rs.next_u32(), i % 100);
             i += 1;
         }
     }
@@ -187,7 +187,7 @@ mod test {
     fn test_rng_seeded() {
         let mut ra: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
         let mut rb: MyRng = SeedableRng::from_seed((ReseedWithDefault, 2));
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod test {
         r.reseed((ReseedWithDefault, 3));
 
         let string2 = r.gen_ascii_str(100);
-        assert_eq!(string1, string2);
+        fail_unless_eq!(string1, string2);
     }
 
     static fill_bytes_v_len: uint = 13579;
@@ -210,7 +210,7 @@ mod test {
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
         // recursed.
-        assert_eq!(v.len(), fill_bytes_v_len);
+        fail_unless_eq!(v.len(), fill_bytes_v_len);
 
         // To test that `fill_bytes` actually did something, check that the
         // average of `v` is not 0.

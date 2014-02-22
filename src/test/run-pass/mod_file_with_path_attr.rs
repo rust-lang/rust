@@ -16,5 +16,5 @@
 mod m;
 
 pub fn main() {
-    assert_eq!(m::foo(), 10);
+    fail_unless_eq!(m::foo(), 10);
 }

@@ -17,7 +17,7 @@ use cci_class_cast::kitty::cat;
 fn print_out(thing: ~ToStr, expected: ~str) {
   let actual = thing.to_str();
   info!("{}", actual);
-  assert_eq!(actual, expected);
+  fail_unless_eq!(actual, expected);
 }
 
 pub fn main() {

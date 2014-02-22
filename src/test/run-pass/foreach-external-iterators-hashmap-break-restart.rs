@@ -36,6 +36,6 @@ pub fn main() {
         y += v;
     }
 
-    assert_eq!(x, 6);
-    assert_eq!(y, 60);
+    fail_unless_eq!(x, 6);
+    fail_unless_eq!(y, 60);
 }

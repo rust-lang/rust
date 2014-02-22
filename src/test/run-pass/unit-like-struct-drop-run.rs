@@ -26,5 +26,5 @@ pub fn main() {
     });
 
     let s = x.unwrap_err().move::<&'static str>().unwrap();
-    assert_eq!(s.as_slice(), "This failure should happen.");
+    fail_unless_eq!(s.as_slice(), "This failure should happen.");
 }

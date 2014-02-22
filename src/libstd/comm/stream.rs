@@ -150,7 +150,7 @@ impl<T: Send> Packet<T> {
     // back if it shouldn't sleep. Note that this is the location where we take
     // steals into account.
     fn decrement(&mut self, task: BlockedTask) -> Result<(), BlockedTask> {
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
         let n = unsafe { task.cast_to_uint() };
         self.to_wake.store(n, atomics::SeqCst);
 
@@ -399,8 +399,8 @@ impl<T: Send> Packet<T> {
         // this end. This is fine because we know it's a small bounded windows
         // of time until the data is actually sent.
         if was_upgrade {
-            assert_eq!(self.steals, 0);
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            fail_unless_eq!(self.steals, 0);
+            fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
             return Ok(true)
         }
 
@@ -413,7 +413,7 @@ impl<T: Send> Packet<T> {
         // If we were previously disconnected, then we know for sure that there
         // is no task in to_wake, so just keep going
         let has_data = if prev == DISCONNECTED {
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+            fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
             true // there is data, that data is that we're disconnected
         } else {
             let cur = prev + steals + 1;
@@ -440,7 +440,7 @@ impl<T: Send> Packet<T> {
                     Thread::yield_now();
                 }
             }
-            assert_eq!(self.steals, 0);
+            fail_unless_eq!(self.steals, 0);
             self.steals = steals;
 
             // if we were previously positive, then there's surely data to
@@ -475,7 +475,7 @@ impl<T: Send> Drop for Packet<T> {
         // disconnection, but also a proper fence before the read of
         // `to_wake`, so this assert cannot be removed with also removing
         // the `to_wake` assert.
-        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        fail_unless_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
+        fail_unless_eq!(self.to_wake.load(atomics::SeqCst), 0);
     }
 }

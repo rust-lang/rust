@@ -117,10 +117,10 @@ pub fn main() {
     let mut nyan: cat<~str> = cat::new(0, 2, ~"nyan");
     for _ in range(1u, 5) { nyan.speak(); }
     fail_unless!(*nyan.find(&1).unwrap() == ~"nyan");
-    assert_eq!(nyan.find(&10), None);
+    fail_unless_eq!(nyan.find(&10), None);
     let mut spotty: cat<cat_type> = cat::new(2, 57, tuxedo);
     for _ in range(0u, 6) { spotty.speak(); }
-    assert_eq!(spotty.len(), 8);
+    fail_unless_eq!(spotty.len(), 8);
     fail_unless!((spotty.contains_key(&2)));
-    assert_eq!(spotty.get(&3), &tuxedo);
+    fail_unless_eq!(spotty.get(&3), &tuxedo);
 }

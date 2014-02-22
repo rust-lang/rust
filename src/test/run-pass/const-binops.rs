@@ -77,60 +77,60 @@ static AN: bool = 2 > -2;
 static AO: bool = 1.0 > -2.0;
 
 pub fn main() {
-    assert_eq!(A, -1);
-    assert_eq!(A2, 6);
+    fail_unless_eq!(A, -1);
+    fail_unless_eq!(A2, 6);
     assert_approx_eq!(B, 5.7);
 
-    assert_eq!(C, -1);
-    assert_eq!(D, 0);
+    fail_unless_eq!(C, -1);
+    fail_unless_eq!(D, 0);
     assert_approx_eq!(E, 0.3);
 
-    assert_eq!(E2, -9);
-    assert_eq!(F, 9);
+    fail_unless_eq!(E2, -9);
+    fail_unless_eq!(F, 9);
     assert_approx_eq!(G, 10.89);
 
-    assert_eq!(H, -3);
-    assert_eq!(I, 1);
+    fail_unless_eq!(H, -3);
+    fail_unless_eq!(I, 1);
     assert_approx_eq!(J, 1.0);
 
-    assert_eq!(N, false);
+    fail_unless_eq!(N, false);
 
-    assert_eq!(O, true);
+    fail_unless_eq!(O, true);
 
-    assert_eq!(P, 1);
-    assert_eq!(Q, 1);
+    fail_unless_eq!(P, 1);
+    fail_unless_eq!(Q, 1);
 
-    assert_eq!(R, 3);
-    assert_eq!(S, 3);
+    fail_unless_eq!(R, 3);
+    fail_unless_eq!(S, 3);
 
-    assert_eq!(T, 2);
-    assert_eq!(U, 2);
+    fail_unless_eq!(T, 2);
+    fail_unless_eq!(U, 2);
 
-    assert_eq!(V, 8);
+    fail_unless_eq!(V, 8);
 
-    assert_eq!(W, 64);
-    assert_eq!(X, 64);
+    fail_unless_eq!(W, 64);
+    fail_unless_eq!(X, 64);
 
-    assert_eq!(Y, true);
-    assert_eq!(Z, true);
+    fail_unless_eq!(Y, true);
+    fail_unless_eq!(Z, true);
 
-    assert_eq!(AA, true);
-    assert_eq!(AB, true);
-    assert_eq!(AC, true);
+    fail_unless_eq!(AA, true);
+    fail_unless_eq!(AB, true);
+    fail_unless_eq!(AC, true);
 
-    assert_eq!(AD, true);
-    assert_eq!(AE, true);
-    assert_eq!(AF, true);
+    fail_unless_eq!(AD, true);
+    fail_unless_eq!(AE, true);
+    fail_unless_eq!(AF, true);
 
-    assert_eq!(AG, true);
-    assert_eq!(AH, true);
-    assert_eq!(AI, true);
+    fail_unless_eq!(AG, true);
+    fail_unless_eq!(AH, true);
+    fail_unless_eq!(AI, true);
 
-    assert_eq!(AJ, true);
-    assert_eq!(AK, true);
-    assert_eq!(AL, true);
+    fail_unless_eq!(AJ, true);
+    fail_unless_eq!(AK, true);
+    fail_unless_eq!(AL, true);
 
-    assert_eq!(AM, true);
-    assert_eq!(AN, true);
-    assert_eq!(AO, true);
+    fail_unless_eq!(AM, true);
+    fail_unless_eq!(AN, true);
+    fail_unless_eq!(AO, true);
 }

@@ -104,6 +104,6 @@ impl<'a> Drop for Guard<'a> {
 impl Drop for Inner {
     fn drop(&mut self) {
         fail_unless!(!self.held);
-        assert_eq!(self.queue.len(), 0);
+        fail_unless_eq!(self.queue.len(), 0);
     }
 }

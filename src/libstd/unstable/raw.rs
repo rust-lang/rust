@@ -76,7 +76,7 @@ mod tests {
             let x = 10;
             let f: |int| -> int = |y| x + y;
 
-            assert_eq!(f(20), 30);
+            fail_unless_eq!(f(20), 30);
 
             let original_closure: Closure = cast::transmute(f);
 
@@ -89,7 +89,7 @@ mod tests {
             };
 
             let new_f: |int| -> int = cast::transmute(new_closure);
-            assert_eq!(new_f(20), 30);
+            fail_unless_eq!(new_f(20), 30);
         }
     }
 }

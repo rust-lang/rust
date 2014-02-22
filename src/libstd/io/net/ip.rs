@@ -344,103 +344,103 @@ mod test {
 
     #[test]
     fn test_from_str_ipv4() {
-        assert_eq!(Some(Ipv4Addr(127, 0, 0, 1)), FromStr::from_str("127.0.0.1"));
-        assert_eq!(Some(Ipv4Addr(255, 255, 255, 255)), FromStr::from_str("255.255.255.255"));
-        assert_eq!(Some(Ipv4Addr(0, 0, 0, 0)), FromStr::from_str("0.0.0.0"));
+        fail_unless_eq!(Some(Ipv4Addr(127, 0, 0, 1)), FromStr::from_str("127.0.0.1"));
+        fail_unless_eq!(Some(Ipv4Addr(255, 255, 255, 255)), FromStr::from_str("255.255.255.255"));
+        fail_unless_eq!(Some(Ipv4Addr(0, 0, 0, 0)), FromStr::from_str("0.0.0.0"));
 
         // out of range
         let none: Option<IpAddr> = FromStr::from_str("256.0.0.1");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // too short
         let none: Option<IpAddr> = FromStr::from_str("255.0.0");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // too long
         let none: Option<IpAddr> = FromStr::from_str("255.0.0.1.2");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // no number between dots
         let none: Option<IpAddr> = FromStr::from_str("255.0..1");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_ipv6() {
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("0:0:0:0:0:0:0:0"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("0:0:0:0:0:0:0:1"));
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("0:0:0:0:0:0:0:0"));
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("0:0:0:0:0:0:0:1"));
 
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("::1"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("::"));
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("::1"));
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("::"));
 
-        assert_eq!(Some(Ipv6Addr(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
+        fail_unless_eq!(Some(Ipv6Addr(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
                 FromStr::from_str("2a02:6b8::11:11"));
 
         // too long group
         let none: Option<IpAddr> = FromStr::from_str("::00000");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // too short
         let none: Option<IpAddr> = FromStr::from_str("1:2:3:4:5:6:7");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // too long
         let none: Option<IpAddr> = FromStr::from_str("1:2:3:4:5:6:7:8:9");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // triple colon
         let none: Option<IpAddr> = FromStr::from_str("1:2:::6:7:8");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // two double colons
         let none: Option<IpAddr> = FromStr::from_str("1:2::6::8");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_ipv4_in_ipv6() {
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 49152, 545)),
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 49152, 545)),
                 FromStr::from_str("::192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
+        fail_unless_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
                 FromStr::from_str("::FFFF:192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
+        fail_unless_eq!(Some(Ipv6Addr(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
                 FromStr::from_str("64:ff9b::192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
+        fail_unless_eq!(Some(Ipv6Addr(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
                 FromStr::from_str("2001:db8:122:c000:2:2100:192.0.2.33"));
 
         // colon after v4
         let none: Option<IpAddr> = FromStr::from_str("::127.0.0.1:");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // not enought groups
         let none: Option<IpAddr> = FromStr::from_str("1.2.3.4.5:127.0.0.1");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // too many groups
         let none: Option<IpAddr> =
             FromStr::from_str("1.2.3.4.5:6:7:127.0.0.1");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_socket_addr() {
-        assert_eq!(Some(SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 80 }),
+        fail_unless_eq!(Some(SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 80 }),
                 FromStr::from_str("77.88.21.11:80"));
-        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 }),
+        fail_unless_eq!(Some(SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 }),
                 FromStr::from_str("[2a02:6b8:0:1::1]:53"));
-        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0x7F00, 1), port: 22 }),
+        fail_unless_eq!(Some(SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0x7F00, 1), port: 22 }),
                 FromStr::from_str("[::127.0.0.1]:22"));
 
         // without port
         let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // without port
         let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1:");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // wrong brackets around v4
         let none: Option<SocketAddr> = FromStr::from_str("[127.0.0.1]:22");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
         // port out of range
         let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1:123456");
-        assert_eq!(None, none);
+        fail_unless_eq!(None, none);
     }
 
     #[test]
     fn ipv6_addr_to_str() {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
         fail_unless!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
-        assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
+        fail_unless_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
     }
 
     #[test]

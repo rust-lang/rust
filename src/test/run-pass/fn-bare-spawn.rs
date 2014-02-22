@@ -15,7 +15,7 @@ fn spawn<T:Send>(val: T, f: extern fn(T)) {
 }
 
 fn f(i: int) {
-    assert_eq!(i, 100);
+    fail_unless_eq!(i, 100);
 }
 
 pub fn main() {

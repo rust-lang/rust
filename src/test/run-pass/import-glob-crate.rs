@@ -19,5 +19,5 @@ use std::vec::*;
 pub fn main() {
     let mut v = from_elem(0u, 0);
     v = append(v, [4, 2]);
-    assert_eq!(from_fn(2, |i| 2*(i+1)), ~[2, 4]);
+    fail_unless_eq!(from_fn(2, |i| 2*(i+1)), ~[2, 4]);
 }

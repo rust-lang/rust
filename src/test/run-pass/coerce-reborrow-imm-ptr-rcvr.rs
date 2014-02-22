@@ -22,5 +22,5 @@ fn foo(speaker: &SpeechMaker) -> uint {
 
 pub fn main() {
     let lincoln = SpeechMaker {speeches: 22};
-    assert_eq!(foo(&lincoln), 55);
+    fail_unless_eq!(foo(&lincoln), 55);
 }

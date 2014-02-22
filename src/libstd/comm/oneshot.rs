@@ -364,6 +364,6 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        assert_eq!(self.state.load(atomics::SeqCst), DISCONNECTED);
+        fail_unless_eq!(self.state.load(atomics::SeqCst), DISCONNECTED);
     }
 }

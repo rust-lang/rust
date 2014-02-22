@@ -32,5 +32,5 @@ pub fn main() {
     }
 
     fail_unless!(path.exists());
-    assert_eq!(path.stat().unwrap().size, 1000);
+    fail_unless_eq!(path.stat().unwrap().size, 1000);
 }

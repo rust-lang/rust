@@ -883,9 +883,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             fail_unless!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!(m.opt_present("t"));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => { fail!("test_reqopt failed (long arg)"); }
         }
@@ -893,9 +893,9 @@ mod tests {
         match getopts(short_args, opts) {
           Ok(ref m) => {
             fail_unless!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => { fail!("test_reqopt failed (short arg)"); }
         }
@@ -948,9 +948,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             fail_unless!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -958,9 +958,9 @@ mod tests {
         match getopts(short_args, opts) {
           Ok(ref m) => {
             fail_unless!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1092,7 +1092,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("v"), 1);
+            fail_unless_eq!(m.opt_count("v"), 1);
           }
           _ => fail!()
         }
@@ -1105,7 +1105,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("v"), 2);
+            fail_unless_eq!(m.opt_count("v"), 2);
           }
           _ => fail!()
         }
@@ -1118,7 +1118,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("v"), 2);
+            fail_unless_eq!(m.opt_count("v"), 2);
           }
           _ => fail!()
         }
@@ -1131,7 +1131,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("verbose"), 1);
+            fail_unless_eq!(m.opt_count("verbose"), 1);
           }
           _ => fail!()
         }
@@ -1144,7 +1144,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("verbose"), 2);
+            fail_unless_eq!(m.opt_count("verbose"), 2);
           }
           _ => fail!()
         }
@@ -1157,8 +1157,8 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert_eq!(m.opt_count("verbose"), 4);
-            assert_eq!(m.opt_count("v"), 4);
+            fail_unless_eq!(m.opt_count("verbose"), 4);
+            fail_unless_eq!(m.opt_count("v"), 4);
           }
           _ => fail!()
         }
@@ -1173,9 +1173,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
             fail_unless!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1183,9 +1183,9 @@ mod tests {
         match getopts(short_args, opts) {
           Ok(ref m) => {
             fail_unless!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
             fail_unless!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
           }
           _ => fail!()
         }
@@ -1229,9 +1229,9 @@ mod tests {
         match rs {
           Ok(ref m) => {
               fail_unless!(m.opt_present("test"));
-              assert_eq!(m.opt_str("test").unwrap(), ~"20");
+              fail_unless_eq!(m.opt_str("test").unwrap(), ~"20");
               fail_unless!(m.opt_present("t"));
-              assert_eq!(m.opt_str("t").unwrap(), ~"20");
+              fail_unless_eq!(m.opt_str("t").unwrap(), ~"20");
               let pair = m.opt_strs("test");
               fail_unless!(pair[0] == ~"20");
               fail_unless!(pair[1] == ~"30");
@@ -1275,10 +1275,10 @@ mod tests {
           Ok(ref m) => {
             fail_unless!(m.free[0] == ~"prog");
             fail_unless!(m.free[1] == ~"free1");
-            assert_eq!(m.opt_str("s").unwrap(), ~"20");
+            fail_unless_eq!(m.opt_str("s").unwrap(), ~"20");
             fail_unless!(m.free[2] == ~"free2");
             fail_unless!((m.opt_present("flag")));
-            assert_eq!(m.opt_str("long").unwrap(), ~"30");
+            fail_unless_eq!(m.opt_str("long").unwrap(), ~"30");
             fail_unless!((m.opt_present("f")));
             let pair = m.opt_strs("m");
             fail_unless!(pair[0] == ~"40");
@@ -1310,9 +1310,9 @@ mod tests {
         fail_unless!(!matches_single.opts_present([~"thing"]));
         fail_unless!(!matches_single.opts_present([]));
 
-        assert_eq!(matches_single.opts_str([~"e"]).unwrap(), ~"foo");
-        assert_eq!(matches_single.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_single.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_single.opts_str([~"e"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_single.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_single.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
 
         let args_both = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let matches_both = &match getopts(args_both, opts) {
@@ -1327,10 +1327,10 @@ mod tests {
         fail_unless!(!matches_both.opts_present([~"thing"]));
         fail_unless!(!matches_both.opts_present([]));
 
-        assert_eq!(matches_both.opts_str([~"e"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_both.opts_str([~"e"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_both.opts_str([~"encrypt"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_both.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches_both.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
     }
 
     #[test]
@@ -1343,9 +1343,9 @@ mod tests {
           result::Err(_) => fail!()
         };
         fail_unless!(matches.opts_present([~"L"]));
-        assert_eq!(matches.opts_str([~"L"]).unwrap(), ~"foo");
+        fail_unless_eq!(matches.opts_str([~"L"]).unwrap(), ~"foo");
         fail_unless!(matches.opts_present([~"M"]));
-        assert_eq!(matches.opts_str([~"M"]).unwrap(), ~".");
+        fail_unless_eq!(matches.opts_str([~"M"]).unwrap(), ~".");
 
     }
 
@@ -1361,7 +1361,7 @@ mod tests {
                                 aliases: ~[] }];
         let verbose = reqopt("b", "banana", "some bananas", "VAL");
 
-        assert_eq!(verbose.long_to_short(), short);
+        fail_unless_eq!(verbose.long_to_short(), short);
     }
 
     #[test]
@@ -1373,8 +1373,8 @@ mod tests {
         let args = ~[~"-a", ~"--apple", ~"-a"];
 
         let matches = getopts(args, opts).unwrap();
-        assert_eq!(3, matches.opt_count("a"));
-        assert_eq!(3, matches.opt_count("apple"));
+        fail_unless_eq!(3, matches.opt_count("a"));
+        fail_unless_eq!(3, matches.opt_count("apple"));
     }
 
     #[test]
@@ -1404,7 +1404,7 @@ Options:
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", generated_usage);
-        assert_eq!(generated_usage, expected);
+        fail_unless_eq!(generated_usage, expected);
     }
 
     #[test]
@@ -1478,6 +1478,6 @@ Options:
 
         debug!("expected: <<{}>>", expected);
         debug!("generated: <<{}>>", generated_usage);
-        assert_eq!(generated_usage, expected);
+        fail_unless_eq!(generated_usage, expected);
     }
 }

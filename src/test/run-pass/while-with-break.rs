@@ -22,5 +22,5 @@ pub fn main() {
             break;
         }
     }
-    assert_eq!(i, 95);
+    fail_unless_eq!(i, 95);
 }

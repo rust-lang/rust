@@ -18,6 +18,6 @@ static a: &'static int = &10;
 static b: *int = a as *int;
 
 pub fn main() {
-    assert_eq!(x as *libc::c_void, y);
-    assert_eq!(a as *int, b);
+    fail_unless_eq!(x as *libc::c_void, y);
+    fail_unless_eq!(a as *int, b);
 }

@@ -23,8 +23,8 @@ pub fn main() {
       some(t) => {
         info!("{:?}", t.x);
         info!("{:?}", t.y);
-        assert_eq!(t.x, 17);
-        assert_eq!(t.y, 42);
+        fail_unless_eq!(t.x, 17);
+        fail_unless_eq!(t.y, 42);
       }
     }
 }

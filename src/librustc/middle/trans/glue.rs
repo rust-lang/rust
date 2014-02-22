@@ -255,7 +255,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
 
     // Class dtors have no explicit args, so the params should
     // just consist of the environment (self)
-    assert_eq!(params.len(), 1);
+    fail_unless_eq!(params.len(), 1);
 
     // Be sure to put all of the fields into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field

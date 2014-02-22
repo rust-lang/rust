@@ -379,7 +379,7 @@ impl Drop for FileWatcher {
             rtio::CloseAsynchronously => {
                 unsafe {
                     let req = uvll::malloc_req(uvll::UV_FS);
-                    assert_eq!(uvll::uv_fs_close(self.loop_.handle, req,
+                    fail_unless_eq!(uvll::uv_fs_close(self.loop_.handle, req,
                                                  self.fd, close_cb), 0);
                 }
 
@@ -491,7 +491,7 @@ mod test {
             let nread = result.unwrap();
             fail_unless!(nread > 0);
             let read_str = str::from_utf8(read_mem.slice_to(nread as uint)).unwrap();
-            assert_eq!(read_str, "hello");
+            fail_unless_eq!(read_str, "hello");
         }
         // unlink
         let result = FsRequest::unlink(l(), &path_str.to_c_str());
@@ -513,7 +513,7 @@ mod test {
 
         let result = FsRequest::stat(l(), path);
         fail_unless!(result.is_ok());
-        assert_eq!(result.unwrap().size, 5);
+        fail_unless_eq!(result.unwrap().size, 5);
 
         fn free<T>(_: T) {}
         free(file);

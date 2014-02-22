@@ -12,5 +12,5 @@ static C: &'static int = &1000;
 static D: int = *C;
 
 pub fn main() {
-    assert_eq!(D, 1000);
+    fail_unless_eq!(D, 1000);
 }

@@ -17,7 +17,7 @@ pub fn main() {
       break;
     }
   }
-  assert_eq!(i, 10u);
+  fail_unless_eq!(i, 10u);
   let mut is_even = false;
   loop {
     if i == 21u {

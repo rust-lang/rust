@@ -40,8 +40,8 @@ fn main() {
 
         let mut v = ~[];
         v = ~[(res)] + v; //~ failed to find an implementation of trait
-        assert_eq!(v.len(), 2);
+        fail_unless_eq!(v.len(), 2);
     }
 
-    assert_eq!(x.get(), 1);
+    fail_unless_eq!(x.get(), 1);
 }

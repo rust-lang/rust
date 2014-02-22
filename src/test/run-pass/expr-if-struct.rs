@@ -18,7 +18,7 @@ struct I { i: int }
 
 fn test_rec() {
     let rs = if true { I {i: 100} } else { I {i: 101} };
-    assert_eq!(rs.i, 100);
+    fail_unless_eq!(rs.i, 100);
 }
 
 enum mood { happy, sad, }
@@ -32,7 +32,7 @@ impl Eq for mood {
 
 fn test_tag() {
     let rs = if true { happy } else { sad };
-    assert_eq!(rs, happy);
+    fail_unless_eq!(rs, happy);
 }
 
 pub fn main() { test_rec(); test_tag(); }

@@ -20,8 +20,8 @@ pub fn main() {
     }
     let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};
     x.b.c = 30;
-    assert_eq!(b.c, 20);
+    fail_unless_eq!(b.c, 20);
     let mut y@D {d, ..} = D {a: 10, d: C {c: 20}};
     y.d.c = 30;
-    assert_eq!(d.c, 20);
+    fail_unless_eq!(d.c, 20);
 }

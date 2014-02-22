@@ -17,9 +17,9 @@ static a: uint = cci_const::uint_val;
 static b: uint = cci_const::uint_expr + 5;
 
 pub fn main() {
-    assert_eq!(a, 12);
+    fail_unless_eq!(a, 12);
     let foo2 = a;
-    assert_eq!(foo2, cci_const::uint_val);
-    assert_eq!(b, cci_const::uint_expr + 5);
-    assert_eq!(foo, cci_const::foopy);
+    fail_unless_eq!(foo2, cci_const::uint_val);
+    fail_unless_eq!(b, cci_const::uint_expr + 5);
+    fail_unless_eq!(foo, cci_const::foopy);
 }

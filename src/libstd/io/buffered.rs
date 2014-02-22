@@ -390,22 +390,22 @@ mod test {
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
-        assert_eq!(Ok(2), nread);
-        assert_eq!([0, 1, 0], buf);
+        fail_unless_eq!(Ok(2), nread);
+        fail_unless_eq!([0, 1, 0], buf);
 
         let mut buf = [0];
         let nread = reader.read(buf);
-        assert_eq!(Ok(1), nread);
-        assert_eq!([2], buf);
+        fail_unless_eq!(Ok(1), nread);
+        fail_unless_eq!([2], buf);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
-        assert_eq!(Ok(1), nread);
-        assert_eq!([3, 0, 0], buf);
+        fail_unless_eq!(Ok(1), nread);
+        fail_unless_eq!([3, 0, 0], buf);
 
         let nread = reader.read(buf);
-        assert_eq!(Ok(1), nread);
-        assert_eq!([4, 0, 0], buf);
+        fail_unless_eq!(Ok(1), nread);
+        fail_unless_eq!([4, 0, 0], buf);
 
         fail_unless!(reader.read(buf).is_err());
     }
@@ -416,35 +416,35 @@ mod test {
         let mut writer = BufferedWriter::with_capacity(2, inner);
 
         writer.write([0, 1]).unwrap();
-        assert_eq!([], writer.get_ref().get_ref());
+        fail_unless_eq!([], writer.get_ref().get_ref());
 
         writer.write([2]).unwrap();
-        assert_eq!([0, 1], writer.get_ref().get_ref());
+        fail_unless_eq!([0, 1], writer.get_ref().get_ref());
 
         writer.write([3]).unwrap();
-        assert_eq!([0, 1], writer.get_ref().get_ref());
+        fail_unless_eq!([0, 1], writer.get_ref().get_ref());
 
         writer.flush().unwrap();
-        assert_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
+        fail_unless_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
 
         writer.write([4]).unwrap();
         writer.write([5]).unwrap();
-        assert_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
+        fail_unless_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
 
         writer.write([6]).unwrap();
-        assert_eq!([0, 1, 2, 3, 4, 5],
+        fail_unless_eq!([0, 1, 2, 3, 4, 5],
                    writer.get_ref().get_ref());
 
         writer.write([7, 8]).unwrap();
-        assert_eq!([0, 1, 2, 3, 4, 5, 6],
+        fail_unless_eq!([0, 1, 2, 3, 4, 5, 6],
                    writer.get_ref().get_ref());
 
         writer.write([9, 10, 11]).unwrap();
-        assert_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        fail_unless_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                    writer.get_ref().get_ref());
 
         writer.flush().unwrap();
-        assert_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        fail_unless_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                    writer.get_ref().get_ref());
     }
 
@@ -452,9 +452,9 @@ mod test {
     fn test_buffered_writer_inner_flushes() {
         let mut w = BufferedWriter::with_capacity(3, MemWriter::new());
         w.write([0, 1]).unwrap();
-        assert_eq!([], w.get_ref().get_ref());
+        fail_unless_eq!([], w.get_ref().get_ref());
         let w = w.unwrap();
-        assert_eq!([0, 1], w.get_ref());
+        fail_unless_eq!([0, 1], w.get_ref());
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -484,10 +484,10 @@ mod test {
     fn test_read_until() {
         let inner = MemReader::new(~[0, 1, 2, 1, 0]);
         let mut reader = BufferedReader::with_capacity(2, inner);
-        assert_eq!(reader.read_until(0), Ok(~[0]));
-        assert_eq!(reader.read_until(2), Ok(~[1, 2]));
-        assert_eq!(reader.read_until(1), Ok(~[1]));
-        assert_eq!(reader.read_until(8), Ok(~[0]));
+        fail_unless_eq!(reader.read_until(0), Ok(~[0]));
+        fail_unless_eq!(reader.read_until(2), Ok(~[1, 2]));
+        fail_unless_eq!(reader.read_until(1), Ok(~[1]));
+        fail_unless_eq!(reader.read_until(8), Ok(~[0]));
         fail_unless!(reader.read_until(9).is_err());
     }
 
@@ -495,19 +495,19 @@ mod test {
     fn test_line_buffer() {
         let mut writer = LineBufferedWriter::new(MemWriter::new());
         writer.write([0]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(), []);
+        fail_unless_eq!(writer.get_ref().get_ref(), []);
         writer.write([1]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(), []);
+        fail_unless_eq!(writer.get_ref().get_ref(), []);
         writer.flush().unwrap();
-        assert_eq!(writer.get_ref().get_ref(), [0, 1]);
+        fail_unless_eq!(writer.get_ref().get_ref(), [0, 1]);
         writer.write([0, '\n' as u8, 1, '\n' as u8, 2]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(),
+        fail_unless_eq!(writer.get_ref().get_ref(),
             [0, 1, 0, '\n' as u8, 1, '\n' as u8]);
         writer.flush().unwrap();
-        assert_eq!(writer.get_ref().get_ref(),
+        fail_unless_eq!(writer.get_ref().get_ref(),
             [0, 1, 0, '\n' as u8, 1, '\n' as u8, 2]);
         writer.write([3, '\n' as u8]).unwrap();
-        assert_eq!(writer.get_ref().get_ref(),
+        fail_unless_eq!(writer.get_ref().get_ref(),
             [0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
     }
 
@@ -515,9 +515,9 @@ mod test {
     fn test_read_line() {
         let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
-        assert_eq!(reader.read_line(), Ok(~"a\n"));
-        assert_eq!(reader.read_line(), Ok(~"b\n"));
-        assert_eq!(reader.read_line(), Ok(~"c"));
+        fail_unless_eq!(reader.read_line(), Ok(~"a\n"));
+        fail_unless_eq!(reader.read_line(), Ok(~"b\n"));
+        fail_unless_eq!(reader.read_line(), Ok(~"c"));
         fail_unless!(reader.read_line().is_err());
     }
 
@@ -526,10 +526,10 @@ mod test {
         let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
-        assert_eq!(it.next(), Some(~"a\n"));
-        assert_eq!(it.next(), Some(~"b\n"));
-        assert_eq!(it.next(), Some(~"c"));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.next(), Some(~"a\n"));
+        fail_unless_eq!(it.next(), Some(~"b\n"));
+        fail_unless_eq!(it.next(), Some(~"c"));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[test]
@@ -537,12 +537,12 @@ mod test {
         let inner = ShortReader{lengths: ~[0, 1, 2, 0, 1, 0]};
         let mut reader = BufferedReader::new(inner);
         let mut buf = [0, 0];
-        assert_eq!(reader.read(buf), Ok(0));
-        assert_eq!(reader.read(buf), Ok(1));
-        assert_eq!(reader.read(buf), Ok(2));
-        assert_eq!(reader.read(buf), Ok(0));
-        assert_eq!(reader.read(buf), Ok(1));
-        assert_eq!(reader.read(buf), Ok(0));
+        fail_unless_eq!(reader.read(buf), Ok(0));
+        fail_unless_eq!(reader.read(buf), Ok(1));
+        fail_unless_eq!(reader.read(buf), Ok(2));
+        fail_unless_eq!(reader.read(buf), Ok(0));
+        fail_unless_eq!(reader.read(buf), Ok(1));
+        fail_unless_eq!(reader.read(buf), Ok(0));
         fail_unless!(reader.read(buf).is_err());
     }
 
@@ -550,7 +550,7 @@ mod test {
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
         let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
-        assert_eq!(reader.read_char(), Ok('ß'));
+        fail_unless_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
@@ -558,9 +558,9 @@ mod test {
         let buf = [195u8, 159u8, 'a' as u8];
         let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
         let mut it = reader.chars();
-        assert_eq!(it.next(), Some('ß'));
-        assert_eq!(it.next(), Some('a'));
-        assert_eq!(it.next(), None);
+        fail_unless_eq!(it.next(), Some('ß'));
+        fail_unless_eq!(it.next(), Some('a'));
+        fail_unless_eq!(it.next(), None);
     }
 
     #[bench]

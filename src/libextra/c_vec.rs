@@ -182,9 +182,9 @@ mod tests {
 
         *cv.get_mut(3) = 8;
         *cv.get_mut(4) = 9;
-        assert_eq!(*cv.get(3), 8);
-        assert_eq!(*cv.get(4), 9);
-        assert_eq!(cv.len(), 16);
+        fail_unless_eq!(*cv.get(3), 8);
+        fail_unless_eq!(*cv.get(4), 9);
+        fail_unless_eq!(cv.len(), 16);
     }
 
     #[test]
@@ -217,7 +217,7 @@ mod tests {
             let cv = CVec::new_with_dtor(1 as *mut int, 0,
                 proc() { fail!("Don't run this destructor!") });
             let p = cv.unwrap();
-            assert_eq!(p, 1 as *mut int);
+            fail_unless_eq!(p, 1 as *mut int);
         }
     }
 

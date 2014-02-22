@@ -498,20 +498,20 @@ mod tests {
 
     #[test]
     fn test_ascii() {
-        assert_eq!(65u8.to_ascii().to_byte(), 65u8);
-        assert_eq!(65u8.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_char(), 'A');
-        assert_eq!('A'.to_ascii().to_byte(), 65u8);
+        fail_unless_eq!(65u8.to_ascii().to_byte(), 65u8);
+        fail_unless_eq!(65u8.to_ascii().to_char(), 'A');
+        fail_unless_eq!('A'.to_ascii().to_char(), 'A');
+        fail_unless_eq!('A'.to_ascii().to_byte(), 65u8);
 
-        assert_eq!('A'.to_ascii().to_lower().to_char(), 'a');
-        assert_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
-        assert_eq!('a'.to_ascii().to_upper().to_char(), 'A');
-        assert_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
+        fail_unless_eq!('A'.to_ascii().to_lower().to_char(), 'a');
+        fail_unless_eq!('Z'.to_ascii().to_lower().to_char(), 'z');
+        fail_unless_eq!('a'.to_ascii().to_upper().to_char(), 'A');
+        fail_unless_eq!('z'.to_ascii().to_upper().to_char(), 'Z');
 
-        assert_eq!('@'.to_ascii().to_lower().to_char(), '@');
-        assert_eq!('['.to_ascii().to_lower().to_char(), '[');
-        assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
-        assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
+        fail_unless_eq!('@'.to_ascii().to_lower().to_char(), '@');
+        fail_unless_eq!('['.to_ascii().to_lower().to_char(), '[');
+        fail_unless_eq!('`'.to_ascii().to_upper().to_char(), '`');
+        fail_unless_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
         fail_unless!('0'.to_ascii().is_digit());
         fail_unless!('9'.to_ascii().is_digit());
@@ -529,19 +529,19 @@ mod tests {
     #[test]
     fn test_ascii_vec() {
         let test = &[40u8, 32u8, 59u8];
-        assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
-        assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
+        fail_unless_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
+        fail_unless_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
-        let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
-        let v = ~"( ;";              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = ~[40u8, 32u8, 59u8]; fail_unless_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = ~"( ;";              fail_unless_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), ~"abcdef&?#");
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), ~"ABCDEF&?#");
+        fail_unless_eq!("abCDef&?#".to_ascii().to_lower().into_str(), ~"abcdef&?#");
+        fail_unless_eq!("abCDef&?#".to_ascii().to_upper().into_str(), ~"ABCDEF&?#");
 
-        assert_eq!("".to_ascii().to_lower().into_str(), ~"");
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
+        fail_unless_eq!("".to_ascii().to_lower().into_str(), ~"");
+        fail_unless_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
+        fail_unless_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
 
         fail_unless!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -553,24 +553,24 @@ mod tests {
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
+        fail_unless_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
+        fail_unless_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
     }
 
     #[test]
     fn test_ascii_as_str() {
         let v = v2ascii!([40, 32, 59]);
-        assert_eq!(v.as_str_ascii(), "( ;");
+        fail_unless_eq!(v.as_str_ascii(), "( ;");
     }
 
     #[test]
     fn test_ascii_into_str() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), ~"( ;");
+        fail_unless_eq!(v2ascii!(~[40, 32, 59]).into_str(), ~"( ;");
     }
 
     #[test]
     fn test_ascii_to_bytes() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), ~[40u8, 32u8, 59u8]);
+        fail_unless_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), ~[40u8, 32u8, 59u8]);
     }
 
     #[test] #[should_fail]
@@ -587,45 +587,45 @@ mod tests {
 
     #[test]
     fn test_opt() {
-        assert_eq!(65u8.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
-        assert_eq!(255u8.to_ascii_opt(), None);
+        fail_unless_eq!(65u8.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
+        fail_unless_eq!(255u8.to_ascii_opt(), None);
 
-        assert_eq!('A'.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
-        assert_eq!('λ'.to_ascii_opt(), None);
+        fail_unless_eq!('A'.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
+        fail_unless_eq!('λ'.to_ascii_opt(), None);
 
-        assert_eq!("zoä华".to_ascii_opt(), None);
+        fail_unless_eq!("zoä华".to_ascii_opt(), None);
 
         let test1 = &[127u8, 128u8, 255u8];
-        assert_eq!((test1).to_ascii_opt(), None);
+        fail_unless_eq!((test1).to_ascii_opt(), None);
 
         let v = [40u8, 32u8, 59u8];
         let v2 = v2ascii!(&[40, 32, 59]);
-        assert_eq!(v.to_ascii_opt(), Some(v2));
+        fail_unless_eq!(v.to_ascii_opt(), Some(v2));
         let v = [127u8, 128u8, 255u8];
-        assert_eq!(v.to_ascii_opt(), None);
+        fail_unless_eq!(v.to_ascii_opt(), None);
 
         let v = "( ;";
         let v2 = v2ascii!(&[40, 32, 59]);
-        assert_eq!(v.to_ascii_opt(), Some(v2));
-        assert_eq!("zoä华".to_ascii_opt(), None);
+        fail_unless_eq!(v.to_ascii_opt(), Some(v2));
+        fail_unless_eq!("zoä华".to_ascii_opt(), None);
 
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
+        fail_unless_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        fail_unless_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
-        assert_eq!((~"( ;").into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~"zoä华").into_ascii_opt(), None);
+        fail_unless_eq!((~"( ;").into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        fail_unless_eq!((~"zoä华").into_ascii_opt(), None);
     }
 
     #[test]
     fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), ~"URL()URL()URL()üRL");
-        assert_eq!("hıKß".to_ascii_upper(), ~"HıKß");
+        fail_unless_eq!("url()URL()uRl()ürl".to_ascii_upper(), ~"URL()URL()URL()üRL");
+        fail_unless_eq!("hıKß".to_ascii_upper(), ~"HıKß");
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_upper(),
+            fail_unless_eq!(from_char(from_u32(i).unwrap()).to_ascii_upper(),
                        from_char(from_u32(upper).unwrap()))
             i += 1;
         }
@@ -633,15 +633,15 @@ mod tests {
 
     #[test]
     fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), ~"url()url()url()Ürl");
+        fail_unless_eq!("url()URL()uRl()Ürl".to_ascii_lower(), ~"url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), ~"hİKß");
+        fail_unless_eq!("HİKß".to_ascii_lower(), ~"hİKß");
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).to_ascii_lower(),
+            fail_unless_eq!(from_char(from_u32(i).unwrap()).to_ascii_lower(),
                        from_char(from_u32(lower).unwrap()))
             i += 1;
         }
@@ -649,14 +649,14 @@ mod tests {
 
     #[test]
     fn test_into_ascii_upper() {
-        assert_eq!((~"url()URL()uRl()ürl").into_ascii_upper(), ~"URL()URL()URL()üRL");
-        assert_eq!((~"hıKß").into_ascii_upper(), ~"HıKß");
+        fail_unless_eq!((~"url()URL()uRl()ürl").into_ascii_upper(), ~"URL()URL()URL()üRL");
+        fail_unless_eq!((~"hıKß").into_ascii_upper(), ~"HıKß");
 
         let mut i = 0;
         while i <= 500 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).into_ascii_upper(),
+            fail_unless_eq!(from_char(from_u32(i).unwrap()).into_ascii_upper(),
                        from_char(from_u32(upper).unwrap()))
             i += 1;
         }
@@ -664,15 +664,15 @@ mod tests {
 
     #[test]
     fn test_into_ascii_lower() {
-        assert_eq!((~"url()URL()uRl()Ürl").into_ascii_lower(), ~"url()url()url()Ürl");
+        fail_unless_eq!((~"url()URL()uRl()Ürl").into_ascii_lower(), ~"url()url()url()Ürl");
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!((~"HİKß").into_ascii_lower(), ~"hİKß");
+        fail_unless_eq!((~"HİKß").into_ascii_lower(), ~"hİKß");
 
         let mut i = 0;
         while i <= 500 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
-            assert_eq!(from_char(from_u32(i).unwrap()).into_ascii_lower(),
+            fail_unless_eq!(from_char(from_u32(i).unwrap()).into_ascii_lower(),
                        from_char(from_u32(lower).unwrap()))
             i += 1;
         }
@@ -702,12 +702,12 @@ mod tests {
     #[test]
     fn test_to_str() {
         let s = Ascii{ chr: 't' as u8 }.to_str();
-        assert_eq!(s, ~"t");
+        fail_unless_eq!(s, ~"t");
     }
 
     #[test]
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
-        assert_eq!(format!("{}", c), ~"t");
+        fail_unless_eq!(format!("{}", c), ~"t");
     }
 }

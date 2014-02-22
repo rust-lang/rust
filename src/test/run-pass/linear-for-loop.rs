@@ -13,7 +13,7 @@ pub fn main() {
     let mut y = 0;
     for i in x.iter() { info!("{:?}", *i); y += *i; }
     info!("{:?}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
     for c in s.bytes() {
@@ -28,5 +28,5 @@ pub fn main() {
         info!("{:?}", i);
         info!("{:?}", c);
     }
-    assert_eq!(i, 11);
+    fail_unless_eq!(i, 11);
 }

@@ -181,7 +181,7 @@ mod test {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
         match TcpListener::bind(addr) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, PermissionDenied),
+            Err(e) => fail_unless_eq!(e.kind, PermissionDenied),
         }
     } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
@@ -189,7 +189,7 @@ mod test {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
         match TcpStream::connect(addr) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.kind, ConnectionRefused),
+            Err(e) => fail_unless_eq!(e.kind, ConnectionRefused),
         }
     })
 
@@ -391,7 +391,7 @@ mod test {
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
             stream.read(buf).unwrap();
-            assert_eq!(buf[0], 99);
+            fail_unless_eq!(buf[0], 99);
         }
     })
 
@@ -413,7 +413,7 @@ mod test {
         for ref mut stream in acceptor.incoming().take(max) {
             let mut buf = [0];
             stream.read(buf).unwrap();
-            assert_eq!(buf[0], 99);
+            fail_unless_eq!(buf[0], 99);
         }
     })
 
@@ -572,7 +572,7 @@ mod test {
         // us the socket we binded to.
         let so_name = listener.socket_name();
         fail_unless!(so_name.is_ok());
-        assert_eq!(addr, so_name.unwrap());
+        fail_unless_eq!(addr, so_name.unwrap());
     }
 
     pub fn peer_name(addr: SocketAddr) {
@@ -595,7 +595,7 @@ mod test {
         // connected to.
         let peer_name = stream.peer_name();
         fail_unless!(peer_name.is_ok());
-        assert_eq!(addr, peer_name.unwrap());
+        fail_unless_eq!(addr, peer_name.unwrap());
     }
 
     iotest!(fn socket_and_peer_name_ip4() {
@@ -625,7 +625,7 @@ mod test {
         p.recv();
         let mut c = TcpStream::connect(addr).unwrap();
         let mut b = [0, ..10];
-        assert_eq!(c.read(b), Ok(1));
+        fail_unless_eq!(c.read(b), Ok(1));
         c.write([1]).unwrap();
         p.recv();
     })
@@ -673,8 +673,8 @@ mod test {
         spawn(proc() {
             let mut s = TcpStream::connect(addr);
             let mut buf = [0, 0];
-            assert_eq!(s.read(buf), Ok(1));
-            assert_eq!(buf[0], 1);
+            fail_unless_eq!(s.read(buf), Ok(1));
+            fail_unless_eq!(buf[0], 1);
             s.write([2]).unwrap();
         });
 
@@ -691,7 +691,7 @@ mod test {
         });
         c1.send(());
         let mut buf = [0, 0];
-        assert_eq!(s1.read(buf), Ok(1));
+        fail_unless_eq!(s1.read(buf), Ok(1));
         p2.recv();
     })
 

@@ -352,19 +352,19 @@ mod test {
     #[test]
     fn test_test_constants() {
         // check our constants are what Ratio::new etc. would make.
-        assert_eq!(_0, Zero::zero());
-        assert_eq!(_1, One::one());
-        assert_eq!(_2, Ratio::from_integer(2));
-        assert_eq!(_1_2, Ratio::new(1,2));
-        assert_eq!(_3_2, Ratio::new(3,2));
-        assert_eq!(_neg1_2, Ratio::new(-1,2));
+        fail_unless_eq!(_0, Zero::zero());
+        fail_unless_eq!(_1, One::one());
+        fail_unless_eq!(_2, Ratio::from_integer(2));
+        fail_unless_eq!(_1_2, Ratio::new(1,2));
+        fail_unless_eq!(_3_2, Ratio::new(3,2));
+        fail_unless_eq!(_neg1_2, Ratio::new(-1,2));
     }
 
     #[test]
     fn test_new_reduce() {
         let one22 = Ratio::new(2i,2);
 
-        assert_eq!(one22, One::one());
+        fail_unless_eq!(one22, One::one());
     }
     #[test]
     #[should_fail]
@@ -390,32 +390,32 @@ mod test {
 
     #[test]
     fn test_to_integer() {
-        assert_eq!(_0.to_integer(), 0);
-        assert_eq!(_1.to_integer(), 1);
-        assert_eq!(_2.to_integer(), 2);
-        assert_eq!(_1_2.to_integer(), 0);
-        assert_eq!(_3_2.to_integer(), 1);
-        assert_eq!(_neg1_2.to_integer(), 0);
+        fail_unless_eq!(_0.to_integer(), 0);
+        fail_unless_eq!(_1.to_integer(), 1);
+        fail_unless_eq!(_2.to_integer(), 2);
+        fail_unless_eq!(_1_2.to_integer(), 0);
+        fail_unless_eq!(_3_2.to_integer(), 1);
+        fail_unless_eq!(_neg1_2.to_integer(), 0);
     }
 
 
     #[test]
     fn test_numer() {
-        assert_eq!(_0.numer(), &0);
-        assert_eq!(_1.numer(), &1);
-        assert_eq!(_2.numer(), &2);
-        assert_eq!(_1_2.numer(), &1);
-        assert_eq!(_3_2.numer(), &3);
-        assert_eq!(_neg1_2.numer(), &(-1));
+        fail_unless_eq!(_0.numer(), &0);
+        fail_unless_eq!(_1.numer(), &1);
+        fail_unless_eq!(_2.numer(), &2);
+        fail_unless_eq!(_1_2.numer(), &1);
+        fail_unless_eq!(_3_2.numer(), &3);
+        fail_unless_eq!(_neg1_2.numer(), &(-1));
     }
     #[test]
     fn test_denom() {
-        assert_eq!(_0.denom(), &1);
-        assert_eq!(_1.denom(), &1);
-        assert_eq!(_2.denom(), &1);
-        assert_eq!(_1_2.denom(), &2);
-        assert_eq!(_3_2.denom(), &2);
-        assert_eq!(_neg1_2.denom(), &2);
+        fail_unless_eq!(_0.denom(), &1);
+        fail_unless_eq!(_1.denom(), &1);
+        fail_unless_eq!(_2.denom(), &1);
+        fail_unless_eq!(_1_2.denom(), &2);
+        fail_unless_eq!(_3_2.denom(), &2);
+        fail_unless_eq!(_neg1_2.denom(), &2);
     }
 
 
@@ -437,8 +437,8 @@ mod test {
         #[test]
         fn test_add() {
             fn test(a: Rational, b: Rational, c: Rational) {
-                assert_eq!(a + b, c);
-                assert_eq!(to_big(a) + to_big(b), to_big(c));
+                fail_unless_eq!(a + b, c);
+                fail_unless_eq!(to_big(a) + to_big(b), to_big(c));
             }
 
             test(_1, _1_2, _3_2);
@@ -450,8 +450,8 @@ mod test {
         #[test]
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
-                assert_eq!(a - b, c);
-                assert_eq!(to_big(a) - to_big(b), to_big(c))
+                fail_unless_eq!(a - b, c);
+                fail_unless_eq!(to_big(a) - to_big(b), to_big(c))
             }
 
             test(_1, _1_2, _1_2);
@@ -462,8 +462,8 @@ mod test {
         #[test]
         fn test_mul() {
             fn test(a: Rational, b: Rational, c: Rational) {
-                assert_eq!(a * b, c);
-                assert_eq!(to_big(a) * to_big(b), to_big(c))
+                fail_unless_eq!(a * b, c);
+                fail_unless_eq!(to_big(a) * to_big(b), to_big(c))
             }
 
             test(_1, _1_2, _1_2);
@@ -474,8 +474,8 @@ mod test {
         #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
-                assert_eq!(a / b, c);
-                assert_eq!(to_big(a) / to_big(b), to_big(c))
+                fail_unless_eq!(a / b, c);
+                fail_unless_eq!(to_big(a) / to_big(b), to_big(c))
             }
 
             test(_1, _1_2, _2);
@@ -486,8 +486,8 @@ mod test {
         #[test]
         fn test_rem() {
             fn test(a: Rational, b: Rational, c: Rational) {
-                assert_eq!(a % b, c);
-                assert_eq!(to_big(a) % to_big(b), to_big(c))
+                fail_unless_eq!(a % b, c);
+                fail_unless_eq!(to_big(a) % to_big(b), to_big(c))
             }
 
             test(_3_2, _1, _1_2);
@@ -498,8 +498,8 @@ mod test {
         #[test]
         fn test_neg() {
             fn test(a: Rational, b: Rational) {
-                assert_eq!(-a, b);
-                assert_eq!(-to_big(a), to_big(b))
+                fail_unless_eq!(-a, b);
+                fail_unless_eq!(-to_big(a), to_big(b))
             }
 
             test(_0, _0);
@@ -508,11 +508,11 @@ mod test {
         }
         #[test]
         fn test_zero() {
-            assert_eq!(_0 + _0, _0);
-            assert_eq!(_0 * _0, _0);
-            assert_eq!(_0 * _1, _0);
-            assert_eq!(_0 / _neg1_2, _0);
-            assert_eq!(_0 - _0, _0);
+            fail_unless_eq!(_0 + _0, _0);
+            fail_unless_eq!(_0 * _0, _0);
+            fail_unless_eq!(_0 * _1, _0);
+            fail_unless_eq!(_0 / _neg1_2, _0);
+            fail_unless_eq!(_0 - _0, _0);
         }
         #[test]
         #[should_fail]
@@ -523,44 +523,44 @@ mod test {
 
     #[test]
     fn test_round() {
-        assert_eq!(_1_2.ceil(), _1);
-        assert_eq!(_1_2.floor(), _0);
-        assert_eq!(_1_2.round(), _1);
-        assert_eq!(_1_2.trunc(), _0);
+        fail_unless_eq!(_1_2.ceil(), _1);
+        fail_unless_eq!(_1_2.floor(), _0);
+        fail_unless_eq!(_1_2.round(), _1);
+        fail_unless_eq!(_1_2.trunc(), _0);
 
-        assert_eq!(_neg1_2.ceil(), _0);
-        assert_eq!(_neg1_2.floor(), -_1);
-        assert_eq!(_neg1_2.round(), -_1);
-        assert_eq!(_neg1_2.trunc(), _0);
+        fail_unless_eq!(_neg1_2.ceil(), _0);
+        fail_unless_eq!(_neg1_2.floor(), -_1);
+        fail_unless_eq!(_neg1_2.round(), -_1);
+        fail_unless_eq!(_neg1_2.trunc(), _0);
 
-        assert_eq!(_1.ceil(), _1);
-        assert_eq!(_1.floor(), _1);
-        assert_eq!(_1.round(), _1);
-        assert_eq!(_1.trunc(), _1);
+        fail_unless_eq!(_1.ceil(), _1);
+        fail_unless_eq!(_1.floor(), _1);
+        fail_unless_eq!(_1.round(), _1);
+        fail_unless_eq!(_1.trunc(), _1);
     }
 
     #[test]
     fn test_fract() {
-        assert_eq!(_1.fract(), _0);
-        assert_eq!(_neg1_2.fract(), _neg1_2);
-        assert_eq!(_1_2.fract(), _1_2);
-        assert_eq!(_3_2.fract(), _1_2);
+        fail_unless_eq!(_1.fract(), _0);
+        fail_unless_eq!(_neg1_2.fract(), _neg1_2);
+        fail_unless_eq!(_1_2.fract(), _1_2);
+        fail_unless_eq!(_3_2.fract(), _1_2);
     }
 
     #[test]
     fn test_recip() {
-        assert_eq!(_1 * _1.recip(), _1);
-        assert_eq!(_2 * _2.recip(), _1);
-        assert_eq!(_1_2 * _1_2.recip(), _1);
-        assert_eq!(_3_2 * _3_2.recip(), _1);
-        assert_eq!(_neg1_2 * _neg1_2.recip(), _1);
+        fail_unless_eq!(_1 * _1.recip(), _1);
+        fail_unless_eq!(_2 * _2.recip(), _1);
+        fail_unless_eq!(_1_2 * _1_2.recip(), _1);
+        fail_unless_eq!(_3_2 * _3_2.recip(), _1);
+        fail_unless_eq!(_neg1_2 * _neg1_2.recip(), _1);
     }
 
     #[test]
     fn test_to_from_str() {
         fn test(r: Rational, s: ~str) {
-            assert_eq!(FromStr::from_str(s), Some(r));
-            assert_eq!(r.to_str(), s);
+            fail_unless_eq!(FromStr::from_str(s), Some(r));
+            fail_unless_eq!(r.to_str(), s);
         }
         test(_1, ~"1/1");
         test(_0, ~"0/1");
@@ -573,7 +573,7 @@ mod test {
     fn test_from_str_fail() {
         fn test(s: &str) {
             let rational: Option<Rational> = FromStr::from_str(s);
-            assert_eq!(rational, None);
+            fail_unless_eq!(rational, None);
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1"];
@@ -585,8 +585,8 @@ mod test {
     #[test]
     fn test_to_from_str_radix() {
         fn test(r: Rational, s: ~str, n: uint) {
-            assert_eq!(FromStrRadix::from_str_radix(s, n), Some(r));
-            assert_eq!(r.to_str_radix(n), s);
+            fail_unless_eq!(FromStrRadix::from_str_radix(s, n), Some(r));
+            fail_unless_eq!(r.to_str_radix(n), s);
         }
         fn test3(r: Rational, s: ~str) { test(r, s, 3) }
         fn test16(r: Rational, s: ~str) { test(r, s, 16) }
@@ -614,7 +614,7 @@ mod test {
     fn test_from_str_radix_fail() {
         fn test(s: &str) {
             let radix: Option<Rational> = FromStrRadix::from_str_radix(s, 3);
-            assert_eq!(radix, None);
+            fail_unless_eq!(radix, None);
         }
 
         let xs = ["0 /1", "abc", "", "1/", "--1/2","3/2/1", "3/2"];
@@ -627,7 +627,7 @@ mod test {
     fn test_from_float() {
         fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
             let ratio: BigRational = Ratio::from_float(given).unwrap();
-            assert_eq!(ratio, Ratio::new(
+            fail_unless_eq!(ratio, Ratio::new(
                 FromStr::from_str(numer).unwrap(),
                 FromStr::from_str(denom).unwrap()));
         }
@@ -653,11 +653,11 @@ mod test {
     fn test_from_float_fail() {
         use std::{f32, f64};
 
-        assert_eq!(Ratio::from_float(f32::NAN), None);
-        assert_eq!(Ratio::from_float(f32::INFINITY), None);
-        assert_eq!(Ratio::from_float(f32::NEG_INFINITY), None);
-        assert_eq!(Ratio::from_float(f64::NAN), None);
-        assert_eq!(Ratio::from_float(f64::INFINITY), None);
-        assert_eq!(Ratio::from_float(f64::NEG_INFINITY), None);
+        fail_unless_eq!(Ratio::from_float(f32::NAN), None);
+        fail_unless_eq!(Ratio::from_float(f32::INFINITY), None);
+        fail_unless_eq!(Ratio::from_float(f32::NEG_INFINITY), None);
+        fail_unless_eq!(Ratio::from_float(f64::NAN), None);
+        fail_unless_eq!(Ratio::from_float(f64::INFINITY), None);
+        fail_unless_eq!(Ratio::from_float(f64::NEG_INFINITY), None);
     }
 }

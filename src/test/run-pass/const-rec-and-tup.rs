@@ -20,6 +20,6 @@ static y : AnotherPair = AnotherPair{ x: (0xf0f0f0f0_f0f0f0f0,
 
 pub fn main() {
     let (p, _) = y.x;
-    assert_eq!(p, - 1085102592571150096);
+    fail_unless_eq!(p, - 1085102592571150096);
     println!("{:#x}", p);
 }

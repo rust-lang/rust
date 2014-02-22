@@ -144,7 +144,7 @@ mod test {
     #[test]
     fn test_from_value() {
         let mut f = Future::from_value(~"snail");
-        assert_eq!(f.get(), ~"snail");
+        fail_unless_eq!(f.get(), ~"snail");
     }
 
     #[test]
@@ -152,37 +152,37 @@ mod test {
         let (po, ch) = Chan::new();
         ch.send(~"whale");
         let mut f = Future::from_port(po);
-        assert_eq!(f.get(), ~"whale");
+        fail_unless_eq!(f.get(), ~"whale");
     }
 
     #[test]
     fn test_from_fn() {
         let mut f = Future::from_fn(proc() ~"brail");
-        assert_eq!(f.get(), ~"brail");
+        fail_unless_eq!(f.get(), ~"brail");
     }
 
     #[test]
     fn test_interface_get() {
         let mut f = Future::from_value(~"fail");
-        assert_eq!(f.get(), ~"fail");
+        fail_unless_eq!(f.get(), ~"fail");
     }
 
     #[test]
     fn test_interface_unwrap() {
         let f = Future::from_value(~"fail");
-        assert_eq!(f.unwrap(), ~"fail");
+        fail_unless_eq!(f.unwrap(), ~"fail");
     }
 
     #[test]
     fn test_get_ref_method() {
         let mut f = Future::from_value(22);
-        assert_eq!(*f.get_ref(), 22);
+        fail_unless_eq!(*f.get_ref(), 22);
     }
 
     #[test]
     fn test_spawn() {
         let mut f = Future::spawn(proc() ~"bale");
-        assert_eq!(f.get(), ~"bale");
+        fail_unless_eq!(f.get(), ~"bale");
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod test {
         task::spawn(proc() {
             let mut f = f;
             let actual = f.get();
-            assert_eq!(actual, expected);
+            fail_unless_eq!(actual, expected);
         });
     }
 }

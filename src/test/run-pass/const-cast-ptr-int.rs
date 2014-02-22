@@ -13,5 +13,5 @@ use std::ptr;
 static a: *u8 = 0 as *u8;
 
 pub fn main() {
-    assert_eq!(a, ptr::null());
+    fail_unless_eq!(a, ptr::null());
 }

@@ -19,8 +19,8 @@ enum bar {
 }
 
 pub fn main() {
-    assert_eq!(~"a(22u)", format!("{:?}", a(22u)));
-    assert_eq!(~"b(~\"hi\")", format!("{:?}", b(~"hi")));
-    assert_eq!(~"c", format!("{:?}", c));
-    assert_eq!(~"d", format!("{:?}", d));
+    fail_unless_eq!(~"a(22u)", format!("{:?}", a(22u)));
+    fail_unless_eq!(~"b(~\"hi\")", format!("{:?}", b(~"hi")));
+    fail_unless_eq!(~"c", format!("{:?}", c));
+    fail_unless_eq!(~"d", format!("{:?}", d));
 }

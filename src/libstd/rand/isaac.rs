@@ -440,14 +440,14 @@ mod test {
         let s = OSRng::new().gen_vec::<u32>(256);
         let mut ra: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: IsaacRng = SeedableRng::from_seed(s.as_slice());
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
         let s = OSRng::new().gen_vec::<u64>(256);
         let mut ra: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let mut rb: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
 
     #[test]
@@ -455,14 +455,14 @@ mod test {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
     #[test]
     fn test_rng_64_seeded() {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod test {
         r.reseed(s);
 
         let string2 = r.gen_ascii_str(100);
-        assert_eq!(string1, string2);
+        fail_unless_eq!(string1, string2);
     }
     #[test]
     fn test_rng_64_reseed() {
@@ -485,7 +485,7 @@ mod test {
         r.reseed(s);
 
         let string2 = r.gen_ascii_str(100);
-        assert_eq!(string1, string2);
+        fail_unless_eq!(string1, string2);
     }
 
     #[test]
@@ -494,7 +494,7 @@ mod test {
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
         let v = vec::from_fn(10, |_| ra.next_u32());
-        assert_eq!(v,
+        fail_unless_eq!(v,
                    ~[2558573138, 873787463, 263499565, 2103644246, 3595684709,
                      4203127393, 264982119, 2765226902, 2737944514, 3900253796]);
 
@@ -504,7 +504,7 @@ mod test {
         for _ in range(0, 10000) { rb.next_u32(); }
 
         let v = vec::from_fn(10, |_| rb.next_u32());
-        assert_eq!(v,
+        fail_unless_eq!(v,
                    ~[3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
                      1576568959, 3507990155, 179069555, 141456972, 2478885421]);
     }
@@ -514,7 +514,7 @@ mod test {
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
         let v = vec::from_fn(10, |_| ra.next_u64());
-        assert_eq!(v,
+        fail_unless_eq!(v,
                    ~[547121783600835980, 14377643087320773276, 17351601304698403469,
                      1238879483818134882, 11952566807690396487, 13970131091560099343,
                      4469761996653280935, 15552757044682284409, 6860251611068737823,
@@ -526,7 +526,7 @@ mod test {
         for _ in range(0, 10000) { rb.next_u64(); }
 
         let v = vec::from_fn(10, |_| rb.next_u64());
-        assert_eq!(v,
+        fail_unless_eq!(v,
                    ~[18143823860592706164, 8491801882678285927, 2699425367717515619,
                      17196852593171130876, 2606123525235546165, 15790932315217671084,
                      596345674630742204, 9947027391921273664, 11788097613744130851,

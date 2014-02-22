@@ -17,5 +17,5 @@ pub fn main() {
         }
         y += *i;
     }
-    assert_eq!(y, 90);
+    fail_unless_eq!(y, 90);
 }

@@ -32,5 +32,5 @@ fn safe_head<T:Clone>(ls: @List<T>) -> T {
 pub fn main() {
     let mylist = @Cons(@1u, @Nil);
     fail_unless!((nonempty_list(mylist)));
-    assert_eq!(*safe_head(mylist), 1u);
+    fail_unless_eq!(*safe_head(mylist), 1u);
 }

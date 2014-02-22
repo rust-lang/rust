@@ -10,7 +10,7 @@
 
 fn f(x: *int) {
     unsafe {
-        assert_eq!(*x, 3);
+        fail_unless_eq!(*x, 3);
     }
 }
 

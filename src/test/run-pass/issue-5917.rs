@@ -12,5 +12,5 @@ struct T (&'static [int]);
 static t : T = T (&'static [5, 4, 3]);
 pub fn main () {
     let T(ref v) = t;
-    assert_eq!(v[0], 5);
+    fail_unless_eq!(v[0], 5);
 }

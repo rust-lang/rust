@@ -13,11 +13,11 @@
 pub fn main() {
     let c: char = 'x';
     let d: char = 'x';
-    assert_eq!(c, 'x');
-    assert_eq!('x', c);
-    assert_eq!(c, c);
-    assert_eq!(c, d);
-    assert_eq!(d, c);
-    assert_eq!(d, 'x');
-    assert_eq!('x', d);
+    fail_unless_eq!(c, 'x');
+    fail_unless_eq!('x', c);
+    fail_unless_eq!(c, c);
+    fail_unless_eq!(c, d);
+    fail_unless_eq!(d, c);
+    fail_unless_eq!(d, 'x');
+    fail_unless_eq!('x', d);
 }

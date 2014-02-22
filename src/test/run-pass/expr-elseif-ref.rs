@@ -15,5 +15,5 @@
 pub fn main() {
     let y: @uint = @10u;
     let _x = if false { y } else if true { y } else { y };
-    assert_eq!(*y, 10u);
+    fail_unless_eq!(*y, 10u);
 }

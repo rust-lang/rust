@@ -34,8 +34,8 @@ pub fn main() {
 
     let v = 46;
 
-    assert_eq!(map.find(&Owned(~"foo")), Some(&v));
-    assert_eq!(map.find(&Slice("foo")), Some(&v));
+    fail_unless_eq!(map.find(&Owned(~"foo")), Some(&v));
+    fail_unless_eq!(map.find(&Slice("foo")), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
@@ -54,18 +54,18 @@ pub fn main() {
     fail_unless!(!map.insert(Owned(~"cde"), c));
     fail_unless!(!map.insert(Slice("def"), d));
 
-    assert_eq!(map.find(&Slice("abc")), Some(&a));
-    assert_eq!(map.find(&Slice("bcd")), Some(&b));
-    assert_eq!(map.find(&Slice("cde")), Some(&c));
-    assert_eq!(map.find(&Slice("def")), Some(&d));
+    fail_unless_eq!(map.find(&Slice("abc")), Some(&a));
+    fail_unless_eq!(map.find(&Slice("bcd")), Some(&b));
+    fail_unless_eq!(map.find(&Slice("cde")), Some(&c));
+    fail_unless_eq!(map.find(&Slice("def")), Some(&d));
 
-    assert_eq!(map.find(&Owned(~"abc")), Some(&a));
-    assert_eq!(map.find(&Owned(~"bcd")), Some(&b));
-    assert_eq!(map.find(&Owned(~"cde")), Some(&c));
-    assert_eq!(map.find(&Owned(~"def")), Some(&d));
+    fail_unless_eq!(map.find(&Owned(~"abc")), Some(&a));
+    fail_unless_eq!(map.find(&Owned(~"bcd")), Some(&b));
+    fail_unless_eq!(map.find(&Owned(~"cde")), Some(&c));
+    fail_unless_eq!(map.find(&Owned(~"def")), Some(&d));
 
     fail_unless!(map.pop(&Slice("foo")).is_some());
-    assert_eq!(map.move_iter().map(|(k, v)| k.to_str() + v.to_str())
+    fail_unless_eq!(map.move_iter().map(|(k, v)| k.to_str() + v.to_str())
                               .to_owned_vec()
                               .concat(),
                ~"abc50bcd51cde52def53");

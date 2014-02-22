@@ -537,7 +537,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
         did
     };
     if !substs.is_empty() {
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
+        fail_unless_eq!(did.krate, ast::LOCAL_CRATE);
         let tsubsts = ty::substs {
             regions: ty::ErasedRegions,
             self_ty: None,

@@ -12,7 +12,7 @@
 
 fn assert_repr_eq<T>(obj : T, expected : ~str) {
 
-    assert_eq!(expected, format!("{:?}", obj));
+    fail_unless_eq!(expected, format!("{:?}", obj));
 }
 
 pub fn main() {

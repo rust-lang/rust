@@ -20,7 +20,7 @@ enum foo {
 }
 
 fn check_log<T>(exp: ~str, v: T) {
-    assert_eq!(exp, format!("{:?}", v));
+    fail_unless_eq!(exp, format!("{:?}", v));
 }
 
 pub fn main() {

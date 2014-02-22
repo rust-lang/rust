@@ -16,7 +16,7 @@ pub fn main() {
     let y = p.recv();
     error!("received");
     error!("{:?}", y);
-    assert_eq!(y, 10);
+    fail_unless_eq!(y, 10);
 }
 
 fn child(c: &Chan<int>) {

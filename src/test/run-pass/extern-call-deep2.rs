@@ -43,6 +43,6 @@ pub fn main() {
     task::spawn(proc() {
         let result = count(1000u);
         info!("result = {}", result);
-        assert_eq!(result, 1000u);
+        fail_unless_eq!(result, 1000u);
     });
 }

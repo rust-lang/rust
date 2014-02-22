@@ -288,7 +288,7 @@ impl Loop {
     pub fn wrap(handle: *uvll::uv_loop_t) -> Loop { Loop { handle: handle } }
 
     pub fn run(&mut self) {
-        assert_eq!(unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) }, 0);
+        fail_unless_eq!(unsafe { uvll::uv_run(self.handle, uvll::RUN_DEFAULT) }, 0);
     }
 
     pub fn close(&mut self) {
@@ -348,7 +348,7 @@ impl ToStr for UvError {
 #[test]
 fn error_smoke_test() {
     let err: UvError = UvError(uvll::EOF);
-    assert_eq!(err.to_str(), ~"EOF: end of file");
+    fail_unless_eq!(err.to_str(), ~"EOF: end of file");
 }
 
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
@@ -442,7 +442,7 @@ mod test {
         let slice = [0, .. 20];
         let buf = slice_to_uv_buf(slice);
 
-        assert_eq!(buf.len, 20);
+        fail_unless_eq!(buf.len, 20);
 
         unsafe {
             let base = transmute::<*u8, *mut u8>(buf.base);

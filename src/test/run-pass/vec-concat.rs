@@ -13,7 +13,7 @@ pub fn main() {
     let b: ~[int] = ~[6, 7, 8, 9, 0];
     let v: ~[int] = a + b;
     info!("{}", v[9]);
-    assert_eq!(v[0], 1);
-    assert_eq!(v[7], 8);
-    assert_eq!(v[9], 0);
+    fail_unless_eq!(v[0], 1);
+    fail_unless_eq!(v[7], 8);
+    fail_unless_eq!(v[9], 0);
 }

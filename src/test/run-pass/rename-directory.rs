@@ -43,9 +43,9 @@ fn rename_directory() {
                                          1u as libc::size_t,
                                          (s.len() + 1u) as libc::size_t,
                                          ostream);
-            assert_eq!(write_len, (s.len() + 1) as libc::size_t)
+            fail_unless_eq!(write_len, (s.len() + 1) as libc::size_t)
         });
-        assert_eq!(libc::fclose(ostream), (0u as libc::c_int));
+        fail_unless_eq!(libc::fclose(ostream), (0u as libc::c_int));
 
         let new_path = tmpdir.join_many(["quux", "blat"]);
         fs::mkdir_recursive(&new_path, io::UserRWX);

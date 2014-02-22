@@ -21,13 +21,13 @@ impl Foo for X {}
 
 pub fn main() {
     let (a, mut b) = (23, 4);
-    assert_eq!(a, 23);
-    assert_eq!(b, 4);
+    fail_unless_eq!(a, 23);
+    fail_unless_eq!(b, 4);
     b = a + b;
-    assert_eq!(b, 27);
+    fail_unless_eq!(b, 27);
 
 
-    assert_eq!(X.foo(2), 76);
+    fail_unless_eq!(X.foo(2), 76);
 
     enum Bar {
        Foo(int),
@@ -38,9 +38,9 @@ pub fn main() {
 
     match x {
         mut z @ 32 => {
-            assert_eq!(z, 32);
+            fail_unless_eq!(z, 32);
             z = 34;
-            assert_eq!(z, 34);
+            fail_unless_eq!(z, 34);
         }
         _ => {}
     }
@@ -52,11 +52,11 @@ pub fn main() {
     fn check_bar(y: &Bar) {
         match y {
             &Foo(a) => {
-                assert_eq!(a, 21);
+                fail_unless_eq!(a, 21);
             }
             &Baz(a, b) => {
-                assert_eq!(a, 10.0);
-                assert_eq!(b, 3);
+                fail_unless_eq!(a, 10.0);
+                fail_unless_eq!(b, 3);
             }
         }
     }
@@ -71,9 +71,9 @@ pub fn main() {
         x: int
     }
     let A { x: mut x } = A { x: 10 };
-    assert_eq!(x, 10);
+    fail_unless_eq!(x, 10);
     x = 30;
-    assert_eq!(x, 30);
+    fail_unless_eq!(x, 30);
 
     (|A { x: mut t }: A| { t = t+1; t })(A { x: 34 });
 

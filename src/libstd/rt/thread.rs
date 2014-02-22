@@ -216,8 +216,8 @@ mod imp {
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let mut native: libc::pthread_t = mem::uninit();
         let mut attr: libc::pthread_attr_t = mem::uninit();
-        assert_eq!(pthread_attr_init(&mut attr), 0);
-        assert_eq!(pthread_attr_setdetachstate(&mut attr,
+        fail_unless_eq!(pthread_attr_init(&mut attr), 0);
+        fail_unless_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);
 
         // Reserve room for the red zone, the runtime's stack of last resort.
@@ -232,7 +232,7 @@ mod imp {
                 // Round up to the neareast page and try again.
                 let page_size = os::page_size();
                 let stack_size = (stack_size + page_size - 1) & (-(page_size - 1) - 1);
-                assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t), 0);
+                fail_unless_eq!(pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t), 0);
             },
             errno => {
                 // This cannot really happen.
@@ -241,25 +241,25 @@ mod imp {
         };
 
         let arg: *libc::c_void = cast::transmute(p);
-        assert_eq!(pthread_create(&mut native, &attr,
+        fail_unless_eq!(pthread_create(&mut native, &attr,
                                   super::thread_start, arg), 0);
         native
     }
 
     pub unsafe fn join(native: rust_thread) {
-        assert_eq!(pthread_join(native, ptr::null()), 0);
+        fail_unless_eq!(pthread_join(native, ptr::null()), 0);
     }
 
     pub unsafe fn detach(native: rust_thread) {
-        assert_eq!(pthread_detach(native), 0);
+        fail_unless_eq!(pthread_detach(native), 0);
     }
 
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "android")]
-    pub unsafe fn yield_now() { assert_eq!(sched_yield(), 0); }
+    pub unsafe fn yield_now() { fail_unless_eq!(sched_yield(), 0); }
 
     #[cfg(not(target_os = "macos"), not(target_os = "android"))]
-    pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
+    pub unsafe fn yield_now() { fail_unless_eq!(pthread_yield(), 0); }
 
     #[cfg(not(target_os = "linux"))]
     unsafe fn __pthread_get_minstack(_: *libc::pthread_attr_t) -> libc::size_t {
@@ -336,14 +336,14 @@ mod tests {
     fn smoke() { Thread::start(proc (){}).join(); }
 
     #[test]
-    fn data() { assert_eq!(Thread::start(proc () { 1 }).join(), 1); }
+    fn data() { fail_unless_eq!(Thread::start(proc () { 1 }).join(), 1); }
 
     #[test]
     fn detached() { Thread::spawn(proc () {}) }
 
     #[test]
     fn small_stacks() {
-        assert_eq!(42, Thread::start_stack(0, proc () 42).join());
-        assert_eq!(42, Thread::start_stack(1, proc () 42).join());
+        fail_unless_eq!(42, Thread::start_stack(0, proc () 42).join());
+        fail_unless_eq!(42, Thread::start_stack(1, proc () 42).join());
     }
 }

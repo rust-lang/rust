@@ -37,7 +37,7 @@ fn check_flags(exp: u64) {
         let x = FLAGS;
         FLAGS = 0;
         println!("flags {}, expected {}", x, exp);
-        assert_eq!(x, exp);
+        fail_unless_eq!(x, exp);
     }
 }
 

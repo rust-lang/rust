@@ -16,5 +16,5 @@ pub fn main() {
     let y: i8 = -12i8;
     x = x + 1i8;
     x = x - 1i8;
-    assert_eq!(x, y);
+    fail_unless_eq!(x, y);
 }

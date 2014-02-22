@@ -431,26 +431,26 @@ mod test {
         let buf = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09];
 
         // Aligned access
-        assert_eq!(u64_from_be_bytes(buf, 0, 0), 0);
-        assert_eq!(u64_from_be_bytes(buf, 0, 1), 0x01);
-        assert_eq!(u64_from_be_bytes(buf, 0, 2), 0x0102);
-        assert_eq!(u64_from_be_bytes(buf, 0, 3), 0x010203);
-        assert_eq!(u64_from_be_bytes(buf, 0, 4), 0x01020304);
-        assert_eq!(u64_from_be_bytes(buf, 0, 5), 0x0102030405);
-        assert_eq!(u64_from_be_bytes(buf, 0, 6), 0x010203040506);
-        assert_eq!(u64_from_be_bytes(buf, 0, 7), 0x01020304050607);
-        assert_eq!(u64_from_be_bytes(buf, 0, 8), 0x0102030405060708);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 0), 0);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 1), 0x01);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 2), 0x0102);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 3), 0x010203);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 4), 0x01020304);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 5), 0x0102030405);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 6), 0x010203040506);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 7), 0x01020304050607);
+        fail_unless_eq!(u64_from_be_bytes(buf, 0, 8), 0x0102030405060708);
 
         // Unaligned access
-        assert_eq!(u64_from_be_bytes(buf, 1, 0), 0);
-        assert_eq!(u64_from_be_bytes(buf, 1, 1), 0x02);
-        assert_eq!(u64_from_be_bytes(buf, 1, 2), 0x0203);
-        assert_eq!(u64_from_be_bytes(buf, 1, 3), 0x020304);
-        assert_eq!(u64_from_be_bytes(buf, 1, 4), 0x02030405);
-        assert_eq!(u64_from_be_bytes(buf, 1, 5), 0x0203040506);
-        assert_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
-        assert_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
-        assert_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 0), 0);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 1), 0x02);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 2), 0x0203);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 3), 0x020304);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 4), 0x02030405);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 5), 0x0203040506);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
+        fail_unless_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
     }
 }
 

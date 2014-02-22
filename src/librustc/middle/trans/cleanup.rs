@@ -101,7 +101,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         // this new AST scope had better be its immediate child.
         let top_scope = self.top_ast_scope();
         if top_scope.is_some() {
-            assert_eq!(self.ccx.tcx.region_maps.opt_encl_scope(id), top_scope);
+            fail_unless_eq!(self.ccx.tcx.region_maps.opt_encl_scope(id), top_scope);
         }
 
         self.push_scope(CleanupScope::new(AstScopeKind(id)));
@@ -112,7 +112,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                                exits: [&'a Block<'a>, ..EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
                self.ccx.tcx.map.node_to_str(id));
-        assert_eq!(Some(id), self.top_ast_scope());
+        fail_unless_eq!(Some(id), self.top_ast_scope());
 
         self.push_scope(CleanupScope::new(LoopScopeKind(id, exits)));
     }
@@ -396,7 +396,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
             }
         }
 
-        assert_eq!(self.scopes_len(), orig_scopes_len);
+        fail_unless_eq!(self.scopes_len(), orig_scopes_len);
 
         return llbb;
     }
@@ -630,7 +630,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         debug!("trans_cleanups_to_exit_scope: prev_llbb={}", prev_llbb);
 
-        assert_eq!(self.scopes_len(), orig_scopes_len);
+        fail_unless_eq!(self.scopes_len(), orig_scopes_len);
         prev_llbb
     }
 

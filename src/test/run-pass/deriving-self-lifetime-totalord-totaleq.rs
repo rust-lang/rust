@@ -23,9 +23,9 @@ pub fn main() {
     fail_unless!(b.equals(&b));
 
 
-    assert_eq!(a.cmp(&a), Equal);
-    assert_eq!(b.cmp(&b), Equal);
+    fail_unless_eq!(a.cmp(&a), Equal);
+    fail_unless_eq!(b.cmp(&b), Equal);
 
-    assert_eq!(a.cmp(&b), Less);
-    assert_eq!(b.cmp(&a), Greater);
+    fail_unless_eq!(a.cmp(&b), Less);
+    fail_unless_eq!(b.cmp(&a), Greater);
 }

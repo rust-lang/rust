@@ -101,7 +101,7 @@ mod tests {
         x.borrow().with_mut(|inner| {
             *inner = 20;
         });
-        assert_eq!(y.borrow().with(|x| *x), 20);
+        fail_unless_eq!(y.borrow().with(|x| *x), 20);
     }
 
     #[test]
@@ -111,21 +111,21 @@ mod tests {
         x.borrow().with_mut(|inner| {
             *inner = 20;
         });
-        assert_eq!(y.borrow().with(|x| *x), 5);
+        fail_unless_eq!(y.borrow().with(|x| *x), 5);
     }
 
     #[test]
     fn test_simple() {
         let x = Gc::new(5);
-        assert_eq!(*x.borrow(), 5);
+        fail_unless_eq!(*x.borrow(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
         let x = Gc::new(5);
         let y = x.clone();
-        assert_eq!(*x.borrow(), 5);
-        assert_eq!(*y.borrow(), 5);
+        fail_unless_eq!(*x.borrow(), 5);
+        fail_unless_eq!(*y.borrow(), 5);
     }
 
     #[test]
@@ -141,6 +141,6 @@ mod tests {
     #[test]
     fn test_destructor() {
         let x = Gc::new(~5);
-        assert_eq!(**x.borrow(), 5);
+        fail_unless_eq!(**x.borrow(), 5);
     }
 }

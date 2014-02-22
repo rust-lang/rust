@@ -463,7 +463,7 @@ impl<'a> CheckLoanCtxt<'a> {
                     }
 
                     mc::cat_deref(_, _, mc::GcPtr) => {
-                        assert_eq!(cmt.mutbl, mc::McImmutable);
+                        fail_unless_eq!(cmt.mutbl, mc::McImmutable);
                         return;
                     }
 
@@ -472,19 +472,19 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_copied_upvar(..) |
                     mc::cat_deref(_, _, mc::UnsafePtr(..)) |
                     mc::cat_deref(_, _, mc::BorrowedPtr(..)) => {
-                        assert_eq!(cmt.mutbl, mc::McDeclared);
+                        fail_unless_eq!(cmt.mutbl, mc::McDeclared);
                         return;
                     }
 
                     mc::cat_discr(b, _) |
                     mc::cat_deref(b, _, mc::OwnedPtr) => {
-                        assert_eq!(cmt.mutbl, mc::McInherited);
+                        fail_unless_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
                     }
 
                     mc::cat_downcast(b) |
                     mc::cat_interior(b, _) => {
-                        assert_eq!(cmt.mutbl, mc::McInherited);
+                        fail_unless_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
                     }
                 }

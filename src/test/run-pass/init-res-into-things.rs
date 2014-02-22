@@ -39,7 +39,7 @@ fn test_box() {
     {
         let _a = @r(i);
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 fn test_rec() {
@@ -47,7 +47,7 @@ fn test_rec() {
     {
         let _a = Box {x: r(i)};
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 fn test_tag() {
@@ -59,7 +59,7 @@ fn test_tag() {
     {
         let _a = t0(r(i));
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 fn test_tup() {
@@ -67,7 +67,7 @@ fn test_tup() {
     {
         let _a = (r(i), 0);
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 fn test_unique() {
@@ -75,7 +75,7 @@ fn test_unique() {
     {
         let _a = ~r(i);
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 fn test_box_rec() {
@@ -85,7 +85,7 @@ fn test_box_rec() {
             x: r(i)
         };
     }
-    assert_eq!(i.get(), 1);
+    fail_unless_eq!(i.get(), 1);
 }
 
 pub fn main() {

@@ -171,7 +171,7 @@ mod tests {
         let nthreads = 8u;
         let nmsgs = 1000u;
         let mut q = Queue::with_capacity(nthreads*nmsgs);
-        assert_eq!(None, q.pop());
+        fail_unless_eq!(None, q.pop());
         let (port, chan) = Chan::new();
 
         for _ in range(0, nthreads) {
@@ -208,7 +208,7 @@ mod tests {
         }
 
         for completion_port in completion_ports.mut_iter() {
-            assert_eq!(nmsgs, completion_port.recv());
+            fail_unless_eq!(nmsgs, completion_port.recv());
         }
         for _ in range(0, nthreads) {
             port.recv();

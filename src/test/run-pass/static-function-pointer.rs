@@ -15,10 +15,10 @@ static F: extern fn(int) -> int = f;
 static mut G: extern fn(int) -> int = f;
 
 pub fn main() {
-    assert_eq!(F(42), 42);
+    fail_unless_eq!(F(42), 42);
     unsafe {
-        assert_eq!(G(42), 42);
+        fail_unless_eq!(G(42), 42);
         G = g;
-        assert_eq!(G(42), 84);
+        fail_unless_eq!(G(42), 84);
     }
 }

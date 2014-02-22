@@ -23,9 +23,9 @@ pub fn main() {
         let (_0, _1) = p;
         info!("{}", _0);
         info!("{}", _1);
-        assert_eq!(_0 + 10, i);
+        fail_unless_eq!(_0 + 10, i);
         i += 1;
         j = _1;
     });
-    assert_eq!(j, 45);
+    fail_unless_eq!(j, 45);
 }

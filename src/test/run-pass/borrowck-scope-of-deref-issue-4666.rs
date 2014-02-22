@@ -33,7 +33,7 @@ fn fun1() {
     a_box.set(22);
     v = *a_box.get();
     a_box.set(v+1);
-    assert_eq!(23, *a_box.get());
+    fail_unless_eq!(23, *a_box.get());
 }
 
 fn fun2() {
@@ -41,7 +41,7 @@ fn fun2() {
     a_box.set(22);
     let v = *a_box.get();
     a_box.set(v+1);
-    assert_eq!(23, *a_box.get());
+    fail_unless_eq!(23, *a_box.get());
 }
 
 pub fn main() {

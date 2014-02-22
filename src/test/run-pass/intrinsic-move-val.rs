@@ -23,7 +23,7 @@ pub fn main() {
         let mut y = rusti::init();
         let mut z: *uint = transmute(&x);
         rusti::move_val_init(&mut y, x);
-        assert_eq!(*y, 1);
-        assert_eq!(*z, 0); // `x` is nulled out, not directly visible
+        fail_unless_eq!(*y, 1);
+        fail_unless_eq!(*z, 0); // `x` is nulled out, not directly visible
     }
 }

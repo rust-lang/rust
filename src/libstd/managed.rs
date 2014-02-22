@@ -72,8 +72,8 @@ fn refcount_test() {
     use clone::Clone;
 
     let x = @3;
-    assert_eq!(refcount(x), 1);
+    fail_unless_eq!(refcount(x), 1);
     let y = x.clone();
-    assert_eq!(refcount(x), 2);
-    assert_eq!(refcount(y), 2);
+    fail_unless_eq!(refcount(x), 2);
+    fail_unless_eq!(refcount(y), 2);
 }

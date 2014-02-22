@@ -31,7 +31,7 @@ fn f(x: int) -> int {
 }
 
 pub fn main() {
-    assert_eq!(f(5), 120);
+    fail_unless_eq!(f(5), 120);
     // info!("all done");
 
 }

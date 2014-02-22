@@ -13,12 +13,12 @@
 pub fn main() {
     let mut s = ~"a";
     s.push_char('b');
-    assert_eq!(s[0], 'a' as u8);
-    assert_eq!(s[1], 'b' as u8);
+    fail_unless_eq!(s[0], 'a' as u8);
+    fail_unless_eq!(s[1], 'b' as u8);
     s.push_char('c');
     s.push_char('d');
-    assert_eq!(s[0], 'a' as u8);
-    assert_eq!(s[1], 'b' as u8);
-    assert_eq!(s[2], 'c' as u8);
-    assert_eq!(s[3], 'd' as u8);
+    fail_unless_eq!(s[0], 'a' as u8);
+    fail_unless_eq!(s[1], 'b' as u8);
+    fail_unless_eq!(s[2], 'c' as u8);
+    fail_unless_eq!(s[3], 'd' as u8);
 }

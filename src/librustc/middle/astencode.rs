@@ -235,7 +235,7 @@ impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
+        fail_unless_eq!(did.krate, ast::LOCAL_CRATE);
         ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: Span) -> Span {
@@ -1435,7 +1435,7 @@ fn roundtrip(in_item: Option<@ast::Item>) {
     let ebml_doc = reader::Doc(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
-    assert_eq!(in_item, out_item);
+    fail_unless_eq!(in_item, out_item);
 }
 
 #[test]

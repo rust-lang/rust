@@ -23,10 +23,10 @@ static CLs: Es = Ls;
 static CHs: Es = Hs;
 
 pub fn main() {
-    assert_eq!((Hu as u8) + 1, Lu as u8);
-    assert_eq!((Hs as i8) + 1, Ls as i8);
-    assert_eq!(CLu as u8, Lu as u8);
-    assert_eq!(CHu as u8, Hu as u8);
-    assert_eq!(CLs as i8, Ls as i8);
-    assert_eq!(CHs as i8, Hs as i8);
+    fail_unless_eq!((Hu as u8) + 1, Lu as u8);
+    fail_unless_eq!((Hs as i8) + 1, Ls as i8);
+    fail_unless_eq!(CLu as u8, Lu as u8);
+    fail_unless_eq!(CHu as u8, Hu as u8);
+    fail_unless_eq!(CLs as i8, Ls as i8);
+    fail_unless_eq!(CHs as i8, Hs as i8);
 }

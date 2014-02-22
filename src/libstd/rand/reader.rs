@@ -88,9 +88,9 @@ mod test {
         let bytes: ~[u8] = unsafe {cast::transmute(v)};
         let mut rng = ReaderRng::new(MemReader::new(bytes));
 
-        assert_eq!(rng.next_u64(), 1);
-        assert_eq!(rng.next_u64(), 2);
-        assert_eq!(rng.next_u64(), 3);
+        fail_unless_eq!(rng.next_u64(), 1);
+        fail_unless_eq!(rng.next_u64(), 2);
+        fail_unless_eq!(rng.next_u64(), 3);
     }
     #[test]
     fn test_reader_rng_u32() {
@@ -99,9 +99,9 @@ mod test {
         let bytes: ~[u8] = unsafe {cast::transmute(v)};
         let mut rng = ReaderRng::new(MemReader::new(bytes));
 
-        assert_eq!(rng.next_u32(), 1);
-        assert_eq!(rng.next_u32(), 2);
-        assert_eq!(rng.next_u32(), 3);
+        fail_unless_eq!(rng.next_u32(), 1);
+        fail_unless_eq!(rng.next_u32(), 2);
+        fail_unless_eq!(rng.next_u32(), 3);
     }
     #[test]
     fn test_reader_rng_fill_bytes() {
@@ -111,7 +111,7 @@ mod test {
         let mut rng = ReaderRng::new(MemReader::new(v.to_owned()));
         rng.fill_bytes(w);
 
-        assert_eq!(v, w);
+        fail_unless_eq!(v, w);
     }
 
     #[test]

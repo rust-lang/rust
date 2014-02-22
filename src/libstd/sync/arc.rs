@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_size() {
-        assert_eq!(size_of::<UnsafeArc<[int, ..10]>>(), size_of::<*[int, ..10]>());
+        fail_unless_eq!(size_of::<UnsafeArc<[int, ..10]>>(), size_of::<*[int, ..10]>());
     }
 
     #[test]
@@ -151,10 +151,10 @@ mod tests {
         // Tests that the many-refcounts-at-once constructors don't leak.
         let _ = UnsafeArc::new2(~~"hello");
         let x = UnsafeArc::newN(~~"hello", 0);
-        assert_eq!(x.len(), 0)
+        fail_unless_eq!(x.len(), 0)
         let x = UnsafeArc::newN(~~"hello", 1);
-        assert_eq!(x.len(), 1)
+        fail_unless_eq!(x.len(), 1)
         let x = UnsafeArc::newN(~~"hello", 10);
-        assert_eq!(x.len(), 10)
+        fail_unless_eq!(x.len(), 10)
     }
 }

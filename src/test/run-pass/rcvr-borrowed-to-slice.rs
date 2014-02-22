@@ -25,15 +25,15 @@ pub fn main() {
     let x = ~[1, 2, 3];
     let y = call_sum(x);
     info!("y=={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 
     let x = ~[1, 2, 3];
     let y = x.sum_();
     info!("y=={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 
     let x = ~[1, 2, 3];
     let y = x.sum_();
     info!("y=={}", y);
-    assert_eq!(y, 6);
+    fail_unless_eq!(y, 6);
 }

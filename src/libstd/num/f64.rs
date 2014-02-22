@@ -947,14 +947,14 @@ mod tests {
 
     #[test]
     fn test_asinh() {
-        assert_eq!(0.0f64.asinh(), 0.0f64);
-        assert_eq!((-0.0f64).asinh(), -0.0f64);
+        fail_unless_eq!(0.0f64.asinh(), 0.0f64);
+        fail_unless_eq!((-0.0f64).asinh(), -0.0f64);
 
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(inf.asinh(), inf);
-        assert_eq!(neg_inf.asinh(), neg_inf);
+        fail_unless_eq!(inf.asinh(), inf);
+        fail_unless_eq!(neg_inf.asinh(), neg_inf);
         fail_unless!(nan.asinh().is_nan());
         assert_approx_eq!(2.0f64.asinh(), 1.443635475178810342493276740273105f64);
         assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
@@ -962,13 +962,13 @@ mod tests {
 
     #[test]
     fn test_acosh() {
-        assert_eq!(1.0f64.acosh(), 0.0f64);
+        fail_unless_eq!(1.0f64.acosh(), 0.0f64);
         fail_unless!(0.999f64.acosh().is_nan());
 
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(inf.acosh(), inf);
+        fail_unless_eq!(inf.acosh(), inf);
         fail_unless!(neg_inf.acosh().is_nan());
         fail_unless!(nan.acosh().is_nan());
         assert_approx_eq!(2.0f64.acosh(), 1.31695789692481670862504634730796844f64);
@@ -977,14 +977,14 @@ mod tests {
 
     #[test]
     fn test_atanh() {
-        assert_eq!(0.0f64.atanh(), 0.0f64);
-        assert_eq!((-0.0f64).atanh(), -0.0f64);
+        fail_unless_eq!(0.0f64.atanh(), 0.0f64);
+        fail_unless_eq!((-0.0f64).atanh(), -0.0f64);
 
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(1.0f64.atanh(), inf);
-        assert_eq!((-1.0f64).atanh(), neg_inf);
+        fail_unless_eq!(1.0f64.atanh(), inf);
+        fail_unless_eq!((-1.0f64).atanh(), neg_inf);
         fail_unless!(2f64.atanh().atanh().is_nan());
         fail_unless!((-2f64).atanh().atanh().is_nan());
         fail_unless!(inf.atanh().is_nan());
@@ -1033,26 +1033,26 @@ mod tests {
 
     #[test]
     pub fn test_abs() {
-        assert_eq!(INFINITY.abs(), INFINITY);
-        assert_eq!(1f64.abs(), 1f64);
-        assert_eq!(0f64.abs(), 0f64);
-        assert_eq!((-0f64).abs(), 0f64);
-        assert_eq!((-1f64).abs(), 1f64);
-        assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
+        fail_unless_eq!(INFINITY.abs(), INFINITY);
+        fail_unless_eq!(1f64.abs(), 1f64);
+        fail_unless_eq!(0f64.abs(), 0f64);
+        fail_unless_eq!((-0f64).abs(), 0f64);
+        fail_unless_eq!((-1f64).abs(), 1f64);
+        fail_unless_eq!(NEG_INFINITY.abs(), INFINITY);
+        fail_unless_eq!((1f64/NEG_INFINITY).abs(), 0f64);
         fail_unless!(NAN.abs().is_nan());
     }
 
     #[test]
     fn test_abs_sub() {
-        assert_eq!((-1f64).abs_sub(&1f64), 0f64);
-        assert_eq!(1f64.abs_sub(&1f64), 0f64);
-        assert_eq!(1f64.abs_sub(&0f64), 1f64);
-        assert_eq!(1f64.abs_sub(&-1f64), 2f64);
-        assert_eq!(NEG_INFINITY.abs_sub(&0f64), 0f64);
-        assert_eq!(INFINITY.abs_sub(&1f64), INFINITY);
-        assert_eq!(0f64.abs_sub(&NEG_INFINITY), INFINITY);
-        assert_eq!(0f64.abs_sub(&INFINITY), 0f64);
+        fail_unless_eq!((-1f64).abs_sub(&1f64), 0f64);
+        fail_unless_eq!(1f64.abs_sub(&1f64), 0f64);
+        fail_unless_eq!(1f64.abs_sub(&0f64), 1f64);
+        fail_unless_eq!(1f64.abs_sub(&-1f64), 2f64);
+        fail_unless_eq!(NEG_INFINITY.abs_sub(&0f64), 0f64);
+        fail_unless_eq!(INFINITY.abs_sub(&1f64), INFINITY);
+        fail_unless_eq!(0f64.abs_sub(&NEG_INFINITY), INFINITY);
+        fail_unless_eq!(0f64.abs_sub(&INFINITY), 0f64);
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8663
@@ -1063,13 +1063,13 @@ mod tests {
 
     #[test]
     fn test_signum() {
-        assert_eq!(INFINITY.signum(), 1f64);
-        assert_eq!(1f64.signum(), 1f64);
-        assert_eq!(0f64.signum(), 1f64);
-        assert_eq!((-0f64).signum(), -1f64);
-        assert_eq!((-1f64).signum(), -1f64);
-        assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
+        fail_unless_eq!(INFINITY.signum(), 1f64);
+        fail_unless_eq!(1f64.signum(), 1f64);
+        fail_unless_eq!(0f64.signum(), 1f64);
+        fail_unless_eq!((-0f64).signum(), -1f64);
+        fail_unless_eq!((-1f64).signum(), -1f64);
+        fail_unless_eq!(NEG_INFINITY.signum(), -1f64);
+        fail_unless_eq!((1f64/NEG_INFINITY).signum(), -1f64);
         fail_unless!(NAN.signum().is_nan());
     }
 
@@ -1121,13 +1121,13 @@ mod tests {
         let neg_inf: f64 = Float::neg_infinity();
         let zero: f64 = Zero::zero();
         let neg_zero: f64 = Float::neg_zero();
-        assert_eq!(nan.classify(), FPNaN);
-        assert_eq!(inf.classify(), FPInfinite);
-        assert_eq!(neg_inf.classify(), FPInfinite);
-        assert_eq!(zero.classify(), FPZero);
-        assert_eq!(neg_zero.classify(), FPZero);
-        assert_eq!(1e-307f64.classify(), FPNormal);
-        assert_eq!(1e-308f64.classify(), FPSubnormal);
+        fail_unless_eq!(nan.classify(), FPNaN);
+        fail_unless_eq!(inf.classify(), FPInfinite);
+        fail_unless_eq!(neg_inf.classify(), FPInfinite);
+        fail_unless_eq!(zero.classify(), FPZero);
+        fail_unless_eq!(neg_zero.classify(), FPZero);
+        fail_unless_eq!(1e-307f64.classify(), FPNormal);
+        fail_unless_eq!(1e-308f64.classify(), FPSubnormal);
     }
 
     #[test]
@@ -1136,17 +1136,17 @@ mod tests {
         // are supported in floating-point literals
         let f1: f64 = from_str_hex("1p-123").unwrap();
         let f2: f64 = from_str_hex("1p-111").unwrap();
-        assert_eq!(Float::ldexp(1f64, -123), f1);
-        assert_eq!(Float::ldexp(1f64, -111), f2);
+        fail_unless_eq!(Float::ldexp(1f64, -123), f1);
+        fail_unless_eq!(Float::ldexp(1f64, -111), f2);
 
-        assert_eq!(Float::ldexp(0f64, -123), 0f64);
-        assert_eq!(Float::ldexp(-0f64, -123), -0f64);
+        fail_unless_eq!(Float::ldexp(0f64, -123), 0f64);
+        fail_unless_eq!(Float::ldexp(-0f64, -123), -0f64);
 
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(Float::ldexp(inf, -123), inf);
-        assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
+        fail_unless_eq!(Float::ldexp(inf, -123), inf);
+        fail_unless_eq!(Float::ldexp(neg_inf, -123), neg_inf);
         fail_unless!(Float::ldexp(nan, -123).is_nan());
     }
 
@@ -1158,13 +1158,13 @@ mod tests {
         let f2: f64 = from_str_hex("1p-111").unwrap();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
-        assert_eq!((x1, exp1), (0.5f64, -122));
-        assert_eq!((x2, exp2), (0.5f64, -110));
-        assert_eq!(Float::ldexp(x1, exp1), f1);
-        assert_eq!(Float::ldexp(x2, exp2), f2);
+        fail_unless_eq!((x1, exp1), (0.5f64, -122));
+        fail_unless_eq!((x2, exp2), (0.5f64, -110));
+        fail_unless_eq!(Float::ldexp(x1, exp1), f1);
+        fail_unless_eq!(Float::ldexp(x2, exp2), f2);
 
-        assert_eq!(0f64.frexp(), (0f64, 0));
-        assert_eq!((-0f64).frexp(), (-0f64, 0));
+        fail_unless_eq!(0f64.frexp(), (0f64, 0));
+        fail_unless_eq!((-0f64).frexp(), (-0f64, 0));
     }
 
     #[test] #[ignore(cfg(windows))] // FIXME #8755
@@ -1172,20 +1172,20 @@ mod tests {
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf)
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
+        fail_unless_eq!(match inf.frexp() { (x, _) => x }, inf)
+        fail_unless_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
         fail_unless!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]
     fn test_integer_decode() {
-        assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
-        assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
-        assert_eq!(2f64.powf(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
-        assert_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
-        assert_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
-        assert_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));
-        assert_eq!(NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
-        assert_eq!(NAN.integer_decode(), (6755399441055744u64, 972i16, 1i8));
+        fail_unless_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
+        fail_unless_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
+        fail_unless_eq!(2f64.powf(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
+        fail_unless_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
+        fail_unless_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
+        fail_unless_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));
+        fail_unless_eq!(NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
+        fail_unless_eq!(NAN.integer_decode(), (6755399441055744u64, 972i16, 1i8));
     }
 }

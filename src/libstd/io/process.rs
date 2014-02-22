@@ -298,7 +298,7 @@ mod tests {
             io: io,
             .. ProcessConfig::new()
         };
-        assert_eq!(run_output(args), ~"foobar\n");
+        fail_unless_eq!(run_output(args), ~"foobar\n");
     })
 
     // FIXME(#10380)
@@ -313,7 +313,7 @@ mod tests {
             io: io,
             .. ProcessConfig::new()
         };
-        assert_eq!(run_output(args), ~"/\n");
+        fail_unless_eq!(run_output(args), ~"/\n");
     })
 
     // FIXME(#10380)
@@ -332,7 +332,7 @@ mod tests {
         p.io[0] = None; // close stdin;
         let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
         fail_unless!(p.wait().success());
-        assert_eq!(out, ~"foobar\n");
+        fail_unless_eq!(out, ~"foobar\n");
     })
 
     // FIXME(#10380)

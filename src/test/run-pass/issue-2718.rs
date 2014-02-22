@@ -115,7 +115,7 @@ pub mod pipes {
                 return Some(payload.unwrap())
               }
               terminated => {
-                assert_eq!(old_state, terminated);
+                fail_unless_eq!(old_state, terminated);
                 return None;
               }
             }

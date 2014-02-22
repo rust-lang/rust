@@ -185,7 +185,7 @@ impl TcpWatcher {
 
     fn new_home(loop_: &Loop, home: HomeHandle) -> TcpWatcher {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_tcp_init(loop_.handle, handle)
         }, 0);
         TcpWatcher {
@@ -326,7 +326,7 @@ impl TcpListener {
     pub fn bind(io: &mut UvIoFactory, address: ip::SocketAddr)
                 -> Result<~TcpListener, UvError> {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_tcp_init(io.uv_loop(), handle)
         }, 0);
         let (port, chan) = Chan::new();
@@ -387,7 +387,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
                 uvll::get_loop_for_uv_handle(server)
             });
             let client = TcpWatcher::new_home(&loop_, tcp.home().clone());
-            assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
+            fail_unless_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
             Ok(~client as ~rtio::RtioTcpStream)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
@@ -459,7 +459,7 @@ impl UdpWatcher {
             read_access: Access::new(),
             write_access: Access::new(),
         };
-        assert_eq!(unsafe {
+        fail_unless_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
         let (addr, _len) = addr_to_sockaddr(address);
@@ -551,7 +551,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             }
 
             unsafe {
-                assert_eq!(uvll::uv_udp_recv_stop(handle), 0)
+                fail_unless_eq!(uvll::uv_udp_recv_stop(handle), 0)
             }
 
             let cx: &mut Ctx = unsafe {
@@ -711,7 +711,7 @@ mod test {
     fn connect_close_ip4() {
         match TcpWatcher::connect(local_loop(), next_test_ip4()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => fail_unless_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
 
@@ -719,7 +719,7 @@ mod test {
     fn connect_close_ip6() {
         match TcpWatcher::connect(local_loop(), next_test_ip6()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => fail_unless_eq!(e.name(), ~"ECONNREFUSED"),
         }
     }
 
@@ -759,7 +759,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -795,7 +795,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -823,11 +823,11 @@ mod test {
                     chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
-                        Ok((10, addr)) => assert_eq!(addr, client),
+                        Ok((10, addr)) => fail_unless_eq!(addr, client),
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -855,11 +855,11 @@ mod test {
                     chan.send(());
                     let mut buf = [0u8, ..10];
                     match w.recvfrom(buf) {
-                        Ok((10, addr)) => assert_eq!(addr, client),
+                        Ok((10, addr)) => fail_unless_eq!(addr, client),
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        fail_unless_eq!(buf[i], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -903,7 +903,7 @@ mod test {
             let nread = stream.read(buf).unwrap();
             total_bytes_read += nread;
             for i in range(0u, nread) {
-                assert_eq!(buf[i], 1);
+                fail_unless_eq!(buf[i], 1);
             }
         }
         uvdebug!("read {} bytes total", total_bytes_read);
@@ -929,12 +929,12 @@ mod test {
         let mut buf2 = [0];
         let (nread1, src1) = server.recvfrom(buf1).unwrap();
         let (nread2, src2) = server.recvfrom(buf2).unwrap();
-        assert_eq!(nread1, 1);
-        assert_eq!(nread2, 1);
-        assert_eq!(src1, client_addr);
-        assert_eq!(src2, client_addr);
-        assert_eq!(buf1[0], 1);
-        assert_eq!(buf2[0], 2);
+        fail_unless_eq!(nread1, 1);
+        fail_unless_eq!(nread2, 1);
+        fail_unless_eq!(src1, client_addr);
+        fail_unless_eq!(src2, client_addr);
+        fail_unless_eq!(buf1[0], 1);
+        fail_unless_eq!(buf2[0], 2);
     }
 
     #[test]
@@ -966,8 +966,8 @@ mod test {
                 let res = server_in.recvfrom(buf);
                 fail_unless!(res.is_ok());
                 let (nread, src) = res.unwrap();
-                assert_eq!(nread, 1);
-                assert_eq!(src, client_out_addr);
+                fail_unless_eq!(nread, 1);
+                fail_unless_eq!(src, client_out_addr);
             }
             fail_unless!(total_bytes_sent >= MAX);
         });
@@ -987,10 +987,10 @@ mod test {
             let res = client_in.recvfrom(buf);
             fail_unless!(res.is_ok());
             let (nread, src) = res.unwrap();
-            assert_eq!(src, server_out_addr);
+            fail_unless_eq!(src, server_out_addr);
             total_bytes_recv += nread;
             for i in range(0u, nread) {
-                assert_eq!(buf[i], 1);
+                fail_unless_eq!(buf[i], 1);
             }
         }
         // tell the server we're done
@@ -1028,7 +1028,7 @@ mod test {
             let nread = stream.read(buf).unwrap();
             for i in range(0u, nread) {
                 let val = buf[i] as uint;
-                assert_eq!(val, current % 8);
+                fail_unless_eq!(val, current % 8);
                 current += 1;
             }
             reads += 1;
@@ -1050,9 +1050,9 @@ mod test {
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
             let nread = stream.read(buf).unwrap();
-            assert_eq!(nread, 8);
+            fail_unless_eq!(nread, 8);
             for i in range(0u, nread) {
-                assert_eq!(buf[i], i as u8);
+                fail_unless_eq!(buf[i], i as u8);
             }
         });
 

@@ -23,5 +23,5 @@ fn gg<T:Bar>(a: &T) -> int {
 
 pub fn main() {
     let a = &A { x: 3 };
-    assert_eq!(gg(a), 10);
+    fail_unless_eq!(gg(a), 10);
 }

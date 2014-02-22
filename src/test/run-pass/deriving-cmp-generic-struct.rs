@@ -32,21 +32,21 @@ pub fn main() {
             let ge = i >= j;
 
             // Eq
-            assert_eq!(*s1 == *s2, eq);
-            assert_eq!(*s1 != *s2, !eq);
+            fail_unless_eq!(*s1 == *s2, eq);
+            fail_unless_eq!(*s1 != *s2, !eq);
 
             // TotalEq
-            assert_eq!(s1.equals(s2), eq);
+            fail_unless_eq!(s1.equals(s2), eq);
 
             // Ord
-            assert_eq!(*s1 < *s2, lt);
-            assert_eq!(*s1 > *s2, gt);
+            fail_unless_eq!(*s1 < *s2, lt);
+            fail_unless_eq!(*s1 > *s2, gt);
 
-            assert_eq!(*s1 <= *s2, le);
-            assert_eq!(*s1 >= *s2, ge);
+            fail_unless_eq!(*s1 <= *s2, le);
+            fail_unless_eq!(*s1 >= *s2, ge);
 
             // TotalOrd
-            assert_eq!(s1.cmp(s2), ord);
+            fail_unless_eq!(s1.cmp(s2), ord);
         }
     }
 }

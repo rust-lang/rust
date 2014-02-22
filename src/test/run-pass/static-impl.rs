@@ -56,13 +56,13 @@ impl<T> vec_utils<T> for ~[T] {
 }
 
 pub fn main() {
-    assert_eq!(10u.plus(), 30);
-    assert_eq!((~"hi").plus(), 200);
+    fail_unless_eq!(10u.plus(), 30);
+    fail_unless_eq!((~"hi").plus(), 200);
 
-    assert_eq!((~[1]).length_().str(), ~"1");
-    assert_eq!((~[3, 4]).map_(|a| *a + 4 )[0], 7);
-    assert_eq!((~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0], 7u);
+    fail_unless_eq!((~[1]).length_().str(), ~"1");
+    fail_unless_eq!((~[3, 4]).map_(|a| *a + 4 )[0], 7);
+    fail_unless_eq!((~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0], 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );
-    assert_eq!(x, 20u);
+    fail_unless_eq!(x, 20u);
 }

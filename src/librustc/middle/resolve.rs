@@ -2537,7 +2537,7 @@ impl Resolver {
             return Indeterminate;
         }
 
-        assert_eq!(containing_module.glob_count.get(), 0);
+        fail_unless_eq!(containing_module.glob_count.get(), 0);
 
         // Add all resolved imports from the containing module.
         let import_resolutions = containing_module.import_resolutions
@@ -3212,7 +3212,7 @@ impl Resolver {
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
         if name_search_type == PathSearch {
-            assert_eq!(module_.glob_count.get(), 0);
+            fail_unless_eq!(module_.glob_count.get(), 0);
         }
 
         // Check the list of resolved imports.

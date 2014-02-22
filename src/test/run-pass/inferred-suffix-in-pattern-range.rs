@@ -14,19 +14,19 @@ pub fn main() {
       0 .. 1     => { ~"not many" }
       _          => { ~"lots" }
     };
-    assert_eq!(x_message, ~"lots");
+    fail_unless_eq!(x_message, ~"lots");
 
     let y = 2i;
     let y_message = match y {
       0 .. 1     => { ~"not many" }
       _          => { ~"lots" }
     };
-    assert_eq!(y_message, ~"lots");
+    fail_unless_eq!(y_message, ~"lots");
 
     let z = 1u64;
     let z_message = match z {
       0 .. 1     => { ~"not many" }
       _          => { ~"lots" }
     };
-    assert_eq!(z_message, ~"not many");
+    fail_unless_eq!(z_message, ~"not many");
 }

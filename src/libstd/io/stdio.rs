@@ -359,7 +359,7 @@ mod tests {
             set_stdout(~w as ~Writer);
             println!("hello!");
         });
-        assert_eq!(r.read_to_str().unwrap(), ~"hello!\n");
+        fail_unless_eq!(r.read_to_str().unwrap(), ~"hello!\n");
     })
 
     iotest!(fn capture_stderr() {

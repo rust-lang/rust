@@ -14,6 +14,6 @@ pub fn main() {
     unsafe {
         let mut i : int = 1;
         volatile_store(&mut i, 2);
-        assert_eq!(volatile_load(&i), 2);
+        fail_unless_eq!(volatile_load(&i), 2);
     }
 }

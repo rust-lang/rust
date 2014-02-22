@@ -417,7 +417,7 @@ fn spawn_process_os(config: p::ProcessConfig,
         static FIOCLEX: c_ulong = 0x5451;
 
         let ret = ioctl(fd, FIOCLEX);
-        assert_eq!(ret, 0);
+        fail_unless_eq!(ret, 0);
     }
 
     let pipe = os::pipe();
@@ -736,19 +736,19 @@ mod tests {
     #[test] #[cfg(windows)]
     fn test_make_command_line() {
         use super::make_command_line;
-        assert_eq!(
+        fail_unless_eq!(
             make_command_line("prog", [~"aaa", ~"bbb", ~"ccc"]),
             ~"prog aaa bbb ccc"
         );
-        assert_eq!(
+        fail_unless_eq!(
             make_command_line("C:\\Program Files\\blah\\blah.exe", [~"aaa"]),
             ~"\"C:\\Program Files\\blah\\blah.exe\" aaa"
         );
-        assert_eq!(
+        fail_unless_eq!(
             make_command_line("C:\\Program Files\\test", [~"aa\"bb"]),
             ~"\"C:\\Program Files\\test\" aa\\\"bb"
         );
-        assert_eq!(
+        fail_unless_eq!(
             make_command_line("echo", [~"a b c"]),
             ~"echo \"a b c\""
         );

@@ -18,8 +18,8 @@ use reexported_static_methods::Boz;
 use reexported_static_methods::Bort;
 
 pub fn main() {
-    assert_eq!(42, Foo::foo());
-    assert_eq!(84, Baz::bar());
+    fail_unless_eq!(42, Foo::foo());
+    fail_unless_eq!(84, Baz::bar());
     fail_unless!(Boz::boz(1));
-    assert_eq!(~"bort()", Bort::bort());
+    fail_unless_eq!(~"bort()", Bort::bort());
 }

@@ -2333,7 +2333,7 @@ pub fn print_comment(s: &mut State,
                      cmnt: &comments::Comment) -> io::IoResult<()> {
     match cmnt.style {
         comments::Mixed => {
-            assert_eq!(cmnt.lines.len(), 1u);
+            fail_unless_eq!(cmnt.lines.len(), 1u);
             try!(zerobreak(&mut s.s));
             try!(word(&mut s.s, cmnt.lines[0]));
             try!(zerobreak(&mut s.s));
@@ -2548,7 +2548,7 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_str(&decl, ast::ImpureFn, abba_ident,
+        fail_unless_eq!(&fun_to_str(&decl, ast::ImpureFn, abba_ident,
                                None, &generics),
                    &~"fn abba()");
     }
@@ -2568,6 +2568,6 @@ mod test {
         });
 
         let varstr = variant_to_str(&var);
-        assert_eq!(&varstr,&~"pub principal_skinner");
+        fail_unless_eq!(&varstr,&~"pub principal_skinner");
     }
 }

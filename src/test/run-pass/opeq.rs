@@ -15,14 +15,14 @@ pub fn main() {
     let mut x: int = 1;
     x *= 2;
     info!("{}", x);
-    assert_eq!(x, 2);
+    fail_unless_eq!(x, 2);
     x += 3;
     info!("{}", x);
-    assert_eq!(x, 5);
+    fail_unless_eq!(x, 5);
     x *= x;
     info!("{}", x);
-    assert_eq!(x, 25);
+    fail_unless_eq!(x, 25);
     x /= 5;
     info!("{}", x);
-    assert_eq!(x, 5);
+    fail_unless_eq!(x, 5);
 }

@@ -14,5 +14,5 @@ pub fn main() {
     let name = RefCell::new("rust");
     let what = RefCell::new("rocks");
     let msg = format!("{name:?} {:?}", what.borrow().get(), name=name.borrow().get());
-    assert_eq!(msg, ~"&\"rust\" &\"rocks\"");
+    fail_unless_eq!(msg, ~"&\"rust\" &\"rocks\"");
 }

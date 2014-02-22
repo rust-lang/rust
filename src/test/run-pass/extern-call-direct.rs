@@ -14,5 +14,5 @@ extern fn f(x: uint) -> uint { x * 2 }
 
 pub fn main() {
     let x = f(22);
-    assert_eq!(x, 44);
+    fail_unless_eq!(x, 44);
 }

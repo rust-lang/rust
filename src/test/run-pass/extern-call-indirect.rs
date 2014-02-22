@@ -39,5 +39,5 @@ fn fact(n: uint) -> uint {
 pub fn main() {
     let result = fact(10u);
     info!("result = {}", result);
-    assert_eq!(result, 3628800u);
+    fail_unless_eq!(result, 3628800u);
 }

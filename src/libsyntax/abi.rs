@@ -404,15 +404,15 @@ fn abi_to_str_rust() {
 #[test]
 fn indices_are_correct() {
     for (i, abi_data) in AbiDatas.iter().enumerate() {
-        assert_eq!(i, abi_data.abi.index());
+        fail_unless_eq!(i, abi_data.abi.index());
     }
 
     let bits = 1 << (X86 as u32);
     let bits = bits | 1 << (X86_64 as u32);
-    assert_eq!(IntelBits, bits);
+    fail_unless_eq!(IntelBits, bits);
 
     let bits = 1 << (Arm as u32);
-    assert_eq!(ArmBits, bits);
+    fail_unless_eq!(ArmBits, bits);
 }
 
 #[cfg(test)]
@@ -426,19 +426,19 @@ fn get_arch(abis: &[Abi], os: Os, arch: Architecture) -> Option<Abi> {
 
 #[test]
 fn pick_multiplatform() {
-    assert_eq!(get_arch([C, Cdecl], OsLinux, X86), Some(Cdecl));
-    assert_eq!(get_arch([C, Cdecl], OsLinux, X86_64), Some(Cdecl));
-    assert_eq!(get_arch([C, Cdecl], OsLinux, Arm), Some(C));
+    fail_unless_eq!(get_arch([C, Cdecl], OsLinux, X86), Some(Cdecl));
+    fail_unless_eq!(get_arch([C, Cdecl], OsLinux, X86_64), Some(Cdecl));
+    fail_unless_eq!(get_arch([C, Cdecl], OsLinux, Arm), Some(C));
 }
 
 #[test]
 fn pick_uniplatform() {
-    assert_eq!(get_arch([Stdcall], OsLinux, X86), Some(Stdcall));
-    assert_eq!(get_arch([Stdcall], OsLinux, Arm), None);
-    assert_eq!(get_arch([System], OsLinux, X86), Some(C));
-    assert_eq!(get_arch([System], OsWin32, X86), Some(Stdcall));
-    assert_eq!(get_arch([System], OsWin32, X86_64), Some(C));
-    assert_eq!(get_arch([System], OsWin32, Arm), Some(C));
-    assert_eq!(get_arch([Stdcall], OsWin32, X86), Some(Stdcall));
-    assert_eq!(get_arch([Stdcall], OsWin32, X86_64), Some(Stdcall));
+    fail_unless_eq!(get_arch([Stdcall], OsLinux, X86), Some(Stdcall));
+    fail_unless_eq!(get_arch([Stdcall], OsLinux, Arm), None);
+    fail_unless_eq!(get_arch([System], OsLinux, X86), Some(C));
+    fail_unless_eq!(get_arch([System], OsWin32, X86), Some(Stdcall));
+    fail_unless_eq!(get_arch([System], OsWin32, X86_64), Some(C));
+    fail_unless_eq!(get_arch([System], OsWin32, Arm), Some(C));
+    fail_unless_eq!(get_arch([Stdcall], OsWin32, X86), Some(Stdcall));
+    fail_unless_eq!(get_arch([Stdcall], OsWin32, X86_64), Some(Stdcall));
 }

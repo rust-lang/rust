@@ -38,6 +38,6 @@ pub fn main() {
     ];
 
     for i in range(0u, foos.len()) {
-        assert_eq!(i, foos[i].foo());
+        fail_unless_eq!(i, foos[i].foo());
     }
 }

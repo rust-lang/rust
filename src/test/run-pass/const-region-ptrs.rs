@@ -17,6 +17,6 @@ static y: &'static Pair<'static> = &Pair {a: 15, b: x};
 pub fn main() {
     println!("x = {}", *x);
     println!("y = \\{a: {}, b: {}\\}", y.a, *(y.b));
-    assert_eq!(*x, 10);
-    assert_eq!(*(y.b), 10);
+    fail_unless_eq!(*x, 10);
+    fail_unless_eq!(*(y.b), 10);
 }

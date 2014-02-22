@@ -16,5 +16,5 @@ pub fn main() {
     let b: ~str = ~"world";
     let s: ~str = a + b;
     info!("{}", s.clone());
-    assert_eq!(s[9], 'd' as u8);
+    fail_unless_eq!(s[9], 'd' as u8);
 }

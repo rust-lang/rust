@@ -19,9 +19,9 @@ struct A { a: int }
 pub fn main() {
     let mut x = A {a: 10};
     f(&mut x);
-    assert_eq!(x.a, 100);
+    fail_unless_eq!(x.a, 100);
     x.a = 20;
     let mut y = x;
     f(&mut y);
-    assert_eq!(x.a, 20);
+    fail_unless_eq!(x.a, 20);
 }

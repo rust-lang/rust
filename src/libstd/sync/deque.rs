@@ -410,14 +410,14 @@ mod tests {
     fn smoke() {
         let mut pool = BufferPool::new();
         let (mut w, mut s) = pool.deque();
-        assert_eq!(w.pop(), None);
-        assert_eq!(s.steal(), Empty);
+        fail_unless_eq!(w.pop(), None);
+        fail_unless_eq!(s.steal(), Empty);
         w.push(1);
-        assert_eq!(w.pop(), Some(1));
+        fail_unless_eq!(w.pop(), Some(1));
         w.push(1);
-        assert_eq!(s.steal(), Data(1));
+        fail_unless_eq!(s.steal(), Data(1));
         w.push(1);
-        assert_eq!(s.clone().steal(), Data(1));
+        fail_unless_eq!(s.clone().steal(), Data(1));
     }
 
     #[test]
@@ -431,7 +431,7 @@ mod tests {
             while left > 0 {
                 match s.steal() {
                     Data(i) => {
-                        assert_eq!(i, 1);
+                        fail_unless_eq!(i, 1);
                         left -= 1;
                     }
                     Abort | Empty => {}
@@ -588,7 +588,7 @@ mod tests {
             thread.join();
         }
 
-        assert_eq!(unsafe { HITS.load(SeqCst) }, expected as uint);
+        fail_unless_eq!(unsafe { HITS.load(SeqCst) }, expected as uint);
     }
 
     #[test]

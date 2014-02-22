@@ -3009,7 +3009,7 @@ on `x: &int` are equivalent:
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
-assert_eq!(y, z);
+fail_unless_eq!(y, z);
 ~~~~
 
 A pattern that's just an identifier, like `Nil` in the previous example,

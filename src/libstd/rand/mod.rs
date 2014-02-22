@@ -695,15 +695,15 @@ mod test {
         for _ in range(0, 1000) {
             let a = r.gen_range(-3i, 42);
             fail_unless!(a >= -3 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
-            assert_eq!(r.gen_range(-12, -11), -12);
+            fail_unless_eq!(r.gen_range(0, 1), 0);
+            fail_unless_eq!(r.gen_range(-12, -11), -12);
         }
 
         for _ in range(0, 1000) {
             let a = r.gen_range(10, 42);
             fail_unless!(a >= 10 && a < 42);
-            assert_eq!(r.gen_range(0, 1), 0);
-            assert_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
+            fail_unless_eq!(r.gen_range(0, 1), 0);
+            fail_unless_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
         }
 
     }
@@ -733,8 +733,8 @@ mod test {
     #[test]
     fn test_gen_weighted_bool() {
         let mut r = rng();
-        assert_eq!(r.gen_weighted_bool(0u), true);
-        assert_eq!(r.gen_weighted_bool(1u), true);
+        fail_unless_eq!(r.gen_weighted_bool(0u), true);
+        fail_unless_eq!(r.gen_weighted_bool(1u), true);
     }
 
     #[test]
@@ -743,23 +743,23 @@ mod test {
         debug!("{}", r.gen_ascii_str(10u));
         debug!("{}", r.gen_ascii_str(10u));
         debug!("{}", r.gen_ascii_str(10u));
-        assert_eq!(r.gen_ascii_str(0u).len(), 0u);
-        assert_eq!(r.gen_ascii_str(10u).len(), 10u);
-        assert_eq!(r.gen_ascii_str(16u).len(), 16u);
+        fail_unless_eq!(r.gen_ascii_str(0u).len(), 0u);
+        fail_unless_eq!(r.gen_ascii_str(10u).len(), 10u);
+        fail_unless_eq!(r.gen_ascii_str(16u).len(), 16u);
     }
 
     #[test]
     fn test_gen_vec() {
         let mut r = rng();
-        assert_eq!(r.gen_vec::<u8>(0u).len(), 0u);
-        assert_eq!(r.gen_vec::<u8>(10u).len(), 10u);
-        assert_eq!(r.gen_vec::<f64>(16u).len(), 16u);
+        fail_unless_eq!(r.gen_vec::<u8>(0u).len(), 0u);
+        fail_unless_eq!(r.gen_vec::<u8>(10u).len(), 10u);
+        fail_unless_eq!(r.gen_vec::<f64>(16u).len(), 16u);
     }
 
     #[test]
     fn test_choose() {
         let mut r = rng();
-        assert_eq!(r.choose([1, 1, 1]), 1);
+        fail_unless_eq!(r.choose([1, 1, 1]), 1);
     }
 
     #[test]
@@ -770,23 +770,23 @@ mod test {
 
         let i = 1;
         let v = [1,1,1];
-        assert_eq!(r.choose_option(v), Some(&i));
+        fail_unless_eq!(r.choose_option(v), Some(&i));
     }
 
     #[test]
     fn test_shuffle() {
         let mut r = rng();
         let empty: ~[int] = ~[];
-        assert_eq!(r.shuffle(~[]), empty);
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        fail_unless_eq!(r.shuffle(~[]), empty);
+        fail_unless_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
     }
 
     #[test]
     fn test_task_rng() {
         let mut r = task_rng();
         r.gen::<int>();
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
-        assert_eq!(r.gen_range(0u, 1u), 0u);
+        fail_unless_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        fail_unless_eq!(r.gen_range(0u, 1u), 0u);
     }
 
     #[test]
@@ -811,8 +811,8 @@ mod test {
         let small_sample = r.sample(vals.iter(), 5);
         let large_sample = r.sample(vals.iter(), vals.len() + 5);
 
-        assert_eq!(small_sample.len(), 5);
-        assert_eq!(large_sample.len(), vals.len());
+        fail_unless_eq!(small_sample.len(), 5);
+        fail_unless_eq!(large_sample.len(), vals.len());
 
         fail_unless!(small_sample.iter().all(|e| {
             **e >= MIN_VAL && **e <= MAX_VAL
@@ -824,7 +824,7 @@ mod test {
         let s = OSRng::new().gen_vec::<uint>(256);
         let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
-        assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
+        fail_unless_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
 
     #[test]
@@ -836,7 +836,7 @@ mod test {
         r.reseed(s);
 
         let string2 = r.gen_ascii_str(100);
-        assert_eq!(string1, string2);
+        fail_unless_eq!(string1, string2);
     }
 }
 

@@ -21,17 +21,17 @@ enum A {
 
 pub fn main() {
     let x: Option<A> = FromPrimitive::from_int(int::MAX);
-    assert_eq!(x, Some(Foo));
+    fail_unless_eq!(x, Some(Foo));
 
     let x: Option<A> = FromPrimitive::from_int(1);
-    assert_eq!(x, Some(Bar));
+    fail_unless_eq!(x, Some(Bar));
 
     let x: Option<A> = FromPrimitive::from_int(3);
-    assert_eq!(x, Some(Baz));
+    fail_unless_eq!(x, Some(Baz));
 
     let x: Option<A> = FromPrimitive::from_int(4);
-    assert_eq!(x, Some(Qux));
+    fail_unless_eq!(x, Some(Qux));
 
     let x: Option<A> = FromPrimitive::from_int(5);
-    assert_eq!(x, None);
+    fail_unless_eq!(x, None);
 }

@@ -190,7 +190,7 @@ mod test {
     #[test]
     fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags([~"path1", ~"path2"]);
-        assert_eq!(flags, ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
+        fail_unless_eq!(flags, ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
     }
 
     #[test]
@@ -215,7 +215,7 @@ mod test {
     #[test]
     fn test_minimize1() {
         let res = minimize_rpaths([~"rpath1", ~"rpath2", ~"rpath1"]);
-        assert_eq!(res.as_slice(), [~"rpath1", ~"rpath2"]);
+        fail_unless_eq!(res.as_slice(), [~"rpath1", ~"rpath2"]);
     }
 
     #[test]
@@ -224,7 +224,7 @@ mod test {
                                    ~"1a", ~"4a", ~"1a",
                                    ~"2",  ~"3",  ~"4a",
                                    ~"3"]);
-        assert_eq!(res.as_slice(), [~"1a", ~"2", ~"4a", ~"3"]);
+        fail_unless_eq!(res.as_slice(), [~"1a", ~"2", ~"4a", ~"3"]);
     }
 
     #[test]
@@ -234,7 +234,7 @@ mod test {
       let o = abi::OsLinux;
       let res = get_rpath_relative_to_output(o,
             &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
-      assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+      fail_unless_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
     #[test]
@@ -243,7 +243,7 @@ mod test {
         let o = abi::OsFreebsd;
         let res = get_rpath_relative_to_output(o,
             &Path::new("bin/rustc"), &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "$ORIGIN/../lib");
+        fail_unless_eq!(res.as_slice(), "$ORIGIN/../lib");
     }
 
     #[test]
@@ -253,7 +253,7 @@ mod test {
         let res = get_rpath_relative_to_output(o,
                                                &Path::new("bin/rustc"),
                                                &Path::new("lib/libstd.so"));
-        assert_eq!(res.as_slice(), "@loader_path/../lib");
+        fail_unless_eq!(res.as_slice(), "@loader_path/../lib");
     }
 
     #[test]
@@ -264,6 +264,6 @@ mod test {
                res.to_str(), lib.display());
 
         // FIXME (#9639): This needs to handle non-utf8 paths
-        assert_eq!(res.as_slice(), lib.as_str().expect("non-utf8 component in path"));
+        fail_unless_eq!(res.as_slice(), lib.as_str().expect("non-utf8 component in path"));
     }
 }

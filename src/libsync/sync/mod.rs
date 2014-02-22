@@ -883,7 +883,7 @@ mod tests {
             access_shared(sharedstate, &m, 10);
             let _ = p.recv();
 
-            assert_eq!(*sharedstate, 20);
+            fail_unless_eq!(*sharedstate, 20);
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
@@ -950,7 +950,7 @@ mod tests {
         for port in ports.mut_iter() { let _ = port.recv(); }
         m.lock_cond(|cond| {
             let num_woken = cond.broadcast();
-            assert_eq!(num_woken, num_waiters);
+            fail_unless_eq!(num_woken, num_waiters);
         });
         // wait until all children wake up
         for port in ports.mut_iter() { let _ = port.recv(); }
@@ -1058,7 +1058,7 @@ mod tests {
         for p in r.mut_iter() { p.recv(); } // wait on all its siblings
         m.lock_cond(|cond| {
             let woken = cond.broadcast();
-            assert_eq!(woken, 0);
+            fail_unless_eq!(woken, 0);
         })
     }
     #[test]
@@ -1158,7 +1158,7 @@ mod tests {
             access_shared(sharedstate, x, mode2, 10);
             let _ = p.recv();
 
-            assert_eq!(*sharedstate, 20);
+            fail_unless_eq!(*sharedstate, 20);
         }
 
         fn access_shared(sharedstate: &mut int, x: &RWLock, mode: RWLockMode,
@@ -1311,7 +1311,7 @@ mod tests {
         for port in ports.mut_iter() { let _ = port.recv(); }
         lock_cond(&x, dg2, |cond| {
             let num_woken = cond.broadcast();
-            assert_eq!(num_woken, num_waiters);
+            fail_unless_eq!(num_woken, num_waiters);
         });
         // wait until all children wake up
         for port in ports.mut_iter() { let _ = port.recv(); }

@@ -298,7 +298,7 @@ impl MoveData {
                index);
 
         let paths = self.paths.borrow();
-        assert_eq!(index.get(), paths.get().len() - 1);
+        fail_unless_eq!(index.get(), paths.get().len() - 1);
 
         let mut path_map = self.path_map.borrow_mut();
         path_map.get().insert(lp, index);

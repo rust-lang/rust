@@ -11,9 +11,9 @@
 pub fn main() {
     let mut i = 0;
     while i < 20 { i += 1; if i == 10 { break; } }
-    assert_eq!(i, 10);
+    fail_unless_eq!(i, 10);
     loop { i += 1; if i == 20 { break; } }
-    assert_eq!(i, 20);
+    fail_unless_eq!(i, 20);
     let xs = [1, 2, 3, 4, 5, 6];
     for x in xs.iter() {
         if *x == 3 { break; } fail_unless!((*x <= 3));

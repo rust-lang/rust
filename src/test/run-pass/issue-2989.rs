@@ -43,5 +43,5 @@ pub fn main() {
         println!("{} => {} vs {}", i, bools[i], bools2[i]);
     }
 
-    assert_eq!(bools, bools2);
+    fail_unless_eq!(bools, bools2);
 }

@@ -18,7 +18,7 @@ impl Eq for chan {
 }
 
 fn wrapper3(i: chan) {
-    assert_eq!(i, chan_t);
+    fail_unless_eq!(i, chan_t);
 }
 
 pub fn main() {

@@ -147,12 +147,12 @@ fn parse_sigil(st: &mut PState) -> ast::Sigil {
 }
 
 fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
-    assert_eq!(next(st), '/');
+    fail_unless_eq!(next(st), '/');
 
     let c = peek(st);
     if '0' <= c && c <= '9' {
         let n = parse_uint(st);
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         return ty::vstore_fixed(n);
     }
 
@@ -176,7 +176,7 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
 
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
-    assert_eq!(next(st), '[');
+    fail_unless_eq!(next(st), '[');
     let mut params: ~[ty::t] = ~[];
     while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
     st.pos = st.pos + 1u;
@@ -197,7 +197,7 @@ fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
                 let r = parse_region(st, |x,y| conv(x,y));
                 regions.push(r);
             }
-            assert_eq!(next(st), '.');
+            fail_unless_eq!(next(st), '.');
             ty::NonerasedRegions(regions)
         }
         _ => fail!("parse_bound_region: bad input")
@@ -208,7 +208,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
     match next(st) {
         'a' => {
             let id = parse_uint(st);
-            assert_eq!(next(st), '|');
+            fail_unless_eq!(next(st), '|');
             ty::BrAnon(id)
         }
         '[' => {
@@ -218,7 +218,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         }
         'f' => {
             let id = parse_uint(st);
-            assert_eq!(next(st), '|');
+            fail_unless_eq!(next(st), '|');
             ty::BrFresh(id)
         }
         _ => fail!("parse_bound_region: bad input")
@@ -228,34 +228,34 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
 fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
     match next(st) {
       'b' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
-        assert_eq!(next(st), ']');
+        fail_unless_eq!(next(st), ']');
         ty::ReLateBound(id, br)
       }
       'B' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let node_id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         let index = parse_uint(st);
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         let nm = token::str_to_ident(parse_str(st, ']'));
         ty::ReEarlyBound(node_id, index, nm)
       }
       'f' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         let br = parse_bound_region(st, |x,y| conv(x,y));
-        assert_eq!(next(st), ']');
+        fail_unless_eq!(next(st), ']');
         ty::ReFree(ty::FreeRegion {scope_id: id,
                                     bound_region: br})
       }
       's' => {
         let id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
+        fail_unless_eq!(next(st), '|');
         ty::ReScope(id)
       }
       't' => {
@@ -317,20 +317,20 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'c' => return ty::mk_char(),
       't' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
-        assert_eq!(next(st), ']');
+        fail_unless_eq!(next(st), ']');
         return ty::mk_enum(st.tcx, def, substs);
       }
       'x' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
         let store = parse_trait_store(st, |x,y| conv(x,y));
         let mt = parse_mutability(st);
         let bounds = parse_bounds(st, |x,y| conv(x,y));
-        assert_eq!(next(st), ']');
+        fail_unless_eq!(next(st), ']');
         return ty::mk_trait(st.tcx, def, substs, store, mt, bounds.builtin_bounds);
       }
       'p' => {
@@ -361,7 +361,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_str(st.tcx, v);
       }
       'T' => {
-        assert_eq!(next(st), '[');
+        fail_unless_eq!(next(st), '[');
         let mut params = ~[];
         while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
         st.pos = st.pos + 1u;
@@ -375,9 +375,9 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       '#' => {
         let pos = parse_hex(st);
-        assert_eq!(next(st), ':');
+        fail_unless_eq!(next(st), ':');
         let len = parse_hex(st);
-        assert_eq!(next(st), '#');
+        fail_unless_eq!(next(st), '#');
         let key = ty::creader_cache_key {cnum: st.krate,
                                          pos: pos,
                                          len: len };
@@ -406,10 +406,10 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         inner
       }
       'a' => {
-          assert_eq!(next(st), '[');
+          fail_unless_eq!(next(st), '[');
           let did = parse_def(st, NominalType, |x,y| conv(x,y));
           let substs = parse_substs(st, |x,y| conv(x,y));
-          assert_eq!(next(st), ']');
+          fail_unless_eq!(next(st), ']');
           return ty::mk_struct(st.tcx, did, substs);
       }
       c => { error!("unexpected char in type string: {}", c); fail!();}
@@ -467,7 +467,7 @@ fn parse_purity(c: char) -> Purity {
 }
 
 fn parse_abi_set(st: &mut PState) -> AbiSet {
-    assert_eq!(next(st), '[');
+    fail_unless_eq!(next(st), '[');
     let mut abis = AbiSet::empty();
     while peek(st) != ']' {
          scan(st, |c| c == ',', |bytes| {
@@ -476,7 +476,7 @@ fn parse_abi_set(st: &mut PState) -> AbiSet {
                  abis.add(abi);
               });
     }
-    assert_eq!(next(st), ']');
+    fail_unless_eq!(next(st), ']');
     return abis;
 }
 
@@ -517,9 +517,9 @@ fn parse_bare_fn_ty(st: &mut PState, conv: conv_did) -> ty::BareFnTy {
 }
 
 fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
-    assert_eq!(next(st), '[');
+    fail_unless_eq!(next(st), '[');
     let id = parse_uint(st) as ast::NodeId;
-    assert_eq!(next(st), '|');
+    fail_unless_eq!(next(st), '|');
     let mut inputs = ~[];
     while peek(st) != ']' {
         inputs.push(parse_ty(st, |x,y| conv(x,y)));

@@ -27,11 +27,11 @@ static z : &'static foo = &foo { a: 10, b: 22, c: 12 };
 static w : foo = foo { a:5, ..x };
 
 pub fn main() {
-    assert_eq!(x.b, 2);
-    assert_eq!(x, y);
-    assert_eq!(z.b, 22);
-    assert_eq!(w.a, 5);
-    assert_eq!(w.c, 3);
+    fail_unless_eq!(x.b, 2);
+    fail_unless_eq!(x, y);
+    fail_unless_eq!(z.b, 22);
+    fail_unless_eq!(w.a, 5);
+    fail_unless_eq!(w.c, 3);
     println!("{:#x}", x.b);
     println!("{:#x}", z.c);
 }

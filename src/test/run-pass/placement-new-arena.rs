@@ -18,5 +18,5 @@ pub fn main() {
     let p = &mut arena;
     let x = p.alloc(|| 4u);
     println!("{}", *x);
-    assert_eq!(*x, 4u);
+    fail_unless_eq!(*x, 4u);
 }

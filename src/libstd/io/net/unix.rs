@@ -243,7 +243,7 @@ mod tests {
                 Ok(..) => {}
                 Err(e) => fail!("failed read/accept: {}", e),
             }
-            assert_eq!(buf[0], 100);
+            fail_unless_eq!(buf[0], 100);
         }
     })
 
@@ -262,8 +262,8 @@ mod tests {
             let mut s = UnixStream::connect(&addr);
             let mut buf = [0, 0];
             debug!("client reading");
-            assert_eq!(s.read(buf), Ok(1));
-            assert_eq!(buf[0], 1);
+            fail_unless_eq!(s.read(buf), Ok(1));
+            fail_unless_eq!(buf[0], 1);
             debug!("client writing");
             s.write([2]).unwrap();
             debug!("client dropping");
@@ -285,7 +285,7 @@ mod tests {
         c1.send(());
         let mut buf = [0, 0];
         debug!("reader reading");
-        assert_eq!(s1.read(buf), Ok(1));
+        fail_unless_eq!(s1.read(buf), Ok(1));
         debug!("reader done");
         p2.recv();
     })
