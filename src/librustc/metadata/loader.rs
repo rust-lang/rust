@@ -32,7 +32,9 @@ use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::vec;
+
 use flate;
+use time;
 
 pub enum Os {
     OsMacos,
@@ -361,7 +363,6 @@ impl ArchiveMetadata {
 
 // Just a small wrapper to time how long reading metadata takes.
 fn get_metadata_section(os: Os, filename: &Path) -> Option<MetadataBlob> {
-    use extra::time;
     let start = time::precise_time_ns();
     let ret = get_metadata_section_imp(os, filename);
     info!("reading {} => {}ms", filename.filename_display(),

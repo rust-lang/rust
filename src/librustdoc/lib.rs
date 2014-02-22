@@ -24,6 +24,7 @@ extern crate sync;
 extern crate getopts;
 extern crate collections;
 extern crate testing = "test";
+extern crate time;
 
 use std::local_data;
 use std::io;
@@ -31,7 +32,6 @@ use std::io::{File, MemWriter};
 use std::str;
 use extra::json;
 use serialize::{Decodable, Encodable};
-use extra::time;
 
 pub mod clean;
 pub mod core;

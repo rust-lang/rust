@@ -15,12 +15,11 @@
 
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
-extern crate extra;
 extern crate sync;
+extern crate time;
 
 use sync::RWArc;
 use sync::Future;
-use extra::time;
 use std::os;
 use std::uint;
 

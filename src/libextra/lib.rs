@@ -37,13 +37,13 @@ Rust extras are part of the standard Rust distribution.
 extern crate sync;
 extern crate serialize;
 extern crate collections;
+extern crate time;
 
 // Utility modules
 pub mod c_vec;
 pub mod url;
 pub mod json;
 pub mod tempfile;
-pub mod time;
 pub mod workcache;
 pub mod stats;
 

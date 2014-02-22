@@ -39,6 +39,7 @@ extern crate serialize;
 extern crate sync;
 extern crate getopts;
 extern crate collections;
+extern crate time;
 
 use back::link;
 use driver::session;
