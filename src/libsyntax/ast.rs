@@ -1224,6 +1224,6 @@ mod test {
             },
         };
         // doesn't matter which encoder we use....
-        let _f = (&e as &serialize::Encodable<json::Encoder>);
+        let _f = &e as &serialize::Encodable<json::Encoder>;
     }
 }

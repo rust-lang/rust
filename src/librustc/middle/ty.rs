@@ -2293,8 +2293,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                        bounds: BuiltinBounds)
                        -> TypeContents {
         // These are the type contents of the (opaque) interior
-        let contents = (TC::ReachesMutable.when(mutbl == ast::MutMutable) |
-                        kind_bounds_to_contents(cx, bounds, []));
+        let contents = TC::ReachesMutable.when(mutbl == ast::MutMutable) |
+            kind_bounds_to_contents(cx, bounds, []);
 
         match store {
             UniqTraitStore => {

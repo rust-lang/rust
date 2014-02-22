@@ -95,11 +95,10 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 let base_scope = self.scope(base);
 
                 // L-Deref-Managed-Imm-User-Root
-                let omit_root = (
+                let omit_root =
                     self.bccx.is_subregion_of(self.loan_region, base_scope) &&
                     self.is_rvalue_or_immutable(base) &&
-                    !self.is_moved(base)
-                );
+                    !self.is_moved(base);
 
                 if !omit_root {
                     // L-Deref-Managed-Imm-Compiler-Root

@@ -143,10 +143,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             // This is a bit unfortunate.
 
             let idx = psubsts.tys.len() - num_method_ty_params;
-            let substs =
-                (psubsts.tys.slice(0, idx) +
-                 &[psubsts.self_ty.unwrap()] +
-                 psubsts.tys.tailn(idx));
+            let substs = psubsts.tys.slice(0, idx) +
+                &[psubsts.self_ty.unwrap()] + psubsts.tys.tailn(idx);
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx));
 
