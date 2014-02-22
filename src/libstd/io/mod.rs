@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Synchronous I/O
+// FIXME: cover these topics:
+//        path, reader, writer, stream, raii (close not needed),
+//        stdio, print!, println!, file access, process spawning,
+//        error handling
 
-This module defines the Rust interface for synchronous I/O.
-It models byte-oriented input and output with the Reader and Writer traits.
-Types that implement both `Reader` and `Writer` are called 'streams',
-and automatically implement the `Stream` trait.
-Implementations are provided for common I/O streams like
-file, TCP, UDP, Unix domain sockets.
-Readers and Writers may be composed to add capabilities like string
-parsing, encoding, and compression.
+
+/*! I/O, including files, networking, timers, and processes
+
+`std::io` provides Rust's basic I/O types,
+for reading and writing to files, TCP, UDP,
+and other types of sockets and pipes,
+manipulating the file system, spawning processes and signal handling.
 
 # Examples
 
@@ -77,9 +79,7 @@ Some examples of obvious things you might want to do
     let lines: ~[~str] = file.lines().collect();
     ```
 
-* Make a simple HTTP request
-  FIXME This needs more improvement: TcpStream constructor taking &str,
-  `write_str` and `write_line` methods.
+* Make a simple TCP client connection and request
 
     ```rust,should_fail
     # #[allow(unused_must_use)];
@@ -92,72 +92,35 @@ Some examples of obvious things you might want to do
     let response = socket.read_to_end();
     ```
 
-* Connect based on URL? Requires thinking about where the URL type lives
-  and how to make protocol handlers extensible, e.g. the "tcp" protocol
-  yields a `TcpStream`.
-  FIXME this is not implemented now.
+* Make a simple TCP server
 
     ```rust
-    // connect("tcp://localhost:8080");
+    # fn main() { }
+    # fn foo() {
+    # #[allow(unused_must_use, dead_code)];
+    use std::io::net::tcp::TcpListener;
+    use std::io::net::ip::{Ipv4Addr, SocketAddr};
+    use std::io::{Acceptor, Listener};
+
+    let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 80 };
+    let listener = TcpListener::bind(addr);
+
+    // bind the listener to the specified address
+    let mut acceptor = listener.listen();
+
+    // accept connections and process them
+    # fn handle_client<T>(_: T) {}
+    for stream in acceptor.incoming() {
+        spawn(proc() {
+            handle_client(stream);
+        });
+    }
+
+    // close the socket server
+    drop(acceptor);
+    # }
     ```
 
-# Terms
-
-* Reader - An I/O source, reads bytes into a buffer
-* Writer - An I/O sink, writes bytes from a buffer
-* Stream - Typical I/O sources like files and sockets are both Readers and Writers,
-  and are collectively referred to a `streams`.
-  such as encoding or decoding
-
-# Blocking and synchrony
-
-When discussing I/O you often hear the terms 'synchronous' and
-'asynchronous', along with 'blocking' and 'non-blocking' compared and
-contrasted. A synchronous I/O interface performs each I/O operation to
-completion before proceeding to the next. Synchronous interfaces are
-usually used in imperative style as a sequence of commands. An
-asynchronous interface allows multiple I/O requests to be issued
-simultaneously, without waiting for each to complete before proceeding
-to the next.
-
-Asynchronous interfaces are used to achieve 'non-blocking' I/O. In
-traditional single-threaded systems, performing a synchronous I/O
-operation means that the program stops all activity (it 'blocks')
-until the I/O is complete. Blocking is bad for performance when
-there are other computations that could be done.
-
-Asynchronous interfaces are most often associated with the callback
-(continuation-passing) style popularised by node.js. Such systems rely
-on all computations being run inside an event loop which maintains a
-list of all pending I/O events; when one completes the registered
-callback is run and the code that made the I/O request continues.
-Such interfaces achieve non-blocking at the expense of being more
-difficult to reason about.
-
-Rust's I/O interface is synchronous - easy to read - and non-blocking by default.
-
-Remember that Rust tasks are 'green threads', lightweight threads that
-are multiplexed onto a single operating system thread. If that system
-thread blocks then no other task may proceed. Rust tasks are
-relatively cheap to create, so as long as other tasks are free to
-execute then non-blocking code may be written by simply creating a new
-task.
-
-When discussing blocking in regards to Rust's I/O model, we are
-concerned with whether performing I/O blocks other Rust tasks from
-proceeding. In other words, when a task calls `read`, it must then
-wait (or 'sleep', or 'block') until the call to `read` is complete.
-During this time, other tasks may or may not be executed, depending on
-how `read` is implemented.
-
-
-Rust's default I/O implementation is non-blocking; by cooperating
-directly with the task scheduler it arranges to never block progress
-of *other* tasks. Under the hood, Rust uses asynchronous I/O via a
-per-scheduler (and hence per-thread) event loop. Synchronous I/O
-requests are implemented by descheduling the running task and
-performing an asynchronous request; the task is only resumed once the
-asynchronous request completes.
 
 # Error Handling
 
@@ -170,10 +133,11 @@ Rust's I/O employs a combination of techniques to reduce boilerplate
 while still providing feedback about errors. The basic strategy:
 
 * All I/O operations return `IoResult<T>` which is equivalent to
-  `Result<T, IoError>`. The core `Result` type is defined in the `std::result`
+  `Result<T, IoError>`. The `Result` type is defined in the `std::result`
   module.
 * If the `Result` type goes unused, then the compiler will by default emit a
-  warning about the unused result.
+  warning about the unused result. This is because `Result` has the
+  `#[must_use]` attribute.
 * Common traits are implemented for `IoResult`, e.g.
   `impl<R: Reader> Reader for IoResult<R>`, so that error values do not have
   to be 'unwrapped' before use.
@@ -192,7 +156,7 @@ If you wanted to handle the error though you might write:
 use std::io::File;
 
 match File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n")) {
-    Ok(()) => { /* succeeded */ }
+    Ok(()) => (), // succeeded
     Err(e) => println!("failed to write to my diary: {}", e),
 }
 
@@ -207,55 +171,6 @@ required ultimately required for types to implement `write_line`) there is no
 need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
 on it. If `new` returned an `Err(..)` then the followup call to `write_line`
 will also return an error.
-
-# Issues with i/o scheduler affinity, work stealing, task pinning
-
-# Resource management
-
-* `close` vs. RAII
-
-# Paths, URLs and overloaded constructors
-
-
-
-# Scope
-
-In scope for core
-
-* Url?
-
-Some I/O things don't belong in core
-
-  - url
-  - net - `fn connect`
-    - http
-  - flate
-
-Out of scope
-
-* Async I/O. We'll probably want it eventually
-
-
-# FIXME Questions and issues
-
-* Should default constructors take `Path` or `&str`? `Path` makes simple cases verbose.
-  Overloading would be nice.
-* Add overloading for Path and &str and Url &str
-* stdin/err/out
-* print, println, etc.
-* fsync
-* relationship with filesystem querying, Directory, File types etc.
-* Rename Reader/Writer to ByteReader/Writer, make Reader/Writer generic?
-* Can Port and Chan be implementations of a generic Reader<T>/Writer<T>?
-* Trait for things that are both readers and writers, Stream?
-* How to handle newline conversion
-* String conversion
-* open vs. connect for generic stream opening
-* Do we need `close` at all? dtors might be good enough
-* How does I/O relate to the Iterator trait?
-* std::base64 filters
-* Using conditions is a big unknown since we don't have much experience with them
-* Too many uses of OtherIoError
 
 */
 
