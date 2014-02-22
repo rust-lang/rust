@@ -114,8 +114,13 @@
     function initSearch(searchIndex) {
         var currentResults, index, params = getQueryStringParams();
 
-        // Populate search bar with query string search term when provided.
-        $(".search-input")[0].value = params.search || '';
+        // Populate search bar with query string search term when provided,
+        // but only if the input bar is empty. This avoid the obnoxious issue
+        // where you start trying to do a search, and the index loads, and
+        // suddenly your search is gone!
+        if ($(".search-input")[0].value === "") {
+            $(".search-input")[0].value = params.search || '';
+        }
 
         /**
          * Executes the query and builds an index of results
@@ -574,8 +579,12 @@
                     // When browsing forward to search results the previous search will be repeated,
                     // so the currentResults are cleared to ensure the search is successful.
                     currentResults = null;
-                    // Synchronize search bar with query string state and perform the search.
-                    $('.search-input').val(params.search);
+                    // Synchronize search bar with query string state and
+                    // perform the search, but don't empty the bar if there's
+                    // nothing there.
+                    if params.search !== undefined {
+                        $('.search-input').val(params.search);
+                    }
                     // Some browsers fire 'onpopstate' for every page load (Chrome), while others fire the
                     // event only when actually popping a state (Firefox), which is why search() is called
                     // both here and at the end of the startSearch() function.
