@@ -22,6 +22,7 @@ pub fn expand_deriving_iter_bytes(cx: &mut ExtCtxt,
                                   push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new(~["std", "to_bytes", "IterBytes"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),

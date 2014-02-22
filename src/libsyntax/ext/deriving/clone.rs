@@ -21,6 +21,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new(~["std", "clone", "Clone"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -48,6 +49,7 @@ pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
                                   push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new(~["std", "clone", "DeepClone"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),

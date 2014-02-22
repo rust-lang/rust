@@ -28,6 +28,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
+        attributes: ~[],
         path: Path::new_(~["serialize", "Decodable"], None,
                          ~[~Literal(Path::new_local("__D"))], true),
         additional_bounds: ~[],
