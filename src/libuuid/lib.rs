@@ -296,7 +296,7 @@ impl Uuid {
     ///
     /// This represents the algorithm used to generate the contents
     pub fn get_version(&self) -> Option<UuidVersion> {
-        let v = (self.bytes[6] >> 4);
+        let v = self.bytes[6] >> 4;
         match v {
             1 => Some(Version1Mac),
             2 => Some(Version2Dce),

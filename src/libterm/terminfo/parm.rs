@@ -259,7 +259,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             ' ' => flags.space = true,
                             '.' => fstate = FormatStatePrecision,
                             '0'..'9' => {
-                                flags.width = (cur as uint - '0' as uint);
+                                flags.width = cur as uint - '0' as uint;
                                 fstate = FormatStateWidth;
                             }
                             _ => unreachable!()
@@ -359,7 +359,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         flags.space = true;
                     }
                     (FormatStateFlags,'0'..'9') => {
-                        flags.width = (cur as uint - '0' as uint);
+                        flags.width = cur as uint - '0' as uint;
                         *fstate = FormatStateWidth;
                     }
                     (FormatStateFlags,'.') => {
