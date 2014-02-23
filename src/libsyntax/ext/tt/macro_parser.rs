@@ -218,8 +218,9 @@ pub fn parse_or_else<R: Reader>(sess: @ParseSess,
 // perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&token::IDENT(id1,_),&token::IDENT(id2,_)) =>
-        id1.name == id2.name,
+        (&token::IDENT(id1,_),&token::IDENT(id2,_))
+        | (&token::LIFETIME(id1),&token::LIFETIME(id2)) =>
+            id1.name == id2.name,
         _ => *t1 == *t2
     }
 }

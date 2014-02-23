@@ -770,7 +770,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
     fn find_scope<'a>(&self,
                       expr: &ast::Expr,
-                      label: Option<ast::Name>,
+                      label: Option<ast::Ident>,
                       loop_scopes: &'a mut ~[LoopScope]) -> &'a mut LoopScope {
         let index = match label {
             None => {
