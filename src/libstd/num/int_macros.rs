@@ -295,8 +295,9 @@ mod tests {
     use int;
     use i32;
     use num;
-    use num::CheckedDiv;
     use num::Bitwise;
+    use num::CheckedDiv;
+    use num::ToStrRadix;
 
     #[test]
     fn test_overflows() {
