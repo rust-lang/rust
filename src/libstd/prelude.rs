@@ -43,7 +43,6 @@ pub use char::Char;
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
-pub use default::Default;
 pub use from_str::FromStr;
 pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
