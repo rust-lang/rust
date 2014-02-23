@@ -16,7 +16,7 @@
 #
 # It requires the following variables to be set:
 #
-#   PREPARE_HOST - the host triple 
+#   PREPARE_HOST - the host triple
 #   PREPARE_TARGETS - the target triples, space separated
 #   PREPARE_DEST_DIR - the directory to put the image
 
@@ -172,7 +172,10 @@ prepare-target-$(2)-host-$(3)-$(1): \
         $$(if $$(findstring $(2),$$(CFG_HOST)), \
           $$(foreach crate,$$(HOST_CRATES), \
             $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)),)
-# Only install if this host and target combo is being prepared
+# Only install if this host and target combo is being prepared. Also be sure to
+# *not* install the rlibs for host crates because there's no need to statically
+# link against most of them. They just produce a large amount of extra size
+# bloat.
 	$$(if $$(findstring $(1), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(2), $$(PREPARE_TARGETS)),\
         $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
@@ -182,8 +185,7 @@ prepare-target-$(2)-host-$(3)-$(1): \
             $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate))))\
           $$(if $$(findstring $(2),$$(CFG_HOST)),\
             $$(foreach crate,$$(HOST_CRATES),\
-              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))\
-              $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate)))),)\
+              $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))),)\
           $$(call PREPARE_LIB,libmorestack.a) \
           $$(call PREPARE_LIB,libcompiler-rt.a),),),)
 endef
