@@ -53,6 +53,7 @@
 //! ```
 
 use std::cmp::max;
+use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, Hasher, sip};
 use std::iter::{FilterMap, Chain, Repeat, Zip};

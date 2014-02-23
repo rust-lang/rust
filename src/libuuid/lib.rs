@@ -66,6 +66,7 @@ extern crate serialize;
 
 use std::cast::{transmute,transmute_copy};
 use std::char::Char;
+use std::default::Default;
 use std::fmt;
 use std::hash::{Hash, sip};
 use std::num::FromStrRadix;
