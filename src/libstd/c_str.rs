@@ -79,7 +79,7 @@ use str;
 use vec::{ImmutableVector, MutableVector};
 use vec;
 use rt::global_heap::malloc_raw;
-use unstable::raw::Slice;
+use raw::Slice;
 
 /// The representation of a C String.
 ///

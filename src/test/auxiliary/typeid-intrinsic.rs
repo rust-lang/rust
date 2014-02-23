@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::unstable::intrinsics;
-use std::unstable::intrinsics::TypeId;
+use std::intrinsics;
+use std::intrinsics::TypeId;
 
 pub struct A;
 pub struct B(Option<A>);

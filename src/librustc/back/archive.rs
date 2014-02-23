@@ -22,7 +22,7 @@ use std::libc;
 use std::os;
 use std::run::{ProcessOptions, Process, ProcessOutput};
 use std::str;
-use std::unstable::raw;
+use std::raw;
 use extra::tempfile::TempDir;
 use syntax::abi;
 
