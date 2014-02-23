@@ -21,7 +21,7 @@ use middle::dataflow::DataFlowOperator;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;

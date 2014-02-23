@@ -26,13 +26,13 @@ use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
 use std::cast;
-use std::hashmap::{HashMap, HashSet};
 use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::vec;
 
+use collections::{HashMap, HashSet};
 use flate;
 use time;
 

@@ -20,7 +20,7 @@ use middle::typeck;
 use middle::privacy;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, is_local};

@@ -17,9 +17,10 @@
 // - Arenas
 
 extern crate arena;
+extern crate collections;
 
 use arena::Arena;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::cast;
 use std::libc;
 use std::mem;

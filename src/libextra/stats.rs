@@ -12,10 +12,10 @@
 
 use std::cmp;
 use std::hash_old::Hash;
-use std::hashmap;
 use std::io;
 use std::mem;
 use std::num;
+use collections::hashmap;
 
 // NB: this can probably be rewritten in terms of num::Num
 // to be less f64-specific.

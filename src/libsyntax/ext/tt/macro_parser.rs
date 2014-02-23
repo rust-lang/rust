@@ -21,7 +21,7 @@ use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,

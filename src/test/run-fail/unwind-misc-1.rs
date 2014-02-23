@@ -13,9 +13,11 @@
 
 #[feature(managed_boxes)];
 
+extern crate collections;
+
 fn main() {
     let _count = @0u;
-    let mut map = std::hashmap::HashMap::new();
+    let mut map = collections::HashMap::new();
     let mut arr = ~[];
     for _i in range(0u, 10u) {
         arr.push(@~"key stuff");

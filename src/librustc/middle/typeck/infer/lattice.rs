@@ -43,7 +43,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::unify::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use util::common::indenter;
 
 pub trait LatticeValue {

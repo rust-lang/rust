@@ -10,7 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hashmap::HashMap;
+extern crate collections;
+
+use collections::HashMap;
 
 pub fn main() {
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();

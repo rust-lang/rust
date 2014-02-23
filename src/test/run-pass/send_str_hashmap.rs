@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate collections;
+
 use std::clone::{Clone, DeepClone};
 use std::cmp::{TotalEq, Ord, TotalOrd, Equiv};
 use std::cmp::Equal;
@@ -15,7 +17,7 @@ use std::container::{Container, Map, MutableMap};
 use std::default::Default;
 use std::str::{Str, SendStr, Owned, Slice};
 use std::to_str::ToStr;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::option::Some;
 
 pub fn main() {

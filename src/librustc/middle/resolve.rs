@@ -31,8 +31,8 @@ use syntax::visit::Visitor;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use std::hashmap::{HashMap, HashSet};
 use std::mem::replace;
+use collections::{HashMap, HashSet};
 
 // Definition mapping
 pub type DefMap = @RefCell<HashMap<NodeId,Def>>;

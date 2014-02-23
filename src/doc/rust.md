@@ -467,7 +467,7 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use std::hashmap::HashMap;
+# struct HashMap<K, V>;
 # fn f() {
 # fn id<T>(t: T) -> T { t }
 type T = HashMap<int,~str>;  // Type arguments used in a type expression
