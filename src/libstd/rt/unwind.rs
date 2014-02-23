@@ -69,7 +69,7 @@ use rt::local::Local;
 use rt::task::Task;
 use str::Str;
 use task::TaskResult;
-use unstable::intrinsics;
+use intrinsics;
 
 use uw = self::libunwind;
 
@@ -177,7 +177,7 @@ impl Unwinder {
     }
 
     pub fn try(&mut self, f: ||) {
-        use unstable::raw::Closure;
+        use raw::Closure;
         use libc::{c_void};
 
         unsafe {
@@ -374,6 +374,24 @@ pub mod eabi {
             }
         }
     }
+}
+
+#[cold]
+#[lang="fail_"]
+#[cfg(not(test))]
+pub fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
+    begin_unwind_raw(expr, file, line);
+}
+
+#[cold]
+#[lang="fail_bounds_check"]
+#[cfg(not(test))]
+pub fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
+    use c_str::ToCStr;
+
+    let msg = format!("index out of bounds: the len is {} but the index is {}",
+                      len as uint, index as uint);
+    msg.with_c_str(|buf| fail_(buf as *u8, file, line))
 }
 
 /// This is the entry point of unwinding for things like lang items and such.

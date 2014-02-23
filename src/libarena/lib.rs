@@ -37,8 +37,8 @@ use std::num;
 use std::kinds::marker;
 use std::rc::Rc;
 use std::rt::global_heap;
-use std::unstable::intrinsics::{TyDesc, get_tydesc};
-use std::unstable::intrinsics;
+use std::intrinsics::{TyDesc, get_tydesc};
+use std::intrinsics;
 use std::vec;
 
 // The way arena uses arrays is really deeply awful. The arrays are

@@ -21,7 +21,7 @@
 
 #[allow(missing_doc)];
 
-use unstable::intrinsics;
+use intrinsics;
 use cast;
 use std::kinds::marker;
 use option::{Option,Some,None};

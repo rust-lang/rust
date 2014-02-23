@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-use std::unstable::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
+use std::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
 
 struct MyVisitor {
     types: ~[~str],

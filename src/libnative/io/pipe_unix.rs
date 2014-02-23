@@ -15,7 +15,7 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
+use std::intrinsics;
 
 use super::{IoResult, retry};
 use super::file::{keep_going, fd_t};

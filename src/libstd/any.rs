@@ -25,8 +25,8 @@ use fmt;
 use option::{Option, Some, None};
 use result::{Result, Ok, Err};
 use to_str::ToStr;
-use unstable::intrinsics::TypeId;
-use unstable::intrinsics;
+use intrinsics::TypeId;
+use intrinsics;
 
 /// A type with no inhabitants
 pub enum Void { }

@@ -41,7 +41,7 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 // and invoke it.
 #[no_split_stack]
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
-    use unstable::stack;
+    use rt::stack;
     unsafe {
         stack::record_stack_bounds(0, uint::MAX);
         let f: ~proc() = cast::transmute(main);
@@ -150,7 +150,7 @@ mod imp {
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
     use ptr;
-    use unstable::stack::RED_ZONE;
+    use rt::stack::RED_ZONE;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
@@ -208,7 +208,7 @@ mod imp {
     use mem;
     use os;
     use ptr;
-    use unstable::stack::RED_ZONE;
+    use rt::stack::RED_ZONE;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *u8;

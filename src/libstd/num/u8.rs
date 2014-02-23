@@ -21,7 +21,7 @@ use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
 use str;
-use unstable::intrinsics;
+use intrinsics;
 
 uint_module!(u8, i8, 8)
 
