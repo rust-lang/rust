@@ -104,7 +104,7 @@ use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use vec_ng::Vec;
 use default::Default;
 use to_bytes::{IterBytes, Cb};
-use unstable::raw::Repr;
+use raw::Repr;
 
 /*
 Section: Creating a string
@@ -1386,7 +1386,7 @@ pub mod raw {
     use str::{is_utf8, OwnedStr, StrSlice};
     use vec;
     use vec::{MutableVector, ImmutableVector, OwnedVector};
-    use unstable::raw::Slice;
+    use raw::Slice;
 
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {

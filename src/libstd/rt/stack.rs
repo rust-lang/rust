@@ -40,7 +40,7 @@ pub extern "C" fn rust_stack_exhausted() {
     use rt::local::Local;
     use rt::task::Task;
     use str::Str;
-    use unstable::intrinsics;
+    use intrinsics;
 
     unsafe {
         // We're calling this function because the stack just ran out. We need

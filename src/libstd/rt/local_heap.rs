@@ -20,7 +20,7 @@ use ptr::RawPtr;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
-use unstable::raw;
+use raw;
 use vec::ImmutableVector;
 use vec_ng::Vec;
 
@@ -276,6 +276,14 @@ impl Drop for MemoryRegion {
     }
 }
 
+
+#[cfg(not(test))]
+#[lang="malloc"]
+#[inline]
+pub unsafe fn local_malloc_(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
+    local_malloc(drop_glue, size, align)
+}
+
 #[inline]
 pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *u8 {
     // FIXME: Unsafe borrow for speed. Lame.
@@ -288,7 +296,16 @@ pub unsafe fn local_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *
     }
 }
 
-// A little compatibility function
+#[cfg(not(test))]
+#[lang="free"]
+#[inline]
+pub unsafe fn local_free_(ptr: *u8) {
+    local_free(ptr)
+}
+
+// NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
+// inside a landing pad may corrupt the state of the exception handler. If a
+// problem occurs, call exit instead.
 #[inline]
 pub unsafe fn local_free(ptr: *u8) {
     // FIXME: Unsafe borrow for speed. Lame.

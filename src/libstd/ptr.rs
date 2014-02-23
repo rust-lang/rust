@@ -17,7 +17,7 @@ use cmp::Equiv;
 use iter::{range, Iterator};
 use mem;
 use option::{Option, Some, None};
-use unstable::intrinsics;
+use intrinsics;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 

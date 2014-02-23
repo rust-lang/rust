@@ -122,7 +122,7 @@ use mem::size_of;
 use kinds::marker;
 use uint;
 use unstable::finally::try_finally;
-use unstable::raw::{Repr, Slice, Vec};
+use raw::{Repr, Slice, Vec};
 
 /**
  * Creates and initializes an owned vector.
@@ -2488,7 +2488,7 @@ pub mod raw {
     use ptr;
     use ptr::RawPtr;
     use vec::{with_capacity, MutableVector, OwnedVector};
-    use unstable::raw::Slice;
+    use raw::Slice;
 
     /**
      * Form a slice from a pointer and length (as a number of units,

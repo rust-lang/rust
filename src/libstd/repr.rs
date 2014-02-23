@@ -29,8 +29,8 @@ use result::{Ok, Err};
 use str::StrSlice;
 use to_str::ToStr;
 use vec::OwnedVector;
-use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
-use unstable::raw;
+use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
+use raw;
 
 macro_rules! try( ($me:expr, $e:expr) => (
     match $e {
