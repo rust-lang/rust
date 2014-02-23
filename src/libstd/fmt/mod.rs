@@ -610,11 +610,6 @@ pub trait UpperExp { fn fmt(&self, &mut Formatter) -> Result; }
 
 // FIXME #11938 - UFCS would make us able call the above methods
 // directly Show::show(x, fmt).
-
-// FIXME(huonw's WIP): this is a intermediate state waiting for a
-// snapshot (at the time of writing we're at 2014-01-20 b6400f9), to
-// be able to make the `fmt` functions into normal methods and have
-// `format!()` still work.
 macro_rules! uniform_fn_call_workaround {
     ($( $name: ident, $trait_: ident; )*) => {
         $(
