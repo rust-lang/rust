@@ -16,6 +16,7 @@ use prelude::*;
 
 use cmath;
 use default::Default;
+use from_str::FromStr;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};

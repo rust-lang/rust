@@ -15,6 +15,7 @@
 use prelude::*;
 
 use default::Default;
+use from_str::FromStr;
 use num::{Bitwise, Bounded};
 #[cfg(target_word_size = "64")]
 use num::CheckedMul;
