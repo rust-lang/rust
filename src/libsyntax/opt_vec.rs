@@ -17,7 +17,7 @@
 
 use std::vec;
 
-#[deriving(Clone, Encodable, Decodable, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Hash)]
 pub enum OptVec<T> {
     Empty,
     Vec(~[T])

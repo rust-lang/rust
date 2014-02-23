@@ -11,7 +11,7 @@
 // except according to those terms.
 
 #[deriving(Eq)]
-#[deriving(IterBytes)]
+#[deriving(Hash)]
 struct Foo<T> {
     x: int,
     y: T,

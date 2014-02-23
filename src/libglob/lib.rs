@@ -165,12 +165,12 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
 /**
  * A compiled Unix shell style pattern.
  */
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct Pattern {
     priv tokens: ~[PatternToken]
 }
 
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum PatternToken {
     Char(char),
     AnyChar,
@@ -179,7 +179,7 @@ enum PatternToken {
     AnyExcept(~[CharSpecifier])
 }
 
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum CharSpecifier {
     SingleChar(char),
     CharRange(char, char)
@@ -490,7 +490,7 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct MatchOptions {
 
     /**

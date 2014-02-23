@@ -17,11 +17,11 @@ use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
+use hash::{Hash, sip};
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use str;
 use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
-use to_bytes::IterBytes;
 use vec::{Vector, OwnedVector, ImmutableVector};
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -112,10 +112,10 @@ impl ToCStr for Path {
     }
 }
 
-impl IterBytes for Path {
+impl Hash for Path {
     #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: |&[u8]| -> bool) -> bool {
-        self.repr.iter_bytes(lsb0, f)
+    fn hash(&self, s: &mut sip::SipState) {
+        self.repr.hash(s)
     }
 }
 
