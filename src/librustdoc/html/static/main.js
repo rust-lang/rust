@@ -582,7 +582,7 @@
                     // Synchronize search bar with query string state and
                     // perform the search, but don't empty the bar if there's
                     // nothing there.
-                    if params.search !== undefined {
+                    if (params.search !== undefined) {
                         $('.search-input').val(params.search);
                     }
                     // Some browsers fire 'onpopstate' for every page load (Chrome), while others fire the
