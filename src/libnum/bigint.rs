@@ -20,6 +20,7 @@ use Integer;
 
 use std::cmp;
 use std::fmt;
+use std::from_str::FromStr;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::rand::Rng;
@@ -1397,6 +1398,7 @@ mod biguint_tests {
     use super::{Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
+    use std::from_str::FromStr;
     use std::i64;
     use std::num::{Zero, One, FromStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
