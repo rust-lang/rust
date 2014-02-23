@@ -460,11 +460,12 @@ impl CodeMap {
         for mbc in multibyte_chars.get().iter() {
             debug!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
-                total_extra_bytes += mbc.bytes;
+                // every character is at least one byte, so we only
+                // count the actual extra bytes.
+                total_extra_bytes += mbc.bytes - 1;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos == mbc.pos ||
-                        bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
+                assert!(bpos.to_uint() >= mbc.pos.to_uint() + mbc.bytes);
             } else {
                 break;
             }
