@@ -81,8 +81,8 @@ DEPS_test := std extra collections getopts serialize term
 DEPS_time := std serialize
 
 TOOL_DEPS_compiletest := test green rustuv getopts
-TOOL_DEPS_rustdoc := rustdoc green rustuv
-TOOL_DEPS_rustc := rustc green rustuv
+TOOL_DEPS_rustdoc := rustdoc native
+TOOL_DEPS_rustc := rustc native
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs

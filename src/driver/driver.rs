@@ -8,10 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_uv];
+
+// These tools have no real use for libgreen/libuv (not much IO/task
+// spawning).
+extern crate native;
+
 #[cfg(rustdoc)]
 extern crate this = "rustdoc";
 
 #[cfg(rustc)]
 extern crate this = "rustc";
 
-fn main() { this::main() }
+#[start]
+fn start(argc: int, argv: **u8) -> int {
+    native::start(argc, argv, this::main)
+}
