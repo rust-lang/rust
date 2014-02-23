@@ -16,6 +16,7 @@ use std::cmp::Eq;
 use std::fmt;
 use std::hash::{Hash, sip};
 use std::io::BufReader;
+use std::from_str::FromStr;
 use std::uint;
 
 use collections::HashMap;

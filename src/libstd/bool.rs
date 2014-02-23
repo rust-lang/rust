@@ -295,6 +295,7 @@ impl Default for bool {
 mod tests {
     use prelude::*;
     use super::all_values;
+    use from_str::FromStr;
 
     #[test]
     fn test_bool() {
