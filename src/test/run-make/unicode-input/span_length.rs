@@ -12,11 +12,10 @@ use std::{char, os, run, str};
 use std::rand::{task_rng, Rng};
 use std::io::File;
 
-// creates unicode_input_multiple_files_{main,chars}.rs, where the
-// former imports the latter. `_chars` just contains an indentifier
-// made up of random characters, because will emit an error message
-// about the ident being in the wrong place, with a span (and creating
-// this span used to upset the compiler).
+// creates a file with `fn main() { <random ident> }` and checks the
+// compiler emits a span of the appropriate length (for the
+// "unresolved name" message); currently just using the number of code
+// points, but should be the number of graphemes (FIXME #7043)
 
 fn random_char() -> char {
     let mut rng = task_rng();
@@ -37,29 +36,27 @@ fn main() {
     let rustc = args[1].as_slice();
     let tmpdir = Path::new(args[2].as_slice());
 
-    let main_file = tmpdir.join("unicode_input_multiple_files_main.rs");
+    let main_file = tmpdir.join("span_main.rs");
     let main_file_str = main_file.as_str().unwrap();
-    {
-        let _ = File::create(&main_file).unwrap()
-            .write_str("mod unicode_input_multiple_files_chars;");
-    }
 
     for _ in range(0, 100) {
+        let n = task_rng().gen_range(3u, 20);
+
         {
-            let randoms = tmpdir.join("unicode_input_multiple_files_chars.rs");
-            let mut w = File::create(&randoms).unwrap();
-            for _ in range(0, 30) {
-                let _ = w.write_char(random_char());
-            }
+            let _ = write!(&mut File::create(&main_file).unwrap(),
+                           r"\#[feature(non_ascii_idents)]; fn main() \{ {} \}",
+                           // random string of length n
+                           range(0, n).map(|_| random_char()).collect::<~str>());
         }
 
         // rustc is passed to us with --out-dir and -L etc., so we
         // can't exec it directly
         let result = run::process_output("sh", [~"-c", rustc + " " + main_file_str]).unwrap();
+
         let err = str::from_utf8_lossy(result.error);
 
-        // positive test so that this test will be updated when the
-        // compiler changes.
-        assert!(err.as_slice().contains("expected item but found"))
+        // the span should end the line (e.g no extra ~'s)
+        let expected_span = "^" + "~".repeat(n - 1) + "\n";
+        assert!(err.as_slice().contains(expected_span));
     }
 }
