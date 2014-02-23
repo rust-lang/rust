@@ -452,6 +452,70 @@ fn foo() {
 "
    ))
 
+(ert-deftest indent-indented-match ()
+  (test-indent
+   "
+fn foo() {
+    let x = 
+        match blah {
+            Pattern |
+            Pattern2 => {
+                hello()
+            },
+            _ => whatever
+        };
+    y();
+}
+"
+   ))
+
+(ert-deftest indent-curly-braces-within-parens ()
+  (test-indent
+   "
+fn foo() {
+    let x = 
+        foo(bar(|x| {
+            only_one_indent_here();
+        }));
+    y();
+}
+"
+   ))
+
+(ert-deftest indent-weirdly-indented-block ()
+  (rust-test-manip-code
+   "
+fn foo() {
+ {
+this_block_is_over_to_the_left_for_some_reason();
+ }
+
+}
+"
+   16
+   #'indent-for-tab-command
+   "
+fn foo() {
+ {
+     this_block_is_over_to_the_left_for_some_reason();
+ }
+
+}
+"
+   ))
+
+(ert-deftest indent-multi-line-attrib ()
+  (test-indent
+   "
+#[attrib(
+    this,
+    that,
+    theotherthing)]
+mod function_with_multiline_attribute() {}
+"
+   ))
+
+
 ;; Make sure that in effort to cover match patterns we don't mistreat || or expressions
 (ert-deftest indent-nonmatch-or-expression ()
   (test-indent
