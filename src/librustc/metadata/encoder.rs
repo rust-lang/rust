@@ -112,8 +112,8 @@ pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
     reachable.get().contains(&id)
 }
 
-fn encode_name(ebml_w: &mut writer::Encoder, name: Ident) {
-    ebml_w.wr_tagged_str(tag_paths_data_name, token::get_ident(name).get());
+fn encode_name(ebml_w: &mut writer::Encoder, name: Name) {
+    ebml_w.wr_tagged_str(tag_paths_data_name, token::get_name(name).get());
 }
 
 fn encode_impl_type_basename(ebml_w: &mut writer::Encoder, name: Ident) {
@@ -313,7 +313,7 @@ fn encode_struct_fields(ebml_w: &mut writer::Encoder,
             NamedField(ident, vis) => {
                ebml_w.start_tag(tag_item_field);
                encode_struct_field_family(ebml_w, vis);
-               encode_name(ebml_w, ident);
+               encode_name(ebml_w, ident.name);
                encode_def_id(ebml_w, local_def(f.node.id));
                ebml_w.end_tag();
             }
@@ -353,7 +353,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             ast::TupleVariantKind(_) => encode_family(ebml_w, 'v'),
             ast::StructVariantKind(_) => encode_family(ebml_w, 'V')
         }
-        encode_name(ebml_w, variant.node.name);
+        encode_name(ebml_w, variant.node.name.name);
         encode_parent_item(ebml_w, local_def(id));
         encode_visibility(ebml_w, variant.node.vis);
         encode_attributes(ebml_w, variant.node.attrs);
@@ -580,7 +580,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
-    encode_name(ebml_w, name);
+    encode_name(ebml_w, name.name);
     debug!("(encoding info for module) encoding info for module ID {}", id);
 
     // Encode info about all the module children.
@@ -717,7 +717,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         debug!("encode_info_for_struct: doing {} {}",
                token::get_ident(nm), id);
         encode_struct_field_family(ebml_w, vis);
-        encode_name(ebml_w, nm);
+        encode_name(ebml_w, nm.name);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
         encode_def_id(ebml_w, local_def(id));
         ebml_w.end_tag();
@@ -744,7 +744,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_family(ebml_w, 'f');
     encode_bounds_and_type(ebml_w, ecx,
                            &lookup_item_type(ecx.tcx, local_def(ctor_id)));
-    encode_name(ebml_w, name);
+    encode_name(ebml_w, name.name);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, ctor_id));
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(ebml_w, path));
     encode_parent_item(ebml_w, local_def(struct_id));
@@ -767,7 +767,7 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            method_ty: &ty::Method) {
     encode_def_id(ebml_w, method_ty.def_id);
-    encode_name(ebml_w, method_ty.ident);
+    encode_name(ebml_w, method_ty.ident.name);
     encode_ty_type_param_defs(ebml_w, ecx,
                               method_ty.generics.type_param_defs(),
                               tag_item_method_tps);
@@ -917,7 +917,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
 
         let inlineable = !ecx.non_inlineable_statics.borrow().get().contains(&item.id);
@@ -935,7 +935,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, purity_fn_family(purity));
         let tps_len = generics.ty_params.len();
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
         encode_attributes(ebml_w, item.attrs);
         if tps_len > 0u || should_inline(item.attrs) {
@@ -961,7 +961,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'n');
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
 
         // Encode all the items in this module.
@@ -979,7 +979,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'y');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
@@ -992,7 +992,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, 't');
         encode_item_variances(ebml_w, ecx, item.id);
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs);
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
@@ -1031,7 +1031,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
 
         encode_item_variances(ebml_w, ecx, item.id);
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs);
         encode_path(ebml_w, path.clone());
         encode_visibility(ebml_w, vis);
@@ -1071,7 +1071,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'i');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
             ast::TyPath(ref path, ref bounds, _) if path.segments
@@ -1135,7 +1135,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                   tag_items_data_item_ty_param_bounds);
         encode_region_param_defs(ebml_w, trait_def.generics.region_param_defs());
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
-        encode_name(ebml_w, item.ident);
+        encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs);
         encode_visibility(ebml_w, vis);
         for &method_def_id in ty::trait_method_def_ids(tcx, def_id).iter() {
@@ -1256,7 +1256,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_family(ebml_w, purity_fn_family(ImpureFn));
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
-        encode_name(ebml_w, nitem.ident);
+        encode_name(ebml_w, nitem.ident.name);
         if abi.is_intrinsic() {
             (ecx.encode_inlined_item)(ecx, ebml_w, IIForeignRef(nitem));
         } else {
@@ -1271,7 +1271,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         }
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
-        encode_name(ebml_w, nitem.ident);
+        encode_name(ebml_w, nitem.ident.name);
       }
     }
     encode_path(ebml_w, path);

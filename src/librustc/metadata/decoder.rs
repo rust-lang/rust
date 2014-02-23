@@ -271,7 +271,7 @@ fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
                                              tag_region_param_def_def_id);
             let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
             let def_id = translate_def_id(cdata, def_id);
-            v.push(ty::RegionParameterDef { ident: ident,
+            v.push(ty::RegionParameterDef { ident: ident.name,
                                             def_id: def_id });
             true
         });
