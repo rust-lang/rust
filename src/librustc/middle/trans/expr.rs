@@ -70,7 +70,6 @@ use middle::trans::machine::llsize_of;
 
 use middle::trans::type_::Type;
 
-use std::hashmap::HashMap;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -635,7 +634,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
             DatumBlock(bcx, Datum(val, const_ty, LvalueExpr))
         }
         _ => {
-            DatumBlock(bcx, trans_local_var(bcx, def).to_expr_datum())
+            DatumBlock(bcx, trans_local_var(bcx, def))
         }
     }
 }
@@ -910,57 +909,36 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
     DatumBlock(bcx, Datum(llfn, fn_ty, RvalueExpr(Rvalue(ByValue))))
 }
 
-pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
-                           def: ast::Def)
-                           -> Datum<Lvalue> {
-    /*!
-     * Translates a reference to a local variable or argument.
-     * This always results in an lvalue datum.
-     */
-
+/// Translates a reference to a local variable or argument.
+pub fn trans_local_var<'a>(bcx: &'a Block<'a>, def: ast::Def) -> Datum<Expr> {
     let _icx = push_ctxt("trans_local_var");
 
-    return match def {
-        ast::DefUpvar(nid, _, _, _) => {
+    match def {
+        ast::DefUpvar(id, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
-            let local_ty = node_id_type(bcx, nid);
+            let local_ty = node_id_type(bcx, id);
             let llupvars = bcx.fcx.llupvars.borrow();
-            match llupvars.get().find(&nid) {
-                Some(&val) => Datum(val, local_ty, Lvalue),
+            match llupvars.get().find(&id) {
+                Some(&val) => Datum(val, local_ty, LvalueExpr),
                 None => {
                     bcx.sess().bug(format!(
-                        "trans_local_var: no llval for upvar {:?} found", nid));
+                        "trans_local_var: no llval for upvar {} found", id));
                 }
             }
         }
-        ast::DefArg(nid, _) => {
-            let llargs = bcx.fcx.llargs.borrow();
-            take_local(bcx, llargs.get(), nid)
-        }
-        ast::DefLocal(nid, _) | ast::DefBinding(nid, _) => {
-            let lllocals = bcx.fcx.lllocals.borrow();
-            take_local(bcx, lllocals.get(), nid)
+        ast::DefArg(id, _) | ast::DefLocal(id, _) | ast::DefBinding(id, _) => {
+            match bcx.fcx.locals.borrow().get().find(&id) {
+                Some(datum) => datum.to_lvalue_or_pod_rvalue_datum(bcx),
+                None => {
+                    bcx.sess().bug(format!(
+                        "trans_local_var: no datum for local/arg {} found", id));
+                }
+            }
         }
         _ => {
             bcx.sess().unimpl(format!(
                 "unsupported def type in trans_local_var: {:?}", def));
         }
-    };
-
-    fn take_local<'a>(bcx: &'a Block<'a>,
-                      table: &HashMap<ast::NodeId, Datum<Lvalue>>,
-                      nid: ast::NodeId)
-                      -> Datum<Lvalue> {
-        let datum = match table.find(&nid) {
-            Some(&v) => v,
-            None => {
-                bcx.sess().bug(format!(
-                    "trans_local_var: no datum for local/arg {:?} found", nid));
-            }
-        };
-        debug!("take_local(nid={:?}, v={}, ty={})",
-               nid, bcx.val_to_str(datum.val), bcx.ty_to_str(datum.ty));
-        datum
     }
 }
 

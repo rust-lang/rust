@@ -499,6 +499,21 @@ impl Datum<Expr> {
             |r| DatumBlock(bcx, r))
     }
 
+    pub fn to_lvalue_or_pod_rvalue_datum(&self, bcx: &Block) -> Datum<Expr> {
+        /*!
+         * Asserts that this datum *is* copiable and returns it.
+         */
+
+        let kind = match self.kind {
+            LvalueExpr => LvalueExpr,
+            RvalueExpr(ref r) => {
+                assert!(!ty::type_needs_drop(bcx.tcx(), self.ty));
+                RvalueExpr(Rvalue(r.mode))
+            }
+        };
+        Datum(self.val, self.ty, kind)
+    }
+
 }
 
 /**
