@@ -28,10 +28,24 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+#[cfg(test)]
+extern crate extra;
+
 use std::cell::Cell;
 use std::{cmp, os, path};
 use std::io::fs;
-use std::path::is_sep;
+use std::path::{is_sep_byte, BytesContainer};
+
+// Bytes used by the Pattern matcher as u8
+static STAR: u8 = '*' as u8;
+static QMARK: u8 = '?' as u8;
+static EMARK: u8 = '!' as u8;
+static LBRACKET: u8 = '[' as u8;
+static RBRACKET: u8 = ']' as u8;
+static DASH: u8 = '-' as u8;
+static DOT: u8 = '.' as u8;
+static SLASH: u8 = '/' as u8;
+
 
 /**
  * An iterator that yields Paths from the filesystem that match a particular
@@ -72,7 +86,7 @@ pub struct Paths {
 /// /media/pictures/puppies.jpg
 /// ```
 ///
-pub fn glob(pattern: &str) -> Paths {
+pub fn glob<T: BytesContainer>(pattern: T) -> Paths {
     glob_with(pattern, MatchOptions::new())
 }
 
@@ -87,7 +101,7 @@ pub fn glob(pattern: &str) -> Paths {
  *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
-pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
+pub fn glob_with<T: BytesContainer>(pattern: T, options: MatchOptions) -> Paths {
     #[cfg(windows)]
     fn check_windows_verbatim(p: &Path) -> bool { path::windows::is_verbatim(p) }
     #[cfg(not(windows))]
@@ -95,7 +109,9 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
 
     // calculate root this way to handle volume-relative Windows paths correctly
     let mut root = os::getcwd();
-    let pat_root = Path::new(pattern).root_path();
+    let pat_bytes = pattern.container_as_bytes();
+    let pat_root = Path::new(pat_bytes).root_path();
+
     if pat_root.is_some() {
         if check_windows_verbatim(pat_root.get_ref()) {
             // FIXME: How do we want to handle verbatim paths? I'm inclined to return nothing,
@@ -105,9 +121,13 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
         root.push(pat_root.get_ref());
     }
 
-    let root_len = pat_root.map_or(0u, |p| p.as_vec().len());
-    let dir_patterns = pattern.slice_from(cmp::min(root_len, pattern.len()))
-                       .split_terminator(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
+    let start = cmp::min(pat_root.map_or(0u, |p| p.as_vec().len()), pat_bytes.len());
+    let end = match is_sep_byte(&pat_bytes[pat_bytes.len() - 1]) {
+        true => pat_bytes.len() - 1,
+        false => pat_bytes.len()
+    };
+    let dir_patterns = pat_bytes.slice(start, end)
+                       .split(is_sep_byte).map(|s| Pattern::new(s)).to_owned_vec();
 
     let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
 
@@ -130,13 +150,9 @@ impl Iterator<Path> for Paths {
             let (path,idx) = self.todo.pop().unwrap();
             let ref pattern = self.dir_patterns[idx];
 
-            if pattern.matches_with(match path.filename_str() {
+            if pattern.matches_with(match path.filename() {
                 // this ugly match needs to go here to avoid a borrowck error
-                None => {
-                    // FIXME (#9639): How do we handle non-utf8 filenames? Ignore them for now
-                    // Ideally we'd still match them against a *
-                    continue;
-                }
+                None => continue,
                 Some(x) => x
             }, self.options) {
                 if idx == self.dir_patterns.len() - 1 {
@@ -172,17 +188,17 @@ pub struct Pattern {
 
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
 enum PatternToken {
-    Char(char),
-    AnyChar,
+    Byte(u8),
+    AnyByte,
     AnySequence,
-    AnyWithin(~[CharSpecifier]),
-    AnyExcept(~[CharSpecifier])
+    AnyWithin(~[ByteSpecifier]),
+    AnyExcept(~[ByteSpecifier])
 }
 
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
-enum CharSpecifier {
-    SingleChar(char),
-    CharRange(char, char)
+enum ByteSpecifier {
+    SingleByte(u8),
+    ByteRange(u8, u8)
 }
 
 #[deriving(Eq)]
@@ -210,47 +226,47 @@ impl Pattern {
      * The `-` character can be specified inside a character sequence pattern by
      * placing it at the start or the end, e.g. `[abc-]`.
      *
-     * When a `[` does not have a closing `]` before the end of the string then
+     * When a `[` does not have a closing `]` before the end of the `ByteContainer` then
      * the `[` will be treated literally.
      */
-    pub fn new(pattern: &str) -> Pattern {
+    pub fn new<T: BytesContainer>(pattern: T) -> Pattern {
+        debug!("Pattern::new(new={})", pattern.container_as_str());
 
-        let chars = pattern.chars().to_owned_vec();
+        let bytes = pattern.container_as_bytes();
         let mut tokens = ~[];
         let mut i = 0;
 
-        while i < chars.len() {
-            match chars[i] {
-                '?' => {
-                    tokens.push(AnyChar);
+        while i < bytes.len() {
+            match bytes[i] {
+                QMARK => {
+                    tokens.push(AnyByte);
                     i += 1;
                 }
-                '*' => {
+                STAR => {
                     // *, **, ***, ****, ... are all equivalent
-                    while i < chars.len() && chars[i] == '*' {
+                    while i < bytes.len() && bytes[i] == STAR {
                         i += 1;
                     }
                     tokens.push(AnySequence);
                 }
-                '[' => {
-
-                    if i <= chars.len() - 4 && chars[i + 1] == '!' {
-                        match chars.slice_from(i + 3).position_elem(&']') {
+                LBRACKET => {
+                    if i <= bytes.len() - 4 && bytes[i + 1] == EMARK {
+                        match bytes.slice_from(i + 3).position_elem(&RBRACKET) {
                             None => (),
                             Some(j) => {
-                                let chars = chars.slice(i + 2, i + 3 + j);
-                                let cs = parse_char_specifiers(chars);
+                                let bytes = bytes.slice(i + 2, i + 3 + j);
+                                let cs = parse_byte_specifier(bytes);
                                 tokens.push(AnyExcept(cs));
                                 i += j + 4;
                                 continue;
                             }
                         }
                     }
-                    else if i <= chars.len() - 3 && chars[i + 1] != '!' {
-                        match chars.slice_from(i + 2).position_elem(&']') {
+                    else if i <= bytes.len() - 3 && bytes[i + 1] !=  EMARK {
+                        match bytes.slice_from(i + 2).position_elem(&RBRACKET) {
                             None => (),
                             Some(j) => {
-                                let cs = parse_char_specifiers(chars.slice(i + 1, i + 2 + j));
+                                let cs = parse_byte_specifier(bytes.slice(i + 1, i + 2 + j));
                                 tokens.push(AnyWithin(cs));
                                 i += j + 3;
                                 continue;
@@ -259,11 +275,11 @@ impl Pattern {
                     }
 
                     // if we get here then this is not a valid range pattern
-                    tokens.push(Char('['));
+                    tokens.push(Byte(LBRACKET));
                     i += 1;
                 }
                 c => {
-                    tokens.push(Char(c));
+                    tokens.push(Byte(c));
                     i += 1;
                 }
             }
@@ -273,22 +289,22 @@ impl Pattern {
     }
 
     /**
-     * Escape metacharacters within the given string by surrounding them in
-     * brackets. The resulting string will, when compiled into a `Pattern`,
-     * match the input string and nothing else.
+     * Escape metacharacters within the given `BytesContainer` by surrounding them in
+     * brackets. The resulting vector will, when compiled into a `Pattern`,
+     * match the input `BytesContainer` and nothing else.
      */
-    pub fn escape(s: &str) -> ~str {
-        let mut escaped = ~"";
-        for c in s.chars() {
-            match c {
+    pub fn escape<T: BytesContainer>(s: T) -> ~[u8] {
+        let mut escaped = ~[];
+        for c in s.container_as_bytes().iter() {
+            match *c {
                 // note that ! does not need escaping because it is only special inside brackets
-                '?' | '*' | '[' | ']' => {
-                    escaped.push_char('[');
-                    escaped.push_char(c);
-                    escaped.push_char(']');
+                QMARK | STAR | LBRACKET | RBRACKET => {
+                    escaped.push(LBRACKET);
+                    escaped.push(*c);
+                    escaped.push(RBRACKET);
                 }
                 c => {
-                    escaped.push_char(c);
+                    escaped.push(c);
                 }
             }
         }
@@ -309,8 +325,8 @@ impl Pattern {
      * assert!(Pattern::new("d*g").matches("doog"));
      * ```
      */
-    pub fn matches(&self, str: &str) -> bool {
-        self.matches_with(str, MatchOptions::new())
+    pub fn matches<T: BytesContainer>(&self, matcher: T) -> bool {
+        self.matches_with(matcher, MatchOptions::new())
     }
 
     /**
@@ -327,33 +343,31 @@ impl Pattern {
     /**
      * Return if the given `str` matches this `Pattern` using the specified match options.
      */
-    pub fn matches_with(&self, str: &str, options: MatchOptions) -> bool {
-        self.matches_from(None, str, 0, options) == Match
+    pub fn matches_with<T: BytesContainer>(&self, matcher: T, options: MatchOptions) -> bool {
+        self.matches_from(None, matcher.container_as_bytes(), 0, options) == Match
     }
 
     /**
      * Return if the given `Path`, when converted to a `str`, matches this `Pattern`
      * using the specified match options.
      */
-    pub fn matches_path_with(&self, path: &Path, options: MatchOptions) -> bool {
+    pub fn matches_path_with<'a>(&self, path: &'a Path, options: MatchOptions) -> bool {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        path.as_str().map_or(false, |s| {
-            self.matches_with(s, options)
-        })
+        self.matches_with(path.as_vec(), options)
     }
 
-    fn matches_from(&self,
-                    prev_char: Option<char>,
-                    mut file: &str,
+    fn matches_from<'a>(&self,
+                    prev_char: Option<&'a u8>,
+                    mut file: &'a [u8],
                     i: uint,
                     options: MatchOptions) -> MatchResult {
 
         let prev_char = Cell::new(prev_char);
 
         let require_literal = |c| {
-            (options.require_literal_separator && is_sep(c)) ||
-            (options.require_literal_leading_dot && c == '.'
-             && is_sep(prev_char.get().unwrap_or('/')))
+            (options.require_literal_separator && is_sep_byte(c)) ||
+            (options.require_literal_leading_dot && c == &DOT
+             && is_sep_byte(prev_char.get().unwrap_or(&SLASH)))
         };
 
         for (ti, token) in self.tokens.slice_from(i).iter().enumerate() {
@@ -369,12 +383,12 @@ impl Pattern {
                             return EntirePatternDoesntMatch;
                         }
 
-                        let (c, next) = file.slice_shift_char();
-                        if require_literal(c) {
+                        // cannot infer an appropriate lifetime for autoref due to conflicting requirements
+                        let byte = file.shift_ref().unwrap();
+                        if require_literal(byte) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char.set(Some(c));
-                        file = next;
+                        prev_char.set(Some(byte));
                     }
                 }
                 _ => {
@@ -382,19 +396,19 @@ impl Pattern {
                         return EntirePatternDoesntMatch;
                     }
 
-                    let (c, next) = file.slice_shift_char();
+                    let byte = file.shift_ref().unwrap();
                     let matches = match *token {
-                        AnyChar => {
-                            !require_literal(c)
+                        AnyByte => {
+                            !require_literal(byte)
                         }
                         AnyWithin(ref specifiers) => {
-                            !require_literal(c) && in_char_specifiers(*specifiers, c, options)
+                            !require_literal(byte) && in_byte_specifier(*specifiers, byte, options)
                         }
                         AnyExcept(ref specifiers) => {
-                            !require_literal(c) && !in_char_specifiers(*specifiers, c, options)
+                            !require_literal(byte) && !in_byte_specifier(*specifiers, byte, options)
                         }
-                        Char(c2) => {
-                            chars_eq(c, c2, options.case_sensitive)
+                        Byte(c2) => {
+                            bytes_eq(byte, &c2, options.case_sensitive)
                         }
                         AnySequence => {
                             unreachable!()
@@ -403,8 +417,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char.set(Some(c));
-                    file = next;
+                    prev_char.set(Some(byte));
                 }
             }
         }
@@ -418,31 +431,31 @@ impl Pattern {
 
 }
 
-fn parse_char_specifiers(s: &[char]) -> ~[CharSpecifier] {
+fn parse_byte_specifier(s: &[u8]) -> ~[ByteSpecifier] {
     let mut cs = ~[];
     let mut i = 0;
     while i < s.len() {
-        if i + 3 <= s.len() && s[i + 1] == '-' {
-            cs.push(CharRange(s[i], s[i + 2]));
+        if i + 3 <= s.len() && s[i + 1] == DASH {
+            cs.push(ByteRange(s[i], s[i + 2]));
             i += 3;
         } else {
-            cs.push(SingleChar(s[i]));
+            cs.push(SingleByte(s[i]));
             i += 1;
         }
     }
     cs
 }
 
-fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptions) -> bool {
+fn in_byte_specifier(specifiers: &[ByteSpecifier], c: &u8, options: MatchOptions) -> bool {
 
     for &specifier in specifiers.iter() {
         match specifier {
-            SingleChar(sc) => {
-                if chars_eq(c, sc, options.case_sensitive) {
+            SingleByte(sc) => {
+                if bytes_eq(c, &sc, options.case_sensitive) {
                     return true;
                 }
             }
-            CharRange(start, end) => {
+            ByteRange(start, end) => {
 
                 // FIXME: work with non-ascii chars properly (issue #1347)
                 if !options.case_sensitive && c.is_ascii() && start.is_ascii() && end.is_ascii() {
@@ -465,7 +478,7 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
                     }
                 }
 
-                if c >= start && c <= end {
+                if *c >= start && *c <= end {
                     return true;
                 }
             }
@@ -476,8 +489,8 @@ fn in_char_specifiers(specifiers: &[CharSpecifier], c: char, options: MatchOptio
 }
 
 /// A helper function to determine if two chars are (possibly case-insensitively) equal.
-fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
-    if cfg!(windows) && path::windows::is_sep(a) && path::windows::is_sep(b) {
+fn bytes_eq(a: &u8, b: &u8, case_sensitive: bool) -> bool {
+    if cfg!(windows) && path::windows::is_sep_byte(a) && path::windows::is_sep_byte(b) {
         true
     } else if !case_sensitive && a.is_ascii() && b.is_ascii() {
         // FIXME: work with non-ascii chars properly (issue #1347)
@@ -544,6 +557,9 @@ impl MatchOptions {
 #[cfg(test)]
 mod test {
     use std::os;
+    use std::io::fs;
+    use std::libc::S_IRWXU;
+    use extra::tempfile;
     use super::{glob, Pattern, MatchOptions};
 
     #[test]
@@ -577,6 +593,18 @@ mod test {
     fn test_lots_of_files() {
         // this is a good test because it touches lots of differently named files
         glob("/*/*/*/*").skip(10000).next();
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    #[cfg(not(macos))]
+    fn test_non_utf8_glob() {
+        let dir = tempfile::TempDir::new("").unwrap();
+        let p = dir.path().join(&[0xFFu8]);
+        fs::mkdir(&p, S_IRWXU as u32);
+
+        let pat = p.with_filename("*");
+        assert_eq!(glob(pat.as_str().expect("tmpdir is not utf-8")).collect::<~[Path]>(), ~[p])
     }
 
     #[test]
@@ -659,9 +687,19 @@ mod test {
     }
 
     #[test]
+    fn test_non_utf8_matches() {
+        let mut pattern = "*some/path/to/".as_bytes().to_owned();
+        pattern.push(super::STAR);
+
+        let mut path = "some/path/to/".as_bytes().to_owned();
+        path.push(0xFFu8);
+        assert!(Pattern::new(pattern).matches(path));
+    }
+
+    #[test]
     fn test_pattern_escape() {
         let s = "_[_]_?_*_!_";
-        assert_eq!(Pattern::escape(s), ~"_[[]_[]]_[?]_[*]_!_");
+        assert_eq!(Pattern::escape(s), "_[[]_[]]_[?]_[*]_!_".as_bytes().to_owned());
         assert!(Pattern::new(Pattern::escape(s)).matches(s));
     }
 
