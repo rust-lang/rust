@@ -30,7 +30,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 use vec::{ImmutableVector, OwnedVector};
 
 #[repr(int)]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum Signum {
     /// Equivalent to SIGBREAK, delivered when the user presses Ctrl-Break.
     Break = 21i,

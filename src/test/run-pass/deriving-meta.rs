@@ -10,9 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash_old::Hash;
-
-#[deriving(Eq, Clone, IterBytes)]
+#[deriving(Eq, Clone)]
 struct Foo {
     bar: uint,
     baz: int
@@ -23,5 +21,4 @@ pub fn main() {
 
     a == a;    // check for Eq impl w/o testing its correctness
     a.clone(); // check for Clone impl w/o testing its correctness
-    a.hash();  // check for IterBytes impl w/o testing its correctness
 }

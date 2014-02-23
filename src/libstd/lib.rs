@@ -143,9 +143,7 @@ pub mod from_str;
 pub mod num;
 pub mod iter;
 pub mod to_str;
-pub mod to_bytes;
 pub mod clone;
-pub mod hash_old;
 pub mod hash;
 pub mod container;
 pub mod default;
@@ -228,7 +226,6 @@ mod std {
     pub use os;
     pub use rt;
     pub use str;
-    pub use to_bytes;
     pub use to_str;
     pub use unstable;
 }

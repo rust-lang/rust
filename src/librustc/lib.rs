@@ -28,7 +28,6 @@ This API is completely unstable and subject to change.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[allow(unknown_features)]; // Note: remove it after a snapshot.
 #[feature(quote)];
 
 extern crate extra;

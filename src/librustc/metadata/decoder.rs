@@ -27,7 +27,8 @@ use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
 
 use std::u64;
-use std::hash_old::Hash;
+use std::hash;
+use std::hash::Hash;
 use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;
@@ -86,7 +87,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),
-                (item_id as i64).hash())
+                hash::hash(&(item_id as i64)))
 }
 
 fn find_item<'a>(item_id: ast::NodeId, items: ebml::Doc<'a>) -> ebml::Doc<'a> {
