@@ -24,7 +24,7 @@ use to_bytes::IterBytes;
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
-#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
+#[deriving(Clone, Eq, Ord)]
 pub struct Ascii { priv chr: u8 }
 
 impl Ascii {

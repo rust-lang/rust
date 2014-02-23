@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, TotalEq, Ord, TotalOrd)]
+#[deriving(Eq, Ord)]
 struct TS<T>(T,T);
-
 
 pub fn main() {
     let ts1 = TS(1, 1);
     let ts2 = TS(1, 2);
 
-    // in order for both Ord and TotalOrd
     let tss = [ts1, ts2];
 
     for (i, ts1) in tss.iter().enumerate() {
@@ -33,9 +31,6 @@ pub fn main() {
             assert_eq!(*ts1 == *ts2, eq);
             assert_eq!(*ts1 != *ts2, !eq);
 
-            // TotalEq
-            assert_eq!(ts1.equals(ts2), eq);
-
             // Ord
             assert_eq!(*ts1 < *ts2, lt);
             assert_eq!(*ts1 > *ts2, gt);
@@ -43,7 +38,6 @@ pub fn main() {
             assert_eq!(*ts1 <= *ts2, le);
             assert_eq!(*ts1 >= *ts2, ge);
 
-            // TotalOrd
             assert_eq!(ts1.cmp(ts2), ord);
         }
     }

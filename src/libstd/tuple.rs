@@ -76,14 +76,6 @@ macro_rules! tuple_impls {
             }
 
             #[cfg(not(test))]
-            impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {
-                #[inline]
-                fn equals(&self, other: &($($T,)+)) -> bool {
-                    $(self.$refN().equals(other.$refN()))&&+
-                }
-            }
-
-            #[cfg(not(test))]
             impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
@@ -101,10 +93,7 @@ macro_rules! tuple_impls {
                 fn gt(&self, other: &($($T,)+)) -> bool {
                     lexical_ord!(gt, $(self.$refN(), other.$refN()),+)
                 }
-            }
 
-            #[cfg(not(test))]
-            impl<$($T:TotalOrd),+> TotalOrd for ($($T,)+) {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
                     lexical_cmp!($(self.$refN(), other.$refN()),+)
@@ -345,13 +334,6 @@ mod tests {
         assert!(((1.0, 2.0) < (2.0, nan)));
         assert!(!((2.0, 2.0) < (2.0, nan)));
 
-        // TotalEq
-        assert!(small.equals(&small));
-        assert!(big.equals(&big));
-        assert!(!small.equals(&big));
-        assert!(!big.equals(&small));
-
-        // TotalOrd
         assert_eq!(small.cmp(&small), Equal);
         assert_eq!(big.cmp(&big), Equal);
         assert_eq!(small.cmp(&big), Less);

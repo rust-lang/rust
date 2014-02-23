@@ -20,7 +20,6 @@
 //! * `ToStr`
 //! * `Not`
 //! * `Ord`
-//! * `TotalOrd`
 //! * `Eq`
 //! * `Default`
 //! * `Zero`
@@ -37,7 +36,7 @@ use from_str::FromStr;
 use to_str::ToStr;
 use num::FromPrimitive;
 
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
+#[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use ops::{Not, BitAnd, BitOr, BitXor};
 #[cfg(not(test))] use default::Default;
 
@@ -279,12 +278,6 @@ impl Ord for bool {
     fn lt(&self, other: &bool) -> bool { self.to_bit::<u8>() < other.to_bit() }
 }
 
-#[cfg(not(test))]
-impl TotalOrd for bool {
-    #[inline]
-    fn cmp(&self, other: &bool) -> Ordering { self.to_bit::<u8>().cmp(&other.to_bit()) }
-}
-
 /// Equality between two boolean values.
 ///
 /// Two booleans are equal if they have the same value.
@@ -426,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bool_totalord() {
+    fn test_bool_cmp() {
         assert_eq!(true.cmp(&true), Equal);
         assert_eq!(false.cmp(&false), Equal);
         assert_eq!(true.cmp(&false), Greater);

@@ -620,13 +620,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, Ord, IterBytes, Encodable, Decodable, ToStr)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: BoundRegion
 }
 
-#[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, Ord, IterBytes, Encodable, Decodable, ToStr, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),

@@ -45,7 +45,17 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
             md!("lt", true, false),
             md!("le", true, true),
             md!("gt", false, false),
-            md!("ge", false, true)
+            md!("ge", false, true),
+            MethodDef {
+                name: "cmp",
+                generics: LifetimeBounds::empty(),
+                explicit_self: borrowed_explicit_self(),
+                args: ~[borrowed_self()],
+                ret_ty: Literal(Path::new(~["std", "cmp", "Ordering"])),
+                inline: true,
+                const_nonmatching: false,
+                combine_substructure: cs_cmp
+            }
         ]
     };
     trait_def.expand(cx, mitem, item, push)
@@ -101,6 +111,77 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
                                      self_var > other_var
                                  }),
                 _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+            }
+        },
+        cx, span, substr)
+}
+
+fn ordering_const(cx: &mut ExtCtxt, span: Span, cnst: Ordering) -> ast::Path {
+    let cnst = match cnst {
+        Less => "Less",
+        Equal => "Equal",
+        Greater => "Greater"
+    };
+    cx.path_global(span,
+                   ~[cx.ident_of("std"),
+                     cx.ident_of("cmp"),
+                     cx.ident_of(cnst)])
+}
+
+fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+    let test_id = cx.ident_of("__test");
+    let equals_path = ordering_const(cx, span, Equal);
+
+    /*
+    Builds:
+
+    let __test = self_field1.cmp(&other_field2);
+    if other == ::std::cmp::Equal {
+        let __test = self_field2.cmp(&other_field2);
+        if __test == ::std::cmp::Equal {
+            ...
+        } else {
+            __test
+        }
+    } else {
+        __test
+    }
+
+    FIXME #6449: These `if`s could/should be `match`es.
+    */
+    cs_same_method_fold(
+        // foldr nests the if-elses correctly, leaving the first field
+        // as the outermost one, and the last as the innermost.
+        false,
+        |cx, span, old, new| {
+            // let __test = new;
+            // if __test == ::std::cmp::Equal {
+            //    old
+            // } else {
+            //    __test
+            // }
+
+            let assign = cx.stmt_let(span, false, test_id, new);
+
+            let cond = cx.expr_binary(span, ast::BiEq,
+                                      cx.expr_ident(span, test_id),
+                                      cx.expr_path(equals_path.clone()));
+            let if_ = cx.expr_if(span,
+                                 cond,
+                                 old, Some(cx.expr_ident(span, test_id)));
+            cx.expr_block(cx.block(span, ~[assign], Some(if_)))
+        },
+        cx.expr_path(equals_path.clone()),
+        |cx, span, list, _| {
+            match list {
+                // an earlier nonmatching variant is Less than a
+                // later one.
+                [(self_var, _, _),
+                 (other_var, _, _)] => {
+                    let order = ordering_const(cx, span, self_var.cmp(&other_var));
+                    cx.expr_path(order)
+                }
+                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(TotalOrd)`")
             }
         },
         cx, span, substr)

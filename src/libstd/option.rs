@@ -40,7 +40,7 @@
 use any::Any;
 use clone::Clone;
 use clone::DeepClone;
-use cmp::{Eq, TotalEq, TotalOrd};
+use cmp::Eq;
 use default::Default;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
@@ -51,7 +51,7 @@ use to_str::ToStr;
 use vec;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
+#[deriving(Clone, DeepClone, Eq, Ord, ToStr)]
 pub enum Option<T> {
     /// No value
     None,

@@ -19,7 +19,7 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 use Integer;
 
 use std::cmp;
-use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use std::cmp::{Eq, Ord, Ordering, Less, Equal, Greater};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::rand::Rng;
@@ -89,12 +89,7 @@ pub struct BigUint {
 
 impl Eq for BigUint {
     #[inline]
-    fn eq(&self, other: &BigUint) -> bool { self.equals(other) }
-}
-
-impl TotalEq for BigUint {
-    #[inline]
-    fn equals(&self, other: &BigUint) -> bool {
+    fn eq(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
     }
 }
@@ -104,9 +99,7 @@ impl Ord for BigUint {
     fn lt(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Less => true, _ => false}
     }
-}
 
-impl TotalOrd for BigUint {
     #[inline]
     fn cmp(&self, other: &BigUint) -> Ordering {
         let (s_len, o_len) = (self.data.len(), other.data.len());
@@ -835,13 +828,7 @@ impl Ord for Sign {
     fn lt(&self, other: &Sign) -> bool {
         match self.cmp(other) { Less => true, _ => false}
     }
-}
 
-impl TotalEq for Sign {
-    #[inline]
-    fn equals(&self, other: &Sign) -> bool { *self == *other }
-}
-impl TotalOrd for Sign {
     #[inline]
     fn cmp(&self, other: &Sign) -> Ordering {
         match (*self, *other) {
@@ -873,12 +860,7 @@ pub struct BigInt {
 
 impl Eq for BigInt {
     #[inline]
-    fn eq(&self, other: &BigInt) -> bool { self.equals(other) }
-}
-
-impl TotalEq for BigInt {
-    #[inline]
-    fn equals(&self, other: &BigInt) -> bool {
+    fn eq(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
     }
 }
@@ -888,9 +870,7 @@ impl Ord for BigInt {
     fn lt(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Less => true, _ => false}
     }
-}
 
-impl TotalOrd for BigInt {
     #[inline]
     fn cmp(&self, other: &BigInt) -> Ordering {
         let scmp = self.sign.cmp(&other.sign);

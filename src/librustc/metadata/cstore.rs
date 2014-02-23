@@ -220,7 +220,7 @@ impl CStore {
     }
 }
 
-#[deriving(Clone, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, Ord)]
 struct crate_hash {
     name: ~str,
     vers: ~str,

@@ -2191,23 +2191,12 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
 /// the shorter sequence compares less.
 pub mod order {
     use cmp;
-    use cmp::{TotalEq, TotalOrd, Ord, Eq};
+    use cmp::{Ord, Eq};
     use option::{Some, None};
     use super::Iterator;
 
-    /// Compare `a` and `b` for equality using `TotalOrd`
-    pub fn equals<A: TotalEq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return true,
-                (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if !x.equals(&y) { return false },
-            }
-        }
-    }
-
-    /// Order `a` and `b` lexicographically using `TotalOrd`
-    pub fn cmp<A: TotalOrd, T: Iterator<A>>(mut a: T, mut b: T) -> cmp::Ordering {
+    /// Order `a` and `b` lexicographically
+    pub fn cmp<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> cmp::Ordering {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return cmp::Equal,
@@ -2221,7 +2210,7 @@ pub mod order {
         }
     }
 
-    /// Compare `a` and `b` for equality (Using partial equality, `Eq`)
+    /// Compare `a` and `b` for equality
     pub fn eq<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
@@ -2232,7 +2221,7 @@ pub mod order {
         }
     }
 
-    /// Compare `a` and `b` for nonequality (Using partial equality, `Eq`)
+    /// Compare `a` and `b` for nonequality
     pub fn ne<A: Eq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
@@ -2243,7 +2232,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` < `b` lexicographically (Using partial order, `Ord`)
+    /// Return `a` < `b` lexicographically
     pub fn lt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
@@ -2255,7 +2244,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` <= `b` lexicographically (Using partial order, `Ord`)
+    /// Return `a` <= `b` lexicographically
     pub fn le<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
@@ -2267,7 +2256,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` > `b` lexicographically (Using partial order, `Ord`)
+    /// Return `a` > `b` lexicographically
     pub fn gt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
@@ -2279,7 +2268,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` >= `b` lexicographically (Using partial order, `Ord`)
+    /// Return `a` >= `b` lexicographically
     pub fn ge<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {

@@ -2523,8 +2523,7 @@ struct Circle { radius: f64 }
 enum ABC { A, B, C }
 ~~~
 
-The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
-`TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
+The full list of derivable traits is `Eq`, `Ord`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
 `IterBytes`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 
 # Crates and the module system

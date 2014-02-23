@@ -15,7 +15,7 @@ use libc::exit;
 use option::{Some, None, Option};
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
-use vec::{ImmutableVector, MutableTotalOrdVector, OwnedVector};
+use vec::{ImmutableVector, MutableOrdVector, OwnedVector};
 #[cfg(test)] use cast::transmute;
 
 struct LogDirective {

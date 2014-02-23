@@ -118,7 +118,6 @@ traits = {
 for (trait, supers, errs) in [('Rand', [], 1),
                               ('Clone', [], 1), ('DeepClone', ['Clone'], 1),
                               ('Eq', [], 2), ('Ord', [], 8),
-                              ('TotalEq', [], 1), ('TotalOrd', ['TotalEq'], 1),
                               ('Show', [], 1),
                               ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)

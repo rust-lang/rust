@@ -480,15 +480,6 @@ impl Eq for Uuid {
     }
 }
 
-/// Test two UUIDs for equality
-///
-/// UUIDs are equal only when they are byte-for-byte identical
-impl TotalEq for Uuid {
-    fn equals(&self, other: &Uuid) -> bool {
-        self.bytes == other.bytes
-    }
-}
-
 // FIXME #9845: Test these more thoroughly
 impl<T: Encoder> Encodable<T> for Uuid {
     /// Encode a UUID as a hypenated string

@@ -13,7 +13,7 @@
 #[cfg(not(test))]
 use default::Default;
 #[cfg(not(test))]
-use cmp::{Eq, Equal, Ord, Ordering, TotalEq, TotalOrd};
+use cmp::{Eq, Ord};
 use fmt;
 
 #[cfg(not(test))]
@@ -28,18 +28,6 @@ impl Eq for () {
 impl Ord for () {
     #[inline]
     fn lt(&self, _other: &()) -> bool { false }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for () {
-    #[inline]
-    fn cmp(&self, _other: &()) -> Ordering { Equal }
-}
-
-#[cfg(not(test))]
-impl TotalEq for () {
-    #[inline]
-    fn equals(&self, _other: &()) -> bool { true }
 }
 
 #[cfg(not(test))]

@@ -41,7 +41,7 @@ pub use bool::Bool;
 pub use c_str::ToCStr;
 pub use char::Char;
 pub use clone::{Clone, DeepClone};
-pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
+pub use cmp::{Eq, Ord, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use default::Default;
 pub use from_str::FromStr;
@@ -60,9 +60,9 @@ pub use to_str::{ToStr, IntoStr};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCloneableVector};
+pub use vec::{ImmutableEqVector, ImmutableOrdVector, ImmutableCloneableVector};
 pub use vec::{OwnedVector, OwnedCloneableVector, OwnedEqVector};
-pub use vec::{MutableVector, MutableTotalOrdVector};
+pub use vec::{MutableVector, MutableOrdVector};
 pub use vec::{Vector, VectorVector, CloneableVector, ImmutableVector};
 
 // Reexported runtime types
