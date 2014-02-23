@@ -704,8 +704,8 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&IDENT(id1,_),&IDENT(id2,_)) =>
-        ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+        (&IDENT(id1,_),&IDENT(id2,_)) | (&LIFETIME(id1),&LIFETIME(id2)) =>
+            ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
         _ => *t1 == *t2
     }
 }

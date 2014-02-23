@@ -353,6 +353,23 @@ fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
 
 // build a new vector of tts by appling the Folder's fold_ident to
 // all of the identifiers in the token trees.
+//
+// This is part of hygiene magic. As far as hygiene is concerned, there
+// are three types of let pattern bindings or loop labels:
+//      - those defined and used in non-macro part of the program
+//      - those used as part of macro invocation arguments
+//      - those defined and used inside macro definitions
+// Lexically, type 1 and 2 are in one group and type 3 the other. If they
+// clash, in order for let and loop label to work hygienically, one group
+// or the other needs to be renamed. The problem is that type 2 and 3 are
+// parsed together (inside the macro expand function). After being parsed and
+// AST being constructed, they can no longer be distinguished from each other.
+//
+// For that reason, type 2 let bindings and loop labels are actually renamed
+// in the form of tokens instead of AST nodes, here. There are wasted effort
+// since many token::IDENT are not necessary part of let bindings and most
+// token::LIFETIME are certainly not loop labels. But we can't tell in their
+// token form. So this is less ideal and hacky but it works.
 pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> ~[TokenTree] {
     tts.map(|tt| {
         match *tt {
@@ -376,6 +393,7 @@ fn maybe_fold_ident<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
         token::IDENT(id, followed_by_colons) => {
             token::IDENT(fld.fold_ident(id), followed_by_colons)
         }
+        token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id)),
         _ => (*t).clone()
     }
 }
@@ -802,8 +820,8 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprPath(ref pth) => ExprPath(folder.fold_path(pth)),
         ExprLogLevel => ExprLogLevel,
-        ExprBreak(opt_ident) => ExprBreak(opt_ident),
-        ExprAgain(opt_ident) => ExprAgain(opt_ident),
+        ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
+        ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
         ExprRet(ref e) => {
             ExprRet(e.map(|x| folder.fold_expr(x)))
         }
