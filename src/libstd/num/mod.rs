@@ -53,7 +53,7 @@ pub trait Zero: Add<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~ignore
+    /// ~~~notrust
     /// a + 0 = a       ∀ a ∈ Self
     /// 0 + a = a       ∀ a ∈ Self
     /// ~~~
@@ -79,7 +79,7 @@ pub trait One: Mul<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~ignore
+    /// ~~~notrust
     /// a * 1 = a       ∀ a ∈ Self
     /// 1 * a = a       ∀ a ∈ Self
     /// ~~~
