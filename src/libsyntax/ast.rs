@@ -58,8 +58,13 @@ impl Eq for Ident {
             // if it should be non-hygienic (most things are), just compare the
             // 'name' fields of the idents. Or, even better, replace the idents
             // with Name's.
-            fail!("not allowed to compare these idents: {:?}, {:?}.
-                    Probably related to issue \\#6993", self, other);
+            //
+            // On the other hand, if the comparison does need to be hygienic,
+            // one example and its non-hygienic counterpart would be:
+            //      syntax::parse::token::mtwt_token_eq
+            //      syntax::ext::tt::macro_parser::token_name_eq
+            fail!("not allowed to compare these idents: {:?}, {:?}. \
+                   Probably related to issue \\#6993", self, other);
         }
     }
     fn ne(&self, other: &Ident) -> bool {
@@ -564,8 +569,8 @@ pub enum Expr_ {
     ExprPath(Path),
 
     ExprAddrOf(Mutability, @Expr),
-    ExprBreak(Option<Name>),
-    ExprAgain(Option<Name>),
+    ExprBreak(Option<Ident>),
+    ExprAgain(Option<Ident>),
     ExprRet(Option<@Expr>),
 
     /// Gets the log level for the enclosing module

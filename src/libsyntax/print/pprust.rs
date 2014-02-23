@@ -1471,7 +1471,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(space(&mut s.s));
         for ident in opt_ident.iter() {
             try!(word(&mut s.s, "'"));
-            try!(print_name(s, *ident));
+            try!(print_ident(s, *ident));
             try!(space(&mut s.s));
         }
       }
@@ -1480,7 +1480,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(space(&mut s.s));
         for ident in opt_ident.iter() {
             try!(word(&mut s.s, "'"));
-            try!(print_name(s, *ident));
+            try!(print_ident(s, *ident));
             try!(space(&mut s.s))
         }
       }

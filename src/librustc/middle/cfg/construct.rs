@@ -490,7 +490,7 @@ impl CFGBuilder {
 
     fn find_scope(&self,
                   expr: @ast::Expr,
-                  label: Option<ast::Name>) -> LoopScope {
+                  label: Option<ast::Ident>) -> LoopScope {
         match label {
             None => {
                 return *self.loop_scopes.last().unwrap();
