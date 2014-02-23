@@ -30,7 +30,7 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::iter::Enumerate;
 use std::vec;
 

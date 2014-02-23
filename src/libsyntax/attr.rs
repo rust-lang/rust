@@ -20,7 +20,7 @@ use parse::token::InternedString;
 use parse::token;
 use crateid::CrateId;
 
-use std::hashmap::HashSet;
+use collections::HashSet;
 
 pub trait AttrMetaMethods {
     // This could be changed to `fn check_name(&self, name: InternedString) ->

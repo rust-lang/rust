@@ -21,7 +21,7 @@ use syntax;
 use std::cell::RefCell;
 use std::os;
 use std::local_data;
-use std::hashmap::{HashSet};
+use collections::HashSet;
 
 use visit_ast::RustdocVisitor;
 use clean;

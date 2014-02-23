@@ -47,7 +47,7 @@ use syntax::parse::token;
 use syntax::visit;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::rc::Rc;
 use std::vec;
 

@@ -23,6 +23,8 @@
 #[deny(non_camel_case_types)];
 #[allow(missing_doc)];
 
+extern crate collections;
+
 use std::os;
 use std::io;
 use terminfo::TermInfo;

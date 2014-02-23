@@ -519,6 +519,8 @@ impl rand::Rand for Uuid {
 
 #[cfg(test)]
 mod test {
+    extern crate collections;
+
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
@@ -800,7 +802,7 @@ mod test {
 
     #[test]
     fn test_iterbytes_impl_for_uuid() {
-        use std::hashmap::HashSet;
+        use self::collections::HashSet;
         let mut set = HashSet::new();
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();

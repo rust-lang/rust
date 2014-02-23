@@ -13,7 +13,7 @@
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use util::ppaux::Repr;
 use util::ppaux;
 
@@ -39,7 +39,7 @@ pub fn replace_bound_regions_in_fn_sig(
         });
         ty_fold::super_fold_sig(&mut f, fn_sig)
     };
-    debug!("resulting map: {}", map.to_str());
+    debug!("resulting map: {}", map);
     (map, fn_sig)
 }
 

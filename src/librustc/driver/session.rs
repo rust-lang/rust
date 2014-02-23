@@ -26,7 +26,7 @@ use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap,HashSet};
+use collections::{HashMap,HashSet};
 
 pub struct Config {
     os: abi::Os,

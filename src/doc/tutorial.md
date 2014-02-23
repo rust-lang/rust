@@ -1977,8 +1977,8 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-use std::hashmap::HashMap;
-type Set<T> = HashMap<T, ()>;
+extern crate collections;
+type Set<T> = collections::HashMap<T, ()>;
 
 struct Stack<T> {
     elements: ~[T]
@@ -1988,6 +1988,7 @@ enum Option<T> {
     Some(T),
     None
 }
+# fn main() {}
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,

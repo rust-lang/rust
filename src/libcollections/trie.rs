@@ -10,15 +10,13 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use option::{None, Option, Some};
-use container::{Container, Map, Mutable, MutableMap};
-use iter::{Extendable, FromIterator, Iterator};
-use mem;
-use uint;
-use mem::init;
-use vec;
-use ptr::RawPtr;
-use vec::{ImmutableVector, Items, MutableVector, MutItems, OwnedVector};
+use std::mem;
+use std::uint;
+use std::mem::init;
+use std::vec;
+use std::vec::{Items, MutItems};
+
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -622,32 +620,83 @@ impl<'a> Iterator<uint> for SetItems<'a> {
     }
 }
 
-#[cfg(test)]
-pub fn check_integrity<T>(trie: &TrieNode<T>) {
-    assert!(trie.count != 0);
-
-    let mut sum = 0;
-
-    for x in trie.children.iter() {
-        match *x {
-          Nothing => (),
-          Internal(ref y) => {
-              check_integrity(&**y);
-              sum += 1
-          }
-          External(_, _) => { sum += 1 }
-        }
+impl<
+    E: Encoder,
+    V: Encodable<E>
+> Encodable<E> for TrieMap<V> {
+    fn encode(&self, e: &mut E) {
+        e.emit_map(self.len(), |e| {
+                for (i, (key, val)) in self.iter().enumerate() {
+                    e.emit_map_elt_key(i, |e| key.encode(e));
+                    e.emit_map_elt_val(i, |e| val.encode(e));
+                }
+            });
     }
+}
 
-    assert_eq!(sum, trie.count);
+impl<
+    D: Decoder,
+    V: Decodable<D>
+> Decodable<D> for TrieMap<V> {
+    fn decode(d: &mut D) -> TrieMap<V> {
+        d.read_map(|d, len| {
+            let mut map = TrieMap::new();
+            for i in range(0u, len) {
+                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
+                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
+        })
+    }
+}
+
+impl<S: Encoder> Encodable<S> for TrieSet {
+    fn encode(&self, s: &mut S) {
+        s.emit_seq(self.len(), |s| {
+                for (i, e) in self.iter().enumerate() {
+                    s.emit_seq_elt(i, |s| e.encode(s));
+                }
+            })
+    }
+}
+
+impl<D: Decoder> Decodable<D> for TrieSet {
+    fn decode(d: &mut D) -> TrieSet {
+        d.read_seq(|d, len| {
+            let mut set = TrieSet::new();
+            for i in range(0u, len) {
+                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
+            }
+            set
+        })
+    }
 }
 
 #[cfg(test)]
 mod test_map {
-    use super::*;
-    use prelude::*;
-    use iter::range_step;
-    use uint;
+    use super::{TrieMap, TrieNode, Internal, External};
+    use std::iter::range_step;
+    use std::uint;
+
+    fn check_integrity<T>(trie: &TrieNode<T>) {
+        assert!(trie.count != 0);
+
+        let mut sum = 0;
+
+        for x in trie.children.iter() {
+            match *x {
+              Nothing => (),
+              Internal(ref y) => {
+                  check_integrity(&**y);
+                  sum += 1
+              }
+              External(_, _) => { sum += 1 }
+            }
+        }
+
+        assert_eq!(sum, trie.count);
+    }
 
     #[test]
     fn test_find_mut() {
@@ -903,10 +952,9 @@ mod test_map {
 #[cfg(test)]
 mod bench_map {
     extern crate test;
+    use super::TrieMap;
+    use std::rand::{weak_rng, Rng};
     use self::test::BenchHarness;
-    use super::*;
-    use prelude::*;
-    use rand::{weak_rng, Rng};
 
     #[bench]
     fn bench_iter_small(bh: &mut BenchHarness) {
@@ -1011,9 +1059,8 @@ mod bench_map {
 
 #[cfg(test)]
 mod test_set {
-    use super::*;
-    use prelude::*;
-    use uint;
+    use super::TrieSet;
+    use std::uint;
 
     #[test]
     fn test_sane_chunk() {

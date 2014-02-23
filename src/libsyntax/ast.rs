@@ -18,7 +18,7 @@ use parse::token::{InternedString, special_idents, str_to_ident};
 use parse::token;
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
 use std::to_str::ToStr;
@@ -39,7 +39,7 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, IterBytes, ToStr, TotalEq, TotalOrd)]
+#[deriving(Clone, IterBytes, ToStr, TotalEq, TotalOrd, Show)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
@@ -177,7 +177,7 @@ pub type CrateNum = u32;
 
 pub type NodeId = u32;
 
-#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, IterBytes, ToStr, Show)]
 pub struct DefId {
     krate: CrateNum,
     node: NodeId,

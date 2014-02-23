@@ -70,7 +70,7 @@ hello                // turns on all logging for the 'hello' module
 info                 // turns on all info logging
 hello=debug          // turns on debug logging for 'hello'
 hello=3              // turns on info logging for 'hello'
-hello,std::hashmap   // turns on hello, and std's hashmap logging
+hello,std::option    // turns on hello, and std's option logging
 error,hello=warn     // turn on global error logging and also warn for hello
 ```
 

@@ -37,7 +37,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::result;
 use std::vec;
 use syntax::ast::{MutImmutable, MutMutable};
