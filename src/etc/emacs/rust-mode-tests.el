@@ -511,7 +511,7 @@ fn foo() {
     this,
     that,
     theotherthing)]
-mod function_with_multiline_attribute() {}
+fn function_with_multiline_attribute() {}
 "
    ))
 
