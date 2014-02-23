@@ -38,6 +38,7 @@ pub mod core;
 pub mod doctree;
 pub mod fold;
 pub mod html {
+    pub mod highlight;
     pub mod escape;
     pub mod format;
     pub mod layout;
