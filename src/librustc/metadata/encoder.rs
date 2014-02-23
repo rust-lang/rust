@@ -26,7 +26,8 @@ use middle;
 use serialize::Encodable;
 use std::cast;
 use std::cell::{Cell, RefCell};
-use std::hash_old::Hash;
+use std::hash;
+use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
 use collections::{HashMap, HashSet};
@@ -1380,7 +1381,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 // Path and definition ID indexing
 
-fn create_index<T:Clone + Hash + IterBytes + 'static>(
+fn create_index<T:Clone + Hash + 'static>(
                 index: ~[entry<T>])
                 -> ~[@~[entry<T>]] {
     let mut buckets: ~[@RefCell<~[entry<T>]>] = ~[];
@@ -1388,7 +1389,7 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
         buckets.push(@RefCell::new(~[]));
     }
     for elt in index.iter() {
-        let h = elt.val.hash() as uint;
+        let h = hash::hash(&elt.val) as uint;
         let mut bucket = buckets[h % 256].borrow_mut();
         bucket.get().push((*elt).clone());
     }

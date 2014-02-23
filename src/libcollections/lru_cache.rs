@@ -38,7 +38,7 @@
 //! ```
 
 use std::container::Container;
-use std::to_bytes::Cb;
+use std::hash::{Hash, sip};
 use std::ptr;
 use std::cast;
 
@@ -61,9 +61,9 @@ pub struct LruCache<K, V> {
     priv tail: *mut LruEntry<K, V>,
 }
 
-impl<K: IterBytes> IterBytes for KeyRef<K> {
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        unsafe{ (*self.k).iter_bytes(lsb0, f) }
+impl<K: Hash> Hash for KeyRef<K> {
+    fn hash(&self, s: &mut sip::SipState) {
+        unsafe {(*self.k).hash(s)}
     }
 }
 
@@ -93,7 +93,7 @@ impl<K, V> LruEntry<K, V> {
     }
 }
 
-impl<K: IterBytes + Eq, V> LruCache<K, V> {
+impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Create an LRU Cache that holds at most `capacity` items.
     pub fn new(capacity: uint) -> LruCache<K, V> {
         let cache = LruCache {
@@ -217,7 +217,7 @@ impl<K: IterBytes + Eq, V> LruCache<K, V> {
     }
 }
 
-impl<A: ToStr + IterBytes + Eq, B: ToStr> ToStr for LruCache<A, B> {
+impl<A: ToStr + Hash + Eq, B: ToStr> ToStr for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
     #[inline]
@@ -250,14 +250,14 @@ impl<A: ToStr + IterBytes + Eq, B: ToStr> ToStr for LruCache<A, B> {
     }
 }
 
-impl<K: IterBytes + Eq, V> Container for LruCache<K, V> {
+impl<K: Hash + Eq, V> Container for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()
     }
 }
 
-impl<K: IterBytes + Eq, V> Mutable for LruCache<K, V> {
+impl<K: Hash + Eq, V> Mutable for LruCache<K, V> {
     /// Clear the cache of all key-value pairs.
     fn clear(&mut self) {
         self.map.clear();

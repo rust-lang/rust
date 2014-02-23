@@ -34,7 +34,7 @@ use syntax::opt_vec::OptVec;
 
 mod doc;
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
@@ -42,7 +42,7 @@ enum Constraint {
     ConstrainRegSubReg(Region, Region),
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 struct TwoRegions {
     a: Region,
     b: Region,

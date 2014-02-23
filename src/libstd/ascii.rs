@@ -18,9 +18,9 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use fmt;
+use hash::{Hash, sip};
 use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
-use to_bytes::IterBytes;
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
@@ -314,10 +314,10 @@ impl IntoStr for ~[Ascii] {
     }
 }
 
-impl IterBytes for Ascii {
+impl Hash for Ascii {
     #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
-        f([self.to_byte()])
+    fn hash(&self, s: &mut sip::SipState) {
+        self.to_byte().hash(s)
     }
 }
 

@@ -74,7 +74,7 @@ use std::rand;
 use std::rand::Rng;
 use std::cmp::Eq;
 use std::cast::{transmute,transmute_copy};
-use std::to_bytes::{IterBytes, Cb};
+use std::hash::{Hash, sip};
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -114,9 +114,9 @@ pub struct Uuid {
     /// The 128-bit number stored in 16 bytes
     bytes: UuidBytes
 }
-impl IterBytes for Uuid {
-    fn iter_bytes(&self, _: bool, f: Cb) -> bool {
-        f(self.bytes.slice_from(0))
+impl Hash for Uuid {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.bytes.slice_from(0).hash(s)
     }
 }
 

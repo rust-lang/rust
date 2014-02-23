@@ -23,7 +23,7 @@ use std::local_data;
 use std::path::BytesContainer;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
 pub enum BinOp {
     PLUS,
     MINUS,
@@ -38,7 +38,7 @@ pub enum BinOp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -102,7 +102,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(@ast::Item),
@@ -536,7 +536,7 @@ pub fn get_ident_interner() -> @IdentInterner {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
-#[deriving(Clone, Eq, IterBytes, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, Hash, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
     priv string: RcStr,
 }

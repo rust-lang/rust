@@ -82,7 +82,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
