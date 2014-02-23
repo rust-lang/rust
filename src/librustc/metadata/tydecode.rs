@@ -214,7 +214,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
             let ident = token::str_to_ident(parse_str(st, ']'));
-            ty::BrNamed(def, ident)
+            ty::BrNamed(def, ident.name)
         }
         'f' => {
             let id = parse_uint(st);
@@ -242,7 +242,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
         let nm = token::str_to_ident(parse_str(st, ']'));
-        ty::ReEarlyBound(node_id, index, nm)
+        ty::ReEarlyBound(node_id, index, nm.name)
       }
       'f' => {
         assert_eq!(next(st), '[');
