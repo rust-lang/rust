@@ -609,7 +609,7 @@ impl<T: Writer> ConsoleTestState<T> {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratcher: {}\n",
+                try!(self.write_plain(format!("\nusing metrics ratchet: {}\n",
                                         pth.display())));
                 match ratchet_pct {
                     None => (),
