@@ -12,6 +12,8 @@
 
 #[feature(managed_boxes)];
 
+extern crate collections;
+
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 
@@ -21,7 +23,7 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::hashmap::HashMap;
+    use collections::HashMap;
     use std::str;
     use std::task;
 

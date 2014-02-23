@@ -21,7 +21,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use syntax::ast::{Many, Once, NodeId};
 use syntax::ast::{ExternFn, ImpureFn, UnsafeFn};
 use syntax::ast::{Onceness, Purity};

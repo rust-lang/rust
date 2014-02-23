@@ -27,7 +27,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::result;
 use syntax::ast;
 use syntax::ast_util;

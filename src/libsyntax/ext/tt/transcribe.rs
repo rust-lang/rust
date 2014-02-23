@@ -18,7 +18,7 @@ use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 
 ///an unzipping of `TokenTree`s
 struct TtFrame {

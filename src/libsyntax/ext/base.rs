@@ -19,7 +19,7 @@ use parse::token;
 use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 
 // new-style macro! tt code:
 //

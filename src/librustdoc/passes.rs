@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cmp;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::local_data;
 use std::uint;
 use syntax::ast;

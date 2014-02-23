@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```rust
-//! use std::hashmap::HashMap;
+//! use collections::HashMap;
 //!
 //! // type inference lets us omit an explicit type signature (which
 //! // would be `HashMap<&str, &str>` in this example).
@@ -52,24 +52,20 @@
 //! }
 //! ```
 
-use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
-use clone::Clone;
-use cmp::{Eq, Equiv, max};
-use default::Default;
-use fmt;
-use hash_old::Hash;
-use iter;
-use iter::{Iterator, FromIterator, Extendable};
-use iter::{FilterMap, Chain, Repeat, Zip};
-use mem::replace;
-use num;
-use option::{None, Option, Some};
-use rand::Rng;
-use rand;
-use result::{Ok, Err};
-use vec::{ImmutableVector, MutableVector, OwnedVector, Items, MutItems};
-use vec_ng;
-use vec_ng::Vec;
+use std::cmp::max;
+use std::fmt;
+use std::hash_old::Hash;
+use std::iter::{FilterMap, Chain, Repeat, Zip};
+use std::iter;
+use std::mem::replace;
+use std::num;
+use std::rand::Rng;
+use std::rand;
+use std::vec::{Items, MutItems};
+use std::vec_ng::Vec;
+use std::vec_ng;
+
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -404,7 +400,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// # Example
     ///
     /// ```rust
-    /// use std::hashmap::HashMap;
+    /// use collections::HashMap;
     ///
     /// // map some strings to vectors of strings
     /// let mut map = HashMap::<~str, ~[~str]>::new();
@@ -611,6 +607,10 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
         }
         write!(f.buf, r"\}")
     }
+}
+
+impl<K: fmt::Show + Hash + Eq, V: fmt::Show> ToStr for HashMap<K, V> {
+    fn to_str(&self) -> ~str { format!("{}", *self) }
 }
 
 /// HashMap iterator
@@ -891,6 +891,10 @@ impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
     }
 }
 
+impl<A: fmt::Show + Hash + Eq> ToStr for HashSet<A> {
+    fn to_str(&self) -> ~str { format!("{}", *self) }
+}
+
 impl<K: Eq + Hash> FromIterator<K> for HashSet<K> {
     fn from_iterator<T: Iterator<K>>(iter: &mut T) -> HashSet<K> {
         let (lower, _) = iter.size_hint();
@@ -919,12 +923,75 @@ pub type SetAlgebraItems<'a, T> =
     FilterMap<'static,(&'a HashSet<T>, &'a T), &'a T,
               Zip<Repeat<&'a HashSet<T>>,SetItems<'a,T>>>;
 
+impl<
+    E: Encoder,
+    K: Encodable<E> + Hash + IterBytes + Eq,
+    V: Encodable<E>
+> Encodable<E> for HashMap<K, V> {
+    fn encode(&self, e: &mut E) {
+        e.emit_map(self.len(), |e| {
+            let mut i = 0;
+            for (key, val) in self.iter() {
+                e.emit_map_elt_key(i, |e| key.encode(e));
+                e.emit_map_elt_val(i, |e| val.encode(e));
+                i += 1;
+            }
+        })
+    }
+}
+
+impl<
+    D: Decoder,
+    K: Decodable<D> + Hash + IterBytes + Eq,
+    V: Decodable<D>
+> Decodable<D> for HashMap<K, V> {
+    fn decode(d: &mut D) -> HashMap<K, V> {
+        d.read_map(|d, len| {
+            let mut map = HashMap::with_capacity(len);
+            for i in range(0u, len) {
+                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
+                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
+                map.insert(key, val);
+            }
+            map
+        })
+    }
+}
+
+impl<
+    S: Encoder,
+    T: Encodable<S> + Hash + IterBytes + Eq
+> Encodable<S> for HashSet<T> {
+    fn encode(&self, s: &mut S) {
+        s.emit_seq(self.len(), |s| {
+            let mut i = 0;
+            for e in self.iter() {
+                s.emit_seq_elt(i, |s| e.encode(s));
+                i += 1;
+            }
+        })
+    }
+}
+
+impl<
+    D: Decoder,
+    T: Decodable<D> + Hash + IterBytes + Eq
+> Decodable<D> for HashSet<T> {
+    fn decode(d: &mut D) -> HashSet<T> {
+        d.read_seq(|d, len| {
+            let mut set = HashSet::with_capacity(len);
+            for i in range(0u, len) {
+                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
+            }
+            set
+        })
+    }
+}
 
 #[cfg(test)]
 mod test_map {
-    use prelude::*;
-    use super::*;
-    use fmt;
+    use super::{HashMap, HashSet};
+    use std::fmt;
 
     #[test]
     fn test_create_capacity_zero() {
@@ -1180,14 +1247,49 @@ mod test_map {
         assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
         assert_eq!(format!("{}", empty), ~"{}");
     }
+
+    struct StructWithToStrWithoutEqOrHash {
+        value: int
+    }
+
+    impl fmt::Show for StructWithToStrWithoutEqOrHash {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f.buf, "s{}", self.value)
+        }
+    }
+
+    #[test]
+    fn test_hashset() {
+        let mut set: HashSet<int> = HashSet::new();
+        let empty_set: HashSet<int> = HashSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = set.to_str();
+
+        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        assert_eq!(empty_set.to_str(), ~"{}");
+    }
+
+    #[test]
+    fn test_hashmap() {
+        let mut table: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
+        let empty: HashMap<int, StructWithToStrWithoutEqOrHash> = HashMap::new();
+
+        table.insert(3, StructWithToStrWithoutEqOrHash { value: 4 });
+        table.insert(1, StructWithToStrWithoutEqOrHash { value: 2 });
+
+        let table_str = table.to_str();
+
+        assert!(table_str == ~"{1: s2, 3: s4}" || table_str == ~"{3: s4, 1: s2}");
+        assert_eq!(empty.to_str(), ~"{}");
+    }
 }
 
 #[cfg(test)]
 mod test_set {
-    use super::*;
-    use prelude::*;
-    use container::Container;
-    use vec::ImmutableEqVector;
+    use super::HashSet;
 
     #[test]
     fn test_disjoint() {

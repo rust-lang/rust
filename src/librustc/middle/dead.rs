@@ -17,7 +17,7 @@ use middle::privacy;
 use middle::ty;
 use middle::typeck;
 
-use std::hashmap::HashSet;
+use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, def_id_of_def, is_local};

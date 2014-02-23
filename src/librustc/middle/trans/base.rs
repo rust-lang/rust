@@ -74,7 +74,7 @@ use util::sha2::Sha256;
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::libc::c_uint;
 use std::local_data;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};

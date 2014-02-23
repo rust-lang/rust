@@ -79,7 +79,7 @@ use opt_vec;
 use opt_vec::OptVec;
 
 use std::cell::Cell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
 use std::vec;

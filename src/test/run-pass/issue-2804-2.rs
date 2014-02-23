@@ -13,7 +13,9 @@
 // Minimized version of issue-2804.rs. Both check that callee IDs don't
 // clobber the previous node ID in a macro expr
 
-use std::hashmap::HashMap;
+extern crate collections;
+
+use collections::HashMap;
 
 fn add_interfaces(managed_ip: ~str, device: HashMap<~str, int>)  {
      error!("{}, {:?}", managed_ip, device.get(&~"interfaces"));

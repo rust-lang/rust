@@ -20,7 +20,7 @@
 use std::io;
 use std::uint;
 use std::vec;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;

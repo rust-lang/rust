@@ -14,11 +14,11 @@
 
 use ast::Name;
 
+use collections::HashMap;
 use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::hash_old::Hash;
-use std::hashmap::HashMap;
 use std::rc::Rc;
 
 pub struct Interner<T> {

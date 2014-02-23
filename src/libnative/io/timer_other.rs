@@ -49,7 +49,6 @@
 #[allow(non_camel_case_types)];
 
 use std::comm::Data;
-use std::hashmap::HashMap;
 use std::libc;
 use std::mem;
 use std::os;
@@ -105,7 +104,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     // sorted list, and dead timers are those which have expired, but ownership
     // hasn't yet been transferred back to the timer itself.
     let mut active: ~[~Inner] = ~[];
-    let mut dead = HashMap::new();
+    let mut dead = ~[];
 
     // inserts a timer into an array of timers (sorted by firing time)
     fn insert(t: ~Inner, active: &mut ~[~Inner]) {
@@ -116,7 +115,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     }
 
     // signals the first requests in the queue, possible re-enqueueing it.
-    fn signal(active: &mut ~[~Inner], dead: &mut HashMap<uint, ~Inner>) {
+    fn signal(active: &mut ~[~Inner], dead: &mut ~[(uint, ~Inner)]) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
@@ -127,7 +126,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
             insert(timer, active);
         } else {
             drop(chan);
-            dead.insert(timer.id, timer);
+            dead.push((timer.id, timer));
         }
     }
 
@@ -172,8 +171,12 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                         Data(NewTimer(timer)) => insert(timer, &mut active),
 
                         Data(RemoveTimer(id, ack)) => {
-                            match dead.pop(&id) {
-                                Some(i) => { ack.send(i); continue }
+                            match dead.iter().position(|&(i, _)| id == i) {
+                                Some(i) => {
+                                    let (_, i) = dead.remove(i).unwrap();
+                                    ack.send(i);
+                                    continue
+                                }
                                 None => {}
                             }
                             let i = active.iter().position(|i| i.id == id);

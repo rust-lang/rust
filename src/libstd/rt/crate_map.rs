@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp::TotalOrd;
 use container::MutableSet;
-use hashmap::HashSet;
 use iter::Iterator;
 use option::{Some, None, Option};
 use ptr::RawPtr;
-use vec::ImmutableVector;
 use rt::rtio::EventLoop;
+use vec::{ImmutableVector, OwnedVector};
 
 // Need to tell the linker on OS X to not barf on undefined symbols
 // and instead look them up at runtime, which we need to resolve
@@ -89,28 +89,33 @@ fn version(crate_map: &CrateMap) -> i32 {
 fn do_iter_crate_map<'a>(
                      crate_map: &'a CrateMap<'a>,
                      f: |&ModEntry|,
-                     visited: &mut HashSet<*CrateMap<'a>>) {
-    if visited.insert(crate_map as *CrateMap) {
-        match version(crate_map) {
-            2 => {
-                let (entries, children) = (crate_map.entries, crate_map.children);
-                for entry in entries.iter() {
-                    f(entry);
-                }
-                for child in children.iter() {
-                    do_iter_crate_map(*child, |x| f(x), visited);
-                }
-            },
-            _ => fail!("invalid crate map version")
-        }
+                     visited: &mut ~[*CrateMap<'a>]) {
+    let raw = crate_map as *CrateMap<'a>;
+    if visited.bsearch(|a| (*a as uint).cmp(&(raw as uint))).is_some() {
+        return
+    }
+    match visited.iter().position(|i| *i as uint > raw as uint) {
+        Some(i) => visited.insert(i, raw),
+        None => visited.push(raw),
+    }
+
+    match version(crate_map) {
+        2 => {
+            let (entries, children) = (crate_map.entries, crate_map.children);
+            for entry in entries.iter() {
+                f(entry);
+            }
+            for child in children.iter() {
+                do_iter_crate_map(*child, |x| f(x), visited);
+            }
+        },
+        _ => fail!("invalid crate map version")
     }
 }
 
 /// Iterates recursively over `crate_map` and all child crate maps
 pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&ModEntry|) {
-    // FIXME: use random numbers as keys from the OS-level RNG when there is a nice
-    //        way to do this
-    let mut v: HashSet<*CrateMap<'a>> = HashSet::with_capacity_and_keys(0, 0, 32);
+    let mut v = ~[];
     do_iter_crate_map(crate_map, f, &mut v);
 }
 

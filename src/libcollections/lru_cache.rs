@@ -38,10 +38,11 @@
 //! ```
 
 use std::container::Container;
-use std::hashmap::HashMap;
 use std::to_bytes::Cb;
 use std::ptr;
 use std::cast;
+
+use HashMap;
 
 struct KeyRef<K> { k: *K }
 
