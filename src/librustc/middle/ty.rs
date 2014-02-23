@@ -33,9 +33,9 @@ use util::common::{indenter};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::cmp;
+use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
-use std::to_bytes;
 use std::to_str::ToStr;
 use std::vec;
 use collections::{HashMap, HashSet};
@@ -60,7 +60,7 @@ pub static INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct field {
     ident: ast::Ident,
     mt: mt
@@ -122,20 +122,20 @@ pub struct Impl {
     methods: ~[@Method]
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct mt {
     ty: t,
     mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash, ToStr)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
     vstore_slice(Region)
 }
 
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, Hash, Encodable, Decodable, ToStr)]
 pub enum TraitStore {
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
@@ -149,7 +149,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq,Hash)]
 pub struct creader_cache_key {
     cnum: CrateNum,
     pos: uint,
@@ -176,12 +176,10 @@ impl cmp::Eq for intern_key {
     }
 }
 
-// NB: Do not replace this with #[deriving(IterBytes)], as above. (Figured
-// this out the hard way.)
-impl to_bytes::IterBytes for intern_key {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+impl Hash for intern_key {
+    fn hash(&self, s: &mut sip::SipState) {
         unsafe {
-            (*self.sty).iter_bytes(lsb0, f)
+            (*self.sty).hash(s)
         }
     }
 }
@@ -416,14 +414,14 @@ pub fn type_has_regions(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct BareFnTy {
     purity: ast::Purity,
     abis: AbiSet,
     sig: FnSig
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct ClosureTy {
     purity: ast::Purity,
     sigil: ast::Sigil,
@@ -445,7 +443,7 @@ pub struct ClosureTy {
  * - `output` is the return type.
  * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
  */
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct FnSig {
     binder_id: ast::NodeId,
     inputs: ~[t],
@@ -453,14 +451,14 @@ pub struct FnSig {
     variadic: bool
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct param_ty {
     idx: uint,
     def_id: DefId
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, IterBytes, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, Hash, Encodable, Decodable, ToStr, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -501,13 +499,13 @@ pub enum Region {
  * the original var id (that is, the root variable that is referenced
  * by the upvar) and the id of the closure expression.
  */
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct UpvarId {
     var_id: ast::NodeId,
     closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -620,13 +618,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, TotalOrd, TotalEq, IterBytes, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, TotalOrd, TotalEq, Hash, Encodable, Decodable, ToStr, Show)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: BoundRegion
 }
 
-#[deriving(Clone, Eq, TotalEq, TotalOrd, IterBytes, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, TotalEq, TotalOrd, Hash, Encodable, Decodable, ToStr, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -645,7 +643,7 @@ pub enum BoundRegion {
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
  * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(OptVec<ty::Region>)
@@ -668,7 +666,7 @@ pub enum RegionSubsts {
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct substs {
     self_ty: Option<ty::t>,
     tps: ~[t],
@@ -723,7 +721,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -758,7 +756,7 @@ pub enum sty {
     ty_unboxed_vec(mt),
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct TraitRef {
     def_id: DefId,
     substs: substs
@@ -820,7 +818,7 @@ pub enum type_err {
     terr_variadic_mismatch(expected_found<bool>)
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct ParamBounds {
     builtin_bounds: BuiltinBounds,
     trait_bounds: ~[@TraitRef]
@@ -828,7 +826,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Encodable, Eq, Decodable, IterBytes, ToStr)]
+#[deriving(Clone, Encodable, Eq, Decodable, Hash, ToStr)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
@@ -860,28 +858,28 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct TyVid(uint);
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct IntVid(uint);
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct FloatVid(uint);
 
-#[deriving(Clone, Eq, Encodable, Decodable, IterBytes, Show)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
 pub struct RegionVid {
     id: uint
 }
 
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
     FloatVar(FloatVid)
 }
 
-#[deriving(Clone, Encodable, Decodable, IterBytes, ToStr, Show)]
+#[deriving(Clone, Encodable, Decodable, Hash, ToStr, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
@@ -4916,10 +4914,13 @@ pub fn trait_method_of_method(tcx: ctxt,
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
-    use std::hash_old::{SipState, Streaming};
+    use std::hash::{sip, Hash};
 
-    let mut hash = SipState::new(0, 0);
-    let region = |_hash: &mut SipState, r: Region| {
+    let mut hash = sip::SipState::new(0, 0);
+    macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut hash) } );
+    macro_rules! hash( ($e:expr) => { $e.hash(&mut hash) } );
+
+    let region = |_hash: &mut sip::SipState, r: Region| {
         match r {
             ReStatic => {}
 
@@ -4933,130 +4934,127 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             }
         }
     };
-    let vstore = |hash: &mut SipState, v: vstore| {
+    let vstore = |hash: &mut sip::SipState, v: vstore| {
         match v {
-            vstore_fixed(_) => hash.input([0]),
-            vstore_uniq => hash.input([1]),
+            vstore_fixed(_) => 0u8.hash(hash),
+            vstore_uniq => 1u8.hash(hash),
             vstore_slice(r) => {
-                hash.input([3]);
+                2u8.hash(hash);
                 region(hash, r);
             }
         }
     };
-    let did = |hash: &mut SipState, did: DefId| {
+    let did = |hash: &mut sip::SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
             local_hash.clone()
         } else {
             tcx.sess.cstore.get_crate_hash(did.krate)
         };
-        hash.input(h.as_bytes());
-        iter(hash, &did.node);
+        h.as_bytes().hash(hash);
+        did.node.hash(hash);
     };
-    let mt = |hash: &mut SipState, mt: mt| {
-        iter(hash, &mt.mutbl);
+    let mt = |hash: &mut sip::SipState, mt: mt| {
+        mt.mutbl.hash(hash);
     };
-    fn iter<T: IterBytes>(hash: &mut SipState, t: &T) {
-        t.iter_bytes(true, |bytes| { hash.input(bytes); true });
-    }
     ty::walk_ty(t, |t| {
         match ty::get(t).sty {
-            ty_nil => hash.input([0]),
-            ty_bot => hash.input([1]),
-            ty_bool => hash.input([2]),
-            ty_char => hash.input([3]),
+            ty_nil => byte!(0),
+            ty_bot => byte!(1),
+            ty_bool => byte!(2),
+            ty_char => byte!(3),
             ty_int(i) => {
-                hash.input([4]);
-                iter(&mut hash, &i);
+                byte!(4);
+                hash!(i);
             }
             ty_uint(u) => {
-                hash.input([5]);
-                iter(&mut hash, &u);
+                byte!(5);
+                hash!(u);
             }
             ty_float(f) => {
-                hash.input([6]);
-                iter(&mut hash, &f);
+                byte!(6);
+                hash!(f);
             }
             ty_str(v) => {
-                hash.input([7]);
-                vstore(&mut hash, v);
+                byte!(7);
+                hash!(v);
             }
             ty_enum(d, _) => {
-                hash.input([8]);
-                did(&mut hash, d);
+                byte!(8);
+                hash!(d)
             }
             ty_box(_) => {
-                hash.input([9]);
+                byte!(9);
             }
             ty_uniq(_) => {
-                hash.input([10]);
+                byte!(10);
             }
             ty_vec(m, v) => {
-                hash.input([11]);
+                byte!(11);
                 mt(&mut hash, m);
                 vstore(&mut hash, v);
             }
             ty_ptr(m) => {
-                hash.input([12]);
+                byte!(12);
                 mt(&mut hash, m);
             }
             ty_rptr(r, m) => {
-                hash.input([13]);
+                byte!(13);
                 region(&mut hash, r);
                 mt(&mut hash, m);
             }
             ty_bare_fn(ref b) => {
-                hash.input([14]);
-                iter(&mut hash, &b.purity);
-                iter(&mut hash, &b.abis);
+                byte!(14);
+                hash!(b.purity);
+                hash!(b.abis);
             }
             ty_closure(ref c) => {
-                hash.input([15]);
-                iter(&mut hash, &c.purity);
-                iter(&mut hash, &c.sigil);
-                iter(&mut hash, &c.onceness);
-                iter(&mut hash, &c.bounds);
+                byte!(15);
+                hash!(c.purity);
+                hash!(c.sigil);
+                hash!(c.onceness);
+                hash!(c.bounds);
                 region(&mut hash, c.region);
             }
             ty_trait(d, _, store, m, bounds) => {
-                hash.input([17]);
+                byte!(17);
                 did(&mut hash, d);
                 match store {
-                    UniqTraitStore => hash.input([0]),
+                    UniqTraitStore => byte!(0),
                     RegionTraitStore(r) => {
-                        hash.input([1]);
+                        byte!(1)
                         region(&mut hash, r);
                     }
                 }
-                iter(&mut hash, &m);
-                iter(&mut hash, &bounds);
+                hash!(m);
+                hash!(bounds);
             }
             ty_struct(d, _) => {
-                hash.input([18]);
+                byte!(18);
                 did(&mut hash, d);
             }
             ty_tup(ref inner) => {
-                hash.input([19]);
-                iter(&mut hash, &inner.len());
+                byte!(19);
+                hash!(inner.len());
             }
             ty_param(p) => {
-                hash.input([20]);
-                iter(&mut hash, &p.idx);
+                byte!(20);
+                hash!(p.idx);
                 did(&mut hash, p.def_id);
             }
             ty_self(d) => {
-                hash.input([21]);
+                byte!(21);
                 did(&mut hash, d);
             }
             ty_infer(_) => unreachable!(),
-            ty_err => hash.input([23]),
+            ty_err => byte!(23),
             ty_unboxed_vec(m) => {
-                hash.input([24]);
+                byte!(24);
                 mt(&mut hash, m);
             }
         }
     });
 
-    hash.result_u64()
+    hash.result()
 }
 
 impl Variance {

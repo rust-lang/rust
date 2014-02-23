@@ -89,6 +89,7 @@ use clone::{Clone, DeepClone};
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
+use hash::{Hash, sip};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -103,7 +104,6 @@ use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use vec_ng::Vec;
 use default::Default;
-use to_bytes::{IterBytes, Cb};
 use raw::Repr;
 
 /*
@@ -1356,13 +1356,10 @@ impl<'a> Default for MaybeOwned<'a> {
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-impl<'a> IterBytes for MaybeOwned<'a> {
+impl<'a> Hash for MaybeOwned<'a> {
     #[inline]
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        match *self {
-            Slice(s) => s.iter_bytes(lsb0, f),
-            Owned(ref s) => s.iter_bytes(lsb0, f)
-        }
+    fn hash(&self, s: &mut sip::SipState) {
+        self.as_slice().hash(s)
     }
 }
 

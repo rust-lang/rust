@@ -15,7 +15,7 @@
 use std::io::BufReader;
 use std::cmp::Eq;
 use collections::HashMap;
-use std::to_bytes;
+use std::hash::{Hash, sip};
 use std::uint;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
@@ -855,15 +855,15 @@ impl ToStr for Path {
     }
 }
 
-impl IterBytes for Url {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_str().iter_bytes(lsb0, f)
+impl Hash for Url {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.to_str().hash(s)
     }
 }
 
-impl IterBytes for Path {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_str().iter_bytes(lsb0, f)
+impl Hash for Path {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.to_str().hash(s)
     }
 }
 

@@ -105,7 +105,7 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 enum Namespace {
     TypeNS,
     ValueNS

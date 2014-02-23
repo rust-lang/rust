@@ -23,7 +23,6 @@ use ext::base::ExtCtxt;
 use codemap::Span;
 
 pub mod clone;
-pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
 pub mod hash;
@@ -74,7 +73,6 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "Clone" => expand!(clone::expand_deriving_clone),
                             "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
-                            "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
                             "Hash" => expand!(hash::expand_deriving_hash),
 
                             "Encodable" => expand!(encodable::expand_deriving_encodable),

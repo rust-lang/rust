@@ -54,7 +54,7 @@
 
 use std::cmp::max;
 use std::fmt;
-use std::hash_old::Hash;
+use std::hash::{Hash, Hasher, sip};
 use std::iter::{FilterMap, Chain, Repeat, Zip};
 use std::iter;
 use std::mem::replace;
@@ -79,10 +79,7 @@ struct Bucket<K,V> {
 /// hash function for internal state. This means that the order of all hash maps
 /// is randomized by keying each hash map randomly on creation.
 ///
-/// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by just implementing the `Eq` and
-/// `IterBytes` traits as `Hash` is automatically implemented for types that
-/// implement `IterBytes`.
+/// It is required that the keys implement the `Eq` and `Hash` traits.
 pub struct HashMap<K,V> {
     priv k0: u64,
     priv k1: u64,
@@ -131,14 +128,14 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
     #[inline]
     fn bucket_for_key(&self, k: &K) -> SearchResult {
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
         self.bucket_for_key_with_hash(hash, k)
     }
 
     #[inline]
     fn bucket_for_key_equiv<Q:Hash + Equiv<K>>(&self, k: &Q)
                                                -> SearchResult {
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
         self.bucket_for_key_with_hash_equiv(hash, k)
     }
 
@@ -339,14 +336,14 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
             self.expand();
         }
 
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let hash = sip::hash_with_keys(self.k0, self.k1, &k) as uint;
         self.insert_internal(hash, k, v)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     fn pop(&mut self, k: &K) -> Option<V> {
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
         self.pop_internal(hash, k)
     }
 }
@@ -446,7 +443,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             self.expand();
         }
 
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let hash = sip::hash_with_keys(self.k0, self.k1, &k) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
@@ -925,7 +922,7 @@ pub type SetAlgebraItems<'a, T> =
 
 impl<
     E: Encoder,
-    K: Encodable<E> + Hash + IterBytes + Eq,
+    K: Encodable<E> + Hash + Eq,
     V: Encodable<E>
 > Encodable<E> for HashMap<K, V> {
     fn encode(&self, e: &mut E) {
@@ -942,7 +939,7 @@ impl<
 
 impl<
     D: Decoder,
-    K: Decodable<D> + Hash + IterBytes + Eq,
+    K: Decodable<D> + Hash + Eq,
     V: Decodable<D>
 > Decodable<D> for HashMap<K, V> {
     fn decode(d: &mut D) -> HashMap<K, V> {
@@ -960,7 +957,7 @@ impl<
 
 impl<
     S: Encoder,
-    T: Encodable<S> + Hash + IterBytes + Eq
+    T: Encodable<S> + Hash + Eq
 > Encodable<S> for HashSet<T> {
     fn encode(&self, s: &mut S) {
         s.emit_seq(self.len(), |s| {
@@ -975,7 +972,7 @@ impl<
 
 impl<
     D: Decoder,
-    T: Decodable<D> + Hash + IterBytes + Eq
+    T: Decodable<D> + Hash + Eq
 > Decodable<D> for HashSet<T> {
     fn decode(d: &mut D) -> HashSet<T> {
         d.read_seq(|d, len| {

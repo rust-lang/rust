@@ -18,7 +18,7 @@ use collections::HashMap;
 use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
-use std::hash_old::Hash;
+use std::hash::Hash;
 use std::rc::Rc;
 
 pub struct Interner<T> {
@@ -27,7 +27,7 @@ pub struct Interner<T> {
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
-impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
+impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: RefCell::new(HashMap::new()),
@@ -75,7 +75,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
+    pub fn find_equiv<Q:Hash + Equiv<T>>(&self, val: &Q)
                                               -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
@@ -85,7 +85,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     }
 }
 
-#[deriving(Clone, Eq, IterBytes, Ord)]
+#[deriving(Clone, Eq, Hash, Ord)]
 pub struct RcStr {
     priv string: Rc<~str>,
 }
@@ -207,7 +207,7 @@ impl StrInterner {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<RcStr>>(&self, val: &Q)
+    pub fn find_equiv<Q:Hash + Equiv<RcStr>>(&self, val: &Q)
                                                          -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
