@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::to_bytes;
+use std::hash::{Hash, sip};
 
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
@@ -64,7 +64,7 @@ enum AbiArchitecture {
     Archs(u32)  // Multiple architectures (bitset)
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct AbiSet {
     priv bits: u32   // each bit represents one of the abis below
 }
@@ -265,15 +265,9 @@ impl AbiSet {
     }
 }
 
-impl to_bytes::IterBytes for Abi {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.index().iter_bytes(lsb0, f)
-    }
-}
-
-impl to_bytes::IterBytes for AbiSet {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.bits.iter_bytes(lsb0, f)
+impl Hash for Abi {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.index().hash(s)
     }
 }
 

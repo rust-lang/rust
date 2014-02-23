@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(IterBytes)]
+#[deriving(Hash)]
 struct Foo {
     x: int,
     y: int,
