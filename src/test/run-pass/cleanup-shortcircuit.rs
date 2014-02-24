@@ -20,8 +20,7 @@
 
 // Test that cleanups for the RHS of shorcircuiting operators work.
 
-use std::{os, run};
-use std::io::process;
+use std::os;
 
 pub fn main() {
     let args = os::args();
