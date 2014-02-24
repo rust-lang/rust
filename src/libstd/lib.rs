@@ -56,6 +56,8 @@
 
 // Turn on default type parameters.
 #[feature(default_type_params)];
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
 #[allow(default_type_param_usage)];
 
 // Don't link to std. We are std.
