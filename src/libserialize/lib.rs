@@ -26,12 +26,15 @@ Core encoding and decoding interfaces.
 #[cfg(test)]
 extern crate test;
 
+extern crate collections;
+
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
-    DecoderHelpers, EncoderHelpers};
+                          DecoderHelpers, EncoderHelpers};
 
 mod serialize;
+mod collection_impls;
 
 pub mod base64;
 pub mod ebml;
 pub mod hex;
-
+pub mod json;

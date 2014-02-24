@@ -30,8 +30,7 @@ use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
-use extra::json;
-use serialize::{Decodable, Encodable};
+use serialize::{json, Decodable, Encodable};
 
 pub mod clean;
 pub mod core;
