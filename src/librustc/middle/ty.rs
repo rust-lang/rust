@@ -4925,13 +4925,11 @@ pub fn trait_method_of_method(tcx: ctxt,
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
-    use std::hash::{sip, Hash};
+    let mut state = sip::SipState::new(0, 0);
+    macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
+    macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
 
-    let mut hash = sip::SipState::new(0, 0);
-    macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut hash) } );
-    macro_rules! hash( ($e:expr) => { $e.hash(&mut hash) } );
-
-    let region = |_hash: &mut sip::SipState, r: Region| {
+    let region = |_state: &mut sip::SipState, r: Region| {
         match r {
             ReStatic => {}
 
@@ -4945,27 +4943,27 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             }
         }
     };
-    let vstore = |hash: &mut sip::SipState, v: vstore| {
+    let vstore = |state: &mut sip::SipState, v: vstore| {
         match v {
-            vstore_fixed(_) => 0u8.hash(hash),
-            vstore_uniq => 1u8.hash(hash),
+            vstore_fixed(_) => 0u8.hash(state),
+            vstore_uniq => 1u8.hash(state),
             vstore_slice(r) => {
-                2u8.hash(hash);
-                region(hash, r);
+                2u8.hash(state);
+                region(state, r);
             }
         }
     };
-    let did = |hash: &mut sip::SipState, did: DefId| {
+    let did = |state: &mut sip::SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
             local_hash.clone()
         } else {
             tcx.sess.cstore.get_crate_hash(did.krate)
         };
-        h.as_bytes().hash(hash);
-        did.node.hash(hash);
+        h.as_bytes().hash(state);
+        did.node.hash(state);
     };
-    let mt = |hash: &mut sip::SipState, mt: mt| {
-        mt.mutbl.hash(hash);
+    let mt = |state: &mut sip::SipState, mt: mt| {
+        mt.mutbl.hash(state);
     };
     ty::walk_ty(t, |t| {
         match ty::get(t).sty {
@@ -5001,17 +4999,17 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             }
             ty_vec(m, v) => {
                 byte!(11);
-                mt(&mut hash, m);
-                vstore(&mut hash, v);
+                mt(&mut state, m);
+                vstore(&mut state, v);
             }
             ty_ptr(m) => {
                 byte!(12);
-                mt(&mut hash, m);
+                mt(&mut state, m);
             }
             ty_rptr(r, m) => {
                 byte!(13);
-                region(&mut hash, r);
-                mt(&mut hash, m);
+                region(&mut state, r);
+                mt(&mut state, m);
             }
             ty_bare_fn(ref b) => {
                 byte!(14);
@@ -5024,16 +5022,16 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
                 hash!(c.sigil);
                 hash!(c.onceness);
                 hash!(c.bounds);
-                region(&mut hash, c.region);
+                region(&mut state, c.region);
             }
             ty_trait(d, _, store, m, bounds) => {
                 byte!(17);
-                did(&mut hash, d);
+                did(&mut state, d);
                 match store {
                     UniqTraitStore => byte!(0),
                     RegionTraitStore(r) => {
                         byte!(1)
-                        region(&mut hash, r);
+                        region(&mut state, r);
                     }
                 }
                 hash!(m);
@@ -5041,7 +5039,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             }
             ty_struct(d, _) => {
                 byte!(18);
-                did(&mut hash, d);
+                did(&mut state, d);
             }
             ty_tup(ref inner) => {
                 byte!(19);
@@ -5050,22 +5048,22 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
             ty_param(p) => {
                 byte!(20);
                 hash!(p.idx);
-                did(&mut hash, p.def_id);
+                did(&mut state, p.def_id);
             }
             ty_self(d) => {
                 byte!(21);
-                did(&mut hash, d);
+                did(&mut state, d);
             }
             ty_infer(_) => unreachable!(),
             ty_err => byte!(23),
             ty_unboxed_vec(m) => {
                 byte!(24);
-                mt(&mut hash, m);
+                mt(&mut state, m);
             }
         }
     });
 
-    hash.result()
+    state.result()
 }
 
 impl Variance {
