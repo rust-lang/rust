@@ -2087,18 +2087,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         };
         check_expr(fcx, rhs);
 
-        // If the or operator is used it might be that the user forgot to
-        // supply the do keyword.  Let's be more helpful in that situation.
-        if op == ast::BiOr {
-            match ty::get(lhs_resolved_t).sty {
-                ty::ty_bare_fn(_) | ty::ty_closure(_) => {
-                    tcx.sess.span_note(
-                        ex.span, "did you forget the `do` keyword for the call?");
-                }
-                _ => ()
-            }
-        }
-
         ty::mk_err()
     }
 
