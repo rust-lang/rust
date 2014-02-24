@@ -44,7 +44,10 @@ impl Process {
                 -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
-        let io = config.io;
+        let mut io = ~[config.stdin, config.stdout, config.stderr];
+        for slot in config.extra_io.iter() {
+            io.push(*slot);
+        }
         let mut stdio = vec::with_capacity::<uvll::uv_stdio_container_t>(io.len());
         let mut ret_io = vec::with_capacity(io.len());
         unsafe {
@@ -103,6 +106,15 @@ impl Process {
         match ret {
             Ok(p) => Ok((p, ret_io)),
             Err(e) => Err(e),
+        }
+    }
+
+    pub fn kill(pid: libc::pid_t, signum: int) -> Result<(), UvError> {
+        match unsafe {
+            uvll::uv_kill(pid as libc::c_int, signum as libc::c_int)
+        } {
+            0 => Ok(()),
+            n => Err(UvError(n))
         }
     }
 }

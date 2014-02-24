@@ -179,6 +179,7 @@ pub trait IoFactory {
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
+    fn kill(&mut self, pid: libc::pid_t, signal: int) -> Result<(), IoError>;
     fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;

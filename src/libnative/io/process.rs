@@ -66,18 +66,16 @@ impl Process {
         -> Result<(Process, ~[Option<file::FileDesc>]), io::IoError>
     {
         // right now we only handle stdin/stdout/stderr.
-        if config.io.len() > 3 {
+        if config.extra_io.len() > 0 {
             return Err(super::unimpl());
         }
 
-        fn get_io(io: &[p::StdioContainer],
-                  ret: &mut ~[Option<file::FileDesc>],
-                  idx: uint) -> (Option<os::Pipe>, c_int) {
-            if idx >= io.len() { return (None, -1); }
-            ret.push(None);
-            match io[idx] {
-                p::Ignored => (None, -1),
-                p::InheritFd(fd) => (None, fd),
+        fn get_io(io: p::StdioContainer, ret: &mut ~[Option<file::FileDesc>])
+            -> (Option<os::Pipe>, c_int)
+        {
+            match io {
+                p::Ignored => { ret.push(None); (None, -1) }
+                p::InheritFd(fd) => { ret.push(None); (None, fd) }
                 p::CreatePipe(readable, _writable) => {
                     let pipe = os::pipe();
                     let (theirs, ours) = if readable {
@@ -85,16 +83,16 @@ impl Process {
                     } else {
                         (pipe.out, pipe.input)
                     };
-                    ret[idx] = Some(file::FileDesc::new(ours, true));
+                    ret.push(Some(file::FileDesc::new(ours, true)));
                     (Some(pipe), theirs)
                 }
             }
         }
 
         let mut ret_io = ~[];
-        let (in_pipe, in_fd) = get_io(config.io, &mut ret_io, 0);
-        let (out_pipe, out_fd) = get_io(config.io, &mut ret_io, 1);
-        let (err_pipe, err_fd) = get_io(config.io, &mut ret_io, 2);
+        let (in_pipe, in_fd) = get_io(config.stdin, &mut ret_io);
+        let (out_pipe, out_fd) = get_io(config.stdout, &mut ret_io);
+        let (err_pipe, err_fd) = get_io(config.stderr, &mut ret_io);
 
         let env = config.env.map(|a| a.to_owned());
         let cwd = config.cwd.map(|a| Path::new(a));
@@ -114,6 +112,10 @@ impl Process {
             }
             Err(e) => Err(e)
         }
+    }
+
+    pub fn kill(pid: libc::pid_t, signum: int) -> IoResult<()> {
+        unsafe { killpid(pid, signum) }
     }
 }
 
@@ -144,27 +146,6 @@ impl rtio::RtioProcess for Process {
             None => {}
         }
         return unsafe { killpid(self.pid, signum) };
-
-        #[cfg(windows)]
-        unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            match signal {
-                io::process::PleaseExitSignal | io::process::MustDieSignal => {
-                    let ret = libc::TerminateProcess(pid as libc::HANDLE, 1);
-                    super::mkerr_winbool(ret)
-                }
-                _ => Err(io::IoError {
-                    kind: io::OtherIoError,
-                    desc: "unsupported signal on windows",
-                    detail: None,
-                })
-            }
-        }
-
-        #[cfg(not(windows))]
-        unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
-            let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
-            super::mkerr_libc(r)
-        }
     }
 }
 
@@ -172,6 +153,51 @@ impl Drop for Process {
     fn drop(&mut self) {
         free_handle(self.handle);
     }
+}
+
+#[cfg(windows)]
+unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
+    let handle = libc::OpenProcess(libc::PROCESS_TERMINATE |
+                                   libc::PROCESS_QUERY_INFORMATION,
+                                   libc::FALSE, pid as libc::DWORD);
+    if handle.is_null() {
+        return Err(super::last_error())
+    }
+    let ret = match signal {
+        // test for existence on signal 0
+        0 => {
+            let mut status = 0;
+            let ret = libc::GetExitCodeProcess(handle, &mut status);
+            if ret == 0 {
+                Err(super::last_error())
+            } else if status != libc::STILL_ACTIVE {
+                Err(io::IoError {
+                    kind: io::OtherIoError,
+                    desc: "process no longer alive",
+                    detail: None,
+                })
+            } else {
+                Ok(())
+            }
+        }
+        io::process::PleaseExitSignal | io::process::MustDieSignal => {
+            let ret = libc::TerminateProcess(handle, 1);
+            super::mkerr_winbool(ret)
+        }
+        _ => Err(io::IoError {
+            kind: io::OtherIoError,
+            desc: "unsupported signal on windows",
+            detail: None,
+        })
+    };
+    let _ = libc::CloseHandle(handle);
+    return ret;
+}
+
+#[cfg(not(windows))]
+unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
+    let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
+    super::mkerr_libc(r)
 }
 
 struct SpawnProcessResult {
@@ -536,10 +562,10 @@ fn spawn_process_os(config: p::ProcessConfig,
             if !envp.is_null() {
                 set_environ(envp);
             }
-        });
-        with_argv(config.program, config.args, |argv| {
-            let _ = execvp(*argv, argv);
-            fail(&mut output);
+            with_argv(config.program, config.args, |argv| {
+                let _ = execvp(*argv, argv);
+                fail(&mut output);
+            })
         })
     }
 }

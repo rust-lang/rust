@@ -20,8 +20,8 @@
 
 // ignore-fast calling itself doesn't work on check-fast
 
-use std::{os, run};
-use std::io::process;
+use std::os;
+use std::io::process::{Process, ExitSignal, ExitStatus};
 
 pub fn main() {
     let args = os::args();
@@ -29,11 +29,11 @@ pub fn main() {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }
     } else {
-        let status = run::process_status(args[0], [~"signal"]).unwrap();
+        let status = Process::status(args[0], [~"signal"]).unwrap();
         // Windows does not have signal, so we get exit status 0xC0000028 (STATUS_BAD_STACK).
         match status {
-            process::ExitSignal(_) if cfg!(unix) => {},
-            process::ExitStatus(0xC0000028) if cfg!(windows) => {},
+            ExitSignal(_) if cfg!(unix) => {},
+            ExitStatus(0xC0000028) if cfg!(windows) => {},
             _ => fail!("invalid termination (was not signalled): {:?}", status)
         }
     }

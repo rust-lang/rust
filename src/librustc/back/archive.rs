@@ -20,7 +20,7 @@ use std::io::fs;
 use std::io;
 use std::libc;
 use std::os;
-use std::run::{ProcessOptions, Process, ProcessOutput};
+use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;
 use std::raw;
 use extra::tempfile::TempDir;
@@ -44,16 +44,19 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     let mut args = ~[args.to_owned()];
     let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
     args.extend(&mut paths);
-    let mut opts = ProcessOptions::new();
-    opts.dir = cwd;
     debug!("{} {}", ar, args.connect(" "));
     match cwd {
         Some(p) => { debug!("inside {}", p.display()); }
         None => {}
     }
-    match Process::new(ar, args.as_slice(), opts) {
+    match Process::configure(ProcessConfig {
+        program: ar.as_slice(),
+        args: args.as_slice(),
+        cwd: cwd.map(|a| &*a),
+        .. ProcessConfig::new()
+    }) {
         Ok(mut prog) => {
-            let o = prog.finish_with_output();
+            let o = prog.wait_with_output();
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
                                  o.status));

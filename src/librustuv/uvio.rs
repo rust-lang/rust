@@ -277,6 +277,10 @@ impl IoFactory for UvIoFactory {
         }
     }
 
+    fn kill(&mut self, pid: libc::pid_t, signum: int) -> Result<(), IoError> {
+        Process::kill(pid, signum).map_err(uv_error_to_io_error)
+    }
+
     fn unix_bind(&mut self, path: &CString) -> Result<~rtio::RtioUnixListener, IoError>
     {
         match PipeListener::bind(self, path) {

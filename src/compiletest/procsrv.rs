@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use std::os;
-use std::run;
 use std::str;
-use std::io::process::ProcessExit;
+use std::io::process::{ProcessExit, Process, ProcessConfig, ProcessOutput};
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -49,17 +48,19 @@ pub fn run(lib_path: &str,
            input: Option<~str>) -> Option<Result> {
 
     let env = env + target_env(lib_path, prog);
-    let mut opt_process = run::Process::new(prog, args, run::ProcessOptions {
-        env: Some(env),
-        .. run::ProcessOptions::new()
+    let mut opt_process = Process::configure(ProcessConfig {
+        program: prog,
+        args: args,
+        env: Some(env.as_slice()),
+        .. ProcessConfig::new()
     });
 
     match opt_process {
         Ok(ref mut process) => {
             for input in input.iter() {
-                process.input().write(input.as_bytes()).unwrap();
+                process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();
             }
-            let run::ProcessOutput { status, output, error } = process.finish_with_output();
+            let ProcessOutput { status, output, error } = process.wait_with_output();
 
             Some(Result {
                 status: status,
@@ -75,18 +76,20 @@ pub fn run_background(lib_path: &str,
            prog: &str,
            args: &[~str],
            env: ~[(~str, ~str)],
-           input: Option<~str>) -> Option<run::Process> {
+           input: Option<~str>) -> Option<Process> {
 
     let env = env + target_env(lib_path, prog);
-    let opt_process = run::Process::new(prog, args, run::ProcessOptions {
-        env: Some(env),
-        .. run::ProcessOptions::new()
+    let opt_process = Process::configure(ProcessConfig {
+        program: prog,
+        args: args,
+        env: Some(env.as_slice()),
+        .. ProcessConfig::new()
     });
 
     match opt_process {
         Ok(mut process) => {
             for input in input.iter() {
-                process.input().write(input.as_bytes()).unwrap();
+                process.stdin.get_mut_ref().write(input.as_bytes()).unwrap();
             }
 
             Some(process)
