@@ -612,9 +612,7 @@ impl Scheduler {
                                f: |&mut Scheduler, ~GreenTask|) -> ~GreenTask {
         let f_opaque = ClosureConverter::from_fn(f);
 
-        let current_task_dupe = unsafe {
-            *cast::transmute::<&~GreenTask, &uint>(&current_task)
-        };
+        let current_task_dupe = &*current_task as *GreenTask;
 
         // The current task is placed inside an enum with the cleanup
         // function. This enum is then placed inside the scheduler.
@@ -633,13 +631,8 @@ impl Scheduler {
                 cast::transmute_mut_region(*next_task.sched.get_mut_ref());
 
             let current_task: &mut GreenTask = match sched.cleanup_job {
-                Some(CleanupJob { task: ref task, .. }) => {
-                    let task_ptr: *~GreenTask = task;
-                    cast::transmute_mut_region(*cast::transmute_mut_unsafe(task_ptr))
-                }
-                None => {
-                    rtabort!("no cleanup job");
-                }
+                Some(CleanupJob { task: ref mut task, .. }) => &mut **task,
+                None => rtabort!("no cleanup job")
             };
 
             let (current_task_context, next_task_context) =
@@ -852,7 +845,7 @@ impl Scheduler {
 
     // * Utility Functions
 
-    pub fn sched_id(&self) -> uint { unsafe { cast::transmute(self) } }
+    pub fn sched_id(&self) -> uint { self as *Scheduler as uint }
 
     pub fn run_cleanup_job(&mut self) {
         let cleanup_job = self.cleanup_job.take_unwrap();

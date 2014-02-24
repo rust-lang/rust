@@ -309,7 +309,7 @@ impl rtio::RtioTcpStream for TcpStream {
         let ret = retry(|| {
             unsafe {
                 libc::recv(self.fd(),
-                           buf.as_ptr() as *mut libc::c_void,
+                           buf.as_mut_ptr() as *mut libc::c_void,
                            buf.len() as wrlen,
                            0) as libc::c_int
             }

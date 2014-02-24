@@ -65,7 +65,7 @@ DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
               collections time extra
 DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
                 test time
-DEPS_flate := std native:miniz
+DEPS_flate := std extra native:miniz
 DEPS_arena := std collections
 DEPS_glob := std
 DEPS_serialize := std
