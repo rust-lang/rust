@@ -29,8 +29,7 @@ fn main() {
 
     let config = process::ProcessConfig {
         program : "/bin/sh",
-        args : &[~"-c", ~"read a"],
-        io : &[process::CreatePipe(true, false)],
+        args: &[~"-c", ~"read a"],
         detach: true,
         .. process::ProcessConfig::new()
     };
@@ -40,14 +39,14 @@ fn main() {
     l.register(Interrupt).unwrap();
 
     // spawn the child
-    let mut p = process::Process::new(config).unwrap();
+    let mut p = process::Process::configure(config).unwrap();
 
     // send an interrupt to everyone in our process group
     unsafe { libc::funcs::posix88::signal::kill(0, libc::SIGINT); }
 
     // Wait for the child process to die (terminate it's stdin and the read
     // should fail).
-    drop(p.io[0].take());
+    drop(p.stdin.take());
     match p.wait() {
         process::ExitStatus(..) => {}
         process::ExitSignal(..) => fail!()

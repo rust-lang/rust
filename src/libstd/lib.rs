@@ -174,7 +174,6 @@ pub mod os;
 pub mod io;
 pub mod path;
 pub mod rand;
-pub mod run;
 pub mod cast;
 pub mod fmt;
 pub mod cleanup;

@@ -10,29 +10,82 @@
 
 //! Bindings for executing child processes
 
+#[deny(missing_doc)];
+
 use prelude::*;
 
-use libc;
-use io;
+use fmt;
 use io::IoResult;
+use io;
+use libc;
 use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
-use fmt;
-
-// windows values don't matter as long as they're at least one of unix's
-// TERM/KILL/INT signals
+/// Signal a process to exit, without forcibly killing it. Corresponds to
+/// SIGTERM on unix platforms.
 #[cfg(windows)] pub static PleaseExitSignal: int = 15;
+/// Signal a process to exit immediately, forcibly killing it. Corresponds to
+/// SIGKILL on unix platforms.
 #[cfg(windows)] pub static MustDieSignal: int = 9;
+/// Signal a process to exit, without forcibly killing it. Corresponds to
+/// SIGTERM on unix platforms.
 #[cfg(not(windows))] pub static PleaseExitSignal: int = libc::SIGTERM as int;
+/// Signal a process to exit immediately, forcibly killing it. Corresponds to
+/// SIGKILL on unix platforms.
 #[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
 
+/// Representation of a running or exited child process.
+///
+/// This structure is used to create, run, and manage child processes. A process
+/// is configured with the `ProcessConfig` struct which contains specific
+/// options for dictating how the child is spawned.
+///
+/// # Example
+///
+/// ```should_fail
+/// use std::io::Process;
+///
+/// let mut child = match Process::new("/bin/cat", [~"file.txt"]) {
+///     Ok(child) => child,
+///     Err(e) => fail!("failed to execute child: {}", e),
+/// };
+///
+/// let contents = child.stdout.get_mut_ref().read_to_end();
+/// assert!(child.wait().success());
+/// ```
 pub struct Process {
     priv handle: ~RtioProcess,
-    io: ~[Option<io::PipeStream>],
+
+    /// Handle to the child's stdin, if the `stdin` field of this process's
+    /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
+    stdin: Option<io::PipeStream>,
+
+    /// Handle to the child's stdout, if the `stdout` field of this process's
+    /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
+    stdout: Option<io::PipeStream>,
+
+    /// Handle to the child's stderr, if the `stderr` field of this process's
+    /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
+    stderr: Option<io::PipeStream>,
+
+    /// Extra I/O handles as configured by the original `ProcessConfig` when
+    /// this process was created. This is by default empty.
+    extra_io: ~[Option<io::PipeStream>],
 }
 
-/// This configuration describes how a new process should be spawned. This is
-/// translated to libuv's own configuration
+/// This configuration describes how a new process should be spawned. A blank
+/// configuration can be created with `ProcessConfig::new()`. It is also
+/// recommented to use a functional struct update pattern when creating process
+/// configuration:
+///
+/// ```
+/// use std::io::ProcessConfig;
+///
+/// let config = ProcessConfig {
+///     program: "/bin/sh",
+///     args: &[~"-c", ~"true"],
+///     .. ProcessConfig::new()
+/// };
+/// ```
 pub struct ProcessConfig<'a> {
     /// Path to the program to run
     program: &'a str,
@@ -46,19 +99,30 @@ pub struct ProcessConfig<'a> {
 
     /// Optional working directory for the new process. If this is None, then
     /// the current directory of the running process is inherited.
-    cwd: Option<&'a str>,
+    cwd: Option<&'a Path>,
+
+    /// Configuration for the child process's stdin handle (file descriptor 0).
+    /// This field defaults to `CreatePipe(true, false)` so the input can be
+    /// written to.
+    stdin: StdioContainer,
+
+    /// Configuration for the child process's stdout handle (file descriptor 1).
+    /// This field defaults to `CreatePipe(false, true)` so the output can be
+    /// collected.
+    stdout: StdioContainer,
+
+    /// Configuration for the child process's stdout handle (file descriptor 2).
+    /// This field defaults to `CreatePipe(false, true)` so the output can be
+    /// collected.
+    stderr: StdioContainer,
 
     /// Any number of streams/file descriptors/pipes may be attached to this
     /// process. This list enumerates the file descriptors and such for the
     /// process to be spawned, and the file descriptors inherited will start at
-    /// 0 and go to the length of this array.
-    ///
-    /// Standard file descriptors are:
-    ///
-    ///     0 - stdin
-    ///     1 - stdout
-    ///     2 - stderr
-    io: &'a [StdioContainer],
+    /// 3 and go to the length of this array. The first three file descriptors
+    /// (stdin/stdout/stderr) are configured with the `stdin`, `stdout`, and
+    /// `stderr` fields.
+    extra_io: &'a [StdioContainer],
 
     /// Sets the child process's user id. This translates to a `setuid` call in
     /// the child process. Setting this value on windows will cause the spawn to
@@ -73,6 +137,16 @@ pub struct ProcessConfig<'a> {
     /// If true, the child process is spawned in a detached state. On unix, this
     /// means that the child is the leader of a new process group.
     detach: bool,
+}
+
+/// The output of a finished process.
+pub struct ProcessOutput {
+    /// The status (exit code) of the process.
+    status: ProcessExit,
+    /// The data that the process wrote to stdout.
+    output: ~[u8],
+    /// The data that the process wrote to stderr.
+    error: ~[u8],
 }
 
 /// Describes what to do with a standard io stream for a child process.
@@ -138,20 +212,23 @@ impl<'a> ProcessConfig<'a> {
     ///
     /// let config = ProcessConfig {
     ///     program: "/bin/sh",
-    ///     args: &'static [~"-c", ~"echo hello"],
+    ///     args: &[~"-c", ~"echo hello"],
     ///     .. ProcessConfig::new()
     /// };
     ///
-    /// let p = Process::new(config);
+    /// let p = Process::configure(config);
     /// ```
     ///
-    pub fn new() -> ProcessConfig<'static> {
+    pub fn new<'a>() -> ProcessConfig<'a> {
         ProcessConfig {
             program: "",
-            args: &'static [],
+            args: &[],
             env: None,
             cwd: None,
-            io: &'static [],
+            stdin: CreatePipe(true, false),
+            stdout: CreatePipe(false, true),
+            stderr: CreatePipe(false, true),
+            extra_io: &[],
             uid: None,
             gid: None,
             detach: false,
@@ -160,20 +237,103 @@ impl<'a> ProcessConfig<'a> {
 }
 
 impl Process {
-    /// Creates a new pipe initialized, but not bound to any particular
-    /// source/destination
-    pub fn new(config: ProcessConfig) -> IoResult<Process> {
+    /// Creates a new process for the specified program/arguments, using
+    /// otherwise default configuration.
+    ///
+    /// By default, new processes have their stdin/stdout/stderr handles created
+    /// as pipes the can be manipulated through the respective fields of the
+    /// returned `Process`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Process;
+    ///
+    /// let mut process = match Process::new("sh", &[~"c", ~"echo hello"]) {
+    ///     Ok(p) => p,
+    ///     Err(e) => fail!("failed to execute process: {}", e),
+    /// };
+    ///
+    /// let output = process.stdout.get_mut_ref().read_to_end();
+    /// ```
+    pub fn new(prog: &str, args: &[~str]) -> IoResult<Process> {
+        Process::configure(ProcessConfig {
+            program: prog,
+            args: args,
+            .. ProcessConfig::new()
+        })
+    }
+
+    /// Executes the specified program with arguments, waiting for it to finish
+    /// and collecting all of its output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Process;
+    /// use std::str;
+    ///
+    /// let output = match Process::output("cat", [~"foo.txt"]) {
+    ///     Ok(output) => output,
+    ///     Err(e) => fail!("failed to execute process: {}", e),
+    /// };
+    ///
+    /// println!("status: {}", output.status);
+    /// println!("stdout: {}", str::from_utf8_lossy(output.output));
+    /// println!("stderr: {}", str::from_utf8_lossy(output.error));
+    /// ```
+    pub fn output(prog: &str, args: &[~str]) -> IoResult<ProcessOutput> {
+        Process::new(prog, args).map(|mut p| p.wait_with_output())
+    }
+
+    /// Executes a child process and collects its exit status. This will block
+    /// waiting for the child to exit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Process;
+    ///
+    /// let status = match Process::status("ls", []) {
+    ///     Ok(status) => status,
+    ///     Err(e) => fail!("failed to execute process: {}", e),
+    /// };
+    ///
+    /// println!("process exited with: {}", status);
+    /// ```
+    pub fn status(prog: &str, args: &[~str]) -> IoResult<ProcessExit> {
+        Process::new(prog, args).map(|mut p| p.wait())
+    }
+
+    /// Creates a new process with the specified configuration.
+    pub fn configure(config: ProcessConfig) -> IoResult<Process> {
         let mut config = Some(config);
         LocalIo::maybe_raise(|io| {
             io.spawn(config.take_unwrap()).map(|(p, io)| {
+                let mut io = io.move_iter().map(|p| {
+                    p.map(|p| io::PipeStream::new(p))
+                });
                 Process {
                     handle: p,
-                    io: io.move_iter().map(|p| {
-                        p.map(|p| io::PipeStream::new(p))
-                    }).collect()
+                    stdin: io.next().unwrap(),
+                    stdout: io.next().unwrap(),
+                    stderr: io.next().unwrap(),
+                    extra_io: io.collect(),
                 }
             })
         })
+    }
+
+    /// Sends `signal` to another process in the system identified by `id`.
+    ///
+    /// Note that windows doesn't quite have the same model as unix, so some
+    /// unix signals are mapped to windows signals. Notably, unix termination
+    /// signals (SIGTERM/SIGKILL/SIGINT) are translated to `TerminateProcess`.
+    ///
+    /// Additionally, a signal number of 0 can check for existence of the target
+    /// process.
+    pub fn kill(id: libc::pid_t, signal: int) -> IoResult<()> {
+        LocalIo::maybe_raise(|io| io.kill(id, signal))
     }
 
     /// Returns the process id of this child process
@@ -190,18 +350,66 @@ impl Process {
         self.handle.kill(signal)
     }
 
+    /// Sends a signal to this child requesting that it exits. This is
+    /// equivalent to sending a SIGTERM on unix platforms.
+    pub fn signal_exit(&mut self) -> IoResult<()> {
+        self.signal(PleaseExitSignal)
+    }
+
+    /// Sends a signal to this child forcing it to exit. This is equivalent to
+    /// sending a SIGKILL on unix platforms.
+    pub fn signal_kill(&mut self) -> IoResult<()> {
+        self.signal(MustDieSignal)
+    }
+
     /// Wait for the child to exit completely, returning the status that it
     /// exited with. This function will continue to have the same return value
     /// after it has been called at least once.
-    pub fn wait(&mut self) -> ProcessExit { self.handle.wait() }
+    ///
+    /// The stdin handle to the child process will be closed before waiting.
+    pub fn wait(&mut self) -> ProcessExit {
+        drop(self.stdin.take());
+        self.handle.wait()
+    }
+
+    /// Simultaneously wait for the child to exit and collect all remaining
+    /// output on the stdout/stderr handles, returning a `ProcessOutput`
+    /// instance.
+    ///
+    /// The stdin handle to the child is closed before waiting.
+    pub fn wait_with_output(&mut self) -> ProcessOutput {
+        drop(self.stdin.take());
+        fn read(stream: Option<io::PipeStream>) -> Port<IoResult<~[u8]>> {
+            let (p, c) = Chan::new();
+            match stream {
+                Some(stream) => spawn(proc() {
+                    let mut stream = stream;
+                    c.send(stream.read_to_end())
+                }),
+                None => c.send(Ok(~[]))
+            }
+            p
+        }
+        let stdout = read(self.stdout.take());
+        let stderr = read(self.stderr.take());
+
+        let status = self.wait();
+
+        ProcessOutput { status: status,
+                        output: stdout.recv().ok().unwrap_or(~[]),
+                        error:  stderr.recv().ok().unwrap_or(~[]) }
+    }
 }
 
 impl Drop for Process {
     fn drop(&mut self) {
         // Close all I/O before exiting to ensure that the child doesn't wait
         // forever to print some text or something similar.
+        drop(self.stdin.take());
+        drop(self.stdout.take());
+        drop(self.stderr.take());
         loop {
-            match self.io.pop() {
+            match self.extra_io.pop() {
                 Some(_) => (),
                 None => break,
             }
@@ -216,42 +424,39 @@ mod tests {
     use io::process::{ProcessConfig, Process};
     use prelude::*;
 
-    // FIXME(#10380)
-    #[cfg(unix, not(target_os="android"))]
+    // FIXME(#10380) these tests should not all be ignored on android.
+
+    #[cfg(not(target_os="android"))]
     iotest!(fn smoke() {
         let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &[~"-c", ~"true"],
+            program: "true",
             .. ProcessConfig::new()
         };
-        let p = Process::new(args);
+        let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().success());
     })
 
-    // FIXME(#10380)
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(not(target_os="android"))]
     iotest!(fn smoke_failure() {
         let args = ProcessConfig {
             program: "if-this-is-a-binary-then-the-world-has-ended",
             .. ProcessConfig::new()
         };
-        match Process::new(args) {
+        match Process::configure(args) {
             Ok(..) => fail!(),
             Err(..) => {}
         }
     })
 
-    // FIXME(#10380)
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(not(target_os="android"))]
     iotest!(fn exit_reported_right() {
         let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &[~"-c", ~"exit 1"],
+            program: "false",
             .. ProcessConfig::new()
         };
-        let p = Process::new(args);
+        let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().matches_exit_status(1));
@@ -264,7 +469,7 @@ mod tests {
             args: &[~"-c", ~"kill -1 $$"],
             .. ProcessConfig::new()
         };
-        let p = Process::new(args);
+        let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait() {
@@ -278,73 +483,64 @@ mod tests {
     }
 
     pub fn run_output(args: ProcessConfig) -> ~str {
-        let p = Process::new(args);
+        let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.io[0].is_none());
-        assert!(p.io[1].is_some());
-        let ret = read_all(p.io[1].get_mut_ref() as &mut Reader);
+        assert!(p.stdout.is_some());
+        let ret = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().success());
         return ret;
     }
 
-    // FIXME(#10380)
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(not(target_os="android"))]
     iotest!(fn stdout_works() {
-        let io = ~[Ignored, CreatePipe(false, true)];
         let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &[~"-c", ~"echo foobar"],
-            io: io,
+            program: "echo",
+            args: &[~"foobar"],
+            stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
         };
         assert_eq!(run_output(args), ~"foobar\n");
     })
 
-    // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn set_cwd_works() {
-        let io = ~[Ignored, CreatePipe(false, true)];
-        let cwd = Some("/");
+        let cwd = Path::new("/");
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"pwd"],
-            cwd: cwd,
-            io: io,
+            cwd: Some(&cwd),
+            stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
         };
         assert_eq!(run_output(args), ~"/\n");
     })
 
-    // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn stdin_works() {
-        let io = ~[CreatePipe(true, false),
-                   CreatePipe(false, true)];
         let args = ProcessConfig {
             program: "/bin/sh",
             args: &[~"-c", ~"read line; echo $line"],
-            io: io,
+            stdin: CreatePipe(true, false),
+            stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
         };
-        let mut p = Process::new(args).unwrap();
-        p.io[0].get_mut_ref().write("foobar".as_bytes()).unwrap();
-        p.io[0] = None; // close stdin;
-        let out = read_all(p.io[1].get_mut_ref() as &mut Reader);
+        let mut p = Process::configure(args).unwrap();
+        p.stdin.get_mut_ref().write("foobar".as_bytes()).unwrap();
+        drop(p.stdin.take());
+        let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().success());
         assert_eq!(out, ~"foobar\n");
     })
 
-    // FIXME(#10380)
-    #[cfg(unix, not(target_os="android"))]
+    #[cfg(not(target_os="android"))]
     iotest!(fn detach_works() {
         let args = ProcessConfig {
-            program: "/bin/sh",
-            args: &[~"-c", ~"true"],
+            program: "true",
             detach: true,
             .. ProcessConfig::new()
         };
-        let mut p = Process::new(args).unwrap();
+        let mut p = Process::configure(args).unwrap();
         assert!(p.wait().success());
     })
 
@@ -355,10 +551,9 @@ mod tests {
             uid: Some(10),
             .. ProcessConfig::new()
         };
-        assert!(Process::new(args).is_err());
+        assert!(Process::configure(args).is_err());
     })
 
-    // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn uid_works() {
         use libc;
@@ -369,11 +564,10 @@ mod tests {
             gid: Some(unsafe { libc::getgid() as uint }),
             .. ProcessConfig::new()
         };
-        let mut p = Process::new(args).unwrap();
+        let mut p = Process::configure(args).unwrap();
         assert!(p.wait().success());
     })
 
-    // FIXME(#10380)
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn uid_to_root_fails() {
         use libc;
@@ -387,6 +581,253 @@ mod tests {
             gid: Some(0),
             .. ProcessConfig::new()
         };
-        assert!(Process::new(args).is_err());
+        assert!(Process::configure(args).is_err());
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_process_status() {
+        let mut status = Process::status("false", []).unwrap();
+        assert!(status.matches_exit_status(1));
+
+        status = Process::status("true", []).unwrap();
+        assert!(status.success());
+    })
+
+    iotest!(fn test_process_output_fail_to_start() {
+        match Process::output("/no-binary-by-this-name-should-exist", []) {
+            Err(e) => assert_eq!(e.kind, FileNotFound),
+            Ok(..) => fail!()
+        }
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_process_output_output() {
+
+        let ProcessOutput {status, output, error}
+             = Process::output("echo", [~"hello"]).unwrap();
+        let output_str = str::from_utf8_owned(output).unwrap();
+
+        assert!(status.success());
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_process_output_error() {
+        let ProcessOutput {status, output, error}
+             = Process::output("mkdir", [~"."]).unwrap();
+
+        assert!(status.matches_exit_status(1));
+        assert_eq!(output, ~[]);
+        assert!(!error.is_empty());
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_finish_once() {
+        let mut prog = Process::new("false", []).unwrap();
+        assert!(prog.wait().matches_exit_status(1));
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_finish_twice() {
+        let mut prog = Process::new("false", []).unwrap();
+        assert!(prog.wait().matches_exit_status(1));
+        assert!(prog.wait().matches_exit_status(1));
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_wait_with_output_once() {
+
+        let mut prog = Process::new("echo", [~"hello"]).unwrap();
+        let ProcessOutput {status, output, error} = prog.wait_with_output();
+        let output_str = str::from_utf8_owned(output).unwrap();
+
+        assert!(status.success());
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    })
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_wait_with_output_twice() {
+        let mut prog = Process::new("echo", [~"hello"]).unwrap();
+        let ProcessOutput {status, output, error} = prog.wait_with_output();
+
+        let output_str = str::from_utf8_owned(output).unwrap();
+
+        assert!(status.success());
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+
+        let ProcessOutput {status, output, error} = prog.wait_with_output();
+
+        assert!(status.success());
+        assert_eq!(output, ~[]);
+        // FIXME #7224
+        if !running_on_valgrind() {
+            assert_eq!(error, ~[]);
+        }
+    })
+
+    #[cfg(unix,not(target_os="android"))]
+    pub fn run_pwd(dir: Option<&Path>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "pwd",
+            cwd: dir,
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+    #[cfg(target_os="android")]
+    pub fn run_pwd(dir: Option<&Path>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "/system/bin/sh",
+            args: &[~"-c",~"pwd"],
+            cwd: dir.map(|a| &*a),
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+
+    #[cfg(windows)]
+    pub fn run_pwd(dir: Option<&Path>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "cmd",
+            args: &[~"/c", ~"cd"],
+            cwd: dir.map(|a| &*a),
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+
+    iotest!(fn test_keep_current_working_dir() {
+        use os;
+        let mut prog = run_pwd(None);
+
+        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let parent_dir = os::getcwd();
+        let child_dir = Path::new(output.trim());
+
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+    })
+
+    iotest!(fn test_change_working_directory() {
+        use os;
+        // test changing to the parent of os::getcwd() because we know
+        // the path exists (and os::getcwd() is not expected to be root)
+        let parent_dir = os::getcwd().dir_path();
+        let mut prog = run_pwd(Some(&parent_dir));
+
+        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let child_dir = Path::new(output.trim());
+
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
+        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
+    })
+
+    #[cfg(unix,not(target_os="android"))]
+    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "env",
+            env: env.as_ref().map(|e| e.as_slice()),
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+    #[cfg(target_os="android")]
+    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "/system/bin/sh",
+            args: &[~"-c",~"set"],
+            env: env.as_ref().map(|e| e.as_slice()),
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+
+    #[cfg(windows)]
+    pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
+        Process::configure(ProcessConfig {
+            program: "cmd",
+            args: &[~"/c", ~"set"],
+            env: env.as_ref().map(|e| e.as_slice()),
+            .. ProcessConfig::new()
+        }).unwrap()
+    }
+
+    #[cfg(not(target_os="android"))]
+    iotest!(fn test_inherit_env() {
+        use os;
+        if running_on_valgrind() { return; }
+
+        let mut prog = run_env(None);
+        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+
+        let r = os::env();
+        for &(ref k, ref v) in r.iter() {
+            // don't check windows magical empty-named variables
+            assert!(k.is_empty() || output.contains(format!("{}={}", *k, *v)));
+        }
+    })
+    #[cfg(target_os="android")]
+    iotest!(fn test_inherit_env() {
+        use os;
+        if running_on_valgrind() { return; }
+
+        let mut prog = run_env(None);
+        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+
+        let r = os::env();
+        for &(ref k, ref v) in r.iter() {
+            // don't check android RANDOM variables
+            if *k != ~"RANDOM" {
+                assert!(output.contains(format!("{}={}", *k, *v)) ||
+                        output.contains(format!("{}=\'{}\'", *k, *v)));
+            }
+        }
+    })
+
+    iotest!(fn test_add_to_env() {
+        let new_env = ~[(~"RUN_TEST_NEW_ENV", ~"123")];
+
+        let mut prog = run_env(Some(new_env));
+        let result = prog.wait_with_output();
+        let output = str::from_utf8_lossy(result.output).into_owned();
+
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"),
+                "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
+    })
+
+    #[cfg(unix)]
+    pub fn sleeper() -> Process {
+        Process::new("sleep", [~"1000"]).unwrap()
+    }
+    #[cfg(windows)]
+    pub fn sleeper() -> Process {
+        Process::new("timeout", [~"1000"]).unwrap()
+    }
+
+    iotest!(fn test_kill() {
+        let mut p = sleeper();
+        Process::kill(p.id(), PleaseExitSignal).unwrap();
+        assert!(!p.wait().success());
+    })
+
+    #[ignore(cfg(windows))]
+    iotest!(fn test_exists() {
+        let mut p = sleeper();
+        assert!(Process::kill(p.id(), 0).is_ok());
+        p.signal_kill().unwrap();
+        assert!(!p.wait().success());
     })
 }

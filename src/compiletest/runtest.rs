@@ -360,7 +360,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                                stdout: out,
                                stderr: err,
                                cmdline: cmdline};
-            process.force_destroy().unwrap();
+            process.signal_kill().unwrap();
         }
 
         _=> {
