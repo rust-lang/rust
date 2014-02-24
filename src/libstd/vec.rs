@@ -682,7 +682,7 @@ pub mod traits {
         fn cmp(&self, other: &~[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
-    impl<'a, T: Eq + Ord> Ord for &'a [T] {
+    impl<'a, T: Ord> Ord for &'a [T] {
         fn lt(&self, other: & &'a [T]) -> bool {
             order::lt(self.iter(), other.iter())
         }
@@ -700,7 +700,7 @@ pub mod traits {
         }
     }
 
-    impl<T: Eq + Ord> Ord for ~[T] {
+    impl<T: Ord> Ord for ~[T] {
         #[inline]
         fn lt(&self, other: &~[T]) -> bool { self.as_slice() < other.as_slice() }
         #[inline]

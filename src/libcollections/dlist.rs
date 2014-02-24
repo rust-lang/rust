@@ -607,7 +607,7 @@ impl<A: Eq> Eq for DList<A> {
     }
 }
 
-impl<A: Eq + Ord> Ord for DList<A> {
+impl<A: Ord> Ord for DList<A> {
     fn lt(&self, other: &DList<A>) -> bool {
         iter::order::lt(self.iter(), other.iter())
     }
