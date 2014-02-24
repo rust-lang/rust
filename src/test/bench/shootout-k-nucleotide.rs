@@ -26,7 +26,7 @@ static OCCURRENCES: [&'static str, ..5] = [
 
 // Code implementation
 
-#[deriving(Eq, TotalOrd, TotalEq)]
+#[deriving(Eq, Ord, TotalOrd, TotalEq)]
 struct Code(u64);
 
 impl Code {

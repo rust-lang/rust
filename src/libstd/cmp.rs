@@ -42,8 +42,12 @@ pub trait Eq {
 }
 
 /// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
-pub trait TotalEq {
-    fn equals(&self, other: &Self) -> bool;
+pub trait TotalEq: Eq {
+    /// This method must return the same value as `eq`. It exists to prevent
+    /// deriving `TotalEq` from fields not implementing the `TotalEq` trait.
+    fn equals(&self, other: &Self) -> bool {
+        self.eq(other)
+    }
 }
 
 macro_rules! totaleq_impl(
@@ -76,7 +80,7 @@ totaleq_impl!(char)
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 
 /// Trait for types that form a total order
-pub trait TotalOrd: TotalEq {
+pub trait TotalOrd: TotalEq + Ord {
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
@@ -161,7 +165,7 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 * (cf. IEEE 754-2008 section 5.11).
 */
 #[lang="ord"]
-pub trait Ord {
+pub trait Ord: Eq {
     fn lt(&self, other: &Self) -> bool;
     #[inline]
     fn le(&self, other: &Self) -> bool { !other.lt(self) }
@@ -169,8 +173,6 @@ pub trait Ord {
     fn gt(&self, other: &Self) -> bool {  other.lt(self) }
     #[inline]
     fn ge(&self, other: &Self) -> bool { !self.lt(other) }
-
-    // FIXME (#12068): Add min/max/clamp default methods
 }
 
 /// The equivalence relation. Two values may be equivalent even if they are

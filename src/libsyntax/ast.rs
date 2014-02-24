@@ -39,7 +39,7 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Hash, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, Hash, Ord, TotalEq, TotalOrd, Show)]
 pub struct Ident {
     name: Name,
     ctxt: SyntaxContext
@@ -151,7 +151,7 @@ pub type CrateNum = u32;
 
 pub type NodeId = u32;
 
-#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, TotalEq, TotalOrd, Ord, Eq, Encodable, Decodable, Hash, Show)]
 pub struct DefId {
     krate: CrateNum,
     node: NodeId,

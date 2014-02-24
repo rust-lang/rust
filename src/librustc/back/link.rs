@@ -46,7 +46,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::crateid::CrateId;
 use syntax::parse::token;
 
-#[deriving(Clone, Eq, TotalOrd, TotalEq)]
+#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
 pub enum OutputType {
     OutputTypeBitcode,
     OutputTypeAssembly,
