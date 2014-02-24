@@ -240,7 +240,7 @@ use std::io;
 use std::io::MemWriter;
 use std::num;
 use std::str;
-use std::to_str;
+use std::fmt;
 
 use serialize::Encodable;
 use serialize;
@@ -1576,18 +1576,16 @@ impl<A:ToJson> ToJson for Option<A> {
     }
 }
 
-impl to_str::ToStr for Json {
+impl fmt::Show for Json {
     /// Encodes a json value into a string
-    fn to_str(&self) -> ~str {
-        let mut s = MemWriter::new();
-        self.to_writer(&mut s as &mut io::Writer).unwrap();
-        str::from_utf8_owned(s.unwrap()).unwrap()
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_writer(f.buf)
     }
 }
 
-impl to_str::ToStr for Error {
-    fn to_str(&self) -> ~str {
-        format!("{}:{}: {}", self.line, self.col, self.msg)
+impl fmt::Show for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}:{}: {}", self.line, self.col, self.msg)
     }
 }
 

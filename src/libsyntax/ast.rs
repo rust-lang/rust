@@ -17,11 +17,12 @@ use opt_vec::OptVec;
 use parse::token::{InternedString, special_idents, str_to_ident};
 use parse::token;
 
+use std::fmt;
+use std::fmt::Show;
 use std::cell::RefCell;
 use collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
-use std::to_str::ToStr;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
@@ -39,7 +40,7 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
-#[deriving(Clone, Hash, ToStr, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, Hash, TotalEq, TotalOrd, Show)]
 pub struct Ident { name: Name, ctxt: SyntaxContext }
 
 impl Ident {
@@ -182,7 +183,7 @@ pub type CrateNum = u32;
 
 pub type NodeId = u32;
 
-#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, Hash, ToStr, Show)]
+#[deriving(Clone, TotalEq, TotalOrd, Eq, Encodable, Decodable, Hash, Show)]
 pub struct DefId {
     krate: CrateNum,
     node: NodeId,
@@ -277,7 +278,7 @@ pub enum Def {
     DefMethod(DefId /* method */, Option<DefId> /* trait */),
 }
 
-#[deriving(Clone, Eq, Hash, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, Hash, Encodable, Decodable, Show)]
 pub enum DefRegion {
     DefStaticRegion,
     DefEarlyBoundRegion(/* index */ uint, /* lifetime decl */ NodeId),
@@ -398,12 +399,12 @@ pub enum Sigil {
     ManagedSigil
 }
 
-impl ToStr for Sigil {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for Sigil {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BorrowedSigil => ~"&",
-            OwnedSigil => ~"~",
-            ManagedSigil => ~"@"
+            BorrowedSigil => "&".fmt(f),
+            OwnedSigil => "~".fmt(f),
+            ManagedSigil => "@".fmt(f),
          }
     }
 }
@@ -768,9 +769,9 @@ pub enum IntTy {
     TyI64,
 }
 
-impl ToStr for IntTy {
-    fn to_str(&self) -> ~str {
-        ast_util::int_ty_to_str(*self)
+impl fmt::Show for IntTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", ast_util::int_ty_to_str(*self))
     }
 }
 
@@ -783,9 +784,9 @@ pub enum UintTy {
     TyU64,
 }
 
-impl ToStr for UintTy {
-    fn to_str(&self) -> ~str {
-        ast_util::uint_ty_to_str(*self)
+impl fmt::Show for UintTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", ast_util::uint_ty_to_str(*self))
     }
 }
 
@@ -795,9 +796,9 @@ pub enum FloatTy {
     TyF64,
 }
 
-impl ToStr for FloatTy {
-    fn to_str(&self) -> ~str {
-        ast_util::float_ty_to_str(*self)
+impl fmt::Show for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", ast_util::float_ty_to_str(*self))
     }
 }
 
@@ -826,11 +827,11 @@ pub enum Onceness {
     Many
 }
 
-impl ToStr for Onceness {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for Onceness {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Once => ~"once",
-            Many => ~"many"
+            Once => "once".fmt(f),
+            Many => "many".fmt(f),
         }
     }
 }
@@ -939,12 +940,12 @@ pub enum Purity {
     ExternFn, // declared with "extern fn"
 }
 
-impl ToStr for Purity {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for Purity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ImpureFn => ~"impure",
-            UnsafeFn => ~"unsafe",
-            ExternFn => ~"extern"
+            ImpureFn => "impure".fmt(f),
+            UnsafeFn => "unsafe".fmt(f),
+            ExternFn => "extern".fmt(f),
         }
     }
 }

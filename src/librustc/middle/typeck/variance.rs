@@ -197,6 +197,7 @@ use arena;
 use arena::Arena;
 use middle::ty;
 use std::vec;
+use std::fmt;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;
@@ -235,13 +236,12 @@ enum VarianceTerm<'a> {
     InferredTerm(InferredIndex),
 }
 
-impl<'a> ToStr for VarianceTerm<'a> {
-    fn to_str(&self) -> ~str {
+impl<'a> fmt::Show for VarianceTerm<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConstantTerm(c1) => format!("{}", c1.to_str()),
-            TransformTerm(v1, v2) => format!("({} \u00D7 {})",
-                                          v1.to_str(), v2.to_str()),
-            InferredTerm(id) => format!("[{}]", { let InferredIndex(i) = id; i })
+            ConstantTerm(c1) => write!(f.buf, "{}", c1),
+            TransformTerm(v1, v2) => write!(f.buf, "({} \u00D7 {})", v1, v2),
+            InferredTerm(id) => write!(f.buf, "[{}]", { let InferredIndex(i) = id; i })
         }
     }
 }

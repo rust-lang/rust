@@ -12,8 +12,9 @@ use codemap::{Pos, Span};
 use codemap;
 
 use std::cell::Cell;
-use std::io;
+use std::fmt;
 use std::io::stdio::StdWriter;
+use std::io;
 use std::iter::range;
 use std::local_data;
 use term;
@@ -162,12 +163,14 @@ pub enum Level {
     Note,
 }
 
-impl ToStr for Level {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for Level {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Show;
+
         match *self {
-            Fatal | Error => ~"error",
-            Warning => ~"warning",
-            Note => ~"note"
+            Fatal | Error => "error".fmt(f),
+            Warning => "warning".fmt(f),
+            Note => "note".fmt(f),
         }
     }
 }

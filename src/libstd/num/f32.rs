@@ -19,7 +19,6 @@ use libc::{c_float, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
-use to_str;
 use intrinsics;
 
 macro_rules! delegate(
@@ -743,11 +742,6 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> ~str {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
     r
-}
-
-impl to_str::ToStr for f32 {
-    #[inline]
-    fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
 impl num::ToStrRadix for f32 {

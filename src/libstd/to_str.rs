@@ -14,10 +14,7 @@ The `ToStr` trait for converting to strings
 
 */
 
-use option::{Some, None};
-use str::OwnedStr;
-use iter::Iterator;
-use vec::ImmutableVector;
+use fmt;
 
 /// A generic trait for converting a value to a string
 pub trait ToStr {
@@ -31,47 +28,8 @@ pub trait IntoStr {
     fn into_str(self) -> ~str;
 }
 
-impl ToStr for () {
-    #[inline]
-    fn to_str(&self) -> ~str { ~"()" }
-}
-
-impl<'a,A:ToStr> ToStr for &'a [A] {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
-        let mut first = true;
-        for elt in self.iter() {
-            if first {
-                first = false;
-            }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(elt.to_str());
-        }
-        acc.push_char(']');
-        acc
-    }
-}
-
-impl<A:ToStr> ToStr for ~[A] {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"[";
-        let mut first = true;
-        for elt in self.iter() {
-            if first {
-                first = false;
-            }
-            else {
-                acc.push_str(", ");
-            }
-            acc.push_str(elt.to_str());
-        }
-        acc.push_char(']');
-        acc
-    }
+impl<T: fmt::Show> ToStr for T {
+    fn to_str(&self) -> ~str { format!("{}", *self) }
 }
 
 #[cfg(test)]

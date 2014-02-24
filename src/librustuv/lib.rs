@@ -45,8 +45,9 @@ via `close` and `delete` methods.
 #[cfg(test)] extern crate green;
 
 use std::cast;
-use std::io;
+use std::fmt;
 use std::io::IoError;
+use std::io;
 use std::libc::{c_int, c_void};
 use std::ptr::null;
 use std::ptr;
@@ -339,9 +340,9 @@ impl UvError {
     }
 }
 
-impl ToStr for UvError {
-    fn to_str(&self) -> ~str {
-        format!("{}: {}", self.name(), self.desc())
+impl fmt::Show for UvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}: {}", self.name(), self.desc())
     }
 }
 

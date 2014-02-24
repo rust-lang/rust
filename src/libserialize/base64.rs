@@ -10,6 +10,7 @@
 
 //! Base64 binary-to-text encoding
 use std::str;
+use std::fmt;
 
 /// Available encoding character sets
 pub enum CharacterSet {
@@ -165,12 +166,12 @@ pub enum FromBase64Error {
     InvalidBase64Length,
 }
 
-impl ToStr for FromBase64Error {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for FromBase64Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidBase64Character(ch, idx) =>
-                format!("Invalid character '{}' at position {}", ch, idx),
-            InvalidBase64Length => ~"Invalid length",
+                write!(f.buf, "Invalid character '{}' at position {}", ch, idx),
+            InvalidBase64Length => write!(f.buf, "Invalid length"),
         }
     }
 }

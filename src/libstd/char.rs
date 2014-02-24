@@ -15,8 +15,6 @@ use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use str::StrSlice;
 use unicode::{derived_property, property, general_category, decompose};
-use to_str::ToStr;
-use str;
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -344,13 +342,6 @@ pub fn len_utf8_bytes(c: char) -> uint {
     }
 }
 
-impl ToStr for char {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        str::from_char(*self)
-    }
-}
-
 #[allow(missing_doc)]
 pub trait Char {
     fn is_alphabetic(&self) -> bool;
@@ -556,6 +547,7 @@ fn test_escape_unicode() {
 
 #[test]
 fn test_to_str() {
+    use to_str::ToStr;
     let s = 't'.to_str();
     assert_eq!(s, ~"t");
 }

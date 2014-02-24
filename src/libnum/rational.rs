@@ -13,6 +13,7 @@
 use Integer;
 
 use std::cmp;
+use std::fmt;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
@@ -277,10 +278,10 @@ impl<T: Clone + Integer + Ord>
 }
 
 /* String conversions */
-impl<T: ToStr> ToStr for Ratio<T> {
+impl<T: fmt::Show> fmt::Show for Ratio<T> {
     /// Renders as `numer/denom`.
-    fn to_str(&self) -> ~str {
-        format!("{}/{}", self.numer.to_str(), self.denom.to_str())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}/{}", self.numer, self.denom)
     }
 }
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {

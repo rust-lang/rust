@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use std::hash::{Hash, sip};
+use std::fmt;
+use std::fmt::Show;
 
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
@@ -271,20 +273,23 @@ impl Hash for Abi {
     }
 }
 
-impl ToStr for Abi {
-    fn to_str(&self) -> ~str {
-        self.data().name.to_str()
+impl fmt::Show for Abi {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.data().name.fmt(f)
     }
 }
 
-impl ToStr for AbiSet {
-    fn to_str(&self) -> ~str {
-        let mut strs = ~[];
+impl fmt::Show for AbiSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "\""));
+        let mut first = true;
         self.each(|abi| {
-            strs.push(abi.data().name);
+            if first { first = false; }
+            else { let _ = write!(f.buf, " "); }
+            let _ = write!(f.buf, "{}", abi.data().name);
             true
         });
-        format!("\"{}\"", strs.connect(" "))
+        write!(f.buf, "\"")
     }
 }
 
