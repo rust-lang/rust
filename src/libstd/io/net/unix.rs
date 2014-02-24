@@ -192,7 +192,7 @@ mod tests {
         }, proc(_client) {
             // drop the client
         })
-    })
+    } #[ignore(cfg(windows))]) // FIXME(#12516)
 
     iotest!(fn write_begone() {
         smalltest(proc(mut server) {
