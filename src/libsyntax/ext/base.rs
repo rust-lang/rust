@@ -148,20 +148,24 @@ pub struct BlockInfo {
     // should macros escape from this scope?
     macros_escape: bool,
     // what are the pending renames?
-    pending_renames: RenameList,
+    pending_renames: RenameLists,
 }
 
 impl BlockInfo {
     pub fn new() -> BlockInfo {
         BlockInfo {
             macros_escape: false,
-            pending_renames: Vec::new(),
+            pending_renames: RenameLists { plain: Vec::new(), lifetime: Vec::new() },
         }
     }
 }
 
 // a list of ident->name renamings
 pub type RenameList = Vec<(ast::Ident, Name)>;
+pub struct RenameLists {
+    plain: RenameList,
+    lifetime: RenameList
+}
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs

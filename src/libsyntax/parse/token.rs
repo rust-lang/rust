@@ -722,8 +722,10 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&IDENT(id1,_),&IDENT(id2,_)) | (&LIFETIME(id1),&LIFETIME(id2)) =>
-            mtwt::resolve(id1) == mtwt::resolve(id2),
+        (&IDENT(id1,_),&IDENT(id2,_)) =>
+            mtwt::resolve(id1, ast::PlainIdent) == mtwt::resolve(id2, ast::PlainIdent),
+        (&LIFETIME(id1),&LIFETIME(id2)) =>
+            mtwt::resolve(id1, ast::LifetimeIdent) == mtwt::resolve(id2, ast::LifetimeIdent),
         _ => *t1 == *t2
     }
 }
@@ -736,7 +738,7 @@ mod test {
     use ext::mtwt;
 
     fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident{name:id.name,ctxt:mtwt::new_mark(m,id.ctxt)}
+        ast::Ident{name:id.name,ctxt:mtwt::new_mark(m,id.ctxt,ast::PlainIdent)}
     }
 
     #[test] fn mtwt_token_eq_test() {

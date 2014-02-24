@@ -15,7 +15,8 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
-use ast::{Ident, Mrk, Name, SyntaxContext};
+use ast::{Ident, IdentKind, PlainIdent, LifetimeIdent};
+use ast::{Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
 use std::local_data;
@@ -57,8 +58,8 @@ pub enum SyntaxContext_ {
 }
 
 /// Extend a syntax context with a given mark
-pub fn new_mark(m: Mrk, tail: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_mark_internal(m, tail, table))
+pub fn new_mark(m: Mrk, tail: SyntaxContext, ns: IdentKind) -> SyntaxContext {
+    with_sctable(ns, |table| new_mark_internal(m, tail, table))
 }
 
 // Extend a syntax context with a given mark and table
@@ -73,8 +74,9 @@ fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable) -> SyntaxCont
 
 /// Extend a syntax context with a given rename
 pub fn new_rename(id: Ident, to:Name,
-                  tail: SyntaxContext) -> SyntaxContext {
-    with_sctable(|table| new_rename_internal(id, to, tail, table))
+                  tail: SyntaxContext,
+                  ns: IdentKind) -> SyntaxContext {
+    with_sctable(ns, |table| new_rename_internal(id, to, tail, table))
 }
 
 // Extend a syntax context with a given rename and sctable
@@ -90,20 +92,32 @@ fn new_rename_internal(id: Ident,
     *rename_memo.get().find_or_insert_with(key, new_ctxt)
 }
 
+struct SCTables {
+    plain: SCTable,
+    lifetime: SCTable,
+}
+
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
-    local_data_key!(sctable_key: Rc<SCTable>)
+pub fn with_sctable<T>(ns: IdentKind,
+                       op: |&SCTable| -> T) -> T {
+    local_data_key!(sctable_key: Rc<SCTables>)
 
     local_data::get(sctable_key, |opt_ts| {
-        let table = match opt_ts {
+        let tables = match opt_ts {
             None => {
-                let ts = Rc::new(new_sctable_internal());
+                let ts = Rc::new(SCTables {
+                    plain: new_sctable_internal(),
+                    lifetime: new_sctable_internal(),
+                });
                 local_data::set(sctable_key, ts.clone());
                 ts
             }
             Some(ts) => ts.clone()
         };
-        op(table.borrow())
+        match ns {
+            PlainIdent => op(&tables.borrow().plain),
+            LifetimeIdent => op(&tables.borrow().lifetime)
+        }
     })
 }
 
@@ -134,31 +148,42 @@ fn idx_push<T>(vec: &mut Vec<T> , val: T) -> u32 {
 }
 
 /// Resolve a syntax object to a name, per MTWT.
-pub fn resolve(id: Ident) -> Name {
-    with_sctable(|sctable| {
-        with_resolve_table_mut(|resolve_table| {
+pub fn resolve(id: Ident, ns: IdentKind) -> Name {
+    with_sctable(ns, |sctable| {
+        with_resolve_table_mut(ns, |resolve_table| {
             resolve_internal(id, sctable, resolve_table)
         })
     })
 }
 
 type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
+struct ResolveTables {
+    plain: RefCell<ResolveTable>,
+    lifetime: RefCell<ResolveTable>,
+}
 
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
-    local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>)
+fn with_resolve_table_mut<T>(ns: IdentKind,
+                             op: |&mut ResolveTable| -> T) -> T {
+    local_data_key!(resolve_table_key: Rc<ResolveTables>)
 
     local_data::get(resolve_table_key, |opt_ts| {
-        let table = match opt_ts {
+        let tables = match opt_ts {
             None => {
-                let ts = Rc::new(RefCell::new(HashMap::new()));
+                let ts = Rc::new(ResolveTables {
+                    plain: RefCell::new(HashMap::new()),
+                    lifetime: RefCell::new(HashMap::new()),
+                });
                 local_data::set(resolve_table_key, ts.clone());
                 ts
             }
             Some(ts) => ts.clone()
         };
-        op(table.borrow().borrow_mut().get())
+        match ns {
+            PlainIdent => op(tables.borrow().plain.borrow_mut().get()),
+            LifetimeIdent => op(tables.borrow().lifetime.borrow_mut().get())
+        }
     })
 }
 
@@ -206,8 +231,8 @@ fn resolve_internal(id: Ident,
 }
 
 /// Compute the marks associated with a syntax context.
-pub fn marksof(ctxt: SyntaxContext, stopname: Name) -> Vec<Mrk> {
-    with_sctable(|table| marksof_internal(ctxt, stopname, table))
+pub fn marksof(ctxt: SyntaxContext, stopname: Name, ns: IdentKind) -> Vec<Mrk> {
+    with_sctable(ns, |table| marksof_internal(ctxt, stopname, table))
 }
 
 // the internal function for computing marks
@@ -247,8 +272,8 @@ fn marksof_internal(ctxt: SyntaxContext,
 
 /// Return the outer mark for a context with a mark at the outside.
 /// FAILS when outside is not a mark.
-pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
-    with_sctable(|sctable| {
+pub fn outer_mark(ctxt: SyntaxContext, ns: IdentKind) -> Mrk {
+    with_sctable(ns, |sctable| {
         match *sctable.table.borrow().get().get(ctxt as uint) {
             Mark(mrk, _) => mrk,
             _ => fail!("can't retrieve outer mark when outside is not a mark")
@@ -455,7 +480,7 @@ mod tests {
 
     #[test] fn mtwt_resolve_test(){
         let a = 40;
-        assert_eq!(resolve(id(a,EMPTY_CTXT)),a);
+        assert_eq!(resolve(id(a,EMPTY_CTXT), PlainIdent),a);
     }
 
 

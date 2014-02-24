@@ -75,6 +75,17 @@ impl Eq for Ident {
     }
 }
 
+// This can not be more fine-grained because of loop label. It starts
+// as a `token::LIFETIME` then becomes part of `ExprLoop`, `ExprForLoop`,
+// `ExprBreak` or `ExprAgain` and is represented as an `ast::Ident`, not
+// an `ast::Lifetime` as others do. Even so, it is still considered to
+// be one of LifetimeIdent.
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
+pub enum IdentKind {
+    PlainIdent,
+    LifetimeIdent
+}
+
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
 /// a fresh uint
