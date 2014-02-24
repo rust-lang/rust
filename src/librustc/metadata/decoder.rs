@@ -975,21 +975,27 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
             // FIXME #6993: name should be of type Name, not Ident
             let name = item_name(&*intr, an_item);
             let did = item_def_id(an_item, cdata);
+            let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
+            let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
             result.push(ty::field_ty {
                 name: name.name,
-                id: did, vis:
-                struct_field_family_to_visibility(f),
+                id: did,
+                vis: struct_field_family_to_visibility(f),
+                origin: origin_id,
             });
         }
         true
     });
     reader::tagged_docs(item, tag_item_unnamed_field, |an_item| {
         let did = item_def_id(an_item, cdata);
+        let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
         let f = item_family(an_item);
+        let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
         result.push(ty::field_ty {
             name: special_idents::unnamed_field.name,
             id: did,
             vis: struct_field_family_to_visibility(f),
+            origin: origin_id,
         });
         true
     });

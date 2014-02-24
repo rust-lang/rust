@@ -235,7 +235,12 @@ pub trait Folder {
                 kind = StructVariantKind(@ast::StructDef {
                     fields: struct_def.fields.iter()
                         .map(|f| self.fold_struct_field(f)).collect(),
-                    ctor_id: struct_def.ctor_id.map(|c| self.new_id(c))
+                    ctor_id: struct_def.ctor_id.map(|c| self.new_id(c)),
+                    super_struct: match struct_def.super_struct {
+                        Some(t) => Some(self.fold_ty(t)),
+                        None => None
+                    },
+                    is_virtual: struct_def.is_virtual,
                 })
             }
         }
@@ -480,6 +485,11 @@ fn fold_struct_def<T: Folder>(struct_def: @StructDef, fld: &mut T) -> @StructDef
     @ast::StructDef {
         fields: struct_def.fields.iter().map(|f| fold_struct_field(f, fld)).collect(),
         ctor_id: struct_def.ctor_id.map(|cid| fld.new_id(cid)),
+        super_struct: match struct_def.super_struct {
+            Some(t) => Some(fld.fold_ty(t)),
+            None => None
+        },
+        is_virtual: struct_def.is_virtual,
     }
 }
 
