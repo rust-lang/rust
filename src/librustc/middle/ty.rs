@@ -33,10 +33,11 @@ use util::common::{indenter};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::cmp;
+use std::fmt::Show;
+use std::fmt;
 use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
-use std::to_str::ToStr;
 use std::vec;
 use collections::{HashMap, HashSet};
 use syntax::ast::*;
@@ -128,14 +129,14 @@ pub struct mt {
     mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash, ToStr)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
     vstore_slice(Region)
 }
 
-#[deriving(Clone, Eq, Hash, Encodable, Decodable, ToStr)]
+#[deriving(Clone, Eq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
@@ -196,7 +197,7 @@ pub struct ItemVariances {
     region_params: OptVec<Variance>
 }
 
-#[deriving(Clone, Eq, Decodable, Encodable)]
+#[deriving(Clone, Eq, Decodable, Encodable, Show)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -384,11 +385,13 @@ pub struct t_box_ {
 // ~15%.) This does mean that a t value relies on the ctxt to keep its box
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
-pub type t = *t_opaque;
 
-impl ToStr for t {
-    fn to_str(&self) -> ~str {
-        ~"*t_opaque"
+#[deriving(Clone, Eq, Hash)]
+pub struct t { priv inner: *t_opaque }
+
+impl fmt::Show for t {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write_str("*t_opaque")
     }
 }
 
@@ -458,7 +461,7 @@ pub struct param_ty {
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, Hash, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, Hash, Encodable, Decodable, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -618,13 +621,13 @@ impl Region {
     }
 }
 
-#[deriving(Clone, Eq, TotalOrd, TotalEq, Hash, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, TotalOrd, TotalEq, Hash, Encodable, Decodable, Show)]
 pub struct FreeRegion {
     scope_id: NodeId,
     bound_region: BoundRegion
 }
 
-#[deriving(Clone, Eq, TotalEq, TotalOrd, Hash, Encodable, Decodable, ToStr, Show)]
+#[deriving(Clone, Eq, TotalEq, TotalOrd, Hash, Encodable, Decodable, Show)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(uint),
@@ -768,7 +771,7 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-#[deriving(Clone, ToStr)]
+#[deriving(Clone, Show)]
 pub enum terr_vstore_kind {
     terr_vec,
     terr_str,
@@ -776,14 +779,14 @@ pub enum terr_vstore_kind {
     terr_trait
 }
 
-#[deriving(Clone, ToStr)]
+#[deriving(Clone, Show)]
 pub struct expected_found<T> {
     expected: T,
     found: T
 }
 
 // Data structures used in type unification
-#[deriving(Clone, ToStr)]
+#[deriving(Clone, Show)]
 pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<Purity>),
@@ -826,7 +829,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Encodable, Eq, Decodable, Hash, ToStr)]
+#[deriving(Clone, Encodable, Eq, Decodable, Hash, Show)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
@@ -867,7 +870,7 @@ pub struct IntVid(uint);
 #[deriving(Clone, Eq, Hash)]
 pub struct FloatVid(uint);
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     id: uint
 }
@@ -879,7 +882,7 @@ pub enum InferTy {
     FloatVar(FloatVid)
 }
 
-#[deriving(Clone, Encodable, Decodable, Hash, ToStr, Show)]
+#[deriving(Clone, Encodable, Decodable, Hash, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)
@@ -910,56 +913,64 @@ impl Vid for TyVid {
     fn to_uint(&self) -> uint { let TyVid(v) = *self; v }
 }
 
-impl ToStr for TyVid {
-    fn to_str(&self) -> ~str { format!("<generic \\#{}>", self.to_uint()) }
+impl fmt::Show for TyVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        write!(f.buf, "<generic \\#{}>", self.to_uint())
+    }
 }
 
 impl Vid for IntVid {
     fn to_uint(&self) -> uint { let IntVid(v) = *self; v }
 }
 
-impl ToStr for IntVid {
-    fn to_str(&self) -> ~str { format!("<generic integer \\#{}>", self.to_uint()) }
+impl fmt::Show for IntVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "<generic integer \\#{}>", self.to_uint())
+    }
 }
 
 impl Vid for FloatVid {
     fn to_uint(&self) -> uint { let FloatVid(v) = *self; v }
 }
 
-impl ToStr for FloatVid {
-    fn to_str(&self) -> ~str { format!("<generic float \\#{}>", self.to_uint()) }
+impl fmt::Show for FloatVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "<generic float \\#{}>", self.to_uint())
+    }
 }
 
 impl Vid for RegionVid {
     fn to_uint(&self) -> uint { self.id }
 }
 
-impl ToStr for RegionVid {
-    fn to_str(&self) -> ~str { format!("{:?}", self.id) }
-}
-
-impl ToStr for FnSig {
-    fn to_str(&self) -> ~str {
-        // grr, without tcx not much we can do.
-        return ~"(...)";
+impl fmt::Show for RegionVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.id.fmt(f)
     }
 }
 
-impl ToStr for InferTy {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for FnSig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // grr, without tcx not much we can do.
+        write!(f.buf, "(...)")
+    }
+}
+
+impl fmt::Show for InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TyVar(ref v) => v.to_str(),
-            IntVar(ref v) => v.to_str(),
-            FloatVar(ref v) => v.to_str()
+            TyVar(ref v) => v.fmt(f),
+            IntVar(ref v) => v.fmt(f),
+            FloatVar(ref v) => v.fmt(f),
         }
     }
 }
 
-impl ToStr for IntVarValue {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for IntVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            IntType(ref v) => v.to_str(),
-            UintType(ref v) => v.to_str(),
+            IntType(ref v) => v.fmt(f),
+            UintType(ref v) => v.fmt(f),
         }
     }
 }
@@ -2020,9 +2031,9 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
     }
 }
 
-impl ToStr for TypeContents {
-    fn to_str(&self) -> ~str {
-        format!("TypeContents({:t})", self.bits)
+impl fmt::Show for TypeContents {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "TypeContents({:t})", self.bits)
     }
 }
 

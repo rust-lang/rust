@@ -38,7 +38,6 @@ use std::cmp;
 use std::fmt;
 use std::fmt::Show;
 use std::option::{Option, Some, None};
-use std::to_str::ToStr;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
@@ -68,13 +67,6 @@ impl fmt::Show for Identifier {
             Numeric(ref n) => n.fmt(f),
             AlphaNumeric(ref s) => s.fmt(f)
         }
-    }
-}
-
-impl ToStr for Identifier {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        format!("{}", *self)
     }
 }
 
@@ -115,13 +107,6 @@ impl fmt::Show for Version {
             }
         }
         Ok(())
-    }
-}
-
-impl ToStr for Version {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        format!("{}", *self)
     }
 }
 

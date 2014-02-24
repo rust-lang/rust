@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
+
 /// CrateIds identify crates and include the crate name and optionally a path
 /// and version. In the full form, they look like relative URLs. Example:
 /// `github.com/mozilla/rust#std:1.0` would be a package ID with a path of
@@ -26,16 +28,17 @@ pub struct CrateId {
     version: Option<~str>,
 }
 
-impl ToStr for CrateId {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for CrateId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}", self.path));
         let version = match self.version {
             None => "0.0",
             Some(ref version) => version.as_slice(),
         };
         if self.path == self.name || self.path.ends_with(format!("/{}", self.name)) {
-            format!("{}\\#{}", self.path, version)
+            write!(f.buf, "\\#{}", version)
         } else {
-            format!("{}\\#{}:{}", self.path, self.name, version)
+            write!(f.buf, "\\#{}:{}", self.name, version)
         }
     }
 }

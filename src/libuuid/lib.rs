@@ -64,17 +64,15 @@ Examples of string representations:
 extern crate test;
 extern crate serialize;
 
+use std::cast::{transmute,transmute_copy};
+use std::char::Char;
+use std::fmt;
+use std::hash::{Hash, sip};
+use std::num::FromStrRadix;
+use std::rand::Rng;
+use std::rand;
 use std::str;
 use std::vec;
-use std::num::FromStrRadix;
-use std::char::Char;
-use std::container::Container;
-use std::to_str::ToStr;
-use std::rand;
-use std::rand::Rng;
-use std::cmp::Eq;
-use std::cast::{transmute,transmute_copy};
-use std::hash::{Hash, sip};
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -142,22 +140,21 @@ pub enum ParseError {
 }
 
 /// Converts a ParseError to a string
-impl ToStr for ParseError {
-    #[inline]
-    fn to_str(&self) -> ~str {
+impl fmt::Show for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorInvalidLength(found) =>
-                format!("Invalid length; expecting 32, 36 or 45 chars, found {}",
-                        found),
+                write!(f.buf, "Invalid length; expecting 32, 36 or 45 chars, \
+                               found {}", found),
             ErrorInvalidCharacter(found, pos) =>
-                format!("Invalid character; found `{}` (0x{:02x}) at offset {}",
-                        found, found as uint, pos),
+                write!(f.buf, "Invalid character; found `{}` (0x{:02x}) at \
+                               offset {}", found, found as uint, pos),
             ErrorInvalidGroups(found) =>
-                format!("Malformed; wrong number of groups: expected 1 or 5, found {}",
-                        found),
+                write!(f.buf, "Malformed; wrong number of groups: expected 1 \
+                               or 5, found {}", found),
             ErrorInvalidGroupLength(group, found, expecting) =>
-                format!("Malformed; length of group {} was {}, expecting {}",
-                        group, found, expecting),
+                write!(f.buf, "Malformed; length of group {} was {}, \
+                               expecting {}", group, found, expecting),
         }
     }
 }
@@ -465,9 +462,9 @@ impl FromStr for Uuid {
 }
 
 /// Convert the UUID to a hexadecimal-based string representation
-impl ToStr for Uuid {
-    fn to_str(&self) -> ~str {
-        self.to_simple_str()
+impl fmt::Show for Uuid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_simple_str())
     }
 }
 

@@ -18,7 +18,8 @@
 ///a length (the height of the tree), and lower and upper bounds on the
 ///number of elements that a given node can contain.
 
-use std::vec::OwnedVector;
+use std::fmt;
+use std::fmt::Show;
 
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
@@ -106,11 +107,10 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for BTree<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BTree<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for BTree<K, V> {
     ///Returns a string representation of the BTree
-    fn to_str(&self) -> ~str {
-        let ret = self.root.to_str();
-        ret
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.root.fmt(f)
     }
 }
 
@@ -235,15 +235,15 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Node<K, V> {
     ///Returns a string representation of a Node.
     ///Will iterate over the Node and show "Key: x, value: y, child: () // "
     ///for all elements in the Node. "Child" only exists if the Node contains
     ///a branch.
-    fn to_str(&self) -> ~str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            LeafNode(ref leaf) => leaf.to_str(),
-            BranchNode(ref branch) => branch.to_str()
+            LeafNode(ref leaf) => leaf.fmt(f),
+            BranchNode(ref branch) => branch.fmt(f),
         }
     }
 }
@@ -401,10 +401,14 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Leaf<K, V> {
 }
 
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Leaf<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Leaf<K, V> {
     ///Returns a string representation of a Leaf.
-    fn to_str(&self) -> ~str {
-        self.elts.iter().map(|s| s.to_str()).to_owned_vec().connect(" // ")
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, s) in self.elts.iter().enumerate() {
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
+        }
+        Ok(())
     }
 }
 
@@ -618,13 +622,14 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Branch<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Branch<K, V> {
     ///Returns a string representation of a Branch.
-    fn to_str(&self) -> ~str {
-        let mut ret = self.elts.iter().map(|s| s.to_str()).to_owned_vec().connect(" // ");
-        ret.push_str(" // ");
-        ret.push_str("rightmost child: ("+ self.rightmost_child.to_str() +") ");
-        ret
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, s) in self.elts.iter().enumerate() {
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
+        }
+        write!(f.buf, " // rightmost child: ({}) ", *self.rightmost_child)
     }
 }
 
@@ -672,11 +677,10 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for LeafElt<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for LeafElt<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for LeafElt<K, V> {
     ///Returns a string representation of a LeafElt.
-    fn to_str(&self) -> ~str {
-        format!("Key: {}, value: {};",
-            self.key.to_str(), self.value.to_str())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "Key: {}, value: {};", self.key, self.value)
     }
 }
 
@@ -715,12 +719,12 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for BranchElt<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
-    ///Returns string containing key, value, and child (which should recur to a leaf)
-    ///Consider changing in future to be more readable.
-    fn to_str(&self) -> ~str {
-        format!("Key: {}, value: {}, (child: {})",
-            self.key.to_str(), self.value.to_str(), self.left.to_str())
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for BranchElt<K, V> {
+    /// Returns string containing key, value, and child (which should recur to a
+    /// leaf) Consider changing in future to be more readable.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "Key: {}, value: {}, (child: {})",
+               self.key, self.value, *self.left)
     }
 }
 

@@ -27,7 +27,6 @@ pub mod encodable;
 pub mod decodable;
 pub mod hash;
 pub mod rand;
-pub mod to_str;
 pub mod show;
 pub mod zero;
 pub mod default;
@@ -85,7 +84,6 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             "Rand" => expand!(rand::expand_deriving_rand),
 
-                            "ToStr" => expand!(to_str::expand_deriving_to_str),
                             "Show" => expand!(show::expand_deriving_show),
 
                             "Zero" => expand!(zero::expand_deriving_zero),

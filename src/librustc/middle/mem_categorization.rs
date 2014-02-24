@@ -123,7 +123,7 @@ pub enum ElementKind {
     OtherElement,
 }
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -271,12 +271,6 @@ pub trait Typer {
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&mut self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
-}
-
-impl ToStr for MutabilityCategory {
-    fn to_str(&self) -> ~str {
-        format!("{:?}", *self)
-    }
 }
 
 impl MutabilityCategory {

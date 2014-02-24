@@ -37,10 +37,11 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
+use std::cast;
 use std::container::Container;
 use std::hash::{Hash, sip};
+use std::fmt;
 use std::ptr;
-use std::cast;
 
 use HashMap;
 
@@ -217,36 +218,32 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 }
 
-impl<A: ToStr + Hash + Eq, B: ToStr> ToStr for LruCache<A, B> {
+impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"{";
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, r"\{"));
         let mut cur = self.head;
         for i in range(0, self.len()) {
-            if i > 0 {
-                acc.push_str(", ");
-            }
+            if i > 0 { try!(write!(f.buf, ", ")) }
             unsafe {
                 cur = (*cur).next;
                 match (*cur).key {
                     // should never print nil
-                    None => acc.push_str("nil"),
-                    Some(ref k) => acc.push_str(k.to_str())
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref k) => try!(write!(f.buf, "{}", *k)),
                 }
             }
-            acc.push_str(": ");
+            try!(write!(f.buf, ": "));
             unsafe {
                 match (*cur).value {
                     // should never print nil
-                    None => acc.push_str("nil"),
-                    Some(ref value) => acc.push_str(value.to_str())
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref value) => try!(write!(f.buf, "{}", *value)),
                 }
             }
         }
-        acc.push_char('}');
-        acc
+        write!(f.buf, r"\}")
     }
 }
 
