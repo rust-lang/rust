@@ -56,26 +56,34 @@ it is safe with respect to the in-scope loans.
 Throughout the docs we'll consider a simple subset of Rust in which
 you can only borrow from lvalues, defined like so:
 
-    LV = x | LV.f | *LV
+```notrust
+LV = x | LV.f | *LV
+```
 
 Here `x` represents some variable, `LV.f` is a field reference,
 and `*LV` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
-    struct S { f: uint }
+```notrust
+struct S { f: uint }
+```
 
 and a variable `a: ~S`, then the rust expression `a.f` would correspond
 to an `LV` of `(*a).f`.
 
 Here is the formal grammar for the types we'll consider:
 
-    TY = () | S<'LT...> | ~TY | & 'LT MQ TY | @ MQ TY
-    MQ = mut | imm | const
+```notrust
+TY = () | S<'LT...> | ~TY | & 'LT MQ TY | @ MQ TY
+MQ = mut | imm | const
+```
 
 Most of these types should be pretty self explanatory. Here `S` is a
 struct name and we assume structs are declared like so:
 
-    SD = struct S<'LT...> { (f: TY)... }
+```notrust
+SD = struct S<'LT...> { (f: TY)... }
+```
 
 # Borrowing and loans
 
@@ -85,13 +93,15 @@ struct name and we assume structs are declared like so:
 
 Now, imagine we had a program like this:
 
-    struct Foo { f: uint, g: uint }
-    ...
-    'a: {
-      let mut x: ~Foo = ...;
-      let y = &mut (*x).f;
-      x = ...;
-    }
+```notrust
+struct Foo { f: uint, g: uint }
+...
+'a: {
+  let mut x: ~Foo = ...;
+  let y = &mut (*x).f;
+  x = ...;
+}
+```
 
 This is of course dangerous because mutating `x` will free the old
 value and hence invalidate `y`. The borrow checker aims to prevent
@@ -108,9 +118,11 @@ the borrow, and (3) a set of restrictions. In the code, `Loan` is a
 struct defined in `middle::borrowck`. Formally, we define `LOAN` as
 follows:
 
-    LOAN = (LV, LT, MQ, RESTRICTION*)
-    RESTRICTION = (LV, ACTION*)
-    ACTION = MUTATE | CLAIM | FREEZE
+```notrust
+LOAN = (LV, LT, MQ, RESTRICTION*)
+RESTRICTION = (LV, ACTION*)
+ACTION = MUTATE | CLAIM | FREEZE
+```
 
 Here the `LOAN` tuple defines the lvalue `LV` being borrowed; the
 lifetime `LT` of that borrow; the mutability `MQ` of the borrow; and a
@@ -139,10 +151,12 @@ To give you a better feeling for what kind of restrictions derived
 from a loan, let's look at the loan `L` that would be issued as a
 result of the borrow `&mut (*x).f` in the example above:
 
-    L = ((*x).f, 'a, mut, RS) where
-        RS = [((*x).f, [MUTATE, CLAIM, FREEZE]),
-              (*x, [MUTATE, CLAIM, FREEZE]),
-              (x, [MUTATE, CLAIM, FREEZE])]
+```notrust
+L = ((*x).f, 'a, mut, RS) where
+    RS = [((*x).f, [MUTATE, CLAIM, FREEZE]),
+          (*x, [MUTATE, CLAIM, FREEZE]),
+          (x, [MUTATE, CLAIM, FREEZE])]
+```
 
 The loan states that the expression `(*x).f` has been loaned as
 mutable for the lifetime `'a`. Because the loan is mutable, that means
@@ -200,10 +214,12 @@ conditions that it uses. For simplicity I will ignore const loans.
 I will present the rules in a modified form of standard inference
 rules, which looks as as follows:
 
-    PREDICATE(X, Y, Z)                  // Rule-Name
-      Condition 1
-      Condition 2
-      Condition 3
+```notrust
+PREDICATE(X, Y, Z)                  // Rule-Name
+  Condition 1
+  Condition 2
+  Condition 3
+```
 
 The initial line states the predicate that is to be satisfied.  The
 indented lines indicate the conditions that must be met for the
@@ -274,12 +290,14 @@ Let's begin with the rules for variables, which state that if a
 variable is declared as mutable, it may be borrowed any which way, but
 otherwise the variable must be borrowed as immutable or const:
 
-    MUTABILITY(X, MQ)                   // M-Var-Mut
-      DECL(X) = mut
+```notrust
+MUTABILITY(X, MQ)                   // M-Var-Mut
+  DECL(X) = mut
 
-    MUTABILITY(X, MQ)                   // M-Var-Imm
-      DECL(X) = imm
-      MQ = imm | const
+MUTABILITY(X, MQ)                   // M-Var-Imm
+  DECL(X) = imm
+  MQ = imm | const
+```
 
 ### Checking mutability of owned content
 
@@ -287,32 +305,38 @@ Fields and owned pointers inherit their mutability from
 their base expressions, so both of their rules basically
 delegate the check to the base expression `LV`:
 
-    MUTABILITY(LV.f, MQ)                // M-Field
-      MUTABILITY(LV, MQ)
+```notrust
+MUTABILITY(LV.f, MQ)                // M-Field
+  MUTABILITY(LV, MQ)
 
-    MUTABILITY(*LV, MQ)                 // M-Deref-Unique
-      TYPE(LV) = ~Ty
-      MUTABILITY(LV, MQ)
+MUTABILITY(*LV, MQ)                 // M-Deref-Unique
+  TYPE(LV) = ~Ty
+  MUTABILITY(LV, MQ)
+```
 
 ### Checking mutability of immutable pointer types
 
 Immutable pointer types like `&T` and `@T` can only
 be borrowed if MQ is immutable or const:
 
-    MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
-      TYPE(LV) = &Ty
-      MQ == imm | const
+```notrust
+MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
+  TYPE(LV) = &Ty
+  MQ == imm | const
 
-    MUTABILITY(*LV, MQ)                // M-Deref-Managed-Imm
-      TYPE(LV) = @Ty
-      MQ == imm | const
+MUTABILITY(*LV, MQ)                // M-Deref-Managed-Imm
+  TYPE(LV) = @Ty
+  MQ == imm | const
+```
 
 ### Checking mutability of mutable pointer types
 
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
-    MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
-      TYPE(LV) = &mut Ty
+```notrust
+MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
+  TYPE(LV) = &mut Ty
+```
 
 ## Checking aliasability
 
@@ -328,32 +352,40 @@ Rust code corresponding to this predicate is the function
 Local variables are never aliasable as they are accessible only within
 the stack frame.
 
+```notrust
     ALIASABLE(X, MQ)                   // M-Var-Mut
+```
 
 ### Checking aliasable of owned content
 
 Owned content is aliasable if it is found in an aliasable location:
 
-    ALIASABLE(LV.f, MQ)                // M-Field
-      ALIASABLE(LV, MQ)
+```notrust
+ALIASABLE(LV.f, MQ)                // M-Field
+  ALIASABLE(LV, MQ)
 
-    ALIASABLE(*LV, MQ)                 // M-Deref-Unique
-      ALIASABLE(LV, MQ)
+ALIASABLE(*LV, MQ)                 // M-Deref-Unique
+  ALIASABLE(LV, MQ)
+```
 
 ### Checking mutability of immutable pointer types
 
 Immutable pointer types like `&T` are aliasable, and hence can only be
 borrowed immutably:
 
-    ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
-      TYPE(LV) = &Ty
+```notrust
+ALIASABLE(*LV, imm)                // M-Deref-Borrowed-Imm
+  TYPE(LV) = &Ty
+```
 
 ### Checking mutability of mutable pointer types
 
 `&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
-    ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
-      TYPE(LV) = &mut Ty
+```notrust
+ALIASABLE(*LV, MQ)                 // M-Deref-Borrowed-Mut
+  TYPE(LV) = &mut Ty
+```
 
 ## Checking lifetime
 
@@ -373,49 +405,63 @@ guaranteed to exist, presuming that no mutations occur.
 
 The scope of a local variable is the block where it is declared:
 
-      SCOPE(X) = block where X is declared
+```notrust
+  SCOPE(X) = block where X is declared
+```
 
 The scope of a field is the scope of the struct:
 
-      SCOPE(LV.f) = SCOPE(LV)
+```notrust
+  SCOPE(LV.f) = SCOPE(LV)
+```
 
 The scope of a unique referent is the scope of the pointer, since
 (barring mutation or moves) the pointer will not be freed until
 the pointer itself `LV` goes out of scope:
 
-      SCOPE(*LV) = SCOPE(LV) if LV has type ~T
+```notrust
+  SCOPE(*LV) = SCOPE(LV) if LV has type ~T
+```
 
 The scope of a managed referent is also the scope of the pointer.  This
 is a conservative approximation, since there may be other aliases fo
 that same managed box that would cause it to live longer:
 
-      SCOPE(*LV) = SCOPE(LV) if LV has type @T
+```notrust
+  SCOPE(*LV) = SCOPE(LV) if LV has type @T
+```
 
 The scope of a borrowed referent is the scope associated with the
 pointer.  This is a conservative approximation, since the data that
 the pointer points at may actually live longer:
 
-      SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
+```notrust
+  SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
+```
 
 ### Checking lifetime of variables
 
 The rule for variables states that a variable can only be borrowed a
 lifetime `LT` that is a subregion of the variable's scope:
 
-    LIFETIME(X, LT, MQ)                 // L-Local
-      LT <= SCOPE(X)
+```notrust
+LIFETIME(X, LT, MQ)                 // L-Local
+  LT <= SCOPE(X)
+```
 
 ### Checking lifetime for owned content
 
 The lifetime of a field or owned pointer is the same as the lifetime
 of its owner:
 
-    LIFETIME(LV.f, LT, MQ)              // L-Field
-      LIFETIME(LV, LT, MQ)
+```notrust
+LIFETIME(LV.f, LT, MQ)              // L-Field
+  LIFETIME(LV, LT, MQ)
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Send
-      TYPE(LV) = ~Ty
-      LIFETIME(LV, LT, MQ)
+LIFETIME(*LV, LT, MQ)               // L-Deref-Send
+  TYPE(LV) = ~Ty
+  LIFETIME(LV, LT, MQ)
+```
 
 ### Checking lifetime for derefs of references
 
@@ -425,9 +471,11 @@ lifetime. Therefore, the borrow is valid so long as the lifetime `LT`
 of the borrow is shorter than the lifetime `LT'` of the pointer
 itself:
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
-      TYPE(LV) = &LT' Ty OR &LT' mut Ty
-      LT <= LT'
+```notrust
+LIFETIME(*LV, LT, MQ)               // L-Deref-Borrowed
+  TYPE(LV) = &LT' Ty OR &LT' mut Ty
+  LT <= LT'
+```
 
 ### Checking lifetime for derefs of managed, immutable pointers
 
@@ -436,11 +484,13 @@ Managed pointers are valid so long as the data within them is
 when the user guarantees such a root will exist. For this to be true,
 three conditions must be met:
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-User-Root
-      TYPE(LV) = @Ty
-      LT <= SCOPE(LV)                   // (1)
-      LV is immutable                   // (2)
-      LV is not moved or not movable    // (3)
+```notrust
+LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-User-Root
+  TYPE(LV) = @Ty
+  LT <= SCOPE(LV)                   // (1)
+  LV is immutable                   // (2)
+  LV is not moved or not movable    // (3)
+```
 
 Condition (1) guarantees that the managed box will be rooted for at
 least the lifetime `LT` of the borrow, presuming that no mutation or
@@ -468,10 +518,12 @@ borrow without crossing the exit from the scope `LT`.
 
 The rule for compiler rooting is as follows:
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-Compiler-Root
-      TYPE(LV) = @Ty
-      LT <= innermost enclosing loop/func
-      ROOT LV at *LV for LT
+```notrust
+LIFETIME(*LV, LT, MQ)               // L-Deref-Managed-Imm-Compiler-Root
+  TYPE(LV) = @Ty
+  LT <= innermost enclosing loop/func
+  ROOT LV at *LV for LT
+```
 
 Here I have written `ROOT LV at *LV FOR LT` to indicate that the code
 makes a note in a side-table that the box `LV` must be rooted into the
@@ -490,9 +542,11 @@ for the lifetime of the loan".
 Note that there is an initial set of restrictions: these restrictions
 are computed based on the kind of borrow:
 
-    &mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
-    &LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
-    &const LV => RESTRICTIONS(LV, LT, [])
+```notrust
+&mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
+&LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
+&const LV => RESTRICTIONS(LV, LT, [])
+```
 
 The reasoning here is that a mutable borrow must be the only writer,
 therefore it prevents other writes (`MUTATE`), mutable borrows
@@ -505,7 +559,9 @@ moved out from under it, so no actions are forbidden.
 
 The simplest case is a borrow of a local variable `X`:
 
-    RESTRICTIONS(X, LT, ACTIONS) = (X, ACTIONS)            // R-Variable
+```notrust
+RESTRICTIONS(X, LT, ACTIONS) = (X, ACTIONS)            // R-Variable
+```
 
 In such cases we just record the actions that are not permitted.
 
@@ -514,8 +570,10 @@ In such cases we just record the actions that are not permitted.
 Restricting a field is the same as restricting the owner of that
 field:
 
-    RESTRICTIONS(LV.f, LT, ACTIONS) = RS, (LV.f, ACTIONS)  // R-Field
-      RESTRICTIONS(LV, LT, ACTIONS) = RS
+```notrust
+RESTRICTIONS(LV.f, LT, ACTIONS) = RS, (LV.f, ACTIONS)  // R-Field
+  RESTRICTIONS(LV, LT, ACTIONS) = RS
+```
 
 The reasoning here is as follows. If the field must not be mutated,
 then you must not mutate the owner of the field either, since that
@@ -535,9 +593,11 @@ must prevent the owned pointer `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
 
-    RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
-      TYPE(LV) = ~Ty
-      RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
+```notrust
+RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
+  TYPE(LV) = ~Ty
+  RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
+```
 
 ### Restrictions for loans of immutable managed/borrowed referents
 
@@ -550,14 +610,16 @@ restricting that path. Therefore, the rule for `&Ty` and `@Ty`
 pointers always returns an empty set of restrictions, and it only
 permits restricting `MUTATE` and `CLAIM` actions:
 
-    RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Managed
-      TYPE(LV) = @Ty
-      ACTIONS subset of [MUTATE, CLAIM]
+```notrust
+RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Managed
+  TYPE(LV) = @Ty
+  ACTIONS subset of [MUTATE, CLAIM]
 
-    RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
-      TYPE(LV) = &LT' Ty
-      LT <= LT'                                            // (1)
-      ACTIONS subset of [MUTATE, CLAIM]
+RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
+  TYPE(LV) = &LT' Ty
+  LT <= LT'                                            // (1)
+  ACTIONS subset of [MUTATE, CLAIM]
+```
 
 The reason that we can restrict `MUTATE` and `CLAIM` actions even
 without a restrictions list is that it is never legal to mutate nor to
@@ -569,17 +631,21 @@ specify that the lifetime of the loan must be less than the lifetime
 of the `&Ty` pointer. In simple cases, this clause is redundant, since
 the `LIFETIME()` function will already enforce the required rule:
 
-    fn foo(point: &'a Point) -> &'static f32 {
-        &point.x // Error
-    }
+```
+fn foo(point: &'a Point) -> &'static f32 {
+    &point.x // Error
+}
+```
 
 The above example fails to compile both because of clause (1) above
 but also by the basic `LIFETIME()` check. However, in more advanced
 examples involving multiple nested pointers, clause (1) is needed:
 
-    fn foo(point: &'a &'b mut Point) -> &'b f32 {
-        &point.x // Error
-    }
+```
+fn foo(point: &'a &'b mut Point) -> &'b f32 {
+    &point.x // Error
+}
+```
 
 The `LIFETIME` rule here would accept `'b` because, in fact, the
 *memory is* guaranteed to remain valid (i.e., not be freed) for the
@@ -594,9 +660,11 @@ which is only `'a`, not `'b`. Hence this example yields an error.
 As a final twist, consider the case of two nested *immutable*
 pointers, rather than a mutable pointer within an immutable one:
 
-    fn foo(point: &'a &'b Point) -> &'b f32 {
-        &point.x // OK
-    }
+```
+fn foo(point: &'a &'b Point) -> &'b f32 {
+    &point.x // OK
+}
+```
 
 This function is legal. The reason for this is that the inner pointer
 (`*point : &'b Point`) is enough to guarantee the memory is immutable
@@ -614,10 +682,12 @@ The rules pertaining to `LIFETIME` exist to ensure that we don't
 create a borrowed pointer that outlives the memory it points at. So
 `LIFETIME` prevents a function like this:
 
-    fn get_1<'a>() -> &'a int {
-        let x = 1;
-        &x
-    }
+```
+fn get_1<'a>() -> &'a int {
+    let x = 1;
+    &x
+}
+```
 
 Here we would be returning a pointer into the stack. Clearly bad.
 
@@ -632,10 +702,12 @@ after we return and hence the remaining code in `'a` cannot possibly
 mutate it. This distinction is important for type checking functions
 like this one:
 
-    fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
-        p.x += 1;
-        &p.x
-    }
+```
+fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
+    p.x += 1;
+    &p.x
+}
+```
 
 In this case, we take in a `&mut` and return a frozen borrowed pointer
 with the same lifetime. So long as the lifetime of the returned value
@@ -661,8 +733,10 @@ Because moves from a `&const` or `@const` lvalue are never legal, it
 is not necessary to add any restrictions at all to the final
 result.
 
+```notrust
     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
       TYPE(LV) = &const Ty or @const Ty
+```
 
 ### Restrictions for loans of mutable borrowed referents
 
@@ -675,10 +749,12 @@ while the new claimant is live.
 
 The rule for mutable borrowed pointers is as follows:
 
-    RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed
-      TYPE(LV) = &LT' mut Ty
-      LT <= LT'                                            // (1)
-      RESTRICTIONS(LV, LT, ACTIONS) = RS                   // (2)
+```notrust
+RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed
+  TYPE(LV) = &LT' mut Ty
+  LT <= LT'                                            // (1)
+  RESTRICTIONS(LV, LT, ACTIONS) = RS                   // (2)
+```
 
 Let's examine the two numbered clauses:
 
@@ -693,19 +769,21 @@ maximum of `LT'`.
 
 Here is a concrete example of a bug this rule prevents:
 
-     // Test region-reborrow-from-shorter-mut-ref.rs:
-     fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
-         &mut **p // ERROR due to clause (1)
-     }
-     fn main() {
-         let mut x = 1;
-         let mut y = &mut x; // <-'b-----------------------------+
-         //      +-'a--------------------+                       |
-         //      v                       v                       |
-         let z = copy_borrowed_ptr(&mut y); // y is lent         |
-         *y += 1; // Here y==z, so both should not be usable...  |
-         *z += 1; // ...and yet they would be, but for clause 1. |
-     } <---------------------------------------------------------+
+```
+// Test region-reborrow-from-shorter-mut-ref.rs:
+fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
+    &mut **p // ERROR due to clause (1)
+}
+fn main() {
+    let mut x = 1;
+    let mut y = &mut x; // <-'b-----------------------------+
+    //      +-'a--------------------+                       |
+    //      v                       v                       |
+    let z = copy_borrowed_ptr(&mut y); // y is lent         |
+    *y += 1; // Here y==z, so both should not be usable...  |
+    *z += 1; // ...and yet they would be, but for clause 1. |
+} // <------------------------------------------------------+
+```
 
 Clause (2) propagates the restrictions on the referent to the pointer
 itself. This is the same as with an owned pointer, though the
@@ -719,12 +797,14 @@ ways to violate the rules is to move the base pointer to a new name
 and access it via that new name, thus bypassing the restrictions on
 the old name. Here is an example:
 
-       // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
-       fn foo(t0: &mut int) {
-           let p: &int = &*t0; // Freezes `*t0`
-           let t1 = t0;        //~ ERROR cannot move out of `t0`
-           *t1 = 22;           // OK, not a write through `*t0`
-       }
+```
+// src/test/compile-fail/borrowck-move-mut-base-ptr.rs
+fn foo(t0: &mut int) {
+    let p: &int = &*t0; // Freezes `*t0`
+    let t1 = t0;        //~ ERROR cannot move out of `t0`
+    *t1 = 22;           // OK, not a write through `*t0`
+}
+```
 
 Remember that `&mut` pointers are linear, and hence `let t1 = t0` is a
 move of `t0` -- or would be, if it were legal. Instead, we get an
@@ -737,13 +817,15 @@ danger is to mutably borrow the base path. This can lead to two bad
 scenarios. The most obvious is that the mutable borrow itself becomes
 another path to access the same data, as shown here:
 
-       // src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
-       fn foo<'a>(mut t0: &'a mut int,
-                  mut t1: &'a mut int) {
-           let p: &int = &*t0;     // Freezes `*t0`
-           let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
-           **t2 += 1;              // Mutates `*t0`
-       }
+```
+// src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
+fn foo<'a>(mut t0: &'a mut int,
+           mut t1: &'a mut int) {
+    let p: &int = &*t0;     // Freezes `*t0`
+    let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
+    **t2 += 1;              // Mutates `*t0`
+}
+```
 
 In this example, `**t2` is the same memory as `*t0`. Because `t2` is
 an `&mut` pointer, `**t2` is a unique path and hence it would be
@@ -756,13 +838,15 @@ of `t0`. Hence the claim `&mut t0` is illegal.
 Another danger with an `&mut` pointer is that we could swap the `t0`
 value away to create a new path:
 
-       // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
-       fn foo<'a>(mut t0: &'a mut int,
-                  mut t1: &'a mut int) {
-           let p: &int = &*t0;     // Freezes `*t0`
-           swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
-           *t1 = 22;
-       }
+```
+// src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
+fn foo<'a>(mut t0: &'a mut int,
+           mut t1: &'a mut int) {
+    let p: &int = &*t0;     // Freezes `*t0`
+    swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
+    *t1 = 22;
+}
+```
 
 This is illegal for the same reason as above. Note that if we added
 back a swap operator -- as we used to have -- we would want to be very
@@ -772,14 +856,16 @@ careful to ensure this example is still illegal.
 referent is claimed, even freezing the base pointer can be dangerous,
 as shown in the following example:
 
-       // src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
-       fn foo<'a>(mut t0: &'a mut int,
-                  mut t1: &'a mut int) {
-           let p: &mut int = &mut *t0; // Claims `*t0`
-           let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
-           let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
-           *p += 1;                    // violates type of `*q`
-       }
+```
+// src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
+fn foo<'a>(mut t0: &'a mut int,
+           mut t1: &'a mut int) {
+    let p: &mut int = &mut *t0; // Claims `*t0`
+    let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
+    let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
+    *p += 1;                    // violates type of `*q`
+}
+```
 
 Here the problem is that `*t0` is claimed by `p`, and hence `p` wants
 to be the controlling pointer through which mutation or freezes occur.
@@ -793,26 +879,30 @@ which is clearly unsound.
 However, it is not always unsafe to freeze the base pointer. In
 particular, if the referent is frozen, there is no harm in it:
 
-       // src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
-       fn foo<'a>(mut t0: &'a mut int,
-                  mut t1: &'a mut int) {
-           let p: &int = &*t0; // Freezes `*t0`
-           let mut t2 = &t0;
-           let q: &int = &*t2; // Freezes `*t0`, but that's ok...
-           let r: &int = &*t0; // ...after all, could do same thing directly.
-       }
+```
+// src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
+fn foo<'a>(mut t0: &'a mut int,
+           mut t1: &'a mut int) {
+    let p: &int = &*t0; // Freezes `*t0`
+    let mut t2 = &t0;
+    let q: &int = &*t2; // Freezes `*t0`, but that's ok...
+    let r: &int = &*t0; // ...after all, could do same thing directly.
+}
+```
 
 In this case, creating the alias `t2` of `t0` is safe because the only
 thing `t2` can be used for is to further freeze `*t0`, which is
 already frozen. In particular, we cannot assign to `*t0` through the
 new alias `t2`, as demonstrated in this test case:
 
-       // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
-       fn foo(t0: & &mut int) {
-           let t1 = t0;
-           let p: &int = &**t0;
-           **t1 = 22; //~ ERROR cannot assign
-       }
+```
+// src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
+fn foo(t0: & &mut int) {
+    let t1 = t0;
+    let p: &int = &**t0;
+    **t1 = 22; //~ ERROR cannot assign
+}
+```
 
 This distinction is reflected in the rules. When doing an `&mut`
 borrow -- as in the first example -- the set `ACTIONS` will be
@@ -876,22 +966,24 @@ moves/uninitializations of the variable that is being used.
 
 Let's look at a simple example:
 
-    fn foo(a: ~int) {
-        let b: ~int;       // Gen bit 0.
+```
+fn foo(a: ~int) {
+    let b: ~int;       // Gen bit 0.
 
-        if cond {          // Bits: 0
-            use(&*a);
-            b = a;         // Gen bit 1, kill bit 0.
-            use(&*b);
-        } else {
-                           // Bits: 0
-        }
-                           // Bits: 0,1
-        use(&*a);          // Error.
-        use(&*b);          // Error.
+    if cond {          // Bits: 0
+        use(&*a);
+        b = a;         // Gen bit 1, kill bit 0.
+        use(&*b);
+    } else {
+                       // Bits: 0
     }
+                       // Bits: 0,1
+    use(&*a);          // Error.
+    use(&*b);          // Error.
+}
 
-    fn use(a: &int) { }
+fn use(a: &int) { }
+```
 
 In this example, the variable `b` is created uninitialized. In one
 branch of an `if`, we then move the variable `a` into `b`. Once we
