@@ -150,7 +150,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(Eq,Hash)]
+#[deriving(Eq, Hash)]
 pub struct creader_cache_key {
     cnum: CrateNum,
     pos: uint,
