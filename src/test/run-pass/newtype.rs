@@ -10,7 +10,7 @@
 
 struct mytype(Mytype);
 
-struct Mytype {compute: extern fn(mytype) -> int, val: int}
+struct Mytype {compute: fn(mytype) -> int, val: int}
 
 fn compute(i: mytype) -> int {
     let mytype(m) = i;

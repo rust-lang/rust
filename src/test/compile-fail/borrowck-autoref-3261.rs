@@ -10,10 +10,10 @@
 
 enum Either<T, U> { Left(T), Right(U) }
 
-struct X(Either<(uint,uint),extern fn()>);
+struct X(Either<(uint,uint), fn()>);
 
 impl X {
-    pub fn with(&self, blk: |x: &Either<(uint,uint),extern fn()>|) {
+    pub fn with(&self, blk: |x: &Either<(uint,uint), fn()>|) {
         let X(ref e) = *self;
         blk(e)
     }
