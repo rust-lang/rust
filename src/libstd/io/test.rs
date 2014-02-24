@@ -121,6 +121,7 @@ fn base_port() -> u16 {
     return final_base;
 }
 
+/// Raises the file descriptor limit when running tests if necessary
 pub fn raise_fd_limit() {
     unsafe { darwin_fd_limit::raise_fd_limit() }
 }
