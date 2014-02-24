@@ -823,11 +823,10 @@ mod tests {
         assert!(!p.wait().success());
     })
 
-    #[ignore(cfg(windows))]
     iotest!(fn test_exists() {
         let mut p = sleeper();
         assert!(Process::kill(p.id(), 0).is_ok());
         p.signal_kill().unwrap();
         assert!(!p.wait().success());
-    })
+    } #[ignore(cfg(windows))]) // FIXME(#12516)
 }
