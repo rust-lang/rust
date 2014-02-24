@@ -238,6 +238,8 @@ pub mod io;
 pub mod path;
 pub mod fmt;
 pub mod cleanup;
+#[experimental]
+pub mod simd;
 
 /* Unsupported interfaces */
 
