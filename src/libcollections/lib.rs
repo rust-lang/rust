@@ -24,6 +24,7 @@ extern crate serialize;
 
 pub use bitv::Bitv;
 pub use btree::BTree;
+pub use c_vec::CVec;
 pub use deque::Deque;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
@@ -38,6 +39,7 @@ pub use trie::{TrieMap, TrieSet};
 
 pub mod bitv;
 pub mod btree;
+pub mod c_vec;
 pub mod deque;
 pub mod dlist;
 pub mod enum_set;

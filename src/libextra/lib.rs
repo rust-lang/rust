@@ -40,7 +40,6 @@ extern crate collections;
 extern crate time;
 
 // Utility modules
-pub mod c_vec;
 pub mod url;
 pub mod json;
 pub mod tempfile;
