@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use container::Container;
+use fmt;
 use from_str::FromStr;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
-use to_str::ToStr;
 use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
@@ -24,26 +24,27 @@ pub enum IpAddr {
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
 
-impl ToStr for IpAddr {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Ipv4Addr(a, b, c, d) =>
-                format!("{}.{}.{}.{}", a, b, c, d),
+                write!(fmt.buf, "{}.{}.{}.{}", a, b, c, d),
 
             // Ipv4 Compatible address
             Ipv6Addr(0, 0, 0, 0, 0, 0, g, h) => {
-                format!("::{}.{}.{}.{}", (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8)
+                write!(fmt.buf, "::{}.{}.{}.{}", (g >> 8) as u8, g as u8,
+                       (h >> 8) as u8, h as u8)
             }
 
             // Ipv4-Mapped address
             Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, g, h) => {
-                format!("::FFFF:{}.{}.{}.{}", (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8)
+                write!(fmt.buf, "::FFFF:{}.{}.{}.{}", (g >> 8) as u8, g as u8,
+                       (h >> 8) as u8, h as u8)
             }
 
             Ipv6Addr(a, b, c, d, e, f, g, h) =>
-                format!("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", a, b, c, d, e, f, g, h)
+                write!(fmt.buf, "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+                       a, b, c, d, e, f, g, h)
         }
     }
 }
@@ -55,11 +56,11 @@ pub struct SocketAddr {
 }
 
 
-impl ToStr for SocketAddr {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for SocketAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.ip {
-            Ipv4Addr(..) => format!("{}:{}", self.ip.to_str(), self.port),
-            Ipv6Addr(..) => format!("[{}]:{}", self.ip.to_str(), self.port),
+            Ipv4Addr(..) => write!(f.buf, "{}:{}", self.ip, self.port),
+            Ipv6Addr(..) => write!(f.buf, "[{}]:{}", self.ip, self.port),
         }
     }
 }

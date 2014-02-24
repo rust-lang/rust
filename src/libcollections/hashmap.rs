@@ -606,10 +606,6 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
     }
 }
 
-impl<K: fmt::Show + Hash + Eq, V: fmt::Show> ToStr for HashMap<K, V> {
-    fn to_str(&self) -> ~str { format!("{}", *self) }
-}
-
 /// HashMap iterator
 #[deriving(Clone)]
 pub struct Entries<'a, K, V> {
@@ -886,10 +882,6 @@ impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
         }
         write!(f.buf, r"\}")
     }
-}
-
-impl<A: fmt::Show + Hash + Eq> ToStr for HashSet<A> {
-    fn to_str(&self) -> ~str { format!("{}", *self) }
 }
 
 impl<K: Eq + Hash> FromIterator<K> for HashSet<K> {

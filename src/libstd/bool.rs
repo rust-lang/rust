@@ -17,7 +17,6 @@
 //! Implementations of the following traits:
 //!
 //! * `FromStr`
-//! * `ToStr`
 //! * `Not`
 //! * `Ord`
 //! * `TotalOrd`
@@ -34,7 +33,6 @@
 
 use option::{None, Option, Some};
 use from_str::FromStr;
-use to_str::ToStr;
 use num::FromPrimitive;
 
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
@@ -176,21 +174,6 @@ impl FromStr for bool {
             "false" => Some(false),
             _       => None,
         }
-    }
-}
-
-impl ToStr for bool {
-    /// Convert a `bool` to a string.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// assert_eq!(true.to_str(), ~"true");
-    /// assert_eq!(false.to_str(), ~"false");
-    /// ```
-    #[inline]
-    fn to_str(&self) -> ~str {
-        if *self { ~"true" } else { ~"false" }
     }
 }
 

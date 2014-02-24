@@ -12,11 +12,13 @@
 
 #[allow(missing_doc)];
 
-use std::io::BufReader;
 use std::cmp::Eq;
-use collections::HashMap;
+use std::fmt;
 use std::hash::{Hash, sip};
+use std::io::BufReader;
 use std::uint;
+
+use collections::HashMap;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
 /// Identifier) that includes network location information, such as hostname or
@@ -407,10 +409,12 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     }
 }
 
-fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
-    match userinfo.pass {
-        Some(ref pass) => format!("{}:{}@", userinfo.user, *pass),
-        None => format!("{}@", userinfo.user),
+impl fmt::Show for UserInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.pass {
+            Some(ref pass) => write!(f.buf, "{}:{}@", self.user, *pass),
+            None => write!(f.buf, "{}@", self.user),
+        }
     }
 }
 
@@ -437,19 +441,18 @@ fn query_from_str(rawquery: &str) -> Query {
  * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
+#[allow(unused_must_use)]
 pub fn query_to_str(query: &Query) -> ~str {
-    let mut strvec = ~[];
-    for kv in query.iter() {
-        match kv {
-            &(ref k, ref v) => {
-                strvec.push(format!("{}={}",
-                    encode_component(*k),
-                    encode_component(*v))
-                );
-            }
-        }
+    use std::io::MemWriter;
+    use std::str;
+
+    let mut writer = MemWriter::new();
+    for (i, &(ref k, ref v)) in query.iter().enumerate() {
+        if i != 0 { write!(&mut writer, "&"); }
+        write!(&mut writer, "{}={}", encode_component(*k),
+               encode_component(*v));
     }
-    return strvec.connect("&");
+    str::from_utf8_lossy(writer.unwrap()).into_owned()
 }
 
 /**
@@ -784,74 +787,64 @@ impl FromStr for Path {
     }
 }
 
-/**
- * Converts a URL from `Url` to string representation.
- *
- * # Arguments
- *
- * `url` - a URL.
- *
- * # Returns
- *
- * A string that contains the formatted URL. Note that this will usually
- * be an inverse of `from_str` but might strip out unneeded separators;
- * for example, "http://somehost.com?", when parsed and formatted, will
- * result in just "http://somehost.com".
- */
-pub fn to_str(url: &Url) -> ~str {
-    let user = match url.user {
-        Some(ref user) => userinfo_to_str(user),
-        None => ~"",
-    };
+impl fmt::Show for Url {
+    /**
+     * Converts a URL from `Url` to string representation.
+     *
+     * # Arguments
+     *
+     * `url` - a URL.
+     *
+     * # Returns
+     *
+     * A string that contains the formatted URL. Note that this will usually
+     * be an inverse of `from_str` but might strip out unneeded separators;
+     * for example, "http://somehost.com?", when parsed and formatted, will
+     * result in just "http://somehost.com".
+     */
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}:", self.scheme));
 
-    let authority = if url.host.is_empty() {
-        // If port is Some, we're in a nonsensical situation. Too bad.
-        ~""
-    } else {
-        match url.port {
-            Some(ref port) => format!("//{}{}:{}", user, url.host, *port),
-            None => format!("//{}{}", user, url.host),
+        if !self.host.is_empty() {
+            try!(write!(f.buf, "//"));
+            match self.user {
+                Some(ref user) => try!(write!(f.buf, "{}", *user)),
+                None => {}
+            }
+            match self.port {
+                Some(ref port) => try!(write!(f.buf, "{}:{}", self.host,
+                                                *port)),
+                None => try!(write!(f.buf, "{}", self.host)),
+            }
         }
-    };
 
-    let query = if url.query.is_empty() {
-        ~""
-    } else {
-        format!("?{}", query_to_str(&url.query))
-    };
+        try!(write!(f.buf, "{}", self.path));
 
-    let fragment = match url.fragment {
-        Some(ref fragment) => format!("\\#{}", encode_component(*fragment)),
-        None => ~"",
-    };
+        if !self.query.is_empty() {
+            try!(write!(f.buf, "?{}", query_to_str(&self.query)));
+        }
 
-    format!("{}:{}{}{}{}", url.scheme, authority, url.path, query, fragment)
-}
-
-pub fn path_to_str(path: &Path) -> ~str {
-    let query = if path.query.is_empty() {
-        ~""
-    } else {
-        format!("?{}", query_to_str(&path.query))
-    };
-
-    let fragment = match path.fragment {
-        Some(ref fragment) => format!("\\#{}", encode_component(*fragment)),
-        None => ~"",
-    };
-
-    format!("{}{}{}", path.path, query, fragment)
-}
-
-impl ToStr for Url {
-    fn to_str(&self) -> ~str {
-        to_str(self)
+        match self.fragment {
+            Some(ref fragment) => write!(f.buf, "\\#{}",
+                                         encode_component(*fragment)),
+            None => Ok(()),
+        }
     }
 }
 
-impl ToStr for Path {
-    fn to_str(&self) -> ~str {
-        path_to_str(self)
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}", self.path));
+        if !self.query.is_empty() {
+            try!(write!(f.buf, "?{}", self.query))
+        }
+
+        match self.fragment {
+            Some(ref fragment) => {
+                write!(f.buf, "\\#{}", encode_component(*fragment))
+            }
+            None => Ok(())
+        }
     }
 }
 

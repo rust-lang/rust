@@ -42,16 +42,13 @@ use clone::Clone;
 use clone::DeepClone;
 use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
-use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
 use mem;
-use str::OwnedStr;
-use to_str::ToStr;
 use vec;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
+#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
     None,
@@ -379,16 +376,6 @@ impl<T: Default> Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
-
-impl<T: fmt::Show> fmt::Show for Option<T> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Some(ref t) => write!(f.buf, "Some({})", *t),
-            None        => write!(f.buf, "None")
-        }
-    }
-}
 
 impl<T> Default for Option<T> {
     #[inline]

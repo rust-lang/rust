@@ -24,7 +24,6 @@ use cast::transmute;
 use fmt;
 use option::{Option, Some, None};
 use result::{Result, Ok, Err};
-use to_str::ToStr;
 use intrinsics::TypeId;
 use intrinsics;
 
@@ -150,14 +149,6 @@ impl AnyOwnExt for ~Any {
 ///////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 ///////////////////////////////////////////////////////////////////////////////
-
-impl ToStr for ~Any {
-    fn to_str(&self) -> ~str { ~"~Any" }
-}
-
-impl<'a> ToStr for &'a Any {
-    fn to_str(&self) -> ~str { ~"&Any" }
-}
 
 impl fmt::Show for ~Any {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

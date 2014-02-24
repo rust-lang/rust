@@ -188,7 +188,6 @@ use path::Path;
 use result::{Ok, Err, Result};
 use str::{StrSlice, OwnedStr};
 use str;
-use to_str::ToStr;
 use uint;
 use unstable::finally::try_finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
@@ -286,21 +285,7 @@ impl fmt::Show for IoError {
     }
 }
 
-// FIXME: #8242 implementing manually because deriving doesn't work for some reason
-impl ToStr for IoError {
-    fn to_str(&self) -> ~str {
-        let mut s = ~"IoError { kind: ";
-        s.push_str(self.kind.to_str());
-        s.push_str(", desc: ");
-        s.push_str(self.desc);
-        s.push_str(", detail: ");
-        s.push_str(self.detail.to_str());
-        s.push_str(" }");
-        s
-    }
-}
-
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, Show)]
 pub enum IoErrorKind {
     OtherIoError,
     EndOfFile,
@@ -319,31 +304,6 @@ pub enum IoErrorKind {
     ResourceUnavailable,
     IoUnavailable,
     InvalidInput,
-}
-
-// FIXME: #8242 implementing manually because deriving doesn't work for some reason
-impl ToStr for IoErrorKind {
-    fn to_str(&self) -> ~str {
-        match *self {
-            OtherIoError => ~"OtherIoError",
-            EndOfFile => ~"EndOfFile",
-            FileNotFound => ~"FileNotFound",
-            PermissionDenied => ~"PermissionDenied",
-            ConnectionFailed => ~"ConnectionFailed",
-            Closed => ~"Closed",
-            ConnectionRefused => ~"ConnectionRefused",
-            ConnectionReset => ~"ConnectionReset",
-            NotConnected => ~"NotConnected",
-            BrokenPipe => ~"BrokenPipe",
-            PathAlreadyExists => ~"PathAlreadyExists",
-            PathDoesntExist => ~"PathDoesntExist",
-            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
-            IoUnavailable => ~"IoUnavailable",
-            ResourceUnavailable => ~"ResourceUnavailable",
-            ConnectionAborted => ~"ConnectionAborted",
-            InvalidInput => ~"InvalidInput",
-        }
-    }
 }
 
 pub trait Reader {
