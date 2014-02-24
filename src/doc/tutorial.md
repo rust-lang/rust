@@ -1026,7 +1026,7 @@ type was invalid because the size was infinite!
 
 An *owned box* (`~`) uses a dynamic memory allocation to provide the invariant
 of always being the size of a pointer, regardless of the contained type. This
-can be leverage to create a valid `List` definition:
+can be leveraged to create a valid `List` definition:
 
 ~~~
 enum List {
