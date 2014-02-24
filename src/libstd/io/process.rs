@@ -814,7 +814,10 @@ mod tests {
     }
     #[cfg(windows)]
     pub fn sleeper() -> Process {
-        Process::new("timeout", [~"1000"]).unwrap()
+        // There's a `timeout` command on windows, but it doesn't like having
+        // its output piped, so instead just ping ourselves a few times with
+        // gaps inbetweeen so we're sure this process is alive for awhile
+        Process::new("ping", [~"127.0.0.1", ~"-n", ~"1000"]).unwrap()
     }
 
     iotest!(fn test_kill() {
@@ -828,5 +831,5 @@ mod tests {
         assert!(Process::kill(p.id(), 0).is_ok());
         p.signal_kill().unwrap();
         assert!(!p.wait().success());
-    } #[ignore(cfg(windows))]) // FIXME(#12516)
+    })
 }
