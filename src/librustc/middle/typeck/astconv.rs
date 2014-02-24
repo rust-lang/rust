@@ -51,7 +51,6 @@
 
 
 use middle::const_eval;
-use middle::lint;
 use middle::subst::Subst;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
@@ -219,11 +218,12 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                 expected, formal_ty_param_count, supplied_ty_param_count));
     }
 
-    if supplied_ty_param_count > required_ty_param_count {
-        let id = path.segments.iter().flat_map(|s| s.types.iter())
-                              .nth(required_ty_param_count).unwrap().id;
-        this.tcx().sess.add_lint(lint::DefaultTypeParamUsage, id, path.span,
-                                 ~"provided type arguments with defaults");
+    if supplied_ty_param_count > required_ty_param_count
+        && !this.tcx().sess.features.default_type_params.get() {
+        this.tcx().sess.span_err(path.span, "default type parameters are \
+                                             experimental and possibly buggy");
+        this.tcx().sess.span_note(path.span, "add #[feature(default_type_params)] \
+                                              to the crate attributes to enable");
     }
 
     let tps = path.segments.iter().flat_map(|s| s.types.iter())
