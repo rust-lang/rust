@@ -35,7 +35,9 @@
  * if necessary.
  */
 
+use std::cast;
 use std::ptr;
+use std::raw;
 
 /**
  * The type representing a foreign chunk of memory
@@ -108,6 +110,20 @@ impl <T> CVec<T> {
             base: base,
             len: len,
             rsrc: DtorRes::new(Some(dtor))
+        }
+    }
+
+    /// View the stored data as a slice.
+    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+        unsafe {
+            cast::transmute(raw::Slice { data: self.base as *T, len: self.len })
+        }
+    }
+
+    /// View the stored data as a mutable slice.
+    pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+        unsafe {
+            cast::transmute(raw::Slice { data: self.base as *T, len: self.len })
         }
     }
 

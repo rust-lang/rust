@@ -352,10 +352,8 @@ impl Float for f64 {
         static EXP_MASK: u64 = 0x7ff0000000000000;
         static MAN_MASK: u64 = 0x000fffffffffffff;
 
-        match (
-            unsafe { ::cast::transmute::<f64,u64>(*self) } & MAN_MASK,
-            unsafe { ::cast::transmute::<f64,u64>(*self) } & EXP_MASK,
-        ) {
+        let bits: u64 = unsafe {::cast::transmute(*self)};
+        match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0)        => FPZero,
             (_, 0)        => FPSubnormal,
             (0, EXP_MASK) => FPInfinite,

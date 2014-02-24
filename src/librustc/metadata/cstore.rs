@@ -18,6 +18,7 @@ use metadata::loader;
 
 use std::cell::RefCell;
 use collections::HashMap;
+use extra::c_vec::CVec;
 use syntax::ast;
 use syntax::parse::token::IdentInterner;
 
@@ -28,7 +29,7 @@ use syntax::parse::token::IdentInterner;
 pub type cnum_map = @RefCell<HashMap<ast::CrateNum, ast::CrateNum>>;
 
 pub enum MetadataBlob {
-    MetadataVec(~[u8]),
+    MetadataVec(CVec<u8>),
     MetadataArchive(loader::ArchiveMetadata),
 }
 
