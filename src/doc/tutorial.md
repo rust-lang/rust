@@ -1420,8 +1420,8 @@ bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use references to do this:
 
 ~~~
+use std::num::sqrt;
 # struct Point { x: f64, y: f64 }
-# fn sqrt(f: f64) -> f64 { 0.0 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
