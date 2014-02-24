@@ -13,10 +13,8 @@
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
-extern crate extra;
 extern crate serialize;
-use extra::json;
-use serialize::Decodable;
+use serialize::{json, Decodable};
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();

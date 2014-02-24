@@ -19,8 +19,6 @@ use std::iter::{Rev, RandomAccessIterator};
 
 use deque::Deque;
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
 static INITIAL_CAPACITY: uint = 8u; // 2^3
 static MINIMUM_CAPACITY: uint = 2u;
 
@@ -401,31 +399,6 @@ impl<A> Extendable<A> for RingBuf<A> {
         for elt in *iterator {
             self.push_back(elt);
         }
-    }
-}
-
-impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for RingBuf<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-            }
-        })
-    }
-}
-
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
-    fn decode(d: &mut D) -> RingBuf<T> {
-        let mut deque = RingBuf::new();
-        d.read_seq(|d, len| {
-            for i in range(0u, len) {
-                deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-        });
-        deque
     }
 }
 
