@@ -11,9 +11,9 @@
 use ast::{P, Block, Crate, DeclLocal, ExprMac};
 use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
-use ast::{TokenTree};
+use ast::TokenTree;
 use ast;
-use ast_util::{new_rename, new_mark};
+use ext::mtwt;
 use ext::build::AstBuilder;
 use attr;
 use attr::AttrMetaMethods;
@@ -140,9 +140,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             // Expand any interior macros etc.
             // NB: we don't fold pats yet. Curious.
             let src_expr = fld.fold_expr(src_expr).clone();
-            // Rename label before expansion.
-            let (opt_ident, src_loop_block) = rename_loop_label(opt_ident, src_loop_block, fld);
-            let src_loop_block = fld.fold_block(src_loop_block);
+            let (src_loop_block, opt_ident) = expand_loop_block(src_loop_block, opt_ident, fld);
 
             let span = e.span;
 
@@ -205,9 +203,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
         }
 
         ast::ExprLoop(loop_block, opt_ident) => {
-            let (opt_ident, loop_block) =
-                rename_loop_label(opt_ident, loop_block, fld);
-            let loop_block = fld.fold_block(loop_block);
+            let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
             fld.cx.expr(e.span, ast::ExprLoop(loop_block, opt_ident))
         }
 
@@ -215,22 +211,38 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     }
 }
 
-// Rename loop label and its all occurrences inside the loop body
-fn rename_loop_label(opt_ident: Option<Ident>,
-                     loop_block: P<Block>,
-                     fld: &mut MacroExpander) -> (Option<Ident>, P<Block>) {
+// Rename loop label and expand its loop body
+//
+// The renaming procedure for loop is different in the sense that the loop
+// body is in a block enclosed by loop head so the renaming of loop label
+// must be propagated to the enclosed context.
+fn expand_loop_block(loop_block: P<Block>,
+                     opt_ident: Option<Ident>,
+                     fld: &mut MacroExpander) -> (P<Block>, Option<Ident>) {
     match opt_ident {
         Some(label) => {
-            // Generate fresh label and add to the existing pending renames
             let new_label = fresh_name(&label);
             let rename = (label, new_label);
+
+            // The rename *must not* be added to the pending list of current
+            // syntax context otherwise an unrelated `break` or `continue` in
+            // the same context will pick that up in the deferred renaming pass
+            // and be renamed incorrectly.
+            let mut rename_list = vec!(rename);
+            let mut rename_fld = renames_to_fold(&mut rename_list);
+            let renamed_ident = rename_fld.fold_ident(label);
+
+            // The rename *must* be added to the enclosed syntax context for
+            // `break` or `continue` to pick up because by definition they are
+            // in a block enclosed by loop head.
+            fld.extsbox.push_frame();
             fld.extsbox.info().pending_renames.push(rename);
-            let mut pending_renames = vec!(rename);
-            let mut rename_fld = renames_to_fold(&mut pending_renames);
-            (Some(rename_fld.fold_ident(label)),
-             rename_fld.fold_block(loop_block))
+            let expanded_block = expand_block_elts(loop_block, fld);
+            fld.extsbox.pop_frame();
+
+            (expanded_block, Some(renamed_ident))
         }
-        None => (None, loop_block)
+        None => (fld.fold_block(loop_block), opt_ident)
     }
 }
 
@@ -628,9 +640,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                         rename_fld.fold_pat(expanded_pat)
                     };
                     // add them to the existing pending renames:
-                    for pr in new_pending_renames.iter() {
-                        fld.extsbox.info().pending_renames.push(*pr)
-                    }
+                    fld.extsbox.info().pending_renames.push_all_move(new_pending_renames);
                     // also, don't forget to expand the init:
                     let new_init_opt = init.map(|e| fld.fold_expr(e));
                     let rewritten_local =
@@ -754,11 +764,11 @@ pub struct IdentRenamer<'a> {
 }
 
 impl<'a> Folder for IdentRenamer<'a> {
-    fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
+    fn fold_ident(&mut self, id: Ident) -> Ident {
         let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
-            new_rename(from, to, ctxt)
+            mtwt::new_rename(from, to, ctxt)
         });
-        ast::Ident {
+        Ident {
             name: id.name,
             ctxt: new_ctxt,
         }
@@ -839,10 +849,10 @@ pub fn expand_crate(parse_sess: @parse::ParseSess,
 struct Marker { mark: Mrk }
 
 impl Folder for Marker {
-    fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
+    fn fold_ident(&mut self, id: Ident) -> Ident {
         ast::Ident {
             name: id.name,
-            ctxt: new_mark(self.mark, id.ctxt)
+            ctxt: mtwt::new_mark(self.mark, id.ctxt)
         }
     }
     fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
@@ -850,7 +860,7 @@ impl Folder for Marker {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
                            fold_tts(tts.as_slice(), self),
-                           new_mark(self.mark, ctxt))
+                           mtwt::new_mark(self.mark, ctxt))
             }
         };
         Spanned {
@@ -906,11 +916,10 @@ mod test {
     use super::*;
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord};
-    use ast_util::{get_sctable, mtwt_marksof, mtwt_resolve};
-    use ast_util;
     use codemap;
     use codemap::Spanned;
     use ext::base::{CrateLoader, MacroCrate};
+    use ext::mtwt;
     use parse;
     use parse::token;
     use util::parser_testing::{string_to_crate_and_sess};
@@ -1139,8 +1148,8 @@ mod test {
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
-            let binding_name = mtwt_resolve(*bindings.get(binding_idx));
-            let binding_marks = mtwt_marksof(bindings.get(binding_idx).ctxt,invalid_name);
+            let binding_name = mtwt::resolve(*bindings.get(binding_idx));
+            let binding_marks = mtwt::marksof(bindings.get(binding_idx).ctxt, invalid_name);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
@@ -1149,19 +1158,19 @@ mod test {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt_resolve(varref.segments
-                                                         .get(0)
-                                                         .identifier);
-                    let varref_marks = mtwt_marksof(varref.segments
+                    let varref_name = mtwt::resolve(varref.segments
                                                           .get(0)
-                                                          .identifier
-                                                          .ctxt,
-                                                    invalid_name);
+                                                          .identifier);
+                    let varref_marks = mtwt::marksof(varref.segments
+                                                           .get(0)
+                                                           .identifier
+                                                           .ctxt,
+                                                     invalid_name);
                     if !(varref_name==binding_name) {
                         println!("uh oh, should match but doesn't:");
                         println!("varref: {:?}",varref);
                         println!("binding: {:?}", *bindings.get(binding_idx));
-                        ast_util::display_sctable(get_sctable());
+                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert_eq!(varref_name,binding_name);
                     if bound_ident_check {
@@ -1171,8 +1180,8 @@ mod test {
                     }
                 } else {
                     let fail = (varref.segments.len() == 1)
-                        && (mtwt_resolve(varref.segments.get(0).identifier) ==
-                                         binding_name);
+                        && (mtwt::resolve(varref.segments.get(0).identifier)
+                            == binding_name);
                     // temp debugging:
                     if fail {
                         println!("failure on test {}",test_idx);
@@ -1188,7 +1197,7 @@ mod test {
                                  varref.segments.get(0).identifier.name,
                                  string.get());
                         println!("binding: {:?}", *bindings.get(binding_idx));
-                        ast_util::display_sctable(get_sctable());
+                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
                     }
                     assert!(!fail);
                 }
@@ -1218,7 +1227,7 @@ foo_module!()
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")
         };
-        let resolved_binding = mtwt_resolve(*cxbind);
+        let resolved_binding = mtwt::resolve(*cxbind);
         // find all the xx varrefs:
         let mut path_finder = new_path_finder(Vec::new());
         visit::walk_crate(&mut path_finder, &cr, ());
@@ -1229,26 +1238,17 @@ foo_module!()
             p.segments.len() == 1
             && "xx" == token::get_ident(p.segments.get(0).identifier).get()
         }).enumerate() {
-            if mtwt_resolve(v.segments.get(0).identifier) !=
-                    resolved_binding {
+            if mtwt::resolve(v.segments.get(0).identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
                 println!("resolves to: {:?}",resolved_binding);
                 println!("varref: {:?}",v.segments.get(0).identifier);
                 println!("resolves to: {:?}",
-                         mtwt_resolve(v.segments.get(0).identifier));
-                let table = get_sctable();
-                println!("SC table:");
-
-                {
-                    let table = table.table.borrow();
-                    for (idx,val) in table.get().iter().enumerate() {
-                        println!("{:4u}: {:?}",idx,val);
-                    }
-                }
+                         mtwt::resolve(v.segments.get(0).identifier));
+                mtwt::with_sctable(|x| mtwt::display_sctable(x));
             }
-            assert_eq!(mtwt_resolve(v.segments.get(0).identifier),
+            assert_eq!(mtwt::resolve(v.segments.get(0).identifier),
                        resolved_binding);
         };
     }
