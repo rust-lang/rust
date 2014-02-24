@@ -149,7 +149,6 @@ pub mod container;
 pub mod default;
 pub mod any;
 
-
 /* Common data structures */
 
 pub mod option;

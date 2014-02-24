@@ -97,7 +97,7 @@ fn resize_at(capacity: uint) -> uint {
     (capacity * 3) / 4
 }
 
-impl<K:Hash + Eq,V> HashMap<K, V> {
+impl<K:Hash + Eq, V> HashMap<K, V> {
     #[inline]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the

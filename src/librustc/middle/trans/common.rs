@@ -722,7 +722,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving(Eq,Hash)]
+#[deriving(Eq, Hash)]
 pub enum mono_param_id {
     mono_precise(ty::t, Option<@~[mono_id]>),
     mono_any,
@@ -732,7 +732,7 @@ pub enum mono_param_id {
               datum::RvalueMode),
 }
 
-#[deriving(Eq,Hash)]
+#[deriving(Eq, Hash)]
 pub enum MonoDataClass {
     MonoBits,    // Anything not treated differently from arbitrary integer data
     MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
@@ -754,8 +754,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     }
 }
 
-
-#[deriving(Eq,Hash)]
+#[deriving(Eq, Hash)]
 pub struct mono_id_ {
     def: ast::DefId,
     params: ~[mono_param_id]
