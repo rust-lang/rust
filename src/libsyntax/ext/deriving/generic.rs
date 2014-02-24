@@ -59,7 +59,7 @@ associated with. It is only not `None` when the associated field has
 an identifier in the source code. For example, the `x`s in the
 following snippet
 
-~~~ignore
+~~~notrust
 struct A { x : int }
 
 struct B(int);
@@ -83,7 +83,7 @@ variants, it is represented as a count of 0.
 
 The following simplified `Eq` is used for in-code examples:
 
-~~~ignore
+~~~notrust
 trait Eq {
     fn eq(&self, other: &Self);
 }
@@ -101,7 +101,7 @@ above `Eq`, `A`, `B` and `C`.
 
 When generating the `expr` for the `A` impl, the `SubstructureFields` is
 
-~~~ignore
+~~~notrust
 Struct(~[FieldInfo {
            span: <span of x>
            name: Some(<ident of x>),
@@ -112,7 +112,7 @@ Struct(~[FieldInfo {
 
 For the `B` impl, called with `B(a)` and `B(b)`,
 
-~~~ignore
+~~~notrust
 Struct(~[FieldInfo {
           span: <span of `int`>,
           name: None,
@@ -126,7 +126,7 @@ Struct(~[FieldInfo {
 When generating the `expr` for a call with `self == C0(a)` and `other
 == C0(b)`, the SubstructureFields is
 
-~~~ignore
+~~~notrust
 EnumMatching(0, <ast::Variant for C0>,
              ~[FieldInfo {
                 span: <span of int>
@@ -138,7 +138,7 @@ EnumMatching(0, <ast::Variant for C0>,
 
 For `C1 {x}` and `C1 {x}`,
 
-~~~ignore
+~~~notrust
 EnumMatching(1, <ast::Variant for C1>,
              ~[FieldInfo {
                 span: <span of x>
@@ -150,7 +150,7 @@ EnumMatching(1, <ast::Variant for C1>,
 
 For `C0(a)` and `C1 {x}` ,
 
-~~~ignore
+~~~notrust
 EnumNonMatching(~[(0, <ast::Variant for B0>,
                    ~[(<span of int>, None, <expr for &a>)]),
                   (1, <ast::Variant for B1>,
@@ -164,7 +164,7 @@ EnumNonMatching(~[(0, <ast::Variant for B0>,
 
 A static method on the above would result in,
 
-~~~~ignore
+~~~~notrust
 StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
 
 StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
@@ -625,7 +625,7 @@ impl<'a> MethodDef<'a> {
     }
 
     /**
-   ~~~ignore
+   ~~~
     #[deriving(Eq)]
     struct A { x: int, y: int }
 
@@ -725,7 +725,7 @@ impl<'a> MethodDef<'a> {
     }
 
     /**
-   ~~~ignore
+   ~~~
     #[deriving(Eq)]
     enum A {
         A1
@@ -768,7 +768,7 @@ impl<'a> MethodDef<'a> {
     /**
     Creates the nested matches for an enum definition recursively, i.e.
 
-   ~~~ignore
+   ~~~notrust
     match self {
        Variant1 => match other { Variant1 => matching, Variant2 => nonmatching, ... },
        Variant2 => match other { Variant1 => nonmatching, Variant2 => matching, ... },
@@ -1172,7 +1172,7 @@ pub fn cs_fold(use_foldl: bool,
 Call the method that is being derived on all the fields, and then
 process the collected results. i.e.
 
-~~~ignore
+~~~
 f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
               self_2.method(__arg_1_2, __arg_2_2)])
 ~~~
