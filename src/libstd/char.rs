@@ -69,6 +69,7 @@ static TAG_FOUR_B: uint = 240u;
 pub static MAX: char = '\U0010ffff';
 
 /// Convert from `u32` to a character.
+#[inline]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
