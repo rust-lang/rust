@@ -79,48 +79,26 @@ pub fn def_id_of_def(d: Def) -> DefId {
     }
 }
 
-pub fn binop_to_str(op: BinOp) -> ~str {
+pub fn binop_to_str(op: BinOp) -> &'static str {
     match op {
-      BiAdd => return ~"+",
-      BiSub => return ~"-",
-      BiMul => return ~"*",
-      BiDiv => return ~"/",
-      BiRem => return ~"%",
-      BiAnd => return ~"&&",
-      BiOr => return ~"||",
-      BiBitXor => return ~"^",
-      BiBitAnd => return ~"&",
-      BiBitOr => return ~"|",
-      BiShl => return ~"<<",
-      BiShr => return ~">>",
-      BiEq => return ~"==",
-      BiLt => return ~"<",
-      BiLe => return ~"<=",
-      BiNe => return ~"!=",
-      BiGe => return ~">=",
-      BiGt => return ~">"
-    }
-}
-
-pub fn binop_to_method_name(op: BinOp) -> Option<~str> {
-    match op {
-      BiAdd => return Some(~"add"),
-      BiSub => return Some(~"sub"),
-      BiMul => return Some(~"mul"),
-      BiDiv => return Some(~"div"),
-      BiRem => return Some(~"rem"),
-      BiBitXor => return Some(~"bitxor"),
-      BiBitAnd => return Some(~"bitand"),
-      BiBitOr => return Some(~"bitor"),
-      BiShl => return Some(~"shl"),
-      BiShr => return Some(~"shr"),
-      BiLt => return Some(~"lt"),
-      BiLe => return Some(~"le"),
-      BiGe => return Some(~"ge"),
-      BiGt => return Some(~"gt"),
-      BiEq => return Some(~"eq"),
-      BiNe => return Some(~"ne"),
-      BiAnd | BiOr => return None
+        BiAdd => "+",
+        BiSub => "-",
+        BiMul => "*",
+        BiDiv => "/",
+        BiRem => "%",
+        BiAnd => "&&",
+        BiOr => "||",
+        BiBitXor => "^",
+        BiBitAnd => "&",
+        BiBitOr => "|",
+        BiShl => "<<",
+        BiShr => ">>",
+        BiEq => "==",
+        BiLt => "<",
+        BiLe => "<=",
+        BiNe => "!=",
+        BiGe => ">=",
+        BiGt => ">"
     }
 }
 
