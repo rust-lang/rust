@@ -146,9 +146,9 @@ pub enum SyntaxExtension {
 
 pub struct BlockInfo {
     // should macros escape from this scope?
-    macros_escape : bool,
+    macros_escape: bool,
     // what are the pending renames?
-    pending_renames : RenameList,
+    pending_renames: RenameList,
 }
 
 impl BlockInfo {
@@ -161,7 +161,7 @@ impl BlockInfo {
 }
 
 // a list of ident->name renamings
-pub type RenameList = Vec<(ast::Ident,Name)> ;
+pub type RenameList = Vec<(ast::Ident, Name)>;
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
