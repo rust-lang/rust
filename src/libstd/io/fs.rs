@@ -1106,9 +1106,8 @@ mod test {
         file.fsync().unwrap();
         file.datasync().unwrap();
         drop(file);
-    })
+    } #[ignore(cfg(windows))])
 
-    #[ignore(cfg(windows))] // FIXME(#11638)
     iotest!(fn truncate_works() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
@@ -1138,7 +1137,7 @@ mod test {
         assert_eq!(File::open(&path).read_to_end().unwrap(),
                    (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
         drop(file);
-    })
+    } #[ignore(cfg(windows))]) // FIXME(#11638)
 
     iotest!(fn open_flavors() {
         let tmpdir = tmpdir();
