@@ -123,7 +123,7 @@ impl QueuePool {
         unsafe {
             assert_eq!(uvll::uv_async_init(loop_.handle, handle, async_cb), 0);
             uvll::uv_unref(handle);
-            let data: *c_void = *cast::transmute::<&~QueuePool, &*c_void>(&q);
+            let data = &*q as *QueuePool as *c_void;
             uvll::set_data_for_uv_handle(handle, data);
         }
 

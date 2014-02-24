@@ -2569,7 +2569,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let compressed = encoder::metadata_encoding_version +
-                        flate::deflate_bytes(metadata);
+                        flate::deflate_bytes(metadata).as_slice();
     let llmeta = C_bytes(compressed);
     let llconst = C_struct([llmeta], false);
     let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,

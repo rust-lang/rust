@@ -167,13 +167,12 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 // is necessary in order to properly do cleanup if a failure occurs
 // during an initializer.
 #[inline]
-unsafe fn bitpack_tydesc_ptr(p: *TyDesc, is_done: bool) -> uint {
-    let p_bits: uint = transmute(p);
-    p_bits | (is_done as uint)
+fn bitpack_tydesc_ptr(p: *TyDesc, is_done: bool) -> uint {
+    p as uint | (is_done as uint)
 }
 #[inline]
-unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TyDesc, bool) {
-    (transmute(p & !1), p & 1 == 1)
+fn un_bitpack_tydesc_ptr(p: uint) -> (*TyDesc, bool) {
+    ((p & !1) as *TyDesc, p & 1 == 1)
 }
 
 impl Arena {

@@ -14,7 +14,7 @@ use std::cast;
 use std::io::IoError;
 use std::libc;
 use std::libc::{c_char, c_int};
-use std::ptr::null;
+use std::ptr::{null, mut_null};
 
 use super::net::sockaddr_to_addr;
 
@@ -42,13 +42,13 @@ impl GetAddrInfoRequest {
         });
 
         let hint_ptr = hint.as_ref().map_or(null(), |x| x as *libc::addrinfo);
-        let res = null();
+        let mut res = mut_null();
 
         // Make the call
         let s = unsafe {
             let ch = if c_host.is_null() { null() } else { c_host.with_ref(|x| x) };
             let cs = if c_serv.is_null() { null() } else { c_serv.with_ref(|x| x) };
-            getaddrinfo(ch, cs, hint_ptr, &res)
+            getaddrinfo(ch, cs, hint_ptr, &mut res)
         };
 
         // Error?
@@ -74,7 +74,7 @@ impl GetAddrInfoRequest {
                     flags: (*rp).ai_flags as uint
                 });
 
-                rp = (*rp).ai_next;
+                rp = (*rp).ai_next as *mut libc::addrinfo;
             }
         }
 
@@ -86,8 +86,8 @@ impl GetAddrInfoRequest {
 
 extern "system" {
     fn getaddrinfo(node: *c_char, service: *c_char,
-                   hints: *libc::addrinfo, res: **libc::addrinfo) -> c_int;
-    fn freeaddrinfo(res: *libc::addrinfo);
+                   hints: *libc::addrinfo, res: *mut *mut libc::addrinfo) -> c_int;
+    fn freeaddrinfo(res: *mut libc::addrinfo);
     #[cfg(not(windows))]
     fn gai_strerror(errcode: c_int) -> *c_char;
     #[cfg(windows)]

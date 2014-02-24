@@ -161,9 +161,7 @@ pub mod reader {
         ];
 
         unsafe {
-            let (ptr, _): (*u8, uint) = transmute(data);
-            let ptr = ptr.offset(start as int);
-            let ptr: *i32 = transmute(ptr);
+            let ptr = data.as_ptr().offset(start as int) as *i32;
             let val = from_be32(*ptr) as u32;
 
             let i = (val >> 28u) as uint;

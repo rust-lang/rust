@@ -266,7 +266,7 @@ impl GreenTask {
     // context switches
 
     pub fn as_uint(&self) -> uint {
-        unsafe { cast::transmute(self) }
+        self as *GreenTask as uint
     }
 
     pub unsafe fn from_uint(val: uint) -> ~GreenTask { cast::transmute(val) }

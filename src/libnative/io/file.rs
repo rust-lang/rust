@@ -91,7 +91,7 @@ impl FileDesc {
         #[cfg(not(windows))] type rlen = libc::size_t;
         let ret = retry(|| unsafe {
             libc::read(self.fd(),
-                       buf.as_ptr() as *mut libc::c_void,
+                       buf.as_mut_ptr() as *mut libc::c_void,
                        buf.len() as rlen) as libc::c_int
         });
         if ret == 0 {
