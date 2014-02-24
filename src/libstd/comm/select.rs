@@ -58,22 +58,6 @@ use rt::task::{Task, BlockedTask};
 use super::Port;
 use uint;
 
-macro_rules! select {
-    (
-        $($name:pat = $port:ident.$meth:ident() => $code:expr),+
-    ) => ({
-        use std::comm::Select;
-        let sel = Select::new();
-        $( let mut $port = sel.handle(&$port); )+
-        unsafe {
-            $( $port.add(); )+
-        }
-        let ret = sel.wait();
-        $( if ret == $port.id() { let $name = $port.$meth(); $code } else )+
-        { unreachable!() }
-    })
-}
-
 /// The "port set" of the select interface. This structure is used to manage a
 /// set of ports which are being selected over.
 pub struct Select {
