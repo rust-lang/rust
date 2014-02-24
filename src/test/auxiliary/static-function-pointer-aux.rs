@@ -12,5 +12,5 @@
 
 pub fn f(x: int) -> int { -x }
 
-pub static F: extern fn(int) -> int = f;
-pub static mut MutF: extern fn(int) -> int = f;
+pub static F: fn(int) -> int = f;
+pub static mut MutF: fn(int) -> int = f;

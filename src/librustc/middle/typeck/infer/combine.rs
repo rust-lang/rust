@@ -500,6 +500,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl, a_bounds),
        &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl, b_bounds))
       if a_id == b_id && a_mutbl == b_mutbl => {
+          debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = if_ok!(this.substs(a_id, a_substs, b_substs));
           let s = if_ok!(this.trait_stores(ty::terr_trait, a_store, b_store));
           let bounds = if_ok!(this.bounds(a_bounds, b_bounds));

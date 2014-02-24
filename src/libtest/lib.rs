@@ -106,8 +106,8 @@ pub trait TDynBenchFn {
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
 pub enum TestFn {
-    StaticTestFn(extern fn()),
-    StaticBenchFn(extern fn(&mut BenchHarness)),
+    StaticTestFn(fn()),
+    StaticBenchFn(fn(&mut BenchHarness)),
     StaticMetricFn(proc(&mut MetricMap)),
     DynTestFn(proc()),
     DynMetricFn(proc(&mut MetricMap)),
