@@ -151,6 +151,8 @@ fn fold_struct(cx: &Context, def: &ast::StructDef) -> @ast::StructDef {
     @ast::StructDef {
         fields: fields.collect(),
         ctor_id: def.ctor_id,
+        super_struct: def.super_struct.clone(),
+        is_virtual: def.is_virtual,
     }
 }
 
