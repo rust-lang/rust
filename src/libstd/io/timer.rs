@@ -15,33 +15,52 @@ Synchronous Timers
 This module exposes the functionality to create timers, block the current task,
 and create ports which will receive notifications after a period of time.
 
-# Example
-
-```rust,ignore
-
-use std::io::Timer;
-
-let mut timer = Timer::new().unwrap();
-timer.sleep(10); // block the task for awhile
-
-let timeout = timer.oneshot(10);
-// do some work
-timeout.recv(); // wait for the timeout to expire
-
-let periodic = timer.periodic(10);
-loop {
-    periodic.recv();
-    // this loop is only executed once every 10ms
-}
-
-```
-
 */
 
 use comm::Port;
 use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 use io::IoResult;
 
+/// A synchronous timer object
+///
+/// Values of this type can be used to put the current task to sleep for a
+/// period of time. Handles to this timer can also be created in the form of
+/// ports which will receive notifications over time.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn foo() {
+/// use std::io::Timer;
+///
+/// let mut timer = Timer::new().unwrap();
+/// timer.sleep(10); // block the task for awhile
+///
+/// let timeout = timer.oneshot(10);
+/// // do some work
+/// timeout.recv(); // wait for the timeout to expire
+///
+/// let periodic = timer.periodic(10);
+/// loop {
+///     periodic.recv();
+///     // this loop is only executed once every 10ms
+/// }
+/// # }
+/// ```
+///
+/// If only sleeping is necessary, then a convenience api is provided through
+/// the `io::timer` module.
+///
+/// ```
+/// # fn main() {}
+/// # fn foo() {
+/// use std::io::timer;
+///
+/// // Put this task to sleep for 5 seconds
+/// timer::sleep(5000);
+/// # }
+/// ```
 pub struct Timer {
     priv obj: ~RtioTimer
 }
