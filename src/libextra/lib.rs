@@ -42,19 +42,9 @@ extern crate time;
 // Utility modules
 pub mod c_vec;
 pub mod url;
-pub mod json;
 pub mod tempfile;
 pub mod workcache;
 pub mod stats;
 
 #[cfg(unicode)]
 mod unicode;
-
-// A curious inner-module that's not exported that contains the binding
-// 'extra' so that macro-expanded references to extra::serialize and such
-// can be resolved within libextra.
-#[doc(hidden)]
-pub mod extra {
-    pub use serialize;
-}
-

@@ -10,8 +10,8 @@
 
 #[allow(missing_doc)];
 
-use json;
-use json::ToJson;
+use serialize::json;
+use serialize::json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sync::{Arc,RWArc};
 use collections::TreeMap;

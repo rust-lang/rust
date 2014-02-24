@@ -29,13 +29,12 @@ extern crate term;
 extern crate time;
 
 use collections::TreeMap;
-use extra::json::ToJson;
-use extra::json;
 use extra::stats::Stats;
 use extra::stats;
 use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
-use serialize::Decodable;
+use serialize::{json, Decodable};
+use serialize::json::ToJson;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 

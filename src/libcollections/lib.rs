@@ -19,7 +19,6 @@
 
 #[feature(macro_rules, managed_boxes)];
 
-extern crate serialize;
 #[cfg(test)] extern crate test;
 
 pub use bitv::Bitv;

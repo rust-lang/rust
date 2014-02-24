@@ -11,11 +11,9 @@
 
 // ignore-fast
 
-extern crate extra;
 extern crate serialize;
 
-use extra::json;
-use serialize::Decodable;
+use serialize::{json, Decodable};
 
 trait JD : Decodable<json::Decoder> { }
 

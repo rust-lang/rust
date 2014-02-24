@@ -283,10 +283,8 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
 
 #[cfg(test)]
 mod test {
-    extern crate extra;
-    use self::extra::json;
     use super::*;
-    use serialize::Encodable;
+    use serialize::{json, Encodable};
     use std::io;
     use std::io::MemWriter;
     use std::str;
