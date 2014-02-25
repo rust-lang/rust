@@ -40,6 +40,14 @@ impl ParserAttr for Parser {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
+                println!("\\# found (outer)")
+                // #[foo(bar)]
+                //  ^ denotes an outer attribute.
+                if self.look_ahead(1, |t| *t != token::LBRACKET) {
+                    println!("LBRACKET not found. Oops.");
+                    break;
+                }
+
                 attrs.push(self.parse_attribute(false));
               }
               token::DOC_COMMENT(s) => {
@@ -67,6 +75,7 @@ impl ParserAttr for Parser {
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
+        let mut inner_attr_bang = false;
         let (span, value) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
@@ -74,23 +83,31 @@ impl ParserAttr for Parser {
                 (attr.span, attr.node.value)
             }
             token::POUND => {
+                println!("\\# found");
                 let lo = self.span.lo;
                 self.bump();
 
-                // #^ lang(foo);
-                if self.eat(&token::BINOP(token::CARET)) {
+                // #![lang(foo)]
+                //  ^
+                if self.eat(&token::NOT) {
+                    inner_attr_bang = true;
+                    println!("new attribute syntax found. Checking context validity.");
                     if !permit_inner {
                         self.fatal("An inner attribute was not permitted in this context.");
                     }
                 }
 
-                let meta_item = if self.eat(&token::LBRACKET) { // #[lang(foo)]
-                    let meta = self.parse_meta_item();
-                    self.expect(&token::RBRACKET);
-                    meta
-                } else { // #lang(foo)
-                    self.parse_meta_item()
-                };
+                // #![lang(foo)]
+                //   ^
+                self.expect(&token::LBRACKET);
+                println!("lbracket found");
+
+                let meta_item = self.parse_meta_item();
+
+                // #![lang(foo)]
+                //             ^
+                self.expect(&token::RBRACKET);
+                println!("rbracket found");
 
                 let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item)
@@ -101,7 +118,13 @@ impl ParserAttr for Parser {
                                    token_str));
             }
         };
-        let style = if permit_inner && self.token == token::SEMI {
+        let style = if inner_attr_bang {
+            println!("new attribute syntax found");
+            // The new attribute syntax doesn't require a `;`, so we don't
+            // need to bump the token.
+            ast::AttrInner
+        } else if permit_inner && self.token == token::SEMI {
+            println!("semicolon found.");
             self.bump();
             ast::AttrInner
         } else {
@@ -137,6 +160,26 @@ impl ParserAttr for Parser {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
+                    let mut backwards_syntax = true;
+                    println!("\\# found (inner)");
+                    // #![foo(bar)]
+                    //  ^ denotes an inner attribute.
+                    // The backwards compatible syntax should not contain
+                    // a NOT(!) token.
+                    if self.look_ahead(1, |t| *t == token::NOT) {
+                        backwards_syntax = false;
+                        if self.look_ahead(2, |t| *t != token::LBRACKET) {
+                            break;
+                        }
+                        println!("found new syntax (!)");
+                    }
+
+                    if self.look_ahead(1, |t| *t != token::LBRACKET) {
+                        if backwards_syntax {
+                            break;
+                        }
+                    }
+
                     self.parse_attribute(true)
                 }
                 token::DOC_COMMENT(s) => {

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-# foo(bar)
+#[foo(bar)]
 mod foo {
-  #^ feature(globs);
+  #![feature(globs)]
 }
 
 fn main() {}
