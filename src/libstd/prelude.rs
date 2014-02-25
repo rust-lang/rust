@@ -37,7 +37,6 @@ pub use mem::drop;
 
 pub use any::{Any, AnyOwnExt, AnyRefExt, AnyMutRefExt};
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, IntoBytes};
-pub use bool::Bool;
 pub use c_str::ToCStr;
 pub use char::Char;
 pub use clone::{Clone, DeepClone};
