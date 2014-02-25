@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test reading from os::args()[1] - bogus!
-
-use std::cast::transmute;
-use std::from_str::FromStr;
-use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
+use std::cmp::min;
+use std::io::{stdout, BufferedWriter, IoResult};
 use std::os;
-use std::uint::min;
 use std::vec::bytes::copy_memory;
 use std::vec;
 
@@ -36,10 +32,6 @@ static ALU: &'static str = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTG\
                             CACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
 static NULL_AMINO_ACID: AminoAcid = AminoAcid { c: ' ' as u8, p: 0.0 };
-
-static MESSAGE_1: &'static str = ">ONE Homo sapiens alu\n";
-static MESSAGE_2: &'static str = ">TWO IUB ambiguity codes\n";
-static MESSAGE_3: &'static str = ">THREE Homo sapiens frequency\n";
 
 static IUB: [AminoAcid, ..15] = [
     AminoAcid { c: 'a' as u8, p: 0.27 },
@@ -85,73 +77,68 @@ struct AminoAcid {
     p: f32,
 }
 
-struct RepeatFasta {
+struct RepeatFasta<'a, W> {
     alu: &'static str,
-    stdout: *FILE,
+    out: &'a mut W
 }
 
-impl RepeatFasta {
-    fn new(stdout: *FILE, alu: &'static str) -> RepeatFasta {
-        RepeatFasta {
-            alu: alu,
-            stdout: stdout,
-        }
+impl<'a, W: Writer> RepeatFasta<'a, W> {
+    fn new(alu: &'static str, w: &'a mut W) -> RepeatFasta<'a, W> {
+        RepeatFasta { alu: alu, out: w }
     }
 
-    fn make(&mut self, n: uint) {
-        unsafe {
-            let stdout = self.stdout;
-            let alu_len = self.alu.len();
-            let mut buf = vec::from_elem(alu_len + LINE_LEN, 0u8);
-            let alu: &[u8] = self.alu.as_bytes();
+    fn make(&mut self, n: uint) -> IoResult<()> {
+        let alu_len = self.alu.len();
+        let mut buf = vec::from_elem(alu_len + LINE_LEN, 0u8);
+        let alu: &[u8] = self.alu.as_bytes();
 
-            copy_memory(buf, alu);
-            let buf_len = buf.len();
-            copy_memory(buf.mut_slice(alu_len, buf_len),
-                        alu.slice_to(LINE_LEN));
+        copy_memory(buf, alu);
+        let buf_len = buf.len();
+        copy_memory(buf.mut_slice(alu_len, buf_len),
+                    alu.slice_to(LINE_LEN));
 
-            let mut pos = 0;
-            let mut bytes;
-            let mut n = n;
-            while n > 0 {
-                bytes = min(LINE_LEN, n);
-                fwrite(transmute(&buf[pos]), bytes as size_t, 1, stdout);
-                fputc('\n' as c_int, stdout);
-                pos += bytes;
-                if pos > alu_len {
-                    pos -= alu_len;
-                }
-                n -= bytes;
+        let mut pos = 0;
+        let mut bytes;
+        let mut n = n;
+        while n > 0 {
+            bytes = min(LINE_LEN, n);
+            try!(self.out.write(buf.slice(pos, pos + bytes)));
+            try!(self.out.write_u8('\n' as u8));
+            pos += bytes;
+            if pos > alu_len {
+                pos -= alu_len;
             }
+            n -= bytes;
         }
+        Ok(())
     }
 }
 
-struct RandomFasta {
-    seed: u32,
-    stdout: *FILE,
-    lookup: [AminoAcid, ..LOOKUP_SIZE],
+fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
+    let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
+    let mut j = 0;
+    for (i, slot) in lookup.mut_iter().enumerate() {
+        while a[j].p < (i as f32) {
+            j += 1;
+        }
+        *slot = a[j];
+    }
+    lookup
 }
 
-impl RandomFasta {
-    fn new(stdout: *FILE, a: &[AminoAcid]) -> RandomFasta {
+struct RandomFasta<'a, W> {
+    seed: u32,
+    lookup: [AminoAcid, ..LOOKUP_SIZE],
+    out: &'a mut W,
+}
+
+impl<'a, W: Writer> RandomFasta<'a, W> {
+    fn new(w: &'a mut W, a: &[AminoAcid]) -> RandomFasta<'a, W> {
         RandomFasta {
             seed: 42,
-            stdout: stdout,
-            lookup: RandomFasta::make_lookup(a),
+            out: w,
+            lookup: make_lookup(a),
         }
-    }
-
-    fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
-        let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
-        let mut j = 0;
-        for (i, slot) in lookup.mut_iter().enumerate() {
-            while a[j].p < (i as f32) {
-                j += 1;
-            }
-            *slot = a[j];
-        }
-        lookup
     }
 
     fn rng(&mut self, max: f32) -> f32 {
@@ -169,51 +156,50 @@ impl RandomFasta {
         0
     }
 
-    fn make(&mut self, n: uint) {
-        unsafe {
-            let lines = n / LINE_LEN;
-            let chars_left = n % LINE_LEN;
-            let mut buf = [0, ..LINE_LEN + 1];
+    fn make(&mut self, n: uint) -> IoResult<()> {
+        let lines = n / LINE_LEN;
+        let chars_left = n % LINE_LEN;
+        let mut buf = [0, ..LINE_LEN + 1];
 
-            for _ in range(0, lines) {
-                for i in range(0u, LINE_LEN) {
-                    buf[i] = self.nextc();
-                }
-                buf[LINE_LEN] = '\n' as u8;
-                fwrite(transmute(&buf[0]),
-                       LINE_LEN as size_t + 1,
-                       1,
-                       self.stdout);
-            }
-            for i in range(0u, chars_left) {
+        for _ in range(0, lines) {
+            for i in range(0u, LINE_LEN) {
                 buf[i] = self.nextc();
             }
-            fwrite(transmute(&buf[0]), chars_left as size_t, 1, self.stdout);
+            buf[LINE_LEN] = '\n' as u8;
+            try!(self.out.write(buf));
         }
+        for i in range(0u, chars_left) {
+            buf[i] = self.nextc();
+        }
+        self.out.write(buf.slice_to(chars_left))
     }
 }
 
 fn main() {
-    let n: uint = FromStr::from_str(os::args()[1]).unwrap();
+    let args = os::args();
+    let n = if args.len() > 1 {
+        from_str::<uint>(args[1]).unwrap()
+    } else {
+        5
+    };
 
-    unsafe {
-        let mode = "w";
-        let stdout = fdopen(STDOUT_FILENO as c_int, transmute(&mode[0]));
+    let mut out = BufferedWriter::new(stdout());
 
-        fputs(transmute(&MESSAGE_1[0]), stdout);
-        let mut repeat = RepeatFasta::new(stdout, ALU);
-        repeat.make(n * 2);
-
-        fputs(transmute(&MESSAGE_2[0]), stdout);
-        let iub = sum_and_scale(IUB);
-        let mut random = RandomFasta::new(stdout, iub);
-        random.make(n * 3);
-
-        fputs(transmute(&MESSAGE_3[0]), stdout);
-        let homo_sapiens = sum_and_scale(HOMO_SAPIENS);
-        random.lookup = RandomFasta::make_lookup(homo_sapiens);
-        random.make(n * 5);
-
-        fputc('\n' as c_int, stdout);
+    out.write_line(">ONE Homo sapiens alu").unwrap();
+    {
+        let mut repeat = RepeatFasta::new(ALU, &mut out);
+        repeat.make(n * 2).unwrap();
     }
+
+    out.write_line(">TWO IUB ambiguity codes").unwrap();
+    let iub = sum_and_scale(IUB);
+    let mut random = RandomFasta::new(&mut out, iub);
+    random.make(n * 3).unwrap();
+
+    random.out.write_line(">THREE Homo sapiens frequency").unwrap();
+    let homo_sapiens = sum_and_scale(HOMO_SAPIENS);
+    random.lookup = make_lookup(homo_sapiens);
+    random.make(n * 5).unwrap();
+
+    random.out.write_str("\n").unwrap();
 }

@@ -8,18 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+use std::task;
 
 static generations: uint = 1024+256+128+49;
 
+fn spawn(f: proc()) {
+    let mut t = task::task();
+    t.opts.stack_size = Some(32 * 1024);
+    t.spawn(f);
+}
+
 fn child_no(x: uint) -> proc() {
-     || {
+    proc() {
         if x < generations {
-            task::spawn(child_no(x+1));
+            spawn(child_no(x+1));
         }
     }
 }
 
 pub fn main() {
-    task::spawn(child_no(0));
+    spawn(child_no(0));
 }

@@ -1394,8 +1394,6 @@ mod test {
         });
     }
 
-    // FIXME: #9407: ignore-test
-    #[ignore]
     #[test]
     fn dont_starve_1() {
         let mut pool = SchedPool::new(PoolConfig {
