@@ -17,11 +17,6 @@ pub enum List<T> {
     Nil,
 }
 
-/// Create a list from a vector
-pub fn from_vec<T:Clone + 'static>(v: &[T]) -> @List<T> {
-    v.rev_iter().fold(@Nil::<T>, |t, h| @Cons((*h).clone(), t))
-}
-
 /**
  * Left fold
  *
@@ -133,6 +128,16 @@ pub fn append<T:Clone + 'static>(list: @List<T>, other: @List<T>) -> @List<T> {
     }
 }
 
+impl<T:'static + Clone> List<T> {
+    /// Create a list from a vector
+    pub fn from_vec(v: &[T]) -> List<T> {
+        match v.len() {
+            0 => Nil,
+            _ => v.rev_iter().fold(Nil, |tail, value: &T| Cons(value.clone(), @tail))
+        }
+    }
+}
+
 /*
 /// Push one element into the front of a list, returning a new list
 /// THIS VERSION DOESN'T ACTUALLY WORK
@@ -171,16 +176,16 @@ pub fn each<T>(list: @List<T>, f: |&T| -> bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use list::{List, Nil, from_vec, head, is_empty, tail};
+    use list::{List, Nil, head, is_empty, tail};
     use list;
 
     use std::option;
 
     #[test]
     fn test_is_empty() {
-        let empty : @list::List<int> = from_vec([]);
-        let full1 = from_vec([1]);
-        let full2 = from_vec(['r', 'u']);
+        let empty : @list::List<int> = @List::from_vec([]);
+        let full1 = @List::from_vec([1]);
+        let full2 = @List::from_vec(['r', 'u']);
 
         assert!(is_empty(empty));
         assert!(!is_empty(full1));
@@ -189,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        let list = from_vec([0, 1, 2]);
+        let list = @List::from_vec([0, 1, 2]);
 
         assert_eq!(head(list), 0);
 
@@ -202,14 +207,14 @@ mod tests {
 
     #[test]
     fn test_from_vec_empty() {
-        let empty : @list::List<int> = from_vec([]);
-        assert_eq!(empty, @list::Nil::<int>);
+        let empty : list::List<int> = List::from_vec([]);
+        assert_eq!(empty, Nil::<int>);
     }
 
     #[test]
     fn test_foldl() {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
-        let list = from_vec([0, 1, 2, 3, 4]);
+        let list = @List::from_vec([0, 1, 2, 3, 4]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::foldl(0u, list, add), 10u);
         assert_eq!(list::foldl(0u, empty, add), 0u);
@@ -220,21 +225,21 @@ mod tests {
         fn sub(a: &int, b: &int) -> int {
             *a - *b
         }
-        let list = from_vec([1, 2, 3, 4]);
+        let list = @List::from_vec([1, 2, 3, 4]);
         assert_eq!(list::foldl(0, list, sub), -10);
     }
 
     #[test]
     fn test_find_success() {
         fn match_(i: &int) -> bool { return *i == 2; }
-        let list = from_vec([0, 1, 2]);
+        let list = @List::from_vec([0, 1, 2]);
         assert_eq!(list::find(list, match_), option::Some(2));
     }
 
     #[test]
     fn test_find_fail() {
         fn match_(_i: &int) -> bool { return false; }
-        let list = from_vec([0, 1, 2]);
+        let list = @List::from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::find(list, match_), option::None::<int>);
         assert_eq!(list::find(empty, match_), option::None::<int>);
@@ -243,7 +248,7 @@ mod tests {
     #[test]
     fn test_any() {
         fn match_(i: &int) -> bool { return *i == 2; }
-        let list = from_vec([0, 1, 2]);
+        let list = @List::from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::any(list, match_), true);
         assert_eq!(list::any(empty, match_), false);
@@ -251,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_has() {
-        let list = from_vec([5, 8, 6]);
+        let list = @List::from_vec([5, 8, 6]);
         let empty = @list::Nil::<int>;
         assert!((list::has(list, 5)));
         assert!((!list::has(list, 7)));
@@ -261,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let list = from_vec([0, 1, 2]);
+        let list = @List::from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::len(list), 3u);
         assert_eq!(list::len(empty), 0u);
@@ -269,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_append() {
-        assert!(from_vec([1,2,3,4])
-            == list::append(list::from_vec([1,2]), list::from_vec([3,4])));
+        assert!(@List::from_vec([1,2,3,4])
+            == list::append(@List::from_vec([1,2]), @List::from_vec([3,4])));
     }
 }
