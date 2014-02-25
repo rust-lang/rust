@@ -144,6 +144,7 @@ impl Default for ReseedWithDefault {
 mod test {
     use prelude::*;
     use super::*;
+    use default::Default;
     use rand::{SeedableRng, Rng};
 
     struct Counter {

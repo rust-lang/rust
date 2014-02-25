@@ -160,16 +160,8 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
             })
         }
         Some(init) => {
-            // Variable declarations with initializers are considered "assigns":
-            let tcx = this.bccx.tcx;
-            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
-                gather_moves::gather_assignment(this.bccx,
-                                                &this.move_data,
-                                                id,
-                                                span,
-                                                @LpVar(id),
-                                                id);
-            });
+            // Variable declarations with initializers are considered "assigns",
+            // which is handled by `gather_pat`:
             let init_cmt = this.bccx.cat_expr(init);
             this.gather_pat(init_cmt, local.pat, None);
         }
@@ -811,6 +803,17 @@ impl<'a> GatherLoanCtxt<'a> {
         self.bccx.cat_pattern(discr_cmt, root_pat, |cmt, pat| {
             match pat.node {
               ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
+                // Each match binding is effectively an assignment.
+                let tcx = self.bccx.tcx;
+                pat_util::pat_bindings(tcx.def_map, pat, |_, id, span, _| {
+                    gather_moves::gather_assignment(self.bccx,
+                                                    &self.move_data,
+                                                    id,
+                                                    span,
+                                                    @LpVar(id),
+                                                    id);
+                });
+
                 match bm {
                   ast::BindByRef(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
