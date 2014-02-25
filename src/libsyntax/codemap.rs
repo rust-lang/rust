@@ -38,7 +38,7 @@ pub struct BytePos(u32);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Eq,Hash, Ord)]
+#[deriving(Eq, Hash, Ord)]
 pub struct CharPos(uint);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix

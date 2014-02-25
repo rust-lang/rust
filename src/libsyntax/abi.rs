@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash::{Hash, sip};
 use std::fmt;
 use std::fmt::Show;
 
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
-#[deriving(Eq)]
+#[deriving(Eq, Hash)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -264,12 +263,6 @@ impl AbiSet {
         }
 
         return None;
-    }
-}
-
-impl Hash for Abi {
-    fn hash(&self, s: &mut sip::SipState) {
-        self.index().hash(s)
     }
 }
 

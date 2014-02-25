@@ -10,8 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
-#[deriving(Clone)]
+use std::hash::hash;
+
+#[deriving(Eq, Clone, Hash)]
 struct Foo {
     bar: uint,
     baz: int
@@ -22,4 +23,5 @@ pub fn main() {
 
     a == a;    // check for Eq impl w/o testing its correctness
     a.clone(); // check for Clone impl w/o testing its correctness
+    hash(&a);  // check for Hash impl w/o testing its correctness
 }

@@ -18,13 +18,12 @@ use str::OwnedStr;
 use container::Container;
 use cast;
 use fmt;
-use hash::{Hash, sip};
 use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
-#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
+#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq, Hash)]
 pub struct Ascii { priv chr: u8 }
 
 impl Ascii {
@@ -303,13 +302,6 @@ impl IntoStr for ~[Ascii] {
     #[inline]
     fn into_str(self) -> ~str {
         unsafe { cast::transmute(self) }
-    }
-}
-
-impl Hash for Ascii {
-    #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.to_byte().hash(s)
     }
 }
 

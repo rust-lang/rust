@@ -75,8 +75,7 @@ impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + Equiv<T>>(&self, val: &Q)
-                                              -> Option<Name> {
+    pub fn find_equiv<Q:Hash + Equiv<T>>(&self, val: &Q) -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
             Some(v) => Some(*v),
@@ -207,8 +206,7 @@ impl StrInterner {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + Equiv<RcStr>>(&self, val: &Q)
-                                                         -> Option<Name> {
+    pub fn find_equiv<Q:Hash + Equiv<RcStr>>(&self, val: &Q) -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
             Some(v) => Some(*v),
