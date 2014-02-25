@@ -39,10 +39,13 @@ before_script:
 # manually disables bringing in these two libraries, but the stock LLVM was
 # apparently built with these options. We provide these options when building so
 # the `rustc` binary can successfully link.
-script:
-  - make tidy
-  - RUSTFLAGS="-C link-args='-lffi -lncurses'" make -j4 rustc-stage1
-  - make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail
+#
+# As a result of https://github.com/travis-ci/travis-ci/issues/1066, we run
+# everything in one large command instead of multiple commands.
+script: |
+  make tidy &&
+  RUSTFLAGS="-C link-args='-lffi -lncurses'" make -j4 rustc-stage1 &&
+  make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail
 
 env:
   - NO_BENCH=1

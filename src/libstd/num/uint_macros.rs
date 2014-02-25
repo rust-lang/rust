@@ -233,6 +233,7 @@ mod tests {
     use num;
     use num::CheckedDiv;
     use num::Bitwise;
+    use num::ToStrRadix;
     use u16;
 
     #[test]

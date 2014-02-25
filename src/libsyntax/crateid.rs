@@ -17,6 +17,9 @@ use std::fmt;
 /// `1.0`. If no crate name is given after the hash, the name is inferred to
 /// be the last component of the path. If no version is given, it is inferred
 /// to be `0.0`.
+
+use std::from_str::FromStr;
+
 #[deriving(Clone, Eq)]
 pub struct CrateId {
     /// A path which represents the codes origin. By convention this is the

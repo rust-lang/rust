@@ -8,26 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
-struct T { f: extern "Rust" fn() };
-struct S { f: extern "Rust" fn() };
-
-fn fooS(t: S) {
-}
-
-fn fooT(t: T) {
-}
-
-fn bar() {
-}
+extern crate foo;
 
 fn main() {
-    let x: extern "Rust" fn() = bar;
-    fooS(S {f: x});
-    fooS(S {f: bar});
-
-    let x: extern "Rust" fn() = bar;
-    fooT(T {f: x});
-    fooT(T {f: bar});
+    foo::bar();
 }

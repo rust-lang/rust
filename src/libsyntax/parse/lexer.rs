@@ -264,8 +264,7 @@ pub fn bump(rdr: &StringReader) {
         }
 
         if byte_offset_diff > 1 {
-            rdr.filemap.record_multibyte_char(
-                Pos::from_uint(current_byte_offset), byte_offset_diff);
+            rdr.filemap.record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
         }
     } else {
         rdr.curr.set(None);
