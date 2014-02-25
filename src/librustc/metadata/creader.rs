@@ -12,6 +12,8 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
+use back::link;
+use back::svh::Svh;
 use driver::{driver, session};
 use driver::session::Session;
 use metadata::csearch;
@@ -78,7 +80,7 @@ impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
 struct cache_entry {
     cnum: ast::CrateNum,
     span: Span,
-    hash: ~str,
+    hash: Svh,
     crate_id: CrateId,
 }
 
@@ -148,7 +150,7 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
 
     match extract_crate_info(e, i) {
         Some(info) => {
-            let cnum = resolve_crate(e, None, info.ident, &info.crate_id, "",
+            let cnum = resolve_crate(e, None, info.ident, &info.crate_id, None,
                                      i.span);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
@@ -276,12 +278,13 @@ fn visit_item(e: &Env, i: &ast::Item) {
 }
 
 fn existing_match(e: &Env, crate_id: &CrateId,
-                  hash: &str) -> Option<ast::CrateNum> {
+                  hash: Option<&Svh>) -> Option<ast::CrateNum> {
     let crate_cache = e.crate_cache.borrow();
     for c in crate_cache.get().iter() {
-        if crate_id.matches(&c.crate_id) &&
-           (hash.is_empty() || hash == c.hash.as_slice()) {
-            return Some(c.cnum)
+        if !crate_id.matches(&c.crate_id) { continue }
+        match hash {
+            Some(hash) if *hash != c.hash => {}
+            Some(..) | None => return Some(c.cnum)
         }
     }
     None
@@ -291,19 +294,22 @@ fn resolve_crate(e: &mut Env,
                  root_ident: Option<&str>,
                  ident: &str,
                  crate_id: &CrateId,
-                 hash: &str,
+                 hash: Option<&Svh>,
                  span: Span)
               -> ast::CrateNum {
     match existing_match(e, crate_id, hash) {
         None => {
-            let load_ctxt = loader::Context {
+            let id_hash = link::crate_id_hash(crate_id);
+            let mut load_ctxt = loader::Context {
                 sess: e.sess,
                 span: span,
                 ident: ident,
                 crate_id: crate_id,
-                hash: hash,
+                id_hash: id_hash,
+                hash: hash.map(|a| &*a),
                 os: e.os,
-                intr: e.intr
+                intr: e.intr,
+                rejected_via_hash: false,
             };
             let loader::Library {
                 dylib, rlib, metadata
@@ -375,7 +381,7 @@ fn resolve_crate_deps(e: &mut Env,
         let local_cnum = resolve_crate(e, root_ident,
                                        dep.crate_id.name.as_slice(),
                                        &dep.crate_id,
-                                       dep.hash,
+                                       Some(&dep.hash),
                                        span);
         cnum_map.insert(extrn_cnum, local_cnum);
     }
@@ -406,7 +412,7 @@ impl CrateLoader for Loader {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let cnum = resolve_crate(&mut self.env, None, info.ident,
-                                 &info.crate_id, "", krate.span);
+                                 &info.crate_id, None, krate.span);
         let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
         MacroCrate {
             lib: library.dylib,

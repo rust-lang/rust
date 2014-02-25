@@ -13,6 +13,7 @@
 #[allow(unused_must_use)]; // everything is just a MemWriter, can't fail
 #[allow(non_camel_case_types)];
 
+use back::svh::Svh;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -1733,14 +1734,14 @@ fn encode_crate_dep(ebml_w: &mut writer::Encoder,
     ebml_w.writer.write(dep.crate_id.to_str().as_bytes());
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
-    ebml_w.writer.write(dep.hash.as_bytes());
+    ebml_w.writer.write(dep.hash.as_str().as_bytes());
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
-fn encode_hash(ebml_w: &mut writer::Encoder, hash: &str) {
+fn encode_hash(ebml_w: &mut writer::Encoder, hash: &Svh) {
     ebml_w.start_tag(tag_crate_hash);
-    ebml_w.writer.write(hash.as_bytes());
+    ebml_w.writer.write(hash.as_str().as_bytes());
     ebml_w.end_tag();
 }
 
@@ -1809,7 +1810,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     let mut ebml_w = writer::Encoder(wr);
 
     encode_crate_id(&mut ebml_w, &ecx.link_meta.crateid);
-    encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
+    encode_hash(&mut ebml_w, &ecx.link_meta.crate_hash);
 
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);

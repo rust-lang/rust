@@ -433,7 +433,7 @@ pub fn phase_6_link_output(sess: Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           &trans.link));
+                           &trans.link.crateid));
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -472,8 +472,7 @@ fn write_out_deps(sess: Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) -> io::IoResult<()> {
-    let lm = link::build_link_meta(krate.attrs, outputs,
-                                   &mut ::util::sha2::Sha256::new());
+    let id = link::find_crate_id(krate.attrs, outputs);
 
     let mut out_filenames = ~[];
     for output_type in sess.opts.output_types.iter() {
@@ -482,7 +481,7 @@ fn write_out_deps(sess: Session,
             link::OutputTypeExe => {
                 let crate_types = sess.crate_types.borrow();
                 for output in crate_types.get().iter() {
-                    let p = link::filename_for_input(&sess, *output, &lm, &file);
+                    let p = link::filename_for_input(&sess, *output, &id, &file);
                     out_filenames.push(p);
                 }
             }

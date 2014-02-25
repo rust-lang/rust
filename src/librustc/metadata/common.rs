@@ -12,6 +12,7 @@
 
 use std::cast;
 use syntax::crateid::CrateId;
+use back::svh::Svh;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
@@ -207,8 +208,8 @@ pub static tag_macro_registrar_fn: uint = 0x63;
 pub static tag_exported_macros: uint = 0x64;
 pub static tag_macro_def: uint = 0x65;
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct LinkMeta {
     crateid: CrateId,
-    crate_hash: ~str,
+    crate_hash: Svh,
 }

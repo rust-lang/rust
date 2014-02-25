@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
+use back::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames};
 use driver::session::Session;
 use driver::session;
@@ -499,28 +499,31 @@ pub mod write {
  *    system linkers understand.
  */
 
-pub fn build_link_meta(attrs: &[ast::Attribute],
-                       output: &OutputFilenames,
-                       symbol_hasher: &mut Sha256)
-                       -> LinkMeta {
-    // This calculates CMH as defined above
-    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> ~str {
-        symbol_hasher.reset();
-        symbol_hasher.input_str(crateid.to_str());
-        truncated_hash_result(symbol_hasher)
-    }
-
-    let crateid = match attr::find_crateid(attrs) {
+pub fn find_crate_id(attrs: &[ast::Attribute],
+                     output: &OutputFilenames) -> CrateId {
+    match attr::find_crateid(attrs) {
         None => from_str(output.out_filestem).unwrap(),
         Some(s) => s,
-    };
-
-    let hash = crate_hash(symbol_hasher, &crateid);
-
-    LinkMeta {
-        crateid: crateid,
-        crate_hash: hash,
     }
+}
+
+pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
+    // This calculates CMH as defined above. Note that we don't use the path of
+    // the crate id in the hash because lookups are only done by (name/vers),
+    // not by path.
+    let mut s = Sha256::new();
+    s.input_str(crate_id.short_name_with_version());
+    truncated_hash_result(&mut s).slice_to(8).to_owned()
+}
+
+pub fn build_link_meta(krate: &ast::Crate,
+                       output: &OutputFilenames) -> LinkMeta {
+    let r = LinkMeta {
+        crateid: find_crate_id(krate.attrs, output),
+        crate_hash: Svh::calculate(krate),
+    };
+    info!("{}", r);
+    return r;
 }
 
 fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
@@ -539,7 +542,7 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &mut Sha256,
     symbol_hasher.reset();
     symbol_hasher.input_str(link_meta.crateid.name);
     symbol_hasher.input_str("-");
-    symbol_hasher.input_str(link_meta.crate_hash);
+    symbol_hasher.input_str(link_meta.crate_hash.as_str());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
@@ -712,11 +715,8 @@ pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> ~str
     mangle(path.chain(Some(gensym_name(flav)).move_iter()), None, None)
 }
 
-pub fn output_lib_filename(lm: &LinkMeta) -> ~str {
-    format!("{}-{}-{}",
-            lm.crateid.name,
-            lm.crate_hash.slice_chars(0, 8),
-            lm.crateid.version_or_default())
+pub fn output_lib_filename(id: &CrateId) -> ~str {
+    format!("{}-{}-{}", id.name, crate_id_hash(id), id.version_or_default())
 }
 
 pub fn get_cc_prog(sess: Session) -> ~str {
@@ -779,11 +779,11 @@ fn remove(sess: Session, path: &Path) {
 pub fn link_binary(sess: Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
-                   lm: &LinkMeta) -> ~[Path] {
+                   id: &CrateId) -> ~[Path] {
     let mut out_filenames = ~[];
     let crate_types = sess.crate_types.borrow();
     for &crate_type in crate_types.get().iter() {
-        let out_file = link_binary_output(sess, trans, crate_type, outputs, lm);
+        let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
         out_filenames.push(out_file);
     }
 
@@ -807,8 +807,8 @@ fn is_writeable(p: &Path) -> bool {
 }
 
 pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
-                          lm: &LinkMeta, out_filename: &Path) -> Path {
-    let libname = output_lib_filename(lm);
+                          id: &CrateId, out_filename: &Path) -> Path {
+    let libname = output_lib_filename(id);
     match crate_type {
         session::CrateTypeRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
@@ -834,13 +834,13 @@ fn link_binary_output(sess: Session,
                       trans: &CrateTranslation,
                       crate_type: session::CrateType,
                       outputs: &OutputFilenames,
-                      lm: &LinkMeta) -> Path {
+                      id: &CrateId) -> Path {
     let obj_filename = outputs.temp_path(OutputTypeObject);
     let out_filename = match outputs.single_output_file {
         Some(ref file) => file.clone(),
         None => {
             let out_filename = outputs.path(OutputTypeExe);
-            filename_for_input(&sess, crate_type, lm, &out_filename)
+            filename_for_input(&sess, crate_type, id, &out_filename)
         }
     };
 
