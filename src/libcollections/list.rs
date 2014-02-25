@@ -53,26 +53,6 @@ impl<T> List<T> {
     }
 }
 
-/**
- * Returns true if a list contains an element that matches a given predicate
- *
- * Apply function `f` to each element of `list`, starting from the first.
- * When function `f` returns true then it also returns true. If `f` matches no
- * elements then false is returned.
- */
-pub fn any<T>(list: @List<T>, f: |&T| -> bool) -> bool {
-    let mut list = list;
-    loop {
-        list = match *list {
-            Cons(ref head, tail) => {
-                if f(head) { return true; }
-                tail
-            }
-            Nil => return false
-        }
-    };
-}
-
 /// Returns true if a list contains an element with the given value
 pub fn has<T:Eq>(list: @List<T>, element: T) -> bool {
     let mut found = false;
@@ -251,11 +231,13 @@ mod tests {
 
     #[test]
     fn test_any() {
-        fn match_(i: &int) -> bool { return *i == 2; }
-        let list = @List::from_vec([0, 1, 2]);
-        let empty = @list::Nil::<int>;
-        assert_eq!(list::any(list, match_), true);
-        assert_eq!(list::any(empty, match_), false);
+        fn match_(i: &int) -> bool { *i == 2 }
+
+        let empty = Nil::<int>;
+        assert_eq!(empty.iter().any(match_), false);
+
+        let list = List::from_vec([0, 1, 2]);
+        assert_eq!(list.iter().any(match_), true);
     }
 
     #[test]
