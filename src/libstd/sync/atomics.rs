@@ -692,7 +692,7 @@ impl<T> Drop for AtomicOption<T> {
 }
 
 #[inline]
-pub unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
+unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
         Relaxed => intrinsics::atomic_store_relaxed(dst, val),
@@ -701,7 +701,7 @@ pub unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
 }
 
 #[inline]
-pub unsafe fn atomic_load<T>(dst: *mut T, order:Ordering) -> T {
+unsafe fn atomic_load<T>(dst: *T, order:Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),
@@ -710,7 +710,7 @@ pub unsafe fn atomic_load<T>(dst: *mut T, order:Ordering) -> T {
 }
 
 #[inline]
-pub unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
         Release => intrinsics::atomic_xchg_rel(dst, val),
@@ -722,7 +722,7 @@ pub unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_add).
 #[inline]
-pub unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
         Release => intrinsics::atomic_xadd_rel(dst, val),
@@ -734,7 +734,7 @@ pub unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_sub).
 #[inline]
-pub unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
         Release => intrinsics::atomic_xsub_rel(dst, val),
@@ -745,7 +745,7 @@ pub unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-pub unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering) -> T {
+unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
         Release => intrinsics::atomic_cxchg_rel(dst, old, new),
@@ -756,7 +756,7 @@ pub unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Order
 }
 
 #[inline]
-pub unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_and_acq(dst, val),
         Release => intrinsics::atomic_and_rel(dst, val),
@@ -767,7 +767,7 @@ pub unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-pub unsafe fn atomic_nand<T>(dst: &T, val: T, order: Ordering) -> T {
+unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_nand_acq(dst, val),
         Release => intrinsics::atomic_nand_rel(dst, val),
@@ -779,7 +779,7 @@ pub unsafe fn atomic_nand<T>(dst: &T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-pub unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
         Release => intrinsics::atomic_or_rel(dst, val),
@@ -791,7 +791,7 @@ pub unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-pub unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
+unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xor_acq(dst, val),
         Release => intrinsics::atomic_xor_rel(dst, val),
