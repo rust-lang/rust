@@ -708,8 +708,9 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3)
 ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-$(4) [$(2)])
-	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
-	    $$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
+	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
+		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
+	    	$$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
 	touch $$@
@@ -936,7 +937,8 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	    $(3)/test/run-make/$$* \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	    "$$(TESTNAME)"
+	    "$$(TESTNAME)" \
+	    "$$(RPATH_VAR$(1)_T_$(2)_H_$(3))"
 	@touch $$@
 else
 # FIXME #11094 - The above rule doesn't work right for multiple targets
