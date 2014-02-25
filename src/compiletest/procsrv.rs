@@ -35,8 +35,26 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(_lib_path: &str, _prog: &str) -> ~[(~str,~str)] {
-    os::env()
+fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
+    // Make sure we include the aux directory in the path
+    let aux_path = prog + ".libaux";
+
+    let mut env = os::env();
+    let var = if cfg!(target_os = "macos") {
+        "DYLD_LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    };
+    let prev = match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
+        Some(i) => env.remove(i).unwrap().val1(),
+        None => ~"",
+    };
+    env.push((var.to_owned(), if prev.is_empty() {
+        lib_path + ":" + aux_path
+    } else {
+        lib_path + ":" + aux_path + ":" + prev
+    }));
+    return env;
 }
 
 pub struct Result {status: ProcessExit, out: ~str, err: ~str}
