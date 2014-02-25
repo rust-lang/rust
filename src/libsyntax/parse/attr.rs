@@ -40,11 +40,9 @@ impl ParserAttr for Parser {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
-                println!("\\# found (outer)")
                 // #[foo(bar)]
                 //  ^ denotes an outer attribute.
                 if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                    println!("LBRACKET not found. Oops.");
                     break;
                 }
 
@@ -83,7 +81,6 @@ impl ParserAttr for Parser {
                 (attr.span, attr.node.value)
             }
             token::POUND => {
-                println!("\\# found");
                 let lo = self.span.lo;
                 self.bump();
 
@@ -91,7 +88,6 @@ impl ParserAttr for Parser {
                 //  ^
                 if self.eat(&token::NOT) {
                     inner_attr_bang = true;
-                    println!("new attribute syntax found. Checking context validity.");
                     if !permit_inner {
                         self.fatal("An inner attribute was not permitted in this context.");
                     }
@@ -100,14 +96,12 @@ impl ParserAttr for Parser {
                 // #![lang(foo)]
                 //   ^
                 self.expect(&token::LBRACKET);
-                println!("lbracket found");
 
                 let meta_item = self.parse_meta_item();
 
                 // #![lang(foo)]
                 //             ^
                 self.expect(&token::RBRACKET);
-                println!("rbracket found");
 
                 let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item)
@@ -119,12 +113,10 @@ impl ParserAttr for Parser {
             }
         };
         let style = if inner_attr_bang {
-            println!("new attribute syntax found");
             // The new attribute syntax doesn't require a `;`, so we don't
             // need to bump the token.
             ast::AttrInner
         } else if permit_inner && self.token == token::SEMI {
-            println!("semicolon found.");
             self.bump();
             ast::AttrInner
         } else {
@@ -161,7 +153,6 @@ impl ParserAttr for Parser {
                 }
                 token::POUND => {
                     let mut backwards_syntax = true;
-                    println!("\\# found (inner)");
                     // #![foo(bar)]
                     //  ^ denotes an inner attribute.
                     // The backwards compatible syntax should not contain
@@ -171,7 +162,6 @@ impl ParserAttr for Parser {
                         if self.look_ahead(2, |t| *t != token::LBRACKET) {
                             break;
                         }
-                        println!("found new syntax (!)");
                     }
 
                     if self.look_ahead(1, |t| *t != token::LBRACKET) {
