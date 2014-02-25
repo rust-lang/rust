@@ -54,25 +54,6 @@ impl<T> List<T> {
 }
 
 /**
- * Left fold
- *
- * Applies `f` to `u` and the first element in the list, then applies `f` to
- * the result of the previous call and the second element, and so on,
- * returning the accumulated result.
- *
- * # Arguments
- *
- * * list - The list to fold
- * * z - The initial value
- * * f - The function to apply
- */
-pub fn foldl<T:Clone,U>(z: T, list: @List<U>, f: |&T, &U| -> T) -> T {
-    let mut accum: T = z;
-    iter(list, |element| accum = f(&accum, element));
-    accum
-}
-
-/**
  * Search for an element that matches a given predicate
  *
  * Apply function `f` to each element of `list`, starting from the first.
@@ -258,21 +239,17 @@ mod tests {
     }
 
     #[test]
-    fn test_foldl() {
-        fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
-        let list = @List::from_vec([0, 1, 2, 3, 4]);
-        let empty = @list::Nil::<int>;
-        assert_eq!(list::foldl(0u, list, add), 10u);
-        assert_eq!(list::foldl(0u, empty, add), 0u);
-    }
+    fn test_fold() {
+        fn add_(a: uint, b: &uint) -> uint { a + *b }
+        fn subtract_(a: uint, b: &uint) -> uint { a - *b }
 
-    #[test]
-    fn test_foldl2() {
-        fn sub(a: &int, b: &int) -> int {
-            *a - *b
-        }
-        let list = @List::from_vec([1, 2, 3, 4]);
-        assert_eq!(list::foldl(0, list, sub), -10);
+        let empty = Nil::<uint>;
+        assert_eq!(empty.iter().fold(0u, add_), 0u);
+        assert_eq!(empty.iter().fold(10u, subtract_), 10u);
+
+        let list = List::from_vec([0u, 1u, 2u, 3u, 4u]);
+        assert_eq!(list.iter().fold(0u, add_), 10u);
+        assert_eq!(list.iter().fold(10u, subtract_), 0u);
     }
 
     #[test]
