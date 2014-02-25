@@ -19,6 +19,6 @@
 // except according to those terms.
 
 #[path = "../compile-fail"]
-mod foo; //~ ERROR: illegal operation on a directory
+mod foo; //~ ERROR: directory
 
 fn main() {}
