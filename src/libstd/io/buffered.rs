@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -113,6 +113,12 @@ impl<R: Reader> Reader for BufferedReader<R> {
     }
 }
 
+impl<R: Container> Container for BufferedReader<R> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 /// Wraps a Writer and buffers output to it
 ///
 /// Note that `BufferedWriter` will NOT flush its buffer when dropped.
@@ -200,6 +206,12 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 }
 
+impl<W: Container> Container for BufferedWriter<W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 /// Wraps a Writer and buffers output to it, flushing whenever a newline (`0x0a`,
 /// `'\n'`) is detected.
 ///
@@ -245,6 +257,12 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
 }
 
+impl<W: Container> Container for LineBufferedWriter<W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W> InternalBufferedWriter<W> {
@@ -257,6 +275,13 @@ impl<W> InternalBufferedWriter<W> {
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.get_mut_ref().inner.read(buf)
+    }
+}
+
+impl<W: Container> Container for InternalBufferedWriter<W> {
+    fn len(&self) -> uint {
+        let InternalBufferedWriter(ref inner) = *self;
+        inner.len()
     }
 }
 
@@ -341,6 +366,12 @@ impl<S: Stream> Writer for BufferedStream<S> {
     }
     fn flush(&mut self) -> IoResult<()> {
         self.inner.inner.get_mut_ref().flush()
+    }
+}
+
+impl<S: Container> Container for BufferedStream<S> {
+    fn len(&self) -> uint {
+        self.inner.len()
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -119,6 +119,12 @@ impl Seek for MemWriter {
     }
 }
 
+impl Container for MemWriter {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
+}
+
 /// Reads from an owned byte vector
 ///
 /// # Example
@@ -200,6 +206,12 @@ impl Buffer for MemReader {
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
+impl Container for MemReader {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
+}
+
 /// Writes to a fixed-size byte slice
 ///
 /// If a write will not fit in the buffer, it returns an error and does not
@@ -256,6 +268,12 @@ impl<'a> Seek for BufWriter<'a> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
+    }
+}
+
+impl<'a> Container for BufWriter<'a> {
+    fn len(&self) -> uint {
+        self.buf.len()
     }
 }
 
@@ -328,6 +346,12 @@ impl<'a> Buffer for BufReader<'a> {
         }
     }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
+}
+
+impl<'a> Container for BufReader<'a> {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
 }
 
 #[cfg(test)]

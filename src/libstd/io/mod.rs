@@ -677,6 +677,12 @@ impl<'a, R: Reader> Reader for RefReader<'a, R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
 }
 
+impl<'a, R: Container> Container for RefReader<'a, R> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
     let shift = (8 - nbytes) * 8;
     (val << shift) as i64 >> shift
@@ -884,6 +890,12 @@ pub struct RefWriter<'a, W> {
 impl<'a, W: Writer> Writer for RefWriter<'a, W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
+}
+
+impl<'a, W: Container> Container for RefWriter<'a, W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
 }
 
 
