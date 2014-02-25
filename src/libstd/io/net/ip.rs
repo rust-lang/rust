@@ -55,7 +55,6 @@ pub struct SocketAddr {
     port: Port,
 }
 
-
 impl fmt::Show for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.ip {

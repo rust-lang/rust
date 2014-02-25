@@ -107,7 +107,7 @@ pub struct SCTable {
 pub static EMPTY_CTXT : SyntaxContext = 0;
 pub static ILLEGAL_CTXT : SyntaxContext = 1;
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
@@ -332,7 +332,7 @@ impl Eq for MetaItem_ {
     }
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Block {
     view_items: ~[ViewItem],
     stmts: ~[@Stmt],
@@ -467,7 +467,7 @@ pub enum Stmt_ {
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct Local {
     ty: P<Ty>,
     pat: @Pat,
@@ -478,7 +478,7 @@ pub struct Local {
 
 pub type Decl = Spanned<Decl_>;
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub enum Decl_ {
     // a local (let) binding:
     DeclLocal(@Local),
@@ -514,7 +514,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Expr {
     id: NodeId,
     node: Expr_,
@@ -732,7 +732,7 @@ pub struct MutTy {
     mutbl: Mutability,
 }
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct TypeField {
     ident: Ident,
     mt: MutTy,
@@ -836,7 +836,7 @@ impl fmt::Show for Onceness {
     }
 }
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct ClosureTy {
     sigil: Sigil,
     region: Option<Lifetime>,
@@ -967,7 +967,7 @@ pub enum ExplicitSelf_ {
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct Method {
     ident: Ident,
     attrs: ~[Attribute],
@@ -987,7 +987,7 @@ pub struct Mod {
     items: ~[@Item],
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct ForeignMod {
     abis: AbiSet,
     view_items: ~[ViewItem],
@@ -1074,14 +1074,14 @@ pub type Attribute = Spanned<Attribute_>;
 // Distinguishes between Attributes that decorate items and Attributes that
 // are contained as statements within items. These two cases need to be
 // distinguished for pretty-printing.
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum AttrStyle {
     AttrOuter,
     AttrInner,
 }
 
 // doc-comments are promoted to attributes that have is_sugared_doc = true
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Attribute_ {
     style: AttrStyle,
     value: @MetaItem,
@@ -1095,13 +1095,13 @@ pub struct Attribute_ {
   If this impl is an ItemImpl, the impl_id is redundant (it could be the
   same as the impl's node id).
  */
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct TraitRef {
     path: Path,
     ref_id: NodeId,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum Visibility {
     Public,
     Private,
@@ -1117,7 +1117,7 @@ impl Visibility {
     }
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct StructField_ {
     kind: StructFieldKind,
     id: NodeId,
@@ -1127,13 +1127,13 @@ pub struct StructField_ {
 
 pub type StructField = Spanned<StructField_>;
 
-#[deriving(Clone, Eq, Encodable, Decodable,Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
     UnnamedField // element of a tuple-like struct
 }
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct StructDef {
     fields: ~[StructField], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
@@ -1173,7 +1173,7 @@ pub enum Item_ {
     ItemMac(Mac),
 }
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct ForeignItem {
     ident: Ident,
     attrs: ~[Attribute],
@@ -1183,7 +1183,7 @@ pub struct ForeignItem {
     vis: Visibility,
 }
 
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub enum ForeignItem_ {
     ForeignItemFn(P<FnDecl>, Generics),
     ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
@@ -1192,7 +1192,7 @@ pub enum ForeignItem_ {
 // The data we save and restore about an inlined item or method.  This is not
 // part of the AST that we parse from a file, but it becomes part of the tree
 // that we trans.
-#[deriving(Eq, Encodable, Decodable,Hash)]
+#[deriving(Eq, Encodable, Decodable, Hash)]
 pub enum InlinedItem {
     IIItem(@Item),
     IIMethod(DefId /* impl id */, bool /* is provided */, @Method),
