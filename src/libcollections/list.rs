@@ -63,13 +63,11 @@ impl<T> Container for List<T> {
     fn is_empty(&self) -> bool { match *self { Nil => true, _ => false } }
 }
 
-/// Returns true if a list contains an element with the given value
-pub fn has<T:Eq>(list: @List<T>, element: T) -> bool {
-    let mut found = false;
-    each(list, |e| {
-        if *e == element { found = true; false } else { true }
-    });
-    return found;
+impl<T:Eq> List<T> {
+    /// Returns true if a list contains an element with the given value
+    pub fn contains(&self, element: T) -> bool {
+        self.iter().any(|list_element| *list_element == element)
+    }
 }
 
 /// Returns all but the first element of a list
@@ -208,13 +206,14 @@ mod tests {
     }
 
     #[test]
-    fn test_has() {
-        let list = @List::from_vec([5, 8, 6]);
-        let empty = @list::Nil::<int>;
-        assert!((list::has(list, 5)));
-        assert!((!list::has(list, 7)));
-        assert!((list::has(list, 8)));
-        assert!((!list::has(empty, 5)));
+    fn test_contains() {
+        let empty = Nil::<int>;
+        assert!((!empty.contains(5)));
+
+        let list = List::from_vec([5, 8, 6]);
+        assert!((list.contains(5)));
+        assert!((!list.contains(7)));
+        assert!((list.contains(8)));
     }
 
     #[test]
