@@ -3185,15 +3185,35 @@ impl Parser {
             let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
-            let id = if self.token == token::LPAREN {
+            let id = if self.token == token::LPAREN || self.token == token::LBRACE {
                 token::special_idents::invalid // no special identifier
             } else {
                 self.parse_ident()
             };
 
+            // check that we're pointing at delimiters (need to check
+            // again after the `if`, because of `parse_ident`
+            // consuming more tokens).
+            let (bra, ket) = match self.token {
+                token::LPAREN => (token::LPAREN, token::RPAREN),
+                token::LBRACE => (token::LBRACE, token::RBRACE),
+                _ => {
+                    // we only expect an ident if we didn't parse one
+                    // above.
+                    let ident_str = if id == token::special_idents::invalid {
+                        "identifier, "
+                    } else {
+                        ""
+                    };
+                    let tok_str = self.this_token_to_str();
+                    self.fatal(format!("expected {}`(` or `\\{`, but found `{}`",
+                                       ident_str, tok_str))
+                }
+            };
+
             let tts = self.parse_unspanned_seq(
-                &token::LPAREN,
-                &token::RPAREN,
+                &bra,
+                &ket,
                 seq_sep_none(),
                 |p| p.parse_token_tree()
             );
