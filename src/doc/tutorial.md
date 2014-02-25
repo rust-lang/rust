@@ -1468,14 +1468,14 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an immutable pointer to an object freezes it and prevents mutation.
+Lending an &-pointer to an object freezes it and prevents mutation--even if the object was declared as `mut`.
 `Freeze` objects have freezing enforced statically at compile-time. An example
 of a non-`Freeze` type is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
 {
-    let y = &x; // `x` is now frozen, it cannot be modified
+    let y = &x; // `x` is now frozen. It cannot be modified or re-assigned.
 }
 // `x` is now unfrozen again
 # x = 3;
