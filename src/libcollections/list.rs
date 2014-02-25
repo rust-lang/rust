@@ -86,23 +86,23 @@ impl<T:Eq> List<T> {
     }
 }
 
-/// Appends one list to another
-pub fn append<T:Clone + 'static>(list: @List<T>, other: @List<T>) -> @List<T> {
-    match *list {
-      Nil => return other,
-      Cons(ref head, tail) => {
-        let rest = append(tail, other);
-        return @Cons((*head).clone(), rest);
-      }
-    }
-}
-
 impl<T:'static + Clone> List<T> {
     /// Create a list from a vector
     pub fn from_vec(v: &[T]) -> List<T> {
         match v.len() {
             0 => Nil,
             _ => v.rev_iter().fold(Nil, |tail, value: &T| Cons(value.clone(), @tail))
+        }
+    }
+
+    /// Appends one list to another, returning a new list
+    pub fn append(&self, other: List<T>) -> List<T> {
+        match other {
+            Nil => return self.clone(),
+            _ => match *self {
+                Nil => return other,
+                Cons(ref value, tail) => Cons(value.clone(), @tail.append(other))
+            }
         }
     }
 }
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_append() {
-        assert!(@List::from_vec([1,2,3,4])
-            == list::append(@List::from_vec([1,2]), @List::from_vec([3,4])));
+        assert_eq!(List::from_vec([1, 2, 3, 4]),
+                   List::from_vec([1, 2]).append(List::from_vec([3, 4])));
     }
 }
