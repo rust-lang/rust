@@ -55,7 +55,6 @@ use std::str;
 use std::task;
 use std::vec;
 use syntax::ast;
-use syntax::attr;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
@@ -104,16 +103,17 @@ pub mod front {
 }
 
 pub mod back {
-    pub mod archive;
-    pub mod link;
     pub mod abi;
+    pub mod archive;
     pub mod arm;
+    pub mod link;
+    pub mod lto;
     pub mod mips;
+    pub mod rpath;
+    pub mod svh;
+    pub mod target_strs;
     pub mod x86;
     pub mod x86_64;
-    pub mod rpath;
-    pub mod target_strs;
-    pub mod lto;
 }
 
 pub mod metadata;
@@ -312,28 +312,18 @@ pub fn run_compiler(args: &[~str]) {
         let attrs = parse_crate_attrs(sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
                                                   attrs, sess);
-        if crate_id || crate_name {
-            let crateid = match attr::find_crateid(attrs) {
-                Some(crateid) => crateid,
-                None => {
-                    sess.fatal("No crate_id and --crate-id or \
-                                --crate-name requested")
-                }
-            };
-            if crate_id {
-                println!("{}", crateid.to_str());
-            }
-            if crate_name {
-                println!("{}", crateid.name);
-            }
-        }
+        let id = link::find_crate_id(attrs, &t_outputs);
 
+        if crate_id {
+            println!("{}", id.to_str());
+        }
+        if crate_name {
+            println!("{}", id.name);
+        }
         if crate_file_name {
-            let lm = link::build_link_meta(attrs, &t_outputs,
-                                           &mut ::util::sha2::Sha256::new());
             let crate_types = session::collect_crate_types(&sess, attrs);
             for &style in crate_types.iter() {
-                let fname = link::filename_for_input(&sess, style, &lm,
+                let fname = link::filename_for_input(&sess, style, &id,
                                                      &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }

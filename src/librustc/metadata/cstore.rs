@@ -13,6 +13,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
+use back::svh::Svh;
 use metadata::decoder;
 use metadata::loader;
 
@@ -92,7 +93,7 @@ impl CStore {
         *metas.get().get(&cnum)
     }
 
-    pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> ~str {
+    pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
     }

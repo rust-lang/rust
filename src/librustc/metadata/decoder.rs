@@ -12,6 +12,7 @@
 
 #[allow(non_camel_case_types)];
 
+use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::StaticMethodInfo;
@@ -1089,9 +1090,9 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
     return attrs;
 }
 
-fn list_crate_attributes(md: ebml::Doc, hash: &str,
+fn list_crate_attributes(md: ebml::Doc, hash: &Svh,
                          out: &mut io::Writer) -> io::IoResult<()> {
-    try!(write!(out, "=Crate Attributes ({})=\n", hash));
+    try!(write!(out, "=Crate Attributes ({})=\n", *hash));
 
     let r = get_attributes(md);
     for attr in r.iter() {
@@ -1109,7 +1110,7 @@ pub fn get_crate_attributes(data: &[u8]) -> ~[ast::Attribute] {
 pub struct CrateDep {
     cnum: ast::CrateNum,
     crate_id: CrateId,
-    hash: ~str,
+    hash: Svh,
 }
 
 pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
@@ -1123,7 +1124,7 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let crate_id = from_str(docstr(depdoc, tag_crate_dep_crateid)).unwrap();
-        let hash = docstr(depdoc, tag_crate_dep_hash);
+        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash));
         deps.push(CrateDep {
             cnum: crate_num,
             crate_id: crate_id,
@@ -1144,10 +1145,10 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     Ok(())
 }
 
-pub fn get_crate_hash(data: &[u8]) -> ~str {
+pub fn get_crate_hash(data: &[u8]) -> Svh {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    hashdoc.as_str_slice().to_str()
+    Svh::new(hashdoc.as_str_slice())
 }
 
 pub fn get_crate_id(data: &[u8]) -> CrateId {
@@ -1159,7 +1160,7 @@ pub fn get_crate_id(data: &[u8]) -> CrateId {
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    try!(list_crate_attributes(md, hash, out));
+    try!(list_crate_attributes(md, &hash, out));
     list_crate_deps(bytes, out)
 }
 
