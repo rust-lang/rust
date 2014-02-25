@@ -107,6 +107,15 @@ impl CrateId {
     pub fn short_name_with_version(&self) -> ~str {
         format!("{}-{}", self.name, self.version_or_default())
     }
+
+    pub fn matches(&self, other: &CrateId) -> bool {
+        // FIXME: why does this not match on `path`?
+        if self.name != other.name { return false }
+        match (&self.version, &other.version) {
+            (&Some(ref v1), &Some(ref v2)) => v1 == v2,
+            _ => true,
+        }
+    }
 }
 
 #[test]

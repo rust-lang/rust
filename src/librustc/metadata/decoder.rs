@@ -17,7 +17,6 @@ use metadata::common::*;
 use metadata::csearch::StaticMethodInfo;
 use metadata::csearch;
 use metadata::cstore;
-use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id,
                          parse_type_param_def_data,
                          parse_bare_fn_ty_data, parse_trait_ref_data};
@@ -44,6 +43,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ast;
 use syntax::codemap;
+use syntax::crateid::CrateId;
 
 type Cmd = @crate_metadata;
 
@@ -1108,9 +1108,8 @@ pub fn get_crate_attributes(data: &[u8]) -> ~[ast::Attribute] {
 #[deriving(Clone)]
 pub struct CrateDep {
     cnum: ast::CrateNum,
-    name: ast::Ident,
-    vers: ~str,
-    hash: ~str
+    crate_id: CrateId,
+    hash: ~str,
 }
 
 pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
@@ -1123,10 +1122,13 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
         d.as_str_slice().to_str()
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
-        deps.push(CrateDep {cnum: crate_num,
-                  name: token::str_to_ident(docstr(depdoc, tag_crate_dep_name)),
-                  vers: docstr(depdoc, tag_crate_dep_vers),
-                  hash: docstr(depdoc, tag_crate_dep_hash)});
+        let crate_id = from_str(docstr(depdoc, tag_crate_dep_crateid)).unwrap();
+        let hash = docstr(depdoc, tag_crate_dep_hash);
+        deps.push(CrateDep {
+            cnum: crate_num,
+            crate_id: crate_id,
+            hash: hash,
+        });
         crate_num += 1;
         true
     });
@@ -1135,17 +1137,9 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
 
 fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     try!(write!(out, "=External Dependencies=\n"));
-
-    let r = get_crate_deps(data);
-    for dep in r.iter() {
-        try!(write!(out,
-                      "{} {}-{}-{}\n",
-                      dep.cnum,
-                      token::get_ident(dep.name),
-                      dep.hash,
-                      dep.vers));
+    for dep in get_crate_deps(data).iter() {
+        try!(write!(out, "{} {}-{}\n", dep.cnum, dep.crate_id, dep.hash));
     }
-
     try!(write!(out, "\n"));
     Ok(())
 }
@@ -1156,12 +1150,10 @@ pub fn get_crate_hash(data: &[u8]) -> ~str {
     hashdoc.as_str_slice().to_str()
 }
 
-pub fn get_crate_vers(data: &[u8]) -> ~str {
-    let attrs = decoder::get_crate_attributes(data);
-    match attr::find_crateid(attrs) {
-        None => ~"0.0",
-        Some(crateid) => crateid.version_or_default().to_str(),
-    }
+pub fn get_crate_id(data: &[u8]) -> CrateId {
+    let cratedoc = reader::Doc(data);
+    let hashdoc = reader::get_doc(cratedoc, tag_crate_crateid);
+    from_str(hashdoc.as_str_slice()).unwrap()
 }
 
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
