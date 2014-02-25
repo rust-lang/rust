@@ -46,7 +46,7 @@ struct binding_info {
 type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<NodeId,@RefCell<~[DefId]>>;
+pub type TraitMap = HashMap<NodeId, ~[DefId]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
@@ -5255,75 +5255,14 @@ impl Resolver {
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @RefCell::new(traits));
+                self.trait_map.insert(expr.id, traits);
             }
             ExprMethodCall(_, ident, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @RefCell::new(traits));
-            }
-            ExprBinary(_, BiAdd, _, _) | ExprAssignOp(_, BiAdd, _, _) => {
-                let i = self.lang_items.add_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiSub, _, _) | ExprAssignOp(_, BiSub, _, _) => {
-                let i = self.lang_items.sub_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiMul, _, _) | ExprAssignOp(_, BiMul, _, _) => {
-                let i = self.lang_items.mul_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiDiv, _, _) | ExprAssignOp(_, BiDiv, _, _) => {
-                let i = self.lang_items.div_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiRem, _, _) | ExprAssignOp(_, BiRem, _, _) => {
-                let i = self.lang_items.rem_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitXor, _, _) | ExprAssignOp(_, BiBitXor, _, _) => {
-                let i = self.lang_items.bitxor_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitAnd, _, _) | ExprAssignOp(_, BiBitAnd, _, _) => {
-                let i = self.lang_items.bitand_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitOr, _, _) | ExprAssignOp(_, BiBitOr, _, _) => {
-                let i = self.lang_items.bitor_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiShl, _, _) | ExprAssignOp(_, BiShl, _, _) => {
-                let i = self.lang_items.shl_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiShr, _, _) | ExprAssignOp(_, BiShr, _, _) => {
-                let i = self.lang_items.shr_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiLt, _, _) | ExprBinary(_, BiLe, _, _) |
-            ExprBinary(_, BiGe, _, _) | ExprBinary(_, BiGt, _, _) => {
-                let i = self.lang_items.ord_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiEq, _, _) | ExprBinary(_, BiNe, _, _) => {
-                let i = self.lang_items.eq_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprUnary(_, UnNeg, _) => {
-                let i = self.lang_items.neg_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprUnary(_, UnNot, _) => {
-                let i = self.lang_items.not_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprIndex(..) => {
-                let i = self.lang_items.index_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
+                self.trait_map.insert(expr.id, traits);
             }
             _ => {
                 // Nothing to do.
@@ -5415,17 +5354,6 @@ impl Resolver {
                trait_def_id.node,
                token::get_ident(name));
         found_traits.push(trait_def_id);
-    }
-
-    fn add_fixed_trait_for_expr(&mut self,
-                                    expr_id: NodeId,
-                                    trait_id: Option<DefId>) {
-        match trait_id {
-            Some(trait_id) => {
-                self.trait_map.insert(expr_id, @RefCell::new(~[trait_id]));
-            }
-            None => {}
-        }
     }
 
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {

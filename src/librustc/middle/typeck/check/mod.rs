@@ -96,7 +96,7 @@ use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::{AutoderefReceiver};
 use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
-use middle::typeck::check::method::{CheckTraitsOnly, DontAutoderefReceiver};
+use middle::typeck::check::method::{DontAutoderefReceiver};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
@@ -1936,35 +1936,34 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                         op_ex: &ast::Expr,
                         self_t: ty::t,
                         opname: ast::Name,
+                        trait_did: Option<ast::DefId>,
                         args: &[@ast::Expr],
-                        deref_args: DerefArgs,
                         autoderef_receiver: AutoderefReceiverFlag,
-                        unbound_method: ||,
-                        _expected_result: Option<ty::t>
-                       )
-                     -> ty::t {
-        match method::lookup(fcx, op_ex, args[0],
-                             callee_id, opname, self_t, [],
-                             deref_args, CheckTraitsOnly, autoderef_receiver) {
-            Some(ref origin) => {
+                        unbound_method: ||) -> ty::t {
+        let origin = match trait_did {
+            Some(trait_did) => {
+                method::lookup_in_trait(fcx, op_ex, args[0], callee_id, opname,
+                                        trait_did, self_t, [], autoderef_receiver)
+            }
+            None => None
+        };
+        match origin {
+            Some(origin) => {
                 let method_ty = fcx.node_ty(callee_id);
                 let method_map = fcx.inh.method_map;
-                {
-                    let mut method_map = method_map.borrow_mut();
-                    method_map.get().insert(op_ex.id, *origin);
-                }
+                method_map.borrow_mut().get().insert(op_ex.id, origin);
                 check_method_argument_types(fcx, op_ex.span,
                                             method_ty, op_ex,
-                                            args, deref_args)
+                                            args, DoDerefArgs)
             }
-            _ => {
+            None => {
                 unbound_method();
                 // Check the args anyway
                 // so we get all the error messages
                 let expected_ty = ty::mk_err();
                 check_method_argument_types(fcx, op_ex.span,
                                             expected_ty, op_ex,
-                                            args, deref_args);
+                                            args, DoDerefArgs);
                 ty::mk_err()
             }
         }
@@ -1977,10 +1976,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                    op: ast::BinOp,
                    lhs: @ast::Expr,
                    rhs: @ast::Expr,
-                   // Used only in the error case
-                   expected_result: Option<ty::t>,
-                   is_binop_assignment: IsBinopAssignment
-                  ) {
+                   is_binop_assignment: IsBinopAssignment) {
         let tcx = fcx.ccx.tcx;
 
         check_expr(fcx, lhs);
@@ -2004,12 +2000,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
             let result_t = match op {
                 ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
-                ast::BiGt => {
-                    ty::mk_bool()
-                }
-                _ => {
-                    lhs_t
-                }
+                ast::BiGt => ty::mk_bool(),
+                _ => lhs_t
             };
 
             fcx.write_ty(expr.id, result_t);
@@ -2030,16 +2022,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
 
         // Check for overloaded operators if not an assignment.
-        let result_t;
-        if is_binop_assignment == SimpleBinop {
-            result_t = check_user_binop(fcx,
-                                        callee_id,
-                                        expr,
-                                        lhs,
-                                        lhs_t,
-                                        op,
-                                        rhs,
-                                        expected_result);
+        let result_t = if is_binop_assignment == SimpleBinop {
+            check_user_binop(fcx, callee_id, expr, lhs, lhs_t, op, rhs)
         } else {
             fcx.type_error_message(expr.span,
                                    |actual| {
@@ -2051,8 +2035,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                    lhs_t,
                                    None);
             check_expr(fcx, rhs);
-            result_t = ty::mk_err();
-        }
+            ty::mk_err()
+        };
 
         fcx.write_ty(expr.id, result_t);
         if ty::type_is_error(result_t) {
@@ -2066,60 +2050,54 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                         lhs_expr: @ast::Expr,
                         lhs_resolved_t: ty::t,
                         op: ast::BinOp,
-                        rhs: @ast::Expr,
-                       expected_result: Option<ty::t>) -> ty::t {
+                        rhs: @ast::Expr) -> ty::t {
         let tcx = fcx.ccx.tcx;
-        match ast_util::binop_to_method_name(op) {
-            Some(ref name) => {
-                let if_op_unbound = || {
-                    fcx.type_error_message(ex.span, |actual| {
-                        format!("binary operation `{}` cannot be applied \
-                              to type `{}`",
-                             ast_util::binop_to_str(op), actual)},
-                            lhs_resolved_t, None)
-                };
-                return lookup_op_method(fcx, callee_id, ex, lhs_resolved_t,
-                                        token::intern(*name), [lhs_expr, rhs],
-                                        DoDerefArgs,DontAutoderefReceiver,
-                                        if_op_unbound, expected_result);
+        let lang = tcx.lang_items;
+        let (name, trait_did) = match op {
+            ast::BiAdd => ("add", lang.add_trait()),
+            ast::BiSub => ("sub", lang.sub_trait()),
+            ast::BiMul => ("mul", lang.mul_trait()),
+            ast::BiDiv => ("div", lang.div_trait()),
+            ast::BiRem => ("rem", lang.rem_trait()),
+            ast::BiBitXor => ("bitxor", lang.bitxor_trait()),
+            ast::BiBitAnd => ("bitand", lang.bitand_trait()),
+            ast::BiBitOr => ("bitor", lang.bitor_trait()),
+            ast::BiShl => ("shl", lang.shl_trait()),
+            ast::BiShr => ("shr", lang.shr_trait()),
+            ast::BiLt => ("lt", lang.ord_trait()),
+            ast::BiLe => ("le", lang.ord_trait()),
+            ast::BiGe => ("ge", lang.ord_trait()),
+            ast::BiGt => ("gt", lang.ord_trait()),
+            ast::BiEq => ("eq", lang.eq_trait()),
+            ast::BiNe => ("ne", lang.eq_trait()),
+            ast::BiAnd | ast::BiOr => {
+                check_expr(fcx, rhs);
+                return ty::mk_err();
             }
-            None => ()
         };
-        check_expr(fcx, rhs);
-
-        // If the or operator is used it might be that the user forgot to
-        // supply the do keyword.  Let's be more helpful in that situation.
-        if op == ast::BiOr {
-            match ty::get(lhs_resolved_t).sty {
-                ty::ty_bare_fn(_) | ty::ty_closure(_) => {
-                    tcx.sess.span_note(
-                        ex.span, "did you forget the `do` keyword for the call?");
-                }
-                _ => ()
-            }
-        }
-
-        ty::mk_err()
+        lookup_op_method(fcx, callee_id, ex, lhs_resolved_t, token::intern(name),
+                         trait_did, [lhs_expr, rhs], DontAutoderefReceiver, || {
+            fcx.type_error_message(ex.span, |actual| {
+                format!("binary operation `{}` cannot be applied to type `{}`",
+                    ast_util::binop_to_str(op), actual)
+            }, lhs_resolved_t, None)
+        })
     }
 
     fn check_user_unop(fcx: @FnCtxt,
                        callee_id: ast::NodeId,
                        op_str: &str,
                        mname: &str,
+                       trait_did: Option<ast::DefId>,
                        ex: &ast::Expr,
                        rhs_expr: @ast::Expr,
-                       rhs_t: ty::t,
-                       expected_t: Option<ty::t>)
-                    -> ty::t {
-       lookup_op_method(
-            fcx, callee_id, ex, rhs_t, token::intern(mname),
-            [rhs_expr], DoDerefArgs, DontAutoderefReceiver,
-            || {
-                fcx.type_error_message(ex.span, |actual| {
-                    format!("cannot apply unary operator `{}` to type `{}`",
-                         op_str, actual)
-                }, rhs_t, None);
-            }, expected_t)
+                       rhs_t: ty::t) -> ty::t {
+       lookup_op_method(fcx, callee_id, ex, rhs_t, token::intern(mname),
+                        trait_did, [rhs_expr], DontAutoderefReceiver, || {
+            fcx.type_error_message(ex.span, |actual| {
+                format!("cannot apply unary operator `{}` to type `{}`", op_str, actual)
+            }, rhs_t, None);
+        })
     }
 
     // Resolves `expected` by a single level if it is a variable and passes it
@@ -2643,14 +2621,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::ExprBinary(callee_id, op, lhs, rhs) => {
-        check_binop(fcx,
-                    callee_id,
-                    expr,
-                    op,
-                    lhs,
-                    rhs,
-                    expected,
-                    SimpleBinop);
+        check_binop(fcx, callee_id, expr, op, lhs, rhs, SimpleBinop);
 
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
@@ -2664,14 +2635,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
       }
       ast::ExprAssignOp(callee_id, op, lhs, rhs) => {
-        check_binop(fcx,
-                    callee_id,
-                    expr,
-                    op,
-                    lhs,
-                    rhs,
-                    expected,
-                    BinopAssignment);
+        check_binop(fcx, callee_id, expr, op, lhs, rhs, BinopAssignment);
 
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
@@ -2746,9 +2710,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::get(oprnd_t).sty == ty::ty_bool) {
-                        oprnd_t = check_user_unop(fcx, callee_id,
-                            "!", "not", expr, oprnd, oprnd_t,
-                                                  expected);
+                        oprnd_t = check_user_unop(fcx, callee_id, "!", "not",
+                                                  tcx.lang_items.not_trait(),
+                                                  expr, oprnd, oprnd_t);
                     }
                 }
                 ast::UnNeg => {
@@ -2756,8 +2720,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::type_is_fp(oprnd_t)) {
-                        oprnd_t = check_user_unop(fcx, callee_id,
-                            "-", "neg", expr, oprnd, oprnd_t, expected);
+                        oprnd_t = check_user_unop(fcx, callee_id, "-", "neg",
+                                                  tcx.lang_items.neg_trait(),
+                                                  expr, oprnd, oprnd_t);
                     }
                 }
             }
@@ -3172,11 +3137,10 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                                     expr,
                                                     resolved,
                                                     token::intern("index"),
+                                                    tcx.lang_items.index_trait(),
                                                     [base, idx],
-                                                    DoDerefArgs,
                                                     AutoderefReceiver,
-                                                    error_message,
-                                                    expected);
+                                                    error_message);
                       fcx.write_ty(id, ret_ty);
                   }
               }
