@@ -14,7 +14,7 @@
 
 use std::cmp::Eq;
 use std::fmt;
-use std::hash::{Hash, sip};
+use std::hash::Hash;
 use std::io::BufReader;
 use std::from_str::FromStr;
 use std::uint;
@@ -849,15 +849,15 @@ impl fmt::Show for Path {
     }
 }
 
-impl Hash for Url {
-    fn hash(&self, s: &mut sip::SipState) {
-        self.to_str().hash(s)
+impl<S: Writer> Hash<S> for Url {
+    fn hash(&self, state: &mut S) {
+        self.to_str().hash(state)
     }
 }
 
-impl Hash for Path {
-    fn hash(&self, s: &mut sip::SipState) {
-        self.to_str().hash(s)
+impl<S: Writer> Hash<S> for Path {
+    fn hash(&self, state: &mut S) {
+        self.to_str().hash(state)
     }
 }
 
