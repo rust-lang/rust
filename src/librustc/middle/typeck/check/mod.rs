@@ -81,7 +81,6 @@ use middle::const_eval;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
 use middle::lint::UnreachableCode;
-use middle::lint;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst::Subst;
@@ -3750,9 +3749,12 @@ pub fn instantiate_path(fcx: @FnCtxt,
                   expected, user_ty_param_req, ty_substs_len));
         (fcx.infcx().next_ty_vars(ty_param_count), regions)
     } else {
-        if ty_substs_len > user_ty_param_req {
-            fcx.tcx().sess.add_lint(lint::DefaultTypeParamUsage, node_id, pth.span,
-                                    ~"provided type arguments with defaults");
+        if ty_substs_len > user_ty_param_req
+            && !fcx.tcx().sess.features.default_type_params.get() {
+            fcx.tcx().sess.span_err(pth.span, "default type parameters are \
+                                               experimental and possibly buggy");
+            fcx.tcx().sess.span_note(pth.span, "add #[feature(default_type_params)] \
+                                                to the crate attributes to enable");
         }
 
         // Build up the list of type parameters, inserting the self parameter

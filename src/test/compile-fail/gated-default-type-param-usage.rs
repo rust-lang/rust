@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(default_type_params)];
+// aux-build:default_type_params_xc.rs
 
 #[deny(default_type_param_usage)];
 
-pub struct Heap;
-
-pub struct Vec<T, A = Heap>;
+extern crate default_type_params_xc;
 
 pub struct FooAlloc;
 
-pub type VecFoo<T> = Vec<T, FooAlloc>; //~ ERROR provided type arguments with defaults
+pub type VecFoo<T> = default_type_params_xc::FakeVec<T, FooAlloc>;
+//~^ ERROR: default type parameters are experimental
 
 fn main() {}

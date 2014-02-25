@@ -30,6 +30,8 @@ use syntax::parse::token;
 
 use driver::session::Session;
 
+use std::cell::Cell;
+
 /// This is a list of all known features since the beginning of time. This list
 /// can never shrink, it may only be expanded (in order to prevent old programs
 /// from failing to compile). The status of each feature may change, however.
@@ -67,6 +69,19 @@ enum Status {
 
     /// This language feature has since been Accepted (it was once Active)
     Accepted,
+}
+
+/// A set of features to be used by later passes.
+pub struct Features {
+    default_type_params: Cell<bool>
+}
+
+impl Features {
+    pub fn new() -> Features {
+        Features {
+            default_type_params: Cell::new(false)
+        }
+    }
 }
 
 struct Context {
@@ -315,4 +330,6 @@ pub fn check_crate(sess: Session, krate: &ast::Crate) {
     visit::walk_crate(&mut cx, krate, ());
 
     sess.abort_if_errors();
+
+    sess.features.default_type_params.set(cx.has_feature("default_type_params"));
 }

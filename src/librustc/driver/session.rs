@@ -12,6 +12,7 @@
 use back::target_strs;
 use back;
 use driver::driver::host_triple;
+use front;
 use metadata::filesearch;
 use metadata;
 use middle::lint;
@@ -186,6 +187,7 @@ pub struct Session_ {
                            ~[(lint::Lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
     crate_types: @RefCell<~[CrateType]>,
+    features: front::feature_gate::Features
 }
 
 pub type Session = @Session_;
