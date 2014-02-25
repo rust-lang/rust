@@ -81,7 +81,6 @@ obtained the type `Foo`, we would never match this method.
 
 
 use middle::subst::Subst;
-use middle::resolve;
 use middle::ty::*;
 use middle::ty;
 use middle::typeck::astconv::AstConv;
@@ -134,7 +133,6 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_origin> {
-    let impl_dups = @RefCell::new(HashSet::new());
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -142,7 +140,7 @@ pub fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: impl_dups,
+        impl_dups: @RefCell::new(HashSet::new()),
         inherent_candidates: @RefCell::new(~[]),
         extension_candidates: @RefCell::new(~[]),
         deref_args: deref_args,
@@ -164,9 +162,48 @@ pub fn lookup(
 
     debug!("searching extension candidates");
     lcx.reset_candidates();
-    lcx.push_bound_candidates(self_ty);
+    lcx.push_bound_candidates(self_ty, None);
     lcx.push_extension_candidates();
     return lcx.search(self_ty);
+}
+
+pub fn lookup_in_trait(
+        fcx: @FnCtxt,
+
+        // In a call `a.b::<X, Y, ...>(...)`:
+        expr: &ast::Expr,                   // The expression `a.b(...)`.
+        self_expr: &ast::Expr,              // The expression `a`.
+        callee_id: NodeId,                  /* Where to store `a.b`'s type,
+                                             * also the scope of the call */
+        m_name: ast::Name,                  // The name `b`.
+        trait_did: DefId,                   // The trait to limit the lookup to.
+        self_ty: ty::t,                     // The type of `a`.
+        supplied_tps: &[ty::t],             // The list of types X, Y, ... .
+        autoderef_receiver: AutoderefReceiverFlag)
+     -> Option<method_origin> {
+    let lcx = LookupContext {
+        fcx: fcx,
+        expr: expr,
+        self_expr: self_expr,
+        callee_id: callee_id,
+        m_name: m_name,
+        supplied_tps: supplied_tps,
+        impl_dups: @RefCell::new(HashSet::new()),
+        inherent_candidates: @RefCell::new(~[]),
+        extension_candidates: @RefCell::new(~[]),
+        deref_args: check::DoDerefArgs,
+        check_traits: CheckTraitsOnly,
+        autoderef_receiver: autoderef_receiver,
+    };
+
+    let self_ty = structurally_resolved_type(fcx, self_expr.span, self_ty);
+    debug!("method lookup_in_trait(self_ty={}, expr={}, self_expr={})",
+           self_ty.repr(fcx.tcx()), expr.repr(fcx.tcx()),
+           self_expr.repr(fcx.tcx()));
+
+    lcx.push_bound_candidates(self_ty, Some(trait_did));
+    lcx.push_extension_candidate(trait_did);
+    lcx.search(self_ty)
 }
 
 pub struct LookupContext<'a> {
@@ -319,17 +356,17 @@ impl<'a> LookupContext<'a> {
         }
     }
 
-    fn push_bound_candidates(&self, self_ty: ty::t) {
+    fn push_bound_candidates(&self, self_ty: ty::t, restrict_to: Option<DefId>) {
         let mut self_ty = self_ty;
         loop {
             match get(self_ty).sty {
                 ty_param(p) => {
-                    self.push_inherent_candidates_from_param(self_ty, p);
+                    self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
                 }
                 ty_self(..) => {
                     // Call is of the form "self.foo()" and appears in one
                     // of a trait's default method implementations.
-                    self.push_inherent_candidates_from_self(self_ty);
+                    self.push_inherent_candidates_from_self(self_ty, restrict_to);
                 }
                 _ => { /* No bound methods in these types */ }
             }
@@ -341,32 +378,27 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    fn push_extension_candidate(&self, trait_did: DefId) {
+        ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_did);
+
+        // Look for explicit implementations.
+        let trait_impls = self.tcx().trait_impls.borrow();
+        for impl_infos in trait_impls.get().find(&trait_did).iter() {
+            for impl_info in impl_infos.borrow().get().iter() {
+                self.push_candidates_from_impl(
+                    self.extension_candidates.borrow_mut().get(), *impl_info);
+            }
+        }
+    }
+
     fn push_extension_candidates(&self) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let trait_map: &resolve::TraitMap = &self.fcx.ccx.trait_map;
-        let opt_applicable_traits = trait_map.find(&self.expr.id);
-        for applicable_traits in opt_applicable_traits.iter() {
-            let applicable_traits = applicable_traits.borrow();
-            for trait_did in applicable_traits.get().iter() {
-                ty::populate_implementations_for_trait_if_necessary(
-                    self.tcx(),
-                    *trait_did);
-
-                // Look for explicit implementations.
-                let trait_impls = self.tcx().trait_impls.borrow();
-                let opt_impl_infos = trait_impls.get().find(trait_did);
-                for impl_infos in opt_impl_infos.iter() {
-                    let impl_infos = impl_infos.borrow();
-                    for impl_info in impl_infos.get().iter() {
-                        let mut extension_candidates =
-                            self.extension_candidates.borrow_mut();
-                        self.push_candidates_from_impl(
-                            extension_candidates.get(), *impl_info);
-
-                    }
-                }
+        let opt_applicable_traits = self.fcx.ccx.trait_map.find(&self.expr.id);
+        for applicable_traits in opt_applicable_traits.move_iter() {
+            for trait_did in applicable_traits.iter() {
+                self.push_extension_candidate(*trait_did);
             }
         }
     }
@@ -428,7 +460,7 @@ impl<'a> LookupContext<'a> {
                 self.construct_transformed_self_ty_for_object(
                     did, &rcvr_substs, &m);
 
-            Candidate {
+            Some(Candidate {
                 rcvr_match_condition: RcvrMatchesIfObject(did),
                 rcvr_substs: new_trait_ref.substs.clone(),
                 method_ty: @m,
@@ -438,49 +470,61 @@ impl<'a> LookupContext<'a> {
                         method_num: method_num,
                         real_index: vtable_index
                     })
-            }
+            })
         });
     }
 
     fn push_inherent_candidates_from_param(&self,
                                            rcvr_ty: ty::t,
+                                           restrict_to: Option<DefId>,
                                            param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty={:?})",
                param_ty);
         self.push_inherent_candidates_from_bounds(
             rcvr_ty,
             self.fcx.inh.param_env.type_param_bounds[param_ty.idx].trait_bounds,
+            restrict_to,
             param_numbered(param_ty.idx));
     }
 
 
     fn push_inherent_candidates_from_self(&self,
-                                          rcvr_ty: ty::t) {
+                                          rcvr_ty: ty::t,
+                                          restrict_to: Option<DefId>) {
         debug!("push_inherent_candidates_from_self()");
         self.push_inherent_candidates_from_bounds(
             rcvr_ty,
             [self.fcx.inh.param_env.self_param_bound.unwrap()],
+            restrict_to,
             param_self)
     }
 
     fn push_inherent_candidates_from_bounds(&self,
                                             self_ty: ty::t,
                                             bounds: &[@TraitRef],
+                                            restrict_to: Option<DefId>,
                                             param: param_index) {
         self.push_inherent_candidates_from_bounds_inner(bounds,
             |trait_ref, m, method_num, bound_num| {
-            Candidate {
-                rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
-                rcvr_substs: trait_ref.substs.clone(),
-                method_ty: m,
-                origin: method_param(
-                                     method_param {
+                match restrict_to {
+                    Some(trait_did) => {
+                        if trait_did != trait_ref.def_id {
+                            return None;
+                        }
+                    }
+                    _ => {}
+                }
+                Some(Candidate {
+                    rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
+                    rcvr_substs: trait_ref.substs.clone(),
+                    method_ty: m,
+                    origin: method_param(method_param {
                         trait_id: trait_ref.def_id,
                         method_num: method_num,
                         param_num: param,
                         bound_num: bound_num,
                     })
-            }
+                })
         })
     }
 
@@ -492,7 +536,7 @@ impl<'a> LookupContext<'a> {
                                                             m: @ty::Method,
                                                             method_num: uint,
                                                             bound_num: uint|
-                                                            -> Candidate) {
+                                                            -> Option<Candidate>) {
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
 
@@ -508,17 +552,17 @@ impl<'a> LookupContext<'a> {
                 Some(pos) => {
                     let method = trait_methods[pos];
 
-                    let cand = mk_cand(bound_trait_ref, method,
-                                       pos, this_bound_idx);
-
-                    debug!("pushing inherent candidate for param: {:?}", cand);
-                    let mut inherent_candidates = self.inherent_candidates
-                                                      .borrow_mut();
-                    inherent_candidates.get().push(cand);
+                    match mk_cand(bound_trait_ref, method, pos, this_bound_idx) {
+                        Some(cand) => {
+                            debug!("pushing inherent candidate for param: {:?}", cand);
+                            self.inherent_candidates.borrow_mut().get().push(cand);
+                        }
+                        None => {}
+                    }
                 }
                 None => {
                     debug!("trait doesn't contain method: {:?}",
-                    bound_trait_ref.def_id);
+                        bound_trait_ref.def_id);
                     // check next trait or bound
                 }
             }
