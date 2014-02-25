@@ -282,6 +282,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                 if !type_is_immediate(ccx, arg_ty) {
                     unsafe {
                         llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
                     }
                 }
             }
