@@ -118,34 +118,6 @@ fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
 }
 */
 
-/// Iterate over a list
-pub fn iter<T>(list: @List<T>, f: |&T|) {
-    let mut cur = list;
-    loop {
-        cur = match *cur {
-          Cons(ref head, tail) => {
-            f(head);
-            tail
-          }
-          Nil => break
-        }
-    }
-}
-
-/// Iterate over a list
-pub fn each<T>(list: @List<T>, f: |&T| -> bool) -> bool {
-    let mut cur = list;
-    loop {
-        cur = match *cur {
-          Cons(ref head, tail) => {
-            if !f(head) { return false; }
-            tail
-          }
-          Nil => { return true; }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use list::{List, Nil, head, tail};
