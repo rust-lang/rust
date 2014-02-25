@@ -2021,8 +2021,8 @@ C++ templates.
 
 ## Traits
 
-Within a generic function -- that is, a function parameterized by a
-type parameter, say, `T` -- the operations we can do on arguments of
+Within a generic function—that is, a function parameterized by a
+type parameter, say, `T`—the operations we can do on arguments of
 type `T` are quite limited.  After all, since we don't know what type
 `T` will be instantiated with, we can't safely modify or query values
 of type `T`.  This is where _traits_ come into play. Traits are Rust's
