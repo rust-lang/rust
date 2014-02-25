@@ -44,13 +44,12 @@ pub enum Os {
     OsFreebsd
 }
 
-pub struct Context {
+pub struct Context<'a> {
     sess: Session,
     span: Span,
-    ident: ~str,
-    name: ~str,
-    version: ~str,
-    hash: ~str,
+    ident: &'a str,
+    crate_id: &'a CrateId,
+    hash: &'a str,
     os: Os,
     intr: @IdentInterner
 }
@@ -79,8 +78,8 @@ fn realpath(p: &Path) -> Path {
     }
 }
 
-impl Context {
-    pub fn load_library_crate(&self, root_ident: Option<~str>) -> Library {
+impl<'a> Context<'a> {
+    pub fn load_library_crate(&self, root_ident: Option<&str>) -> Library {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
@@ -101,8 +100,8 @@ impl Context {
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}-", dyprefix, self.name);
-        let rlib_prefix = format!("lib{}-", self.name);
+        let dylib_prefix = format!("{}{}-", dyprefix, self.crate_id.name);
+        let rlib_prefix = format!("lib{}-", self.crate_id.name);
 
         let mut candidates = HashMap::new();
 
@@ -196,7 +195,8 @@ impl Context {
             1 => Some(libraries[0]),
             _ => {
                 self.sess.span_err(self.span,
-                    format!("multiple matching crates for `{}`", self.name));
+                    format!("multiple matching crates for `{}`",
+                            self.crate_id.name));
                 self.sess.note("candidates:");
                 for lib in libraries.iter() {
                     match lib.dylib {
@@ -243,11 +243,12 @@ impl Context {
         debug!("matching -- {}, hash: {}", file, hash);
         let vers = match parts.next() { Some(v) => v, None => return None };
         debug!("matching -- {}, vers: {}", file, vers);
-        if !self.version.is_empty() && self.version.as_slice() != vers {
-            return None
+        match self.crate_id.version {
+            Some(ref version) if version.as_slice() != vers => return None,
+            Some(..) | None => {}
         }
         debug!("matching -- {}, vers ok (requested {})", file,
-               self.version);
+               self.crate_id.version);
         // hashes in filenames are prefixes of the "true hash"
         if self.hash.is_empty() || self.hash.starts_with(hash) {
             debug!("matching -- {}, hash ok (requested {})", file, self.hash);
@@ -275,7 +276,7 @@ impl Context {
         if m.len() > 1 {
             self.sess.span_err(self.span,
                                format!("multiple {} candidates for `{}` \
-                                        found", flavor, self.name));
+                                        found", flavor, self.crate_id.name));
             for (i, path) in m.iter().enumerate() {
                 self.sess.span_note(self.span,
                                     format!(r"candidate \#{}: {}", i + 1,
@@ -289,8 +290,7 @@ impl Context {
             info!("{} reading meatadata from: {}", flavor, lib.display());
             match get_metadata_section(self.os, &lib) {
                 Some(blob) => {
-                    if crate_matches(blob.as_slice(), self.name,
-                                     self.version, self.hash) {
+                    if crate_matches(blob.as_slice(), self.crate_id, self.hash){
                         *slot = Some(blob);
                     } else {
                         info!("metadata mismatch");
@@ -323,23 +323,13 @@ pub fn note_crateid_attr(diag: @SpanHandler, crateid: &CrateId) {
     diag.handler().note(format!("crate_id: {}", crateid.to_str()));
 }
 
-fn crate_matches(crate_data: &[u8],
-                 name: &str,
-                 version: &str,
-                 hash: &str) -> bool {
-    let attrs = decoder::get_crate_attributes(crate_data);
-    match attr::find_crateid(attrs) {
-        None => false,
-        Some(crateid) => {
-            if !hash.is_empty() {
-                let chash = decoder::get_crate_hash(crate_data);
-                if chash.as_slice() != hash { return false; }
-            }
-            name == crateid.name &&
-                (version.is_empty() ||
-                 crateid.version_or_default() == version)
-        }
+fn crate_matches(crate_data: &[u8], crate_id: &CrateId, hash: &str) -> bool {
+    let other_id = decoder::get_crate_id(crate_data);
+    if !crate_id.matches(&other_id) { return false }
+    if hash != "" && hash != decoder::get_crate_hash(crate_data).as_slice() {
+        return false
     }
+    return true;
 }
 
 impl ArchiveMetadata {

@@ -2488,7 +2488,7 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
         let cdata = cstore.get_crate_data(i);
         let nm = symname(format!("_rust_crate_map_{}", cdata.name),
                          cstore.get_crate_hash(i),
-                         cstore.get_crate_vers(i));
+                         cstore.get_crate_id(i).version_or_default());
         let cr = nm.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
