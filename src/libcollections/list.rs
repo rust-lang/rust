@@ -105,15 +105,12 @@ impl<T:'static + Clone> List<T> {
             }
         }
     }
-}
 
-/*
-/// Push one element into the front of a list, returning a new list
-/// THIS VERSION DOESN'T ACTUALLY WORK
-fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
-    ll = &mut @cons(vv, *ll)
+    /// Push one element into the front of a list, returning a new list
+    pub fn unshift(&self, element: T) -> List<T> {
+        Cons(element, @(self.clone()))
+    }
 }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -227,5 +224,14 @@ mod tests {
     fn test_append() {
         assert_eq!(List::from_vec([1, 2, 3, 4]),
                    List::from_vec([1, 2]).append(List::from_vec([3, 4])));
+    }
+
+    #[test]
+    fn test_unshift() {
+        let list = List::from_vec([1]);
+        let new_list = list.unshift(0);
+        assert_eq!(list.len(), 1u);
+        assert_eq!(new_list.len(), 2u);
+        assert_eq!(new_list, List::from_vec([0, 1]));
     }
 }
