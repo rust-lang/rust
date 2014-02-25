@@ -10,6 +10,8 @@
 
 //! A standard, garbage-collected linked list.
 
+use std::container::Container;
+
 #[deriving(Clone, Eq)]
 #[allow(missing_doc)]
 pub enum List<T> {
@@ -53,6 +55,11 @@ impl<T> List<T> {
     }
 }
 
+impl<T> Container for List<T> {
+    /// Returns the length of a list
+    fn len(&self) -> uint { self.iter().len() }
+}
+
 /// Returns true if a list contains an element with the given value
 pub fn has<T:Eq>(list: @List<T>, element: T) -> bool {
     let mut found = false;
@@ -68,13 +75,6 @@ pub fn is_empty<T>(list: @List<T>) -> bool {
         Nil => true,
         _ => false
     }
-}
-
-/// Returns the length of a list
-pub fn len<T>(list: @List<T>) -> uint {
-    let mut count = 0u;
-    iter(list, |_e| count += 1u);
-    count
 }
 
 /// Returns all but the first element of a list
@@ -252,10 +252,11 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let list = @List::from_vec([0, 1, 2]);
-        let empty = @list::Nil::<int>;
-        assert_eq!(list::len(list), 3u);
-        assert_eq!(list::len(empty), 0u);
+        let empty = Nil::<int>;
+        assert_eq!(empty.len(), 0u);
+
+        let list = List::from_vec([0, 1, 2]);
+        assert_eq!(list.len(), 3u);
     }
 
     #[test]
