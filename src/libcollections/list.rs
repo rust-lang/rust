@@ -58,6 +58,9 @@ impl<T> List<T> {
 impl<T> Container for List<T> {
     /// Returns the length of a list
     fn len(&self) -> uint { self.iter().len() }
+
+    /// Returns true if the list is empty
+    fn is_empty(&self) -> bool { match *self { Nil => true, _ => false } }
 }
 
 /// Returns true if a list contains an element with the given value
@@ -67,14 +70,6 @@ pub fn has<T:Eq>(list: @List<T>, element: T) -> bool {
         if *e == element { found = true; false } else { true }
     });
     return found;
-}
-
-/// Returns true if the list is empty
-pub fn is_empty<T>(list: @List<T>) -> bool {
-    match *list {
-        Nil => true,
-        _ => false
-    }
 }
 
 /// Returns all but the first element of a list
@@ -153,7 +148,7 @@ pub fn each<T>(list: @List<T>, f: |&T| -> bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use list::{List, Nil, head, is_empty, tail};
+    use list::{List, Nil, head, tail};
     use list;
 
     #[test]
@@ -168,13 +163,13 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let empty : @list::List<int> = @List::from_vec([]);
-        let full1 = @List::from_vec([1]);
-        let full2 = @List::from_vec(['r', 'u']);
+        let empty : list::List<int> = List::from_vec([]);
+        let full1 = List::from_vec([1]);
+        let full2 = List::from_vec(['r', 'u']);
 
-        assert!(is_empty(empty));
-        assert!(!is_empty(full1));
-        assert!(!is_empty(full2));
+        assert!(empty.is_empty());
+        assert!(!full1.is_empty());
+        assert!(!full2.is_empty());
     }
 
     #[test]
