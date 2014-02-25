@@ -54,26 +54,6 @@ impl<T> List<T> {
 }
 
 /**
- * Search for an element that matches a given predicate
- *
- * Apply function `f` to each element of `list`, starting from the first.
- * When function `f` returns true then an option containing the element
- * is returned. If `f` matches no elements then none is returned.
- */
-pub fn find<T:Clone>(list: @List<T>, f: |&T| -> bool) -> Option<T> {
-    let mut list = list;
-    loop {
-        list = match *list {
-          Cons(ref head, tail) => {
-            if f(head) { return Some((*head).clone()); }
-            tail
-          }
-          Nil => return None
-        }
-    };
-}
-
-/**
  * Returns true if a list contains an element that matches a given predicate
  *
  * Apply function `f` to each element of `list`, starting from the first.
@@ -196,8 +176,6 @@ mod tests {
     use list::{List, Nil, head, is_empty, tail};
     use list;
 
-    use std::option;
-
     #[test]
     fn test_iter() {
         let list = List::from_vec([0, 1, 2]);
@@ -254,18 +232,21 @@ mod tests {
 
     #[test]
     fn test_find_success() {
-        fn match_(i: &int) -> bool { return *i == 2; }
-        let list = @List::from_vec([0, 1, 2]);
-        assert_eq!(list::find(list, match_), option::Some(2));
+        fn match_(i: & &int) -> bool { **i == 2 }
+
+        let list = List::from_vec([0, 1, 2]);
+        assert_eq!(list.iter().find(match_).unwrap(), &2);
     }
 
     #[test]
     fn test_find_fail() {
-        fn match_(_i: &int) -> bool { return false; }
-        let list = @List::from_vec([0, 1, 2]);
-        let empty = @list::Nil::<int>;
-        assert_eq!(list::find(list, match_), option::None::<int>);
-        assert_eq!(list::find(empty, match_), option::None::<int>);
+        fn match_(_i: & &int) -> bool { false }
+
+        let empty = Nil::<int>;
+        assert_eq!(empty.iter().find(match_), None);
+
+        let list = List::from_vec([0, 1, 2]);
+        assert_eq!(list.iter().find(match_), None);
     }
 
     #[test]
