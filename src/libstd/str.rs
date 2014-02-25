@@ -3072,6 +3072,7 @@ impl Default for ~str {
 #[cfg(test)]
 mod tests {
     use iter::AdditiveIterator;
+    use default::Default;
     use prelude::*;
     use str::*;
 

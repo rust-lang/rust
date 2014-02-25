@@ -55,6 +55,8 @@ fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
 }
 
 fn main() {
+    use std::from_str::FromStr;
+
     let args = if os::getenv("RUST_BENCH").is_some() {
         ~[~"", ~"2000000", ~"503"]
     }

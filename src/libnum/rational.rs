@@ -333,7 +333,7 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 mod test {
 
     use super::{Ratio, Rational, BigRational};
-    use std::num::{Zero,One,FromStrRadix,FromPrimitive};
+    use std::num::{Zero, One, FromStrRadix, FromPrimitive, ToStrRadix};
     use std::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};

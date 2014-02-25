@@ -15,6 +15,7 @@
 use prelude::*;
 
 use default::Default;
+use from_str::FromStr;
 use num::{Bitwise, Bounded};
 use num::{CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};

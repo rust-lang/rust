@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test - #2093
+#[feature(macro_rules)];
 
-fn let_in<T>(x: T, f: |T|) {}
+macro_rules! expr (($e: expr) => { $e })
 
-fn main() {
-    let_in(3u, |i| { assert!(i == 3); });
-    //~^ ERROR expected `uint` but found `int`
+macro_rules! spawn {
+    ($($code: tt)*) => {
+        expr!(spawn(proc() {$($code)*}))
+    }
+}
 
-    let_in(3, |i| { assert!(i == 3u); });
-    //~^ ERROR expected `int` but found `uint`
+pub fn main() {
+    spawn! {
+        info!("stmt");
+    };
+    let _ = spawn! {
+        info!("expr");
+    };
 }
