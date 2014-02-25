@@ -65,16 +65,6 @@ pub struct AtomicUint {
 }
 
 /**
- * An unsigned atomic integer type that is forced to be 64-bits. This does not
- * support all operations.
- */
-pub struct AtomicU64 {
-    priv v: u64,
-    priv nopod: marker::NoPod,
-    priv nofreeze: marker::NoFreeze
-}
-
-/**
  * An unsafe atomic pointer. Only supports basic atomic operations
  */
 pub struct AtomicPtr<T> {
@@ -110,9 +100,6 @@ pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  {
     v: 0, nopod: marker::NoPod, nofreeze: marker::NoFreeze
 };
 pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint {
-    v: 0, nopod: marker::NoPod, nofreeze: marker::NoFreeze
-};
-pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 {
     v: 0, nopod: marker::NoPod, nofreeze: marker::NoFreeze
 };
 
@@ -239,42 +226,6 @@ impl AtomicInt {
     /// Returns the old value (like __sync_fetch_and_sub).
     #[inline]
     pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
-        unsafe { atomic_sub(transmute_mut_unsafe(&self.v), val, order) }
-    }
-}
-
-impl AtomicU64 {
-    pub fn new(v: u64) -> AtomicU64 {
-        AtomicU64 { v:v, nopod: marker::NoPod, nofreeze: marker::NoFreeze }
-    }
-
-    #[inline]
-    pub fn load(&self, order: Ordering) -> u64 {
-        unsafe { atomic_load(&self.v, order) }
-    }
-
-    #[inline]
-    pub fn store(&self, val: u64, order: Ordering) {
-        unsafe { atomic_store(transmute_mut_unsafe(&self.v), val, order); }
-    }
-
-    #[inline]
-    pub fn swap(&self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_swap(transmute_mut_unsafe(&self.v), val, order) }
-    }
-
-    #[inline]
-    pub fn compare_and_swap(&self, old: u64, new: u64, order: Ordering) -> u64 {
-        unsafe { atomic_compare_and_swap(transmute_mut_unsafe(&self.v), old, new, order) }
-    }
-
-    #[inline]
-    pub fn fetch_add(&self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_add(transmute_mut_unsafe(&self.v), val, order) }
-    }
-
-    #[inline]
-    pub fn fetch_sub(&self, val: u64, order: Ordering) -> u64 {
         unsafe { atomic_sub(transmute_mut_unsafe(&self.v), val, order) }
     }
 }
