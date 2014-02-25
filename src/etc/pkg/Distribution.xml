@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Rust</title>
+    <license file="LICENSE.txt" mime-type="text/plain"/>
+    <pkg-ref id="org.rust-lang.rust"/>
+    <options customize="never" require-scripts="false" hostArchitectures="i386,x86_64"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="10.7"/>
+        </allowed-os-versions>
+    </volume-check>
+    <choices-outline>
+        <line choice="default">
+            <line choice="org.rust-lang.rust"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="org.rust-lang.rust" visible="false">
+        <pkg-ref id="org.rust-lang.rust"/>
+    </choice>
+    <pkg-ref id="org.rust-lang.rust" version="0" onConclusion="none">rust.pkg</pkg-ref>
+</installer-gui-script>
