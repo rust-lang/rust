@@ -55,6 +55,12 @@ impl<T:Pod> Clone for Cell<T> {
     }
 }
 
+impl<T:Eq + Pod> Eq for Cell<T> {
+    fn eq(&self, other: &Cell<T>) -> bool {
+        self.get() == other.get()
+    }
+}
+
 /// A mutable memory location with dynamically checked borrow rules
 pub struct RefCell<T> {
     priv value: T,
@@ -273,11 +279,14 @@ mod test {
     #[test]
     fn smoketest_cell() {
         let x = Cell::new(10);
+        assert_eq!(x, Cell::new(10));
         assert_eq!(x.get(), 10);
         x.set(20);
+        assert_eq!(x, Cell::new(20));
         assert_eq!(x.get(), 20);
 
         let y = Cell::new((30, 40));
+        assert_eq!(y, Cell::new((30, 40)));
         assert_eq!(y.get(), (30, 40));
     }
 
