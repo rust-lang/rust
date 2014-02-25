@@ -53,6 +53,14 @@ impl<T> List<T> {
             next: None
         }
     }
+
+    /// Returns the first element of a list
+    pub fn head<'a>(&'a self) -> Option<&'a T> {
+        match *self {
+          Nil => None,
+          Cons(ref head, _) => Some(head)
+        }
+    }
 }
 
 impl<T> Container for List<T> {
@@ -75,15 +83,6 @@ pub fn tail<T>(list: @List<T>) -> @List<T> {
     match *list {
         Cons(_, tail) => return tail,
         Nil => fail!("list empty")
-    }
-}
-
-/// Returns the first element of a list
-pub fn head<T:Clone>(list: @List<T>) -> T {
-    match *list {
-      Cons(ref head, _) => (*head).clone(),
-      // makes me sad
-      _ => fail!("head invoked on empty list")
     }
 }
 
@@ -118,7 +117,7 @@ fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
 
 #[cfg(test)]
 mod tests {
-    use list::{List, Nil, head, tail};
+    use list::{List, Nil, tail};
     use list;
 
     #[test]
@@ -145,14 +144,13 @@ mod tests {
     #[test]
     fn test_from_vec() {
         let list = @List::from_vec([0, 1, 2]);
+        assert_eq!(list.head().unwrap(), &0);
 
-        assert_eq!(head(list), 0);
+        let mut tail = tail(list);
+        assert_eq!(tail.head().unwrap(), &1);
 
-        let tail_l = tail(list);
-        assert_eq!(head(tail_l), 1);
-
-        let tail_tail_l = tail(tail_l);
-        assert_eq!(head(tail_tail_l), 2);
+        tail = tail(tail);
+        assert_eq!(tail.head().unwrap(), &2);
     }
 
     #[test]
