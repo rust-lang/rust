@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME #3290
 pub fn main() {
    let mut x = ~3;
    x = x;

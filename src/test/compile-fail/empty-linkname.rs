@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:empty #[link_name] not allowed; use #[nolink].
-
-// ignore-test
-
-#[link_name = ""]
+#[link(name = "")] //~ ERROR: given with empty name
 extern {
 }

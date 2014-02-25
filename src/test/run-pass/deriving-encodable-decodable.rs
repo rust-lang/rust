@@ -54,7 +54,7 @@ struct G<T> {
     t: T
 }
 
-fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
+fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder<'a>> +
                     Decodable<Decoder<'a>>>() {
     let obj: T = random();
     let mut w = MemWriter::new();
