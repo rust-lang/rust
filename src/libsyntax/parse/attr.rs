@@ -40,9 +40,6 @@ impl ParserAttr for Parser {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
-                if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                    break;
-                }
                 attrs.push(self.parse_attribute(false));
               }
               token::DOC_COMMENT(s) => {
@@ -79,9 +76,22 @@ impl ParserAttr for Parser {
             token::POUND => {
                 let lo = self.span.lo;
                 self.bump();
-                self.expect(&token::LBRACKET);
-                let meta_item = self.parse_meta_item();
-                self.expect(&token::RBRACKET);
+
+                // #^ lang(foo);
+                if self.eat(&token::BINOP(token::CARET)) {
+                    if !permit_inner {
+                        self.fatal("An inner attribute was not permitted in this context.");
+                    }
+                }
+
+                let meta_item = if self.eat(&token::LBRACKET) { // #[lang(foo)]
+                    let meta = self.parse_meta_item();
+                    self.expect(&token::RBRACKET);
+                    meta
+                } else { // #lang(foo)
+                    self.parse_meta_item()
+                };
+
                 let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item)
             }
@@ -127,10 +137,6 @@ impl ParserAttr for Parser {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
-                    if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                        // This is an extension
-                        break;
-                    }
                     self.parse_attribute(true)
                 }
                 token::DOC_COMMENT(s) => {
