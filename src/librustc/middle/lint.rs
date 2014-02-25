@@ -88,7 +88,6 @@ pub enum Lint {
     AttributeUsage,
     UnknownFeatures,
     UnknownCrateType,
-    DefaultTypeParamUsage,
 
     ManagedHeapMemory,
     OwnedHeapMemory,
@@ -382,14 +381,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: UnusedResult,
         desc: "unused result of an expression in a statement",
         default: allow,
-    }),
-
-     ("default_type_param_usage",
-     LintSpec {
-         lint: DefaultTypeParamUsage,
-         desc: "prevents explicitly setting a type parameter with a default",
-         default: deny,
-     }),
+    })
 ];
 
 /*

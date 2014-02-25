@@ -13,7 +13,6 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
-use parse::token::InternedString;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
@@ -21,29 +20,18 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             item: @Item,
                             push: |@Item|) {
 
-    let allow_default_type_param_usage = cx.attribute(
-        span,
-        cx.meta_list(
-            span,
-            InternedString::new("allow"),
-            ~[cx.meta_word(span, InternedString::new("default_type_param_usage"))]));
-
     let hash_trait_def = TraitDef {
         span: span,
-        attributes: ~[allow_default_type_param_usage],
-        path: Path::new_(~["std", "hash", "Hash"], None,
-                         ~[~Literal(Path::new_local("__H"))], true),
+        attributes: ~[],
+        path: Path::new(~["std", "hash", "Hash"]),
         additional_bounds: ~[],
-        generics: LifetimeBounds {
-            lifetimes: ~[],
-            bounds: ~[("__H", ~[Path::new(~["std", "io", "Writer"])])],
-        },
+        generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
                 name: "hash",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[Ptr(~Literal(Path::new_local("__H")),
+                args: ~[Ptr(~Literal(Path::new(~["std", "hash", "sip", "SipState"])),
                             Borrowed(None, MutMutable))],
                 ret_ty: nil_ty(),
                 inline: true,

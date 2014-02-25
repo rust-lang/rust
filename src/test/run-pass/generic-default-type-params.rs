@@ -11,8 +11,6 @@
 // ignore-fast #[feature] doesn't work with check-fast
 #[feature(default_type_params)];
 
-#[allow(default_type_param_usage)];
-
 struct Foo<A = (int, char)> {
     a: A
 }
