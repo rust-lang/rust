@@ -1468,14 +1468,14 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an immutable pointer to an object freezes it and prevents mutation.
+Lending an &-pointer to an object freezes it and prevents mutation—even if the object was declared as `mut`.
 `Freeze` objects have freezing enforced statically at compile-time. An example
 of a non-`Freeze` type is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
 {
-    let y = &x; // `x` is now frozen, it cannot be modified
+    let y = &x; // `x` is now frozen. It cannot be modified or re-assigned.
 }
 // `x` is now unfrozen again
 # x = 3;
@@ -2021,8 +2021,8 @@ C++ templates.
 
 ## Traits
 
-Within a generic function -- that is, a function parameterized by a
-type parameter, say, `T` -- the operations we can do on arguments of
+Within a generic function—that is, a function parameterized by a
+type parameter, say, `T`—the operations we can do on arguments of
 type `T` are quite limited.  After all, since we don't know what type
 `T` will be instantiated with, we can't safely modify or query values
 of type `T`.  This is where _traits_ come into play. Traits are Rust's
