@@ -17,6 +17,42 @@ pub enum List<T> {
     Nil,
 }
 
+pub struct Items<'a, T> {
+    priv head: &'a List<T>,
+    priv next: Option<&'a @List<T>>
+}
+
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
+        match self.next {
+            None => match *self.head {
+                Nil => None,
+                Cons(ref value, ref tail) => {
+                    self.next = Some(tail);
+                    Some(value)
+                }
+            },
+            Some(next) => match **next {
+                Nil => None,
+                Cons(ref value, ref tail) => {
+                    self.next = Some(tail);
+                    Some(value)
+                }
+            }
+        }
+    }
+}
+
+impl<T> List<T> {
+    /// Returns a forward iterator
+    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+        Items {
+            head: self,
+            next: None
+        }
+    }
+}
+
 /**
  * Left fold
  *
@@ -180,6 +216,16 @@ mod tests {
     use list;
 
     use std::option;
+
+    #[test]
+    fn test_iter() {
+        let list = List::from_vec([0, 1, 2]);
+        let mut iter = list.iter();
+        assert_eq!(&0, iter.next().unwrap());
+        assert_eq!(&1, iter.next().unwrap());
+        assert_eq!(&2, iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
 
     #[test]
     fn test_is_empty() {
