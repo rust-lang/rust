@@ -8,17 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test linked failure
-// error-pattern:explicit
+#[allow(unused_variable)];
 
-extern crate extra;
+struct T { f: extern "Rust" fn() }
+struct S { f: extern "Rust" fn() }
 
-use std::task;
+fn fooS(t: S) {
+}
 
-// We don't want to see any invalid reads
-fn main() {
-    fn f() {
-        fail!();
-    }
-    task::spawn(|| f() );
+fn fooT(t: T) {
+}
+
+fn bar() {
+}
+
+pub fn main() {
+    let x: extern "Rust" fn() = bar;
+    fooS(S {f: x});
+    fooS(S {f: bar});
+
+    let x: extern "Rust" fn() = bar;
+    fooT(T {f: x});
+    fooT(T {f: bar});
 }

@@ -8,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME #7308
+#[allow(non_camel_case_types)];
 
-native mod libc = target_libc {
-  fn open(int name, int flags, int mode) -> int;
-  fn close(int fd) -> int;
-  fn read(int fd, int buf, int count) -> int;
-  fn write(int fd, int buf, int count) -> int;
-  fn malloc(int sz) -> int;
-  fn free(int p) -> ();
+pub fn main() {
+    let one: || -> uint = || {
+        enum r { a };
+        a as uint
+    };
+    let two: || -> uint = || {
+        enum r { a };
+        a as uint
+    };
+    one(); two();
 }
-
-native "cdecl" mod rustrt {
-  fn str_buf(str s) -> int;
-}
-
-mod inner = "native-mod-src/inner.rs";

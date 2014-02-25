@@ -24,21 +24,23 @@
 fn of<T>() -> |T| { fail!(); }
 fn subtype<T>(x: |T|) { fail!(); }
 
-fn test_fn<T>(_x: &'x T, _y: &'y T, _z: &'z T) {
+fn test_fn<'x, 'y, 'z, T>(_x: &'x T, _y: &'y T, _z: &'z T) {
     // Here, x, y, and z are free.  Other letters
     // are bound.  Note that the arrangement
     // subtype::<T1>(of::<T2>()) will typecheck
     // iff T1 <: T2.
 
     // should be the default:
-    subtype::<'static ||>(of::<||>());
-    subtype::<||>(of::<'static ||>());
+    subtype::< ||:'static>(of::<||>());
+    subtype::<||>(of::< ||:'static>());
 
     //
-    subtype::<'x ||>(of::<||>());    //~ ERROR mismatched types
-    subtype::<'x ||>(of::<'y ||>());  //~ ERROR mismatched types
+    subtype::< <'x> ||>(of::<||>());    //~ ERROR mismatched types
+    subtype::< <'x> ||>(of::< <'y> ||>());  //~ ERROR mismatched types
 
-    subtype::<'x ||>(of::<'static ||>()); //~ ERROR mismatched types
-    subtype::<'static ||>(of::<'x ||>());
+    subtype::< <'x> ||>(of::< ||:'static>()); //~ ERROR mismatched types
+    subtype::< ||:'static>(of::< <'x> ||>());
 
 }
+
+fn main() {}
