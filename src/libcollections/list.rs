@@ -61,6 +61,14 @@ impl<T> List<T> {
           Cons(ref head, _) => Some(head)
         }
     }
+
+    /// Returns all but the first element of a list
+    pub fn tail(&self) -> Option<@List<T>> {
+        match *self {
+            Nil => None,
+            Cons(_, tail) => Some(tail)
+        }
+    }
 }
 
 impl<T> Container for List<T> {
@@ -75,14 +83,6 @@ impl<T:Eq> List<T> {
     /// Returns true if a list contains an element with the given value
     pub fn contains(&self, element: T) -> bool {
         self.iter().any(|list_element| *list_element == element)
-    }
-}
-
-/// Returns all but the first element of a list
-pub fn tail<T>(list: @List<T>) -> @List<T> {
-    match *list {
-        Cons(_, tail) => return tail,
-        Nil => fail!("list empty")
     }
 }
 
@@ -117,7 +117,7 @@ fn push<T:Clone>(ll: &mut @list<T>, vv: T) {
 
 #[cfg(test)]
 mod tests {
-    use list::{List, Nil, tail};
+    use list::{List, Nil};
     use list;
 
     #[test]
@@ -143,13 +143,13 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        let list = @List::from_vec([0, 1, 2]);
+        let list = List::from_vec([0, 1, 2]);
         assert_eq!(list.head().unwrap(), &0);
 
-        let mut tail = tail(list);
+        let mut tail = list.tail().unwrap();
         assert_eq!(tail.head().unwrap(), &1);
 
-        tail = tail(tail);
+        tail = tail.tail().unwrap();
         assert_eq!(tail.head().unwrap(), &2);
     }
 
