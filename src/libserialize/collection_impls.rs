@@ -11,7 +11,8 @@
 //! Implementations of serialization for structures found in libcollections
 
 use std::uint;
-use std::hash::Hash;
+use std::default::Default;
+use std::hash::{Hash, Hasher};
 
 use {Decodable, Encodable, Decoder, Encoder};
 use collections::{DList, RingBuf, TreeMap, TreeSet, Deque, HashMap, HashSet,
@@ -164,9 +165,11 @@ impl<
 
 impl<
     E: Encoder,
-    K: Encodable<E> + Hash + Eq,
-    V: Encodable<E>
-> Encodable<E> for HashMap<K, V> {
+    K: Encodable<E> + Hash<S> + Eq,
+    V: Encodable<E>,
+    S,
+    H: Hasher<S>
+> Encodable<E> for HashMap<K, V, H> {
     fn encode(&self, e: &mut E) {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
@@ -181,12 +184,15 @@ impl<
 
 impl<
     D: Decoder,
-    K: Decodable<D> + Hash + Eq,
-    V: Decodable<D>
-> Decodable<D> for HashMap<K, V> {
-    fn decode(d: &mut D) -> HashMap<K, V> {
+    K: Decodable<D> + Hash<S> + Eq,
+    V: Decodable<D>,
+    S,
+    H: Hasher<S> + Default
+> Decodable<D> for HashMap<K, V, H> {
+    fn decode(d: &mut D) -> HashMap<K, V, H> {
         d.read_map(|d, len| {
-            let mut map = HashMap::with_capacity(len);
+            let hasher = Default::default();
+            let mut map = HashMap::with_capacity_and_hasher(hasher, len);
             for i in range(0u, len) {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
                 let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
@@ -198,10 +204,12 @@ impl<
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + Hash + Eq
-> Encodable<S> for HashSet<T> {
-    fn encode(&self, s: &mut S) {
+    E: Encoder,
+    T: Encodable<E> + Hash<S> + Eq,
+    S,
+    H: Hasher<S>
+> Encodable<E> for HashSet<T, H> {
+    fn encode(&self, s: &mut E) {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {
@@ -214,11 +222,13 @@ impl<
 
 impl<
     D: Decoder,
-    T: Decodable<D> + Hash + Eq
-> Decodable<D> for HashSet<T> {
-    fn decode(d: &mut D) -> HashSet<T> {
+    T: Decodable<D> + Hash<S> + Eq,
+    S,
+    H: Hasher<S> + Default
+> Decodable<D> for HashSet<T, H> {
+    fn decode(d: &mut D) -> HashSet<T, H> {
         d.read_seq(|d, len| {
-            let mut set = HashSet::with_capacity(len);
+            let mut set = HashSet::with_capacity_and_hasher(Default::default(), len);
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }
