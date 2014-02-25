@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, os, run, str};
+use std::{char, os, str};
 use std::rand::{task_rng, Rng};
-use std::io::File;
+use std::io::{File, Process};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
 // former imports the latter. `_chars` just contains an indentifier
@@ -55,7 +55,7 @@ fn main() {
 
         // rustc is passed to us with --out-dir and -L etc., so we
         // can't exec it directly
-        let result = run::process_output("sh", [~"-c", rustc + " " + main_file_str]).unwrap();
+        let result = Process::output("sh", [~"-c", rustc + " " + main_file_str]).unwrap();
         let err = str::from_utf8_lossy(result.error);
 
         // positive test so that this test will be updated when the
