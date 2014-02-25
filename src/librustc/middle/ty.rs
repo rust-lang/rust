@@ -1079,6 +1079,7 @@ pub fn mk_ctxt(s: session::Session,
                region_maps: middle::region::RegionMaps,
                lang_items: @middle::lang_items::LanguageItems)
             -> ctxt {
+
     @ctxt_ {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(HashMap::new()),
@@ -1126,7 +1127,7 @@ pub fn mk_ctxt(s: session::Session,
         upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(HashMap::new()),
         extern_const_variants: RefCell::new(HashMap::new()),
-     }
+    }
 }
 
 // Type constructors

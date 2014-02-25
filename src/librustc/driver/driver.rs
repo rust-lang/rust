@@ -295,8 +295,8 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(sess, krate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
-                            region_map, lang_items);
+    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
+                            freevars, region_map, lang_items);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, krate);
@@ -975,6 +975,7 @@ pub fn build_session_(sopts: @session::Options,
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
         crate_types: @RefCell::new(~[]),
+        features: front::feature_gate::Features::new()
     }
 }
 
