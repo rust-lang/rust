@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #2783
+// #12402 Operator overloading only considers the method name, not which trait is implemented
 
-fn foo(f: ||) { f() }
-
-fn main() {
-    ~"" || 42; //~ ERROR binary operation `||` cannot be applied to type
-    foo || {}; //~ ERROR binary operation `||` cannot be applied to type
-    //~^ NOTE did you forget the `do` keyword for the call?
+trait MyMul<Rhs, Res> {
+    fn mul(&self, rhs: &Rhs) -> Res;
 }
+
+fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 {
+    a * b //~ ERROR binary operation `*` cannot be applied to type `&T`
+}
+
+fn main() {}
