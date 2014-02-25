@@ -134,13 +134,6 @@ pub struct AtomicUint {
     priv nopod: marker::NoPod
 }
 
-/// An unsigned atomic integer type that is forced to be 64-bits. This does not
-/// support all operations.
-pub struct AtomicU64 {
-    priv v: Unsafe<u64>,
-    priv nopod: marker::NoPod
-}
-
 /// An unsafe atomic pointer. Only supports basic atomic operations
 pub struct AtomicPtr<T> {
     priv p: Unsafe<uint>,
@@ -198,11 +191,6 @@ pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: Unsafe{value: 0,
 pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: Unsafe{value: 0,
                                                                   marker1: marker::InvariantType},
                                                         nopod: marker::NoPod };
-/// An `AtomicU64` initialized to `0`
-pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: Unsafe{value: 0,
-                                                               marker1: marker::InvariantType},
-                                                     nopod: marker::NoPod };
-
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 static UINT_TRUE: uint = -1;
@@ -474,46 +462,6 @@ impl AtomicInt {
     /// ```
     #[inline]
     pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
-        unsafe { atomic_sub(self.v.get(), val, order) }
-    }
-}
-
-// temporary workaround
-// it causes link failure on MIPS target
-// libgcc doesn't implement 64-bit atomic operations for MIPS32
-#[cfg(not(target_arch = "mips"))]
-impl AtomicU64 {
-    pub fn new(v: u64) -> AtomicU64 {
-        AtomicU64 { v: Unsafe::new(v), nopod: marker::NoPod }
-    }
-
-    #[inline]
-    pub fn load(&self, order: Ordering) -> u64 {
-        unsafe { atomic_load(self.v.get(), order) }
-    }
-
-    #[inline]
-    pub fn store(&self, val: u64, order: Ordering) {
-        unsafe { atomic_store(self.v.get(), val, order); }
-    }
-
-    #[inline]
-    pub fn swap(&self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_swap(self.v.get(), val, order) }
-    }
-
-    #[inline]
-    pub fn compare_and_swap(&self, old: u64, new: u64, order: Ordering) -> u64 {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
-    }
-
-    #[inline]
-    pub fn fetch_add(&self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_add(self.v.get(), val, order) }
-    }
-
-    #[inline]
-    pub fn fetch_sub(&self, val: u64, order: Ordering) -> u64 {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
 }
