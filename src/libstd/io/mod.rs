@@ -1322,3 +1322,24 @@ pub static UserExec: FilePermission = UserDir;
 
 /// A mask for all possible permission bits
 pub static AllPermissions: FilePermission = 0x1ff;
+
+#[cfg(test)]
+mod tests {
+    use prelude::*;
+    use io::*;
+    use io::mem::{BufReader, BufWriter};
+    use container::Container;
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let mut r = BufReader::new(buf);
+        let r = r.by_ref();
+        assert_eq!(r.len(), buf.len());
+
+        let mut buf = [0];
+        let mut r = BufWriter::new(buf);
+        let r = r.by_ref();
+        assert_eq!(r.len(), 1);
+    }
+}

@@ -360,6 +360,7 @@ mod test {
     use super::*;
     use io::*;
     use io;
+    use container::Container;
 
     #[test]
     fn test_mem_writer() {
@@ -576,5 +577,24 @@ mod test {
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
         assert!(r.seek(-1, SeekSet).is_err());
+    }
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let r = BufReader::new(buf);
+        assert_eq!(r.len(), buf.len());
+
+        let r = MemReader::new(~[10]);
+        assert_eq!(r.len(), 1);
+
+        let mut r = MemWriter::new();
+        let str = "abc";
+        r.write_str(str).unwrap();
+        assert_eq!(r.len(), str.len());
+
+        let mut buf = [0];
+        let r = BufWriter::new(buf);
+        assert_eq!(r.len(), 1);
     }
 }

@@ -206,6 +206,7 @@ mod test {
     use io::{MemReader, MemWriter};
     use super::*;
     use prelude::*;
+    use container::Container;
 
     #[test]
     fn test_limit_reader_unlimited() {
@@ -311,5 +312,12 @@ mod test {
         let mut w = MemWriter::new();
         copy(&mut r, &mut w).unwrap();
         assert_eq!(~[0, 1, 2, 3, 4], w.unwrap());
+    }
+
+    #[test]
+    fn len() {
+        let r = MemReader::new(~[0, 1, 2, 4]);
+        let r = LimitReader::new(r, 3);
+        assert_eq!(r.len(), 3);
     }
 }

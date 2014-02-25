@@ -378,10 +378,11 @@ impl<S: Container> Container for BufferedStream<S> {
 #[cfg(test)]
 mod test {
     extern crate test;
+    use container::Container;
     use io;
     use prelude::*;
     use super::*;
-    use super::super::mem::{MemReader, MemWriter, BufReader};
+    use super::super::mem::{MemReader, MemWriter, BufReader, BufWriter};
     use Harness = self::test::BenchHarness;
 
     /// A type, free to create, primarily intended for benchmarking creation of
@@ -592,6 +593,44 @@ mod test {
         assert_eq!(it.next(), Some('ß'));
         assert_eq!(it.next(), Some('a'));
         assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let r = BufferedReader::new(BufReader::new(buf));
+        assert_eq!(r.len(), buf.len());
+
+        let mut buf = [0];
+        let r = BufferedWriter::new(BufWriter::new(buf));
+        assert_eq!(r.len(), 1);
+
+        let mut buf = [0];
+        let r = LineBufferedWriter::new(BufWriter::new(buf));
+        assert_eq!(r.len(), 1);
+
+        struct S;
+
+        impl io::Writer for S {
+            fn write(&mut self, _: &[u8]) -> io::IoResult<()> {
+                Err(io::standard_error(io::EndOfFile))
+            }
+        }
+
+        impl io::Reader for S {
+            fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+                Err(io::standard_error(io::EndOfFile))
+            }
+        }
+
+        impl Container for S {
+            fn len(&self) -> uint {
+                0
+            }
+        }
+
+        let s = BufferedStream::new(S);
+        assert_eq!(s.len(), 0);
     }
 
     #[bench]
