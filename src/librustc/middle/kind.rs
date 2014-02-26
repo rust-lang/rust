@@ -315,7 +315,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     match e.node {
         ExprUnary(UnBox, interior) => {
             let interior_type = ty::expr_ty(cx.tcx, interior);
-            let _ = check_durable(cx.tcx, interior_type, interior.span);
+            let _ = check_static(cx.tcx, interior_type, interior.span);
         }
         ExprCast(source, _) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
@@ -474,13 +474,13 @@ pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
     }
 }
 
-// note: also used from middle::typeck::regionck!
-pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
+pub fn check_static(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(..) => {
-            tcx.sess.span_err(sp, "value may contain references; \
-                                   add `'static` bound");
+            tcx.sess.span_err(sp,
+                format!("value may contain references; \
+                         add `'static` bound to `{}`", ty_to_str(tcx, ty)));
           }
           _ => {
             tcx.sess.span_err(sp, "value may contain references");
@@ -578,7 +578,7 @@ pub fn check_cast_for_escaping_regions(
                     if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {
-                        check_durable(cx.tcx, ty, source_span); /* case (3) */
+                        check_static(cx.tcx, ty, source_span); /* case (3) */
                     }
                 }
                 _ => {}
