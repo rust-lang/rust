@@ -93,14 +93,21 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
 
     let sym = unsafe {
         let module = dl::open_internal();
-        let rust_crate_map_toplevel = if cfg!(target_arch = "x86") {
-            "__rust_crate_map_toplevel"
-        } else {
-            "_rust_crate_map_toplevel"
-        };
+        let rust_crate_map_toplevel = "_rust_crate_map_toplevel";
         let sym = rust_crate_map_toplevel.with_c_str(|buf| {
             dl::symbol(module, buf)
         });
+
+        // NOTE remove this after snapshot
+        let sym = if sym.is_null() {
+            let rust_crate_map_toplevel = "__rust_crate_map_toplevel";
+            rust_crate_map_toplevel.with_c_str(|buf| {
+                dl::symbol(module, buf)
+            })
+        } else {
+            sym
+        };
+
         dl::close(module);
         sym
     };
