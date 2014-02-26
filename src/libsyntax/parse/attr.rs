@@ -92,7 +92,8 @@ impl ParserAttr for Parser {
                         self.fatal("An inner attribute was not permitted in this context.");
                     }
                 } else {
-                    self.warn("The syntax for inner attributes have changed. Use `#![lang(foo)]` instead.");
+                    //self.warn("The syntax for inner attributes have changed.
+                    //    Use `#![lang(foo)]` instead.");
                 }
 
                 // #![lang(foo)]
@@ -119,7 +120,7 @@ impl ParserAttr for Parser {
             // need to bump the token.
             ast::AttrInner
         } else if permit_inner && self.token == token::SEMI {
-            self.warn("This uses the old attribute syntax. Semicolons are not longer required.");
+            //self.warn("This uses the old attribute syntax. Semicolons are not longer required.");
             self.bump();
             ast::AttrInner
         } else {
