@@ -91,10 +91,14 @@ extern "C" void LLVMRemoveReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
                       AttributeSet::get(A->getContext(), AttributeSet::ReturnIndex,  B));
 }
 
+#if LLVM_VERSION_MINOR >= 5
 extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {
   Function *A = unwrap<Function>(Fn);
   A->addAttribute(AttributeSet::FunctionIndex, Attribute::Cold);
 }
+#else
+extern "C" void LLVMAddColdAttribute(LLVMValueRef Fn) {}
+#endif
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             LLVMValueRef source,
@@ -156,7 +160,11 @@ DIT unwrapDI(LLVMValueRef ref) {
     return DIT(ref ? unwrap<MDNode>(ref) : NULL);
 }
 
+#if LLVM_VERSION_MINOR >= 5
 extern "C" const uint32_t LLVMRustDebugMetadataVersion = DEBUG_METADATA_VERSION;
+#else
+extern "C" const uint32_t LLVMRustDebugMetadataVersion = 1;
+#endif
 
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M,
                                       const char *name,
@@ -278,8 +286,12 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateStructType(
         unwrapDI<DIType>(DerivedFrom),
         unwrapDI<DIArray>(Elements),
         RunTimeLang,
-        unwrapDI<DIType>(VTableHolder),
-        UniqueId));
+        unwrapDI<DIType>(VTableHolder)
+#if LLVM_VERSION_MINOR >= 5
+        ,UniqueId));
+#else
+        ));
+#endif
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateMemberType(
@@ -440,8 +452,12 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
         AlignInBits,
         Flags,
         unwrapDI<DIArray>(Elements),
-        RunTimeLang,
-        UniqueId));
+        RunTimeLang
+#if LLVM_VERSION_MINOR >= 5
+        ,UniqueId));
+#else
+        ));
+#endif
 }
 
 extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Value, LLVMBool Unnamed) {
@@ -541,6 +557,7 @@ extern "C" char *LLVMValueToString(LLVMValueRef Value) {
     return strdup(os.str().data());
 }
 
+#if LLVM_VERSION_MINOR >= 5
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
@@ -559,6 +576,26 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     }
     return true;
 }
+#else
+extern "C" bool
+LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
+    Module *Dst = unwrap(dst);
+    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
+    std::string Err;
+    Module *Src = llvm::getLazyBitcodeModule(buf, Dst->getContext(), &Err);
+    if (!Src) {
+        LLVMRustError = Err.c_str();
+        delete buf;
+        return false;
+    }
+
+    if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
+        LLVMRustError = Err.c_str();
+        return false;
+    }
+    return true;
+}
+#endif
 
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
@@ -578,9 +615,14 @@ LLVMRustOpenArchive(char *path) {
 
 extern "C" const char*
 LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {
-    for (Archive::child_iterator child = ar->child_begin(),
-                                   end = ar->child_end();
-         child != end; ++child) {
+#if LLVM_VERSION_MINOR >= 5
+    Archive::child_iterator child = ar->child_begin(),
+                              end = ar->child_end();
+#else
+    Archive::child_iterator child = ar->begin_children(),
+                              end = ar->end_children();
+#endif
+    for (; child != end; ++child) {
         StringRef sect_name;
         error_code err = child->getName(sect_name);
         if (err) continue;
@@ -598,8 +640,15 @@ LLVMRustDestroyArchive(Archive *ar) {
     delete ar;
 }
 
+#if LLVM_VERSION_MINOR >= 5
 extern "C" void
 LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
     GlobalValue *V = unwrap<GlobalValue>(Value);
     V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
 }
+#else
+extern "C" void
+LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
+    LLVMSetLinkage(Value, LLVMDLLExportLinkage);
+}
+#endif
