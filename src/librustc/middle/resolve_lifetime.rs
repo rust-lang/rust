@@ -40,10 +40,12 @@ struct LifetimeContext {
 
 enum ScopeChain<'a> {
     ItemScope(&'a OptVec<ast::Lifetime>),
-    FnScope(ast::NodeId, &'a OptVec<ast::Lifetime>, &'a ScopeChain<'a>),
-    BlockScope(ast::NodeId, &'a ScopeChain<'a>),
+    FnScope(ast::NodeId, &'a OptVec<ast::Lifetime>, Scope<'a>),
+    BlockScope(ast::NodeId, Scope<'a>),
     RootScope
 }
+
+type Scope<'a> = &'a ScopeChain<'a>;
 
 pub fn krate(sess: session::Session, krate: &ast::Crate)
              -> @RefCell<NamedRegionMap> {
@@ -56,10 +58,10 @@ pub fn krate(sess: session::Session, krate: &ast::Crate)
     ctxt.named_region_map
 }
 
-impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
+impl<'a> Visitor<Scope<'a>> for LifetimeContext {
     fn visit_item(&mut self,
                   item: &ast::Item,
-                  _: &'a ScopeChain<'a>) {
+                  _: Scope<'a>) {
         let scope = match item.node {
             ast::ItemFn(..) | // fn lifetimes get added in visit_fn below
             ast::ItemMod(..) |
@@ -84,7 +86,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
 
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 b: &ast::Block, s: Span, n: ast::NodeId,
-                scope: &'a ScopeChain<'a>) {
+                scope: Scope<'a>) {
         match *fk {
             visit::FkItemFn(_, generics, _, _) |
             visit::FkMethod(_, generics, _) => {
@@ -101,7 +103,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     }
 
     fn visit_ty(&mut self, ty: &ast::Ty,
-                scope: &'a ScopeChain<'a>) {
+                scope: Scope<'a>) {
         match ty.node {
             ast::TyClosure(closure) => {
                 let scope1 = FnScope(ty.id, &closure.lifetimes, scope);
@@ -125,7 +127,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
 
     fn visit_ty_method(&mut self,
                        m: &ast::TypeMethod,
-                       scope: &'a ScopeChain<'a>) {
+                       scope: Scope<'a>) {
         let scope1 = FnScope(m.id, &m.generics.lifetimes, scope);
         self.check_lifetime_names(&m.generics.lifetimes);
         debug!("pushing fn scope id={} due to ty_method", m.id);
@@ -135,7 +137,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
 
     fn visit_block(&mut self,
                    b: &ast::Block,
-                   scope: &'a ScopeChain<'a>) {
+                   scope: Scope<'a>) {
         let scope1 = BlockScope(b.id, scope);
         debug!("pushing block scope {}", b.id);
         visit::walk_block(self, b, &scope1);
@@ -144,7 +146,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
 
     fn visit_lifetime_ref(&mut self,
                           lifetime_ref: &ast::Lifetime,
-                          scope: &'a ScopeChain<'a>) {
+                          scope: Scope<'a>) {
         if lifetime_ref.name == special_idents::statik.name {
             self.insert_lifetime(lifetime_ref, ast::DefStaticRegion);
             return;
@@ -156,7 +158,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
 impl LifetimeContext {
     fn resolve_lifetime_ref(&self,
                             lifetime_ref: &ast::Lifetime,
-                            scope: &ScopeChain) {
+                            scope: Scope) {
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
         // given name or we run out of scopes. If we encounter a code
@@ -211,7 +213,7 @@ impl LifetimeContext {
     fn resolve_free_lifetime_ref(&self,
                                  scope_id: ast::NodeId,
                                  lifetime_ref: &ast::Lifetime,
-                                 scope: &ScopeChain) {
+                                 scope: Scope) {
         // Walk up the scope chain, tracking the outermost free scope,
         // until we encounter a scope that contains the named lifetime
         // or we run out of scopes.
