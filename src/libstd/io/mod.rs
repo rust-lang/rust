@@ -677,6 +677,12 @@ impl<'a, R: Reader> Reader for RefReader<'a, R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
 }
 
+impl<'a, R: Container> Container for RefReader<'a, R> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
     let shift = (8 - nbytes) * 8;
     (val << shift) as i64 >> shift
@@ -884,6 +890,12 @@ pub struct RefWriter<'a, W> {
 impl<'a, W: Writer> Writer for RefWriter<'a, W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
+}
+
+impl<'a, W: Container> Container for RefWriter<'a, W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
 }
 
 
@@ -1310,3 +1322,24 @@ pub static UserExec: FilePermission = UserDir;
 
 /// A mask for all possible permission bits
 pub static AllPermissions: FilePermission = 0x1ff;
+
+#[cfg(test)]
+mod tests {
+    use prelude::*;
+    use io::*;
+    use io::mem::{BufReader, BufWriter};
+    use container::Container;
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let mut r = BufReader::new(buf);
+        let r = r.by_ref();
+        assert_eq!(r.len(), buf.len());
+
+        let mut buf = [0];
+        let mut r = BufWriter::new(buf);
+        let r = r.by_ref();
+        assert_eq!(r.len(), 1);
+    }
+}

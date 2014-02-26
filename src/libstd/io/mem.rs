@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -119,6 +119,12 @@ impl Seek for MemWriter {
     }
 }
 
+impl Container for MemWriter {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
+}
+
 /// Reads from an owned byte vector
 ///
 /// # Example
@@ -200,6 +206,12 @@ impl Buffer for MemReader {
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
+impl Container for MemReader {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
+}
+
 /// Writes to a fixed-size byte slice
 ///
 /// If a write will not fit in the buffer, it returns an error and does not
@@ -256,6 +268,12 @@ impl<'a> Seek for BufWriter<'a> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
         self.pos = new as uint;
         Ok(())
+    }
+}
+
+impl<'a> Container for BufWriter<'a> {
+    fn len(&self) -> uint {
+        self.buf.len()
     }
 }
 
@@ -330,12 +348,19 @@ impl<'a> Buffer for BufReader<'a> {
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
+impl<'a> Container for BufReader<'a> {
+    fn len(&self) -> uint {
+        self.buf.len()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use prelude::*;
     use super::*;
     use io::*;
     use io;
+    use container::Container;
 
     #[test]
     fn test_mem_writer() {
@@ -552,5 +577,24 @@ mod test {
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
         assert!(r.seek(-1, SeekSet).is_err());
+    }
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let r = BufReader::new(buf);
+        assert_eq!(r.len(), buf.len());
+
+        let r = MemReader::new(~[10]);
+        assert_eq!(r.len(), 1);
+
+        let mut r = MemWriter::new();
+        let str = "abc";
+        r.write_str(str).unwrap();
+        assert_eq!(r.len(), str.len());
+
+        let mut buf = [0];
+        let r = BufWriter::new(buf);
+        assert_eq!(r.len(), 1);
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -113,6 +113,12 @@ impl<R: Reader> Reader for BufferedReader<R> {
     }
 }
 
+impl<R: Container> Container for BufferedReader<R> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 /// Wraps a Writer and buffers output to it
 ///
 /// Note that `BufferedWriter` will NOT flush its buffer when dropped.
@@ -200,6 +206,12 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 }
 
+impl<W: Container> Container for BufferedWriter<W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 /// Wraps a Writer and buffers output to it, flushing whenever a newline (`0x0a`,
 /// `'\n'`) is detected.
 ///
@@ -245,6 +257,12 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
 }
 
+impl<W: Container> Container for LineBufferedWriter<W> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W> InternalBufferedWriter<W> {
@@ -257,6 +275,13 @@ impl<W> InternalBufferedWriter<W> {
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         self.get_mut_ref().inner.read(buf)
+    }
+}
+
+impl<W: Container> Container for InternalBufferedWriter<W> {
+    fn len(&self) -> uint {
+        let InternalBufferedWriter(ref inner) = *self;
+        inner.len()
     }
 }
 
@@ -344,13 +369,20 @@ impl<S: Stream> Writer for BufferedStream<S> {
     }
 }
 
+impl<S: Container> Container for BufferedStream<S> {
+    fn len(&self) -> uint {
+        self.inner.len()
+    }
+}
+
 #[cfg(test)]
 mod test {
     extern crate test;
+    use container::Container;
     use io;
     use prelude::*;
     use super::*;
-    use super::super::mem::{MemReader, MemWriter, BufReader};
+    use super::super::mem::{MemReader, MemWriter, BufReader, BufWriter};
     use Harness = self::test::BenchHarness;
 
     /// A type, free to create, primarily intended for benchmarking creation of
@@ -561,6 +593,44 @@ mod test {
         assert_eq!(it.next(), Some('ß'));
         assert_eq!(it.next(), Some('a'));
         assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn len() {
+        let buf = [0xff];
+        let r = BufferedReader::new(BufReader::new(buf));
+        assert_eq!(r.len(), buf.len());
+
+        let mut buf = [0];
+        let r = BufferedWriter::new(BufWriter::new(buf));
+        assert_eq!(r.len(), 1);
+
+        let mut buf = [0];
+        let r = LineBufferedWriter::new(BufWriter::new(buf));
+        assert_eq!(r.len(), 1);
+
+        struct S;
+
+        impl io::Writer for S {
+            fn write(&mut self, _: &[u8]) -> io::IoResult<()> {
+                Err(io::standard_error(io::EndOfFile))
+            }
+        }
+
+        impl io::Reader for S {
+            fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+                Err(io::standard_error(io::EndOfFile))
+            }
+        }
+
+        impl Container for S {
+            fn len(&self) -> uint {
+                0
+            }
+        }
+
+        let s = BufferedStream::new(S);
+        assert_eq!(s.len(), 0);
     }
 
     #[bench]
