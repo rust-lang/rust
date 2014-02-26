@@ -16,7 +16,6 @@
 #include "llvm/PassManager.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/Lint.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -51,6 +50,12 @@
 #include "llvm-c/BitReader.h"
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Object.h"
+
+#if LLVM_VERSION_MINOR >= 5
+#include "llvm/IR/IRPrintingPasses.h"
+#else
+#include "llvm/Assembly/PrintModulePass.h"
+#endif
 
 // Used by RustMCJITMemoryManager::getPointerToNamedFunction()
 // to get around glibc issues. See the function for more information.
