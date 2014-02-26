@@ -107,7 +107,6 @@ pub enum Node {
 
     /// NodeStructCtor represents a tuple struct.
     NodeStructCtor(@StructDef),
-    NodeCalleeScope(@Expr),
 }
 
 // The odd layout is to bring down the total size.
@@ -128,7 +127,6 @@ enum MapEntry {
     EntryLocal(NodeId, @Pat),
     EntryBlock(NodeId, P<Block>),
     EntryStructCtor(NodeId, @StructDef),
-    EntryCalleeScope(NodeId, @Expr),
 
     // Roots for node trees.
     RootCrate,
@@ -155,7 +153,6 @@ impl MapEntry {
             EntryLocal(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
-            EntryCalleeScope(id, _) => id,
             _ => return None
         })
     }
@@ -173,7 +170,6 @@ impl MapEntry {
             EntryLocal(_, p) => NodeLocal(p),
             EntryBlock(_, p) => NodeBlock(p),
             EntryStructCtor(_, p) => NodeStructCtor(p),
-            EntryCalleeScope(_, p) => NodeCalleeScope(p),
             _ => return None
         })
     }
@@ -368,7 +364,6 @@ impl Map {
             Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
-            Some(NodeCalleeScope(expr)) => expr.span,
             _ => fail!("node_span: could not find span for id {}", id),
         }
     }
@@ -492,11 +487,6 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         let expr = fold::noop_fold_expr(expr, self);
 
         self.insert(expr.id, EntryExpr(self.parent, expr));
-
-        // Expressions which are or might be calls:
-        for callee_id in expr.get_callee_id().iter() {
-            self.insert(*callee_id, EntryCalleeScope(self.parent, expr));
-        }
 
         expr
     }
@@ -649,9 +639,6 @@ fn node_id_to_str(map: &Map, id: NodeId) -> ~str {
         }
         Some(NodeExpr(expr)) => {
             format!("expr {} (id={})", pprust::expr_to_str(expr), id)
-        }
-        Some(NodeCalleeScope(expr)) => {
-            format!("callee_scope {} (id={})", pprust::expr_to_str(expr), id)
         }
         Some(NodeStmt(stmt)) => {
             format!("stmt {} (id={})", pprust::stmt_to_str(stmt), id)

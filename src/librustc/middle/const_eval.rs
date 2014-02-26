@@ -225,10 +225,10 @@ impl ConstEvalVisitor {
                 }
             }
 
-            ast::ExprUnary(_, _, inner) | ast::ExprParen(inner) =>
+            ast::ExprUnary(_, inner) | ast::ExprParen(inner) =>
                 self.classify(inner),
 
-            ast::ExprBinary(_, _, a, b) =>
+            ast::ExprBinary(_, a, b) =>
                 join(self.classify(a), self.classify(b)),
 
             ast::ExprTup(ref es) |
@@ -262,7 +262,7 @@ impl ConstEvalVisitor {
 
             ast::ExprField(base, _, _) => self.classify(base),
 
-            ast::ExprIndex(_, base, idx) =>
+            ast::ExprIndex(base, idx) =>
                 join(self.classify(base), self.classify(idx)),
 
             ast::ExprAddrOf(ast::MutImmutable, base) => self.classify(base),
@@ -336,7 +336,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
-      ExprUnary(_, UnNeg, inner) => {
+      ExprUnary(UnNeg, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
@@ -346,7 +346,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           ref err => ((*err).clone())
         }
       }
-      ExprUnary(_, UnNot, inner) => {
+      ExprUnary(UnNot, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
@@ -354,7 +354,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           _ => Err(~"not on float or string")
         }
       }
-      ExprBinary(_, op, a, b) => {
+      ExprBinary(op, a, b) => {
         match (eval_const_expr_partial(tcx, a),
                eval_const_expr_partial(tcx, b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {

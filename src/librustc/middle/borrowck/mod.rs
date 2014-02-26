@@ -70,7 +70,7 @@ impl Visitor<()> for BorrowckCtxt {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    moves_map: moves::MovesMap,
                    moved_variables_set: moves::MovedVariablesSet,
                    capture_map: moves::CaptureMap,
@@ -156,7 +156,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 pub struct BorrowckCtxt {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
@@ -909,7 +909,7 @@ impl Repr for LoanPath {
 
 struct TcxTyper {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
 }
 
 impl mc::Typer for TcxTyper {

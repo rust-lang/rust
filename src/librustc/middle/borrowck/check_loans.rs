@@ -784,7 +784,6 @@ impl<'a> CheckLoanCtxt<'a> {
     pub fn check_call(&self,
                       _expr: &ast::Expr,
                       _callee: Option<@ast::Expr>,
-                      _callee_id: ast::NodeId,
                       _callee_span: Span,
                       _args: &[@ast::Expr]) {
         // NB: This call to check for conflicting loans is not truly
@@ -828,23 +827,22 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
           this.check_captured_variables(expr.id, expr.span)
       }
       ast::ExprAssign(dest, _) |
-      ast::ExprAssignOp(_, _, dest, _) => {
+      ast::ExprAssignOp(_, dest, _) => {
         this.check_assignment(dest);
       }
       ast::ExprCall(f, ref args) => {
-        this.check_call(expr, Some(f), f.id, f.span, *args);
+        this.check_call(expr, Some(f), f.span, *args);
       }
-      ast::ExprMethodCall(callee_id, _, _, ref args) => {
-        this.check_call(expr, None, callee_id, expr.span, *args);
+      ast::ExprMethodCall(_, _, ref args) => {
+        this.check_call(expr, None, expr.span, *args);
       }
-      ast::ExprIndex(callee_id, _, rval) |
-      ast::ExprBinary(callee_id, _, _, rval)
+      ast::ExprIndex(_, rval) | ast::ExprBinary(_, _, rval)
       if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr, None, callee_id, expr.span, [rval]);
+        this.check_call(expr, None, expr.span, [rval]);
       }
-      ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
+      ast::ExprUnary(_, _) | ast::ExprIndex(_, _)
       if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr, None, callee_id, expr.span, []);
+        this.check_call(expr, None, expr.span, []);
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {

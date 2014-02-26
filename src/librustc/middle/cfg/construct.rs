@@ -19,7 +19,7 @@ use syntax::opt_vec;
 
 struct CFGBuilder {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     exit_map: HashMap<ast::NodeId, CFGIndex>,
     graph: CFGGraph,
     loop_scopes: ~[LoopScope],
@@ -32,7 +32,7 @@ struct LoopScope {
 }
 
 pub fn construct(tcx: ty::ctxt,
-                 method_map: typeck::method_map,
+                 method_map: typeck::MethodMap,
                  blk: &ast::Block) -> CFG {
     let mut cfg_builder = CFGBuilder {
         exit_map: HashMap::new(),
@@ -305,7 +305,7 @@ impl CFGBuilder {
                 expr_exit
             }
 
-            ast::ExprBinary(_, op, l, r) if ast_util::lazy_binop(op) => {
+            ast::ExprBinary(op, l, r) if ast_util::lazy_binop(op) => {
                 //
                 //     [pred]
                 //       |
@@ -355,16 +355,16 @@ impl CFGBuilder {
                 self.call(expr, pred, func, *args)
             }
 
-            ast::ExprMethodCall(_, _, _, ref args) => {
+            ast::ExprMethodCall(_, _, ref args) => {
                 self.call(expr, pred, args[0], args.slice_from(1))
             }
 
-            ast::ExprIndex(_, l, r) |
-            ast::ExprBinary(_, _, l, r) if self.is_method_call(expr) => {
+            ast::ExprIndex(l, r) |
+            ast::ExprBinary(_, l, r) if self.is_method_call(expr) => {
                 self.call(expr, pred, l, [r])
             }
 
-            ast::ExprUnary(_, _, e) if self.is_method_call(expr) => {
+            ast::ExprUnary(_, e) if self.is_method_call(expr) => {
                 self.call(expr, pred, e, [])
             }
 
@@ -384,12 +384,12 @@ impl CFGBuilder {
             }
 
             ast::ExprAssign(l, r) |
-            ast::ExprAssignOp(_, _, l, r) => {
+            ast::ExprAssignOp(_, l, r) => {
                 self.straightline(expr, pred, [r, l])
             }
 
-            ast::ExprIndex(_, l, r) |
-            ast::ExprBinary(_, _, l, r) => { // NB: && and || handled earlier
+            ast::ExprIndex(l, r) |
+            ast::ExprBinary(_, l, r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r])
             }
 
@@ -399,7 +399,7 @@ impl CFGBuilder {
 
             ast::ExprAddrOf(_, e) |
             ast::ExprCast(e, _) |
-            ast::ExprUnary(_, _, e) |
+            ast::ExprUnary(_, e) |
             ast::ExprParen(e) |
             ast::ExprVstore(e, _) |
             ast::ExprField(e, _, _) => {

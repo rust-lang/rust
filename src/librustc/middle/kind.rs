@@ -53,7 +53,7 @@ use syntax::visit::Visitor;
 #[deriving(Clone)]
 pub struct Context {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
 }
 
 impl Visitor<()> for Context {
@@ -76,7 +76,7 @@ impl Visitor<()> for Context {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
@@ -264,13 +264,14 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     debug!("kind::check_expr({})", expr_to_str(e));
 
     // Handle any kind bounds on type parameters
-    let type_parameter_id = match e.get_callee_id() {
-        Some(callee_id) => callee_id,
-        None => e.id,
-    };
     {
+        let method_map = cx.method_map.borrow();
+        let method = method_map.get().find(&e.id);
         let node_type_substs = cx.tcx.node_type_substs.borrow();
-        let r = node_type_substs.get().find(&type_parameter_id);
+        let r = match method {
+            Some(method) => Some(&method.substs.tps),
+            None => node_type_substs.get().find(&e.id)
+        };
         for ts in r.iter() {
             let def_map = cx.tcx.def_map.borrow();
             let type_param_defs = match e.node {
@@ -285,9 +286,9 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
                 // Even though the callee_id may have been the id with
                 // node_type_substs, e.id is correct here.
-                match cx.method_map.borrow().get().find(&e.id) {
-                    Some(origin) => {
-                        ty::method_call_type_param_defs(cx.tcx, *origin)
+                match method {
+                    Some(method) => {
+                        ty::method_call_type_param_defs(cx.tcx, method.origin)
                     }
                     None => {
                         cx.tcx.sess.span_bug(e.span,
@@ -306,13 +307,13 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                       type_param_defs.repr(cx.tcx));
             }
             for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
-                check_typaram_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+                check_typaram_bounds(cx, e.span, ty, type_param_def)
             }
         }
     }
 
     match e.node {
-        ExprUnary(_, UnBox, interior) => {
+        ExprUnary(UnBox, interior) => {
             let interior_type = ty::expr_ty(cx.tcx, interior);
             let _ = check_durable(cx.tcx, interior_type, interior.span);
         }
@@ -373,7 +374,7 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
                 let generics = ty::lookup_item_type(cx.tcx, did).generics;
                 let type_param_defs = generics.type_param_defs();
                 for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
-                    check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
+                    check_typaram_bounds(cx, aty.span, ty, type_param_def)
                 }
             }
         }
@@ -400,11 +401,9 @@ pub fn check_builtin_bounds(cx: &Context,
 }
 
 pub fn check_typaram_bounds(cx: &Context,
-                    _type_parameter_id: NodeId,
-                    sp: Span,
-                    ty: ty::t,
-                    type_param_def: &ty::TypeParameterDef)
-{
+                            sp: Span,
+                            ty: ty::t,
+                            type_param_def: &ty::TypeParameterDef) {
     check_builtin_bounds(cx,
                          ty,
                          type_param_def.bounds.builtin_bounds,

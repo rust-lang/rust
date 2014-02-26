@@ -49,14 +49,14 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 
 struct MarkSymbolVisitor {
     worklist: ~[ast::NodeId],
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
 }
 
 impl MarkSymbolVisitor {
     fn new(tcx: ty::ctxt,
-           method_map: typeck::method_map,
+           method_map: typeck::MethodMap,
            worklist: ~[ast::NodeId]) -> MarkSymbolVisitor {
         MarkSymbolVisitor {
             worklist: worklist,
@@ -92,22 +92,21 @@ impl MarkSymbolVisitor {
 
     fn lookup_and_handle_method(&mut self, id: &ast::NodeId,
                                 span: codemap::Span) {
-        let method_map = self.method_map.borrow();
-        match method_map.get().find(id) {
-            Some(&origin) => {
-                match origin {
-                    typeck::method_static(def_id) => {
+        match self.method_map.borrow().get().find(id) {
+            Some(method) => {
+                match method.origin {
+                    typeck::MethodStatic(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
                             Some(p_did) => self.check_def_id(p_did),
                             None => self.check_def_id(def_id)
                         }
                     }
-                    typeck::method_param(typeck::method_param {
+                    typeck::MethodParam(typeck::MethodParam {
                         trait_id: trait_id,
                         method_num: index,
                         ..
                     })
-                    | typeck::method_object(typeck::method_object {
+                    | typeck::MethodObject(typeck::MethodObject {
                         trait_id: trait_id,
                         method_num: index,
                         ..
@@ -285,7 +284,7 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
 }
 
 fn find_live(tcx: ty::ctxt,
-             method_map: typeck::method_map,
+             method_map: typeck::MethodMap,
              exported_items: &privacy::ExportedItems,
              reachable_symbols: &HashSet<ast::NodeId>,
              krate: &ast::Crate)
@@ -408,7 +407,7 @@ impl Visitor<()> for DeadVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    reachable_symbols: &HashSet<ast::NodeId>,
                    krate: &ast::Crate) {

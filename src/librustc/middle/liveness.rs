@@ -174,7 +174,7 @@ impl Visitor<@IrMaps> for LivenessVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    capture_map: moves::CaptureMap,
                    krate: &Crate) {
     let mut visitor = LivenessVisitor;
@@ -253,7 +253,7 @@ enum VarKind {
 
 struct IrMaps {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     capture_map: moves::CaptureMap,
 
     num_live_nodes: Cell<uint>,
@@ -266,7 +266,7 @@ struct IrMaps {
 }
 
 fn IrMaps(tcx: ty::ctxt,
-          method_map: typeck::method_map,
+          method_map: typeck::MethodMap,
           capture_map: moves::CaptureMap)
        -> IrMaps {
     IrMaps {
@@ -534,7 +534,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
         visit::walk_expr(v, expr, this);
       }
       ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
-      ExprBinary(_, op, _, _) if ast_util::lazy_binop(op) => {
+      ExprBinary(op, _, _) if ast_util::lazy_binop(op) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(v, expr, this);
       }
@@ -1179,7 +1179,7 @@ impl Liveness {
             self.propagate_through_expr(r, succ)
           }
 
-          ExprAssignOp(_, _, l, r) => {
+          ExprAssignOp(_, l, r) => {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
             let succ = self.write_lvalue(l, succ, ACC_WRITE|ACC_READ);
@@ -1219,10 +1219,10 @@ impl Liveness {
             self.propagate_through_expr(f, succ)
           }
 
-          ExprMethodCall(callee_id, _, _, ref args) => {
+          ExprMethodCall(_, _, ref args) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
-            let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx, callee_id));
+            let t_ret = ty::node_id_to_type(self.tcx, expr.id);
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
             self.propagate_through_exprs(*args, succ)
@@ -1232,7 +1232,7 @@ impl Liveness {
             self.propagate_through_exprs(*exprs, succ)
           }
 
-          ExprBinary(_, op, l, r) if ast_util::lazy_binop(op) => {
+          ExprBinary(op, l, r) if ast_util::lazy_binop(op) => {
             let r_succ = self.propagate_through_expr(r, succ);
 
             let ln = self.live_node(expr.id, expr.span);
@@ -1242,15 +1242,15 @@ impl Liveness {
             self.propagate_through_expr(l, ln)
           }
 
-          ExprIndex(_, l, r) |
-          ExprBinary(_, _, l, r) |
+          ExprIndex(l, r) |
+          ExprBinary(_, l, r) |
           ExprBox(l, r) => {
             self.propagate_through_exprs([l, r], succ)
           }
 
           ExprAddrOf(_, e) |
           ExprCast(e, _) |
-          ExprUnary(_, _, e) |
+          ExprUnary(_, e) |
           ExprParen(e) => {
             self.propagate_through_expr(e, succ)
           }
@@ -1508,7 +1508,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         visit::walk_expr(this, expr, ());
       }
 
-      ExprAssignOp(_, _, l, _) => {
+      ExprAssignOp(_, l, _) => {
         this.check_lvalue(l);
 
         visit::walk_expr(this, expr, ());
