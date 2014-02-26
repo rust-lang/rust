@@ -870,25 +870,25 @@ impl Repr for ty::FnSig {
     }
 }
 
-impl Repr for typeck::method_origin {
+impl Repr for typeck::MethodOrigin {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
-            &typeck::method_static(def_id) => {
-                format!("method_static({})", def_id.repr(tcx))
+            &typeck::MethodStatic(def_id) => {
+                format!("MethodStatic({})", def_id.repr(tcx))
             }
-            &typeck::method_param(ref p) => {
+            &typeck::MethodParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::method_object(ref p) => {
+            &typeck::MethodObject(ref p) => {
                 p.repr(tcx)
             }
         }
     }
 }
 
-impl Repr for typeck::method_param {
+impl Repr for typeck::MethodParam {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_param({},{:?},{:?},{:?})",
+        format!("MethodParam({},{:?},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.param_num,
@@ -896,9 +896,9 @@ impl Repr for typeck::method_param {
     }
 }
 
-impl Repr for typeck::method_object {
+impl Repr for typeck::MethodObject {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_object({},{:?},{:?})",
+        format!("MethodObject({},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.real_index)

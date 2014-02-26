@@ -104,13 +104,13 @@ pub fn trans_method_callee<'a>(
            callee_id, origin.repr(bcx.tcx()));
 
     match origin {
-        typeck::method_static(did) => {
+        typeck::MethodStatic(did) => {
             Callee {
                 bcx: bcx,
                 data: Fn(callee::trans_fn_ref(bcx, did, callee_id))
             }
         }
-        typeck::method_param(typeck::method_param {
+        typeck::MethodParam(typeck::MethodParam {
             trait_id: trait_id,
             method_num: off,
             param_num: p,
@@ -131,7 +131,7 @@ pub fn trans_method_callee<'a>(
             }
         }
 
-        typeck::method_object(ref mt) => {
+        typeck::MethodObject(ref mt) => {
             trans_trait_callee(bcx,
                                callee_id,
                                mt.real_index,

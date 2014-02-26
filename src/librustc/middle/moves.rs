@@ -130,7 +130,7 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::MethodMap;
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
@@ -182,7 +182,7 @@ pub struct MoveMaps {
 #[deriving(Clone)]
 struct VisitContext {
     tcx: ty::ctxt,
-    method_map: method_map,
+    method_map: MethodMap,
     move_maps: MoveMaps
 }
 
@@ -208,7 +208,7 @@ impl visit::Visitor<()> for VisitContext {
 }
 
 pub fn compute_moves(tcx: ty::ctxt,
-                     method_map: method_map,
+                     method_map: MethodMap,
                      krate: &Crate) -> MoveMaps
 {
     let mut visit_cx = VisitContext {

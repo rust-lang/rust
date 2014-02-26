@@ -174,7 +174,7 @@ impl Visitor<@IrMaps> for LivenessVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    capture_map: moves::CaptureMap,
                    krate: &Crate) {
     let mut visitor = LivenessVisitor;
@@ -253,7 +253,7 @@ enum VarKind {
 
 struct IrMaps {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     capture_map: moves::CaptureMap,
 
     num_live_nodes: Cell<uint>,
@@ -266,7 +266,7 @@ struct IrMaps {
 }
 
 fn IrMaps(tcx: ty::ctxt,
-          method_map: typeck::method_map,
+          method_map: typeck::MethodMap,
           capture_map: moves::CaptureMap)
        -> IrMaps {
     IrMaps {

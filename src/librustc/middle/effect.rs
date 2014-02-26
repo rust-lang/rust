@@ -12,7 +12,7 @@
 /// `unsafe`.
 
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::MethodMap;
 use util::ppaux;
 
 use syntax::ast;
@@ -39,7 +39,7 @@ struct EffectCheckVisitor {
     tcx: ty::ctxt,
 
     /// The method map.
-    method_map: method_map,
+    method_map: MethodMap,
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
 }
@@ -190,9 +190,7 @@ impl Visitor<()> for EffectCheckVisitor {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
-                   method_map: method_map,
-                   krate: &ast::Crate) {
+pub fn check_crate(tcx: ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         method_map: method_map,

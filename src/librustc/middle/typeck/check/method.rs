@@ -89,8 +89,8 @@ use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::check::vtable;
 use middle::typeck::check;
 use middle::typeck::infer;
-use middle::typeck::{method_origin, method_param};
-use middle::typeck::{method_static, method_object};
+use middle::typeck::{MethodOrigin, MethodParam};
+use middle::typeck::{MethodStatic, MethodObject};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
@@ -230,7 +230,7 @@ pub struct Candidate {
     rcvr_match_condition: RcvrMatchCondition,
     rcvr_substs: ty::substs,
     method_ty: @ty::Method,
-    origin: method_origin,
+    origin: MethodOrigin,
 }
 
 /// This type represents the conditions under which the receiver is
@@ -464,7 +464,7 @@ impl<'a> LookupContext<'a> {
                 rcvr_match_condition: RcvrMatchesIfObject(did),
                 rcvr_substs: new_trait_ref.substs.clone(),
                 method_ty: @m,
-                origin: method_object(method_object {
+                origin: MethodObject(MethodObject {
                         trait_id: new_trait_ref.def_id,
                         object_trait_id: did,
                         method_num: method_num,
@@ -518,7 +518,7 @@ impl<'a> LookupContext<'a> {
                     rcvr_match_condition: RcvrMatchesIfSubtype(self_ty),
                     rcvr_substs: trait_ref.substs.clone(),
                     method_ty: m,
-                    origin: method_param(method_param {
+                    origin: MethodParam(MethodParam {
                         trait_id: trait_ref.def_id,
                         method_num: method_num,
                         param_num: param,
@@ -626,7 +626,7 @@ impl<'a> LookupContext<'a> {
             rcvr_match_condition: RcvrMatchesIfSubtype(impl_ty),
             rcvr_substs: impl_substs,
             method_ty: method,
-            origin: method_static(method.def_id)
+            origin: MethodStatic(method.def_id)
         });
     }
 
@@ -938,7 +938,7 @@ impl<'a> LookupContext<'a> {
                        candidate_a, candidate_b);
                 let candidates_same = match (&candidate_a.origin,
                                              &candidate_b.origin) {
-                    (&method_param(ref p1), &method_param(ref p2)) => {
+                    (&MethodParam(ref p1), &MethodParam(ref p2)) => {
                         let same_trait = p1.trait_id == p2.trait_id;
                         let same_method = p1.method_num == p2.method_num;
                         let same_param = p1.param_num == p2.param_num;
@@ -1031,7 +1031,7 @@ impl<'a> LookupContext<'a> {
 
         let fn_sig = &bare_fn_ty.sig;
         let inputs = match candidate.origin {
-            method_object(..) => {
+            MethodObject(..) => {
                 // For annoying reasons, we've already handled the
                 // substitution of self for object calls.
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
@@ -1154,10 +1154,10 @@ impl<'a> LookupContext<'a> {
          */
 
         match candidate.origin {
-            method_static(..) | method_param(..) => {
+            MethodStatic(..) | MethodParam(..) => {
                 return; // not a call to a trait instance
             }
-            method_object(..) => {}
+            MethodObject(..) => {}
         }
 
         match candidate.method_ty.explicit_self {
@@ -1213,14 +1213,14 @@ impl<'a> LookupContext<'a> {
         // No code can call the finalize method explicitly.
         let bad;
         match candidate.origin {
-            method_static(method_id) => {
+            MethodStatic(method_id) => {
                 let destructors = self.tcx().destructors.borrow();
                 bad = destructors.get().contains(&method_id);
             }
             // FIXME: does this properly enforce this on everything now
             // that self has been merged in? -sully
-            method_param(method_param { trait_id: trait_id, .. }) |
-            method_object(method_object { trait_id: trait_id, .. }) => {
+            MethodParam(MethodParam { trait_id: trait_id, .. }) |
+            MethodObject(MethodObject { trait_id: trait_id, .. }) => {
                 let destructor_for_type = self.tcx()
                                               .destructor_for_type
                                               .borrow();
@@ -1316,9 +1316,9 @@ impl<'a> LookupContext<'a> {
         }
     }
 
-    fn report_candidate(&self, idx: uint, origin: &method_origin) {
+    fn report_candidate(&self, idx: uint, origin: &MethodOrigin) {
         match *origin {
-            method_static(impl_did) => {
+            MethodStatic(impl_did) => {
                 // If it is an instantiated default method, use the original
                 // default method for error reporting.
                 let did = match provided_source(self.tcx(), impl_did) {
@@ -1327,10 +1327,10 @@ impl<'a> LookupContext<'a> {
                 };
                 self.report_static_candidate(idx, did)
             }
-            method_param(ref mp) => {
+            MethodParam(ref mp) => {
                 self.report_param_candidate(idx, (*mp).trait_id)
             }
-            method_object(ref mo) => {
+            MethodObject(ref mo) => {
                 self.report_trait_candidate(idx, mo.trait_id)
             }
         }

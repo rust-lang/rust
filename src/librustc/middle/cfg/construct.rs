@@ -19,7 +19,7 @@ use syntax::opt_vec;
 
 struct CFGBuilder {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     exit_map: HashMap<ast::NodeId, CFGIndex>,
     graph: CFGGraph,
     loop_scopes: ~[LoopScope],
@@ -32,7 +32,7 @@ struct LoopScope {
 }
 
 pub fn construct(tcx: ty::ctxt,
-                 method_map: typeck::method_map,
+                 method_map: typeck::MethodMap,
                  blk: &ast::Block) -> CFG {
     let mut cfg_builder = CFGBuilder {
         exit_map: HashMap::new(),

@@ -32,7 +32,7 @@ use util::ppaux::Repr;
 #[deriving(Clone)]
 pub struct DataFlowContext<O> {
     priv tcx: ty::ctxt,
-    priv method_map: typeck::method_map,
+    priv method_map: typeck::MethodMap,
 
     /// the data flow operator
     priv oper: O,
@@ -122,7 +122,7 @@ impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
 
 impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn new(tcx: ty::ctxt,
-               method_map: typeck::method_map,
+               method_map: typeck::MethodMap,
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<O> {

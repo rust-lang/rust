@@ -93,22 +93,22 @@ pub enum param_index {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum method_origin {
+pub enum MethodOrigin {
     // fully statically resolved method
-    method_static(ast::DefId),
+    MethodStatic(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
-    method_param(method_param),
+    MethodParam(MethodParam),
 
     // method invoked on a trait instance
-    method_object(method_object),
+    MethodObject(MethodObject),
 
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_param {
+pub struct MethodParam {
     // the trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -125,7 +125,7 @@ pub struct method_param {
 
 // details for a method invoked with a receiver whose type is an object
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_object {
+pub struct MethodObject {
     // the (super)trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -215,7 +215,7 @@ pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
-    method_map: method_map,
+    method_map: MethodMap,
     vtable_map: vtable_map,
     tcx: ty::ctxt
 }
@@ -436,7 +436,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
                    krate: &ast::Crate)
-                -> (method_map, vtable_map) {
+                -> (MethodMap, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,
