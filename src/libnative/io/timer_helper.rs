@@ -20,8 +20,6 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-#[allow(non_camel_case_types)];
-
 use std::cast;
 use std::rt;
 use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -100,7 +98,6 @@ mod imp {
 
     use io::file::FileDesc;
 
-    #[allow(non_camel_case_types)]
     pub type signal = libc::c_int;
 
     pub fn new() -> (signal, signal) {
