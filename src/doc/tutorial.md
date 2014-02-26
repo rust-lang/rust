@@ -2786,11 +2786,11 @@ src/animals.rs
 
     src/mammals/humans.rs
     src/mammals/humans/mod.rs
-~~
+~~~
 
 If the animals file is `src/animals/mod.rs`, `rustc` will look for:
 
-~~ {.notrust}
+~~~ {.notrust}
 src/animals/mod.rs
     src/animals/fish.rs
     src/animals/fish/mod.rs
