@@ -50,7 +50,7 @@ use writer = serialize::ebml::writer;
 // Auxiliary maps of things to be encoded
 pub struct Maps {
     root_map: middle::borrowck::root_map,
-    method_map: middle::typeck::method_map,
+    method_map: middle::typeck::MethodMap,
     vtable_map: middle::typeck::vtable_map,
     capture_map: middle::moves::CaptureMap,
 }
@@ -579,25 +579,23 @@ impl tr for moves::CaptureVar {
 impl tr for method_origin {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> method_origin {
         match *self {
-          typeck::method_static(did) => {
-              typeck::method_static(did.tr(xcx))
-          }
-          typeck::method_param(ref mp) => {
-            typeck::method_param(
-                typeck::method_param {
-                    trait_id: mp.trait_id.tr(xcx),
-                    .. *mp
-                }
-            )
-          }
-          typeck::method_object(ref mo) => {
-            typeck::method_object(
-                typeck::method_object {
-                    trait_id: mo.trait_id.tr(xcx),
-                    .. *mo
-                }
-            )
-          }
+            typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(xcx)),
+            typeck::MethodParam(ref mp) => {
+                typeck::MethodParam(
+                    typeck::MethodParam {
+                        trait_id: mp.trait_id.tr(xcx),
+                        .. *mp
+                    }
+                )
+            }
+            typeck::MethodObject(ref mo) => {
+                typeck::MethodObject(
+                    typeck::MethodObject {
+                        trait_id: mo.trait_id.tr(xcx),
+                        .. *mo
+                    }
+                )
+            }
         }
     }
 }

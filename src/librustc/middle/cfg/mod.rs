@@ -54,7 +54,7 @@ pub struct CFGIndices {
 
 impl CFG {
     pub fn new(tcx: ty::ctxt,
-               method_map: typeck::method_map,
+               method_map: typeck::MethodMap,
                blk: &ast::Block) -> CFG {
         construct::construct(tcx, method_map, blk)
     }

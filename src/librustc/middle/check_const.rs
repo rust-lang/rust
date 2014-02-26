@@ -23,7 +23,7 @@ use syntax::visit;
 struct CheckCrateVisitor {
     sess: Session,
     def_map: resolve::DefMap,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
 }
 
@@ -43,7 +43,7 @@ impl Visitor<bool> for CheckCrateVisitor {
 pub fn check_crate(sess: Session,
                    krate: &Crate,
                    def_map: resolve::DefMap,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    tcx: ty::ctxt) {
     let mut v = CheckCrateVisitor {
         sess: sess,
@@ -102,7 +102,7 @@ pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
 pub fn check_expr(v: &mut CheckCrateVisitor,
                   sess: Session,
                   def_map: resolve::DefMap,
-                  method_map: typeck::method_map,
+                  method_map: typeck::MethodMap,
                   tcx: ty::ctxt,
                   e: &Expr,
                   is_const: bool) {

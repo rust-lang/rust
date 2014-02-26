@@ -53,7 +53,7 @@ use syntax::visit::Visitor;
 #[deriving(Clone)]
 pub struct Context {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
 }
 
 impl Visitor<()> for Context {
@@ -76,7 +76,7 @@ impl Visitor<()> for Context {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,

@@ -106,7 +106,7 @@ use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
-use middle::typeck::{require_same_types, method_map, vtable_map};
+use middle::typeck::{require_same_types, MethodMap, vtable_map};
 use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
@@ -160,7 +160,7 @@ pub struct Inherited {
     node_types: RefCell<HashMap<ast::NodeId, ty::t>>,
     node_type_substs: RefCell<HashMap<ast::NodeId, ty::substs>>,
     adjustments: RefCell<HashMap<ast::NodeId, @ty::AutoAdjustment>>,
-    method_map: method_map,
+    method_map: MethodMap,
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
 }
