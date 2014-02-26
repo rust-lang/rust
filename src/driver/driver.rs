@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_uv];
+
 #[cfg(rustdoc)]
 extern crate this = "rustdoc";
 
 #[cfg(rustc)]
 extern crate this = "rustc";
 
-fn main() { this::main() }
+extern crate native;
+
+#[start]
+fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, this::main) }

@@ -433,6 +433,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
                                         libc::VOLUME_NAME_DOS)
     });
     let ret = match ret {
+        Some(ref s) if s.starts_with(r"\\?\") => Ok(Path::new(s.slice_from(4))),
         Some(s) => Ok(Path::new(s)),
         None => Err(super::last_error()),
     };
