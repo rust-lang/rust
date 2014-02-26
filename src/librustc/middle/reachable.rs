@@ -86,7 +86,7 @@ struct ReachableContext {
     tcx: ty::ctxt,
     // The method map, which links node IDs of method call expressions to the
     // methods they've been resolved to.
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -96,7 +96,7 @@ struct ReachableContext {
 
 struct MarkSymbolVisitor {
     worklist: @RefCell<~[ast::NodeId]>,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
 }
@@ -147,9 +147,8 @@ impl Visitor<()> for MarkSymbolVisitor {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_map = self.method_map.borrow();
-                match method_map.get().find(&expr.id) {
-                    Some(&typeck::method_static(def_id)) => {
+                match self.method_map.borrow().get().get(&expr.id).origin {
+                    typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if ReachableContext::
                                 def_id_represents_local_inlined_item(
@@ -168,11 +167,7 @@ impl Visitor<()> for MarkSymbolVisitor {
                             }
                         }
                     }
-                    Some(_) => {}
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                            "method call expression not in method map?!")
-                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -189,7 +184,7 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 impl ReachableContext {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map) -> ReachableContext {
+    fn new(tcx: ty::ctxt, method_map: typeck::MethodMap) -> ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
@@ -398,7 +393,7 @@ impl ReachableContext {
 }
 
 pub fn find_reachable(tcx: ty::ctxt,
-                      method_map: typeck::method_map,
+                      method_map: typeck::MethodMap,
                       exported_items: &privacy::ExportedItems)
                       -> @RefCell<HashSet<ast::NodeId>> {
     let reachable_context = ReachableContext::new(tcx, method_map);

@@ -93,24 +93,32 @@ pub fn trans_method(ccx: @CrateContext, method: &ast::Method,
 
 pub fn trans_method_callee<'a>(
                            bcx: &'a Block<'a>,
-                           callee_id: ast::NodeId,
+                           expr_id: ast::NodeId,
                            this: &ast::Expr,
-                           origin: typeck::method_origin,
                            arg_cleanup_scope: cleanup::ScopeId)
                            -> Callee<'a> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
-    debug!("trans_method_callee(callee_id={:?}, origin={})",
-           callee_id, origin.repr(bcx.tcx()));
+    let (origin, method_ty) = match bcx.ccx().maps.method_map
+                                       .borrow().get().find(&expr_id) {
+        Some(method) => {
+            debug!("trans_method_callee(expr_id={:?}, method={})",
+                expr_id, method.repr(bcx.tcx()));
+            (method.origin, method.ty)
+        }
+        None => {
+            bcx.tcx().sess.span_bug(this.span, "method call expr wasn't in method map")
+        }
+    };
 
     match origin {
-        typeck::method_static(did) => {
+        typeck::MethodStatic(did) => {
             Callee {
                 bcx: bcx,
-                data: Fn(callee::trans_fn_ref(bcx, did, callee_id))
+                data: Fn(callee::trans_fn_ref(bcx, did, expr_id, true))
             }
         }
-        typeck::method_param(typeck::method_param {
+        typeck::MethodParam(typeck::MethodParam {
             trait_id: trait_id,
             method_num: off,
             param_num: p,
@@ -123,7 +131,7 @@ pub fn trans_method_callee<'a>(
                         trait_id);
 
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
-                    trans_monomorphized_callee(bcx, callee_id,
+                    trans_monomorphized_callee(bcx, expr_id,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
@@ -131,9 +139,9 @@ pub fn trans_method_callee<'a>(
             }
         }
 
-        typeck::method_object(ref mt) => {
+        typeck::MethodObject(ref mt) => {
             trans_trait_callee(bcx,
-                               callee_id,
+                               monomorphize_type(bcx, method_ty),
                                mt.real_index,
                                this,
                                arg_cleanup_scope)
@@ -144,16 +152,16 @@ pub fn trans_method_callee<'a>(
 pub fn trans_static_method_callee(bcx: &Block,
                                   method_id: ast::DefId,
                                   trait_id: ast::DefId,
-                                  callee_id: ast::NodeId)
+                                  expr_id: ast::NodeId)
                                   -> ValueRef {
     let _icx = push_ctxt("meth::trans_static_method_callee");
     let ccx = bcx.ccx();
 
     debug!("trans_static_method_callee(method_id={:?}, trait_id={}, \
-            callee_id={:?})",
+            expr_id={:?})",
            method_id,
            ty::item_path_str(bcx.tcx(), trait_id),
-           callee_id);
+           expr_id);
     let _indenter = indenter();
 
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trait_id);
@@ -188,13 +196,10 @@ pub fn trans_static_method_callee(bcx: &Block,
     } else {
         csearch::get_item_path(bcx.tcx(), method_id).last().unwrap().name()
     };
-    debug!("trans_static_method_callee: method_id={:?}, callee_id={:?}, \
-            name={}", method_id, callee_id, token::get_name(mname));
+    debug!("trans_static_method_callee: method_id={:?}, expr_id={:?}, \
+            name={}", method_id, expr_id, token::get_name(mname));
 
-    let vtbls = {
-        let vtable_map = ccx.maps.vtable_map.borrow();
-        vtable_map.get().get_copy(&callee_id)
-    };
+    let vtbls = ccx.maps.vtable_map.borrow().get().get_copy(&expr_id);
     let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
     match vtbls[bound_index][0] {
@@ -204,14 +209,14 @@ pub fn trans_static_method_callee(bcx: &Block,
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
-                    bcx, mth_id, callee_id,
+                    bcx, mth_id, expr_id, false,
                     *rcvr_substs, rcvr_origins);
 
-            let llfn = trans_fn_ref_with_vtables(bcx, mth_id, callee_id,
-                                                 callee_substs,
+            let llfn = trans_fn_ref_with_vtables(bcx, mth_id, expr_id,
+                                                 false, callee_substs,
                                                  Some(callee_origins));
 
-            let callee_ty = node_id_type(bcx, callee_id);
+            let callee_ty = node_id_type(bcx, expr_id);
             let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
             PointerCast(bcx, llfn, llty)
         }
@@ -246,13 +251,13 @@ pub fn method_with_name(ccx: &CrateContext,
 }
 
 fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
-                                  callee_id: ast::NodeId,
+                                  expr_id: ast::NodeId,
                                   trait_id: ast::DefId,
                                   n_method: uint,
                                   vtbl: typeck::vtable_origin)
                                   -> Callee<'a> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
-    return match vtbl {
+    match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_method(ccx.tcx, trait_id, n_method).ident;
@@ -262,13 +267,14 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
           // those from the impl and those from the method:
           let (callee_substs, callee_origins) =
               combine_impl_and_methods_tps(
-                  bcx, mth_id, callee_id,
+                  bcx, mth_id, expr_id, true,
                   *rcvr_substs, rcvr_origins);
 
           // translate the function
           let llfn = trans_fn_ref_with_vtables(bcx,
                                                mth_id,
-                                               callee_id,
+                                               expr_id,
+                                               true,
                                                callee_substs,
                                                Some(callee_origins));
 
@@ -277,16 +283,16 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
       typeck::vtable_param(..) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
       }
-    };
-
+    }
 }
 
-pub fn combine_impl_and_methods_tps(bcx: &Block,
-                                    mth_did: ast::DefId,
-                                    callee_id: ast::NodeId,
-                                    rcvr_substs: &[ty::t],
-                                    rcvr_origins: typeck::vtable_res)
-                                    -> (~[ty::t], typeck::vtable_res) {
+fn combine_impl_and_methods_tps(bcx: &Block,
+                                mth_did: ast::DefId,
+                                expr_id: ast::NodeId,
+                                is_method: bool,
+                                rcvr_substs: &[ty::t],
+                                rcvr_origins: typeck::vtable_res)
+                                -> (~[ty::t], typeck::vtable_res) {
     /*!
     *
     * Creates a concatenated set of substitutions which includes
@@ -307,7 +313,7 @@ pub fn combine_impl_and_methods_tps(bcx: &Block,
     let ccx = bcx.ccx();
     let method = ty::method(ccx.tcx, mth_did);
     let n_m_tps = method.generics.type_param_defs().len();
-    let node_substs = node_id_type_params(bcx, callee_id);
+    let node_substs = node_id_type_params(bcx, expr_id, is_method);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx));
     let ty_substs
         = vec::append(rcvr_substs.to_owned(),
@@ -319,7 +325,7 @@ pub fn combine_impl_and_methods_tps(bcx: &Block,
 
     // Now, do the same work for the vtables.  The vtables might not
     // exist, in which case we need to make them.
-    let r_m_origins = match node_vtables(bcx, callee_id) {
+    let r_m_origins = match node_vtables(bcx, expr_id) {
         Some(vt) => vt,
         None => @vec::from_elem(node_substs.len(), @~[])
     };
@@ -327,11 +333,11 @@ pub fn combine_impl_and_methods_tps(bcx: &Block,
         = @vec::append(rcvr_origins.to_owned(),
                        r_m_origins.tailn(r_m_origins.len() - n_m_tps));
 
-    return (ty_substs, vtables);
+    (ty_substs, vtables)
 }
 
 fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
-                          callee_id: ast::NodeId,
+                          method_ty: ty::t,
                           n_method: uint,
                           self_expr: &ast::Expr,
                           arg_cleanup_scope: cleanup::ScopeId)
@@ -371,8 +377,7 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
         self_datum.val
     };
 
-    let callee_ty = node_id_type(bcx, callee_id);
-    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llval)
+    trans_trait_callee_from_llval(bcx, method_ty, n_method, llval)
 }
 
 pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
@@ -540,7 +545,7 @@ fn emit_vtable_methods(bcx: &Block,
                    token::get_ident(ident));
             C_null(Type::nil().ptr_to())
         } else {
-            trans_fn_ref_with_vtables(bcx, m_id, 0, substs, Some(vtables))
+            trans_fn_ref_with_vtables(bcx, m_id, 0, false, substs, Some(vtables))
         }
     })
 }

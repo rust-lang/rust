@@ -450,12 +450,6 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
 
     fn visit_expr(&mut self, expression: &Expr, env: ()) {
-        {
-            let optional_callee_id = expression.get_callee_id();
-            for callee_id in optional_callee_id.iter() {
-                self.operation.visit_id(*callee_id)
-            }
-        }
         self.operation.visit_id(expression.id);
         visit::walk_expr(self, expression, env)
     }

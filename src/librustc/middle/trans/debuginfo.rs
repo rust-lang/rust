@@ -2539,15 +2539,13 @@ fn populate_scope_map(cx: &CrateContext,
                 None => ()
             },
 
-            ast::ExprUnary(node_id, _, sub_exp) => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
+            ast::ExprUnary(_, sub_exp) => {
                 walk_expr(cx, sub_exp, scope_stack, scope_map);
             }
 
-            ast::ExprAssignOp(node_id, _, lhs, rhs) |
-            ast::ExprIndex(node_id, lhs, rhs)        |
-            ast::ExprBinary(node_id, _, lhs, rhs)    => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
+            ast::ExprAssignOp(_, lhs, rhs) |
+            ast::ExprIndex(lhs, rhs)        |
+            ast::ExprBinary(_, lhs, rhs)    => {
                 walk_expr(cx, lhs, scope_stack, scope_map);
                 walk_expr(cx, rhs, scope_stack, scope_map);
             }
@@ -2638,9 +2636,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprMethodCall(node_id, _, _, ref args) => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
-
+            ast::ExprMethodCall(_, _, ref args) => {
                 for arg_exp in args.iter() {
                     walk_expr(cx, *arg_exp, scope_stack, scope_map);
                 }

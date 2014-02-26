@@ -1683,11 +1683,11 @@ impl Parser {
     }
 
     pub fn mk_unary(&mut self, unop: ast::UnOp, expr: @Expr) -> ast::Expr_ {
-        ExprUnary(ast::DUMMY_NODE_ID, unop, expr)
+        ExprUnary(unop, expr)
     }
 
     pub fn mk_binary(&mut self, binop: ast::BinOp, lhs: @Expr, rhs: @Expr) -> ast::Expr_ {
-        ExprBinary(ast::DUMMY_NODE_ID, binop, lhs, rhs)
+        ExprBinary(binop, lhs, rhs)
     }
 
     pub fn mk_call(&mut self, f: @Expr, args: ~[@Expr]) -> ast::Expr_ {
@@ -1695,11 +1695,11 @@ impl Parser {
     }
 
     fn mk_method_call(&mut self, ident: Ident, tps: ~[P<Ty>], args: ~[@Expr]) -> ast::Expr_ {
-        ExprMethodCall(ast::DUMMY_NODE_ID, ident, tps, args)
+        ExprMethodCall(ident, tps, args)
     }
 
     pub fn mk_index(&mut self, expr: @Expr, idx: @Expr) -> ast::Expr_ {
-        ExprIndex(ast::DUMMY_NODE_ID, expr, idx)
+        ExprIndex(expr, idx)
     }
 
     pub fn mk_field(&mut self, expr: @Expr, ident: Ident, tys: ~[P<Ty>]) -> ast::Expr_ {
@@ -1707,7 +1707,7 @@ impl Parser {
     }
 
     pub fn mk_assign_op(&mut self, binop: ast::BinOp, lhs: @Expr, rhs: @Expr) -> ast::Expr_ {
-        ExprAssignOp(ast::DUMMY_NODE_ID, binop, lhs, rhs)
+        ExprAssignOp(binop, lhs, rhs)
     }
 
     pub fn mk_mac_expr(&mut self, lo: BytePos, hi: BytePos, m: Mac_) -> @Expr {
