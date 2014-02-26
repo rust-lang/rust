@@ -521,19 +521,6 @@ pub struct Expr {
     span: Span,
 }
 
-impl Expr {
-    pub fn get_callee_id(&self) -> Option<NodeId> {
-        match self.node {
-            ExprMethodCall(callee_id, _, _, _) |
-            ExprIndex(callee_id, _, _) |
-            ExprBinary(callee_id, _, _, _) |
-            ExprAssignOp(callee_id, _, _, _) |
-            ExprUnary(callee_id, _, _) => Some(callee_id),
-            _ => None,
-        }
-    }
-}
-
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
@@ -541,10 +528,10 @@ pub enum Expr_ {
     ExprBox(@Expr, @Expr),
     ExprVec(~[@Expr], Mutability),
     ExprCall(@Expr, ~[@Expr]),
-    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr]),
+    ExprMethodCall(Ident, ~[P<Ty>], ~[@Expr]),
     ExprTup(~[@Expr]),
-    ExprBinary(NodeId, BinOp, @Expr, @Expr),
-    ExprUnary(NodeId, UnOp, @Expr),
+    ExprBinary(BinOp, @Expr, @Expr),
+    ExprUnary(UnOp, @Expr),
     ExprLit(@Lit),
     ExprCast(@Expr, P<Ty>),
     ExprIf(@Expr, P<Block>, Option<@Expr>),
@@ -560,9 +547,9 @@ pub enum Expr_ {
     ExprBlock(P<Block>),
 
     ExprAssign(@Expr, @Expr),
-    ExprAssignOp(NodeId, BinOp, @Expr, @Expr),
+    ExprAssignOp(BinOp, @Expr, @Expr),
     ExprField(@Expr, Ident, ~[P<Ty>]),
-    ExprIndex(NodeId, @Expr, @Expr),
+    ExprIndex(@Expr, @Expr),
 
     /// Expression that looks like a "name". For example,
     /// `std::vec::from_elem::<uint>` is an ExprPath that's the "name" part

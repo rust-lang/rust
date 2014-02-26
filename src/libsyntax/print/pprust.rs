@@ -1235,7 +1235,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(print_expr(s, func));
         try!(print_call_post(s, *args));
       }
-      ast::ExprMethodCall(_, ident, ref tys, ref args) => {
+      ast::ExprMethodCall(ident, ref tys, ref args) => {
         let base_args = args.slice_from(1);
         try!(print_expr(s, args[0]));
         try!(word(&mut s.s, "."));
@@ -1247,13 +1247,13 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         }
         try!(print_call_post(s, base_args));
       }
-      ast::ExprBinary(_, op, lhs, rhs) => {
+      ast::ExprBinary(op, lhs, rhs) => {
         try!(print_expr(s, lhs));
         try!(space(&mut s.s));
         try!(word_space(s, ast_util::binop_to_str(op)));
         try!(print_expr(s, rhs));
       }
-      ast::ExprUnary(_, op, expr) => {
+      ast::ExprUnary(op, expr) => {
         try!(word(&mut s.s, ast_util::unop_to_str(op)));
         try!(print_expr(s, expr));
       }
@@ -1442,7 +1442,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(word_space(s, "="));
         try!(print_expr(s, rhs));
       }
-      ast::ExprAssignOp(_, op, lhs, rhs) => {
+      ast::ExprAssignOp(op, lhs, rhs) => {
         try!(print_expr(s, lhs));
         try!(space(&mut s.s));
         try!(word(&mut s.s, ast_util::binop_to_str(op)));
@@ -1459,7 +1459,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
             try!(word(&mut s.s, ">"));
         }
       }
-      ast::ExprIndex(_, expr, index) => {
+      ast::ExprIndex(expr, index) => {
         try!(print_expr(s, expr));
         try!(word(&mut s.s, "["));
         try!(print_expr(s, index));

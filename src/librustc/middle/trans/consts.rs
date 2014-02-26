@@ -310,7 +310,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
           ast::ExprLit(lit) => {
               (consts::const_lit(cx, e, (*lit).clone()), true)
           }
-          ast::ExprBinary(_, b, e1, e2) => {
+          ast::ExprBinary(b, e1, e2) => {
             let (te1, _) = const_expr(cx, e1, is_local);
             let (te2, _) = const_expr(cx, e2, is_local);
 
@@ -392,7 +392,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               },
             }, true)
           },
-          ast::ExprUnary(_, u, e) => {
+          ast::ExprUnary(u, e) => {
             let (te, _) = const_expr(cx, e, is_local);
             let ty = ty::expr_ty(cx.tcx, e);
             let is_float = ty::type_is_fp(ty);
@@ -429,7 +429,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               })
           }
 
-          ast::ExprIndex(_, base, index) => {
+          ast::ExprIndex(base, index) => {
               let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {

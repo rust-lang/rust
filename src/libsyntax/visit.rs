@@ -658,18 +658,17 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             }
             visitor.visit_expr(callee_expression, env.clone())
         }
-        ExprMethodCall(_, _, ref types, ref arguments) => {
+        ExprMethodCall(_, ref types, ref arguments) => {
             walk_exprs(visitor, *arguments, env.clone());
             for &typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())
             }
         }
-        ExprBinary(_, _, left_expression, right_expression) => {
+        ExprBinary(_, left_expression, right_expression) => {
             visitor.visit_expr(left_expression, env.clone());
             visitor.visit_expr(right_expression, env.clone())
         }
-        ExprAddrOf(_, subexpression) |
-        ExprUnary(_, _, subexpression) => {
+        ExprAddrOf(_, subexpression) | ExprUnary(_, subexpression) => {
             visitor.visit_expr(subexpression, env.clone())
         }
         ExprLit(_) => {}
@@ -719,7 +718,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_expr(right_hand_expression, env.clone());
             visitor.visit_expr(left_hand_expression, env.clone())
         }
-        ExprAssignOp(_, _, left_expression, right_expression) => {
+        ExprAssignOp(_, left_expression, right_expression) => {
             visitor.visit_expr(right_expression, env.clone());
             visitor.visit_expr(left_expression, env.clone())
         }
@@ -729,7 +728,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
                 visitor.visit_ty(typ, env.clone())
             }
         }
-        ExprIndex(_, main_expression, index_expression) => {
+        ExprIndex(main_expression, index_expression) => {
             visitor.visit_expr(main_expression, env.clone());
             visitor.visit_expr(index_expression, env.clone())
         }

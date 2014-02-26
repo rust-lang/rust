@@ -537,11 +537,10 @@ fn connect_trait_tps(vcx: &VtableContext,
     relate_trait_refs(vcx, location_info, impl_trait_ref, trait_ref);
 }
 
-fn insert_vtables(fcx: &FnCtxt, callee_id: ast::NodeId, vtables: vtable_res) {
-    debug!("insert_vtables(callee_id={}, vtables={:?})",
-           callee_id, vtables.repr(fcx.tcx()));
-    let mut vtable_map = fcx.inh.vtable_map.borrow_mut();
-    vtable_map.get().insert(callee_id, vtables);
+fn insert_vtables(fcx: &FnCtxt, expr_id: ast::NodeId, vtables: vtable_res) {
+    debug!("insert_vtables(expr_id={}, vtables={:?})",
+           expr_id, vtables.repr(fcx.tcx()));
+    fcx.inh.vtable_map.borrow_mut().get().insert(expr_id, vtables);
 }
 
 pub fn location_info_for_expr(expr: &ast::Expr) -> LocationInfo {
@@ -692,23 +691,23 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       }
 
       // Must resolve bounds on methods with bounded params
-      ast::ExprBinary(callee_id, _, _, _) |
-      ast::ExprUnary(callee_id, _, _) |
-      ast::ExprAssignOp(callee_id, _, _, _) |
-      ast::ExprIndex(callee_id, _, _) |
-      ast::ExprMethodCall(callee_id, _, _, _) => {
+      ast::ExprBinary(_, _, _) |
+      ast::ExprUnary(_, _) |
+      ast::ExprAssignOp(_, _, _) |
+      ast::ExprIndex(_, _) |
+      ast::ExprMethodCall(_, _, _) => {
         match fcx.inh.method_map.borrow().get().find(&ex.id) {
-          Some(origin) => {
+          Some(method) => {
             debug!("vtable resolution on parameter bounds for method call {}",
                    ex.repr(fcx.tcx()));
-            let type_param_defs = ty::method_call_type_param_defs(cx.tcx, *origin);
+            let type_param_defs = ty::method_call_type_param_defs(cx.tcx, method.origin);
             if has_trait_bounds(*type_param_defs.borrow()) {
-                let substs = fcx.node_ty_substs(callee_id);
+                let substs = fcx.method_ty_substs(ex.id);
                 let vcx = fcx.vtable_context();
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
                                            *type_param_defs.borrow(), &substs, is_early);
                 if !is_early {
-                    insert_vtables(fcx, callee_id, vtbls);
+                    insert_vtables(fcx, ex.id, vtbls);
                 }
             }
           }

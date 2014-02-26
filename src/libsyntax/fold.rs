@@ -749,21 +749,19 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprCall(folder.fold_expr(f),
                      args.map(|&x| folder.fold_expr(x)))
         }
-        ExprMethodCall(callee_id, i, ref tps, ref args) => {
+        ExprMethodCall(i, ref tps, ref args) => {
             ExprMethodCall(
-                folder.new_id(callee_id),
                 folder.fold_ident(i),
                 tps.map(|&x| folder.fold_ty(x)),
                 args.map(|&x| folder.fold_expr(x)))
         }
-        ExprBinary(callee_id, binop, lhs, rhs) => {
-            ExprBinary(folder.new_id(callee_id),
-                       binop,
+        ExprBinary(binop, lhs, rhs) => {
+            ExprBinary(binop,
                        folder.fold_expr(lhs),
                        folder.fold_expr(rhs))
         }
-        ExprUnary(callee_id, binop, ohs) => {
-            ExprUnary(folder.new_id(callee_id), binop, folder.fold_expr(ohs))
+        ExprUnary(binop, ohs) => {
+            ExprUnary(binop, folder.fold_expr(ohs))
         }
         ExprLit(_) => e.node.clone(),
         ExprCast(expr, ty) => {
@@ -802,9 +800,8 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprAssign(el, er) => {
             ExprAssign(folder.fold_expr(el), folder.fold_expr(er))
         }
-        ExprAssignOp(callee_id, op, el, er) => {
-            ExprAssignOp(folder.new_id(callee_id),
-                         op,
+        ExprAssignOp(op, el, er) => {
+            ExprAssignOp(op,
                          folder.fold_expr(el),
                          folder.fold_expr(er))
         }
@@ -813,10 +810,8 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
                       folder.fold_ident(id),
                       tys.map(|&x| folder.fold_ty(x)))
         }
-        ExprIndex(callee_id, el, er) => {
-            ExprIndex(folder.new_id(callee_id),
-                      folder.fold_expr(el),
-                      folder.fold_expr(er))
+        ExprIndex(el, er) => {
+            ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
         }
         ExprPath(ref pth) => ExprPath(folder.fold_path(pth)),
         ExprLogLevel => ExprLogLevel,

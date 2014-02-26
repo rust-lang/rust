@@ -15,7 +15,7 @@ use middle::const_eval::{eval_const_expr, const_val, const_bool, const_float};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::MethodMap;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
@@ -31,7 +31,7 @@ use syntax::visit::{Visitor, FnKind};
 
 struct MatchCheckCtxt {
     tcx: ty::ctxt,
-    method_map: method_map,
+    method_map: MethodMap,
     moves_map: moves::MovesMap
 }
 
@@ -52,7 +52,7 @@ impl Visitor<()> for CheckMatchVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: method_map,
+                   method_map: MethodMap,
                    moves_map: moves::MovesMap,
                    krate: &Crate) {
     let cx = @MatchCheckCtxt {tcx: tcx,

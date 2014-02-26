@@ -33,8 +33,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
-    -> (ValueRef, bool)
-{
+    -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
@@ -280,7 +279,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         ast_map::NodeStmt(..) |
         ast_map::NodeArg(..) |
         ast_map::NodeBlock(..) |
-        ast_map::NodeCalleeScope(..) |
         ast_map::NodeLocal(..) => {
             ccx.tcx.sess.bug(format!("can't monomorphize a {:?}", map_node))
         }

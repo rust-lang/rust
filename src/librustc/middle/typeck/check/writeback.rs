@@ -20,6 +20,7 @@ use middle::typeck::check::FnCtxt;
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
+use middle::typeck::MethodCallee;
 use middle::typeck::{vtable_res, vtable_origin};
 use middle::typeck::{vtable_static, vtable_param};
 use middle::typeck::write_substs_to_tcx;
@@ -61,39 +62,54 @@ fn resolve_type_vars_in_types(fcx: @FnCtxt, sp: Span, tys: &[ty::t])
     })
 }
 
-fn resolve_method_map_entry(fcx: @FnCtxt, id: ast::NodeId) {
+fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
+    let fcx = wbcx.fcx;
+    let tcx = fcx.ccx.tcx;
+
     // Resolve any method map entry
-    let method_map_entry_opt = {
-        let method_map = fcx.inh.method_map.borrow();
-        method_map.get().find_copy(&id)
-    };
-    match method_map_entry_opt {
-        None => {}
-        Some(mme) => {
-            debug!("writeback::resolve_method_map_entry(id={:?}, entry={:?})", id, mme);
-            let mut method_map = fcx.ccx.method_map.borrow_mut();
-            method_map.get().insert(id, mme);
+    match fcx.inh.method_map.borrow().get().find(&id) {
+        Some(method) => {
+            debug!("writeback::resolve_method_map_entry(id={:?}, entry={:?})",
+                   id, method.repr(tcx));
+            let method_ty = match resolve_type_vars_in_type(fcx, sp, method.ty) {
+                Some(t) => t,
+                None => {
+                    wbcx.success = false;
+                    return;
+                }
+            };
+            let mut new_tps = ~[];
+            for &subst in method.substs.tps.iter() {
+                match resolve_type_vars_in_type(fcx, sp, subst) {
+                    Some(t) => new_tps.push(t),
+                    None => { wbcx.success = false; return; }
+                }
+            }
+            let new_method = MethodCallee {
+                origin: method.origin,
+                ty: method_ty,
+                substs: ty::substs {
+                    tps: new_tps,
+                    regions: ty::ErasedRegions,
+                    self_ty: None
+                }
+            };
+            fcx.ccx.method_map.borrow_mut().get().insert(id, new_method);
         }
+        None => {}
     }
 }
 
 fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
-    // Resolve any method map entry
-    {
-        let origins_opt = {
-            let vtable_map = fcx.inh.vtable_map.borrow();
-            vtable_map.get().find_copy(&id)
-        };
-        match origins_opt {
-            None => {}
-            Some(origins) => {
-                let r_origins = resolve_origins(fcx, sp, origins);
-                let mut vtable_map = fcx.ccx.vtable_map.borrow_mut();
-                vtable_map.get().insert(id, r_origins);
-                debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
-                       id, r_origins.repr(fcx.tcx()));
-            }
+    // Resolve any vtable map entry
+    match fcx.inh.vtable_map.borrow().get().find_copy(&id) {
+        Some(origins) => {
+            let r_origins = resolve_origins(fcx, sp, origins);
+            fcx.ccx.vtable_map.borrow_mut().get().insert(id, r_origins);
+            debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
+                    id, r_origins.repr(fcx.tcx()));
         }
+        None => {}
     }
 
     fn resolve_origins(fcx: @FnCtxt, sp: Span,
@@ -241,21 +257,6 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     }
 }
 
-fn maybe_resolve_type_vars_for_node(wbcx: &mut WbCtxt,
-                                    sp: Span,
-                                    id: ast::NodeId)
-                                 -> Option<ty::t> {
-    let contained = {
-        let node_types = wbcx.fcx.inh.node_types.borrow();
-        node_types.get().contains_key(&id)
-    };
-    if contained {
-        resolve_type_vars_for_node(wbcx, sp, id)
-    } else {
-        None
-    }
-}
-
 struct WbCtxt {
     fcx: @FnCtxt,
 
@@ -276,22 +277,8 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
     }
 
     resolve_type_vars_for_node(wbcx, e.span, e.id);
-
-    resolve_method_map_entry(wbcx.fcx, e.id);
-    {
-        let r = e.get_callee_id();
-        for callee_id in r.iter() {
-            resolve_method_map_entry(wbcx.fcx, *callee_id);
-        }
-    }
-
+    resolve_method_map_entry(wbcx, e.span, e.id);
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
-    {
-        let r = e.get_callee_id();
-        for callee_id in r.iter() {
-            resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
-        }
-    }
 
     match e.node {
         ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {
@@ -299,20 +286,7 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }
-
-        ast::ExprBinary(callee_id, _, _, _) |
-        ast::ExprUnary(callee_id, _, _) |
-        ast::ExprAssignOp(callee_id, _, _, _) |
-        ast::ExprIndex(callee_id, _, _) => {
-            maybe_resolve_type_vars_for_node(wbcx, e.span, callee_id);
-        }
-
-        ast::ExprMethodCall(callee_id, _, _, _) => {
-            // We must always have written in a callee ID type for these.
-            resolve_type_vars_for_node(wbcx, e.span, callee_id);
-        }
-
-        _ => ()
+        _ => {}
     }
 
     visit::walk_expr(wbcx, e, ());

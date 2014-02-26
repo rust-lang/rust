@@ -18,8 +18,8 @@ use collections::{HashSet, HashMap};
 use metadata::csearch;
 use middle::resolve;
 use middle::ty;
-use middle::typeck::{method_map, method_origin, method_param};
-use middle::typeck::{method_static, method_object};
+use middle::typeck::{MethodMap, MethodOrigin, MethodParam};
+use middle::typeck::{MethodStatic, MethodObject};
 
 use syntax::ast;
 use syntax::ast_map;
@@ -31,7 +31,7 @@ use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-type Context<'a> = (&'a method_map, &'a resolve::ExportMap2);
+type Context<'a> = (&'a MethodMap, &'a resolve::ExportMap2);
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = HashSet<ast::NodeId>;
@@ -347,7 +347,7 @@ struct PrivacyVisitor<'a> {
     curitem: ast::NodeId,
     in_fn: bool,
     in_foreign: bool,
-    method_map: &'a method_map,
+    method_map: &'a MethodMap,
     parents: HashMap<ast::NodeId, ast::NodeId>,
     external_exports: resolve::ExternalExports,
     last_private_map: resolve::LastPrivateMap,
@@ -738,16 +738,16 @@ impl<'a> PrivacyVisitor<'a> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, origin: &method_origin,
+    fn check_method(&mut self, span: Span, origin: MethodOrigin,
                     ident: ast::Ident) {
-        match *origin {
-            method_static(method_id) => {
+        match origin {
+            MethodStatic(method_id) => {
                 self.check_static_method(span, method_id, ident)
             }
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            method_param(method_param { trait_id: trait_id, .. }) |
-            method_object(method_object { trait_id: trait_id, .. }) => {
+            MethodParam(MethodParam { trait_id: trait_id, .. }) |
+            MethodObject(MethodObject { trait_id: trait_id, .. }) => {
                 self.report_error(self.ensure_public(span, trait_id, None, "source trait"));
             }
         }
@@ -785,7 +785,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprMethodCall(_, ident, _, ref args) => {
+            ast::ExprMethodCall(ident, _, ref args) => {
                 // see above
                 let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
                 match ty::get(t).sty {
@@ -796,9 +796,9 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                                        "method call not in \
                                                         method map");
                             }
-                            Some(origin) => {
+                            Some(method) => {
                                 debug!("(privacy checking) checking impl method");
-                                self.check_method(expr.span, origin, ident);
+                                self.check_method(expr.span, method.origin, ident);
                             }
                         }
                     }
@@ -1170,7 +1170,7 @@ impl SanePrivacyVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: &method_map,
+                   method_map: &MethodMap,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap,
