@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*! Various utility functions useful for writing I/O tests */
+
 #[macro_escape];
 
 use os;
