@@ -51,6 +51,7 @@ fs::unlink(&path);
 
 use c_str::ToCStr;
 use clone::Clone;
+use container::Container;
 use iter::Iterator;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
@@ -62,6 +63,7 @@ use result::{Ok, Err};
 use path;
 use path::{Path, GenericPath};
 use vec::{OwnedVector, ImmutableVector};
+use vec_ng::Vec;
 
 /// Unconstrained file access type that exposes read and write operations
 ///
@@ -557,16 +559,47 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// This function will return an `Err` value if an error happens. See
 /// `file::unlink` and `fs::readdir` for possible error conditions.
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
-    let children = try!(readdir(path));
-    for child in children.iter() {
-        if child.is_dir() {
-            try!(rmdir_recursive(child));
-        } else {
-            try!(unlink(child));
+    let mut rm_stack = Vec::new();
+    rm_stack.push(path.clone());
+
+    while !rm_stack.is_empty() {
+        let children = try!(readdir(rm_stack.last().unwrap()));
+        let mut has_child_dir = false;
+
+        // delete all regular files in the way and push subdirs
+        // on the stack
+        for child in children.move_iter() {
+            // FIXME(#12795) we should use lstat in all cases
+            let child_type = match cfg!(windows) {
+                true => try!(stat(&child)).kind,
+                false => try!(lstat(&child)).kind
+            };
+
+            if child_type == io::TypeDirectory {
+                rm_stack.push(child);
+                has_child_dir = true;
+            } else {
+                // we can carry on safely if the file is already gone
+                // (eg: deleted by someone else since readdir)
+                match unlink(&child) {
+                    Ok(()) => (),
+                    Err(ref e) if e.kind == io::FileNotFound => (),
+                    Err(e) => return Err(e)
+                }
+            }
+        }
+
+        // if no subdir was found, let's pop and delete
+        if !has_child_dir {
+            match rmdir(&rm_stack.pop().unwrap()) {
+                Ok(()) => (),
+                Err(ref e) if e.kind == io::FileNotFound => (),
+                Err(e) => return Err(e)
+            }
         }
     }
-    // Directory should now be empty
-    rmdir(path)
+
+    Ok(())
 }
 
 /// Changes the timestamps for a file's last modification and access time.
