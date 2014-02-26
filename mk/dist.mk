@@ -107,7 +107,7 @@ distcheck: dist
 
 else
 
-dist: $(PKG_TAR)
+dist: $(PKG_TAR) $(PKG_OSX)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
@@ -133,7 +133,7 @@ ifeq ($(CFG_OSTYPE), apple-darwin)
 
 dist-prepare-osx: PREPARE_HOST=$(CFG_BUILD)
 dist-prepare-osx: PREPARE_TARGETS=$(CFG_BUILD)
-dist-prepare-osx: PREPARE_DEST_DIR=pkgroot
+dist-prepare-osx: PREPARE_DEST_DIR=tmp/dist/pkgroot
 dist-prepare-osx: PREPARE_STAGE=2
 dist-prepare-osx: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-osx: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
@@ -143,9 +143,9 @@ dist-prepare-osx: prepare-base
 
 $(PKG_OSX): Distribution.xml LICENSE.txt dist-prepare-osx
 	@$(call E, making OS X pkg)
-	$(Q)pkgbuild --identifier org.rust-lang.rust --root pkgroot rust.pkg
+	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot rust.pkg
 	$(Q)productbuild --distribution Distribution.xml --resources . $(PKG_OSX)
-	$(Q)rm -rf pkgroot rust.pkg
+	$(Q)rm -rf tmp rust.pkg
 
 dist-osx: $(PKG_OSX)
 
