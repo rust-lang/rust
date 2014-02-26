@@ -15,7 +15,7 @@ use clone::{Clone, DeepClone};
 use cmp::Eq;
 use fmt;
 use kinds::{marker, Pod};
-use ops::Drop;
+use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
 
 /// A mutable memory location that admits only `Pod` data.
@@ -258,6 +258,13 @@ impl<'b, T> Ref<'b, T> {
     }
 }
 
+impl<'b, T> Deref<T> for Ref<'b, T> {
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a T {
+        &self.parent.value
+    }
+}
+
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
     priv parent: &'b mut RefCell<T>
@@ -275,6 +282,20 @@ impl<'b, T> RefMut<'b, T> {
     /// Retrieve a mutable reference to the stored value.
     #[inline]
     pub fn get<'a>(&'a mut self) -> &'a mut T {
+        &mut self.parent.value
+    }
+}
+
+impl<'b, T> Deref<T> for RefMut<'b, T> {
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a T {
+        &self.parent.value
+    }
+}
+
+impl<'b, T> DerefMut<T> for RefMut<'b, T> {
+    #[inline]
+    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         &mut self.parent.value
     }
 }
