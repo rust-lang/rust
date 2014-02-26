@@ -26,10 +26,10 @@
 
 #![allow(non_camel_case_types)]
 
+use libc;
 use std::cast;
 use std::fmt;
 use std::io;
-use std::libc;
 use std::local_data;
 use std::mem;
 use std::str;

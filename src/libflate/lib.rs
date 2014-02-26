@@ -26,13 +26,14 @@ Simple compression
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
-use std::libc::{c_void, size_t, c_int};
-use std::libc;
+extern crate libc;
+
 use std::c_vec::CVec;
+use libc::{c_void, size_t, c_int};
+
 
 pub mod rustrt {
-    use std::libc::{c_int, c_void, size_t};
-
+    use libc::{c_void, size_t, c_int};
     #[link(name = "miniz", kind = "static")]
     extern {
         pub fn tdefl_compress_mem_to_heap(psrc_buf: *c_void,

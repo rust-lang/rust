@@ -13,11 +13,11 @@
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.
 
-use std::libc;
+extern crate libc;
 use std::task;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     extern {
         pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)

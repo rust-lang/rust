@@ -192,7 +192,8 @@ As an example, we give a reimplementation of owned boxes by wrapping
 reimplementation is as safe as the built-in `~` type.
 
 ```
-use std::libc::{c_void, size_t, malloc, free};
+extern crate libc;
+use libc::{c_void, size_t, malloc, free};
 use std::mem;
 use std::ptr;
 

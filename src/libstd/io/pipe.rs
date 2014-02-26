@@ -38,11 +38,14 @@ impl PipeStream {
     ///
     /// ```rust
     /// # #[allow(unused_must_use)];
-    /// use std::libc;
+    /// extern crate libc;
+    ///
     /// use std::io::pipe::PipeStream;
     ///
-    /// let mut pipe = PipeStream::open(libc::STDERR_FILENO);
-    /// pipe.write(bytes!("Hello, stderr!"));
+    /// fn main() {
+    ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
+    ///     pipe.write(bytes!("Hello, stderr!"));
+    /// }
     /// ```
     pub fn open(fd: libc::c_int) -> IoResult<PipeStream> {
         LocalIo::maybe_raise(|io| {

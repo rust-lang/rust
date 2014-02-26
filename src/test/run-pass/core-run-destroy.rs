@@ -17,6 +17,7 @@
 // instead of in std.
 
 #[feature(macro_rules)];
+extern crate libc;
 
 extern crate native;
 extern crate green;
@@ -34,7 +35,7 @@ macro_rules! iotest (
             #[allow(unused_imports)];
 
             use std::io::timer;
-            use std::libc;
+            use libc;
             use std::str;
             use std::io::process::{Process, ProcessOutput};
             use native;
@@ -87,7 +88,7 @@ iotest!(fn test_destroy_twice() {
 pub fn test_destroy_actually_kills(force: bool) {
     use std::io::process::{Process, ProcessOutput, ExitStatus, ExitSignal};
     use std::io::timer;
-    use std::libc;
+    use libc;
     use std::str;
 
     #[cfg(unix,not(target_os="android"))]

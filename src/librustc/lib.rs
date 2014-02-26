@@ -42,6 +42,8 @@ extern crate sync;
 extern crate getopts;
 extern crate collections;
 extern crate time;
+extern crate libc;
+
 #[phase(syntax, link)]
 extern crate log;
 

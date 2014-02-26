@@ -12,7 +12,8 @@ The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
 ~~~~ {.ignore}
-use std::libc::size_t;
+extern crate libc;
+use libc::size_t;
 
 #[link(name = "snappy")]
 extern {
@@ -44,7 +45,8 @@ keeping the binding correct at runtime.
 The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.ignore}
-use std::libc::{c_int, size_t};
+extern crate libc;
+use libc::{c_int, size_t};
 
 #[link(name = "snappy")]
 extern {
@@ -402,7 +404,7 @@ global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
 ~~~{.ignore}
-use std::libc;
+extern crate libc;
 
 #[link(name = "readline")]
 extern {
@@ -420,7 +422,7 @@ interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
 ~~~{.ignore}
-use std::libc;
+extern crate libc;
 use std::ptr;
 
 #[link(name = "readline")]
@@ -444,11 +446,15 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ~~~~
+extern crate libc;
+
 #[cfg(target_os = "win32", target_arch = "x86")]
 #[link(name = "kernel32")]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> std::libc::c_int;
+    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> libc::c_int;
 }
+
+# fn main() { }
 ~~~~
 
 This applies to the entire `extern` block. The list of supported ABI constraints

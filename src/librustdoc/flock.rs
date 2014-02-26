@@ -18,13 +18,14 @@
 
 pub use self::imp::Lock;
 
+
 #[cfg(unix)]
 mod imp {
-    use std::libc;
+    use libc;
 
     #[cfg(target_os = "linux")]
     mod os {
-        use std::libc;
+        use libc;
 
         pub struct flock {
             pub l_type: libc::c_short,
@@ -45,7 +46,7 @@ mod imp {
 
     #[cfg(target_os = "freebsd")]
     mod os {
-        use std::libc;
+        use libc;
 
         pub struct flock {
             pub l_start: libc::off_t,
@@ -64,7 +65,7 @@ mod imp {
 
     #[cfg(target_os = "macos")]
     mod os {
-        use std::libc;
+        use libc;
 
         pub struct flock {
             pub l_start: libc::off_t,
@@ -132,7 +133,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use std::libc;
+    use libc;
     use std::mem;
     use std::os::win32::as_utf16_p;
     use std::os;

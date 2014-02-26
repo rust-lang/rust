@@ -10,8 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate libc;
+
 use std::cast;
-use std::libc::{c_double, c_int};
+use libc::{c_double, c_int};
 
 fn to_c_int(v: &mut int) -> &mut c_int {
     unsafe {
@@ -26,7 +28,7 @@ fn lgamma(n: c_double, value: &mut int) -> c_double {
 }
 
 mod m {
-    use std::libc::{c_double, c_int};
+    use libc::{c_double, c_int};
 
     #[link_name = "m"]
     extern {

@@ -72,9 +72,9 @@ use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;
+use libc::c_uint;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::libc::c_uint;
 use std::local_data;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::ast_util::{local_def, is_local};

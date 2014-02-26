@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use std::libc::{c_int, size_t, ssize_t};
+use libc::{c_int, size_t, ssize_t};
 use std::ptr;
 use std::rt::task::BlockedTask;
 

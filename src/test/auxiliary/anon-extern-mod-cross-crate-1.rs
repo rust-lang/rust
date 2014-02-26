@@ -10,7 +10,7 @@
 
 #[crate_id="anonexternmod#0.1"];
 
-use std::libc;
+extern crate libc;
 
 #[link(name="rustrt")]
 extern {

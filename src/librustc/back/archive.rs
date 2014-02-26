@@ -18,7 +18,7 @@ use lib::llvm::{ArchiveRef, llvm};
 use std::cast;
 use std::io;
 use std::io::{fs, TempDir};
-use std::libc;
+use libc;
 use std::os;
 use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;

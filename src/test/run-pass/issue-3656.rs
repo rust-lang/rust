@@ -13,7 +13,8 @@
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
 
-use std::libc::{c_uint, uint32_t, c_void};
+extern crate libc;
+use libc::{c_uint, uint32_t, c_void};
 
 struct KEYGEN {
     hash_algorithm: [c_uint, ..2],

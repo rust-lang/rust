@@ -14,8 +14,8 @@ use std::sync::arc::UnsafeArc;
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
-use std::libc::{c_int, c_void};
-use std::libc;
+use libc::{c_int, c_void};
+use libc;
 use std::mem;
 use std::rt::rtio;
 use std::slice;
@@ -341,8 +341,8 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
 }
 
 pub fn readdir(p: &CString) -> IoResult<~[Path]> {
-    use std::libc::{dirent_t};
-    use std::libc::{opendir, readdir_r, closedir};
+    use libc::{dirent_t};
+    use libc::{opendir, readdir_r, closedir};
 
     fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
@@ -520,7 +520,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 mod tests {
     use super::{CFile, FileDesc};
     use std::io;
-    use std::libc;
+    use libc;
     use std::os;
     use std::rt::rtio::RtioFileStream;
 

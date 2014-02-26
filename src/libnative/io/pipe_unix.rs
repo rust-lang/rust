@@ -11,7 +11,7 @@
 use std::c_str::CString;
 use std::cast;
 use std::io;
-use std::libc;
+use libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use std::libc::c_int;
+use libc::c_int;
 use std::rt::rtio::{Callback, RemoteCallback};
 use std::unstable::sync::Exclusive;
 
