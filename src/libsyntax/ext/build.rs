@@ -502,15 +502,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_binary(&self, sp: Span, op: ast::BinOp,
                    lhs: @ast::Expr, rhs: @ast::Expr) -> @ast::Expr {
-        self.expr(sp, ast::ExprBinary(ast::DUMMY_NODE_ID, op, lhs, rhs))
+        self.expr(sp, ast::ExprBinary(op, lhs, rhs))
     }
 
     fn expr_deref(&self, sp: Span, e: @ast::Expr) -> @ast::Expr {
         self.expr_unary(sp, ast::UnDeref, e)
     }
-    fn expr_unary(&self, sp: Span, op: ast::UnOp, e: @ast::Expr)
-        -> @ast::Expr {
-        self.expr(sp, ast::ExprUnary(ast::DUMMY_NODE_ID, op, e))
+    fn expr_unary(&self, sp: Span, op: ast::UnOp, e: @ast::Expr) -> @ast::Expr {
+        self.expr(sp, ast::ExprUnary(op, e))
     }
 
     fn expr_managed(&self, sp: Span, e: @ast::Expr) -> @ast::Expr {
@@ -543,7 +542,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                         ident: ast::Ident,
                         mut args: ~[@ast::Expr]) -> @ast::Expr {
         args.unshift(expr);
-        self.expr(span, ast::ExprMethodCall(ast::DUMMY_NODE_ID, ident, ~[], args))
+        self.expr(span, ast::ExprMethodCall(ident, ~[], args))
     }
     fn expr_block(&self, b: P<ast::Block>) -> @ast::Expr {
         self.expr(b.span, ast::ExprBlock(b))

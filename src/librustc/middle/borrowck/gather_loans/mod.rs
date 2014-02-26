@@ -181,20 +181,9 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     this.id_range.add(ex.id);
 
-    {
-        let r = ex.get_callee_id();
-        for callee_id in r.iter() {
-            this.id_range.add(*callee_id);
-        }
-    }
-
     // If this expression is borrowed, have to ensure it remains valid:
-    {
-        let adjustments = tcx.adjustments.borrow();
-        let r = adjustments.get().find(&ex.id);
-        for &adjustments in r.iter() {
-            this.guarantee_adjustments(ex, *adjustments);
-        }
+    for &adjustments in tcx.adjustments.borrow().get().find(&ex.id).iter() {
+        this.guarantee_adjustments(ex, *adjustments);
     }
 
     // If this expression is a move, gather it:
@@ -225,7 +214,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         visit::walk_expr(this, ex, ());
       }
 
-      ast::ExprAssign(l, _) | ast::ExprAssignOp(_, _, l, _) => {
+      ast::ExprAssign(l, _) | ast::ExprAssignOp(_, l, _) => {
           let l_cmt = this.bccx.cat_expr(l);
           match opt_loan_path(l_cmt) {
               Some(l_lp) => {
@@ -252,8 +241,8 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         visit::walk_expr(this, ex, ());
       }
 
-      ast::ExprIndex(_, _, arg) |
-      ast::ExprBinary(_, _, _, arg)
+      ast::ExprIndex(_, arg) |
+      ast::ExprBinary(_, _, arg)
       if method_map.get().contains_key(&ex.id) => {
           // Arguments in method calls are always passed by ref.
           //

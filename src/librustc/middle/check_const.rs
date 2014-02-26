@@ -108,8 +108,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                   is_const: bool) {
     if is_const {
         match e.node {
-          ExprUnary(_, UnDeref, _) => { }
-          ExprUnary(_, UnBox, _) | ExprUnary(_, UnUniq, _) => {
+          ExprUnary(UnDeref, _) => { }
+          ExprUnary(UnBox, _) | ExprUnary(UnUniq, _) => {
             sess.span_err(e.span,
                           "cannot do allocations in constant expressions");
             return;

@@ -785,7 +785,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprMethodCall(_, ident, _, ref args) => {
+            ast::ExprMethodCall(ident, _, ref args) => {
                 // see above
                 let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
                 match ty::get(t).sty {
@@ -796,9 +796,9 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                                        "method call not in \
                                                         method map");
                             }
-                            Some(origin) => {
+                            Some(method) => {
                                 debug!("(privacy checking) checking impl method");
-                                self.check_method(expr.span, origin, ident);
+                                self.check_method(expr.span, method.origin, ident);
                             }
                         }
                     }

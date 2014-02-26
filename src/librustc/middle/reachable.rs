@@ -147,9 +147,8 @@ impl Visitor<()> for MarkSymbolVisitor {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_map = self.method_map.borrow();
-                match method_map.get().find(&expr.id) {
-                    Some(&typeck::method_static(def_id)) => {
+                match self.method_map.borrow().get().get(&expr.id).origin {
+                    typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if ReachableContext::
                                 def_id_represents_local_inlined_item(
@@ -168,11 +167,7 @@ impl Visitor<()> for MarkSymbolVisitor {
                             }
                         }
                     }
-                    Some(_) => {}
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                            "method call expression not in method map?!")
-                    }
+                    _ => {}
                 }
             }
             _ => {}

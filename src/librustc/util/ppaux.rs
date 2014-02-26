@@ -74,9 +74,6 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
           Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
-          Some(ast_map::NodeCalleeScope(expr)) => {
-              explain_span(cx, "callee", expr.span)
-          }
           Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
               ast::ExprCall(..) => explain_span(cx, "call", expr.span),
@@ -867,6 +864,15 @@ impl Repr for ty::BareFnTy {
 impl Repr for ty::FnSig {
     fn repr(&self, tcx: ctxt) -> ~str {
         fn_sig_to_str(tcx, self)
+    }
+}
+
+impl Repr for typeck::MethodCallee {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        format!("MethodCallee \\{origin: {}, ty: {}, {}\\}",
+            self.origin.repr(tcx),
+            self.ty.repr(tcx),
+            self.substs.repr(tcx))
     }
 }
 

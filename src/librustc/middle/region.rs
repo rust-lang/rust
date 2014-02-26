@@ -512,8 +512,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
         // scopes, meaning that temporaries cannot outlive them.
         // This ensures fixed size stacks.
 
-        ast::ExprBinary(_, ast::BiAnd, _, r) |
-        ast::ExprBinary(_, ast::BiOr, _, r) => {
+        ast::ExprBinary(ast::BiAnd, _, r) |
+        ast::ExprBinary(ast::BiOr, _, r) => {
             // For shortcircuiting operators, mark the RHS as a terminating
             // scope since it only executes conditionally.
             visitor.region_maps.mark_as_terminating_scope(r.id);
@@ -756,7 +756,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                         visitor, subexpr, blk_id);
                 }
             }
-            ast::ExprUnary(_, ast::UnUniq, subexpr) => {
+            ast::ExprUnary(ast::UnUniq, subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
             }
             ast::ExprCast(subexpr, _) |
@@ -811,9 +811,9 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
 
             match expr.node {
                 ast::ExprAddrOf(_, ref subexpr) |
-                ast::ExprUnary(_, ast::UnDeref, ref subexpr) |
+                ast::ExprUnary(ast::UnDeref, ref subexpr) |
                 ast::ExprField(ref subexpr, _, _) |
-                ast::ExprIndex(_, ref subexpr, _) |
+                ast::ExprIndex(ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
                     let subexpr: &'a @Expr = subexpr; // FIXME(#11586)
                     expr = &**subexpr;
