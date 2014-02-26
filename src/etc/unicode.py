@@ -19,7 +19,7 @@
 # programs". It is not meant to be a complete implementation of unicode.
 # For that we recommend you use a proper binding to libicu.
 
-import fileinput, re, os, sys
+import fileinput, re, os, sys, operator
 
 
 def fetch(f):
@@ -35,6 +35,8 @@ def fetch(f):
 def load_unicode_data(f):
     fetch(f)
     gencats = {}
+    upperlower = {}
+    lowerupper = {}
     combines = []
     canon_decomp = {}
     compat_decomp = {}
@@ -44,6 +46,7 @@ def load_unicode_data(f):
     c_hi = 0
     com_lo = 0
     com_hi = 0
+
     for line in fileinput.input(f):
         fields = line.split(";")
         if len(fields) != 15:
@@ -52,7 +55,17 @@ def load_unicode_data(f):
          decomp, deci, digit, num, mirror,
          old, iso, upcase, lowcase, titlecase ] = fields
 
-        code = int(code, 16)
+        code_org = code
+        code     = int(code, 16)
+
+        # generate char to char direct common and simple conversions
+        # uppercase to lowercase
+        if gencat == "Lu" and lowcase != "" and code_org != lowcase:
+            upperlower[code] = int(lowcase, 16)
+
+        # lowercase to uppercase
+        if gencat == "Ll" and upcase != "" and code_org != upcase:
+            lowerupper[code] = int(upcase, 16)
 
         if decomp != "":
             if decomp.startswith('<'):
@@ -96,7 +109,7 @@ def load_unicode_data(f):
             com_lo = code
             com_hi = code
 
-    return (canon_decomp, compat_decomp, gencats, combines)
+    return (canon_decomp, compat_decomp, gencats, combines, lowerupper, upperlower)
 
 def load_properties(f, interestingprops):
     fetch(f)
@@ -164,11 +177,12 @@ def emit_property_module(f, mod, tbl):
     keys = tbl.keys()
     keys.sort()
     emit_bsearch_range_table(f);
+
     for cat in keys:
         if cat not in ["Nd", "Nl", "No", "Cc",
-                "XID_Start", "XID_Continue", "Alphabetic",
-                "Lowercase", "Uppercase", "White_Space"]:
-                continue
+            "XID_Start", "XID_Continue", "Alphabetic",
+            "Lowercase", "Uppercase", "White_Space"]:
+            continue
         f.write("    static %s_table : &'static [(char,char)] = &[\n" % cat)
         ix = 0
         for pair in tbl[cat]:
@@ -183,29 +197,57 @@ def emit_property_module(f, mod, tbl):
     f.write("}\n")
 
 
-def emit_property_module_old(f, mod, tbl):
-    f.write("mod %s {\n" % mod)
-    keys = tbl.keys()
-    keys.sort()
-    for cat in keys:
-        f.write("    fn %s(c: char) -> bool {\n" % cat)
-        f.write("        ret alt c {\n")
-        prefix = ' '
-        for pair in tbl[cat]:
-            if pair[0] == pair[1]:
-                f.write("            %c %s\n" %
-                        (prefix, escape_char(pair[0])))
-            else:
-                f.write("            %c %s to %s\n" %
-                        (prefix,
-                         escape_char(pair[0]),
-                         escape_char(pair[1])))
-            prefix = '|'
-        f.write("              { true }\n")
-        f.write("            _ { false }\n")
-        f.write("        };\n")
-        f.write("    }\n\n")
+def emit_conversions_module(f, lowerupper, upperlower):
+    f.write("pub mod conversions {\n")
+    f.write("""
+    use cmp::{Equal, Less, Greater};
+    use vec::ImmutableVector;
+    use tuple::Tuple2;
+    use option::{ Option, Some, None };
+
+    pub fn to_lower(c: char) -> char {
+        match bsearch_case_table(c, LuLl_table) {
+          None        => c,
+          Some(index) => LuLl_table[index].val1()
+        }
+    }
+
+    pub fn to_upper(c: char) -> char {
+        match bsearch_case_table(c, LlLu_table) {
+            None        => c,
+            Some(index) => LlLu_table[index].val1()
+        }
+    }
+
+    fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<uint> {
+        table.bsearch(|&(key, _)| {
+            if c == key { Equal }
+            else if key < c { Less }
+            else { Greater }
+        })
+    }
+""");
+    emit_caseconversions(f, lowerupper, upperlower)
     f.write("}\n")
+
+def emit_caseconversions(f, lowerupper, upperlower):
+    f.write("   static LuLl_table : &'static [(char, char)] = &[\n")
+    sorted_by_lu = sorted(upperlower.iteritems(), key=operator.itemgetter(0))
+    ix = 0
+    for key, value in sorted_by_lu:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s)" % (escape_char(key), escape_char(value)))
+        ix += 1
+    f.write("\n    ];\n\n")
+
+    f.write("   static LlLu_table : &'static [(char, char)] = &[\n")
+    sorted_by_ll = sorted(lowerupper.iteritems(), key=operator.itemgetter(0))
+    ix = 0
+    for key, value in sorted_by_ll:
+        f.write(ch_prefix(ix))
+        f.write("(%s, %s)" % (escape_char(key), escape_char(value)))
+        ix += 1
+    f.write("\n    ];\n\n")
 
 def format_table_content(f, content, indent):
     line = " "*indent
@@ -362,7 +404,8 @@ for i in [r]:
         os.remove(i);
 rf = open(r, "w")
 
-(canon_decomp, compat_decomp, gencats, combines) = load_unicode_data("UnicodeData.txt")
+(canon_decomp, compat_decomp, gencats,
+ combines, lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
 
 # Preamble
 rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
@@ -388,7 +431,9 @@ emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
 
 derived = load_properties("DerivedCoreProperties.txt",
         ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
+
 emit_property_module(rf, "derived_property", derived)
 
 props = load_properties("PropList.txt", ["White_Space"])
 emit_property_module(rf, "property", props)
+emit_conversions_module(rf, lowerupper, upperlower)
