@@ -19,7 +19,6 @@ li {list-style-type: none; }
 * [Foreign Function Interface](guide-ffi.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
-* [Conditions](guide-conditions.html)
 * [Rust's Runtime](guide-runtime.html)
 
 # Libraries

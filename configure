@@ -803,7 +803,6 @@ do
     make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
-    make_dir $h/test/doc-guide-conditions
     make_dir $h/test/doc-complement-cheatsheet
     make_dir $h/test/doc-rust
 done
