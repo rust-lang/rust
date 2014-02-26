@@ -22,8 +22,8 @@
 
 extern crate green;
 extern crate rustuv;
+extern crate libc;
 
-use std::libc;
 use std::io::process;
 use std::io::signal::{Listener, Interrupt};
 

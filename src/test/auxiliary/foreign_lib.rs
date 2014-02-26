@@ -11,7 +11,7 @@
 #[crate_id="foreign_lib"];
 
 pub mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

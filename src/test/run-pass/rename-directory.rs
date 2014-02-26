@@ -13,9 +13,10 @@
 
 // ignore-fast
 
+extern crate libc;
+
 use std::io::TempDir;
 use std::os;
-use std::libc;
 use std::io;
 use std::io::fs;
 

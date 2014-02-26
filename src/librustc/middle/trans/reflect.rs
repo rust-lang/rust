@@ -26,7 +26,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use arena::TypedArena;
-use std::libc::c_uint;
+use libc::c_uint;
 use syntax::ast::DefId;
 use syntax::ast;
 use syntax::ast_map;

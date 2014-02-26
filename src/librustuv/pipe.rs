@@ -10,7 +10,7 @@
 
 use std::c_str::CString;
 use std::io::IoError;
-use std::libc;
+use libc;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::task::BlockedTask;
 

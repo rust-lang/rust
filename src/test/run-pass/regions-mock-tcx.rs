@@ -18,11 +18,11 @@
 
 extern crate arena;
 extern crate collections;
+extern crate libc;
 
 use arena::Arena;
 use collections::HashMap;
 use std::cast;
-use std::libc;
 use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;

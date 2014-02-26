@@ -36,6 +36,7 @@ li {list-style-type: none; }
 * [The `glob` file path matching library](glob/index.html)
 * [The `green` M:N runtime library](green/index.html)
 * [The `hexfloat` library for hexadecimal floating-point literals](hexfloat/index.html)
+* [The `libc` bindings](libc/index.html)
 * [The `native` 1:1 threading runtime](native/index.html)
 * [The `num` arbitrary precision numerics library](num/index.html)
 * [The `rand` library for random numbers and distributions](rand/index.html)

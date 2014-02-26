@@ -10,7 +10,7 @@
 
 // error-pattern:unsupported cast
 
-use std::libc;
+extern crate libc;
 
 fn main() {
   println!("{:?}", 1.0 as *libc::FILE); // Can't cast float to foreign.

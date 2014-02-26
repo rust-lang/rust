@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc::c_int;
+use libc::c_int;
 use std::mem;
 use std::rt::rtio::RtioTimer;
 use std::rt::task::BlockedTask;

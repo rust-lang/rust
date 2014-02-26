@@ -10,8 +10,8 @@
 
 use ai = std::io::net::addrinfo;
 use std::cast;
-use std::libc;
-use std::libc::c_int;
+use libc;
+use libc::c_int;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
 

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast doesn't like extern crate
+
+extern crate libc;
+
 mod bar {
     extern {}
 }
@@ -16,8 +20,8 @@ mod zed {
     extern {}
 }
 
-mod libc {
-    use std::libc::{c_int, c_void, size_t, ssize_t};
+mod mlibc {
+    use libc::{c_int, c_void, size_t, ssize_t};
 
     extern {
         pub fn write(fd: c_int, buf: *c_void, count: size_t) -> ssize_t;
