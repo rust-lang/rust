@@ -1950,6 +1950,10 @@ impl TypeContents {
         self.intersects(TC::OwnsManaged)
     }
 
+    pub fn owns_owned(&self) -> bool {
+        self.intersects(TC::OwnsOwned)
+    }
+
     pub fn is_freezable(&self, _: ctxt) -> bool {
         !self.intersects(TC::Nonfreezable)
     }
@@ -2040,6 +2044,10 @@ impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f.buf, "TypeContents({:t})", self.bits)
     }
+}
+
+pub fn type_has_dtor(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).has_dtor()
 }
 
 pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
