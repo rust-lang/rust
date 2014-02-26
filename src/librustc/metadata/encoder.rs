@@ -40,7 +40,6 @@ use syntax::ast_util::*;
 use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::InternedString;
 use syntax::parse::token::special_idents;
@@ -73,8 +72,6 @@ pub struct EncodeParams<'a> {
     link_meta: &'a LinkMeta,
     cstore: @cstore::CStore,
     encode_inlined_item: EncodeInlinedItem<'a>,
-    reachable: @RefCell<HashSet<ast::NodeId>>,
-    codemap: @codemap::CodeMap,
 }
 
 struct Stats {
@@ -104,13 +101,6 @@ pub struct EncodeContext<'a> {
     cstore: &'a cstore::CStore,
     encode_inlined_item: EncodeInlinedItem<'a>,
     type_abbrevs: abbrev_map,
-    reachable: @RefCell<HashSet<ast::NodeId>>,
-    codemap: @codemap::CodeMap,
-}
-
-pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
-    let reachable = ecx.reachable.borrow();
-    reachable.get().contains(&id)
 }
 
 fn encode_name(ebml_w: &mut writer::Encoder, name: Name) {
@@ -1630,7 +1620,7 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
             ItemMac(..) => {
-                let def = self.ecx.codemap.span_to_snippet(item.span)
+                let def = self.ecx.tcx.sess.codemap.span_to_snippet(item.span)
                     .expect("Unable to find source for macro");
                 self.ebml_w.start_tag(tag_macro_def);
                 self.ebml_w.wr_str(def);
@@ -1796,9 +1786,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         cstore,
         encode_inlined_item,
         link_meta,
-        reachable,
         non_inlineable_statics,
-        codemap,
         ..
     } = parms;
     let type_abbrevs = @RefCell::new(HashMap::new());
@@ -1814,8 +1802,6 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         cstore: cstore,
         encode_inlined_item: encode_inlined_item,
         type_abbrevs: type_abbrevs,
-        reachable: reachable,
-        codemap: codemap,
      };
 
     let mut ebml_w = writer::Encoder(wr);
