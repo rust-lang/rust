@@ -2552,8 +2552,6 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
             link_meta: link_meta,
             cstore: cx.sess.cstore,
             encode_inlined_item: ie,
-            reachable: cx.reachable,
-            codemap: cx.sess.codemap,
         }
 }
 
