@@ -152,7 +152,7 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
-    fn raw_socket_new(&mut self, protocol: Protocol) -> Result<~RtioRawSocket, IoError>;
+    fn raw_socket_new(&mut self, protocol: &Protocol) -> Result<~RtioRawSocket, IoError>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;

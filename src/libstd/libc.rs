@@ -267,6 +267,7 @@ pub mod types {
                 pub enum timezone {}
             }
             pub mod bsd44 {
+                use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -318,6 +319,16 @@ pub mod types {
                     ai_addr: *sockaddr,
                     ai_canonname: *c_char,
                     ai_next: *addrinfo
+                }
+
+                pub struct ifaddrs {
+                    ifa_next: *ifaddrs,
+                    ifa_name: *c_char,
+                    ifa_flags: c_uint,
+                    ifa_addr: *sockaddr,
+                    ifa_netmask: *sockaddr,
+                    ifa_ifu: *sockaddr, // FIXME This should be a union
+                    ifa_data: *c_void
                 }
             }
         }
@@ -505,7 +516,18 @@ pub mod types {
             }
             pub mod posix08 {}
             pub mod bsd44 {}
-            pub mod extra {}
+            pub mod extra {
+                use libc::types::os::arch::c95::{c_ushort, c_int, c_uchar};
+                pub struct sockaddr_ll {
+                    sll_family: c_ushort,
+                    sll_protocol: c_ushort,
+                    sll_ifindex: c_int,
+                    sll_hatype: c_ushort,
+                    sll_pkttype: c_uchar,
+                    sll_halen: c_uchar,
+                    sll_addr: [c_uchar, ..8]
+                }
+            }
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -590,6 +612,16 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                use libc::types::os::arch::c95::{c_ushort, c_int, c_uchar};
+                pub struct sockaddr_ll {
+                    sll_family: c_ushort,
+                    sll_protocol: c_ushort,
+                    sll_ifindex: c_int,
+                    sll_hatype: c_ushort,
+                    sll_pkttype: c_uchar,
+                    sll_halen: c_uchar,
+                    sll_addr: [c_uchar, ..8]
+                }
             }
         }
     }
@@ -2313,6 +2345,8 @@ pub mod consts {
             pub static MADV_UNMERGEABLE : c_int = 13;
             pub static MADV_HWPOISON : c_int = 100;
 
+            pub static IFF_LOOPBACK: c_int = 0x8;
+
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 10;
             pub static SOCK_STREAM: c_int = 1;
@@ -3856,7 +3890,7 @@ pub mod funcs {
     #[cfg(not(windows))]
     pub mod bsd43 {
         use libc::types::common::c95::{c_void};
-        use libc::types::os::common::bsd44::{socklen_t, sockaddr};
+        use libc::types::os::common::bsd44::{socklen_t, sockaddr, ifaddrs};
         use libc::types::os::arch::c95::{c_int, size_t};
         use libc::types::os::arch::posix88::ssize_t;
 
@@ -3885,6 +3919,8 @@ pub mod funcs {
             pub fn sendto(socket: c_int, buf: *c_void, len: size_t,
                           flags: c_int, addr: *sockaddr,
                           addrlen: socklen_t) -> ssize_t;
+            pub fn getifaddrs(ifap: *mut *ifaddrs) -> c_int;
+            pub fn freeifaddrs(ifa: *ifaddrs);
         }
     }
 

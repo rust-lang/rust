@@ -775,27 +775,27 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
 fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
 // ----------------------------------------------------------------------------
 
-fn protocol_to_libc(protocol: raw::Protocol)
-    -> (c_int, c_int, c_int, Option<raw::NetworkInterface>) {
+fn protocol_to_libc<'ni>(protocol: &raw::Protocol<'ni>)
+    -> (c_int, c_int, c_int, Option<&'ni raw::NetworkInterface>) {
     let ETH_P_ALL: u16 = htons(0x0003);
     match protocol {
-        raw::DataLinkProtocol(raw::EthernetProtocol(iface))
+        &raw::DataLinkProtocol(raw::EthernetProtocol(iface))
             => (libc::AF_PACKET, libc::SOCK_RAW, ETH_P_ALL as c_int, Some(iface)),
-        raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
+        &raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
             => (libc::AF_PACKET, libc::SOCK_DGRAM, ETH_P_ALL as c_int, Some(iface)),
-        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
+        &raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
             => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
-        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
+        &raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
             => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
-        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
+        &raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
             => (libc::AF_INET, libc::SOCK_RAW, proto as c_int, None),
-        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
+        &raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
             => (libc::AF_INET6, libc::SOCK_RAW, proto as c_int, None)
     }
 }
 
 impl RawSocketWatcher {
-    pub fn new(io: &mut UvIoFactory, protocol: raw::Protocol)
+    pub fn new(io: &mut UvIoFactory, protocol: &raw::Protocol)
         -> Result<RawSocketWatcher, IoError>
     {
         let (domain, typ, proto, _) = protocol_to_libc(protocol);
@@ -809,22 +809,6 @@ impl RawSocketWatcher {
             home: io.make_handle(),
             socket: socket
         };
-
-        /*if includeIpHeader && domain == libc::AF_INET {
-            let one: libc::c_int = 1;
-            // Only windows supports IPV6_HDRINCL
-            let (proto, hdrincl) = (libc::IPPROTO_IP, libc::IP_HDRINCL);
-            let res = unsafe {
-                libc::setsockopt(raw.socket,
-                                 proto,
-                                 hdrincl,
-                                 (&one as *libc::c_int) as *libc::c_void,
-                                 intrinsics::size_of::<libc::c_int>() as u32)
-            };
-            if res == -1 {
-                return Err(last_error());
-            }
-        }*/
 
         // Make socket non-blocking - required for libuv
         let flags = unsafe { libc::fcntl(raw.socket, libc::F_GETFL, 0) };
@@ -927,7 +911,8 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 wakeup(&mut cx.task);
                 return;
             }
-            let addr = Some(raw::IpAddress(sockaddr_to_addr(&caddr, caddrlen as uint).ip));
+            //let addr = Some(raw::IpAddress(sockaddr_to_addr(&caddr, caddrlen as uint).ip));
+            let addr = raw::sockaddr_to_network_addr(&caddr);
             cx.result = Some((len as ssize_t, addr));
 
             wakeup(&mut cx.task);
@@ -942,11 +927,10 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             buf: &'b [u8],
             result: Option<int>,
             socket: Option<uvll::uv_os_socket_t>,
-            addr: ip::IpAddr,
+            addr: ip::NetworkAddress,
         }
         let _m = self.fire_homing_missile();
 
-        let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
         let a = match unsafe {
             uvll::uv_poll_start(self.handle, uvll::UV_WRITABLE as c_int, send_cb)
         } {
@@ -956,7 +940,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                     buf: buf,
                     result: None,
                     socket: Some(self.socket),
-                    addr: dst_ip.unwrap()
+                    addr: dst.unwrap()
                 };
                 wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
@@ -988,9 +972,10 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
 
             let len = match cx.socket {
                         Some(sock) => {
-                            let (addr, len) = addr_to_sockaddr(
-                                                ip::SocketAddr{ ip: cx.addr, port: 0 }
-                                              );
+                            //let (addr, len) = addr_to_sockaddr(
+                            //                    ip::SocketAddr{ ip: cx.addr, port: 0 }
+                            //                  );
+                            let (addr, len) = raw::network_addr_to_sockaddr(cx.addr);
                             unsafe {
                                 libc::sendto(sock,
                                     cx.buf.as_ptr() as *c_void,

@@ -180,7 +180,7 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
 
-    fn raw_socket_new(&mut self, protocol: Protocol) -> Result<~rtio::RtioRawSocket, IoError> {
+    fn raw_socket_new(&mut self, protocol: &Protocol) -> Result<~rtio::RtioRawSocket, IoError> {
         RawSocketWatcher::new(self, protocol)
             .map(|rsw| ~rsw as ~rtio::RtioRawSocket)
     }
