@@ -1217,6 +1217,6 @@ mod test {
 
         check!(File::create(&tmpdir.join("test")).write(bytes));
         let actual = check!(File::open(&tmpdir.join("test")).read_to_end());
-        assert!(actual.as_slice == bytes);
+        assert!(actual.as_slice() == bytes);
     })
 }
