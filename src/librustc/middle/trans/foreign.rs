@@ -11,7 +11,7 @@
 
 use back::{link};
 use lib::llvm::llvm;
-use lib::llvm::{ValueRef, CallConv, StructRetAttribute};
+use lib::llvm::{ValueRef, CallConv, StructRetAttribute, Linkage};
 use lib;
 use middle::trans::base::push_ctxt;
 use middle::trans::base;
@@ -105,6 +105,105 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
     })
 }
 
+pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
+    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+    // applicable to variable declarations and may not really make sense for
+    // Rust code in the first place but whitelist them anyway and trust that
+    // the user knows what s/he's doing. Who knows, unanticipated use cases
+    // may pop up in the future.
+    //
+    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+    // and don't have to be, LLVM treats them as no-ops.
+    match name {
+        "appending" => Some(lib::llvm::AppendingLinkage),
+        "available_externally" => Some(lib::llvm::AvailableExternallyLinkage),
+        "common" => Some(lib::llvm::CommonLinkage),
+        "extern_weak" => Some(lib::llvm::ExternalWeakLinkage),
+        "external" => Some(lib::llvm::ExternalLinkage),
+        "internal" => Some(lib::llvm::InternalLinkage),
+        "linker_private" => Some(lib::llvm::LinkerPrivateLinkage),
+        "linker_private_weak" => Some(lib::llvm::LinkerPrivateWeakLinkage),
+        "linkonce" => Some(lib::llvm::LinkOnceAnyLinkage),
+        "linkonce_odr" => Some(lib::llvm::LinkOnceODRLinkage),
+        "private" => Some(lib::llvm::PrivateLinkage),
+        "weak" => Some(lib::llvm::WeakAnyLinkage),
+        "weak_odr" => Some(lib::llvm::WeakODRLinkage),
+        _ => None,
+    }
+}
+
+pub fn register_static(ccx: @CrateContext,
+                       foreign_item: @ast::ForeignItem) -> ValueRef {
+    let ty = ty::node_id_to_type(ccx.tcx, foreign_item.id);
+    let llty = type_of::type_of(ccx, ty);
+
+    // Treat the crate map static specially in order to
+    // a weak-linkage-like functionality where it's
+    // dynamically resolved at runtime. If we're
+    // building a library, then we declare the static
+    // with weak linkage, but if we're building a
+    // library then we've already declared the crate map
+    // so use that instead.
+    if attr::contains_name(foreign_item.attrs.as_slice(), "crate_map") {
+        return if ccx.sess.building_library.get() {
+            let s = "_rust_crate_map_toplevel";
+            let g = unsafe {
+                s.with_c_str(|buf| {
+                    llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
+                })
+            };
+            lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
+            g
+        } else {
+            ccx.crate_map
+        }
+    }
+
+    let ident = link_name(foreign_item);
+    match attr::first_attr_value_str_by_name(foreign_item.attrs.as_slice(),
+                                             "linkage") {
+        // If this is a static with a linkage specified, then we need to handle
+        // it a little specially. The typesystem prevents things like &T and
+        // extern "C" fn() from being non-null, so we can't just declare a
+        // static and call it a day. Some linkages (like weak) will make it such
+        // that the static actually has a null value.
+        Some(name) => {
+            let linkage = match llvm_linkage_by_name(name.get()) {
+                Some(linkage) => linkage,
+                None => {
+                    ccx.sess.span_fatal(foreign_item.span,
+                                        "invalid linkage specified");
+                }
+            };
+            let llty2 = match ty::get(ty).sty {
+                ty::ty_ptr(ref mt) => type_of::type_of(ccx, mt.ty),
+                _ => {
+                    ccx.sess.span_fatal(foreign_item.span,
+                                        "must have type `*T` or `*mut T`");
+                }
+            };
+            unsafe {
+                let g1 = ident.get().with_c_str(|buf| {
+                    llvm::LLVMAddGlobal(ccx.llmod, llty2.to_ref(), buf)
+                });
+                lib::llvm::SetLinkage(g1, linkage);
+
+                let real_name = "_rust_extern_with_linkage_" + ident.get();
+                let g2 = real_name.with_c_str(|buf| {
+                    llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
+                });
+                lib::llvm::SetLinkage(g2, lib::llvm::InternalLinkage);
+                llvm::LLVMSetInitializer(g2, g1);
+                g2
+            }
+        }
+        None => unsafe {
+            ident.get().with_c_str(|buf| {
+                llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
+            })
+        }
+    }
+}
 
 pub fn register_foreign_item_fn(ccx: @CrateContext, abis: AbiSet,
                                 foreign_item: @ast::ForeignItem) -> ValueRef {
