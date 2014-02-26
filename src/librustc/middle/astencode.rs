@@ -21,7 +21,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
-use middle::typeck::method_origin;
+use middle::typeck::{MethodCallee, MethodOrigin};
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
@@ -574,10 +574,50 @@ impl tr for moves::CaptureVar {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of method_origin
+// Encoding and decoding of MethodCallee
 
-impl tr for method_origin {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> method_origin {
+trait read_method_callee_helper {
+    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee;
+}
+
+fn encode_method_callee(ecx: &e::EncodeContext,
+                        ebml_w: &mut writer::Encoder,
+                        method: &MethodCallee) {
+    ebml_w.emit_struct("MethodCallee", 3, |ebml_w| {
+        ebml_w.emit_struct_field("origin", 0u, |ebml_w| {
+            method.origin.encode(ebml_w);
+        });
+        ebml_w.emit_struct_field("ty", 1u, |ebml_w| {
+            ebml_w.emit_ty(ecx, method.ty);
+        });
+        ebml_w.emit_struct_field("substs", 2u, |ebml_w| {
+            ebml_w.emit_substs(ecx, &method.substs);
+        });
+    })
+}
+
+impl<'a> read_method_callee_helper for reader::Decoder<'a> {
+    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee {
+        self.read_struct("MethodCallee", 3, |this| {
+            MethodCallee {
+                origin: this.read_struct_field("origin", 0, |this| {
+                    let method_origin: MethodOrigin =
+                        Decodable::decode(this);
+                    method_origin.tr(xcx)
+                }),
+                ty: this.read_struct_field("ty", 1, |this| {
+                    this.read_ty(xcx)
+                }),
+                substs: this.read_struct_field("substs", 2, |this| {
+                    this.read_substs(xcx)
+                })
+            }
+        })
+    }
+}
+
+impl tr for MethodOrigin {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> MethodOrigin {
         match *self {
             typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(xcx)),
             typeck::MethodParam(ref mp) => {
@@ -991,17 +1031,13 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    {
-        let method_map = maps.method_map.borrow();
-        let r = method_map.get().find(&id);
-        for &origin in r.iter() {
-            ebml_w.tag(c::tag_table_method_map, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    origin.encode(ebml_w);
-                })
+    for &method in maps.method_map.borrow().get().find(&id).iter() {
+        ebml_w.tag(c::tag_table_method_map, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                encode_method_callee(ecx, ebml_w, method)
             })
-        }
+        })
     }
 
     {
@@ -1335,9 +1371,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let origin: method_origin = Decodable::decode(val_dsr);
-                        let mut method_map = dcx.maps.method_map.borrow_mut();
-                        method_map.get().insert(id, origin.tr(xcx));
+                        let method = val_dsr.read_method_callee(xcx);
+                        dcx.maps.method_map.borrow_mut().get().insert(id, method);
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =

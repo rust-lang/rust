@@ -674,7 +674,7 @@ fn check_unused_casts(cx: &Context, e: &ast::Expr) {
 
 fn check_type_limits(cx: &Context, e: &ast::Expr) {
     return match e.node {
-        ast::ExprBinary(_, binop, l, r) => {
+        ast::ExprBinary(binop, l, r) => {
             if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
                 cx.span_lint(TypeLimits, e.span,
                              "comparison is useless due to type limits");
@@ -1176,7 +1176,7 @@ fn check_unnecessary_parens_expr(cx: &Context, e: &ast::Expr) {
         ast::ExprMatch(head, _) => (head, "`match` head expression"),
         ast::ExprRet(Some(value)) => (value, "`return` value"),
         ast::ExprAssign(_, value) => (value, "assigned value"),
-        ast::ExprAssignOp(_, _, _, value) => (value, "assigned value"),
+        ast::ExprAssignOp(_, _, value) => (value, "assigned value"),
         _ => return
     };
     check_unnecessary_parens_core(cx, value, msg);
@@ -1263,8 +1263,8 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
                 _ => return
             }
         }
-        ast::ExprUnary(_, ast::UnUniq, _) |
-        ast::ExprUnary(_, ast::UnBox, _) => BoxAllocation,
+        ast::ExprUnary(ast::UnUniq, _) |
+        ast::ExprUnary(ast::UnBox, _) => BoxAllocation,
 
         _ => return
     };
@@ -1411,10 +1411,9 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprMethodCall(..) => {
-            let method_map = cx.method_map.borrow();
-            match method_map.get().find(&e.id) {
-                Some(&origin) => {
-                    match origin {
+            match cx.method_map.borrow().get().find(&e.id) {
+                Some(method) => {
+                    match method.origin {
                         typeck::MethodStatic(def_id) => {
                             // If this implements a trait method, get def_id
                             // of the method inside trait definition.
@@ -1531,7 +1530,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         match e.node {
-            ast::ExprUnary(_, ast::UnNeg, expr) => {
+            ast::ExprUnary(ast::UnNeg, expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;

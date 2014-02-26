@@ -5257,7 +5257,7 @@ impl Resolver {
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(_, ident, _, _) => {
+            ExprMethodCall(ident, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);

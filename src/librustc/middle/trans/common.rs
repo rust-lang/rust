@@ -807,9 +807,13 @@ pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> ~[ty::t] {
     let tcx = bcx.tcx();
-    let params = ty::node_id_to_type_params(tcx, id);
+    let params = if is_method {
+        bcx.ccx().maps.method_map.borrow().get().get(&id).substs.tps.clone()
+    } else {
+        ty::node_id_to_type_params(tcx, id)
+    };
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(

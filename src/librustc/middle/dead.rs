@@ -92,10 +92,9 @@ impl MarkSymbolVisitor {
 
     fn lookup_and_handle_method(&mut self, id: &ast::NodeId,
                                 span: codemap::Span) {
-        let method_map = self.method_map.borrow();
-        match method_map.get().find(id) {
-            Some(&origin) => {
-                match origin {
+        match self.method_map.borrow().get().find(id) {
+            Some(method) => {
+                match method.origin {
                     typeck::MethodStatic(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
                             Some(p_did) => self.check_def_id(p_did),

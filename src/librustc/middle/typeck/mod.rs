@@ -142,9 +142,16 @@ pub struct MethodObject {
     real_index: uint,
 }
 
+#[deriving(Clone)]
+pub struct MethodCallee {
+    origin: MethodOrigin,
+    ty: ty::t,
+    substs: ty::substs
+}
+
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @RefCell<HashMap<ast::NodeId, method_origin>>;
+pub type MethodMap = @RefCell<HashMap<ast::NodeId, MethodCallee>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.

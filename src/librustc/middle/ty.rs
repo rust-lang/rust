@@ -3372,7 +3372,7 @@ pub fn expr_kind(tcx: ctxt,
             }
         }
 
-        ast::ExprUnary(_, ast::UnDeref, _) |
+        ast::ExprUnary(ast::UnDeref, _) |
         ast::ExprField(..) |
         ast::ExprIndex(..) => {
             LvalueExpr

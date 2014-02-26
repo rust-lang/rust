@@ -89,6 +89,7 @@ use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::check::vtable;
 use middle::typeck::check;
 use middle::typeck::infer;
+use middle::typeck::MethodCallee;
 use middle::typeck::{MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodObject};
 use middle::typeck::{param_numbered, param_self, param_index};
@@ -101,7 +102,7 @@ use collections::HashSet;
 use std::result;
 use std::vec;
 use syntax::ast::{DefId, SelfValue, SelfRegion};
-use syntax::ast::{SelfUniq, SelfStatic, NodeId};
+use syntax::ast::{SelfUniq, SelfStatic};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::parse::token;
@@ -124,20 +125,17 @@ pub fn lookup(
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: &ast::Expr,                   // The expression `a.b(...)`.
         self_expr: &ast::Expr,              // The expression `a`.
-        callee_id: NodeId,                  /* Where to store `a.b`'s type,
-                                             * also the scope of the call */
         m_name: ast::Name,                  // The name `b`.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
         deref_args: check::DerefArgs,       // Whether we autopointer first.
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
-     -> Option<method_origin> {
+     -> Option<MethodCallee> {
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
         self_expr: self_expr,
-        callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: @RefCell::new(HashSet::new()),
@@ -173,19 +171,16 @@ pub fn lookup_in_trait(
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: &ast::Expr,                   // The expression `a.b(...)`.
         self_expr: &ast::Expr,              // The expression `a`.
-        callee_id: NodeId,                  /* Where to store `a.b`'s type,
-                                             * also the scope of the call */
         m_name: ast::Name,                  // The name `b`.
         trait_did: DefId,                   // The trait to limit the lookup to.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
         autoderef_receiver: AutoderefReceiverFlag)
-     -> Option<method_origin> {
+     -> Option<MethodCallee> {
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
         self_expr: self_expr,
-        callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: @RefCell::new(HashSet::new()),
@@ -210,7 +205,6 @@ pub struct LookupContext<'a> {
     fcx: @FnCtxt,
     expr: &'a ast::Expr,
     self_expr: &'a ast::Expr,
-    callee_id: NodeId,
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
     impl_dups: @RefCell<HashSet<DefId>>,
@@ -248,7 +242,7 @@ enum RcvrMatchCondition {
 }
 
 impl<'a> LookupContext<'a> {
-    fn search(&self, self_ty: ty::t) -> Option<method_origin> {
+    fn search(&self, self_ty: ty::t) -> Option<MethodCallee> {
         let mut self_ty = self_ty;
         let mut autoderefs = 0;
         loop {
@@ -636,7 +630,7 @@ impl<'a> LookupContext<'a> {
     fn search_for_autoderefd_method(&self,
                                         self_ty: ty::t,
                                         autoderefs: uint)
-                                        -> Option<method_origin> {
+                                        -> Option<MethodCallee> {
         let (self_ty, autoadjust) =
             self.consider_reborrow(self_ty, autoderefs);
         match self.search_for_method(self_ty) {
@@ -732,7 +726,7 @@ impl<'a> LookupContext<'a> {
     fn search_for_autosliced_method(&self,
                                     self_ty: ty::t,
                                     autoderefs: uint)
-                                    -> Option<method_origin> {
+                                    -> Option<MethodCallee> {
         /*!
          *
          * Searches for a candidate by converting things like
@@ -807,7 +801,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn search_for_autoptrd_method(&self, self_ty: ty::t, autoderefs: uint)
-                                  -> Option<method_origin> {
+                                  -> Option<MethodCallee> {
         /*!
          *
          * Converts any type `T` to `&M T` where `M` is an
@@ -843,7 +837,7 @@ impl<'a> LookupContext<'a> {
             autoderefs: uint,
             mutbls: &[ast::Mutability],
             mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
-            -> Option<method_origin> {
+            -> Option<MethodCallee> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region =
@@ -867,7 +861,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn search_for_method(&self, rcvr_ty: ty::t)
-                         -> Option<method_origin> {
+                         -> Option<MethodCallee> {
         debug!("search_for_method(rcvr_ty={})", self.ty_to_str(rcvr_ty));
         let _indenter = indenter();
 
@@ -899,7 +893,7 @@ impl<'a> LookupContext<'a> {
     fn consider_candidates(&self,
                            rcvr_ty: ty::t,
                            candidates: &mut ~[Candidate])
-                           -> Option<method_origin> {
+                           -> Option<MethodCallee> {
         // FIXME(pcwalton): Do we need to clone here?
         let relevant_candidates: ~[Candidate] =
             candidates.iter().map(|c| (*c).clone()).
@@ -970,7 +964,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
-                         -> method_origin {
+                         -> MethodCallee {
         // This method performs two sets of substitutions, one after the other:
         // 1. Substitute values for any type/lifetime parameters from the impl and
         //    method declaration into the method type. This is the function type
@@ -1079,9 +1073,11 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        self.fcx.write_ty(self.callee_id, fty);
-        self.fcx.write_substs(self.callee_id, all_substs);
-        candidate.origin
+        MethodCallee {
+            origin: candidate.origin,
+            ty: fty,
+            substs: all_substs
+        }
     }
 
     fn construct_transformed_self_ty_for_object(
