@@ -85,7 +85,7 @@
 //! me!
 
 use std::c_str::CString;
-use std::libc;
+use libc;
 use std::os::win32::as_utf16_p;
 use std::ptr;
 use std::rt::rtio;

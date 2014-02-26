@@ -11,23 +11,29 @@
 #[feature(globs)];
 #[crate_id = "libc#0.10-pre"];
 #[experimental];
+#[no_std]; // we don't need std, and we can't have std, since it doesn't exist
+           // yet. std depends on us.
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
 
 /*!
 * Bindings for the C standard library and other platform libraries
 *
-* This module contains bindings to the C standard library,
-* organized into modules by their defining standard.
-* Additionally, it contains some assorted platform-specific definitions.
-* For convenience, most functions and types are reexported from `libc`,
-* so `pub use std::*` will import the available
-* C bindings as appropriate for the target platform. The exact
-* set of functions available are platform specific.
+* **NOTE:** These are *architecture and libc* specific. On Linux, these
+* bindings are only correct for glibc.
 *
-* *Note* Because these definitions are platform-specific, some may not appear in
-* the generated documentation.
+* This module contains bindings to the C standard library, organized into
+* modules by their defining standard.  Additionally, it contains some assorted
+* platform-specific definitions.  For convenience, most functions and types
+* are reexported, so `use libc::*` will import the available C bindings as
+* appropriate for the target platform. The exact set of functions available
+* are platform specific.
 *
-* We consider the following specs reasonably normative with respect
-* to interoperating with the C standard library (libc/msvcrt):
+* *Note:* Because these definitions are platform-specific, some may not appear
+* in the generated documentation.
+*
+* We consider the following specs reasonably normative with respect to
+* interoperating with the C standard library (libc/msvcrt):
 *
 * * ISO 9899:1990 ('C95', 'ANSI C', 'Standard C'), NA1, 1995.
 * * ISO 9899:1999 ('C99' or 'C9x').
@@ -35,10 +41,10 @@
 * * ISO 9945:2001 / IEEE 1003.1-2001 ('POSIX:2001', 'SUSv3').
 * * ISO 9945:2008 / IEEE 1003.1-2008 ('POSIX:2008', 'SUSv4').
 *
-* Note that any reference to the 1996 revision of POSIX, or any revs
-* between 1990 (when '88 was approved at ISO) and 2001 (when the next
-* actual revision-revision happened), are merely additions of other
-* chapters (1b and 1c) outside the core interfaces.
+* Note that any reference to the 1996 revision of POSIX, or any revs between
+* 1990 (when '88 was approved at ISO) and 2001 (when the next actual
+* revision-revision happened), are merely additions of other chapters (1b and
+* 1c) outside the core interfaces.
 *
 * Despite having several names each, these are *reasonably* coherent
 * point-in-time, list-of-definition sorts of specs. You can get each under a
@@ -55,21 +61,25 @@
 * sanity while editing, filling-in-details and eliminating duplication) into
 * definitions common-to-all (held in modules named c95, c99, posix88, posix01
 * and posix08) and definitions that appear only on *some* platforms (named
-* 'extra'). This would be things like significant OSX foundation kit, or
-* win32 library kernel32.dll, or various fancy glibc, linux or BSD
-* extensions.
+* 'extra'). This would be things like significant OSX foundation kit, or win32
+* library kernel32.dll, or various fancy glibc, linux or BSD extensions.
 *
 * In addition to the per-platform 'extra' modules, we define a module of
 * 'common BSD' libc routines that never quite made it into POSIX but show up
-* in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the
-* final one from Berkeley after the lawsuits died down and the CSRG
-* dissolved.
+* in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the final
+* one from Berkeley after the lawsuits died down and the CSRG dissolved.
 */
 
 #[allow(non_camel_case_types)];
 #[allow(non_uppercase_statics)];
 #[allow(missing_doc)];
 #[allow(uppercase_variables)];
+
+#[cfg(test)] extern crate std;
+#[cfg(test)] extern crate extra;
+// for lang="start"
+#[cfg(test)] extern crate green;
+#[cfg(test)] extern crate rustuv;
 
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.
@@ -3862,12 +3872,11 @@ pub mod funcs {
         pub mod glob {
             use types::os::arch::c95::{c_char, c_int};
             use types::os::common::posix01::{glob_t};
-            use Nullable;
 
             extern {
                 pub fn glob(pattern: *c_char,
                             flags: c_int,
-                            errfunc: Nullable<extern "C" fn(epath: *c_char, errno: int) -> int>,
+                            errfunc: ::Nullable<extern "C" fn(epath: *c_char, errno: int) -> int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
             }

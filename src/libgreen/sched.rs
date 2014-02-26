@@ -970,7 +970,7 @@ fn new_sched_rng() -> XorShiftRng {
 }
 #[cfg(unix)]
 fn new_sched_rng() -> XorShiftRng {
-    use std::libc;
+    use libc;
     use std::mem;
     use rand::SeedableRng;
 

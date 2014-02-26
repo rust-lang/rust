@@ -12,7 +12,7 @@
 // calling pin_task and that's having wierd side-effects.
 
 mod rustrt1 {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {
@@ -21,7 +21,7 @@ mod rustrt1 {
 }
 
 mod rustrt2 {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

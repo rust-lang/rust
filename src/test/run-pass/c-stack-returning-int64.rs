@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod libc {
-    use std::libc::{c_char, c_long, c_longlong};
+extern crate libc;
+
+mod mlibc {
+    use libc::{c_char, c_long, c_longlong};
 
     extern {
         pub fn atol(x: *c_char) -> c_long;
@@ -18,11 +20,11 @@ mod libc {
 }
 
 fn atol(s: ~str) -> int {
-    s.with_c_str(|x| unsafe { libc::atol(x) as int })
+    s.with_c_str(|x| unsafe { mlibc::atol(x) as int })
 }
 
 fn atoll(s: ~str) -> i64 {
-    s.with_c_str(|x| unsafe { libc::atoll(x) as i64 })
+    s.with_c_str(|x| unsafe { mlibc::atoll(x) as i64 })
 }
 
 pub fn main() {

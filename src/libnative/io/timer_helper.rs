@@ -94,7 +94,7 @@ fn shutdown() {
 
 #[cfg(unix)]
 mod imp {
-    use std::libc;
+    use libc;
     use std::os;
 
     use io::file::FileDesc;
@@ -117,9 +117,9 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use std::libc::{BOOL, LPCSTR, HANDLE, LPSECURITY_ATTRIBUTES, CloseHandle};
+    use libc::{BOOL, LPCSTR, HANDLE, LPSECURITY_ATTRIBUTES, CloseHandle};
     use std::ptr;
-    use std::libc;
+    use libc;
 
     pub type signal = HANDLE;
 

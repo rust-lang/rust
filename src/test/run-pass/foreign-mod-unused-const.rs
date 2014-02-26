@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate libc;
+
 mod foo {
-    use std::libc::c_int;
+    use libc::c_int;
 
     extern {
         pub static errno: c_int;

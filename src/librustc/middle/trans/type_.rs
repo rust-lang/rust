@@ -22,7 +22,7 @@ use std::c_str::ToCStr;
 use std::cast;
 use std::slice;
 
-use std::libc::{c_uint};
+use libc::{c_uint};
 
 #[deriving(Clone, Eq, Show)]
 pub struct Type {

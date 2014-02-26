@@ -55,6 +55,8 @@
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
 
+extern crate libc;
+
 use std::os;
 use std::rt;
 use std::str;

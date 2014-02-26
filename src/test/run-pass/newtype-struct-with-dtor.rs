@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc::c_int;
-use std::libc;
+extern crate libc;
+use libc::c_int;
 
 pub struct Fd(c_int);
 

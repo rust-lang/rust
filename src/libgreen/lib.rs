@@ -199,6 +199,7 @@
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 #[cfg(test)] extern crate rustuv;
 extern crate rand;
+extern crate libc;
 
 use std::mem::replace;
 use std::os;

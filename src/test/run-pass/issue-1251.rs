@@ -11,7 +11,7 @@
 #[crate_id="rust_get_test_int"];
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     extern {
         pub fn rust_get_test_int() -> libc::intptr_t;

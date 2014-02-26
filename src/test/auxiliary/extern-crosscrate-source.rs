@@ -11,10 +11,10 @@
 #[crate_id="externcallback#0.1"];
 #[crate_type = "lib"];
 
-use std::libc;
+extern crate libc;
 
 pub mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

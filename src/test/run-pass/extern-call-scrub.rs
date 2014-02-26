@@ -12,11 +12,11 @@
 // make sure the stack pointers are maintained properly in both
 // directions
 
-use std::libc;
+extern crate libc;
 use std::task;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

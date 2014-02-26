@@ -12,7 +12,8 @@ The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
 ~~~~ {.ignore}
-use std::libc::size_t;
+extern crate libc;
+use libc::size_t;
 
 #[link(name = "snappy")]
 extern {
@@ -44,7 +45,8 @@ keeping the binding correct at runtime.
 The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.ignore}
-use std::libc::{c_int, size_t};
+extern crate libc;
+use libc::{c_int, size_t};
 
 #[link(name = "snappy")]
 extern {
@@ -170,6 +172,88 @@ Foreign libraries often hand off ownership of resources to the calling code.
 When this occurs, we must use Rust's destructors to provide safety and guarantee
 the release of these resources (especially in the case of failure).
 
+As an example, we give a reimplementation of owned boxes by wrapping `malloc`
+and `free`:
+
+~~~~
+extern crate libc;
+
+use std::cast;
+use libc::{c_void, size_t, malloc, free};
+use std::mem;
+use std::ptr;
+
+// Define a wrapper around the handle returned by the foreign code.
+// Unique<T> has the same semantics as ~T
+pub struct Unique<T> {
+    // It contains a single raw, mutable pointer to the object in question.
+    priv ptr: *mut T
+}
+
+// Implement methods for creating and using the values in the box.
+// NB: For simplicity and correctness, we require that T has kind Send
+// (owned boxes relax this restriction, and can contain managed (GC) boxes).
+// This is because, as implemented, the garbage collector would not know
+// about any shared boxes stored in the malloc'd region of memory.
+impl<T: Send> Unique<T> {
+    pub fn new(value: T) -> Unique<T> {
+        unsafe {
+            let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;
+            assert!(!ptr.is_null());
+            // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
+            // move_val_init moves a value into this memory without
+            // attempting to drop the original value.
+            mem::move_val_init(&mut *ptr, value);
+            Unique{ptr: ptr}
+        }
+    }
+
+    // the 'r lifetime results in the same semantics as `&*x` with ~T
+    pub fn borrow<'r>(&'r self) -> &'r T {
+        unsafe { cast::copy_lifetime(self, &*self.ptr) }
+    }
+
+    // the 'r lifetime results in the same semantics as `&mut *x` with ~T
+    pub fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
+        unsafe { cast::copy_mut_lifetime(self, &mut *self.ptr) }
+    }
+}
+
+// The key ingredient for safety, we associate a destructor with
+// Unique<T>, making the struct manage the raw pointer: when the
+// struct goes out of scope, it will automatically free the raw pointer.
+// NB: This is an unsafe destructor, because rustc will not normally
+// allow destructors to be associated with parametrized types, due to
+// bad interaction with managed boxes. (With the Send restriction,
+// we don't have this problem.)
+#[unsafe_destructor]
+impl<T: Send> Drop for Unique<T> {
+    fn drop(&mut self) {
+        unsafe {
+            let x = mem::uninit(); // dummy value to swap in
+            // We need to move the object out of the box, so that
+            // the destructor is called (at the end of this scope.)
+            ptr::replace(self.ptr, x);
+            free(self.ptr as *mut c_void)
+        }
+    }
+}
+
+// A comparison between the built-in ~ and this reimplementation
+fn main() {
+    {
+        let mut x = ~5;
+        *x = 10;
+    } // `x` is freed here
+
+    {
+        let mut y = Unique::new(5);
+        *y.borrow_mut() = 10;
+    } // `y` is freed here
+}
+~~~~
+
+>>>>>>> 854a01b... fix fallout from std::libc separation
 # Callbacks from C code to Rust functions
 
 Some external libraries require the usage of callbacks to report back their
@@ -402,7 +486,7 @@ global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
 ~~~{.ignore}
-use std::libc;
+extern crate libc;
 
 #[link(name = "readline")]
 extern {
@@ -420,7 +504,7 @@ interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
 ~~~{.ignore}
-use std::libc;
+extern crate libc;
 use std::ptr;
 
 #[link(name = "readline")]
@@ -444,11 +528,15 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ~~~~
+extern crate libc;
+
 #[cfg(target_os = "win32", target_arch = "x86")]
 #[link(name = "kernel32")]
 extern "stdcall" {
-    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> std::libc::c_int;
+    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> libc::c_int;
 }
+
+# fn main() { }
 ~~~~
 
 This applies to the entire `extern` block. The list of supported ABI constraints

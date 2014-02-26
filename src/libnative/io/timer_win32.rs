@@ -21,7 +21,7 @@
 //! the other two implementations of timers with nothing *that* new showing up.
 
 use std::comm::Data;
-use std::libc;
+use libc;
 use std::ptr;
 use std::rt::rtio;
 
@@ -178,7 +178,7 @@ impl Drop for Timer {
 }
 
 mod imp {
-    use std::libc::{LPSECURITY_ATTRIBUTES, BOOL, LPCSTR, HANDLE, LARGE_INTEGER,
+    use libc::{LPSECURITY_ATTRIBUTES, BOOL, LPCSTR, HANDLE, LARGE_INTEGER,
                     LONG, LPVOID, DWORD, c_void};
 
     pub type PTIMERAPCROUTINE = *c_void;

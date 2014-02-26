@@ -15,7 +15,7 @@ use lib::llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
 use metadata::cstore;
 use util::common::time;
 
-use std::libc;
+use libc;
 use flate;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,

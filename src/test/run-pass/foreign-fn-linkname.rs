@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod libc {
-    use std::libc::{c_char, size_t};
+mod mlibc {
+    extern crate libc;
+    use self::libc::{c_char, size_t};
 
     extern {
         #[link_name = "strlen"]
@@ -21,7 +22,7 @@ fn strlen(str: ~str) -> uint {
     // C string is terminated with a zero
     str.with_c_str(|buf| {
         unsafe {
-            libc::my_strlen(buf) as uint
+            mlibc::my_strlen(buf) as uint
         }
     })
 }
