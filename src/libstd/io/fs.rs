@@ -528,10 +528,25 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
     if path.is_dir() {
         return Ok(())
     }
-    if path.filename().is_some() {
-        try!(mkdir_recursive(&path.dir_path(), mode));
+
+    let mut comps = path.components();
+    let mut curpath = path.root_path().unwrap_or(Path::new("."));
+
+    for c in comps {
+        curpath.push(c);
+
+        match mkdir(&curpath, mode) {
+            Err(mkdir_err) => {
+                // already exists ?
+                if try!(stat(&curpath)).kind != io::TypeDirectory {
+                    return Err(mkdir_err);
+                }
+            }
+            Ok(()) => ()
+        }
     }
-    mkdir(path, mode)
+
+    Ok(())
 }
 
 /// Removes a directory at this path, after removing all its contents. Use
