@@ -107,12 +107,16 @@ LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
 // passes for a target to a pass manager. We export that functionality through
 // this function.
 extern "C" void
-LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
-                          LLVMPassManagerRef PMR,
-                          LLVMModuleRef M) {
-    PassManagerBase *PM = unwrap(PMR);
-    PM->add(new DataLayout(unwrap(M)));
-    unwrap(TM)->addAnalysisPasses(*PM);
+LLVMRustAddAnalysisPasses(LLVMTargetMachineRef LTM,
+                          LLVMPassManagerRef LPM,
+                          LLVMModuleRef LM) {
+    PassManagerBase *PM = unwrap(LPM);
+    Module *M = unwrap(LM);
+    TargetMachine *TM = unwrap(LTM);
+
+    M->setDataLayout(TM->getDataLayout());
+    PM->add(new DataLayoutPass(M));
+    TM->addAnalysisPasses(*PM);
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
