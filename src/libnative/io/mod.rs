@@ -105,6 +105,13 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
             libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
 
+            // libuv maps this error code to EISDIR. we do too. if it is found
+            // to be incorrect, we can add in some more machinery to only
+            // return this message when ERROR_INVALID_FUNCTION after certain
+            // win32 calls.
+            libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
+                                             "illegal operation on a directory"),
+
             x => {
                 debug!("ignoring {}: {}", x, os::last_os_error());
                 (io::OtherIoError, "unknown error")
@@ -127,6 +134,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
             libc::ENOENT => (io::FileNotFound, "no such file or directory"),
+            libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause

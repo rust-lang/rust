@@ -1623,6 +1623,7 @@ pub mod consts {
             pub static O_NOINHERIT: c_int = 128;
 
             pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INVALID_FUNCTION: c_int = 1;
             pub static ERROR_FILE_NOT_FOUND: c_int = 2;
             pub static ERROR_ACCESS_DENIED: c_int = 5;
             pub static ERROR_INVALID_HANDLE : c_int = 6;
