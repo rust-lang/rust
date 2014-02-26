@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+/*! Non-blocking access to stdin, stdout, and stderr.
 
-This modules provides bindings to the local event loop's TTY interface, using it
-to have synchronous, but non-blocking versions of stdio. These handles can be
-inspected for information about terminal dimensions or related information
-about the stream or terminal that it is attached to.
+This module provides bindings to the local event loop's TTY interface, using it
+to offer synchronous but non-blocking versions of stdio. These handles can be
+inspected for information about terminal dimensions or for related information
+about the stream or terminal to which it is attached.
 
 # Example
 

@@ -214,46 +214,32 @@ pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
 pub use self::comm_adapters::{PortReader, ChanWriter};
 
-/// Various utility functions useful for writing I/O tests
 pub mod test;
 
-/// Synchronous, non-blocking filesystem operations.
 pub mod fs;
 
-/// Synchronous, in-memory I/O.
 pub mod pipe;
 
-/// Child process management.
 pub mod process;
 
-/// Synchronous, non-blocking network I/O.
 pub mod net;
 
-/// Readers and Writers for memory buffers and strings.
 mod mem;
 
-/// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
-/// Implementations for Result
 mod result;
 
-/// Extension traits
 pub mod extensions;
 
-/// Basic Timer
 pub mod timer;
 
-/// Buffered I/O wrappers
 mod buffered;
 
-/// Signal handling
 pub mod signal;
 
-/// Utility implementations of Reader and Writer
 pub mod util;
 
-/// Adapatation of Chan/Port types to a Writer/Reader type.
 mod comm_adapters;
 
 /// The default buffer size for various I/O operations
