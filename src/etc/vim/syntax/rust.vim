@@ -52,8 +52,7 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 " to make it easy to update.
 
 " Core operators {{{3
-syn keyword   rustTrait       Sized
-syn keyword   rustTrait       Freeze Send
+syn keyword   rustTrait       Freeze Pod Send Sized
 syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
 syn keyword   rustTrait       BitAnd BitOr BitXor
 syn keyword   rustTrait       Drop
@@ -64,32 +63,25 @@ syn keyword   rustEnum        Result
 syn keyword   rustEnumVariant Ok Err
 
 " Functions {{{3
-"syn keyword rustFunction print println
-"syn keyword rustFunction range
 "syn keyword rustFunction from_str
+"syn keyword rustFunction range
+"syn keyword rustFunction drop
 
 " Types and traits {{{3
 syn keyword rustTrait Any AnyOwnExt AnyRefExt AnyMutRefExt
 syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
-syn keyword rustTrait Bool
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
 syn keyword rustTrait Clone DeepClone
 syn keyword rustTrait Eq Ord TotalEq TotalOrd Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
 syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
-syn keyword rustTrait Default
-syn keyword rustTrait Hash
-syn keyword rustTrait FromStr
 syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
-
-syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
-syn keyword rustTrait Bitwise Bounded Fractional
-syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul CheckedDiv
-syn keyword rustTrait Orderable Signed Unsigned Round
-syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
+syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
+syn keyword rustTrait Signed Unsigned Round
+syn keyword rustTrait Primitive Int Float ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
@@ -99,19 +91,16 @@ syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
-syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
+syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector
+syn keyword rustTrait MutableVector MutableTotalOrdVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
 
 "syn keyword rustFunction stream
-syn keyword rustTrait Port Chan GenericChan GenericSmartChan GenericPort Peekable
+syn keyword rustTrait Port Chan
 "syn keyword rustFunction spawn
 
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
-
-syn keyword   rustConstant    Some None       " option
-syn keyword   rustConstant    Ok Err          " result
-syn keyword   rustConstant    Less Equal Greater " Ordering
 
 " Other syntax {{{2
 
