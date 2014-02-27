@@ -1030,7 +1030,7 @@ impl<'a> LookupContext<'a> {
         let m_regions =
             self.fcx.infcx().region_vars_for_defs(
                 self.expr.span,
-                candidate.method_ty.generics.region_param_defs.borrow().as_slice());
+                candidate.method_ty.generics.region_param_defs.deref().as_slice());
         for &r in m_regions.iter() {
             all_regions.push(r);
         }

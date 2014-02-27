@@ -342,7 +342,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let mut new_type_param_defs = Vec::new();
         let substd_type_param_defs =
             trait_ty_generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(substd_type_param_defs.borrow()
+        new_type_param_defs.push_all(substd_type_param_defs.deref()
                                                            .as_slice());
 
         // add in the "self" type parameter
@@ -360,7 +360,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
 
         // add in the type parameters from the method
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(substd_type_param_defs.borrow()
+        new_type_param_defs.push_all(substd_type_param_defs.deref()
                                                            .as_slice());
 
         debug!("static method {} type_param_defs={} ty={}, substs={}",

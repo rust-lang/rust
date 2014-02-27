@@ -103,7 +103,7 @@ pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
             }
             Some(ts) => ts.clone()
         };
-        op(table.borrow())
+        op(table.deref())
     })
 }
 
@@ -158,7 +158,7 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
             }
             Some(ts) => ts.clone()
         };
-        op(table.borrow().borrow_mut().get())
+        op(table.deref().borrow_mut().get())
     })
 }
 

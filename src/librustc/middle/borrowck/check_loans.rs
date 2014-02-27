@@ -716,7 +716,7 @@ impl<'a> CheckLoanCtxt<'a> {
                                 span: Span) {
         let capture_map = self.bccx.capture_map.borrow();
         let cap_vars = capture_map.get().get(&closure_id);
-        for cap_var in cap_vars.borrow().iter() {
+        for cap_var in cap_vars.deref().iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
             self.check_if_path_is_moved(closure_id, span,

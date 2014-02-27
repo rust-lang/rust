@@ -406,7 +406,7 @@ impl<'a> GatherLoanCtxt<'a> {
                           closure_expr: &ast::Expr) {
         let capture_map = self.bccx.capture_map.borrow();
         let captured_vars = capture_map.get().get(&closure_expr.id);
-        for captured_var in captured_vars.borrow().iter() {
+        for captured_var in captured_vars.deref().iter() {
             match captured_var.mode {
                 moves::CapCopy | moves::CapMove => { continue; }
                 moves::CapRef => { }
