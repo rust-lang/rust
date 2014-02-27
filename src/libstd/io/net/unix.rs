@@ -137,16 +137,20 @@ mod tests {
     pub fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
         let path1 = next_test_unix();
         let path2 = path1.clone();
-        let (port, chan) = Chan::new();
-
-        spawn(proc() {
-            port.recv();
-            client(UnixStream::connect(&path2).unwrap());
-        });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
-        chan.send(());
-        server(acceptor.accept().unwrap());
+
+        spawn(proc() {
+            match UnixStream::connect(&path2) {
+                Ok(c) => client(c),
+                Err(e) => fail!("failed connect: {}", e),
+            }
+        });
+
+        match acceptor.accept() {
+            Ok(c) => server(c),
+            Err(e) => fail!("failed accept: {}", e),
+        }
     }
 
     iotest!(fn bind_error() {

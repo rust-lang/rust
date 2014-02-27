@@ -17,8 +17,8 @@ use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
 use std::intrinsics;
 
-use super::{IoResult, retry};
-use super::file::{keep_going, fd_t};
+use super::{IoResult, retry, keep_going};
+use super::file::fd_t;
 
 fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {
     match unsafe { libc::socket(libc::AF_UNIX, ty, 0) } {

@@ -42,9 +42,15 @@ pub use self::process::Process;
 
 // Native I/O implementations
 pub mod addrinfo;
-pub mod file;
 pub mod net;
 pub mod process;
+
+#[cfg(unix)]
+#[path = "file_unix.rs"]
+pub mod file;
+#[cfg(windows)]
+#[path = "file_win32.rs"]
+pub mod file;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -97,7 +103,14 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
-            libc::ERROR_BROKEN_PIPE => (io::BrokenPipe, "the pipe has ended"),
+            libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
+
+            // libuv maps this error code to EISDIR. we do too. if it is found
+            // to be incorrect, we can add in some more machinery to only
+            // return this message when ERROR_INVALID_FUNCTION after certain
+            // win32 calls.
+            libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
+                                             "illegal operation on a directory"),
 
             x => {
                 debug!("ignoring {}: {}", x, os::last_os_error());
@@ -121,6 +134,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
             libc::ENOENT => (io::FileNotFound, "no such file or directory"),
+            libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause
@@ -183,6 +197,24 @@ fn retry(f: || -> libc::c_int) -> libc::c_int {
             n => return n,
         }
     }
+}
+
+fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+    let origamt = data.len();
+    let mut data = data.as_ptr();
+    let mut amt = origamt;
+    while amt > 0 {
+        let ret = retry(|| f(data, amt) as libc::c_int);
+        if ret == 0 {
+            break
+        } else if ret != -1 {
+            amt -= ret as uint;
+            data = unsafe { data.offset(ret as int) };
+        } else {
+            return ret as i64;
+        }
+    }
+    return (origamt - amt) as i64;
 }
 
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
