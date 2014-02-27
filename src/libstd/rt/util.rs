@@ -12,6 +12,7 @@ use container::Container;
 use fmt;
 use from_str::FromStr;
 use io::IoResult;
+use io;
 use iter::Iterator;
 use libc;
 use option::{Some, None, Option};
@@ -70,20 +71,20 @@ pub fn default_sched_threads() -> uint {
     }
 }
 
-pub fn dumb_println(args: &fmt::Arguments) {
-    use io;
+pub struct Stderr;
 
-    struct Stderr;
-    impl io::Writer for Stderr {
-        fn write(&mut self, data: &[u8]) -> IoResult<()> {
-            unsafe {
-                libc::write(libc::STDERR_FILENO,
-                            data.as_ptr() as *libc::c_void,
-                            data.len() as libc::size_t);
-            }
-            Ok(()) // yes, we're lying
+impl io::Writer for Stderr {
+    fn write(&mut self, data: &[u8]) -> IoResult<()> {
+        unsafe {
+            libc::write(libc::STDERR_FILENO,
+                        data.as_ptr() as *libc::c_void,
+                        data.len() as libc::size_t);
         }
+        Ok(()) // yes, we're lying
     }
+}
+
+pub fn dumb_println(args: &fmt::Arguments) {
     let mut w = Stderr;
     let _ = fmt::writeln(&mut w as &mut io::Writer, args);
 }
@@ -140,6 +141,10 @@ memory and partly incapable of presentation to others.",
     rterrln!("{}", "");
     rterrln!("fatal runtime error: {}", msg);
 
+    {
+        let mut err = Stderr;
+        let _err = ::rt::backtrace::write(&mut err);
+    }
     abort();
 
     fn abort() -> ! {
