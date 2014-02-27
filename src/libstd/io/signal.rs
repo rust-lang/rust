@@ -146,22 +146,20 @@ impl Listener {
     }
 }
 
-#[cfg(test)]
-mod test {
+#[cfg(test, unix)]
+mod test_unix {
     use libc;
     use comm::Empty;
     use io::timer;
     use super::{Listener, Interrupt};
 
-    // kill is only available on Unixes
-    #[cfg(unix)]
     fn sigint() {
         unsafe {
             libc::funcs::posix88::signal::kill(libc::getpid(), libc::SIGINT);
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
         signal.register(Interrupt).unwrap();
@@ -173,7 +171,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -191,7 +189,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -202,15 +200,16 @@ mod test {
         timer::sleep(10);
         assert_eq!(s2.port.try_recv(), Empty);
     }
+}
 
-    #[cfg(windows)]
+#[cfg(test, windows)]
+mod test_windows {
+    use super::{User1, Listener};
+    use result::{Ok, Err};
+
     #[test]
     fn test_io_signal_invalid_signum() {
-        use io;
-        use super::User1;
-        use result::{Ok, Err};
         let mut s = Listener::new();
-        let mut called = false;
         match s.register(User1) {
             Ok(..) => {
                 fail!("Unexpected successful registry of signum {:?}", User1);

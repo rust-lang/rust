@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_camel_case_types)];
-
 use std::cast;
 use std::io::net::ip;
 use std::io;
@@ -18,8 +16,7 @@ use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
 
-use super::{IoResult, retry};
-use super::file::keep_going;
+use super::{IoResult, retry, keep_going};
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -323,16 +320,14 @@ impl rtio::RtioTcpStream for TcpStream {
         }
     }
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let ret = keep_going(buf, |buf, len| {
-            unsafe {
-                libc::send(self.fd(),
-                           buf as *mut libc::c_void,
-                           len as wrlen,
-                           0) as i64
-            }
+        let ret = keep_going(buf, |buf, len| unsafe {
+            libc::send(self.fd(),
+                       buf as *mut libc::c_void,
+                       len as wrlen,
+                       0) as i64
         });
         if ret < 0 {
-            Err(last_error())
+            Err(super::last_error())
         } else {
             Ok(())
         }

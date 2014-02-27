@@ -46,8 +46,6 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
-#[allow(non_camel_case_types)];
-
 use std::comm::Data;
 use std::libc;
 use std::mem;

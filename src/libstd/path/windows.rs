@@ -1433,8 +1433,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $join:expr) => (
                 {
-                    let path = ($path);
-                    let join = ($join);
+                    let path = $path;
+                    let join = $join;
                     let mut p1 = Path::new(path);
                     let p2 = p1.clone();
                     p1.push(join);
