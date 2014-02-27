@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cell::RefCell;
+use std::io;
 use std::io::Process;
 use std::local_data;
 use std::os;
@@ -128,7 +129,10 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     let exe = outdir.path().join("rust_out");
     let out = Process::output(exe.as_str().unwrap(), []);
     match out {
-        Err(e) => fail!("couldn't run the test: {}", e),
+        Err(e) => fail!("couldn't run the test: {}{}", e,
+                        if e.kind == io::PermissionDenied {
+                            " - maybe your tempdir is mounted with noexec?"
+                        } else { "" }),
         Ok(out) => {
             if should_fail && out.status.success() {
                 fail!("test executable succeeded when it should have failed");
