@@ -49,14 +49,15 @@ use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
 
-/// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
-pub struct Condvar<'a> {
+/// As sync::condvar, a mechanism for unlock-and-descheduling and
+/// signaling, for use with the Arc types.
+pub struct ArcCondvar<'a> {
     priv is_mutex: bool,
     priv failed: &'a bool,
     priv cond: &'a sync::Condvar<'a>
 }
 
-impl<'a> Condvar<'a> {
+impl<'a> ArcCondvar<'a> {
     /// Atomically exit the associated Arc and block until a signal is sent.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
@@ -219,14 +220,14 @@ impl<T:Send> MutexArc<T> {
 
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
-    pub fn access_cond<U>(&self, blk: |x: &mut T, c: &Condvar| -> U) -> U {
+    pub fn access_cond<U>(&self, blk: |x: &mut T, c: &ArcCondvar| -> U) -> U {
         let state = self.x.get();
         unsafe {
             (&(*state).lock).lock_cond(|cond| {
                 check_poison(true, (*state).failed);
                 let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
-                    &Condvar {is_mutex: true,
+                    &ArcCondvar {is_mutex: true,
                             failed: &(*state).failed,
                             cond: cond })
             })
@@ -345,7 +346,7 @@ impl<T:Freeze + Send> RWArc<T> {
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline]
     pub fn write_cond<U>(&self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         unsafe {
             let state = self.x.get();
@@ -353,7 +354,7 @@ impl<T:Freeze + Send> RWArc<T> {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
-                    &Condvar {is_mutex: false,
+                    &ArcCondvar {is_mutex: false,
                               failed: &(*state).failed,
                               cond: cond})
             })
@@ -481,7 +482,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
 
     /// Access the pre-downgrade RWArc in write mode with a condvar.
     pub fn write_cond<U>(&mut self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         match *self {
             RWWriteMode {
@@ -491,7 +492,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
             } => {
                 token.write_cond(|cond| {
                     unsafe {
-                        let cvar = Condvar {
+                        let cvar = ArcCondvar {
                             is_mutex: false,
                             failed: &*poison.flag,
                             cond: cond
@@ -915,7 +916,7 @@ mod tests {
         // rwarc gives us extra shared state to help check for the race.
         // If you want to see this test fail, go to sync.rs and replace the
         // line in RWLock::write_cond() that looks like:
-        //     "blk(&Condvar { order: opt_lock, ..*cond })"
+        //     "blk(&ArcCondvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
         let x = RWArc::new(true);
         let (wp, wc) = Chan::new();
