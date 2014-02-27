@@ -425,6 +425,108 @@ fn foo()
 "
    ))
 
+(ert-deftest indent-match ()
+  (test-indent
+   "
+fn foo() {
+    match blah {
+        Pattern => stuff(),
+        _ => whatever
+    }
+}
+"
+   ))
+
+(ert-deftest indent-match-multiline-pattern ()
+  (test-indent
+   "
+fn foo() {
+    match blah {
+        Pattern |
+        Pattern2 => {
+            hello()
+        },
+        _ => whatever
+    }
+}
+"
+   ))
+
+(ert-deftest indent-indented-match ()
+  (test-indent
+   "
+fn foo() {
+    let x = 
+        match blah {
+            Pattern |
+            Pattern2 => {
+                hello()
+            },
+            _ => whatever
+        };
+    y();
+}
+"
+   ))
+
+(ert-deftest indent-curly-braces-within-parens ()
+  (test-indent
+   "
+fn foo() {
+    let x = 
+        foo(bar(|x| {
+            only_one_indent_here();
+        }));
+    y();
+}
+"
+   ))
+
+(ert-deftest indent-weirdly-indented-block ()
+  (rust-test-manip-code
+   "
+fn foo() {
+ {
+this_block_is_over_to_the_left_for_some_reason();
+ }
+
+}
+"
+   16
+   #'indent-for-tab-command
+   "
+fn foo() {
+ {
+     this_block_is_over_to_the_left_for_some_reason();
+ }
+
+}
+"
+   ))
+
+(ert-deftest indent-multi-line-attrib ()
+  (test-indent
+   "
+#[attrib(
+    this,
+    that,
+    theotherthing)]
+fn function_with_multiline_attribute() {}
+"
+   ))
+
+
+;; Make sure that in effort to cover match patterns we don't mistreat || or expressions
+(ert-deftest indent-nonmatch-or-expression ()
+  (test-indent
+   "
+fn foo() {
+    let x = foo() ||
+        bar();
+}
+"
+   ))
+
 (setq rust-test-motion-string
       "
 fn fn1(arg: int) -> bool {
@@ -450,6 +552,26 @@ struct Foo {
 }
 "
       rust-test-region-string rust-test-motion-string
+      rust-test-indent-motion-string
+      "
+fn blank_line(arg:int) -> bool {
+
+}
+
+fn indenting_closing_brace() {
+    if(true) {
+}
+}
+
+fn indenting_middle_of_line() {
+    if(true) {
+ push_me_out();
+} else {
+               pull_me_back_in();
+}
+}
+"
+
       ;; Symbol -> (line column)
       rust-test-positions-alist '((start-of-fn1 (2 0))
                                   (start-of-fn1-middle-of-line (2 15))
@@ -464,7 +586,17 @@ struct Foo {
                                   (middle-of-fn3 (16 4))
                                   (middle-of-struct (21 10))
                                   (before-start-of-struct (19 0))
-                                  (after-end-of-struct (23 0))))
+                                  (after-end-of-struct (23 0))
+                                  (blank-line-indent-start (3 0))
+                                  (blank-line-indent-target (3 4))
+                                  (closing-brace-indent-start (8 1))
+                                  (closing-brace-indent-target (8 5))
+                                  (middle-push-indent-start (13 2))
+                                  (middle-push-indent-target (13 9))
+                                  (after-whitespace-indent-start (13 1))
+                                  (after-whitespace-indent-target (13 8))
+                                  (middle-pull-indent-start (15 19))
+                                  (middle-pull-indent-target (15 12))))
 
 (defun rust-get-buffer-pos (pos-symbol)
   "Get buffer position from POS-SYMBOL.
@@ -626,3 +758,38 @@ All positions are position symbols found in `rust-test-positions-alist'."
    'middle-of-struct
    'before-start-of-struct 'after-end-of-struct
    #'mark-defun))
+
+(ert-deftest indent-line-blank-line-motion ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'blank-line-indent-start
+   'blank-line-indent-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-closing-brace-motion ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'closing-brace-indent-start
+   'closing-brace-indent-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-middle-push-motion ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'middle-push-indent-start
+   'middle-push-indent-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-after-whitespace-motion ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'after-whitespace-indent-start
+   'after-whitespace-indent-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-middle-pull-motion ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'middle-pull-indent-start
+   'middle-pull-indent-target
+   #'indent-for-tab-command))
