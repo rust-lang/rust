@@ -260,7 +260,7 @@ fn read_block_comment(rdr: &StringReader,
     let mut curr_line = ~"/*";
 
     // doc-comments are not really comments, they are attributes
-    if rdr.curr_is('*') || rdr.curr_is('!') {
+    if (rdr.curr_is('*') && !nextch_is(rdr, '*')) || rdr.curr_is('!') {
         while !(rdr.curr_is('*') && nextch_is(rdr, '/')) && !is_eof(rdr) {
             curr_line.push_char(rdr.curr.get().unwrap());
             bump(rdr);
