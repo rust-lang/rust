@@ -231,23 +231,23 @@ impl Default for SipState {
 /// `SipHasher` computes the SipHash algorithm from a stream of bytes.
 #[deriving(Clone)]
 pub struct SipHasher {
-    priv state: SipState,
+    priv k0: u64,
+    priv k1: u64,
 }
 
 impl SipHasher {
     /// Create a `Sip`.
     #[inline]
     pub fn new() -> SipHasher {
-        SipHasher {
-            state: SipState::new(),
-        }
+        SipHasher::new_with_keys(0, 0)
     }
 
     /// Create a `Sip` that is keyed off the provided keys.
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher {
-            state: SipState::new_with_keys(key0, key1),
+            k0: key0,
+            k1: key1,
         }
     }
 }
@@ -255,7 +255,7 @@ impl SipHasher {
 impl Hasher<SipState> for SipHasher {
     #[inline]
     fn hash<T: Hash<SipState>>(&self, value: &T) -> u64 {
-        let mut state = self.state.clone();
+        let mut state = SipState::new_with_keys(self.k0, self.k1);
         value.hash(&mut state);
         state.result()
     }
