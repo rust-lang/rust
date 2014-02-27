@@ -663,6 +663,13 @@ mod test {
     use io;
     use ops::Drop;
 
+    macro_rules! check( ($e:expr) => (
+        match $e {
+            Ok(t) => t,
+            Err(e) => fail!("{} failed with: {}", stringify!($e), e),
+        }
+    ) )
+
     struct TempDir(Path);
 
     impl TempDir {
@@ -682,7 +689,7 @@ mod test {
             // Gee, seeing how we're testing the fs module I sure hope that we
             // at least implement this correctly!
             let TempDir(ref p) = *self;
-            io::fs::rmdir_recursive(p).unwrap();
+            check!(io::fs::rmdir_recursive(p));
         }
     }
 
@@ -690,7 +697,7 @@ mod test {
         use os;
         use rand;
         let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
-        io::fs::mkdir(&ret, io::UserRWX).unwrap();
+        check!(io::fs::mkdir(&ret, io::UserRWX));
         TempDir(ret)
     }
 
@@ -700,18 +707,18 @@ mod test {
         let filename = &tmpdir.join("file_rt_io_file_test.txt");
         {
             let mut write_stream = File::open_mode(filename, Open, ReadWrite);
-            write_stream.write(message.as_bytes()).unwrap();
+            check!(write_stream.write(message.as_bytes()));
         }
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
             let mut read_buf = [0, .. 1028];
-            let read_str = match read_stream.read(read_buf).unwrap() {
+            let read_str = match check!(read_stream.read(read_buf)) {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned()).unwrap()
+                n => str::from_utf8(read_buf.slice_to(n).to_owned()).unwrap().to_owned()
             };
             assert_eq!(read_str, message.to_owned());
         }
-        unlink(filename).unwrap();
+        check!(unlink(filename));
     })
 
     iotest!(fn invalid_path_raises() {
@@ -734,20 +741,20 @@ mod test {
         let filename = &tmpdir.join("file_rt_io_file_test_positional.txt");
         {
             let mut rw_stream = File::open_mode(filename, Open, ReadWrite);
-            rw_stream.write(message.as_bytes()).unwrap();
+            check!(rw_stream.write(message.as_bytes()));
         }
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
             {
                 let read_buf = read_mem.mut_slice(0, 4);
-                read_stream.read(read_buf).unwrap();
+                check!(read_stream.read(read_buf));
             }
             {
                 let read_buf = read_mem.mut_slice(4, 8);
-                read_stream.read(read_buf).unwrap();
+                check!(read_stream.read(read_buf));
             }
         }
-        unlink(filename).unwrap();
+        check!(unlink(filename));
         let read_str = str::from_utf8(read_mem).unwrap();
         assert_eq!(read_str, message);
     })
@@ -762,16 +769,16 @@ mod test {
         let filename = &tmpdir.join("file_rt_io_file_test_seeking.txt");
         {
             let mut rw_stream = File::open_mode(filename, Open, ReadWrite);
-            rw_stream.write(message.as_bytes()).unwrap();
+            check!(rw_stream.write(message.as_bytes()));
         }
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
-            read_stream.seek(set_cursor as i64, SeekSet).unwrap();
-            tell_pos_pre_read = read_stream.tell().unwrap();
-            read_stream.read(read_mem).unwrap();
-            tell_pos_post_read = read_stream.tell().unwrap();
+            check!(read_stream.seek(set_cursor as i64, SeekSet));
+            tell_pos_pre_read = check!(read_stream.tell());
+            check!(read_stream.read(read_mem));
+            tell_pos_post_read = check!(read_stream.tell());
         }
-        unlink(filename).unwrap();
+        check!(unlink(filename));
         let read_str = str::from_utf8(read_mem).unwrap();
         assert_eq!(read_str, message.slice(4, 8));
         assert_eq!(tell_pos_pre_read, set_cursor);
@@ -788,15 +795,15 @@ mod test {
         let filename = &tmpdir.join("file_rt_io_file_test_seek_and_write.txt");
         {
             let mut rw_stream = File::open_mode(filename, Open, ReadWrite);
-            rw_stream.write(initial_msg.as_bytes()).unwrap();
-            rw_stream.seek(seek_idx as i64, SeekSet).unwrap();
-            rw_stream.write(overwrite_msg.as_bytes()).unwrap();
+            check!(rw_stream.write(initial_msg.as_bytes()));
+            check!(rw_stream.seek(seek_idx as i64, SeekSet));
+            check!(rw_stream.write(overwrite_msg.as_bytes()));
         }
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
-            read_stream.read(read_mem).unwrap();
+            check!(read_stream.read(read_mem));
         }
-        unlink(filename).unwrap();
+        check!(unlink(filename));
         let read_str = str::from_utf8(read_mem).unwrap();
         assert!(read_str == final_msg.to_owned());
     })
@@ -812,24 +819,24 @@ mod test {
         let filename = &tmpdir.join("file_rt_io_file_test_seek_shakedown.txt");
         {
             let mut rw_stream = File::open_mode(filename, Open, ReadWrite);
-            rw_stream.write(initial_msg.as_bytes()).unwrap();
+            check!(rw_stream.write(initial_msg.as_bytes()));
         }
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
 
-            read_stream.seek(-4, SeekEnd).unwrap();
-            read_stream.read(read_mem).unwrap();
+            check!(read_stream.seek(-4, SeekEnd));
+            check!(read_stream.read(read_mem));
             assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_three);
 
-            read_stream.seek(-9, SeekCur).unwrap();
-            read_stream.read(read_mem).unwrap();
+            check!(read_stream.seek(-9, SeekCur));
+            check!(read_stream.read(read_mem));
             assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_two);
 
-            read_stream.seek(0, SeekSet).unwrap();
-            read_stream.read(read_mem).unwrap();
+            check!(read_stream.seek(0, SeekSet));
+            check!(read_stream.read(read_mem));
             assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_one);
         }
-        unlink(filename).unwrap();
+        check!(unlink(filename));
     })
 
     iotest!(fn file_test_stat_is_correct_on_is_file() {
@@ -840,34 +847,34 @@ mod test {
             let msg = "hw";
             fs.write(msg.as_bytes()).unwrap();
         }
-        let stat_res = stat(filename).unwrap();
+        let stat_res = check!(stat(filename));
         assert_eq!(stat_res.kind, io::TypeFile);
-        unlink(filename).unwrap();
+        check!(unlink(filename));
     })
 
     iotest!(fn file_test_stat_is_correct_on_is_dir() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
-        mkdir(filename, io::UserRWX).unwrap();
-        let stat_res = filename.stat().unwrap();
+        check!(mkdir(filename, io::UserRWX));
+        let stat_res = check!(filename.stat());
         assert!(stat_res.kind == io::TypeDirectory);
-        rmdir(filename).unwrap();
+        check!(rmdir(filename));
     })
 
     iotest!(fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
-        mkdir(dir, io::UserRWX).unwrap();
+        check!(mkdir(dir, io::UserRWX));
         assert!(dir.is_file() == false);
-        rmdir(dir).unwrap();
+        check!(rmdir(dir));
     })
 
     iotest!(fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
         let tmpdir = tmpdir();
         let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
-        File::create(file).write(bytes!("foo")).unwrap();
+        check!(File::create(file).write(bytes!("foo")));
         assert!(file.exists());
-        unlink(file).unwrap();
+        check!(unlink(file));
         assert!(!file.exists());
     })
 
@@ -875,10 +882,10 @@ mod test {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
         assert!(!dir.exists());
-        mkdir(dir, io::UserRWX).unwrap();
+        check!(mkdir(dir, io::UserRWX));
         assert!(dir.exists());
         assert!(dir.is_dir());
-        rmdir(dir).unwrap();
+        check!(rmdir(dir));
         assert!(!dir.exists());
     })
 
@@ -886,21 +893,21 @@ mod test {
         use std::str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
-        mkdir(dir, io::UserRWX).unwrap();
+        check!(mkdir(dir, io::UserRWX));
         let prefix = "foo";
         for n in range(0,3) {
             let f = dir.join(format!("{}.txt", n));
-            let mut w = File::create(&f).unwrap();
+            let mut w = check!(File::create(&f));
             let msg_str = (prefix + n.to_str().to_owned()).to_owned();
             let msg = msg_str.as_bytes();
-            w.write(msg).unwrap();
+            check!(w.write(msg));
         }
-        let files = readdir(dir).unwrap();
+        let files = check!(readdir(dir));
         let mut mem = [0u8, .. 4];
         for f in files.iter() {
             {
                 let n = f.filestem_str();
-                File::open(f).read(mem).unwrap();
+                check!(File::open(f).read(mem));
                 let read_str = str::from_utf8(mem).unwrap();
                 let expected = match n {
                     None|Some("") => fail!("really shouldn't happen.."),
@@ -908,13 +915,13 @@ mod test {
                 };
                 assert_eq!(expected.as_slice(), read_str);
             }
-            unlink(f).unwrap();
+            check!(unlink(f));
         }
-        rmdir(dir).unwrap();
+        check!(rmdir(dir));
     })
 
     iotest!(fn recursive_mkdir_slash() {
-        mkdir_recursive(&Path::new("/"), io::UserRWX).unwrap();
+        check!(mkdir_recursive(&Path::new("/"), io::UserRWX));
     })
 
     iotest!(fn unicode_path_is_dir() {
@@ -925,12 +932,12 @@ mod test {
 
         let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
-        mkdir(&dirpath, io::UserRWX).unwrap();
+        check!(mkdir(&dirpath, io::UserRWX));
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
         filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
-        File::create(&filepath).unwrap(); // ignore return; touch only
+        check!(File::create(&filepath)); // ignore return; touch only
         assert!(!filepath.is_dir());
         assert!(filepath.exists());
     })
@@ -942,7 +949,7 @@ mod test {
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
-        mkdir(&unicode, io::UserRWX).unwrap();
+        check!(mkdir(&unicode, io::UserRWX));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     })
@@ -964,19 +971,19 @@ mod test {
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
-        File::create(&input).write(bytes!("hello")).unwrap();
-        copy(&input, &out).unwrap();
-        let contents = File::open(&out).read_to_end().unwrap();
+        check!(File::create(&input).write(bytes!("hello")));
+        check!(copy(&input, &out));
+        let contents = check!(File::open(&out).read_to_end());
         assert_eq!(contents.as_slice(), bytes!("hello"));
 
-        assert_eq!(input.stat().unwrap().perm, out.stat().unwrap().perm);
+        assert_eq!(check!(input.stat()).perm, check!(out.stat()).perm);
     })
 
     iotest!(fn copy_file_dst_dir() {
         let tmpdir = tmpdir();
         let out = tmpdir.join("out");
 
-        File::create(&out).unwrap();
+        check!(File::create(&out));
         match copy(&out, tmpdir.path()) {
             Ok(..) => fail!(), Err(..) => {}
         }
@@ -987,11 +994,11 @@ mod test {
         let input = tmpdir.join("in");
         let output = tmpdir.join("out");
 
-        File::create(&input).write("foo".as_bytes()).unwrap();
-        File::create(&output).write("bar".as_bytes()).unwrap();
-        copy(&input, &output).unwrap();
+        check!(File::create(&input).write("foo".as_bytes()));
+        check!(File::create(&output).write("bar".as_bytes()));
+        check!(copy(&input, &output));
 
-        assert_eq!(File::open(&output).read_to_end().unwrap(),
+        assert_eq!(check!(File::open(&output).read_to_end()),
                    (bytes!("foo")).to_owned());
     })
 
@@ -1010,13 +1017,13 @@ mod test {
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
-        File::create(&input).unwrap();
-        chmod(&input, io::UserRead).unwrap();
-        copy(&input, &out).unwrap();
-        assert!(out.stat().unwrap().perm & io::UserWrite == 0);
+        check!(File::create(&input));
+        check!(chmod(&input, io::UserRead));
+        check!(copy(&input, &out));
+        assert!(check!(out.stat()).perm & io::UserWrite == 0);
 
-        chmod(&input, io::UserFile).unwrap();
-        chmod(&out, io::UserFile).unwrap();
+        check!(chmod(&input, io::UserFile));
+        check!(chmod(&out, io::UserFile));
     })
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
@@ -1025,13 +1032,13 @@ mod test {
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
-        File::create(&input).write("foobar".as_bytes()).unwrap();
-        symlink(&input, &out).unwrap();
+        check!(File::create(&input).write("foobar".as_bytes()));
+        check!(symlink(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(lstat(&out).unwrap().kind, io::TypeSymlink);
+            assert_eq!(check!(lstat(&out)).kind, io::TypeSymlink);
         }
-        assert_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
-        assert_eq!(File::open(&out).read_to_end().unwrap(),
+        assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
+        assert_eq!(check!(File::open(&out).read_to_end()),
                    (bytes!("foobar")).to_owned());
     })
 
@@ -1039,8 +1046,8 @@ mod test {
     iotest!(fn symlink_noexist() {
         let tmpdir = tmpdir();
         // symlinks can point to things that don't exist
-        symlink(&tmpdir.join("foo"), &tmpdir.join("bar")).unwrap();
-        assert!(readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("foo"));
+        check!(symlink(&tmpdir.join("foo"), &tmpdir.join("bar")));
+        assert!(check!(readlink(&tmpdir.join("bar"))) == tmpdir.join("foo"));
     })
 
     iotest!(fn readlink_not_symlink() {
@@ -1056,14 +1063,14 @@ mod test {
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
-        File::create(&input).write("foobar".as_bytes()).unwrap();
-        link(&input, &out).unwrap();
+        check!(File::create(&input).write("foobar".as_bytes()));
+        check!(link(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(lstat(&out).unwrap().kind, io::TypeFile);
-            assert_eq!(stat(&out).unwrap().unstable.nlink, 2);
+            assert_eq!(check!(lstat(&out)).kind, io::TypeFile);
+            assert_eq!(check!(stat(&out)).unstable.nlink, 2);
         }
-        assert_eq!(stat(&out).unwrap().size, stat(&input).unwrap().size);
-        assert_eq!(File::open(&out).read_to_end().unwrap(),
+        assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
+        assert_eq!(check!(File::open(&out).read_to_end()),
                    (bytes!("foobar")).to_owned());
 
         // can't link to yourself
@@ -1082,62 +1089,62 @@ mod test {
         let tmpdir = tmpdir();
         let file = tmpdir.join("in.txt");
 
-        File::create(&file).unwrap();
-        assert!(stat(&file).unwrap().perm & io::UserWrite == io::UserWrite);
-        chmod(&file, io::UserRead).unwrap();
-        assert!(stat(&file).unwrap().perm & io::UserWrite == 0);
+        check!(File::create(&file));
+        assert!(check!(stat(&file)).perm & io::UserWrite == io::UserWrite);
+        check!(chmod(&file, io::UserRead));
+        assert!(check!(stat(&file)).perm & io::UserWrite == 0);
 
         match chmod(&tmpdir.join("foo"), io::UserRWX) {
             Ok(..) => fail!("wanted a failure"),
             Err(..) => {}
         }
 
-        chmod(&file, io::UserFile).unwrap();
+        check!(chmod(&file, io::UserFile));
     })
 
     iotest!(fn sync_doesnt_kill_anything() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
-        let mut file = File::open_mode(&path, io::Open, io::ReadWrite).unwrap();
-        file.fsync().unwrap();
-        file.datasync().unwrap();
-        file.write(bytes!("foo")).unwrap();
-        file.fsync().unwrap();
-        file.datasync().unwrap();
+        let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
+        check!(file.fsync());
+        check!(file.datasync());
+        check!(file.write(bytes!("foo")));
+        check!(file.fsync());
+        check!(file.datasync());
         drop(file);
-    } #[ignore(cfg(windows))])
+    })
 
     iotest!(fn truncate_works() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
-        let mut file = File::open_mode(&path, io::Open, io::ReadWrite).unwrap();
-        file.write(bytes!("foo")).unwrap();
-        file.fsync().unwrap();
+        let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
+        check!(file.write(bytes!("foo")));
+        check!(file.fsync());
 
         // Do some simple things with truncation
-        assert_eq!(stat(&path).unwrap().size, 3);
-        file.truncate(10).unwrap();
-        assert_eq!(stat(&path).unwrap().size, 10);
-        file.write(bytes!("bar")).unwrap();
-        file.fsync().unwrap();
-        assert_eq!(stat(&path).unwrap().size, 10);
-        assert_eq!(File::open(&path).read_to_end().unwrap(),
+        assert_eq!(check!(stat(&path)).size, 3);
+        check!(file.truncate(10));
+        assert_eq!(check!(stat(&path)).size, 10);
+        check!(file.write(bytes!("bar")));
+        check!(file.fsync());
+        assert_eq!(check!(stat(&path)).size, 10);
+        assert_eq!(check!(File::open(&path).read_to_end()),
                    (bytes!("foobar", 0, 0, 0, 0)).to_owned());
 
         // Truncate to a smaller length, don't seek, and then write something.
         // Ensure that the intermediate zeroes are all filled in (we're seeked
         // past the end of the file).
-        file.truncate(2).unwrap();
-        assert_eq!(stat(&path).unwrap().size, 2);
-        file.write(bytes!("wut")).unwrap();
-        file.fsync().unwrap();
-        assert_eq!(stat(&path).unwrap().size, 9);
-        assert_eq!(File::open(&path).read_to_end().unwrap(),
+        check!(file.truncate(2));
+        assert_eq!(check!(stat(&path)).size, 2);
+        check!(file.write(bytes!("wut")));
+        check!(file.fsync());
+        assert_eq!(check!(stat(&path)).size, 9);
+        assert_eq!(check!(File::open(&path).read_to_end()),
                    (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
         drop(file);
-    } #[ignore(cfg(windows))]) // FIXME(#11638)
+    })
 
     iotest!(fn open_flavors() {
         let tmpdir = tmpdir();
@@ -1145,46 +1152,49 @@ mod test {
         match File::open_mode(&tmpdir.join("a"), io::Open, io::Read) {
             Ok(..) => fail!(), Err(..) => {}
         }
-        File::open_mode(&tmpdir.join("b"), io::Open, io::Write).unwrap();
-        File::open_mode(&tmpdir.join("c"), io::Open, io::ReadWrite).unwrap();
-        File::open_mode(&tmpdir.join("d"), io::Append, io::Write).unwrap();
-        File::open_mode(&tmpdir.join("e"), io::Append, io::ReadWrite).unwrap();
-        File::open_mode(&tmpdir.join("f"), io::Truncate, io::Write).unwrap();
-        File::open_mode(&tmpdir.join("g"), io::Truncate, io::ReadWrite).unwrap();
+        check!(File::open_mode(&tmpdir.join("b"), io::Open, io::Write));
+        check!(File::open_mode(&tmpdir.join("c"), io::Open, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("d"), io::Append, io::Write));
+        check!(File::open_mode(&tmpdir.join("e"), io::Append, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("f"), io::Truncate, io::Write));
+        check!(File::open_mode(&tmpdir.join("g"), io::Truncate, io::ReadWrite));
 
-        File::create(&tmpdir.join("h")).write("foo".as_bytes()).unwrap();
-        File::open_mode(&tmpdir.join("h"), io::Open, io::Read).unwrap();
+        check!(File::create(&tmpdir.join("h")).write("foo".as_bytes()));
+        check!(File::open_mode(&tmpdir.join("h"), io::Open, io::Read));
         {
-            let mut f = File::open_mode(&tmpdir.join("h"), io::Open,
-                                        io::Read).unwrap();
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Open,
+                                               io::Read));
             match f.write("wut".as_bytes()) {
                 Ok(..) => fail!(), Err(..) => {}
             }
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
+        assert!(check!(stat(&tmpdir.join("h"))).size == 3,
+                "write/stat failed");
         {
-            let mut f = File::open_mode(&tmpdir.join("h"), io::Append,
-                                        io::Write).unwrap();
-            f.write("bar".as_bytes()).unwrap();
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Append,
+                                               io::Write));
+            check!(f.write("bar".as_bytes()));
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 6);
+        assert!(check!(stat(&tmpdir.join("h"))).size == 6,
+                "append didn't append");
         {
-            let mut f = File::open_mode(&tmpdir.join("h"), io::Truncate,
-                                        io::Write).unwrap();
-            f.write("bar".as_bytes()).unwrap();
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Truncate,
+                                               io::Write));
+            check!(f.write("bar".as_bytes()));
         }
-        assert_eq!(stat(&tmpdir.join("h")).unwrap().size, 3);
+        assert!(check!(stat(&tmpdir.join("h"))).size == 3,
+                "truncate didn't truncate");
     })
 
     #[test]
     fn utime() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("a");
-        File::create(&path).unwrap();
+        check!(File::create(&path));
 
-        change_file_times(&path, 1000, 2000).unwrap();
-        assert_eq!(path.stat().unwrap().accessed, 1000);
-        assert_eq!(path.stat().unwrap().modified, 2000);
+        check!(change_file_times(&path, 1000, 2000));
+        assert_eq!(check!(path.stat()).accessed, 1000);
+        assert_eq!(check!(path.stat()).modified, 2000);
     }
 
     #[test]
@@ -1196,4 +1206,17 @@ mod test {
             Err(..) => {}
         }
     }
+
+    iotest!(fn binary_file() {
+        use rand::{rng, Rng};
+
+        let mut bytes = [0, ..1024];
+        rng().fill_bytes(bytes);
+
+        let tmpdir = tmpdir();
+
+        check!(File::create(&tmpdir.join("test")).write(bytes));
+        let actual = check!(File::open(&tmpdir.join("test")).read_to_end());
+        assert!(actual.as_slice() == bytes);
+    })
 }

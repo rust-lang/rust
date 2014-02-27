@@ -1623,6 +1623,7 @@ pub mod consts {
             pub static O_NOINHERIT: c_int = 128;
 
             pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INVALID_FUNCTION: c_int = 1;
             pub static ERROR_FILE_NOT_FOUND: c_int = 2;
             pub static ERROR_ACCESS_DENIED: c_int = 5;
             pub static ERROR_INVALID_HANDLE : c_int = 6;
@@ -1745,6 +1746,10 @@ pub mod consts {
             pub static OPEN_EXISTING: DWORD = 3;
             pub static TRUNCATE_EXISTING: DWORD = 5;
 
+            pub static FILE_APPEND_DATA: DWORD = 0x00000004;
+            pub static FILE_READ_DATA: DWORD = 0x00000001;
+            pub static FILE_WRITE_DATA: DWORD = 0x00000002;
+
             pub static FILE_ATTRIBUTE_ARCHIVE: DWORD = 0x20;
             pub static FILE_ATTRIBUTE_COMPRESSED: DWORD = 0x800;
             pub static FILE_ATTRIBUTE_DEVICE: DWORD = 0x40;
@@ -1790,6 +1795,18 @@ pub mod consts {
             pub static GENERIC_ALL: DWORD = 0x10000000;
             pub static FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
             pub static FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
+
+            pub static STANDARD_RIGHTS_READ: DWORD = 0x20000;
+            pub static STANDARD_RIGHTS_WRITE: DWORD = 0x20000;
+            pub static FILE_WRITE_EA: DWORD = 0x00000010;
+            pub static FILE_READ_EA: DWORD = 0x00000008;
+            pub static FILE_GENERIC_READ: DWORD =
+                STANDARD_RIGHTS_READ | FILE_READ_DATA |
+                FILE_READ_ATTRIBUTES | FILE_READ_EA | SYNCHRONIZE;
+            pub static FILE_GENERIC_WRITE: DWORD =
+                STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
+                FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | FILE_APPEND_DATA |
+                SYNCHRONIZE;
 
             pub static FILE_BEGIN: DWORD = 0;
             pub static FILE_CURRENT: DWORD = 1;
@@ -4231,6 +4248,7 @@ pub mod funcs {
 
         pub mod msvcrt {
             use libc::types::os::arch::c95::{c_int, c_long};
+            use libc::types::os::arch::c99::intptr_t;
 
             #[nolink]
             extern {
@@ -4239,6 +4257,10 @@ pub mod funcs {
 
                 #[link_name = "_get_osfhandle"]
                 pub fn get_osfhandle(fd: c_int) -> c_long;
+
+                #[link_name = "_open_osfhandle"]
+                pub fn open_osfhandle(osfhandle: intptr_t,
+                                      flags: c_int) -> c_int;
             }
         }
     }

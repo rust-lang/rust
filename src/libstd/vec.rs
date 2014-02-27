@@ -3529,7 +3529,7 @@ mod tests {
         let mut v: [uint, .. 0] = [];
         v.sort();
 
-        let mut v = [0xDEADBEEF];
+        let mut v = [0xDEADBEEFu];
         v.sort();
         assert_eq!(v, [0xDEADBEEF]);
     }
