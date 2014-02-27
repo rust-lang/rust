@@ -865,7 +865,7 @@ pub fn prefix(path: &Path) -> Option<PathPrefix> {
     path.prefix
 }
 
-/// Returns whether the Path's prefix is a verbatim prefix, i.e. \\?\
+/// Returns whether the Path's prefix is a verbatim prefix, i.e. `\\?\`
 #[inline]
 pub fn is_verbatim(path: &Path) -> bool {
     prefix_is_verbatim(path.prefix)
@@ -926,7 +926,6 @@ pub enum PathPrefix {
     DiskPrefix
 }
 
-// FIXME (#8169): Make private once visibility is fixed
 fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     if path.starts_with("\\\\") {
         // \\
