@@ -19,7 +19,7 @@ syn keyword   rustOperator    as
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
 syn keyword   rustKeyword     break continue do
-syn keyword   rustKeyword     extern nextgroup=rustExternCrate skipwhite
+syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite
 syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once priv pub
 syn keyword   rustKeyword     return
@@ -35,6 +35,7 @@ syn keyword   rustObsoleteStorage const
 syn keyword   rustInvalidBareKeyword crate
 
 syn keyword   rustExternCrate crate contained nextgroup=rustIdentifier skipwhite
+syn keyword   rustObsoleteExternMod mod contained nextgroup=rustIdentifier skipwhite
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -247,6 +248,7 @@ hi def link rustObsoleteStorage Error
 hi def link rustLifetime      Special
 hi def link rustInvalidBareKeyword Error
 hi def link rustExternCrate   rustKeyword
+hi def link rustObsoleteExternMod Error
 
 " Other Suggestions:
 " hi rustAttribute ctermfg=cyan
