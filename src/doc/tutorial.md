@@ -133,8 +133,10 @@ fn main() {
     println!("hello?");
 }
 ~~~~
-> ***Note:*** *Macros* are explained in the [Syntax extensions
-> (3.4)](#syntax-extensions) section.
+> ***Note:*** An identifier followed by an exclamation point, like
+> `println!`, is a macro invocation.  Macros are explained
+> [later](#syntax-extensions); for now just remember to include the
+> exclamation point.
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce an executable called `hello` (or `hello.exe` on
@@ -1347,8 +1349,8 @@ assert!(xs.eq(&ys));
 assert!(!xs.ne(&ys));
 
 // The Eq trait also allows us to use the shorthand infix operators.
-assert!(xs == ys);
-assert!(!(xs != ys));
+assert!(xs == ys);    // `xs == ys` is short for `xs.eq(&ys)`
+assert!(!(xs != ys)); // `xs != ys` is short for `xs.ne(&ys)`
 ~~~
 
 # More on boxes
