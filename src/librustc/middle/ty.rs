@@ -1014,13 +1014,13 @@ pub struct Generics {
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
-        !self.type_param_defs.borrow().is_empty()
+        !self.type_param_defs.deref().is_empty()
     }
     pub fn type_param_defs<'a>(&'a self) -> &'a [TypeParameterDef] {
-        self.type_param_defs.borrow().as_slice()
+        self.type_param_defs.deref().as_slice()
     }
     pub fn region_param_defs<'a>(&'a self) -> &'a [RegionParameterDef] {
-        self.region_param_defs.borrow().as_slice()
+        self.region_param_defs.deref().as_slice()
     }
 }
 

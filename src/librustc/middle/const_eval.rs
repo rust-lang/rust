@@ -512,7 +512,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
         LitStr(ref s, _) => const_str((*s).clone()),
         LitBinary(ref data) => {
-            const_binary(Rc::new(data.borrow().iter().map(|x| *x).collect()))
+            const_binary(Rc::new(data.deref().iter().map(|x| *x).collect()))
         }
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),

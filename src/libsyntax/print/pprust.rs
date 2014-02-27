@@ -2291,7 +2291,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
       ast::LitBinary(ref arr) => {
         try!(ibox(s, indent_unit));
         try!(word(&mut s.s, "["));
-        try!(commasep_cmnt(s, Inconsistent, arr.borrow().as_slice(),
+        try!(commasep_cmnt(s, Inconsistent, arr.deref().as_slice(),
                              |s, u| word(&mut s.s, format!("{}", *u)),
                              |_| lit.span));
         try!(word(&mut s.s, "]"));
