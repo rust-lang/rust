@@ -1,5 +1,3 @@
+#[main]
 // ignore-license
-#![foo]
-
-
-fn main() {}
+fn foo() {}

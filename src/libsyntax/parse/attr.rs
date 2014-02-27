@@ -40,12 +40,6 @@ impl ParserAttr for Parser {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
-                // #[foo(bar)]
-                //  ^ denotes an outer attribute.
-                if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                    break;
-                }
-
                 attrs.push(self.parse_attribute(false));
               }
               token::DOC_COMMENT(s) => {
@@ -74,6 +68,7 @@ impl ParserAttr for Parser {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let mut inner_attr_bang = false;
+        let mut warned = false;
         let (span, value) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
@@ -89,9 +84,11 @@ impl ParserAttr for Parser {
                 if self.eat(&token::NOT) {
                     inner_attr_bang = true;
                     if !permit_inner {
-                        self.fatal("An inner attribute was not permitted in this context.");
+                        self.fatal("an inner attribute was not permitted in this context.");
                     }
                 } else {
+                    warned = true;
+                    // NOTE: uncomment this after a stage0 snap
                     //self.warn("The syntax for inner attributes have changed.
                     //    Use `#![lang(foo)]` instead.");
                 }
@@ -120,7 +117,12 @@ impl ParserAttr for Parser {
             // need to bump the token.
             ast::AttrInner
         } else if permit_inner && self.token == token::SEMI {
-            //self.warn("This uses the old attribute syntax. Semicolons are not longer required.");
+            // Only warn the user once if the syntax is the old one.
+            if !warned {
+                // NOTE: uncomment this after a stage0 snap
+                //self.warn("This uses the old attribute syntax. Semicolons
+                //  are not longer required.");
+            }
             self.bump();
             ast::AttrInner
         } else {
@@ -156,24 +158,6 @@ impl ParserAttr for Parser {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
-                    let mut backwards_syntax = true;
-                    // #![foo(bar)]
-                    //  ^ denotes an inner attribute.
-                    // The backwards compatible syntax should not contain
-                    // a NOT(!) token.
-                    if self.look_ahead(1, |t| *t == token::NOT) {
-                        backwards_syntax = false;
-                        if self.look_ahead(2, |t| *t != token::LBRACKET) {
-                            break;
-                        }
-                    }
-
-                    if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                        if backwards_syntax {
-                            break;
-                        }
-                    }
-
                     self.parse_attribute(true)
                 }
                 token::DOC_COMMENT(s) => {
