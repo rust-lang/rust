@@ -249,6 +249,42 @@ $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 		triple-runtime
 	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/runtime/libcompiler_rt.a $$(COMPRT_LIB_$(1))
 
+################################################################################
+# libbacktrace
+#
+# We use libbacktrace on linux to get symbols in backtraces, but only on linux.
+# Elsewhere we use other system utilities, so this library is only built on
+# linux.
+################################################################################
+
+ifeq ($$(findstring linux,$$(OSTYPE_$(1))),linux)
+ifdef CFG_ENABLE_FAST_MAKE
+BACKTRACE_DEPS := $(S)/.gitmodules
+else
+BACKTRACE_DEPS := $(wildcard $(S)src/backtrace/*)
+endif
+
+BACKTRACE_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),backtrace)
+BACKTRACE_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(BACKTRACE_NAME_$(1))
+BACKTRACE_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libbacktrace
+
+$$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_DEPS) $$(MKFILE_DEPS)
+	@$$(call E, make: libbacktrace)
+	$$(Q)(cd $$(BACKTRACE_BUILD_DIR_$(1) && $(S)src/libbacktrace/configure)
+	$$(Q)$$(MAKE) -C $$(BACKTRACE_BUILD_DIR_$(1)) \
+		CC="$$(CC_$(1))" \
+		AR="$$(AR_$(1))" \
+		RANLIB="$$(AR_$(1)) s" \
+		CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1))"
+	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
+else
+
+# We don't use this on platforms that aren't linux-based, so just make the file
+# available, the compilation of libstd won't actually build it.
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+endif
+
 endef
 
 # Instantiate template for all stages/targets
