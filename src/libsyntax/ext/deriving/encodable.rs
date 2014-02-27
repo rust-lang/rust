@@ -10,20 +10,20 @@
 
 /*!
 
-The compiler code necessary to implement the #[deriving(Encodable)]
-(and Decodable, in decodable.rs) extension.  The idea here is that
-type-defining items may be tagged with #[deriving(Encodable,
-Decodable)].
+The compiler code necessary to implement the `#[deriving(Encodable)]`
+(and `Decodable`, in decodable.rs) extension.  The idea here is that
+type-defining items may be tagged with `#[deriving(Encodable, Decodable)]`.
 
 For example, a type like:
 
 ```ignore
-    #[deriving(Encodable, Decodable)]
-    struct Node {id: uint}
+#[deriving(Encodable, Decodable)]
+struct Node { id: uint }
 ```
 
 would generate two implementations like:
 
+```ignore
 impl<S:serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         s.emit_struct("Node", 1, || {
@@ -41,13 +41,14 @@ impl<D:Decoder> Decodable for node_id {
         })
     }
 }
+```
 
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
 
 ```ignore
-    #[deriving(Encodable, Decodable)]
-    struct spanned<T> {node: T, span: Span}
+#[deriving(Encodable, Decodable)]
+struct spanned<T> { node: T, span: Span }
 ```
 
 would yield functions like:
