@@ -362,7 +362,7 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
 
 #[deriving(Clone, Eq)]
 pub struct BenchSamples {
-    priv ns_iter_summ: stats::Summary,
+    priv ns_iter_summ: stats::Summary<f64>,
     priv mb_s: uint
 }
 
@@ -1190,7 +1190,7 @@ impl BenchHarness {
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench(&mut self, f: |&mut BenchHarness|) -> stats::Summary {
+    pub fn auto_bench(&mut self, f: |&mut BenchHarness|) -> stats::Summary<f64> {
 
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
