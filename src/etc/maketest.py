@@ -17,12 +17,13 @@ if os.name == 'nt':
     print 'ignoring make tests on windows'
     sys.exit(0)
 
-os.putenv('RUSTC', os.path.abspath(sys.argv[2]))
-os.putenv('TMPDIR', os.path.abspath(sys.argv[3]))
-os.putenv('CC', sys.argv[4])
-os.putenv('RUSTDOC', os.path.abspath(sys.argv[5]))
-filt = sys.argv[6]
-ldpath = sys.argv[7]
+make = sys.argv[2]
+os.putenv('RUSTC', os.path.abspath(sys.argv[3]))
+os.putenv('TMPDIR', os.path.abspath(sys.argv[4]))
+os.putenv('CC', sys.argv[5])
+os.putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
+filt = sys.argv[7]
+ldpath = sys.argv[8]
 if ldpath != '':
     os.putenv(ldpath.split('=')[0], ldpath.split('=')[1])
 
@@ -30,7 +31,7 @@ if not filt in sys.argv[1]:
     sys.exit(0)
 print('maketest: ' + os.path.basename(os.path.dirname(sys.argv[1])))
 
-proc = subprocess.Popen(['make', '-C', sys.argv[1]],
+proc = subprocess.Popen([make, '-C', sys.argv[1]],
                         stdout = subprocess.PIPE,
                         stderr = subprocess.PIPE)
 out, err = proc.communicate()
