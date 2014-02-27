@@ -59,70 +59,95 @@
 	(backward-word 1))
       (current-column))))
 
+(defun rust-rewind-to-beginning-of-current-level-expr ()
+  (let ((current-level (rust-paren-level)))
+    (back-to-indentation)
+    (while (> (rust-paren-level) current-level)
+      (backward-up-list)
+      (back-to-indentation))))
+
 (defun rust-mode-indent-line ()
   (interactive)
   (let ((indent
          (save-excursion
            (back-to-indentation)
-           (let ((level (rust-paren-level)))
+           ;; Point is now at beginning of current line
+           (let* ((level (rust-paren-level))
+                  (baseline
+                   ;; Our "baseline" is one level out from the indentation of the expression
+                   ;; containing the innermost enclosing opening bracket.  That
+                   ;; way if we are within a block that has a different
+                   ;; indentation than this mode would give it, we still indent
+                   ;; the inside of it correctly relative to the outside.
+                   (if (= 0 level)
+                       0
+                     (save-excursion
+                       (backward-up-list)
+                       (rust-rewind-to-beginning-of-current-level-expr)
+                       (+ (current-column) rust-indent-offset)))))
              (cond
               ;; A function return type is indented to the corresponding function arguments
               ((looking-at "->")
                (save-excursion
                  (backward-list)
                  (or (rust-align-to-expr-after-brace)
-                     (* rust-indent-offset (+ 1 level)))))
+                     (+ baseline rust-indent-offset))))
 
               ;; A closing brace is 1 level unindended
-              ((looking-at "}") (* rust-indent-offset (- level 1)))
+              ((looking-at "}") (- baseline rust-indent-offset))
 
               ;; Doc comments in /** style with leading * indent to line up the *s
               ((and (nth 4 (syntax-ppss)) (looking-at "*"))
-               (+ 1 (* rust-indent-offset level)))
+               (+ 1 baseline))
 
               ;; If we're in any other token-tree / sexp, then:
-              ;;  - [ or ( means line up with the opening token
-              ;;  - { means indent to either nesting-level * rust-indent-offset,
-              ;;    or one further indent from that if either current line
-              ;;    begins with 'else', or previous line didn't end in
-              ;;    semi, comma or brace (other than whitespace and line
-              ;;    comments) , and wasn't an attribute.  But if we have
-              ;;    something after the open brace and ending with a comma,
-              ;;    treat it as fields and align them.  PHEW.
-              ((> level 0)
-               (let ((pt (point)))
-                 (rust-rewind-irrelevant)
-                 (backward-up-list)
-                 (or (and (looking-at "[[({]")
-                          (rust-align-to-expr-after-brace))
-                     (progn
-                       (goto-char pt)
-                       (back-to-indentation)
-                       (if (looking-at "\\<else\\>")
-                           (* rust-indent-offset (+ 1 level))
-                         (progn
-                           (goto-char pt)
-                           (beginning-of-line)
-                           (rust-rewind-irrelevant)
-                           (end-of-line)
-                           (if (looking-back
-                                "[[,;{}(][[:space:]]*\\(?://.*\\)?")
-                               (* rust-indent-offset level)
-                             (back-to-indentation)
-                             (if (looking-at "#")
-                                 (* rust-indent-offset level)
-                               (* rust-indent-offset (+ 1 level))))))))))
+              (t
+               (or
+                ;; If we are inside a pair of braces, with something after the
+                ;; open brace on the same line and ending with a comma, treat
+                ;; it as fields and align them.
+                (when (> level 0)
+                  (save-excursion
+                    (rust-rewind-irrelevant)
+                    (backward-up-list)
+                    ;; Point is now at the beginning of the containing set of braces
+                    (rust-align-to-expr-after-brace)))
 
-              ;; Otherwise we're in a column-zero definition
-              (t 0))))))
-    (cond
-     ;; If we're to the left of the indentation, reindent and jump to it.
-     ((<= (current-column) indent)
-      (indent-line-to indent))
+                (progn
+                  (back-to-indentation)
+                  ;; Point is now at the beginning of the current line
+                  (if (or
+                       ;; If this line begins with "else" or "{", stay on the
+                       ;; baseline as well (we are continuing an expression,
+                       ;; but the "else" or "{" should align with the beginning
+                       ;; of the expression it's in.)
+                       (looking-at "\\<else\\>\\|{")
+                       
+                       (save-excursion
+                         (rust-rewind-irrelevant)
+                         ;; Point is now at the end of the previous ine
+                         (or
+                          ;; If we are at the first line, no indentation is needed, so stay at baseline...
+                          (= 1 (line-number-at-pos (point)))
+                          ;; ..or if the previous line ends with any of these:
+                          ;;     { ? : ( , ; [ }
+                          ;; then we are at the beginning of an expression, so stay on the baseline...
+                          (looking-back "[(,:;?[{}]\\|[^|]|")
+                          ;; or if the previous line is the end of an attribute, stay at the baseline...
+                          (progn (rust-rewind-to-beginning-of-current-level-expr) (looking-at "#")))))
+                      baseline
 
-     ;; We're to the right; if it needs indent, do so but save excursion.
-     ((not (eq (current-indentation) indent))
-      (save-excursion (indent-line-to indent))))))
+                    ;; Otherwise, we are continuing the same expression from the previous line,
+                    ;; so add one additional indent level
+                    (+ baseline rust-indent-offset))))))))))
+    (when (not (eq (current-indentation) indent))
+      ;; If we're at the beginning of the line (before or at the current
+      ;; indentation), jump with the indentation change.  Otherwise, save the
+      ;; excursion so that adding the indentations will leave us at the
+      ;; equivalent position within the line to where we were before.
+      (if (<= (current-column) (current-indentation))
+          (indent-line-to indent)
+        (save-excursion (indent-line-to indent))))))
 
 
 ;; Font-locking definitions and helpers
