@@ -24,6 +24,7 @@ pub trait Local<Borrowed> {
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
 
+#[allow(visible_private_types)]
 impl Local<local_ptr::Borrowed<Task>> for Task {
     #[inline]
     fn put(value: ~Task) { unsafe { local_ptr::put(value) } }
@@ -127,4 +128,3 @@ mod test {
     }
 
 }
-
