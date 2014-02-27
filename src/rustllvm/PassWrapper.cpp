@@ -166,7 +166,11 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target,
   PassManager *PM = unwrap<PassManager>(PMR);
 
   std::string ErrorInfo;
+#if LLVM_VERSION_MINOR >= 4
   raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
+#else
+  raw_fd_ostream OS(path, ErrorInfo, raw_fd_ostream::F_Binary);
+#endif
   if (ErrorInfo != "") {
     LLVMRustError = ErrorInfo.c_str();
     return false;
@@ -184,9 +188,21 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR,
                     const char* path) {
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
+
+#if LLVM_VERSION_MINOR >= 4
   raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_None);
+#else
+  raw_fd_ostream OS(path, ErrorInfo, raw_fd_ostream::F_Binary);
+#endif
+
   formatted_raw_ostream FOS(OS);
+
+#if LLVM_VERSION_MINOR >= 5
   PM->add(createPrintModulePass(FOS));
+#else
+  PM->add(createPrintModulePass(&FOS));
+#endif
+
   PM->run(*unwrap(M));
 }
 
