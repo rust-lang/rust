@@ -32,13 +32,13 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[deriving(Clone, Eq, Hash, Ord)]
+#[deriving(Clone, Eq, Hash, Ord, Show)]
 pub struct BytePos(u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Eq, Hash, Ord)]
+#[deriving(Eq, Hash, Ord, Show)]
 pub struct CharPos(uint);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -84,7 +84,7 @@ are *absolute* positions from the beginning of the codemap, not positions
 relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 to the original source.
 */
-#[deriving(Clone, Hash)]
+#[deriving(Clone, Show, Hash)]
 pub struct Span {
     lo: BytePos,
     hi: BytePos,
@@ -160,7 +160,7 @@ pub struct LocWithOpt {
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
 
-#[deriving(Clone, Hash)]
+#[deriving(Clone, Hash, Show)]
 pub enum MacroFormat {
     // e.g. #[deriving(...)] <item>
     MacroAttribute,
@@ -168,7 +168,7 @@ pub enum MacroFormat {
     MacroBang
 }
 
-#[deriving(Clone, Hash)]
+#[deriving(Clone, Hash, Show)]
 pub struct NameAndSpan {
     name: ~str,
     // the format with which the macro was invoked.
@@ -177,7 +177,7 @@ pub struct NameAndSpan {
 }
 
 /// Extra information for tracking macro expansion of spans
-#[deriving(Hash)]
+#[deriving(Hash, Show)]
 pub struct ExpnInfo {
     call_site: Span,
     callee: NameAndSpan

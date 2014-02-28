@@ -1468,7 +1468,7 @@ fn roundtrip(in_item: Option<@ast::Item>) {
     let ebml_doc = reader::Doc(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
-    assert_eq!(in_item, out_item);
+    assert!(in_item == out_item);
 }
 
 #[test]

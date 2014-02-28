@@ -141,7 +141,7 @@ mod test {
 
     use enum_set::{EnumSet, CLike};
 
-    #[deriving(Eq)]
+    #[deriving(Eq, Show)]
     #[repr(uint)]
     enum Foo {
         A, B, C

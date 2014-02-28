@@ -1688,7 +1688,7 @@ let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x.clone(); // a new owner
 let z = x; // this moves `x` into `z`, rather than creating a new owner
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z.borrow() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 // the variable is mutable, but not the contents of the box
 let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
@@ -1707,7 +1707,7 @@ let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x; // does not perform a move, unlike with `Rc`
 let z = x;
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z.borrow() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ~~~
 
 With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,

@@ -18,6 +18,7 @@ use collections::HashMap;
 use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
+use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -111,6 +112,13 @@ impl Str for RcStr {
     #[inline]
     fn into_owned(self) -> ~str {
         self.string.borrow().to_owned()
+    }
+}
+
+impl fmt::Show for RcStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Show;
+        self.as_slice().fmt(f)
     }
 }
 

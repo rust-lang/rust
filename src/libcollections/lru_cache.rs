@@ -277,7 +277,7 @@ mod tests {
 
     fn assert_opt_eq<V: Eq>(opt: Option<&V>, v: V) {
         assert!(opt.is_some());
-        assert_eq!(opt.unwrap(), &v);
+        assert!(opt.unwrap() == &v);
     }
 
     #[test]

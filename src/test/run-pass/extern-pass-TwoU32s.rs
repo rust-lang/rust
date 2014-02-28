@@ -11,7 +11,7 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct TwoU32s {
     one: u32, two: u32
 }

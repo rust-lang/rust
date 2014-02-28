@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct Foo;
 
 pub fn main() {

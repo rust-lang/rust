@@ -12,6 +12,7 @@ use std::cmp::Eq;
 
 trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + Eq { }
 
+#[deriving(Show)]
 struct MyInt { val: int }
 
 impl Add<MyInt, MyInt> for MyInt {

@@ -858,7 +858,7 @@ pub struct UTF16Items<'a> {
     priv iter: vec::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
-#[deriving(Eq, TotalEq, Clone)]
+#[deriving(Eq, TotalEq, Clone, Show)]
 pub enum UTF16Item {
     /// A valid codepoint.
     ScalarValue(char),
@@ -3743,7 +3743,7 @@ mod tests {
         ];
         assert_eq!("".as_bytes(), &[]);
         assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
-        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v);
+        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v.as_slice());
     }
 
     #[test]
@@ -4442,11 +4442,11 @@ mod tests {
         assert!(o.lt(&Slice("bcdef")));
         assert_eq!(Owned(~""), Default::default());
 
-        assert_eq!(s.cmp(&o), Equal);
+        assert!(s.cmp(&o) == Equal);
         assert!(s.equals(&o));
         assert!(s.equiv(&o));
 
-        assert_eq!(o.cmp(&s), Equal);
+        assert!(o.cmp(&s) == Equal);
         assert!(o.equals(&s));
         assert!(o.equiv(&s));
     }
