@@ -280,6 +280,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 
 #[cfg(not(target_arch = "arm"), not(test))]
 #[doc(hidden)]
+#[allow(visible_private_types)]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;
@@ -333,6 +334,7 @@ pub mod eabi {
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
 #[cfg(target_arch = "arm", not(test))]
+#[allow(visible_private_types)]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;

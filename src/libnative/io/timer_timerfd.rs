@@ -44,6 +44,7 @@ pub struct Timer {
     priv on_worker: bool,
 }
 
+#[allow(visible_private_types)]
 pub enum Req {
     NewTimer(libc::c_int, Chan<()>, bool, imp::itimerspec),
     RemoveTimer(libc::c_int, Chan<()>),

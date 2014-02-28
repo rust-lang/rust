@@ -30,6 +30,8 @@ This API is completely unstable and subject to change.
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 #[feature(quote)];
 
+#[allow(visible_private_types)];
+
 extern crate extra;
 extern crate flate;
 extern crate arena;

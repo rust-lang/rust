@@ -98,6 +98,7 @@ pub enum Lint {
     UnusedMut,
     UnnecessaryAllocation,
     DeadCode,
+    VisiblePrivateTypes,
     UnnecessaryTypecast,
 
     MissingDoc,
@@ -310,6 +311,12 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: DeadCode,
         desc: "detect piece of code that will never be used",
+        default: warn
+    }),
+    ("visible_private_types",
+     LintSpec {
+        lint: VisiblePrivateTypes,
+        desc: "detect use of private types in exported type signatures",
         default: warn
     }),
 

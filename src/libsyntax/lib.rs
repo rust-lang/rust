@@ -31,6 +31,7 @@ This API is completely unstable and subject to change.
 #[feature(quote)];
 
 #[deny(non_camel_case_types)];
+#[allow(visible_private_types)];
 
 extern crate serialize;
 extern crate term;
