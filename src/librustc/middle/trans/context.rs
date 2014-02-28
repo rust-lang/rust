@@ -27,6 +27,7 @@ use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty;
 use util::sha2::Sha256;
+use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
@@ -45,10 +46,10 @@ pub struct CrateContext {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     intrinsics: HashMap<&'static str, ValueRef>,
-    item_vals: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    item_vals: RefCell<NodeMap<ValueRef>>,
     exp_map2: resolve::ExportMap2,
-    reachable: @RefCell<HashSet<ast::NodeId>>,
-    item_symbols: RefCell<HashMap<ast::NodeId, ~str>>,
+    reachable: @RefCell<NodeSet>,
+    item_symbols: RefCell<NodeMap<~str>>,
     link_meta: LinkMeta,
     drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
     tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
@@ -56,17 +57,17 @@ pub struct CrateContext {
     // created.
     finished_tydescs: Cell<bool>,
     // Track mapping of external ids to local items imported for inlining
-    external: RefCell<HashMap<ast::DefId, Option<ast::NodeId>>>,
+    external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     // Backwards version of the `external` map (inlined items to where they
     // came from)
-    external_srcs: RefCell<HashMap<ast::NodeId, ast::DefId>>,
+    external_srcs: RefCell<NodeMap<ast::DefId>>,
     // A set of static items which cannot be inlined into other crates. This
     // will pevent in IIItem() structures from being encoded into the metadata
     // that is generated
-    non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
+    non_inlineable_statics: RefCell<NodeSet>,
     // Cache instances of monomorphized functions
     monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
-    monomorphizing: RefCell<HashMap<ast::DefId, uint>>,
+    monomorphizing: RefCell<DefIdMap<uint>>,
     // Cache generated vtables
     vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
     // Cache of constant strings,
@@ -83,10 +84,10 @@ pub struct CrateContext {
     const_globals: RefCell<HashMap<int, ValueRef>>,
 
     // Cache of emitted const values
-    const_values: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    const_values: RefCell<NodeMap<ValueRef>>,
 
     // Cache of external const values
-    extern_const_values: RefCell<HashMap<ast::DefId, ValueRef>>,
+    extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
     impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
@@ -125,7 +126,7 @@ impl CrateContext {
                maps: astencode::Maps,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
-               reachable: @RefCell<HashSet<ast::NodeId>>)
+               reachable: @RefCell<NodeSet>)
                -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
@@ -185,24 +186,24 @@ impl CrateContext {
                  tn: tn,
                  externs: RefCell::new(HashMap::new()),
                  intrinsics: intrinsics,
-                 item_vals: RefCell::new(HashMap::new()),
+                 item_vals: RefCell::new(NodeMap::new()),
                  exp_map2: emap2,
                  reachable: reachable,
-                 item_symbols: RefCell::new(HashMap::new()),
+                 item_symbols: RefCell::new(NodeMap::new()),
                  link_meta: link_meta,
                  drop_glues: RefCell::new(HashMap::new()),
                  tydescs: RefCell::new(HashMap::new()),
                  finished_tydescs: Cell::new(false),
-                 external: RefCell::new(HashMap::new()),
-                 external_srcs: RefCell::new(HashMap::new()),
-                 non_inlineable_statics: RefCell::new(HashSet::new()),
+                 external: RefCell::new(DefIdMap::new()),
+                 external_srcs: RefCell::new(NodeMap::new()),
+                 non_inlineable_statics: RefCell::new(NodeSet::new()),
                  monomorphized: RefCell::new(HashMap::new()),
-                 monomorphizing: RefCell::new(HashMap::new()),
+                 monomorphizing: RefCell::new(DefIdMap::new()),
                  vtables: RefCell::new(HashMap::new()),
                  const_cstr_cache: RefCell::new(HashMap::new()),
                  const_globals: RefCell::new(HashMap::new()),
-                 const_values: RefCell::new(HashMap::new()),
-                 extern_const_values: RefCell::new(HashMap::new()),
+                 const_values: RefCell::new(NodeMap::new()),
+                 extern_const_values: RefCell::new(DefIdMap::new()),
                  impl_method_cache: RefCell::new(HashMap::new()),
                  closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
                  module_data: RefCell::new(HashMap::new()),

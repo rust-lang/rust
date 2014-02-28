@@ -13,7 +13,6 @@
 //! which are available for use externally when compiled as a library.
 
 use std::mem::replace;
-use collections::{HashSet, HashMap};
 
 use metadata::csearch;
 use middle::lint;
@@ -21,6 +20,7 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck::{MethodMap, MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodObject};
+use util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
 use syntax::ast_map;
@@ -35,12 +35,12 @@ use syntax::visit::Visitor;
 type Context<'a> = (&'a MethodMap, &'a resolve::ExportMap2);
 
 /// A set of AST nodes exported by the crate.
-pub type ExportedItems = HashSet<ast::NodeId>;
+pub type ExportedItems = NodeSet;
 
 /// A set of AST nodes that are fully public in the crate. This map is used for
 /// documentation purposes (reexporting a private struct inlines the doc,
 /// reexporting a public struct doesn't inline the doc).
-pub type PublicItems = HashSet<ast::NodeId>;
+pub type PublicItems = NodeSet;
 
 /// Result of a checking operation - None => no errors were found. Some => an
 /// error and contains the span and message for reporting that error and
@@ -52,7 +52,7 @@ type CheckResult = Option<(Span, ~str, Option<(Span, ~str)>)>;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ParentVisitor {
-    parents: HashMap<ast::NodeId, ast::NodeId>,
+    parents: NodeMap<ast::NodeId>,
     curparent: ast::NodeId,
 }
 
@@ -161,7 +161,7 @@ struct EmbargoVisitor<'a> {
     // all nodes which are reexported *and* reachable from external crates. This
     // means that the destination of the reexport is exported, and hence the
     // destination must also be exported.
-    reexports: HashSet<ast::NodeId>,
+    reexports: NodeSet,
 
     // These two fields are closely related to one another in that they are only
     // used for generation of the 'PublicItems' set, not for privacy checking at
@@ -349,7 +349,7 @@ struct PrivacyVisitor<'a> {
     in_fn: bool,
     in_foreign: bool,
     method_map: &'a MethodMap,
-    parents: HashMap<ast::NodeId, ast::NodeId>,
+    parents: NodeMap<ast::NodeId>,
     external_exports: resolve::ExternalExports,
     last_private_map: resolve::LastPrivateMap,
 }
@@ -1424,7 +1424,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    krate: &ast::Crate) -> (ExportedItems, PublicItems) {
     // Figure out who everyone's parent is
     let mut visitor = ParentVisitor {
-        parents: HashMap::new(),
+        parents: NodeMap::new(),
         curparent: ast::DUMMY_NODE_ID,
     };
     visit::walk_crate(&mut visitor, krate, ());
@@ -1456,9 +1456,9 @@ pub fn check_crate(tcx: ty::ctxt,
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
         tcx: tcx,
-        exported_items: HashSet::new(),
-        public_items: HashSet::new(),
-        reexports: HashSet::new(),
+        exported_items: NodeSet::new(),
+        public_items: NodeSet::new(),
+        reexports: NodeSet::new(),
         exp_map2: exp_map2,
         prev_exported: true,
         prev_public: true,

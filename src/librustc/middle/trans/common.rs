@@ -29,6 +29,7 @@ use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
@@ -253,14 +254,14 @@ pub struct FunctionContext<'a> {
     caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+    llargs: RefCell<NodeMap<LvalueDatum>>,
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+    lllocals: RefCell<NodeMap<LvalueDatum>>,
 
     // Same as above, but for closure upvars
-    llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    llupvars: RefCell<NodeMap<ValueRef>>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
