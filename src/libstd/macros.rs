@@ -149,7 +149,14 @@ macro_rules! fail(
         // function to pass to format_args!, *and* we need the
         // file and line numbers right here; so an inner bare fn
         // is our only choice.
-        #[inline]
+        //
+        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
+        // is #[cold] and #[inline(never)] and because this is flagged as cold
+        // as returning !. We really do want this to be inlined, however,
+        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
+        // were seen when forcing this to be inlined, and that number just goes
+        // up with the number of calls to fail!()
+        #[inline(always)]
         fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
             ::std::rt::begin_unwind_fmt(fmt, file!(), line!())
         }

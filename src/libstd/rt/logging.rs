@@ -13,13 +13,14 @@ use from_str::from_str;
 use iter::Iterator;
 use libc::exit;
 use option::{Some, None, Option};
+use os;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
-use str::StrSlice;
+use str::{Str, StrSlice};
 use vec::{ImmutableVector, MutableTotalOrdVector, OwnedVector};
-#[cfg(test)] use cast::transmute;
+use vec_ng::Vec;
 
-struct LogDirective {
-    name: Option<~str>,
+struct LogDirective<'a> {
+    name: Option<&'a str>,
     level: u32
 }
 
@@ -58,36 +59,39 @@ fn parse_log_level(level: &str) -> Option<u32> {
 /// and return a vector with log directives.
 /// Valid log levels are 0-255, with the most likely ones being 1-4 (defined in std::).
 /// Also supports string log levels of error, warn, info, and debug
-fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
-    let mut dirs = ~[];
+fn parse_logging_spec<'a>(spec: &'a str) -> Vec<LogDirective<'a>> {
+    let mut dirs = Vec::new();
     for s in spec.split(',') {
-        let parts: ~[&str] = s.split('=').collect();
-        let mut log_level;
-        let mut name = Some(parts[0].to_owned());
-        match parts.len() {
-            1 => {
+        if s.len() == 0 { continue }
+        let mut parts = s.split('=');
+        let log_level;
+        let name;
+        match (parts.next(), parts.next(), parts.next()) {
+            (Some(part0), None, None) => {
                 //if the single argument is a log-level string or number,
                 //treat that as a global fallback
-                let possible_log_level = parse_log_level(parts[0]);
+                let possible_log_level = parse_log_level(part0);
                 match possible_log_level {
                     Some(num) => {
                         name = None;
                         log_level = num;
                     },
-                    _ => {
-                        log_level = MAX_LOG_LEVEL
+                    None => {
+                        log_level = MAX_LOG_LEVEL;
+                        name = Some(part0);
                     }
                 }
             }
-            2 => {
-                let possible_log_level = parse_log_level(parts[1]);
+            (Some(part0), Some(part1), None) => {
+                let possible_log_level = parse_log_level(part1);
                 match possible_log_level {
                     Some(num) => {
+                        name = Some(part0);
                         log_level = num;
                     },
                     _ => {
                         rterrln!("warning: invalid logging spec '{}', \
-                                  ignoring it", parts[1]);
+                                  ignoring it", part1);
                         continue
                     }
                 }
@@ -98,8 +102,7 @@ fn parse_logging_spec(spec: ~str) -> ~[LogDirective]{
                 continue
             }
         }
-        let dir = LogDirective {name: name, level: log_level};
-        dirs.push(dir);
+        dirs.push(LogDirective { name: name, level: log_level });
     }
     return dirs;
 }
@@ -134,27 +137,24 @@ fn update_entry(dirs: &[LogDirective], entry: &ModEntry) -> u32 {
 
 /// Set log level for every entry in crate_map according to the sepecification
 /// in settings
-fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
-    let mut dirs = ~[];
-    if settings.len() > 0 {
-        if settings == ~"::help" || settings == ~"?" {
-            rterrln!("\nCrate log map:\n");
+fn update_log_settings(crate_map: &CrateMap, settings: &str) {
+    if settings == "::help" || settings == "?" {
+        rterrln!("\nCrate log map:\n");
 
-            let mut entries = ~[];
-            iter_crate_map(crate_map, |entry| entries.push(entry.name.to_owned()));
-            entries.sort();
+        let mut entries = Vec::new();
+        iter_crate_map(crate_map, |entry| entries.push(entry.name));
+        entries.as_mut_slice().sort();
 
-            for name in entries.iter() {
-                rterrln!(" {}", *name);
-            }
-            unsafe { exit(1); }
+        for name in entries.iter() {
+            rterrln!(" {}", *name);
         }
-        dirs = parse_logging_spec(settings);
+        unsafe { exit(1); }
     }
+    let dirs = parse_logging_spec(settings);
 
     let mut n_matches: u32 = 0;
     iter_crate_map(crate_map, |entry| {
-        let m = update_entry(dirs, entry);
+        let m = update_entry(dirs.as_slice(), entry);
         n_matches += m;
     });
 
@@ -169,18 +169,12 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
 /// Configure logging by traversing the crate map and setting the
 /// per-module global logging flags based on the logging spec
 pub fn init() {
-    use os;
-
     let log_spec = os::getenv("RUST_LOG");
     match get_crate_map() {
         Some(crate_map) => {
             match log_spec {
-                Some(spec) => {
-                    update_log_settings(crate_map, spec);
-                }
-                None => {
-                    update_log_settings(crate_map, ~"");
-                }
+                Some(spec) => update_log_settings(crate_map, spec.as_slice()),
+                None => update_log_settings(crate_map, ""),
             }
         },
         _ => {
@@ -197,124 +191,124 @@ pub fn init() {
 // Tests for parse_logging_spec()
 #[test]
 fn parse_logging_spec_valid() {
-    let dirs = parse_logging_spec(~"crate1::mod1=1,crate1::mod2,crate2=4");
+    let dirs = parse_logging_spec("crate1::mod1=1,crate1::mod2,crate2=4");
+    let dirs = dirs.as_slice();
     assert_eq!(dirs.len(), 3);
-    assert!(dirs[0].name == Some(~"crate1::mod1"));
+    assert_eq!(dirs[0].name, Some("crate1::mod1"));
     assert_eq!(dirs[0].level, 1);
 
-    assert!(dirs[1].name == Some(~"crate1::mod2"));
+    assert_eq!(dirs[1].name, Some("crate1::mod2"));
     assert_eq!(dirs[1].level, MAX_LOG_LEVEL);
 
-    assert!(dirs[2].name == Some(~"crate2"));
+    assert_eq!(dirs[2].name, Some("crate2"));
     assert_eq!(dirs[2].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_invalid_crate() {
     // test parse_logging_spec with multiple = in specification
-    let dirs = parse_logging_spec(~"crate1::mod1=1=2,crate2=4");
+    let dirs = parse_logging_spec("crate1::mod1=1=2,crate2=4");
+    let dirs = dirs.as_slice();
     assert_eq!(dirs.len(), 1);
-    assert!(dirs[0].name == Some(~"crate2"));
+    assert_eq!(dirs[0].name, Some("crate2"));
     assert_eq!(dirs[0].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_invalid_log_level() {
     // test parse_logging_spec with 'noNumber' as log level
-    let dirs = parse_logging_spec(~"crate1::mod1=noNumber,crate2=4");
+    let dirs = parse_logging_spec("crate1::mod1=noNumber,crate2=4");
+    let dirs = dirs.as_slice();
     assert_eq!(dirs.len(), 1);
-    assert!(dirs[0].name == Some(~"crate2"));
+    assert_eq!(dirs[0].name, Some("crate2"));
     assert_eq!(dirs[0].level, 4);
 }
 
 #[test]
 fn parse_logging_spec_string_log_level() {
     // test parse_logging_spec with 'warn' as log level
-    let dirs = parse_logging_spec(~"crate1::mod1=wrong,crate2=warn");
+    let dirs = parse_logging_spec("crate1::mod1=wrong,crate2=warn");
+    let dirs = dirs.as_slice();
     assert_eq!(dirs.len(), 1);
-    assert!(dirs[0].name == Some(~"crate2"));
+    assert_eq!(dirs[0].name, Some("crate2"));
     assert_eq!(dirs[0].level, 2);
 }
 
 #[test]
 fn parse_logging_spec_global() {
     // test parse_logging_spec with no crate
-    let dirs = parse_logging_spec(~"warn,crate2=4");
+    let dirs = parse_logging_spec("warn,crate2=4");
+    let dirs = dirs.as_slice();
     assert_eq!(dirs.len(), 2);
-    assert!(dirs[0].name == None);
+    assert_eq!(dirs[0].name, None);
     assert_eq!(dirs[0].level, 2);
-    assert!(dirs[1].name == Some(~"crate2"));
+    assert_eq!(dirs[1].name, Some("crate2"));
     assert_eq!(dirs[1].level, 4);
 }
 
 // Tests for update_entry
 #[test]
 fn update_entry_match_full_path() {
-    let dirs = ~[LogDirective {name: Some(~"crate1::mod1"), level: 2 },
-                 LogDirective {name: Some(~"crate2"), level: 3}];
-    let level = &mut 0;
-    unsafe {
-        let entry= &ModEntry {name:"crate1::mod1", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == 2);
-        assert!(m == 1);
+    let dirs = [LogDirective { name: Some("crate1::mod1"), level: 2 },
+                LogDirective { name: Some("crate2"), level: 3 }];
+    let mut level = 0;
+    {
+        let entry = &ModEntry { name: "crate1::mod1", log_level: &mut level };
+        assert_eq!(update_entry(dirs, entry), 1);
     }
+    assert_eq!(level, 2);
 }
 
 #[test]
 fn update_entry_no_match() {
-    let dirs = ~[LogDirective {name: Some(~"crate1::mod1"), level: 2 },
-                 LogDirective {name: Some(~"crate2"), level: 3}];
-    let level = &mut 0;
-    unsafe {
-        let entry= &ModEntry {name: "crate3::mod1", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == DEFAULT_LOG_LEVEL);
-        assert!(m == 0);
+    let dirs = [LogDirective { name: Some("crate1::mod1"), level: 2 },
+                LogDirective { name: Some("crate2"), level: 3 }];
+    let mut level = 0;
+    {
+        let entry = &ModEntry { name: "crate3::mod1", log_level: &mut level };
+        assert_eq!(update_entry(dirs, entry), 0);
     }
+    assert_eq!(level, DEFAULT_LOG_LEVEL);
 }
 
 #[test]
 fn update_entry_match_beginning() {
-    let dirs = ~[LogDirective {name: Some(~"crate1::mod1"), level: 2 },
-                 LogDirective {name: Some(~"crate2"), level: 3}];
-    let level = &mut 0;
-    unsafe {
-        let entry= &ModEntry {name: "crate2::mod1", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == 3);
-        assert!(m == 1);
+    let dirs = [LogDirective { name: Some("crate1::mod1"), level: 2 },
+                LogDirective { name: Some("crate2"), level: 3 }];
+    let mut level = 0;
+    {
+        let entry= &ModEntry {name: "crate2::mod1", log_level: &mut level};
+        assert_eq!(update_entry(dirs, entry), 1);
     }
+    assert_eq!(level, 3);
 }
 
 #[test]
 fn update_entry_match_beginning_longest_match() {
-    let dirs = ~[LogDirective {name: Some(~"crate1::mod1"), level: 2 },
-                 LogDirective {name: Some(~"crate2"), level: 3},
-                 LogDirective {name: Some(~"crate2::mod"), level: 4}];
-    let level = &mut 0;
-    unsafe {
-        let entry = &ModEntry {name: "crate2::mod1", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == 4);
-        assert!(m == 1);
+    let dirs = [LogDirective { name: Some("crate1::mod1"), level: 2 },
+                LogDirective { name: Some("crate2"), level: 3 },
+                LogDirective { name: Some("crate2::mod"), level: 4 }];
+    let mut level = 0;
+    {
+        let entry = &ModEntry { name: "crate2::mod1", log_level: &mut level };
+        assert_eq!(update_entry(dirs, entry), 1);
     }
+    assert_eq!(level, 4);
 }
 
 #[test]
 fn update_entry_match_default() {
-    let dirs = ~[LogDirective {name: Some(~"crate1::mod1"), level: 2 },
-                 LogDirective {name: None, level: 3}
-                ];
-    let level = &mut 0;
-    unsafe {
-        let entry= &ModEntry {name: "crate1::mod1", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == 2);
-        assert!(m == 1);
-        let entry= &ModEntry {name: "crate2::mod2", log_level: level};
-        let m = update_entry(dirs, transmute(entry));
-        assert!(*entry.log_level == 3);
-        assert!(m == 1);
+    let dirs = [LogDirective { name: Some("crate1::mod1"), level: 2 },
+                LogDirective { name: None, level: 3 }];
+    let mut level = 0;
+    {
+        let entry = &ModEntry { name: "crate1::mod1", log_level: &mut level };
+        assert_eq!(update_entry(dirs, entry), 1);
     }
+    assert_eq!(level, 2);
+    {
+        let entry = &ModEntry { name: "crate2::mod2", log_level: &mut level };
+        assert_eq!(update_entry(dirs, entry), 1);
+    }
+    assert_eq!(level, 3);
 }

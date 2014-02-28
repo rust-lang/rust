@@ -123,7 +123,7 @@ fn version(crate_map: &CrateMap) -> i32 {
 
 fn do_iter_crate_map<'a>(
                      crate_map: &'a CrateMap<'a>,
-                     f: |&ModEntry|,
+                     f: |&'a ModEntry<'a>|,
                      visited: &mut ~[*CrateMap<'a>]) {
     let raw = crate_map as *CrateMap<'a>;
     if visited.bsearch(|a| (*a as uint).cmp(&(raw as uint))).is_some() {
@@ -149,7 +149,7 @@ fn do_iter_crate_map<'a>(
 }
 
 /// Iterates recursively over `crate_map` and all child crate maps
-pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&ModEntry|) {
+pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&'a ModEntry<'a>|) {
     let mut v = ~[];
     do_iter_crate_map(crate_map, f, &mut v);
 }
