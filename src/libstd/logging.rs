@@ -166,9 +166,7 @@ pub fn log(level: u32, args: &fmt::Arguments) {
     };
 
     if logger.is_none() {
-        logger = Some(~DefaultLogger {
-            handle: LineBufferedWriter::new(io::stderr()),
-        } as ~Logger);
+        logger = Some(~DefaultLogger { handle: io::stderr(), } as ~Logger);
     }
     logger.get_mut_ref().log(level, args);
 

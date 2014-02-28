@@ -297,8 +297,7 @@ pub fn run_compiler(args: &[~str]) {
         match input {
           d::FileInput(ref ifile) => {
             let mut stdout = io::stdout();
-            d::list_metadata(sess, &(*ifile),
-                             &mut stdout as &mut io::Writer).unwrap();
+            d::list_metadata(sess, &(*ifile), &mut stdout).unwrap();
           }
           d::StrInput(_) => {
             d::early_error("can not list metadata for stdin");
