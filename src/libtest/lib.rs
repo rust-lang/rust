@@ -8,10 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Support code for rustc's built in test runner generator. Currently,
-// none of this is meant for users. It is intended to support the
-// simplest interface possible for representing and running tests
-// while providing a base that other test frameworks may build off of.
+//! Support code for rustc's built in unit-test and micro-benchmarking
+//! framework.
+//!
+//! Almost all user code will only be interested in `BenchHarness` and
+//! `black_box`. All other interactions (such as writing tests and
+//! benchmarks themselves) should be done via the `#[test]` and
+//! `#[bench]` attributes.
+//!
+//! See the [Testing Guide](../guide-testing.html) for more details.
+
+// Currently, not much of this is meant for users. It is intended to
+// support the simplest interface possible for representing and
+// running tests while providing a base that other test frameworks may
+// build off of.
 
 #[crate_id = "test#0.10-pre"];
 #[comment = "Rust internal test library only used by rustc"];
@@ -127,7 +137,11 @@ impl TestFn {
     }
 }
 
-// Structure passed to BenchFns
+/// Manager of the benchmarking runs.
+///
+/// This is feed into functions marked with `#[bench]` to allow for
+/// set-up & tear-down before running a piece of code repeatedly via a
+/// call to `iter`.
 pub struct BenchHarness {
     priv iterations: u64,
     priv ns_start: u64,
@@ -1575,4 +1589,3 @@ mod tests {
         assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
     }
 }
-
