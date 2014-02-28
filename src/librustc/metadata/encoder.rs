@@ -13,6 +13,7 @@
 #[allow(unused_must_use)]; // everything is just a MemWriter, can't fail
 #[allow(non_camel_case_types)];
 
+use back::svh::Svh;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -40,6 +41,7 @@ use syntax::ast_util::*;
 use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
+use syntax::crateid::CrateId;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::InternedString;
 use syntax::parse::token::special_idents;
@@ -1510,8 +1512,7 @@ fn encode_crate_deps(ebml_w: &mut writer::Encoder, cstore: &cstore::CStore) {
         cstore.iter_crate_data(|key, val| {
             let dep = decoder::CrateDep {
                 cnum: key,
-                name: token::str_to_ident(val.name),
-                vers: decoder::get_crate_vers(val.data()),
+                crate_id: decoder::get_crate_id(val.data()),
                 hash: decoder::get_crate_hash(val.data())
             };
             deps.push(dep);
@@ -1729,22 +1730,24 @@ fn encode_misc_info(ecx: &EncodeContext,
 fn encode_crate_dep(ebml_w: &mut writer::Encoder,
                     dep: decoder::CrateDep) {
     ebml_w.start_tag(tag_crate_dep);
-    ebml_w.start_tag(tag_crate_dep_name);
-    let s = token::get_ident(dep.name);
-    ebml_w.writer.write(s.get().as_bytes());
-    ebml_w.end_tag();
-    ebml_w.start_tag(tag_crate_dep_vers);
-    ebml_w.writer.write(dep.vers.as_bytes());
+    ebml_w.start_tag(tag_crate_dep_crateid);
+    ebml_w.writer.write(dep.crate_id.to_str().as_bytes());
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
-    ebml_w.writer.write(dep.hash.as_bytes());
+    ebml_w.writer.write(dep.hash.as_str().as_bytes());
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
-fn encode_hash(ebml_w: &mut writer::Encoder, hash: &str) {
+fn encode_hash(ebml_w: &mut writer::Encoder, hash: &Svh) {
     ebml_w.start_tag(tag_crate_hash);
-    ebml_w.writer.write(hash.as_bytes());
+    ebml_w.writer.write(hash.as_str().as_bytes());
+    ebml_w.end_tag();
+}
+
+fn encode_crate_id(ebml_w: &mut writer::Encoder, crate_id: &CrateId) {
+    ebml_w.start_tag(tag_crate_crateid);
+    ebml_w.writer.write(crate_id.to_str().as_bytes());
     ebml_w.end_tag();
 }
 
@@ -1806,7 +1809,8 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
     let mut ebml_w = writer::Encoder(wr);
 
-    encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
+    encode_crate_id(&mut ebml_w, &ecx.link_meta.crateid);
+    encode_hash(&mut ebml_w, &ecx.link_meta.crate_hash);
 
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);
