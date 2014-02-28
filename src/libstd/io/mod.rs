@@ -174,7 +174,6 @@ will also return an error.
 
 */
 
-#[allow(missing_doc)];
 #[deny(unused_must_use)];
 
 use cast;
@@ -247,6 +246,7 @@ mod comm_adapters;
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
+/// A convenient typedef of the return value of any I/O action.
 pub type IoResult<T> = Result<T, IoError>;
 
 /// The type passed to I/O condition handlers to indicate error
@@ -256,8 +256,12 @@ pub type IoResult<T> = Result<T, IoError>;
 /// Is something like this sufficient? It's kind of archaic
 #[deriving(Eq, Clone)]
 pub struct IoError {
+    /// An enumeration which can be matched against for determining the flavor
+    /// of error.
     kind: IoErrorKind,
+    /// A human-readable description about the error
     desc: &'static str,
+    /// Detailed information about this error, not always available
     detail: Option<~str>
 }
 
@@ -272,6 +276,7 @@ impl fmt::Show for IoError {
 }
 
 #[deriving(Eq, Clone, Show)]
+#[allow(missing_doc)]
 pub enum IoErrorKind {
     OtherIoError,
     EndOfFile,
@@ -292,6 +297,13 @@ pub enum IoErrorKind {
     InvalidInput,
 }
 
+/// A trait for objects which are byte-oriented streams. Readers are defined by
+/// one method, `read`. This function will block until data is available,
+/// filling in the provided buffer with any data read.
+///
+/// Readers are intended to be composable with one another. Many objects
+/// throughout the I/O and related libraries take and provide types which
+/// implement the `Reader` trait.
 pub trait Reader {
 
     // Only method which need to get implemented for this trait
@@ -655,8 +667,33 @@ impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
+/// A `RefReader` is a struct implementing `Reader` which contains a reference
+/// to another reader. This is often useful when composing streams.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn process_input<R: Reader>(r: R) {}
+/// # fn foo() {
+/// use std::io;
+/// use std::io::util::LimitReader;
+///
+/// let mut stream = io::stdin();
+///
+/// // Only allow the function to process at most one kilobyte of input
+/// {
+///     let stream = LimitReader::new(stream.by_ref(), 1024);
+///     process_input(stream);
+/// }
+///
+/// // 'stream' is still available for use here
+///
+/// # }
+/// ```
 pub struct RefReader<'a, R> {
-    priv inner: &'a mut R
+    /// The underlying reader which this is referencing
+    inner: &'a mut R
 }
 
 impl<'a, R: Reader> Reader for RefReader<'a, R> {
@@ -668,6 +705,16 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
     (val << shift) as i64 >> shift
 }
 
+/// A trait for objects which are byte-oriented streams. Writers are defined by
+/// one method, `write`. This function will block until the provided buffer of
+/// bytes has been entirely written, and it will return any failurs which occur.
+///
+/// Another commonly overriden method is the `flush` method for writers such as
+/// buffered writers.
+///
+/// Writers are intended to be composable with one another. Many objects
+/// throughout the I/O and related libraries take and provide types which
+/// implement the `Writer` trait.
 pub trait Writer {
     /// Write the entirety of a given buffer
     ///
@@ -863,7 +910,32 @@ impl<'a> Writer for &'a mut Writer {
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
+/// A `RefWriter` is a struct implementing `Writer` which contains a reference
+/// to another writer. This is often useful when composing streams.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn process_input<R: Reader>(r: R) {}
+/// # fn foo () {
+/// use std::io::util::TeeReader;
+/// use std::io::{stdin, MemWriter};
+///
+/// let mut output = MemWriter::new();
+///
+/// {
+///     // Don't give ownership of 'output' to the 'tee'. Instead we keep a
+///     // handle to it in the outer scope
+///     let mut tee = TeeReader::new(stdin(), output.by_ref());
+///     process_input(tee);
+/// }
+///
+/// println!("input processed: {}", output.unwrap());
+/// # }
+/// ```
 pub struct RefWriter<'a, W> {
+    /// The underlying writer which this is referencing
     inner: &'a mut W
 }
 
@@ -873,6 +945,8 @@ impl<'a, W: Writer> Writer for RefWriter<'a, W> {
 }
 
 
+/// A Stream is a readable and a writable object. Data written is typically
+/// received by the object which reads receive data from.
 pub trait Stream: Reader + Writer { }
 
 impl<T: Reader + Writer> Stream for T {}
@@ -1070,7 +1144,8 @@ pub trait Buffer: Reader {
         }
     }
 
-    /// Create an iterator that reads a utf8-encoded character on each iteration until EOF.
+    /// Create an iterator that reads a utf8-encoded character on each iteration
+    /// until EOF.
     ///
     /// # Error
     ///
@@ -1082,6 +1157,8 @@ pub trait Buffer: Reader {
     }
 }
 
+/// When seeking, the resulting cursor is offset from a base by the offset given
+/// to the `seek` function. The base used is specified by this enumeration.
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1091,6 +1168,9 @@ pub enum SeekStyle {
     SeekCur,
 }
 
+/// An object implementing `Seek` internally has some form of cursor which can
+/// be moved within a stream of bytes. The stream typically has a fixed size,
+/// allowing seeking relative to either end.
 pub trait Seek {
     /// Return position of file cursor in the stream
     fn tell(&self) -> IoResult<u64>;
@@ -1157,6 +1237,17 @@ impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A>
     }
 }
 
+/// Creates a standard error for a commonly used flavor of error. The `detail`
+/// field of the returned error will always be `None`.
+///
+/// # Example
+///
+/// ```
+/// use std::io;
+///
+/// let eof = io::standard_error(io::EndOfFile);
+/// let einval = io::standard_error(io::InvalidInput);
+/// ```
 pub fn standard_error(kind: IoErrorKind) -> IoError {
     let desc = match kind {
         EndOfFile => "end of file",
@@ -1168,14 +1259,6 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
         kind: kind,
         desc: desc,
         detail: None,
-    }
-}
-
-pub fn placeholder_error() -> IoError {
-    IoError {
-        kind: OtherIoError,
-        desc: "Placeholder error. You shouldn't be seeing this",
-        detail: None
     }
 }
 
@@ -1194,22 +1277,53 @@ pub enum FileMode {
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
 pub enum FileAccess {
+    /// Read-only access, requests to write will result in an error
     Read,
+    /// Write-only access, requests to read will result in an error
     Write,
+    /// Read-write access, no requests are denied by default
     ReadWrite,
 }
 
 /// Different kinds of files which can be identified by a call to stat
 #[deriving(Eq)]
 pub enum FileType {
+    /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
+
+    /// This file is a directory, corresponding to `S_IFDIR`
     TypeDirectory,
+
+    /// This file is a named pipe, corresponding to `S_IFIFO`
     TypeNamedPipe,
+
+    /// This file is a block device, corresponding to `S_IFBLK`
     TypeBlockSpecial,
+
+    /// This file is a symbolic link to another file, corresponding to `S_IFLNK`
     TypeSymlink,
+
+    /// The type of this file is not recognized as one of the other categories
     TypeUnknown,
 }
 
+/// A structure used to describe metadata information about a file. This
+/// structure is created through the `stat` method on a `Path`.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn foo() {
+/// let info = match Path::new("foo.txt").stat() {
+///     Ok(stat) => stat,
+///     Err(e) => fail!("couldn't read foo.txt: {}", e),
+/// };
+///
+/// println!("path: {}", info.path.display());
+/// println!("byte size: {}", info.size);
+/// # }
+/// ```
 pub struct FileStat {
     /// The path that this stat structure is describing
     path: Path,
@@ -1250,6 +1364,7 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
+#[allow(missing_doc)]
 pub struct UnstableFileStat {
     device: u64,
     inode: u64,

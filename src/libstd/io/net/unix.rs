@@ -22,6 +22,8 @@ instances as clients.
 
 */
 
+#[allow(missing_doc)];
+
 use prelude::*;
 
 use c_str::ToCStr;

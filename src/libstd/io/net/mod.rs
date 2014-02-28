@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Networking I/O
+
 pub use self::addrinfo::get_host_addresses;
 
 pub mod addrinfo;

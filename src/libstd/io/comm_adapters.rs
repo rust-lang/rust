@@ -42,6 +42,7 @@ pub struct PortReader {
 }
 
 impl PortReader {
+    /// Wraps a `Port` in a `PortReader` structure
     pub fn new(port: Port<~[u8]>) -> PortReader {
         PortReader {
             buf: None,
@@ -96,10 +97,11 @@ impl Reader for PortReader {
 /// writer.write("hello, world".as_bytes());
 /// ```
 pub struct ChanWriter {
-    chan: Chan<~[u8]>,
+    priv chan: Chan<~[u8]>,
 }
 
 impl ChanWriter {
+    /// Wraps a channel in a `ChanWriter` structure
     pub fn new(chan: Chan<~[u8]>) -> ChanWriter {
         ChanWriter { chan: chan }
     }

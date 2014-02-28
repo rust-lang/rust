@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use clone::Clone;
 use result::{Ok, Err};
 use io::net::ip::SocketAddr;
