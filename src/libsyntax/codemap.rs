@@ -420,10 +420,10 @@ impl CodeMap {
     fn lookup_pos(&self, pos: BytePos) -> Loc {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
-        let chpos = self.bytepos_to_charpos(pos);
+        let chpos = self.bytepos_to_file_charpos(pos);
         let lines = f.lines.borrow();
         let linebpos = lines.get()[a];
-        let linechpos = self.bytepos_to_charpos(linebpos);
+        let linechpos = self.bytepos_to_file_charpos(linebpos);
         debug!("codemap: byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
         debug!("codemap: char pos {:?} is on the line at char pos {:?}",
@@ -446,8 +446,8 @@ impl CodeMap {
         return FileMapAndBytePos {fm: fm, pos: offset};
     }
 
-    // Converts an absolute BytePos to a CharPos relative to the codemap.
-    fn bytepos_to_charpos(&self, bpos: BytePos) -> CharPos {
+    // Converts an absolute BytePos to a CharPos relative to the filemap.
+    fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
@@ -471,7 +471,8 @@ impl CodeMap {
             }
         }
 
-        CharPos(bpos.to_uint() - total_extra_bytes)
+        assert!(map.start_pos.to_uint() + total_extra_bytes <= bpos.to_uint());
+        CharPos(bpos.to_uint() - map.start_pos.to_uint() - total_extra_bytes)
     }
 }
 
@@ -501,7 +502,7 @@ mod test {
         fm.next_line(BytePos(2));
     }
 
-    fn init_code_map() ->CodeMap {
+    fn init_code_map() -> CodeMap {
         let cm = CodeMap::new();
         let fm1 = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
         let fm2 = cm.new_filemap(~"empty.rs",~"");
@@ -532,14 +533,14 @@ mod test {
 
     #[test]
     fn t4() {
-        // Test bytepos_to_charpos
+        // Test bytepos_to_file_charpos
         let cm = init_code_map();
 
-        let cp1 = cm.bytepos_to_charpos(BytePos(22));
+        let cp1 = cm.bytepos_to_file_charpos(BytePos(22));
         assert_eq!(cp1, CharPos(22));
 
-        let cp2 = cm.bytepos_to_charpos(BytePos(23));
-        assert_eq!(cp2, CharPos(23));
+        let cp2 = cm.bytepos_to_file_charpos(BytePos(23));
+        assert_eq!(cp2, CharPos(0));
     }
 
     #[test]
@@ -556,5 +557,46 @@ mod test {
         assert_eq!(loc2.file.name, ~"blork2.rs");
         assert_eq!(loc2.line, 1);
         assert_eq!(loc2.col, CharPos(0));
+    }
+
+    fn init_code_map_mbc() -> CodeMap {
+        let cm = CodeMap::new();
+        // € is a three byte utf8 char.
+        let fm1 = cm.new_filemap(~"blork.rs",~"fir€st €€€€ line.\nsecond line");
+        let fm2 = cm.new_filemap(~"blork2.rs",~"first line€€.\n€ second line");
+
+        fm1.next_line(BytePos(0));
+        fm1.next_line(BytePos(22));
+        fm2.next_line(BytePos(39));
+        fm2.next_line(BytePos(57));
+
+        fm1.record_multibyte_char(BytePos(3), 3);
+        fm1.record_multibyte_char(BytePos(9), 3);
+        fm1.record_multibyte_char(BytePos(12), 3);
+        fm1.record_multibyte_char(BytePos(15), 3);
+        fm1.record_multibyte_char(BytePos(18), 3);
+        fm2.record_multibyte_char(BytePos(49), 3);
+        fm2.record_multibyte_char(BytePos(52), 3);
+        fm2.record_multibyte_char(BytePos(57), 3);
+
+        cm
+    }
+
+    #[test]
+    fn t6() {
+        // Test bytepos_to_file_charpos in the presence of multi-byte chars
+        let cm = init_code_map_mbc();
+
+        let cp1 = cm.bytepos_to_file_charpos(BytePos(3));
+        assert_eq!(cp1, CharPos(3));
+
+        let cp2 = cm.bytepos_to_file_charpos(BytePos(6));
+        assert_eq!(cp2, CharPos(4));
+
+        let cp3 = cm.bytepos_to_file_charpos(BytePos(55));
+        assert_eq!(cp3, CharPos(12));
+
+        let cp4 = cm.bytepos_to_file_charpos(BytePos(60));
+        assert_eq!(cp4, CharPos(15));
     }
 }
