@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(missing_doc)];
+#[allow(visible_private_types)];
 
 use serialize::json;
 use serialize::json::ToJson;
