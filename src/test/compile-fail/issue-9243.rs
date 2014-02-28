@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+// Regresion test for issue 9243
 
-static x: ~[int] = ~[123, 456]; //~ ERROR: static items are not allowed to have owned pointers
+struct Test {
+    mem: int,
+}
+
+pub static g_test: Test = Test {mem: 0}; //~ ERROR static items are not allowed to have destructors
+
+impl Drop for Test {
+    fn drop(&mut self) {}
+}
 
 fn main() {}

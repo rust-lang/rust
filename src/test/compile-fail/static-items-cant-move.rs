@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+// Verifies that static items can't be moved
 
-static x: ~[int] = ~[123, 456]; //~ ERROR: static items are not allowed to have owned pointers
+use std::kinds::marker;
 
-fn main() {}
+struct Foo {
+    foo: int,
+    nopod: marker::NoPod
+}
+
+static BAR: Foo = Foo{foo: 5, nopod: marker::NoPod};
+
+
+fn test(f: Foo) {
+    let _f = Foo{foo: 4, ..f};
+}
+
+fn main() {
+    test(BAR); //~ ERROR cannot move out of static item
+}

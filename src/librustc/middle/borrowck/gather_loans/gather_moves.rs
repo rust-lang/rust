@@ -104,7 +104,7 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::GcPtr) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_upvar(..) |
+        mc::cat_upvar(..) | mc::cat_static_item |
         mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
             bccx.span_err(
                 cmt0.span,
@@ -117,19 +117,6 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
         // type is 'once'. 1-shot stack closures emit the copied_upvar form
         // (see mem_categorization.rs).
         mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Once, .. }) => {
-            true
-        }
-
-        // It seems strange to allow a move out of a static item,
-        // but what happens in practice is that you have a
-        // reference to a constant with a type that should be
-        // moved, like `None::<~int>`.  The type of this constant
-        // is technically `Option<~int>`, which moves, but we know
-        // that the content of static items will never actually
-        // contain allocated pointers, so we can just memcpy it.
-        // Since static items can never have allocated memory,
-        // this is ok. For now anyhow.
-        mc::cat_static_item => {
             true
         }
 

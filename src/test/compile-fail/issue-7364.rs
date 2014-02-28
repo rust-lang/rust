@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,10 @@
 
 #[feature(managed_boxes)];
 
-static x: ~[int] = ~[123, 456]; //~ ERROR: static items are not allowed to have owned pointers
+use std::cell::RefCell;
 
-fn main() {}
+// Regresion test for issue 7364
+static managed: @RefCell<int> = @RefCell::new(0);
+//~^ ERROR static items are not allowed to have managed pointers
+
+fn main() { }

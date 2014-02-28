@@ -1950,6 +1950,10 @@ impl TypeContents {
         self.intersects(TC::OwnsManaged)
     }
 
+    pub fn owns_owned(&self) -> bool {
+        self.intersects(TC::OwnsOwned)
+    }
+
     pub fn is_freezable(&self, _: ctxt) -> bool {
         !self.intersects(TC::Nonfreezable)
     }
@@ -2012,6 +2016,10 @@ impl TypeContents {
     pub fn inverse(&self) -> TypeContents {
         TypeContents { bits: !self.bits }
     }
+
+    pub fn has_dtor(&self) -> bool {
+        self.intersects(TC::OwnsDtor)
+    }
 }
 
 impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
@@ -2036,6 +2044,10 @@ impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f.buf, "TypeContents({:t})", self.bits)
     }
+}
+
+pub fn type_has_dtor(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).has_dtor()
 }
 
 pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
@@ -2622,61 +2634,6 @@ pub fn type_is_machine(ty: t) -> bool {
         ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
     }
-}
-
-// Whether a type is Plain Old Data -- meaning it does not contain pointers
-// that the cycle collector might care about.
-pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
-    let mut result = true;
-    match get(ty).sty {
-      // Scalar types
-      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_ptr(_) | ty_bare_fn(_) => result = true,
-      // Boxed types
-      ty_box(_) | ty_uniq(_) | ty_closure(_) |
-      ty_str(vstore_uniq) |
-      ty_vec(_, vstore_uniq) |
-      ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
-      // Structural types
-      ty_enum(did, ref substs) => {
-        let variants = enum_variants(cx, did);
-        for variant in (*variants).iter() {
-            // FIXME(pcwalton): This is an inefficient way to do this. Don't
-            // synthesize a tuple!
-            //
-            // Perform any type parameter substitutions.
-            let tup_ty = mk_tup(cx, variant.args.clone());
-            let tup_ty = subst(cx, substs, tup_ty);
-            if !type_is_pod(cx, tup_ty) { result = false; }
-        }
-      }
-      ty_tup(ref elts) => {
-        for elt in elts.iter() { if !type_is_pod(cx, *elt) { result = false; } }
-      }
-      ty_str(vstore_fixed(_)) => result = true,
-      ty_vec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
-        result = type_is_pod(cx, mt.ty);
-      }
-      ty_param(_) => result = false,
-      ty_struct(did, ref substs) => {
-        let fields = lookup_struct_fields(cx, did);
-        result = fields.iter().all(|f| {
-            let fty = ty::lookup_item_type(cx, f.id);
-            let sty = subst(cx, substs, fty.ty);
-            type_is_pod(cx, sty)
-        });
-      }
-
-      ty_str(vstore_slice(..)) | ty_vec(_, vstore_slice(..)) => {
-        result = false;
-      }
-
-      ty_infer(..) | ty_self(..) | ty_err => {
-        cx.sess.bug("non concrete type in type_is_pod");
-      }
-    }
-
-    return result;
 }
 
 pub fn type_is_enum(ty: t) -> bool {
