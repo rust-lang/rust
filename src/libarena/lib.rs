@@ -25,7 +25,6 @@
 extern crate collections;
 
 use collections::list::{List, Cons, Nil};
-use collections::list;
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
@@ -44,7 +43,7 @@ use std::vec;
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-#[deriving(Clone)]
+#[deriving(Clone, Eq)]
 struct Chunk {
     data: Rc<RefCell<~[u8]>>,
     fill: Cell<uint>,
@@ -119,13 +118,11 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-
-            list::each(self.chunks.get(), |chunk| {
+            for chunk in self.chunks.get().iter() {
                 if !chunk.is_pod.get() {
                     destroy_chunk(chunk);
                 }
-                true
-            });
+            }
         }
     }
 }
