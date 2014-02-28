@@ -28,7 +28,7 @@ use t = syntax::parse::token;
 /// Highlights some source code, returning the HTML output.
 pub fn highlight(src: &str) -> ~str {
     let sess = parse::new_parse_sess();
-    let handler = diagnostic::mk_handler();
+    let handler = diagnostic::default_handler();
     let span_handler = diagnostic::mk_span_handler(handler, sess.cm);
     let fm = parse::string_to_filemap(sess, src.to_owned(), ~"<stdin>");
 
