@@ -17,6 +17,7 @@
 use std::fmt;
 use std::io::MemWriter;
 use std::io;
+use std::io::{stdio, BufferedReader, PortReader, ChanWriter};
 use std::str;
 
 struct A;
@@ -139,6 +140,7 @@ pub fn main() {
 
     test_write();
     test_print();
+    test_dump();
 
     // make sure that format! doesn't move out of local variables
     let a = ~3;
@@ -176,18 +178,43 @@ fn test_write() {
     t!(s, "34helloline\nbar\n");
 }
 
-// Just make sure that the macros are defined, there's not really a lot that we
-// can do with them just yet (to test the output)
 fn test_print() {
-    print!("hi");
-    print!("{:?}", ~[0u8]);
-    println!("hello");
-    println!("this is a {}", "test");
-    println!("{foo}", foo="bar");
+    let (p, c) = Chan::new();
+    let (mut r, w) = (BufferedReader::new(PortReader::new(p)), ChanWriter::new(c));
+    spawn(proc() {
+        stdio::set_stdout(~w as ~Writer);
+        print!("hi");
+        print!("{:?}", ~[0u8]);
+        println!("hello");
+        println!("this is a {}", "test");
+        println!("{foo}", foo="bar");
+    });
+    t!(r.read_line().unwrap(), "hi~[0u8]hello\n");
+    t!(r.read_line().unwrap(), "this is a test\n");
+    t!(r.read_line().unwrap(), "bar\n");
+    assert_eq!(r.read_byte().unwrap_err().kind, io::EndOfFile)
 }
 
-// Just make sure that the macros are defined, there's not really a lot that we
-// can do with them just yet (to test the output)
+fn test_dump() {
+    let (p, c) = Chan::new();
+    let (mut r, w) = (BufferedReader::new(PortReader::new(p)), ChanWriter::new(c));
+    spawn(proc() {
+        stdio::set_stdout(~w as ~Writer);
+        dump!("hello");
+        dump!(2u8, 2 + 2);
+        let val_a = ~[0u8];
+        let val_b = Some(3);
+        let val_c = true;
+        dump!(val_a, val_b, val_c);
+        dump!(bytes!("bye"));
+    });
+    t!(r.read_line().unwrap(), "\"hello\" = \"hello\"\n");
+    t!(r.read_line().unwrap(), "2u8 = 2u8, 2 + 2 = 4\n");
+    t!(r.read_line().unwrap(), "val_a = ~[0u8], val_b = Some(3), val_c = true\n");
+    t!(r.read_line().unwrap(), "bytes!(\"bye\") = &[98u8, 121u8, 101u8]\n");
+    assert_eq!(r.read_byte().unwrap_err().kind, io::EndOfFile)
+}
+
 fn test_format_args() {
     let mut buf = MemWriter::new();
     {
