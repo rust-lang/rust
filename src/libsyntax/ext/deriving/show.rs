@@ -135,5 +135,6 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // phew, not our responsibility any more!
     format::expand_preparsed_format_args(cx, span,
                                          format_closure,
-                                         format_string, exprs, HashMap::new())
+                                         format_string, exprs, ~[],
+                                         HashMap::new())
 }
