@@ -10,6 +10,8 @@
 
 //! Utility mixins that apply to all Readers and Writers
 
+#[allow(missing_doc)];
+
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
