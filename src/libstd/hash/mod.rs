@@ -70,6 +70,7 @@ use option::{Option, Some, None};
 use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
+use vec_ng::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
 pub use hash = self::sip::hash;
@@ -201,6 +202,13 @@ impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a mut [T] {
 }
 
 impl<S: Writer, T: Hash<S>> Hash<S> for ~[T] {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
+    }
+}
+
+impl<S: Writer, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         self.as_slice().hash(state);
