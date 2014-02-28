@@ -863,7 +863,11 @@ impl<'a> fmt::Show for Item<'a> {
         // Write the breadcrumb trail header for the top
         try!(write!(fmt.buf, "<h1 class='fqn'>"));
         match self.item.inner {
-            clean::ModuleItem(..) => try!(write!(fmt.buf, "Module ")),
+            clean::ModuleItem(ref m) => if m.is_crate {
+                    try!(write!(fmt.buf, "Crate "));
+                } else {
+                    try!(write!(fmt.buf, "Module "));
+                },
             clean::FunctionItem(..) => try!(write!(fmt.buf, "Function ")),
             clean::TraitItem(..) => try!(write!(fmt.buf, "Trait ")),
             clean::StructItem(..) => try!(write!(fmt.buf, "Struct ")),

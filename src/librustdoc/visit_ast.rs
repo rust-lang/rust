@@ -44,6 +44,7 @@ impl<'a> RustdocVisitor<'a> {
         self.module = self.visit_mod_contents(krate.span, krate.attrs.clone(),
                                               ast::Public, ast::CRATE_NODE_ID,
                                               &krate.module, None);
+        self.module.is_crate = true;
     }
 
     pub fn visit_struct_def(&mut self, item: &ast::Item, sd: @ast::StructDef,

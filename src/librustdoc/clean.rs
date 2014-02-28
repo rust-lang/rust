@@ -186,6 +186,7 @@ pub enum ItemEnum {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Module {
     items: ~[Item],
+    is_crate: bool,
 }
 
 impl Clean<Item> for doctree::Module {
@@ -202,6 +203,7 @@ impl Clean<Item> for doctree::Module {
             visibility: self.vis.clean(),
             id: self.id,
             inner: ModuleItem(Module {
+               is_crate: self.is_crate,
                items: [self.structs.clean(), self.enums.clean(),
                        self.fns.clean(), self.foreigns.clean().concat_vec(),
                        self.mods.clean(), self.typedefs.clean(),

@@ -33,6 +33,7 @@ pub struct Module {
     foreigns: ~[ast::ForeignMod],
     view_items: ~[ast::ViewItem],
     macros: ~[Macro],
+    is_crate: bool,
 }
 
 impl Module {
@@ -54,6 +55,7 @@ impl Module {
             view_items : ~[],
             foreigns   : ~[],
             macros     : ~[],
+            is_crate   : false,
         }
     }
 }
