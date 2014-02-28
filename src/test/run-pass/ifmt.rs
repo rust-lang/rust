@@ -139,6 +139,7 @@ pub fn main() {
 
     test_write();
     test_print();
+    test_order();
 
     // make sure that format! doesn't move out of local variables
     let a = ~3;
@@ -201,4 +202,19 @@ fn test_format_args() {
 
     let s = format_args!(fmt::format, "hello {}", "world");
     t!(s, "hello world");
+}
+
+fn test_order() {
+    // Make sure format!() arguments are always evaluated in a left-to-right
+    // ordering
+    fn foo() -> int {
+        static mut FOO: int = 0;
+        unsafe {
+            FOO += 1;
+            FOO
+        }
+    }
+    assert_eq!(format!("{} {} {a} {b} {} {c}",
+                       foo(), foo(), foo(), a=foo(), b=foo(), c=foo()),
+               ~"1 2 4 5 3 6");
 }

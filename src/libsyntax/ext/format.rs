@@ -43,9 +43,13 @@ struct Context<'a> {
     // them.
     args: ~[@ast::Expr],
     arg_types: ~[Option<ArgumentType>],
-    // Parsed named expressions and the types that we've found for them so far
+    // Parsed named expressions and the types that we've found for them so far.
+    // Note that we keep a side-array of the ordering of the named arguments
+    // found to be sure that we can translate them in the same order that they
+    // were declared in.
     names: HashMap<~str, @ast::Expr>,
     name_types: HashMap<~str, ArgumentType>,
+    name_ordering: ~[~str],
 
     // Collection of the compiled `rt::Piece` structures
     pieces: ~[@ast::Expr],
@@ -63,12 +67,15 @@ struct Context<'a> {
 ///
 /// If parsing succeeds, the second return value is:
 ///
-///     Some((fmtstr, unnamed arguments, named arguments))
-fn parse_args(ecx: &mut ExtCtxt, sp: Span,
-              tts: &[ast::TokenTree]) -> (@ast::Expr, Option<(@ast::Expr, ~[@ast::Expr],
-                                                              HashMap<~str, @ast::Expr>)>) {
+///     Some((fmtstr, unnamed arguments, ordering of named arguments,
+///           named arguments))
+fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+    -> (@ast::Expr, Option<(@ast::Expr, ~[@ast::Expr], ~[~str],
+                            HashMap<~str, @ast::Expr>)>)
+{
     let mut args = ~[];
     let mut names = HashMap::<~str, @ast::Expr>::new();
+    let mut order = ~[];
 
     let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
                                              ecx.cfg(),
@@ -125,12 +132,13 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span,
                     continue
                 }
             }
+            order.push(name.to_str());
             names.insert(name.to_str(), e);
         } else {
             args.push(p.parse_expr());
         }
     }
-    return (extra, Some((fmtstr, args, names)));
+    return (extra, Some((fmtstr, args, order, names)));
 }
 
 impl<'a> Context<'a> {
@@ -661,10 +669,11 @@ impl<'a> Context<'a> {
             locals.push(self.format_arg(e.span, Exact(i),
                                         self.ecx.expr_ident(e.span, name)));
         }
-        for (name, &e) in self.names.iter() {
-            if !self.name_types.contains_key(name) {
-                continue
-            }
+        for name in self.name_ordering.iter() {
+            let e = match self.names.find(name) {
+                Some(&e) if self.name_types.contains_key(name) => e,
+                Some(..) | None => continue
+            };
 
             let lname = self.ecx.ident_of(format!("__arg{}", *name));
             pats.push(self.ecx.pat_ident(e.span, lname));
@@ -810,8 +819,9 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
                    tts: &[ast::TokenTree]) -> base::MacResult {
 
     match parse_args(ecx, sp, tts) {
-        (extra, Some((efmt, args, names))) => {
-            MRExpr(expand_preparsed_format_args(ecx, sp, extra, efmt, args, names))
+        (extra, Some((efmt, args, order, names))) => {
+            MRExpr(expand_preparsed_format_args(ecx, sp, extra, efmt, args,
+                                                order, names))
         }
         (_, None) => MRExpr(ecx.expr_uint(sp, 2))
     }
@@ -823,6 +833,7 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     extra: @ast::Expr,
                                     efmt: @ast::Expr, args: ~[@ast::Expr],
+                                    name_ordering: ~[~str],
                                     names: HashMap<~str, @ast::Expr>) -> @ast::Expr {
     let arg_types = vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
@@ -832,6 +843,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         names: names,
         name_positions: HashMap::new(),
         name_types: HashMap::new(),
+        name_ordering: name_ordering,
         nest_level: 0,
         next_arg: 0,
         pieces: ~[],
