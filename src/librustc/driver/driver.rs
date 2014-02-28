@@ -301,6 +301,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, krate);
 
+    time(time_passes, "check static items", (), |_|
+         middle::check_static::check_crate(ty_cx, krate));
+
     // These next two const passes can probably be merged
     time(time_passes, "const marking", (), |_|
          middle::const_eval::process_crate(krate, ty_cx));
