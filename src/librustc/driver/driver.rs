@@ -27,6 +27,7 @@ use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
+use util::nodemap::NodeSet;
 
 use serialize::{json, Encodable};
 
@@ -38,7 +39,7 @@ use std::os;
 use std::vec;
 use std::vec_ng::Vec;
 use std::vec_ng;
-use collections::{HashMap, HashSet};
+use collections::HashMap;
 use getopts::{optopt, optmulti, optflag, optflagopt, opt};
 use MaybeHasArg = getopts::Maybe;
 use OccurOptional = getopts::Optional;
@@ -258,7 +259,7 @@ pub struct CrateAnalysis {
     public_items: middle::privacy::PublicItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @RefCell<HashSet<ast::NodeId>>
+    reachable: @RefCell<NodeSet>,
 }
 
 /// Run the resolution, typechecking, region checking and other

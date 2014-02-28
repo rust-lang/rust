@@ -16,6 +16,7 @@ use middle::astencode;
 use middle::ty;
 use middle::typeck::astconv;
 use middle;
+use util::nodemap::{DefIdMap, NodeMap};
 
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
@@ -66,7 +67,7 @@ pub enum constness {
     non_const
 }
 
-type constness_cache = HashMap<ast::DefId, constness>;
+type constness_cache = DefIdMap<constness>;
 
 pub fn join(a: constness, b: constness) -> constness {
     match (a, b) {
@@ -134,9 +135,9 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(HashMap::new()),
-            vtable_map: @RefCell::new(HashMap::new()),
-            capture_map: @RefCell::new(HashMap::new())
+            method_map: @RefCell::new(NodeMap::new()),
+            vtable_map: @RefCell::new(NodeMap::new()),
+            capture_map: @RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a, b,
@@ -184,9 +185,9 @@ pub fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::DefId)
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(HashMap::new()),
-            vtable_map: @RefCell::new(HashMap::new()),
-            capture_map: @RefCell::new(HashMap::new())
+            method_map: @RefCell::new(NodeMap::new()),
+            vtable_map: @RefCell::new(NodeMap::new()),
+            capture_map: @RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
@@ -305,7 +306,7 @@ pub fn process_crate(krate: &ast::Crate,
                      tcx: ty::ctxt) {
     let mut v = ConstEvalVisitor {
         tcx: tcx,
-        ccache: HashMap::new(),
+        ccache: DefIdMap::new(),
     };
     visit::walk_crate(&mut v, krate, ());
     tcx.sess.abort_if_errors();

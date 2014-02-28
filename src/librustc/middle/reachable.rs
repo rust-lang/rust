@@ -18,6 +18,7 @@
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
+use util::nodemap::NodeSet;
 
 use std::cell::RefCell;
 use collections::HashSet;
@@ -88,7 +89,7 @@ struct ReachableContext {
     // methods they've been resolved to.
     method_map: typeck::MethodMap,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
+    reachable_symbols: @RefCell<NodeSet>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: @RefCell<~[ast::NodeId]>,
@@ -98,7 +99,7 @@ struct MarkSymbolVisitor {
     worklist: @RefCell<~[ast::NodeId]>,
     method_map: typeck::MethodMap,
     tcx: ty::ctxt,
-    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
+    reachable_symbols: @RefCell<NodeSet>,
 }
 
 impl Visitor<()> for MarkSymbolVisitor {
@@ -188,7 +189,7 @@ impl ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
-            reachable_symbols: @RefCell::new(HashSet::new()),
+            reachable_symbols: @RefCell::new(NodeSet::new()),
             worklist: @RefCell::new(~[]),
         }
     }
@@ -395,7 +396,7 @@ impl ReachableContext {
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::MethodMap,
                       exported_items: &privacy::ExportedItems)
-                      -> @RefCell<HashSet<ast::NodeId>> {
+                      -> @RefCell<NodeSet> {
     let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as

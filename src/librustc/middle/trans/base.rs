@@ -70,6 +70,7 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
@@ -1245,9 +1246,9 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
           llreturn: Cell::new(None),
           personality: Cell::new(None),
           caller_expects_out_pointer: uses_outptr,
-          llargs: RefCell::new(HashMap::new()),
-          lllocals: RefCell::new(HashMap::new()),
-          llupvars: RefCell::new(HashMap::new()),
+          llargs: RefCell::new(NodeMap::new()),
+          lllocals: RefCell::new(NodeMap::new()),
+          llupvars: RefCell::new(NodeMap::new()),
           id: id,
           param_substs: param_substs,
           span: sp,

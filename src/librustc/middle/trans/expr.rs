@@ -66,11 +66,10 @@ use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
+use util::nodemap::NodeMap;
 use middle::trans::machine::llsize_of;
-
 use middle::trans::type_::Type;
 
-use collections::HashMap;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -944,7 +943,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
     };
 
     fn take_local<'a>(bcx: &'a Block<'a>,
-                      table: &HashMap<ast::NodeId, Datum<Lvalue>>,
+                      table: &NodeMap<Datum<Lvalue>>,
                       nid: ast::NodeId)
                       -> Datum<Lvalue> {
         let datum = match table.find(&nid) {
