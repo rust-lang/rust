@@ -444,7 +444,7 @@ extern "rust-intrinsic" {
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
                   // middle/lang_items.rs
-#[deriving(Eq, Hash)]
+#[deriving(Eq, Hash, Show)]
 #[cfg(not(test))]
 pub struct TypeId {
     priv t: u64,

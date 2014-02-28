@@ -312,7 +312,7 @@ mod test {
     }
 
     #[test] fn path_exprs_1() {
-        assert_eq!(string_to_expr(~"a"),
+        assert!(string_to_expr(~"a") ==
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -331,7 +331,7 @@ mod test {
     }
 
     #[test] fn path_exprs_2 () {
-        assert_eq!(string_to_expr(~"::a::b"),
+        assert!(string_to_expr(~"::a::b") ==
                    @ast::Expr {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprPath(ast::Path {
@@ -542,7 +542,7 @@ mod test {
     }
 
     #[test] fn ret_expr() {
-        assert_eq!(string_to_expr(~"return d"),
+        assert!(string_to_expr(~"return d") ==
                    @ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(@ast::Expr{
@@ -565,7 +565,7 @@ mod test {
     }
 
     #[test] fn parse_stmt_1 () {
-        assert_eq!(string_to_stmt(~"b;"),
+        assert!(string_to_stmt(~"b;") ==
                    @Spanned{
                        node: ast::StmtExpr(@ast::Expr {
                            id: ast::DUMMY_NODE_ID,
@@ -592,7 +592,7 @@ mod test {
 
     #[test] fn parse_ident_pat () {
         let mut parser = string_to_parser(~"b");
-        assert_eq!(parser.parse_pat(),
+        assert!(parser.parse_pat() ==
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
                                 ast::BindByValue(ast::MutImmutable),
@@ -615,7 +615,7 @@ mod test {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "int"
-        assert_eq!(string_to_item(~"fn a (b : int) { b; }"),
+        assert!(string_to_item(~"fn a (b : int) { b; }") ==
                   Some(
                       @ast::Item{ident:str_to_ident("a"),
                             attrs:~[],

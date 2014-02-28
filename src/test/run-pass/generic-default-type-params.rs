@@ -50,10 +50,10 @@ fn default_foo(x: Foo) {
     assert_eq!(x.baz(), (1, 'a'));
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct BazHelper<T>(T);
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 // Ensure that we can use previous type parameters in defaults.
 struct Baz<T, U = BazHelper<T>, V = Option<U>>(T, U, V);
 

@@ -10,6 +10,7 @@
 
 use std::cmp;
 
+#[deriving(Show)]
 struct foo { a: int, b: int, c: int }
 
 impl cmp::Eq for foo {

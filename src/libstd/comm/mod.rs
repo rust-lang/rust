@@ -313,7 +313,7 @@ pub struct Chan<T> {
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, Show)]
 pub enum TryRecvResult<T> {
     /// This channel is currently empty, but the sender(s) have not yet
     /// disconnected, so data may yet become available.

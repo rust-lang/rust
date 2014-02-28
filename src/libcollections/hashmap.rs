@@ -1065,7 +1065,7 @@ mod test_map {
         let mut observed = 0;
         for (k, v) in m.iter() {
             assert_eq!(*v, *k * 2);
-            observed |= (1 << *k);
+            observed |= 1 << *k;
         }
         assert_eq!(observed, 0xFFFF_FFFF);
     }
@@ -1293,7 +1293,7 @@ mod test_set {
         }
         let mut observed = 0;
         for k in a.iter() {
-            observed |= (1 << *k);
+            observed |= 1 << *k;
         }
         assert_eq!(observed, 0xFFFF_FFFF);
     }

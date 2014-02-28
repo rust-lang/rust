@@ -409,6 +409,7 @@ mod tests {
     use deque::Deque;
     use std::clone::Clone;
     use std::cmp::Eq;
+    use std::fmt::Show;
     use super::RingBuf;
 
     #[test]
@@ -493,7 +494,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn test_parameterized<T:Clone + Eq>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T:Clone + Eq + Show>(a: T, b: T, c: T, d: T) {
         let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
         deq.push_front(a.clone());
@@ -578,21 +579,21 @@ mod tests {
         })
     }
 
-    #[deriving(Clone, Eq)]
+    #[deriving(Clone, Eq, Show)]
     enum Taggy {
         One(int),
         Two(int, int),
         Three(int, int, int),
     }
 
-    #[deriving(Clone, Eq)]
+    #[deriving(Clone, Eq, Show)]
     enum Taggypar<T> {
         Onepar(int),
         Twopar(int, int),
         Threepar(int, int, int),
     }
 
-    #[deriving(Clone, Eq)]
+    #[deriving(Clone, Eq, Show)]
     struct RecCy {
         x: int,
         y: int,
@@ -812,7 +813,7 @@ mod tests {
     #[test]
     fn test_eq() {
         let mut d = RingBuf::new();
-        assert_eq!(&d, &RingBuf::with_capacity(0));
+        assert!(d == RingBuf::with_capacity(0));
         d.push_front(137);
         d.push_front(17);
         d.push_front(42);
@@ -822,11 +823,11 @@ mod tests {
         e.push_back(17);
         e.push_back(137);
         e.push_back(137);
-        assert_eq!(&e, &d);
+        assert!(&e == &d);
         e.pop_back();
         e.push_back(0);
         assert!(e != d);
         e.clear();
-        assert_eq!(e, RingBuf::new());
+        assert!(e == RingBuf::new());
     }
 }

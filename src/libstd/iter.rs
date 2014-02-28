@@ -983,7 +983,7 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `OrdIterator::min_max` for more detail.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub enum MinMaxResult<T> {
     /// Empty iterator
     NoElements,
@@ -2507,7 +2507,7 @@ mod tests {
                    .collect::<~[uint]>();
 
         assert_eq!(n, xs.len());
-        assert_eq!(xs, ys.as_slice());
+        assert_eq!(xs.as_slice(), ys.as_slice());
     }
 
     #[test]
@@ -2824,11 +2824,11 @@ mod tests {
         assert_eq!(len, b.indexable());
         let mut n = 0;
         for (i, elt) in a.enumerate() {
-            assert_eq!(Some(elt), b.idx(i));
+            assert!(Some(elt) == b.idx(i));
             n += 1;
         }
         assert_eq!(n, len);
-        assert_eq!(None, b.idx(n));
+        assert!(None == b.idx(n));
         // call recursively to check after picking off an element
         if len > 0 {
             b.next();
@@ -3051,7 +3051,7 @@ mod tests {
     fn test_reverse() {
         let mut ys = [1, 2, 3, 4, 5];
         ys.mut_iter().reverse_();
-        assert_eq!(ys, [5, 4, 3, 2, 1]);
+        assert!(ys == [5, 4, 3, 2, 1]);
     }
 
     #[test]

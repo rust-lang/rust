@@ -345,10 +345,10 @@ mod tests {
         assert!(!big.equals(&small));
 
         // TotalOrd
-        assert_eq!(small.cmp(&small), Equal);
-        assert_eq!(big.cmp(&big), Equal);
-        assert_eq!(small.cmp(&big), Less);
-        assert_eq!(big.cmp(&small), Greater);
+        assert!(small.cmp(&small) == Equal);
+        assert!(big.cmp(&big) == Equal);
+        assert!(small.cmp(&big) == Less);
+        assert!(big.cmp(&small) == Greater);
     }
 
     #[test]

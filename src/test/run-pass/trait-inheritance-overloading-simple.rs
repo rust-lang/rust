@@ -12,6 +12,7 @@ use std::cmp::Eq;
 
 trait MyNum : Eq { }
 
+#[deriving(Show)]
 struct MyInt { val: int }
 
 impl Eq for MyInt {
