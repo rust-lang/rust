@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
-The compiler code necessary for #[deriving(Decodable)]. See
+The compiler code necessary for `#[deriving(Decodable)]`. See
 encodable.rs for more.
 */
 

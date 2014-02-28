@@ -9,10 +9,10 @@
 // except according to those terms.
 
 /*!
-The compiler code necessary to implement the #[deriving] extensions.
+The compiler code necessary to implement the `#[deriving]` extensions.
 
 
-FIXME (#2810)--Hygiene. Search for "__" strings (in other files too).
+FIXME (#2810): hygiene. Search for "__" strings (in other files too).
 We also assume "extra" is the standard library, and "std" is the core
 library.
 

@@ -580,7 +580,7 @@ pub trait Unsigned { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `o` character
 #[allow(missing_doc)]
 pub trait Octal { fn fmt(&self, &mut Formatter) -> Result; }
-/// Format trait for the `b` character
+/// Format trait for the `t` character
 #[allow(missing_doc)]
 pub trait Binary { fn fmt(&self, &mut Formatter) -> Result; }
 /// Format trait for the `x` character

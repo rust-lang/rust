@@ -16,6 +16,7 @@ access to the fields of the 4 different sorts of structs and enum
 variants, as well as creating the method and impl ast instances.
 
 Supported features (fairly exhaustive):
+
 - Methods taking any number of parameters of any type, and returning
   any type, other than vectors, bottom and closures.
 - Generating `impl`s for types with type parameters and lifetimes
@@ -59,7 +60,7 @@ associated with. It is only not `None` when the associated field has
 an identifier in the source code. For example, the `x`s in the
 following snippet
 
-~~~notrust
+```rust
 struct A { x : int }
 
 struct B(int);
@@ -68,7 +69,7 @@ enum C {
     C0(int),
     C1 { x: int }
 }
-~~~
+```
 
 The `int`s in `B` and `C0` don't have an identifier, so the
 `Option<ident>`s would be `None` for them.
@@ -83,7 +84,7 @@ variants, it is represented as a count of 0.
 
 The following simplified `Eq` is used for in-code examples:
 
-~~~notrust
+```rust
 trait Eq {
     fn eq(&self, other: &Self);
 }
@@ -92,7 +93,7 @@ impl Eq for int {
         *self == *other
     }
 }
-~~~
+```
 
 Some examples of the values of `SubstructureFields` follow, using the
 above `Eq`, `A`, `B` and `C`.

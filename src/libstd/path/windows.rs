@@ -865,10 +865,42 @@ pub fn prefix(path: &Path) -> Option<PathPrefix> {
     path.prefix
 }
 
-/// Returns whether the Path's prefix is a verbatim prefix, i.e. \\?\
+/// Returns whether the Path's prefix is a verbatim prefix, i.e. `\\?\`
 #[inline]
 pub fn is_verbatim(path: &Path) -> bool {
     prefix_is_verbatim(path.prefix)
+}
+
+/// Returns the non-verbatim equivalent of the input path, if possible.
+/// If the input path is a device namespace path, None is returned.
+/// If the input path is not verbatim, it is returned as-is.
+/// If the input path is verbatim, but the same path can be expressed as
+/// non-verbatim, the non-verbatim version is returned.
+/// Otherwise, None is returned.
+pub fn make_non_verbatim(path: &Path) -> Option<Path> {
+    let new_path = match path.prefix {
+        Some(VerbatimPrefix(_)) | Some(DeviceNSPrefix(_)) => return None,
+        Some(UNCPrefix(_,_)) | Some(DiskPrefix) | None => return Some(path.clone()),
+        Some(VerbatimDiskPrefix) => {
+            // \\?\D:\
+            Path::new(path.repr.slice_from(4))
+        }
+        Some(VerbatimUNCPrefix(_,_)) => {
+            // \\?\UNC\server\share
+            Path::new(format!(r"\\{}", path.repr.slice_from(7)))
+        }
+    };
+    if new_path.prefix.is_none() {
+        // \\?\UNC\server is a VerbatimUNCPrefix
+        // but \\server is nothing
+        return None;
+    }
+    // now ensure normalization didn't change anything
+    if path.repr.slice_from(path.prefix_len()) == new_path.repr.slice_from(new_path.prefix_len()) {
+        Some(new_path)
+    } else {
+        None
+    }
 }
 
 /// The standard path separator character
@@ -926,7 +958,6 @@ pub enum PathPrefix {
     DiskPrefix
 }
 
-// FIXME (#8169): Make private once visibility is fixed
 fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     if path.starts_with("\\\\") {
         // \\
@@ -2284,5 +2315,39 @@ mod tests {
         t!(s: "a\\b\\c", [b!("a"), b!("b"), b!("c")]);
         t!(s: ".", [b!(".")]);
         // since this is really a wrapper around str_components, those tests suffice
+    }
+
+    #[test]
+    fn test_make_non_verbatim() {
+        macro_rules! t(
+            ($path:expr, $exp:expr) => (
+                {
+                    let path = Path::new($path);
+                    let exp: Option<&str> = $exp;
+                    let exp = exp.map(|s| Path::new(s));
+                    assert_eq!(make_non_verbatim(&path), exp);
+                }
+            )
+        )
+
+        t!(r"\a\b\c", Some(r"\a\b\c"));
+        t!(r"a\b\c", Some(r"a\b\c"));
+        t!(r"C:\a\b\c", Some(r"C:\a\b\c"));
+        t!(r"C:a\b\c", Some(r"C:a\b\c"));
+        t!(r"\\server\share\foo", Some(r"\\server\share\foo"));
+        t!(r"\\.\foo", None);
+        t!(r"\\?\foo", None);
+        t!(r"\\?\C:", None);
+        t!(r"\\?\C:foo", None);
+        t!(r"\\?\C:\", Some(r"C:\"));
+        t!(r"\\?\C:\foo", Some(r"C:\foo"));
+        t!(r"\\?\C:\foo\bar\baz", Some(r"C:\foo\bar\baz"));
+        t!(r"\\?\C:\foo\.\bar\baz", None);
+        t!(r"\\?\C:\foo\bar\..\baz", None);
+        t!(r"\\?\C:\foo\bar\..", None);
+        t!(r"\\?\UNC\server\share\foo", Some(r"\\server\share\foo"));
+        t!(r"\\?\UNC\server\share", Some(r"\\server\share"));
+        t!(r"\\?\UNC\server", None);
+        t!(r"\\?\UNC\server\", None);
     }
 }
