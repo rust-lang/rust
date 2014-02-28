@@ -2453,7 +2453,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {
-        symname("_rust_crate_map_" + mapmeta.crateid.name, mapmeta.crate_hash,
+        symname("_rust_crate_map_" + mapmeta.crateid.name,
+                mapmeta.crate_hash.as_str(),
                 mapmeta.crateid.version_or_default())
     };
 
@@ -2487,8 +2488,8 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     while cstore.have_crate_data(i) {
         let cdata = cstore.get_crate_data(i);
         let nm = symname(format!("_rust_crate_map_{}", cdata.name),
-                         cstore.get_crate_hash(i),
-                         cstore.get_crate_vers(i));
+                         cstore.get_crate_hash(i).as_str(),
+                         cstore.get_crate_id(i).version_or_default());
         let cr = nm.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
@@ -2609,9 +2610,7 @@ pub fn trans_crate(sess: session::Session,
         }
     }
 
-    let mut symbol_hasher = Sha256::new();
-    let link_meta = link::build_link_meta(krate.attrs, output,
-                                          &mut symbol_hasher);
+    let link_meta = link::build_link_meta(&krate, output);
 
     // Append ".rs" to crate name as LLVM module identifier.
     //
@@ -2621,16 +2620,16 @@ pub fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.crateid.name.clone() + ".rs";
+    let llmod_id = link_meta.crateid.name + ".rs";
 
     let ccx = @CrateContext::new(sess,
-                                     llmod_id,
-                                     analysis.ty_cx,
-                                     analysis.exp_map2,
-                                     analysis.maps,
-                                     symbol_hasher,
-                                     link_meta,
-                                     analysis.reachable);
+                                 llmod_id,
+                                 analysis.ty_cx,
+                                 analysis.exp_map2,
+                                 analysis.maps,
+                                 Sha256::new(),
+                                 link_meta,
+                                 analysis.reachable);
     {
         let _icx = push_ctxt("text");
         trans_mod(ccx, &krate.module);
