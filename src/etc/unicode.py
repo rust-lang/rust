@@ -376,6 +376,7 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
+#[allow(dead_code)];
 
 ''')
 
