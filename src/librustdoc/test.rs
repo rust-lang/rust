@@ -25,6 +25,7 @@ use rustc::metadata::creader::Loader;
 use getopts;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::codemap::CodeMap;
 
 use core;
 use clean;
@@ -35,7 +36,6 @@ use passes;
 use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
-    let parsesess = parse::new_parse_sess();
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
@@ -49,9 +49,12 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     };
 
 
+    let cm = @CodeMap::new();
     let diagnostic_handler = diagnostic::mk_handler();
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
+        diagnostic::mk_span_handler(diagnostic_handler, cm);
+    let parsesess = parse::new_parse_sess_special_handler(span_diagnostic_handler,
+                                                          cm);
 
     let sess = driver::build_session_(sessopts,
                                       Some(input_path),

@@ -11,12 +11,10 @@
 use codemap::{Pos, Span};
 use codemap;
 
-use std::cell::Cell;
+use std::cell::{RefCell, Cell};
 use std::fmt;
-use std::io::stdio::StdWriter;
 use std::io;
 use std::iter::range;
-use std::local_data;
 use term;
 
 static BUG_REPORT_URL: &'static str =
@@ -25,9 +23,9 @@ static BUG_REPORT_URL: &'static str =
 static MAX_LINES: uint = 6u;
 
 pub trait Emitter {
-    fn emit(&self, cmsp: Option<(&codemap::CodeMap, Span)>,
+    fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str, lvl: Level);
-    fn custom_emit(&self, cm: &codemap::CodeMap,
+    fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level);
 }
 
@@ -78,16 +76,16 @@ impl SpanHandler {
 // others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<uint>,
-    emit: DefaultEmitter,
+    emit: RefCell<~Emitter>,
 }
 
 impl Handler {
     pub fn fatal(&self, msg: &str) -> ! {
-        self.emit.emit(None, msg, Fatal);
+        self.emit.borrow_mut().get().emit(None, msg, Fatal);
         fail!(FatalError);
     }
     pub fn err(&self, msg: &str) {
-        self.emit.emit(None, msg, Error);
+        self.emit.borrow_mut().get().emit(None, msg, Error);
         self.bump_err_count();
     }
     pub fn bump_err_count(&self) {
@@ -112,10 +110,10 @@ impl Handler {
         self.fatal(s);
     }
     pub fn warn(&self, msg: &str) {
-        self.emit.emit(None, msg, Warning);
+        self.emit.borrow_mut().get().emit(None, msg, Warning);
     }
     pub fn note(&self, msg: &str) {
-        self.emit.emit(None, msg, Note);
+        self.emit.borrow_mut().get().emit(None, msg, Note);
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
@@ -127,11 +125,11 @@ impl Handler {
                 cmsp: Option<(&codemap::CodeMap, Span)>,
                 msg: &str,
                 lvl: Level) {
-        self.emit.emit(cmsp, msg, lvl);
+        self.emit.borrow_mut().get().emit(cmsp, msg, lvl);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: Span, msg: &str, lvl: Level) {
-        self.emit.custom_emit(cm, sp, msg, lvl);
+        self.emit.borrow_mut().get().custom_emit(cm, sp, msg, lvl);
     }
 }
 
@@ -148,10 +146,14 @@ pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
     }
 }
 
-pub fn mk_handler() -> @Handler {
+pub fn default_handler() -> @Handler {
+    mk_handler(~EmitterWriter::stderr())
+}
+
+pub fn mk_handler(e: ~Emitter) -> @Handler {
     @Handler {
         err_count: Cell::new(0),
-        emit: DefaultEmitter,
+        emit: RefCell::new(e),
     }
 }
 
@@ -185,73 +187,79 @@ impl Level {
     }
 }
 
-fn print_maybe_styled(msg: &str, color: term::attr::Attr) -> io::IoResult<()> {
-    local_data_key!(tls_terminal: Option<term::Terminal<StdWriter>>)
-
-
-    fn is_stderr_screen() -> bool {
-        use std::libc;
-        unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
-    }
-    fn write_pretty<T: Writer>(term: &mut term::Terminal<T>, s: &str,
-                               c: term::attr::Attr) -> io::IoResult<()> {
-        try!(term.attr(c));
-        try!(term.write(s.as_bytes()));
-        try!(term.reset());
-        Ok(())
-    }
-
-    if is_stderr_screen() {
-        local_data::get_mut(tls_terminal, |term| {
-            match term {
-                Some(term) => {
-                    match *term {
-                        Some(ref mut term) => write_pretty(term, msg, color),
-                        None => io::stderr().write(msg.as_bytes())
-                    }
-                }
-                None => {
-                    let (t, ret) = match term::Terminal::new(io::stderr()) {
-                        Ok(mut term) => {
-                            let r = write_pretty(&mut term, msg, color);
-                            (Some(term), r)
-                        }
-                        Err(_) => {
-                            (None, io::stderr().write(msg.as_bytes()))
-                        }
-                    };
-                    local_data::set(tls_terminal, t);
-                    ret
-                }
-            }
-        })
-    } else {
-        io::stderr().write(msg.as_bytes())
+fn print_maybe_styled(w: &mut EmitterWriter,
+                      msg: &str,
+                      color: term::attr::Attr) -> io::IoResult<()> {
+    match w.dst {
+        Terminal(ref mut t) => {
+            try!(t.attr(color));
+            try!(t.write_str(msg));
+            try!(t.reset());
+            Ok(())
+        }
+        Raw(ref mut w) => {
+            w.write_str(msg)
+        }
     }
 }
 
-fn print_diagnostic(topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
+fn print_diagnostic(dst: &mut EmitterWriter,
+                    topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
     if !topic.is_empty() {
-        let mut stderr = io::stderr();
-        try!(write!(&mut stderr as &mut io::Writer, "{} ", topic));
+        try!(write!(&mut dst.dst, "{} ", topic));
     }
 
-    try!(print_maybe_styled(format!("{}: ", lvl.to_str()),
-                              term::attr::ForegroundColor(lvl.color())));
-    try!(print_maybe_styled(format!("{}\n", msg), term::attr::Bold));
+    try!(print_maybe_styled(dst, format!("{}: ", lvl.to_str()),
+                            term::attr::ForegroundColor(lvl.color())));
+    try!(print_maybe_styled(dst, format!("{}\n", msg), term::attr::Bold));
     Ok(())
 }
 
-pub struct DefaultEmitter;
+pub struct EmitterWriter {
+    priv dst: Destination,
+}
 
-impl Emitter for DefaultEmitter {
-    fn emit(&self,
+enum Destination {
+    Terminal(term::Terminal<io::stdio::StdWriter>),
+    Raw(~Writer),
+}
+
+impl EmitterWriter {
+    pub fn stderr() -> EmitterWriter {
+        let stderr = io::stderr();
+        if stderr.isatty() {
+            let dst = match term::Terminal::new(stderr) {
+                Ok(t) => Terminal(t),
+                Err(..) => Raw(~io::stderr()),
+            };
+            EmitterWriter { dst: dst }
+        } else {
+            EmitterWriter { dst: Raw(~stderr) }
+        }
+    }
+
+    pub fn new(dst: ~Writer) -> EmitterWriter {
+        EmitterWriter { dst: Raw(dst) }
+    }
+}
+
+impl Writer for Destination {
+    fn write(&mut self, bytes: &[u8]) -> io::IoResult<()> {
+        match *self {
+            Terminal(ref mut t) => t.write(bytes),
+            Raw(ref mut w) => w.write(bytes),
+        }
+    }
+}
+
+impl Emitter for EmitterWriter {
+    fn emit(&mut self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: Level) {
         let error = match cmsp {
-            Some((cm, sp)) => emit(cm, sp, msg, lvl, false),
-            None => print_diagnostic("", lvl, msg),
+            Some((cm, sp)) => emit(self, cm, sp, msg, lvl, false),
+            None => print_diagnostic(self, "", lvl, msg),
         };
 
         match error {
@@ -260,16 +268,16 @@ impl Emitter for DefaultEmitter {
         }
     }
 
-    fn custom_emit(&self, cm: &codemap::CodeMap,
+    fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level) {
-        match emit(cm, sp, msg, lvl, true) {
+        match emit(self, cm, sp, msg, lvl, true) {
             Ok(()) => {}
             Err(e) => fail!("failed to print diagnostics: {}", e),
         }
     }
 }
 
-fn emit(cm: &codemap::CodeMap, sp: Span,
+fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, sp: Span,
         msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
     let ss = cm.span_to_str(sp);
     let lines = cm.span_to_lines(sp);
@@ -279,22 +287,21 @@ fn emit(cm: &codemap::CodeMap, sp: Span,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
-        try!(print_diagnostic(ses, lvl, msg));
-        try!(custom_highlight_lines(cm, sp, lvl, lines));
+        try!(print_diagnostic(dst, ses, lvl, msg));
+        try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
     } else {
-        try!(print_diagnostic(ss, lvl, msg));
-        try!(highlight_lines(cm, sp, lvl, lines));
+        try!(print_diagnostic(dst, ss, lvl, msg));
+        try!(highlight_lines(dst, cm, sp, lvl, lines));
     }
-    print_macro_backtrace(cm, sp)
+    print_macro_backtrace(dst, cm, sp)
 }
 
-fn highlight_lines(cm: &codemap::CodeMap,
+fn highlight_lines(err: &mut EmitterWriter,
+                   cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
                    lines: &codemap::FileLines) -> io::IoResult<()> {
     let fm = lines.file;
-    let mut err = io::stderr();
-    let err = &mut err as &mut io::Writer;
 
     let mut elided = false;
     let mut display_lines = lines.lines.as_slice();
@@ -304,13 +311,13 @@ fn highlight_lines(cm: &codemap::CodeMap,
     }
     // Print the offending lines
     for line in display_lines.iter() {
-        try!(write!(err, "{}:{} {}\n", fm.name, *line + 1,
-                      fm.get_line(*line as int)));
+        try!(write!(&mut err.dst, "{}:{} {}\n", fm.name, *line + 1,
+                    fm.get_line(*line as int)));
     }
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
         let s = format!("{}:{} ", fm.name, last_line + 1u);
-        try!(write!(err, "{0:1$}...\n", "", s.len()));
+        try!(write!(&mut err.dst, "{0:1$}...\n", "", s.len()));
     }
 
     // FIXME (#3260)
@@ -342,7 +349,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
                 _ => s.push_char(' '),
             };
         }
-        try!(write!(err, "{}", s));
+        try!(write!(&mut err.dst, "{}", s));
         let mut s = ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
@@ -350,8 +357,8 @@ fn highlight_lines(cm: &codemap::CodeMap,
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             for _ in range(0, num_squigglies) { s.push_char('~'); }
         }
-        try!(print_maybe_styled(s + "\n",
-                                  term::attr::ForegroundColor(lvl.color())));
+        try!(print_maybe_styled(err, s + "\n",
+                                term::attr::ForegroundColor(lvl.color())));
     }
     Ok(())
 }
@@ -362,26 +369,25 @@ fn highlight_lines(cm: &codemap::CodeMap,
 // than 6 lines), `custom_highlight_lines` will print the first line, then
 // dot dot dot, then last line, whereas `highlight_lines` prints the first
 // six lines.
-fn custom_highlight_lines(cm: &codemap::CodeMap,
+fn custom_highlight_lines(w: &mut EmitterWriter,
+                          cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
                           lines: &codemap::FileLines) -> io::IoResult<()> {
     let fm = lines.file;
-    let mut err = io::stderr();
-    let err = &mut err as &mut io::Writer;
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {
-        try!(write!(err, "{}:{} {}\n", fm.name,
-                      lines[0] + 1, fm.get_line(lines[0] as int)));
-        try!(write!(err, "...\n"));
+        try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
+                    lines[0] + 1, fm.get_line(lines[0] as int)));
+        try!(write!(&mut w.dst, "...\n"));
         let last_line = lines[lines.len()-1];
-        try!(write!(err, "{}:{} {}\n", fm.name,
-                      last_line + 1, fm.get_line(last_line as int)));
+        try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
+                    last_line + 1, fm.get_line(last_line as int)));
     } else {
         for line in lines.iter() {
-            try!(write!(err, "{}:{} {}\n", fm.name,
-                          *line + 1, fm.get_line(*line as int)));
+            try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
+                        *line + 1, fm.get_line(*line as int)));
         }
     }
     let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
@@ -391,22 +397,24 @@ fn custom_highlight_lines(cm: &codemap::CodeMap,
     let mut s = ~"";
     for _ in range(0, skip) { s.push_char(' '); }
     s.push_char('^');
-    print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()))
+    print_maybe_styled(w, s + "\n", term::attr::ForegroundColor(lvl.color()))
 }
 
-fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) -> io::IoResult<()> {
+fn print_macro_backtrace(w: &mut EmitterWriter,
+                         cm: &codemap::CodeMap,
+                         sp: Span) -> io::IoResult<()> {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-        try!(print_diagnostic(ss, Note,
-                                format!("in expansion of {}{}{}", pre,
-                                        ei.callee.name, post)));
+        try!(print_diagnostic(w, ss, Note,
+                              format!("in expansion of {}{}{}", pre,
+                                      ei.callee.name, post)));
         let ss = cm.span_to_str(ei.call_site);
-        try!(print_diagnostic(ss, Note, "expansion site"));
-        try!(print_macro_backtrace(cm, ei.call_site));
+        try!(print_diagnostic(w, ss, Note, "expansion site"));
+        try!(print_macro_backtrace(w, cm, ei.call_site));
     }
     Ok(())
 }

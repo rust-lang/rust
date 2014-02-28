@@ -394,7 +394,8 @@ pub fn monitor(f: proc()) {
         Err(value) => {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                diagnostic::DefaultEmitter.emit(
+                let mut emitter = diagnostic::EmitterWriter::stderr();
+                emitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
                     diagnostic::Error);
@@ -404,9 +405,7 @@ pub fn monitor(f: proc()) {
                      this is a bug",
                 ];
                 for note in xs.iter() {
-                    diagnostic::DefaultEmitter.emit(None,
-                                                    *note,
-                                                    diagnostic::Note)
+                    emitter.emit(None, *note, diagnostic::Note)
                 }
 
                 println!("{}", r.read_to_str());

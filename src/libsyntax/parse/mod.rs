@@ -14,7 +14,7 @@
 use ast;
 use codemap::{Span, CodeMap, FileMap};
 use codemap;
-use diagnostic::{SpanHandler, mk_span_handler, mk_handler};
+use diagnostic::{SpanHandler, mk_span_handler, default_handler};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
@@ -49,7 +49,7 @@ pub fn new_parse_sess() -> @ParseSess {
     let cm = @CodeMap::new();
     @ParseSess {
         cm: cm,
-        span_diagnostic: mk_span_handler(mk_handler(), cm),
+        span_diagnostic: mk_span_handler(default_handler(), cm),
         included_mod_stack: RefCell::new(~[]),
     }
 }
