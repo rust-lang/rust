@@ -15,8 +15,9 @@
  * other useful things like `push()` and `len()`.
  */
 
-use std::vec;
 use std::default::Default;
+use std::vec;
+use std::vec_ng::Vec;
 
 #[deriving(Clone, Encodable, Decodable, Hash)]
 pub enum OptVec<T> {
@@ -87,7 +88,7 @@ impl<T> OptVec<T> {
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         match *self {
             Empty => fail!("invalid index {}", i),
-            Vec(ref v) => &v[i]
+            Vec(ref v) => v.get(i)
         }
     }
 
@@ -147,7 +148,7 @@ impl<T:Clone> OptVec<T> {
         let mut v0 = vec!(t);
         match *self {
             Empty => {}
-            Vec(ref v1) => { v0.push_all(*v1); }
+            Vec(ref v1) => { v0.push_all(v1.as_slice()); }
         }
         return Vec(v0);
     }

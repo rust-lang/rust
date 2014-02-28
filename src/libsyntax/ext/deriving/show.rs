@@ -19,6 +19,7 @@ use ext::deriving::generic::*;
 use parse::token;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 
 pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
@@ -79,7 +80,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         EnumMatching(_, _, ref fields) if fields.len() == 0 => {}
 
         Struct(ref fields) | EnumMatching(_, _, ref fields) => {
-            if fields[0].name.is_none() {
+            if fields.get(0).name.is_none() {
                 // tuple struct/"normal" variant
 
                 format_string.push_str("(");
@@ -135,6 +136,6 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // phew, not our responsibility any more!
     format::expand_preparsed_format_args(cx, span,
                                          format_closure,
-                                         format_string, exprs, ~[],
+                                         format_string, exprs, Vec::new(),
                                          HashMap::new())
 }

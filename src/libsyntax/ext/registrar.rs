@@ -15,6 +15,8 @@ use diagnostic;
 use visit;
 use visit::Visitor;
 
+use std::vec_ng::Vec;
+
 struct MacroRegistrarContext {
     registrars: Vec<(ast::NodeId, Span)> ,
 }
@@ -23,7 +25,8 @@ impl Visitor<()> for MacroRegistrarContext {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match item.node {
             ast::ItemFn(..) => {
-                if attr::contains_name(item.attrs, "macro_registrar") {
+                if attr::contains_name(item.attrs.as_slice(),
+                                       "macro_registrar") {
                     self.registrars.push((item.id, item.span));
                 }
             }

@@ -21,6 +21,7 @@ use parse::token;
 use crateid::CrateId;
 
 use collections::HashSet;
+use std::vec_ng::Vec;
 
 pub trait AttrMetaMethods {
     // This could be changed to `fn check_name(&self, name: InternedString) ->
@@ -226,7 +227,8 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
         match m.node {
             MetaList(ref n, ref mis) => {
                 @Spanned {
-                    node: MetaList((*n).clone(), sort_meta_items(*mis)),
+                    node: MetaList((*n).clone(),
+                                   sort_meta_items(mis.as_slice())),
                     .. /*bad*/ (*m).clone()
                 }
             }
@@ -243,7 +245,7 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<@MetaItem> {
     let mut result = Vec::new();
     for attr in attrs.iter().filter(|at| at.name().equiv(&("link"))) {
         match attr.meta().node {
-            MetaList(_, ref items) => result.push_all(*items),
+            MetaList(_, ref items) => result.push_all(items.as_slice()),
             _ => ()
         }
     }
@@ -272,9 +274,9 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
         match attr.node.value.node {
           MetaWord(ref n) if n.equiv(&("inline")) => InlineHint,
           MetaList(ref n, ref items) if n.equiv(&("inline")) => {
-            if contains_name(*items, "always") {
+            if contains_name(items.as_slice(), "always") {
                 InlineAlways
-            } else if contains_name(*items, "never") {
+            } else if contains_name(items.as_slice(), "never") {
                 InlineNever
             } else {
                 InlineHint

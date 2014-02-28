@@ -14,6 +14,8 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,

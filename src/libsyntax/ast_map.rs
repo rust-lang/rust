@@ -23,6 +23,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 use std::fmt;
+use std::vec_ng::Vec;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
@@ -191,7 +192,11 @@ pub struct Map {
 impl Map {
     fn find_entry(&self, id: NodeId) -> Option<MapEntry> {
         let map = self.map.borrow();
-        map.get().get(id as uint).map(|x| *x)
+        if map.get().len() > id as uint {
+            Some(*map.get().get(id as uint))
+        } else {
+            None
+        }
     }
 
     /// Retrieve the Node corresponding to `id`, failing if it cannot

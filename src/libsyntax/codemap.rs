@@ -23,6 +23,7 @@ source code snippets, etc.
 
 use std::cell::RefCell;
 use std::cmp;
+use std::vec_ng::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
@@ -224,14 +225,14 @@ impl FileMap {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();;
         let line_len = lines.get().len();
-        assert!(line_len == 0 || (lines.get()[line_len - 1] < pos))
+        assert!(line_len == 0 || (*lines.get().get(line_len - 1) < pos))
         lines.get().push(pos);
     }
 
     // get a line from the list of pre-computed line-beginnings
     pub fn get_line(&self, line: int) -> ~str {
         let mut lines = self.lines.borrow_mut();
-        let begin: BytePos = lines.get()[line] - self.start_pos;
+        let begin: BytePos = *lines.get().get(line as uint) - self.start_pos;
         let begin = begin.to_uint();
         let slice = self.src.slice_from(begin);
         match slice.find('\n') {
@@ -373,7 +374,7 @@ impl CodeMap {
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if files[m].start_pos > pos {
+            if files.get(m).start_pos > pos {
                 b = m;
             } else {
                 a = m;
@@ -383,7 +384,7 @@ impl CodeMap {
         // filemap, but are not the filemaps we want (because they are length 0, they cannot
         // contain what we are looking for). So, rewind until we find a useful filemap.
         loop {
-            let lines = files[a].lines.borrow();
+            let lines = files.get(a).lines.borrow();
             let lines = lines.get();
             if lines.len() > 0 {
                 break;
@@ -405,13 +406,13 @@ impl CodeMap {
         let idx = self.lookup_filemap_idx(pos);
 
         let files = self.files.borrow();
-        let f = files.get()[idx];
+        let f = *files.get().get(idx);
         let mut a = 0u;
         let mut lines = f.lines.borrow_mut();
         let mut b = lines.get().len();
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if lines.get()[m] > pos { b = m; } else { a = m; }
+            if *lines.get().get(m) > pos { b = m; } else { a = m; }
         }
         return FileMapAndLine {fm: f, line: a};
     }
@@ -421,7 +422,7 @@ impl CodeMap {
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_file_charpos(pos);
         let lines = f.lines.borrow();
-        let linebpos = lines.get()[a];
+        let linebpos = *lines.get().get(a);
         let linechpos = self.bytepos_to_file_charpos(linebpos);
         debug!("codemap: byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
@@ -440,7 +441,7 @@ impl CodeMap {
         -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
-        let fm = files.get()[idx];
+        let fm = *files.get().get(idx);
         let offset = bpos - fm.start_pos;
         return FileMapAndBytePos {fm: fm, pos: offset};
     }
@@ -450,7 +451,7 @@ impl CodeMap {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
-        let map = files.get()[idx];
+        let map = files.get().get(idx);
 
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;

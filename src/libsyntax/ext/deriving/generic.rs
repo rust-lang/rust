@@ -188,7 +188,8 @@ use opt_vec;
 use parse::token::InternedString;
 use parse::token;
 
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 pub use self::ty::*;
 mod ty;
@@ -410,7 +411,7 @@ impl<'a> TraitDef<'a> {
         cx.item(
             self.span,
             ident,
-            vec_ng::append(vec!(doc_attr), self.attributes),
+            vec_ng::append(vec!(doc_attr), self.attributes.as_slice()),
             ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods.map(|x| *x)))
     }
@@ -431,13 +432,15 @@ impl<'a> TraitDef<'a> {
                     self,
                     struct_def,
                     type_ident,
-                    self_args, nonself_args)
+                    self_args.as_slice(),
+                    nonself_args.as_slice())
             } else {
                 method_def.expand_struct_method_body(cx,
                                                      self,
                                                      struct_def,
                                                      type_ident,
-                                                     self_args, nonself_args)
+                                                     self_args.as_slice(),
+                                                     nonself_args.as_slice())
             };
 
             method_def.create_method(cx, self,
@@ -465,13 +468,15 @@ impl<'a> TraitDef<'a> {
                     self,
                     enum_def,
                     type_ident,
-                    self_args, nonself_args)
+                    self_args.as_slice(),
+                    nonself_args.as_slice())
             } else {
                 method_def.expand_enum_method_body(cx,
                                                    self,
                                                    enum_def,
                                                    type_ident,
-                                                   self_args, nonself_args)
+                                                   self_args.as_slice(),
+                                                   nonself_args.as_slice())
             };
 
             method_def.create_method(cx, self,
@@ -666,14 +671,15 @@ impl<'a> MethodDef<'a> {
 
         // transpose raw_fields
         let fields = if raw_fields.len() > 0 {
-            raw_fields[0].iter()
-                         .enumerate()
-                         .map(|(i, &(span, opt_id, field))| {
-                let other_fields = raw_fields.tail().map(|l| {
-                    match &l[i] {
+            raw_fields.get(0)
+                      .iter()
+                      .enumerate()
+                      .map(|(i, &(span, opt_id, field))| {
+                let other_fields = raw_fields.tail().iter().map(|l| {
+                    match l.get(i) {
                         &(_, _, ex) => ex
                     }
-                });
+                }).collect();
                 FieldInfo {
                     span: span,
                     name: opt_id,
@@ -820,17 +826,17 @@ impl<'a> MethodDef<'a> {
                 Some(variant_index) => {
                     // `ref` inside let matches is buggy. Causes havoc wih rusc.
                     // let (variant_index, ref self_vec) = matches_so_far[0];
-                    let (variant, self_vec) = match matches_so_far[0] {
-                        (_, v, ref s) => (v, s)
+                    let (variant, self_vec) = match matches_so_far.get(0) {
+                        &(_, v, ref s) => (v, s)
                     };
 
-                    let mut enum_matching_fields = vec::from_elem(self_vec.len(), Vec::new());
+                    let mut enum_matching_fields = Vec::from_elem(self_vec.len(), Vec::new());
 
                     for triple in matches_so_far.tail().iter() {
                         match triple {
                             &(_, _, ref other_fields) => {
                                 for (i, &(_, _, e)) in other_fields.iter().enumerate() {
-                                    enum_matching_fields[i].push(e);
+                                    enum_matching_fields.get_mut(i).push(e);
                                 }
                             }
                         }
@@ -849,7 +855,7 @@ impl<'a> MethodDef<'a> {
                     substructure = EnumMatching(variant_index, variant, field_tuples);
                 }
                 None => {
-                    substructure = EnumNonMatching(*matches_so_far);
+                    substructure = EnumNonMatching(matches_so_far.as_slice());
                 }
             }
             self.call_substructure_method(cx, trait_, type_ident,
@@ -877,7 +883,7 @@ impl<'a> MethodDef<'a> {
                 };
 
                 // matching-variant match
-                let variant = enum_def.variants[index];
+                let variant = *enum_def.variants.get(index);
                 let (pattern, idents) = trait_.create_enum_variant_pattern(cx,
                                                                            variant,
                                                                            current_match_str,
@@ -1149,11 +1155,19 @@ pub fn cs_fold(use_foldl: bool,
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
                 all_fields.iter().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_, field.other)
+                    f(cx,
+                      field.span,
+                      old,
+                      field.self_,
+                      field.other.as_slice())
                 })
             } else {
                 all_fields.rev_iter().fold(base, |old, field| {
-                    f(cx, field.span, old, field.self_, field.other)
+                    f(cx,
+                      field.span,
+                      old,
+                      field.self_,
+                      field.other.as_slice())
                 })
             }
         },

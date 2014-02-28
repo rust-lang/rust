@@ -31,6 +31,7 @@ use util::small_vector::SmallVector;
 use std::cast;
 use std::unstable::dynamic_lib::DynamicLibrary;
 use std::os;
+use std::vec_ng::Vec;
 
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     match e.node {
@@ -53,7 +54,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                         // let compilation continue
                         return MacResult::raw_dummy_expr(e.span);
                     }
-                    let extname = pth.segments[0].identifier;
+                    let extname = pth.segments.get(0).identifier;
                     let extnamestr = token::get_ident(extname);
                     // leaving explicit deref here to highlight unbox op:
                     let marked_after = match fld.extsbox.find(&extname.name) {
@@ -77,7 +78,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             });
                             let fm = fresh_mark();
                             // mark before:
-                            let marked_before = mark_tts(*tts,fm);
+                            let marked_before = mark_tts(tts.as_slice(), fm);
 
                             // The span that we pass to the expanders we want to
                             // be the root of the call stack. That's the most
@@ -87,7 +88,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
                             let expanded = match expandfun.expand(fld.cx,
                                                    mac_span.call_site,
-                                                   marked_before) {
+                                                   marked_before.as_slice()) {
                                 MRExpr(e) => e,
                                 MRAny(any_macro) => any_macro.make_expr(),
                                 _ => {
@@ -181,7 +182,10 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             // `match i.next() { ... }`
             let match_expr = {
                 let next_call_expr =
-                    fld.cx.expr_method_call(span, fld.cx.expr_path(local_path), next_ident, Vec::new());
+                    fld.cx.expr_method_call(span,
+                                            fld.cx.expr_path(local_path),
+                                            next_ident,
+                                            Vec::new());
 
                 fld.cx.expr_match(span, next_call_expr, vec!(none_arm, some_arm))
             };
@@ -276,7 +280,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
         ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             fld.cx.mod_push(it.ident);
-            let macro_escape = contains_macro_escape(it.attrs);
+            let macro_escape = contains_macro_escape(it.attrs.as_slice());
             let result = with_exts_frame!(fld.extsbox,
                                           macro_escape,
                                           noop_fold_item(it, fld));
@@ -309,7 +313,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     };
 
-    let extname = pth.segments[0].identifier;
+    let extname = pth.segments.get(0).identifier;
     let extnamestr = token::get_ident(extname);
     let fm = fresh_mark();
     let expanded = match fld.extsbox.find(&extname.name) {
@@ -339,8 +343,8 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                 }
             });
             // mark before expansion:
-            let marked_before = mark_tts(tts,fm);
-            expander.expand(fld.cx, it.span, marked_before)
+            let marked_before = mark_tts(tts.as_slice(), fm);
+            expander.expand(fld.cx, it.span, marked_before.as_slice())
         }
         Some(&IdentTT(ref expander, span)) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
@@ -358,7 +362,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                 }
             });
             // mark before expansion:
-            let marked_tts = mark_tts(tts,fm);
+            let marked_tts = mark_tts(tts.as_slice(), fm);
             expander.expand(fld.cx, it.span, it.ident, marked_tts)
         }
         _ => {
@@ -391,7 +395,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
             fld.extsbox.insert(intern(name), ext);
-            if attr::contains_name(it.attrs, "macro_export") {
+            if attr::contains_name(it.attrs.as_slice(), "macro_export") {
                 SmallVector::one(it)
             } else {
                 SmallVector::zero()
@@ -504,7 +508,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
         fld.cx.span_err(pth.span, "expected macro name without module separators");
         return SmallVector::zero();
     }
-    let extname = pth.segments[0].identifier;
+    let extname = pth.segments.get(0).identifier;
     let extnamestr = token::get_ident(extname);
     let marked_after = match fld.extsbox.find(&extname.name) {
         None => {
@@ -523,7 +527,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
             });
             let fm = fresh_mark();
             // mark before expansion:
-            let marked_tts = mark_tts(tts,fm);
+            let marked_tts = mark_tts(tts.as_slice(), fm);
 
             // See the comment in expand_expr for why we want the original span,
             // not the current mac.span.
@@ -531,7 +535,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
 
             let expanded = match expandfun.expand(fld.cx,
                                                   mac_span.call_site,
-                                                  marked_tts) {
+                                                  marked_tts.as_slice()) {
                 MRExpr(e) => {
                     @codemap::Spanned {
                         node: StmtExpr(e, ast::DUMMY_NODE_ID),
@@ -676,7 +680,8 @@ impl Visitor<()> for NewNameFinderContext {
                         span: _,
                         segments: ref segments
                     } if segments.len() == 1 => {
-                        self.ident_accumulator.push(segments[0].identifier)
+                        self.ident_accumulator.push(segments.get(0)
+                                                            .identifier)
                     }
                     // I believe these must be enums...
                     _ => ()
@@ -843,7 +848,7 @@ impl Folder for Marker {
         let macro = match m.node {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
-                           fold_tts(*tts, self),
+                           fold_tts(tts.as_slice(), self),
                            new_mark(self.mark, ctxt))
             }
         };
@@ -911,6 +916,8 @@ mod test {
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
+
+    use std::vec_ng::Vec;
 
     // a visitor that extracts the paths
     // from a given thingy and puts them in a mutable
@@ -1015,9 +1022,9 @@ mod test {
         let attr2 = make_dummy_attr ("bar");
         let escape_attr = make_dummy_attr ("macro_escape");
         let attrs1 = vec!(attr1, escape_attr, attr2);
-        assert_eq!(contains_macro_escape (attrs1),true);
+        assert_eq!(contains_macro_escape(attrs1.as_slice()),true);
         let attrs2 = vec!(attr1,attr2);
-        assert_eq!(contains_macro_escape (attrs2),false);
+        assert_eq!(contains_macro_escape(attrs2.as_slice()),false);
     }
 
     // make a MetaWord outer attribute with the given name
@@ -1082,7 +1089,7 @@ mod test {
     // in principle, you might want to control this boolean on a per-varref basis,
     // but that would make things even harder to understand, and might not be
     // necessary for thorough testing.
-    type RenamingTest = (&'static str, vec!(Vec<uint> ), bool);
+    type RenamingTest = (&'static str, Vec<Vec<uint>>, bool);
 
     #[test]
     fn automatic_renaming () {
@@ -1131,8 +1138,8 @@ mod test {
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
-            let binding_name = mtwt_resolve(bindings[binding_idx]);
-            let binding_marks = mtwt_marksof(bindings[binding_idx].ctxt,invalid_name);
+            let binding_name = mtwt_resolve(*bindings.get(binding_idx));
+            let binding_marks = mtwt_marksof(bindings.get(binding_idx).ctxt,invalid_name);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
@@ -1141,13 +1148,18 @@ mod test {
                     // it should be a path of length 1, and it should
                     // be free-identifier=? or bound-identifier=? to the given binding
                     assert_eq!(varref.segments.len(),1);
-                    let varref_name = mtwt_resolve(varref.segments[0].identifier);
-                    let varref_marks = mtwt_marksof(varref.segments[0].identifier.ctxt,
+                    let varref_name = mtwt_resolve(varref.segments
+                                                         .get(0)
+                                                         .identifier);
+                    let varref_marks = mtwt_marksof(varref.segments
+                                                          .get(0)
+                                                          .identifier
+                                                          .ctxt,
                                                     invalid_name);
                     if !(varref_name==binding_name) {
                         println!("uh oh, should match but doesn't:");
                         println!("varref: {:?}",varref);
-                        println!("binding: {:?}", bindings[binding_idx]);
+                        println!("binding: {:?}", *bindings.get(binding_idx));
                         ast_util::display_sctable(get_sctable());
                     }
                     assert_eq!(varref_name,binding_name);
@@ -1158,7 +1170,8 @@ mod test {
                     }
                 } else {
                     let fail = (varref.segments.len() == 1)
-                        && (mtwt_resolve(varref.segments[0].identifier) == binding_name);
+                        && (mtwt_resolve(varref.segments.get(0).identifier) ==
+                                         binding_name);
                     // temp debugging:
                     if fail {
                         println!("failure on test {}",test_idx);
@@ -1167,11 +1180,13 @@ mod test {
                         println!("uh oh, matches but shouldn't:");
                         println!("varref: {:?}",varref);
                         // good lord, you can't make a path with 0 segments, can you?
-                        let string = token::get_ident(varref.segments[0].identifier);
+                        let string = token::get_ident(varref.segments
+                                                            .get(0)
+                                                            .identifier);
                         println!("varref's first segment's uint: {}, and string: \"{}\"",
-                                 varref.segments[0].identifier.name,
+                                 varref.segments.get(0).identifier.name,
                                  string.get());
-                        println!("binding: {:?}", bindings[binding_idx]);
+                        println!("binding: {:?}", *bindings.get(binding_idx));
                         ast_util::display_sctable(get_sctable());
                     }
                     assert!(!fail);
@@ -1197,7 +1212,7 @@ foo_module!()
                 let string = ident.get();
                 "xx" == string
             }).collect();
-        let cxbinds: &[&ast::Ident] = cxbinds;
+        let cxbinds: &[&ast::Ident] = cxbinds.as_slice();
         let cxbind = match cxbinds {
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")
@@ -1211,16 +1226,17 @@ foo_module!()
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == token::get_ident(p.segments[0].identifier).get()
+            && "xx" == token::get_ident(p.segments.get(0).identifier).get()
         }).enumerate() {
-            if mtwt_resolve(v.segments[0].identifier) != resolved_binding {
+            if mtwt_resolve(v.segments.get(0).identifier) !=
+                    resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
                 println!("resolves to: {:?}",resolved_binding);
-                println!("varref: {:?}",v.segments[0].identifier);
+                println!("varref: {:?}",v.segments.get(0).identifier);
                 println!("resolves to: {:?}",
-                         mtwt_resolve(v.segments[0].identifier));
+                         mtwt_resolve(v.segments.get(0).identifier));
                 let table = get_sctable();
                 println!("SC table:");
 
@@ -1231,7 +1247,8 @@ foo_module!()
                     }
                 }
             }
-            assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);
+            assert_eq!(mtwt_resolve(v.segments.get(0).identifier),
+                       resolved_binding);
         };
     }
 

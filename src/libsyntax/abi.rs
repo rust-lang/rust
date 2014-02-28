@@ -119,7 +119,7 @@ pub fn lookup(name: &str) -> Option<Abi> {
 }
 
 pub fn all_names() -> Vec<&'static str> {
-    AbiDatas.map(|d| d.name)
+    AbiDatas.iter().map(|d| d.name).collect()
 }
 
 impl Abi {

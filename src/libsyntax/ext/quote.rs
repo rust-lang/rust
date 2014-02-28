@@ -17,6 +17,8 @@ use parse::token::*;
 use parse::token;
 use parse;
 
+use std::vec_ng::Vec;
+
 /**
 *
 * Quasiquoting works via token trees.
@@ -34,6 +36,8 @@ pub mod rt {
     use parse::token;
     use parse;
     use print::pprust;
+
+    use std::vec_ng::Vec;
 
     pub use ast::*;
     pub use parse::token::*;
@@ -305,7 +309,7 @@ pub fn expand_quote_expr(cx: &mut ExtCtxt,
 pub fn expand_quote_item(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree]) -> base::MacResult {
-    let e_attrs = cx.expr_vec_uniq(sp, Vec::new());
+    let e_attrs = cx.expr_vec_ng(sp);
     let expanded = expand_parse_call(cx, sp, "parse_item",
                                     vec!(e_attrs), tts);
     base::MRExpr(expanded)
@@ -332,7 +336,7 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
 pub fn expand_quote_stmt(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::TokenTree]) -> base::MacResult {
-    let e_attrs = cx.expr_vec_uniq(sp, Vec::new());
+    let e_attrs = cx.expr_vec_ng(sp);
     let expanded = expand_parse_call(cx, sp, "parse_stmt",
                                     vec!(e_attrs), tts);
     base::MRExpr(expanded)
@@ -540,7 +544,7 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<@ast::Stmt> {
             vec!(cx.stmt_expr(e_push))
         }
 
-        ast::TTDelim(ref tts) => mk_tts(cx, sp, **tts),
+        ast::TTDelim(ref tts) => mk_tts(cx, sp, tts.as_slice()),
         ast::TTSeq(..) => fail!("TTSeq in quote!"),
 
         ast::TTNonterminal(sp, ident) => {
@@ -583,7 +587,9 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
-                                           tts.to_owned());
+                                           tts.iter()
+                                              .map(|x| (*x).clone())
+                                              .collect());
     p.quote_depth += 1u;
 
     let cx_expr = p.parse_expr();
@@ -629,14 +635,14 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                   id_ext("_sp"),
                                   e_sp);
 
-    let stmt_let_tt = cx.stmt_let(sp, true,
-                                  id_ext("tt"),
-                                  cx.expr_vec_uniq(sp, Vec::new()));
+    let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
 
+    let mut vector = vec!(stmt_let_sp, stmt_let_tt);
+    vector.push_all_move(mk_tts(cx, sp, tts.as_slice()));
     let block = cx.expr_block(
         cx.block_all(sp,
                      Vec::new(),
-                     vec!(stmt_let_sp, stmt_let_tt) + mk_tts(cx, sp, tts),
+                     vector,
                      Some(cx.expr_ident(sp, id_ext("tt")))));
 
     (cx_expr, block)

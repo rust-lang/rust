@@ -18,6 +18,7 @@ use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::cell::{Cell, RefCell};
+use std::vec_ng::Vec;
 use collections::HashMap;
 
 ///an unzipping of `TokenTree`s
@@ -106,7 +107,7 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch)
                 // end of the line; duplicate henceforth
                 ad
             }
-            MatchedSeq(ref ads, _) => ads[*idx]
+            MatchedSeq(ref ads, _) => *ads.get(*idx)
         }
     }
     let repeat_idx = r.repeat_idx.borrow();
@@ -217,7 +218,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             r.stack.get().idx.set(0u);
             {
                 let mut repeat_idx = r.repeat_idx.borrow_mut();
-                repeat_idx.get()[repeat_idx.get().len() - 1u] += 1u;
+                let last_repeat_idx = repeat_idx.get().len() - 1u;
+                *repeat_idx.get().get_mut(last_repeat_idx) += 1u;
             }
             match r.stack.get().sep.clone() {
               Some(tk) => {
@@ -231,7 +233,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `TTDelim` not starting
     with a `TTTok`, even though it won't happen */
         // FIXME(pcwalton): Bad copy.
-        match r.stack.get().forest[r.stack.get().idx.get()].clone() {
+        match (*r.stack.get().forest.get(r.stack.get().idx.get())).clone() {
           TTDelim(tts) => {
             r.stack.set(@TtFrame {
                 forest: tts,

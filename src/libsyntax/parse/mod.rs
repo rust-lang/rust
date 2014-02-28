@@ -21,6 +21,7 @@ use parse::parser::Parser;
 use std::cell::RefCell;
 use std::io::File;
 use std::str;
+use std::vec_ng::Vec;
 
 pub mod lexer;
 pub mod parser;
@@ -288,6 +289,7 @@ mod test {
     use std::io;
     use std::io::MemWriter;
     use std::str;
+    use std::vec_ng::Vec;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
     use ast;
@@ -362,27 +364,28 @@ mod test {
     // check the token-tree-ization of macros
     #[test] fn string_to_tts_macro () {
         let tts = string_to_tts(~"macro_rules! zip (($a)=>($a))");
-        let tts: &[ast::TokenTree] = tts;
+        let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
             [ast::TTTok(_,_),
              ast::TTTok(_,token::NOT),
              ast::TTTok(_,_),
              ast::TTDelim(delim_elts)] => {
-                let delim_elts: &[ast::TokenTree] = *delim_elts;
+                let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
                 match delim_elts {
                     [ast::TTTok(_,token::LPAREN),
                      ast::TTDelim(first_set),
                      ast::TTTok(_,token::FAT_ARROW),
                      ast::TTDelim(second_set),
                      ast::TTTok(_,token::RPAREN)] => {
-                        let first_set: &[ast::TokenTree] = *first_set;
+                        let first_set: &[ast::TokenTree] =
+                            first_set.as_slice();
                         match first_set {
                             [ast::TTTok(_,token::LPAREN),
                              ast::TTTok(_,token::DOLLAR),
                              ast::TTTok(_,_),
                              ast::TTTok(_,token::RPAREN)] => {
                                 let second_set: &[ast::TokenTree] =
-                                    *second_set;
+                                    second_set.as_slice();
                                 match second_set {
                                     [ast::TTTok(_,token::LPAREN),
                                      ast::TTTok(_,token::DOLLAR),

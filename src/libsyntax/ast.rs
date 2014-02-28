@@ -23,6 +23,7 @@ use std::cell::RefCell;
 use collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
@@ -1192,6 +1193,8 @@ mod test {
     use serialize;
     use codemap::*;
     use super::*;
+
+    use std::vec_ng::Vec;
 
     fn is_freeze<T: Freeze>() {}
 

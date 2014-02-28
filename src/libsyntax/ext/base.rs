@@ -20,6 +20,7 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 
 // new-style macro! tt code:
 //
@@ -461,7 +462,9 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           tts: &[ast::TokenTree]) -> Option<Vec<@ast::Expr> > {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
-                                           tts.to_owned());
+                                           tts.iter()
+                                              .map(|x| (*x).clone())
+                                              .collect());
     let mut es = Vec::new();
     while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
@@ -553,6 +556,7 @@ impl SyntaxEnv {
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
-        &mut self.chain[self.chain.len()-1].info
+        let last_chain_index = self.chain.len() - 1;
+        &mut self.chain.get_mut(last_chain_index).info
     }
 }

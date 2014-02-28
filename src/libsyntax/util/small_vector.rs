@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use std::mem;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub enum SmallVector<T> {
@@ -73,7 +75,7 @@ impl<T> SmallVector<T> {
     pub fn get<'a>(&'a self, idx: uint) -> &'a T {
         match *self {
             One(ref v) if idx == 0 => v,
-            Many(ref vs) => &vs[idx],
+            Many(ref vs) => vs.get(idx),
             _ => fail!("out of bounds access")
         }
     }
@@ -104,7 +106,7 @@ impl<T> SmallVector<T> {
 pub enum MoveItems<T> {
     priv ZeroIterator,
     priv OneIterator(T),
-    priv ManyIterator(vec::MoveItems<T>),
+    priv ManyIterator(vec_ng::MoveItems<T>),
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -135,6 +137,8 @@ impl<T> Iterator<T> for MoveItems<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::vec_ng::Vec;
 
     #[test]
     fn test_len() {
