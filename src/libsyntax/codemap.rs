@@ -188,8 +188,7 @@ pub type FileName = ~str;
 pub struct FileLines
 {
     file: @FileMap,
-    lines: ~[uint]
-}
+    lines: Vec<uint> }
 
 /// Identifies an offset of a multi-byte character in a FileMap
 pub struct MultiByteChar {
@@ -210,9 +209,9 @@ pub struct FileMap {
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    lines: RefCell<~[BytePos]>,
+    lines: RefCell<Vec<BytePos> >,
     /// Locations of multi-byte characters in the source code
-    multibyte_chars: RefCell<~[MultiByteChar]>,
+    multibyte_chars: RefCell<Vec<MultiByteChar> >,
 }
 
 impl FileMap {
@@ -257,13 +256,13 @@ impl FileMap {
 }
 
 pub struct CodeMap {
-    files: RefCell<~[@FileMap]>
+    files: RefCell<Vec<@FileMap> >
 }
 
 impl CodeMap {
     pub fn new() -> CodeMap {
         CodeMap {
-            files: RefCell::new(~[]),
+            files: RefCell::new(Vec::new()),
         }
     }
 
@@ -278,8 +277,8 @@ impl CodeMap {
             name: filename,
             src: src,
             start_pos: Pos::from_uint(start_pos),
-            lines: RefCell::new(~[]),
-            multibyte_chars: RefCell::new(~[]),
+            lines: RefCell::new(Vec::new()),
+            multibyte_chars: RefCell::new(Vec::new()),
         };
 
         files.get().push(filemap);
@@ -330,7 +329,7 @@ impl CodeMap {
     pub fn span_to_lines(&self, sp: Span) -> @FileLines {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
-        let mut lines = ~[];
+        let mut lines = Vec::new();
         for i in range(lo.line - 1u, hi.line as uint) {
             lines.push(i);
         };

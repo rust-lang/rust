@@ -119,7 +119,7 @@ pub fn tok_str(t: Token) -> ~str {
     }
 }
 
-pub fn buf_str(toks: ~[Token], szs: ~[int], left: uint, right: uint,
+pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
                lim: uint) -> ~str {
     let n = toks.len();
     assert_eq!(n, szs.len());
@@ -156,9 +156,9 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
     // fall behind.
     let n: uint = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
-    let token: ~[Token] = vec::from_elem(n, Eof);
-    let size: ~[int] = vec::from_elem(n, 0);
-    let scan_stack: ~[uint] = vec::from_elem(n, 0u);
+    let token: Vec<Token> = vec::from_elem(n, Eof);
+    let size: Vec<int> = vec::from_elem(n, 0);
+    let scan_stack: Vec<uint> = vec::from_elem(n, 0u);
     Printer {
         out: out,
         buf_len: n,
@@ -174,7 +174,7 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
         scan_stack_empty: true,
         top: 0,
         bottom: 0,
-        print_stack: ~[],
+        print_stack: Vec::new(),
         pending_indentation: 0
     }
 }
@@ -264,8 +264,8 @@ pub struct Printer {
     space: int, // number of spaces left on line
     left: uint, // index of left side of input stream
     right: uint, // index of right side of input stream
-    token: ~[Token], // ring-buffr stream goes through
-    size: ~[int], // ring-buffer of calculated sizes
+    token: Vec<Token> , // ring-buffr stream goes through
+    size: Vec<int> , // ring-buffer of calculated sizes
     left_total: int, // running size of stream "...left"
     right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
@@ -274,12 +274,12 @@ pub struct Printer {
     // Begin (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    scan_stack: ~[uint],
+    scan_stack: Vec<uint> ,
     scan_stack_empty: bool, // top==bottom disambiguator
     top: uint, // index of top of scan_stack
     bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    print_stack: ~[PrintStackElem],
+    print_stack: Vec<PrintStackElem> ,
     // buffered indentation to avoid writing trailing whitespace
     pending_indentation: int,
 }

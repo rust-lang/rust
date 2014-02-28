@@ -134,7 +134,7 @@ enum MapEntry {
 }
 
 struct InlinedParent {
-    path: ~[PathElem],
+    path: Vec<PathElem> ,
     // Required by NodeTraitMethod and NodeMethod.
     def_id: DefId
 }
@@ -185,7 +185,7 @@ pub struct Map {
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    priv map: RefCell<~[MapEntry]>
+    priv map: RefCell<Vec<MapEntry> >
 }
 
 impl Map {
@@ -522,7 +522,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
 }
 
 pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
-    let map = Map { map: RefCell::new(~[]) };
+    let map = Map { map: RefCell::new(Vec::new()) };
     let krate = {
         let mut cx = Ctx {
             map: &map,
@@ -557,7 +557,7 @@ pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
 pub fn map_decoded_item<F: FoldOps>(map: &Map,
-                                    path: ~[PathElem],
+                                    path: Vec<PathElem> ,
                                     fold_ops: F,
                                     fold: |&mut Ctx<F>| -> InlinedItem)
                                     -> InlinedItem {

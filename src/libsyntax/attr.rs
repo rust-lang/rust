@@ -146,7 +146,7 @@ pub fn mk_name_value_item(name: InternedString, value: ast::Lit)
     @dummy_spanned(MetaNameValue(name, value))
 }
 
-pub fn mk_list_item(name: InternedString, items: ~[@MetaItem]) -> @MetaItem {
+pub fn mk_list_item(name: InternedString, items: Vec<@MetaItem> ) -> @MetaItem {
     @dummy_spanned(MetaList(name, items))
 }
 
@@ -212,12 +212,12 @@ pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
 
 /* Higher-level applications */
 
-pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
+pub fn sort_meta_items(items: &[@MetaItem]) -> Vec<@MetaItem> {
     // This is sort of stupid here, but we need to sort by
     // human-readable strings.
     let mut v = items.iter()
         .map(|&mi| (mi.name(), mi))
-        .collect::<~[(InternedString, @MetaItem)]>();
+        .collect::<Vec<(InternedString, @MetaItem)> >();
 
     v.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
 
@@ -239,8 +239,8 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
  * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
-pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
-    let mut result = ~[];
+pub fn find_linkage_metas(attrs: &[Attribute]) -> Vec<@MetaItem> {
+    let mut result = Vec::new();
     for attr in attrs.iter().filter(|at| at.name().equiv(&("link"))) {
         match attr.meta().node {
             MetaList(_, ref items) => result.push_all(*items),

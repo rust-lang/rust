@@ -31,7 +31,7 @@ pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::M
                                            cx.cfg(),
                                            tts.to_owned());
 
-    let mut cfgs = ~[];
+    let mut cfgs = Vec::new();
     // parse `cfg!(meta_item, meta_item(x,y), meta_item="foo", ...)`
     while p.token != token::EOF {
         cfgs.push(p.parse_meta_item());

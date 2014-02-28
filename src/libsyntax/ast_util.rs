@@ -180,8 +180,8 @@ pub fn is_call_expr(e: @Expr) -> bool {
 
 pub fn block_from_expr(e: @Expr) -> P<Block> {
     P(Block {
-        view_items: ~[],
-        stmts: ~[],
+        view_items: Vec::new(),
+        stmts: Vec::new(),
         expr: Some(e),
         id: e.id,
         rules: DefaultBlock,
@@ -193,13 +193,13 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     ast::Path {
         span: s,
         global: false,
-        segments: ~[
+        segments: vec!(
             ast::PathSegment {
                 identifier: identifier,
                 lifetimes: opt_vec::Empty,
                 types: opt_vec::Empty,
             }
-        ],
+        ),
     }
 }
 
@@ -216,7 +216,7 @@ pub fn is_unguarded(a: &Arm) -> bool {
     }
 }
 
-pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
+pub fn unguarded_pat(a: &Arm) -> Option<Vec<@Pat> > {
     if is_unguarded(a) {
         Some(/* FIXME (#2543) */ a.pats.clone())
     } else {
@@ -241,7 +241,7 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty)
 }
 
-pub fn public_methods(ms: ~[@Method]) -> ~[@Method] {
+pub fn public_methods(ms: Vec<@Method> ) -> Vec<@Method> {
     ms.move_iter().filter(|m| {
         match m.vis {
             Public => true,
@@ -271,9 +271,9 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
 }
 
 pub fn split_trait_methods(trait_methods: &[TraitMethod])
-    -> (~[TypeMethod], ~[@Method]) {
-    let mut reqd = ~[];
-    let mut provd = ~[];
+    -> (Vec<TypeMethod> , Vec<@Method> ) {
+    let mut reqd = Vec::new();
+    let mut provd = Vec::new();
     for trt_method in trait_methods.iter() {
         match *trt_method {
             Required(ref tm) => reqd.push((*tm).clone()),
@@ -724,7 +724,7 @@ pub fn new_rename_internal(id: Ident,
 // FIXME #8215 : currently pub to allow testing
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
-        table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
+        table: RefCell::new(vec!(EmptyCtxt,IllegalCtxt)),
         mark_memo: RefCell::new(HashMap::new()),
         rename_memo: RefCell::new(HashMap::new()),
     }
@@ -754,7 +754,7 @@ pub fn display_sctable(table : &SCTable) {
 
 
 /// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut ~[T], val: T) -> u32 {
+fn idx_push<T>(vec: &mut Vec<T> , val: T) -> u32 {
     vec.push(val);
     (vec.len() - 1) as u32
 }
@@ -831,15 +831,15 @@ pub fn resolve_internal(id : Ident,
 }
 
 /// Compute the marks associated with a syntax context.
-pub fn mtwt_marksof(ctxt: SyntaxContext, stopname: Name) -> ~[Mrk] {
+pub fn mtwt_marksof(ctxt: SyntaxContext, stopname: Name) -> Vec<Mrk> {
     marksof(ctxt, stopname, get_sctable())
 }
 
 // the internal function for computing marks
 // it's not clear to me whether it's better to use a [] mutable
 // vector or a cons-list for this.
-pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
-    let mut result = ~[];
+pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> Vec<Mrk> {
+    let mut result = Vec::new();
     let mut loopvar = ctxt;
     loop {
         let table_entry = {
@@ -881,7 +881,7 @@ pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
 
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
-pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
+pub fn xorPush(marks: &mut Vec<Mrk> , mark: Mrk) {
     if (marks.len() > 0) && (getLast(marks) == mark) {
         marks.pop().unwrap();
     } else {
@@ -891,7 +891,7 @@ pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
 
 // get the last element of a mutable array.
 // FIXME #4903: , must be a separate procedure for now.
-pub fn getLast(arr: &~[Mrk]) -> Mrk {
+pub fn getLast(arr: &Vec<Mrk> ) -> Mrk {
     *arr.last().unwrap()
 }
 
@@ -956,21 +956,21 @@ mod test {
     }
 
     #[test] fn xorpush_test () {
-        let mut s = ~[];
+        let mut s = Vec::new();
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
+        assert_eq!(s.clone(), vec!(14));
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[]);
+        assert_eq!(s.clone(), Vec::new());
         xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
+        assert_eq!(s.clone(), vec!(14));
         xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14, 15]);
+        assert_eq!(s.clone(), vec!(14, 15));
         xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15, 16]);
+        assert_eq!(s.clone(), vec!(14, 15, 16));
         xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15]);
+        assert_eq!(s.clone(), vec!(14, 15));
         xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14]);
+        assert_eq!(s.clone(), vec!(14));
     }
 
     fn id(n: Name, s: SyntaxContext) -> Ident {
@@ -987,7 +987,7 @@ mod test {
 
     // unfold a vector of TestSC values into a SCTable,
     // returning the resulting index
-    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table: &SCTable)
+    fn unfold_test_sc(tscs : Vec<TestSC> , tail: SyntaxContext, table: &SCTable)
         -> SyntaxContext {
         tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
@@ -996,8 +996,8 @@ mod test {
     }
 
     // gather a SyntaxContext back into a vector of TestSCs
-    fn refold_test_sc(mut sc: SyntaxContext, table : &SCTable) -> ~[TestSC] {
-        let mut result = ~[];
+    fn refold_test_sc(mut sc: SyntaxContext, table : &SCTable) -> Vec<TestSC> {
+        let mut result = Vec::new();
         loop {
             let table = table.table.borrow();
             match table.get()[sc] {
@@ -1020,7 +1020,7 @@ mod test {
     #[test] fn test_unfold_refold(){
         let mut t = new_sctable_internal();
 
-        let test_sc = ~[M(3),R(id(101,0),14),M(9)];
+        let test_sc = vec!(M(3),R(id(101,0),14),M(9));
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
@@ -1033,7 +1033,7 @@ mod test {
 
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
-    fn unfold_marks(mrks: ~[Mrk], tail: SyntaxContext, table: &SCTable)
+    fn unfold_marks(mrks: Vec<Mrk> , tail: SyntaxContext, table: &SCTable)
                     -> SyntaxContext {
         mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
                    {new_mark_internal(*mrk,tail,table)})
@@ -1042,7 +1042,7 @@ mod test {
     #[test] fn unfold_marks_test() {
         let mut t = new_sctable_internal();
 
-        assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
+        assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),3);
         {
             let table = t.table.borrow();
             assert!(table.get()[2] == Mark(7,0));
@@ -1054,32 +1054,32 @@ mod test {
         let stopname = 242;
         let name1 = 243;
         let mut t = new_sctable_internal();
-        assert_eq!(marksof (EMPTY_CTXT,stopname,&t),~[]);
+        assert_eq!(marksof (EMPTY_CTXT,stopname,&t),Vec::new());
         // FIXME #5074: ANF'd to dodge nested calls
-        { let ans = unfold_marks(~[4,98],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t),~[4,98]);}
+        { let ans = unfold_marks(vec!(4,98),EMPTY_CTXT,&mut t);
+         assert_eq! (marksof (ans,stopname,&t),vec!(4,98));}
         // does xoring work?
-        { let ans = unfold_marks(~[5,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t), ~[16]);}
+        { let ans = unfold_marks(vec!(5,5,16),EMPTY_CTXT,&mut t);
+         assert_eq! (marksof (ans,stopname,&t), vec!(16));}
         // does nested xoring work?
-        { let ans = unfold_marks(~[5,10,10,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname,&t), ~[16]);}
+        { let ans = unfold_marks(vec!(5,10,10,5,16),EMPTY_CTXT,&mut t);
+         assert_eq! (marksof (ans, stopname,&t), vec!(16));}
         // rename where stop doesn't match:
-        { let chain = ~[M(9),
+        { let chain = vec!(M(9),
                         R(id(name1,
                              new_mark_internal (4, EMPTY_CTXT,&mut t)),
                           100101102),
-                        M(14)];
+                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9,14]);}
+         assert_eq! (marksof (ans, stopname, &t), vec!(9,14));}
         // rename where stop does match
         { let name1sc = new_mark_internal(4, EMPTY_CTXT, &mut t);
-         let chain = ~[M(9),
+         let chain = vec!(M(9),
                        R(id(name1, name1sc),
                          stopname),
-                       M(14)];
+                       M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9]); }
+         assert_eq! (marksof (ans, stopname, &t), vec!(9)); }
     }
 
 
@@ -1090,32 +1090,32 @@ mod test {
         // - ctxt is MT
         assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
         // - simple ignored marks
-        { let sc = unfold_marks(~[1,2,3],EMPTY_CTXT,&mut t);
+        { let sc = unfold_marks(vec!(1,2,3),EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - orthogonal rename where names don't match
-        { let sc = unfold_test_sc(~[R(id(50,EMPTY_CTXT),51),M(12)],EMPTY_CTXT,&mut t);
+        { let sc = unfold_test_sc(vec!(R(id(50,EMPTY_CTXT),51),M(12)),EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
         // - rename where names do match, but marks don't
         { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50),
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),50),
                                    M(1),
-                                   M(2)],
+                                   M(2)),
                                  EMPTY_CTXT,&mut t);
         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
         // - rename where names and marks match
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],EMPTY_CTXT,&mut t);
+        { let sc1 = unfold_test_sc(vec!(M(1),M(2)),EMPTY_CTXT,&mut t);
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),50),M(1),M(2)),EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - rename where names and marks match by literal sharing
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
+        { let sc1 = unfold_test_sc(vec!(M(1),M(2)),EMPTY_CTXT,&mut t);
+         let sc = unfold_test_sc(vec!(R(id(a,sc1),50)),sc1,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
         println!("about to run bad test");
-        { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
-                                    R(id(a,EMPTY_CTXT),51)],
+        { let sc = unfold_test_sc(vec!(R(id(a,EMPTY_CTXT),50),
+                                    R(id(a,EMPTY_CTXT),51)),
                                   EMPTY_CTXT,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
         // the simplest double-rename:
@@ -1126,8 +1126,8 @@ mod test {
          let sc = new_mark_internal(9,a50_to_a51,&mut t);
          assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
          // but mark on the inside does:
-         let a50_to_a51_b = unfold_test_sc(~[R(id(a,a_to_a50),51),
-                                              M(9)],
+         let a50_to_a51_b = unfold_test_sc(vec!(R(id(a,a_to_a50),51),
+                                              M(9)),
                                            a_to_a50,
                                            &mut t);
          assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}

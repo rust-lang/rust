@@ -115,7 +115,7 @@ pub enum Nonterminal {
     NtAttr(@ast::Attribute), // #[foo]
     NtPath(~ast::Path),
     NtTT(  @ast::TokenTree), // needs @ed to break a circularity
-    NtMatchers(~[ast::Matcher])
+    NtMatchers(Vec<ast::Matcher> )
 }
 
 impl fmt::Show for Nonterminal {
@@ -412,11 +412,11 @@ macro_rules! declare_special_idents_and_keywords {(
         // The indices here must correspond to the numbers in
         // special_idents, in Keyword to_ident(), and in static
         // constants below.
-        let init_vec = ~[
+        let init_vec = vec!(
             $( $si_str, )*
             $( $sk_str, )*
             $( $rk_str, )*
-        ];
+        );
 
         interner::StrInterner::prefill(init_vec)
     }

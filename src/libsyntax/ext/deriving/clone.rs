@@ -21,22 +21,22 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "clone", "Clone"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "clone", "Clone")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "clone",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[],
+                args: Vec::new(),
                 ret_ty: Self,
                 inline: true,
                 const_nonmatching: false,
                 combine_substructure: |c, s, sub| cs_clone("Clone", c, s, sub)
             }
-        ]
+        )
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -49,16 +49,16 @@ pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
                                   push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "clone", "DeepClone"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "clone", "DeepClone")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "deep_clone",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[],
+                args: Vec::new(),
                 ret_ty: Self,
                 inline: true,
                 const_nonmatching: false,
@@ -66,7 +66,7 @@ pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
                 // call deep_clone (not clone) here.
                 combine_substructure: |c, s, sub| cs_clone("DeepClone", c, s, sub)
             }
-        ]
+        )
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -80,7 +80,7 @@ fn cs_clone(
     let ctor_ident;
     let all_fields;
     let subcall = |field: &FieldInfo|
-        cx.expr_method_call(field.span, field.self_, clone_ident, ~[]);
+        cx.expr_method_call(field.span, field.self_, clone_ident, Vec::new());
 
     match *substr.fields {
         Struct(ref af) => {

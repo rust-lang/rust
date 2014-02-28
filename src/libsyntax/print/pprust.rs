@@ -60,10 +60,10 @@ pub struct State<'a> {
     s: pp::Printer,
     cm: Option<@CodeMap>,
     intr: @token::IdentInterner,
-    comments: Option<~[comments::Comment]>,
-    literals: Option<~[comments::Literal]>,
+    comments: Option<Vec<comments::Comment> >,
+    literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
-    boxes: RefCell<~[pp::Breaks]>,
+    boxes: RefCell<Vec<pp::Breaks> >,
     ann: &'a PpAnn
 }
 
@@ -98,7 +98,7 @@ pub fn rust_printer_annotated<'a>(writer: ~io::Writer, ann: &'a PpAnn) -> State<
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(~[]),
+        boxes: RefCell::new(Vec::new()),
         ann: ann
     }
 }
@@ -140,7 +140,7 @@ pub fn print_crate(cm: @CodeMap,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(~[]),
+        boxes: RefCell::new(Vec::new()),
         ann: ann
     };
     print_crate_(&mut s, krate)
@@ -1981,7 +1981,7 @@ pub fn print_generics(s: &mut State,
             }
         }
 
-        let mut ints = ~[];
+        let mut ints = Vec::new();
         for i in range(0u, total) {
             ints.push(i);
         }
@@ -2540,7 +2540,7 @@ mod test {
         let abba_ident = token::str_to_ident("abba");
 
         let decl = ast::FnDecl {
-            inputs: ~[],
+            inputs: Vec::new(),
             output: ast::P(ast::Ty {id: 0,
                                     node: ast::TyNil,
                                     span: codemap::DUMMY_SP}),
@@ -2559,9 +2559,9 @@ mod test {
 
         let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
             name: ident,
-            attrs: ~[],
+            attrs: Vec::new(),
             // making this up as I go.... ?
-            kind: ast::TupleVariantKind(~[]),
+            kind: ast::TupleVariantKind(Vec::new()),
             id: 0,
             disr_expr: None,
             vis: ast::Public,

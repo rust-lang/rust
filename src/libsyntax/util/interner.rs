@@ -24,7 +24,7 @@ use std::rc::Rc;
 
 pub struct Interner<T> {
     priv map: RefCell<HashMap<T, Name>>,
-    priv vect: RefCell<~[T]>,
+    priv vect: RefCell<Vec<T> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -32,7 +32,7 @@ impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(~[]),
+            vect: RefCell::new(Vec::new()),
         }
     }
 
@@ -134,7 +134,7 @@ impl RcStr {
 // &str rather than RcStr, resulting in less allocation.
 pub struct StrInterner {
     priv map: RefCell<HashMap<RcStr, Name>>,
-    priv vect: RefCell<~[RcStr]>,
+    priv vect: RefCell<Vec<RcStr> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -142,7 +142,7 @@ impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
             map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(~[]),
+            vect: RefCell::new(Vec::new()),
         }
     }
 
