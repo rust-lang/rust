@@ -1223,10 +1223,8 @@ impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
 
 /// Extension methods for vectors containing `Clone` elements.
 pub trait ImmutableCloneableVector<T> {
-    /**
-     * Partitions the vector into those that satisfies the predicate, and
-     * those that do not.
-     */
+    /// Partitions the vector into two vectors `(A,B)`, where all
+    /// elements of `A` satisfy `f` and all elements of `B` do not.
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
 
     /// Create an iterator that yields every possible permutation of the
@@ -1394,9 +1392,10 @@ pub trait OwnedVector<T> {
      * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
      */
     fn retain(&mut self, f: |t: &T| -> bool);
+
     /**
-     * Partitions the vector into those that satisfies the predicate, and
-     * those that do not.
+     * Partitions the vector into two vectors `(A,B)`, where all
+     * elements of `A` satisfy `f` and all elements of `B` do not.
      */
     fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]);
 
