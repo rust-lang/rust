@@ -38,6 +38,9 @@ pub struct MacroDef {
 pub type ItemDecorator =
     fn(&mut ExtCtxt, Span, @ast::MetaItem, @ast::Item, |@ast::Item|);
 
+pub type ItemModifier =
+    fn(&mut ExtCtxt, Span, @ast::MetaItem, @ast::Item) -> @ast::Item;
+
 pub struct BasicMacroExpander {
     expander: MacroExpanderFn,
     span: Option<Span>
@@ -126,21 +129,27 @@ impl MacResult {
     }
 }
 
+/// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
-    // #[deriving] and such
+    /// A syntax extension that is attached to an item and creates new items
+    /// based upon it.
+    ///
+    /// `#[deriving(...)]` is an `ItemDecorator`.
     ItemDecorator(ItemDecorator),
 
-    // Token-tree expanders
+    /// A syntax extension that is attached to an item and modifies it
+    /// in-place.
+    ItemModifier(ItemModifier),
+
+    /// A normal, function-like syntax extension.
+    ///
+    /// `bytes!` is a `NormalTT`.
     NormalTT(~MacroExpander:'static, Option<Span>),
 
-    // An IdentTT is a macro that has an
-    // identifier in between the name of the
-    // macro and the argument. Currently,
-    // the only examples of this is
-    // macro_rules!
-
-    // perhaps macro_rules! will lose its odd special identifier argument,
-    // and this can go away also
+    /// A function-like syntax extension that has an extra ident before
+    /// the block.
+    ///
+    /// `macro_rules!` is an `IdentTT`.
     IdentTT(~IdentMacroExpander:'static, Option<Span>),
 }
 
