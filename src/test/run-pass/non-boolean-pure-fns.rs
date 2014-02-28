@@ -14,19 +14,19 @@
 
 extern crate collections;
 
-use collections::list::{List, Cons, Nil, head, is_empty};
+use collections::list::{List, Cons, Nil};
 
-fn pure_length_go<T:Clone>(ls: @List<T>, acc: uint) -> uint {
+fn pure_length_go<T>(ls: @List<T>, acc: uint) -> uint {
     match *ls { Nil => { acc } Cons(_, tl) => { pure_length_go(tl, acc + 1u) } }
 }
 
-fn pure_length<T:Clone>(ls: @List<T>) -> uint { pure_length_go(ls, 0u) }
+fn pure_length<T>(ls: @List<T>) -> uint { pure_length_go(ls, 0u) }
 
-fn nonempty_list<T:Clone>(ls: @List<T>) -> bool { pure_length(ls) > 0u }
+fn nonempty_list<T>(ls: @List<T>) -> bool { pure_length(ls) > 0u }
 
 fn safe_head<T:Clone>(ls: @List<T>) -> T {
-    assert!(!is_empty(ls));
-    return head(ls);
+    assert!(!ls.is_empty());
+    return ls.head().unwrap().clone();
 }
 
 pub fn main() {

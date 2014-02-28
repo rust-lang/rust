@@ -73,7 +73,6 @@ use std::cell::RefCell;
 use collections::HashMap;
 use std::rc::Rc;
 use collections::List;
-use collections::list;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -311,23 +310,18 @@ pub fn require_same_types(tcx: ty::ctxt,
 // corresponding ty::Region
 pub type isr_alist = @List<(ty::BoundRegion, ty::Region)>;
 
-trait get_and_find_region {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region;
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region>;
+trait get_region<'a, T:'static> {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region;
 }
 
-impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region {
-        self.find(br).unwrap()
-    }
-
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
-        let mut ret = None;
-        list::each(*self, |isr| {
+impl<'a, T:'static> get_region <'a, T> for isr_alist {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region {
+        let mut region = None;
+        for isr in self.iter() {
             let (isr_br, isr_r) = *isr;
-            if isr_br == br { ret = Some(isr_r); false } else { true }
-        });
-        ret
+            if isr_br == br { region = Some(isr_r); break; }
+        };
+        region.unwrap()
     }
 }
 
