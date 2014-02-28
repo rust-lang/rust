@@ -17,7 +17,11 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
-#[feature(macro_rules, managed_boxes)];
+#[feature(macro_rules, managed_boxes, default_type_params)];
+
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
+#[allow(default_type_param_usage)];
 
 #[cfg(test)] extern crate test;
 

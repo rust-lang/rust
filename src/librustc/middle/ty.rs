@@ -4883,7 +4883,7 @@ pub fn trait_method_of_method(tcx: ctxt,
 /// Creates a hash of the type `t` which will be the same no matter what crate
 /// context it's calculated within. This is used by the `type_id` intrinsic.
 pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: ~str) -> u64 {
-    let mut state = sip::SipState::new(0, 0);
+    let mut state = sip::SipState::new();
     macro_rules! byte( ($b:expr) => { ($b as u8).hash(&mut state) } );
     macro_rules! hash( ($e:expr) => { $e.hash(&mut state) } );
 
