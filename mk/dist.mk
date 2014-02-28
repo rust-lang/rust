@@ -12,6 +12,10 @@ PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
+ifeq ($(CFG_OSTYPE), apple-darwin)
+PKG_OSX = $(PKG_DIR).pkg
+endif
+
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 
 PKG_FILES := \
@@ -41,10 +45,10 @@ PKG_FILES := \
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
-ifdef CFG_ISCC
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cat $^ > $@
 
+ifdef CFG_ISCC
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
 
@@ -103,7 +107,7 @@ distcheck: dist
 
 else
 
-dist: $(PKG_TAR)
+dist: $(PKG_TAR) $(PKG_OSX)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
@@ -121,6 +125,34 @@ distcheck: $(PKG_TAR)
 	@echo
 	@echo -----------------------------------------------
 	@echo $(PKG_TAR) ready for distribution
+	@echo -----------------------------------------------
+
+endif
+
+ifeq ($(CFG_OSTYPE), apple-darwin)
+
+dist-prepare-osx: PREPARE_HOST=$(CFG_BUILD)
+dist-prepare-osx: PREPARE_TARGETS=$(CFG_BUILD)
+dist-prepare-osx: PREPARE_DEST_DIR=tmp/dist/pkgroot
+dist-prepare-osx: PREPARE_STAGE=2
+dist-prepare-osx: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-prepare-osx: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-prepare-osx: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-prepare-osx: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-osx: prepare-base
+
+$(PKG_OSX): Distribution.xml LICENSE.txt dist-prepare-osx
+	@$(call E, making OS X pkg)
+	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot rust.pkg
+	$(Q)productbuild --distribution Distribution.xml --resources . $(PKG_OSX)
+	$(Q)rm -rf tmp rust.pkg
+
+dist-osx: $(PKG_OSX)
+
+distcheck-osx: $(PKG_OSX)
+	@echo
+	@echo -----------------------------------------------
+	@echo $(PKG_OSX) ready for distribution
 	@echo -----------------------------------------------
 
 endif
