@@ -10,11 +10,11 @@
 
 // force-host
 
-#[feature(globs, macro_registrar, macro_rules, quote)];
+#[feature(globs, macro_registrar, macro_rules, quote, managed_boxes)];
 
 extern crate syntax;
 
-use syntax::ast::{Name, TokenTree};
+use syntax::ast::{Name, TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
@@ -32,13 +32,22 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
             span: None,
         },
         None));
+    register(token::intern("into_foo"), ItemModifier(expand_into_foo));
 }
 
-pub fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> MacResult {
+fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> MacResult {
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }
     MRExpr(quote_expr!(cx, 1i))
+}
+
+fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: @MetaItem, it: @Item)
+                   -> @Item {
+    @Item {
+        attrs: it.attrs.clone(),
+        ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
+    }
 }
 
 pub fn foo() {}

@@ -108,6 +108,21 @@ impl<T: Clone> Vec<T> {
         }
         *self.get_mut(index) = val;
     }
+
+    pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+        let mut lefts = Vec::new();
+        let mut rights = Vec::new();
+
+        for elt in self.iter() {
+            if f(elt) {
+                lefts.push(elt.clone());
+            } else {
+                rights.push(elt.clone());
+            }
+        }
+
+        (lefts, rights)
+    }
 }
 
 impl<T:Clone> Clone for Vec<T> {
