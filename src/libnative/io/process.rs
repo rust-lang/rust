@@ -470,7 +470,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                 Err(e) => {
                     assert!(e.kind == io::BrokenPipe ||
                             e.kind == io::EndOfFile,
-                            "unexpected error: {:?}", e);
+                            "unexpected error: {}", e);
                     Ok(SpawnProcessResult {
                         pid: pid,
                         handle: ptr::null()
@@ -744,7 +744,7 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
 
         let mut status = 0 as c_int;
         match retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
-            -1 => fail!("unknown waitpid error: {:?}", super::last_error()),
+            -1 => fail!("unknown waitpid error: {}", super::last_error()),
             _ => {
                 if imp::WIFEXITED(status) {
                     p::ExitStatus(imp::WEXITSTATUS(status) as int)
