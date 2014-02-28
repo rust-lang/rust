@@ -1130,7 +1130,7 @@ pub mod types {
                     Data4: [BYTE, ..8],
                 }
 
-                struct WSAPROTOCOLCHAIN {
+                pub struct WSAPROTOCOLCHAIN {
                     ChainLen: c_int,
                     ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
                 }

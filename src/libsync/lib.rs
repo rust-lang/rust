@@ -17,7 +17,7 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
-pub use arc::{Arc, MutexArc, RWArc, RWWriteMode, RWReadMode, Condvar, CowArc};
+pub use arc::{Arc, MutexArc, RWArc, RWWriteMode, RWReadMode, ArcCondvar, CowArc};
 pub use sync::{Mutex, RWLock, Condvar, Semaphore, RWLockWriteMode,
     RWLockReadMode, Barrier, one, mutex};
 pub use comm::{DuplexStream, SyncChan, SyncPort, rendezvous};

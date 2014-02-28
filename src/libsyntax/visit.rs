@@ -193,9 +193,11 @@ fn walk_explicit_self<E: Clone, V: Visitor<E>>(visitor: &mut V,
     }
 }
 
-fn walk_trait_ref<E: Clone, V: Visitor<E>>(visitor: &mut V,
-                                           trait_ref: &TraitRef,
-                                           env: E) {
+/// Like with walk_method_helper this doesn't correspond to a method
+/// in Visitor, and so it gets a _helper suffix.
+pub fn walk_trait_ref_helper<E: Clone, V: Visitor<E>>(visitor: &mut V,
+                                                      trait_ref: &TraitRef,
+                                                      env: E) {
     visitor.visit_path(&trait_ref.path, trait_ref.ref_id, env)
 }
 
@@ -239,7 +241,8 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                  ref methods) => {
             visitor.visit_generics(type_parameters, env.clone());
             match *trait_reference {
-                Some(ref trait_reference) => walk_trait_ref(visitor, trait_reference, env.clone()),
+                Some(ref trait_reference) => walk_trait_ref_helper(visitor,
+                                                                   trait_reference, env.clone()),
                 None => ()
             }
             visitor.visit_ty(typ, env.clone());
@@ -459,7 +462,7 @@ pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
     for bound in bounds.iter() {
         match *bound {
             TraitTyParamBound(ref typ) => {
-                walk_trait_ref(visitor, typ, env.clone())
+                walk_trait_ref_helper(visitor, typ, env.clone())
             }
             RegionTyParamBound => {}
         }

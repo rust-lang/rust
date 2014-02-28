@@ -173,6 +173,7 @@
 
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
+#[allow(visible_private_types)];
 
 use std::mem::replace;
 use std::os;

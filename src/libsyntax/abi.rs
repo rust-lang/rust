@@ -48,7 +48,7 @@ pub enum Architecture {
 static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
 static ArmBits: u32 = (1 << (Arm as uint));
 
-struct AbiData {
+pub struct AbiData {
     abi: Abi,
 
     // Name of this ABI as we like it called.
@@ -59,7 +59,7 @@ struct AbiData {
     abi_arch: AbiArchitecture
 }
 
-enum AbiArchitecture {
+pub enum AbiArchitecture {
     RustArch,   // Not a real ABI (e.g., intrinsic)
     AllArch,    // An ABI that specifies cross-platform defaults (e.g., "C")
     Archs(u32)  // Multiple architectures (bitset)
