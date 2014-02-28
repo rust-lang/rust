@@ -55,7 +55,8 @@
 use std::cmp::max;
 use std::default::Default;
 use std::fmt;
-use std::hash::{Hash, Hasher, sip};
+use std::hash::{Hash, Hasher};
+use std::hash::sip::{SipState, SipHasher};
 use std::iter::{FilterMap, Chain, Repeat, Zip};
 use std::iter;
 use std::mem::replace;
@@ -78,10 +79,10 @@ struct Bucket<K,V> {
 /// hash function for internal state. This means that the order of all hash maps
 /// is randomized by keying each hash map randomly on creation.
 ///
-/// It is required that the keys implement the `Eq` and `Hash` traits.
-pub struct HashMap<K,V> {
-    priv k0: u64,
-    priv k1: u64,
+/// It is required that the keys implement the `Eq` and `Hash` traits, although
+/// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.
+pub struct HashMap<K, V, H = SipHasher> {
+    priv hasher: H,
     priv resize_at: uint,
     priv size: uint,
     priv buckets: Vec<Option<Bucket<K, V>>>
@@ -98,7 +99,7 @@ fn resize_at(capacity: uint) -> uint {
     (capacity * 3) / 4
 }
 
-impl<K:Hash + Eq, V> HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[inline]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
@@ -127,14 +128,13 @@ impl<K:Hash + Eq, V> HashMap<K, V> {
 
     #[inline]
     fn bucket_for_key(&self, k: &K) -> SearchResult {
-        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
+        let hash = self.hasher.hash(k) as uint;
         self.bucket_for_key_with_hash(hash, k)
     }
 
     #[inline]
-    fn bucket_for_key_equiv<Q:Hash + Equiv<K>>(&self, k: &Q)
-                                               -> SearchResult {
-        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
+    fn bucket_for_key_equiv<Q:Hash<S> + Equiv<K>>(&self, k: &Q) -> SearchResult {
+        let hash = self.hasher.hash(k) as uint;
         self.bucket_for_key_with_hash_equiv(hash, k)
     }
 
@@ -285,12 +285,12 @@ impl<K:Hash + Eq, V> HashMap<K, V> {
     }
 }
 
-impl<K:Hash + Eq,V> Container for HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.size }
 }
 
-impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         for bkt in self.buckets.as_mut_slice().mut_iter() {
@@ -300,7 +300,7 @@ impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     }
 }
 
-impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> Map<K, V> for HashMap<K, V, H> {
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         match self.bucket_for_key(k) {
@@ -310,7 +310,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 }
 
-impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> {
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
@@ -335,21 +335,21 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
             self.expand();
         }
 
-        let hash = sip::hash_with_keys(self.k0, self.k1, &k) as uint;
+        let hash = self.hasher.hash(&k) as uint;
         self.insert_internal(hash, k, v)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     fn pop(&mut self, k: &K) -> Option<V> {
-        let hash = sip::hash_with_keys(self.k0, self.k1, k) as uint;
+        let hash = self.hasher.hash(k) as uint;
         self.pop_internal(hash, k)
     }
 }
 
 impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Create an empty HashMap
-    pub fn new() -> HashMap<K, V> {
+    pub fn new() -> HashMap<K, V, SipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
@@ -357,20 +357,27 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// elements in the hash table.
     pub fn with_capacity(capacity: uint) -> HashMap<K, V> {
         let mut r = rand::task_rng();
-        HashMap::with_capacity_and_keys(r.gen(), r.gen(), capacity)
+        let hasher = SipHasher::new_with_keys(r.gen(), r.gen());
+        HashMap::with_capacity_and_hasher(hasher, capacity)
+    }
+}
+
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> HashMap<K, V, H> {
+    pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
+        HashMap::with_capacity_and_hasher(hasher, INITIAL_CAPACITY)
     }
 
     /// Create an empty HashMap with space for at least `capacity`
-    /// elements, using `k0` and `k1` as the keys.
+    /// elements, using `hasher` to hash the keys.
     ///
-    /// Warning: `k0` and `k1` are normally randomly generated, and
-    /// are designed to allow HashMaps to be resistant to attacks that
-    /// cause many collisions and very poor performance. Setting them
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
-    pub fn with_capacity_and_keys(k0: u64, k1: u64, capacity: uint) -> HashMap<K, V> {
+    pub fn with_capacity_and_hasher(hasher: H, capacity: uint) -> HashMap<K, V, H> {
         let cap = max(INITIAL_CAPACITY, capacity);
         HashMap {
-            k0: k0, k1: k1,
+            hasher: hasher,
             resize_at: resize_at(cap),
             size: 0,
             buckets: Vec::from_fn(cap, |_| None)
@@ -442,7 +449,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             self.expand();
         }
 
-        let hash = sip::hash_with_keys(self.k0, self.k1, &k) as uint;
+        let hash = self.hasher.hash(&k) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
@@ -502,7 +509,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return true if the map contains a value for the specified key,
     /// using equivalence
-    pub fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
+    pub fn contains_key_equiv<Q:Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
         match self.bucket_for_key_equiv(key) {
             FoundEntry(_) => {true}
             TableFull | FoundHole(_) => {false}
@@ -511,8 +518,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence
-    pub fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q)
-                                             -> Option<&'a V> {
+    pub fn find_equiv<'a, Q:Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
@@ -552,7 +558,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
+impl<K: Hash<S> + Eq, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Like `find`, but returns a copy of the value.
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map(|v| (*v).clone())
@@ -564,8 +570,8 @@ impl<K: Hash + Eq, V: Clone> HashMap<K, V> {
     }
 }
 
-impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
-    fn eq(&self, other: &HashMap<K, V>) -> bool {
+impl<K: Hash<S> + Eq, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
+    fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
 
         self.iter().all(|(key, value)| {
@@ -576,12 +582,12 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
         })
     }
 
-    fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
+    fn ne(&self, other: &HashMap<K, V, H>) -> bool { !self.eq(other) }
 }
 
-impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
-    fn clone(&self) -> HashMap<K,V> {
-        let mut new_map = HashMap::with_capacity(self.len());
+impl<K: Hash<S> + Eq + Clone, V:Clone, S, H: Hasher<S> + Clone> Clone for HashMap<K, V, H> {
+    fn clone(&self) -> HashMap<K, V, H> {
+        let mut new_map = HashMap::with_capacity_and_hasher(self.hasher.clone(), self.len());
         for (key, value) in self.iter() {
             new_map.insert((*key).clone(), (*value).clone());
         }
@@ -589,7 +595,7 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
     }
 }
 
-impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for HashMap<A, B> {
+impl<K: fmt::Show + Hash<S> + Eq, V: fmt::Show, S, H: Hasher<S>> fmt::Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f.buf, r"\{"))
         let mut first = true;
@@ -705,16 +711,16 @@ impl<K> Iterator<K> for SetMoveItems<K> {
     }
 }
 
-impl<K: Eq + Hash, V> FromIterator<(K, V)> for HashMap<K, V> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
+    fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
-        let mut map = HashMap::with_capacity(lower);
+        let mut map = HashMap::with_capacity_and_hasher(Default::default(), lower);
         map.extend(iter);
         map
     }
 }
 
-impl<K: Eq + Hash, V> Extendable<(K, V)> for HashMap<K, V> {
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<(K, V)>>(&mut self, iter: &mut T) {
         for (k, v) in *iter {
             self.insert(k, v);
@@ -722,54 +728,56 @@ impl<K: Eq + Hash, V> Extendable<(K, V)> for HashMap<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V> Default for HashMap<K, V> {
-    fn default() -> HashMap<K, V> { HashMap::new() }
+impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
+    fn default() -> HashMap<K, V, H> {
+        HashMap::with_capacity_and_hasher(Default::default(), INITIAL_CAPACITY)
+    }
 }
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
-pub struct HashSet<T> {
-    priv map: HashMap<T, ()>
+pub struct HashSet<T, H = SipHasher> {
+    priv map: HashMap<T, (), H>
 }
 
-impl<T:Hash + Eq> Eq for HashSet<T> {
-    fn eq(&self, other: &HashSet<T>) -> bool { self.map == other.map }
-    fn ne(&self, other: &HashSet<T>) -> bool { self.map != other.map }
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> Eq for HashSet<T, H> {
+    fn eq(&self, other: &HashSet<T, H>) -> bool { self.map == other.map }
+    fn ne(&self, other: &HashSet<T, H>) -> bool { self.map != other.map }
 }
 
-impl<T:Hash + Eq> Container for HashSet<T> {
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> Container for HashSet<T, H> {
     /// Return the number of elements in the set
     fn len(&self) -> uint { self.map.len() }
 }
 
-impl<T:Hash + Eq> Mutable for HashSet<T> {
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> Mutable for HashSet<T, H> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T:Hash + Eq> Set<T> for HashSet<T> {
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
-    fn is_disjoint(&self, other: &HashSet<T>) -> bool {
+    fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
     /// Return true if the set is a subset of another
-    fn is_subset(&self, other: &HashSet<T>) -> bool {
+    fn is_subset(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| other.contains(v))
     }
 
     /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &HashSet<T>) -> bool {
+    fn is_superset(&self, other: &HashSet<T, H>) -> bool {
         other.is_subset(self)
     }
 }
 
-impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
@@ -779,27 +787,35 @@ impl<T:Hash + Eq> MutableSet<T> for HashSet<T> {
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
-impl<T:Hash + Eq> HashSet<T> {
+impl<T: Hash<SipState> + Eq> HashSet<T, SipHasher> {
     /// Create an empty HashSet
-    pub fn new() -> HashSet<T> {
+    pub fn new() -> HashSet<T, SipHasher> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
-    pub fn with_capacity(capacity: uint) -> HashSet<T> {
+    pub fn with_capacity(capacity: uint) -> HashSet<T, SipHasher> {
         HashSet { map: HashMap::with_capacity(capacity) }
+    }
+}
+
+impl<T: Hash<S> + Eq, S, H: Hasher<S>> HashSet<T, H> {
+    pub fn with_hasher(hasher: H) -> HashSet<T, H> {
+        HashSet::with_capacity_and_hasher(hasher, INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `capacity`
     /// elements in the hash table, using `k0` and `k1` as the keys.
     ///
-    /// Warning: `k0` and `k1` are normally randomly generated, and
+    /// Warning: `hasher` is normally randomly generated, and
     /// are designed to allow HashSets to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting them
     /// manually using this function can expose a DoS attack vector.
-    pub fn with_capacity_and_keys(k0: u64, k1: u64, capacity: uint) -> HashSet<T> {
-        HashSet { map: HashMap::with_capacity_and_keys(k0, k1, capacity) }
+    pub fn with_capacity_and_hasher(hasher: H, capacity: uint) -> HashSet<T, H> {
+        HashSet {
+            map: HashMap::with_capacity_and_hasher(hasher, capacity)
+        }
     }
 
     /// Reserve space for at least `n` elements in the hash table.
@@ -809,7 +825,7 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// Returns true if the hash set contains a value equivalent to the
     /// given query value.
-    pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
+    pub fn contains_equiv<Q: Hash<S> + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
 
@@ -827,7 +843,7 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the difference
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T>) -> SetAlgebraItems<'a, T> {
+    pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> SetAlgebraItems<'a, T, H> {
         Repeat::new(other)
             .zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -836,14 +852,14 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the symmetric difference
-    pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T>)
-        -> Chain<SetAlgebraItems<'a, T>, SetAlgebraItems<'a, T>> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
+        -> Chain<SetAlgebraItems<'a, T, H>, SetAlgebraItems<'a, T, H>> {
         self.difference(other).chain(other.difference(self))
     }
 
     /// Visit the values representing the intersection
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T>)
-        -> SetAlgebraItems<'a, T> {
+    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>)
+        -> SetAlgebraItems<'a, T, H> {
         Repeat::new(other)
             .zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -852,22 +868,22 @@ impl<T:Hash + Eq> HashSet<T> {
     }
 
     /// Visit the values representing the union
-    pub fn union<'a>(&'a self, other: &'a HashSet<T>)
-        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T>> {
+    pub fn union<'a>(&'a self, other: &'a HashSet<T, H>)
+        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T, H>> {
         self.iter().chain(other.difference(self))
     }
 
 }
 
-impl<T:Hash + Eq + Clone> Clone for HashSet<T> {
-    fn clone(&self) -> HashSet<T> {
+impl<T: Hash<S> + Eq + Clone, S, H: Hasher<S> + Clone> Clone for HashSet<T, H> {
+    fn clone(&self) -> HashSet<T, H> {
         HashSet {
             map: self.map.clone()
         }
     }
 }
 
-impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
+impl<T: fmt::Show + Hash<S> + Eq, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f.buf, r"\{"))
         let mut first = true;
@@ -883,33 +899,37 @@ impl<A: fmt::Show + Hash + Eq> fmt::Show for HashSet<A> {
     }
 }
 
-impl<K: Eq + Hash> FromIterator<K> for HashSet<K> {
-    fn from_iterator<T: Iterator<K>>(iter: &mut T) -> HashSet<K> {
+impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
+    fn from_iterator<Iter: Iterator<T>>(iter: &mut Iter) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
-        let mut set = HashSet::with_capacity(lower);
+        let mut set = HashSet::with_capacity_and_hasher(Default::default(), lower);
         set.extend(iter);
         set
     }
 }
 
-impl<K: Eq + Hash> Extendable<K> for HashSet<K> {
-    fn extend<T: Iterator<K>>(&mut self, iter: &mut T) {
+impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
+    fn extend<Iter: Iterator<T>>(&mut self, iter: &mut Iter) {
         for k in *iter {
             self.insert(k);
         }
     }
 }
 
-impl<K: Eq + Hash> Default for HashSet<K> {
-    fn default() -> HashSet<K> { HashSet::new() }
+impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
+    fn default() -> HashSet<T, H> {
+        HashSet {
+            map: Default::default(),
+        }
+    }
 }
 
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator
-pub type SetAlgebraItems<'a, T> =
-    FilterMap<'static,(&'a HashSet<T>, &'a T), &'a T,
-              Zip<Repeat<&'a HashSet<T>>,SetItems<'a,T>>>;
+pub type SetAlgebraItems<'a, T, H> =
+    FilterMap<'static,(&'a HashSet<T, H>, &'a T), &'a T,
+              Zip<Repeat<&'a HashSet<T, H>>, SetItems<'a, T>>>;
 
 #[cfg(test)]
 mod test_map {

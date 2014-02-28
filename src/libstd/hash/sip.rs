@@ -24,7 +24,9 @@
  * discouraged.
  */
 
+use clone::Clone;
 use container::Container;
+use default::Default;
 use io::{IoResult, Writer};
 use iter::Iterator;
 use result::Ok;
@@ -81,7 +83,13 @@ macro_rules! compress (
 impl SipState {
     /// Create a `SipState` that is keyed off the provided keys.
     #[inline]
-    pub fn new(key0: u64, key1: u64) -> SipState {
+    pub fn new() -> SipState {
+        SipState::new_with_keys(0, 0)
+    }
+
+    /// Create a `SipState` that is keyed off the provided keys.
+    #[inline]
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipState {
         let mut state = SipState {
             k0: key0,
             k1: key1,
@@ -206,9 +214,25 @@ impl Writer for SipState {
     }
 }
 
-/// `Sip` computes the SipHash algorithm from a stream of bytes.
+impl Clone for SipState {
+    #[inline]
+    fn clone(&self) -> SipState {
+        *self
+    }
+}
+
+impl Default for SipState {
+    #[inline]
+    fn default() -> SipState {
+        SipState::new()
+    }
+}
+
+/// `SipHasher` computes the SipHash algorithm from a stream of bytes.
+#[deriving(Clone)]
 pub struct SipHasher {
-    priv state: SipState,
+    priv k0: u64,
+    priv k1: u64,
 }
 
 impl SipHasher {
@@ -222,7 +246,8 @@ impl SipHasher {
     #[inline]
     pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher {
-            state: SipState::new(key0, key1),
+            k0: key0,
+            k1: key1,
         }
     }
 }
@@ -230,23 +255,31 @@ impl SipHasher {
 impl Hasher<SipState> for SipHasher {
     #[inline]
     fn hash<T: Hash<SipState>>(&self, value: &T) -> u64 {
-        let mut state = self.state; // implicitly copy the state.
+        let mut state = SipState::new_with_keys(self.k0, self.k1);
         value.hash(&mut state);
         state.result()
     }
 }
 
+impl Default for SipHasher {
+    #[inline]
+    fn default() -> SipHasher {
+        SipHasher::new()
+    }
+}
 
 /// Hash a value using the SipHash algorithm.
 #[inline]
 pub fn hash<T: Hash<SipState>>(value: &T) -> u64 {
-    hash_with_keys(0, 0, value)
+    let mut state = SipState::new();
+    value.hash(&mut state);
+    state.result()
 }
 
 /// Hash a value with the SipHash algorithm with the provided keys.
 #[inline]
 pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
-    let mut state = SipState::new(k0, k1);
+    let mut state = SipState::new_with_keys(k0, k1);
     value.hash(&mut state);
     state.result()
 }
@@ -350,8 +383,8 @@ mod tests {
         let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
         let mut buf : ~[u8] = ~[];
         let mut t = 0;
-        let mut state_inc = SipState::new(k0, k1);
-        let mut state_full = SipState::new(k0, k1);
+        let mut state_inc = SipState::new_with_keys(k0, k1);
+        let mut state_full = SipState::new_with_keys(k0, k1);
 
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";

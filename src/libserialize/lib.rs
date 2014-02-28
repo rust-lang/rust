@@ -20,7 +20,11 @@ Core encoding and decoding interfaces.
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 #[forbid(non_camel_case_types)];
-#[feature(macro_rules,managed_boxes)];
+#[feature(macro_rules, managed_boxes, default_type_params)];
+
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
+#[allow(default_type_param_usage)];
 
 // test harness access
 #[cfg(test)]
