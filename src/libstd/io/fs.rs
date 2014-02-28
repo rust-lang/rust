@@ -968,8 +968,34 @@ mod test {
         check!(rmdir(dir));
     })
 
+    iotest!(fn recursive_mkdir() {
+        let tmpdir = tmpdir();
+        let dir = tmpdir.join("d1/d2");
+        check!(mkdir_recursive(&dir, io::UserRWX));
+        assert!(dir.is_dir())
+    })
+
     iotest!(fn recursive_mkdir_slash() {
         check!(mkdir_recursive(&Path::new("/"), io::UserRWX));
+    })
+
+    // FIXME(#12795) depends on lstat to work on windows
+    #[cfg(not(windows))]
+    iotest!(fn recursive_rmdir() {
+        let tmpdir = tmpdir();
+        let d1 = tmpdir.join("d1");
+        let dt = d1.join("t");
+        let dtt = dt.join("t");
+        let d2 = tmpdir.join("d2");
+        let canary = d2.join("do_not_delete");
+        check!(mkdir_recursive(&dtt, io::UserRWX));
+        check!(mkdir_recursive(&d2, io::UserRWX));
+        check!(File::create(&canary).write(bytes!("foo")));
+        check!(symlink(&d2, &dt.join("d2")));
+        check!(rmdir_recursive(&d1));
+
+        assert!(!d1.is_dir());
+        assert!(canary.exists());
     })
 
     iotest!(fn unicode_path_is_dir() {
