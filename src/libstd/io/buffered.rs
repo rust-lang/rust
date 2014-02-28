@@ -14,7 +14,8 @@ use cmp;
 use container::Container;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::ExactSize;
-use option::{Some, None};
+use ops::Drop;
+use option::{Some, None, Option};
 use result::{Ok, Err};
 use vec::{OwnedVector, ImmutableVector, MutableVector};
 use vec;
@@ -115,7 +116,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 
 /// Wraps a Writer and buffers output to it
 ///
-/// Note that `BufferedWriter` will NOT flush its buffer when dropped.
+/// This writer will be flushed when it is dropped.
 ///
 /// # Example
 ///
@@ -130,7 +131,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// writer.flush();
 /// ```
 pub struct BufferedWriter<W> {
-    priv inner: W,
+    priv inner: Option<W>,
     priv buf: ~[u8],
     priv pos: uint
 }
@@ -142,7 +143,7 @@ impl<W: Writer> BufferedWriter<W> {
         let mut buf = vec::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedWriter {
-            inner: inner,
+            inner: Some(inner),
             buf: buf,
             pos: 0
         }
@@ -155,7 +156,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.write(self.buf.slice_to(self.pos));
+            let ret = self.inner.get_mut_ref().write(self.buf.slice_to(self.pos));
             self.pos = 0;
             ret
         } else {
@@ -167,15 +168,15 @@ impl<W: Writer> BufferedWriter<W> {
     ///
     /// This type does not expose the ability to get a mutable reference to the
     /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { &self.inner }
+    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
 
     /// Unwraps this buffer, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
     pub fn unwrap(mut self) -> W {
-        // FIXME: is failing the right thing to do if flushing fails?
+        // FIXME(#12628): is failing the right thing to do if flushing fails?
         self.flush_buf().unwrap();
-        self.inner
+        self.inner.take_unwrap()
     }
 }
 
@@ -186,7 +187,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.write(buf)
+            self.inner.get_mut_ref().write(buf)
         } else {
             let dst = self.buf.mut_slice_from(self.pos);
             vec::bytes::copy_memory(dst, buf);
@@ -196,14 +197,24 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 
     fn flush(&mut self) -> IoResult<()> {
-        self.flush_buf().and_then(|()| self.inner.flush())
+        self.flush_buf().and_then(|()| self.inner.get_mut_ref().flush())
+    }
+}
+
+#[unsafe_destructor]
+impl<W: Writer> Drop for BufferedWriter<W> {
+    fn drop(&mut self) {
+        if self.inner.is_some() {
+            // FIXME(#12628): should this error be ignored?
+            let _ = self.flush_buf();
+        }
     }
 }
 
 /// Wraps a Writer and buffers output to it, flushing whenever a newline (`0x0a`,
 /// `'\n'`) is detected.
 ///
-/// Note that this structure does NOT flush the output when dropped.
+/// This writer will be flushed when it is dropped.
 pub struct LineBufferedWriter<W> {
     priv inner: BufferedWriter<W>,
 }
@@ -256,13 +267,13 @@ impl<W> InternalBufferedWriter<W> {
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.get_mut_ref().inner.read(buf)
+        self.get_mut_ref().inner.get_mut_ref().read(buf)
     }
 }
 
-/// Wraps a Stream and buffers input and output to and from it
+/// Wraps a Stream and buffers input and output to and from it.
 ///
-/// Note that `BufferedStream` will NOT flush its output buffer when dropped.
+/// The output half will be flushed when this stream is dropped.
 ///
 /// # Example
 ///
