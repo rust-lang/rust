@@ -548,7 +548,9 @@ impl<'a> Context<'a> {
                      attr.name().equiv(&("doc")) &&
                      match attr.meta_item_list() {
                          None => false,
-                         Some(l) => attr::contains_name(l, "hidden")
+                         Some(l) => {
+                             attr::contains_name(l.as_slice(), "hidden")
+                         }
                      }
                  });
 
@@ -1070,7 +1072,8 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
             if ast_util::is_local(did) {
                 match cx.tcx.map.get(did.node) {
                     ast_map::NodeItem(it) => {
-                        if attr::contains_name(it.attrs, "must_use") {
+                        if attr::contains_name(it.attrs.as_slice(),
+                                               "must_use") {
                             cx.span_lint(UnusedMustUse, s.span,
                                          "unused result which must be used");
                             warned = true;
@@ -1234,8 +1237,9 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
                       ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
             // `let mut _a = 1;` doesn't need a warning.
             let initial_underscore = if path.segments.len() == 1 {
-                token::get_ident(path.segments[0].identifier).get()
-                                                             .starts_with("_")
+                token::get_ident(path.segments
+                                     .get(0)
+                                     .identifier).get().starts_with("_")
             } else {
                 cx.tcx.sess.span_bug(p.span,
                                      "mutable binding that doesn't consist \
@@ -1353,7 +1357,11 @@ fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
         ast::ItemTrait(..) => "a trait",
         _ => return
     };
-    check_missing_doc_attrs(cx, Some(it.id), it.attrs, it.span, desc);
+    check_missing_doc_attrs(cx,
+                            Some(it.id),
+                            it.attrs.as_slice(),
+                            it.span,
+                            desc);
 }
 
 fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
@@ -1386,24 +1394,39 @@ fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
             }
         }
     }
-    check_missing_doc_attrs(cx, Some(m.id), m.attrs, m.span, "a method");
+    check_missing_doc_attrs(cx,
+                            Some(m.id),
+                            m.attrs.as_slice(),
+                            m.span,
+                            "a method");
 }
 
 fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
-    check_missing_doc_attrs(cx, Some(tm.id), tm.attrs, tm.span, "a type method");
+    check_missing_doc_attrs(cx,
+                            Some(tm.id),
+                            tm.attrs.as_slice(),
+                            tm.span,
+                            "a type method");
 }
 
 fn check_missing_doc_struct_field(cx: &Context, sf: &ast::StructField) {
     match sf.node.kind {
         ast::NamedField(_, vis) if vis != ast::Private =>
-            check_missing_doc_attrs(cx, Some(cx.cur_struct_def_id), sf.node.attrs,
-                                    sf.span, "a struct field"),
+            check_missing_doc_attrs(cx,
+                                    Some(cx.cur_struct_def_id),
+                                    sf.node.attrs.as_slice(),
+                                    sf.span,
+                                    "a struct field"),
         _ => {}
     }
 }
 
 fn check_missing_doc_variant(cx: &Context, v: &ast::Variant) {
-    check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs, v.span, "a variant");
+    check_missing_doc_attrs(cx,
+                            Some(v.node.id),
+                            v.node.attrs.as_slice(),
+                            v.span,
+                            "a variant");
 }
 
 /// Checks for use of items with #[deprecated], #[experimental] and
@@ -1500,13 +1523,13 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 
 impl<'a> Visitor<()> for Context<'a> {
     fn visit_item(&mut self, it: &ast::Item, _: ()) {
-        self.with_lint_attrs(it.attrs, |cx| {
+        self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
-            check_attrs_usage(cx, it.attrs);
+            check_attrs_usage(cx, it.attrs.as_slice());
 
             cx.visit_ids(|v| v.visit_item(it, ()));
 
@@ -1515,15 +1538,15 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_foreign_item(&mut self, it: &ast::ForeignItem, _: ()) {
-        self.with_lint_attrs(it.attrs, |cx| {
-            check_attrs_usage(cx, it.attrs);
+        self.with_lint_attrs(it.attrs.as_slice(), |cx| {
+            check_attrs_usage(cx, it.attrs.as_slice());
             visit::walk_foreign_item(cx, it, ());
         })
     }
 
     fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
-        self.with_lint_attrs(i.attrs, |cx| {
-            check_attrs_usage(cx, i.attrs);
+        self.with_lint_attrs(i.attrs.as_slice(), |cx| {
+            check_attrs_usage(cx, i.attrs.as_slice());
             visit::walk_view_item(cx, i, ());
         })
     }
@@ -1579,9 +1602,9 @@ impl<'a> Visitor<()> for Context<'a> {
 
         match *fk {
             visit::FkMethod(_, _, m) => {
-                self.with_lint_attrs(m.attrs, |cx| {
+                self.with_lint_attrs(m.attrs.as_slice(), |cx| {
                     check_missing_doc_method(cx, m);
-                    check_attrs_usage(cx, m.attrs);
+                    check_attrs_usage(cx, m.attrs.as_slice());
 
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id, ());
@@ -1595,9 +1618,9 @@ impl<'a> Visitor<()> for Context<'a> {
 
 
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
-        self.with_lint_attrs(t.attrs, |cx| {
+        self.with_lint_attrs(t.attrs.as_slice(), |cx| {
             check_missing_doc_ty_method(cx, t);
-            check_attrs_usage(cx, t.attrs);
+            check_attrs_usage(cx, t.attrs.as_slice());
 
             visit::walk_ty_method(cx, t, ());
         })
@@ -1616,18 +1639,18 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField, _: ()) {
-        self.with_lint_attrs(s.node.attrs, |cx| {
+        self.with_lint_attrs(s.node.attrs.as_slice(), |cx| {
             check_missing_doc_struct_field(cx, s);
-            check_attrs_usage(cx, s.node.attrs);
+            check_attrs_usage(cx, s.node.attrs.as_slice());
 
             visit::walk_struct_field(cx, s, ());
         })
     }
 
     fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, _: ()) {
-        self.with_lint_attrs(v.node.attrs, |cx| {
+        self.with_lint_attrs(v.node.attrs.as_slice(), |cx| {
             check_missing_doc_variant(cx, v);
-            check_attrs_usage(cx, v.node.attrs);
+            check_attrs_usage(cx, v.node.attrs.as_slice());
 
             visit::walk_variant(cx, v, g, ());
         })
@@ -1675,17 +1698,21 @@ pub fn check_crate(tcx: ty::ctxt,
     for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
         cx.set_level(lint, level, CommandLine);
     }
-    cx.with_lint_attrs(krate.attrs, |cx| {
+    cx.with_lint_attrs(krate.attrs.as_slice(), |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;
             visit::walk_crate(v, krate, ());
         });
 
-        check_crate_attrs_usage(cx, krate.attrs);
+        check_crate_attrs_usage(cx, krate.attrs.as_slice());
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
-        check_missing_doc_attrs(cx, None, krate.attrs, krate.span, "crate");
+        check_missing_doc_attrs(cx,
+                                None,
+                                krate.attrs.as_slice(),
+                                krate.span,
+                                "crate");
 
         visit::walk_crate(cx, krate, ());
     });

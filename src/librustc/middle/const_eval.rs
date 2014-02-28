@@ -117,7 +117,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                 None => None,
                 Some(ast_map::NodeItem(it)) => match it.node {
                     ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
-                        variant_expr(*variants, variant_def.node)
+                        variant_expr(variants.as_slice(), variant_def.node)
                     }
                     _ => None
                 },
@@ -144,7 +144,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                                                         c, d)) {
             csearch::found(ast::IIItem(item)) => match item.node {
                 ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
-                    variant_expr(*variants, variant_def.node)
+                    variant_expr(variants.as_slice(), variant_def.node)
                 }
                 _ => None
             },
@@ -509,7 +509,9 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
 pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
         LitStr(ref s, _) => const_str((*s).clone()),
-        LitBinary(ref data) => const_binary(data.clone()),
+        LitBinary(ref data) => {
+            const_binary(Rc::new(data.borrow().iter().map(|x| *x).collect()))
+        }
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),
         LitUint(n, _) => const_uint(n),

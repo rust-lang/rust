@@ -831,10 +831,10 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
         this.check_assignment(dest);
       }
       ast::ExprCall(f, ref args) => {
-        this.check_call(expr, Some(f), f.span, *args);
+        this.check_call(expr, Some(f), f.span, args.as_slice());
       }
       ast::ExprMethodCall(_, _, ref args) => {
-        this.check_call(expr, None, expr.span, *args);
+        this.check_call(expr, None, expr.span, args.as_slice());
       }
       ast::ExprIndex(_, rval) | ast::ExprBinary(_, _, rval)
       if method_map.get().contains_key(&expr.id) => {

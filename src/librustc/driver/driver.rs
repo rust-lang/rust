@@ -35,6 +35,8 @@ use std::io::fs;
 use std::io::MemReader;
 use std::os;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use collections::{HashMap, HashSet};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
@@ -101,15 +103,15 @@ pub fn default_configuration(sess: Session) ->
     };
 
     let mk = attr::mk_name_value_item_str;
-    return ~[ // Target bindings.
+    return vec!(// Target bindings.
          attr::mk_word_item(fam.clone()),
          mk(InternedString::new("target_os"), tos),
          mk(InternedString::new("target_family"), fam),
          mk(InternedString::new("target_arch"), InternedString::new(arch)),
          mk(InternedString::new("target_endian"), InternedString::new(end)),
          mk(InternedString::new("target_word_size"),
-            InternedString::new(wordsz)),
-    ];
+            InternedString::new(wordsz))
+    );
 }
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig,
@@ -119,8 +121,7 @@ pub fn append_configuration(cfg: &mut ast::CrateConfig,
     }
 }
 
-pub fn build_configuration(sess: Session) ->
-   ast::CrateConfig {
+pub fn build_configuration(sess: Session) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess);
@@ -135,7 +136,8 @@ pub fn build_configuration(sess: Session) ->
     } else {
         InternedString::new("nogc")
     });
-    return vec::append(user_cfg, default_cfg);
+    return vec_ng::append(user_cfg.move_iter().collect(),
+                          default_cfg.as_slice());
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -143,7 +145,10 @@ fn parse_cfgspecs(cfgspecs: ~[~str])
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess();
-        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(),
+                                          s,
+                                          Vec::new(),
+                                          sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -193,7 +198,9 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &krate));
-    sess.crate_types.set(session::collect_crate_types(&sess, krate.attrs));
+    sess.crate_types.set(session::collect_crate_types(&sess,
+                                                      krate.attrs
+                                                           .as_slice()));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -472,7 +479,7 @@ fn write_out_deps(sess: Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) -> io::IoResult<()> {
-    let id = link::find_crate_id(krate.attrs, outputs);
+    let id = link::find_crate_id(krate.attrs.as_slice(), outputs);
 
     let mut out_filenames = ~[];
     for output_type in sess.opts.output_types.iter() {
@@ -546,8 +553,11 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
             let loader = &mut Loader::new(sess);
             phase_2_configure_and_expand(sess, loader, krate)
         };
-        let outputs = build_output_filenames(input, outdir, output,
-                                             expanded_crate.attrs, sess);
+        let outputs = build_output_filenames(input,
+                                             outdir,
+                                             output,
+                                             expanded_crate.attrs.as_slice(),
+                                             sess);
 
         write_out_deps(sess, input, &outputs, &expanded_crate).unwrap();
 
@@ -1180,7 +1190,7 @@ mod test {
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
         let cfg = build_configuration(sess);
-        assert!((attr::contains_name(cfg, "test")));
+        assert!((attr::contains_name(cfg.as_slice(), "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add

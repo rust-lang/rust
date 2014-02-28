@@ -27,6 +27,7 @@ use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
+use std::vec_ng::Vec;
 use collections::{HashMap,HashSet};
 
 pub struct Config {
@@ -319,7 +320,7 @@ pub fn basic_options() -> @Options {
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
-        cfg: ~[],
+        cfg: Vec::new(),
         test: false,
         parse_only: false,
         no_trans: false,
@@ -451,7 +452,8 @@ pub fn building_library(options: &Options, krate: &ast::Crate) -> bool {
             CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
-    match syntax::attr::first_attr_value_str_by_name(krate.attrs, "crate_type") {
+    match syntax::attr::first_attr_value_str_by_name(krate.attrs.as_slice(),
+                                                     "crate_type") {
         Some(s) => {
             s.equiv(&("lib")) ||
             s.equiv(&("rlib")) ||

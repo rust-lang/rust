@@ -387,7 +387,7 @@ impl Visitor<()> for GatherLocalsVisitor {
                 {
                     let locals = self.fcx.inh.locals.borrow();
                     debug!("Pattern binding {} is assigned to {}",
-                           token::get_ident(path.segments[0].identifier),
+                           token::get_ident(path.segments.get(0).identifier),
                            self.fcx.infcx().ty_to_str(
                                locals.get().get_copy(&p.id)));
                 }
@@ -554,7 +554,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
       ast::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
-                            enum_definition.variants,
+                            enum_definition.variants.as_slice(),
                             it.id);
       }
       ast::ItemFn(decl, _, _, _, body) => {
@@ -588,7 +588,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
                                              &impl_tpt.generics,
                                              ast_trait_ref,
                                              impl_trait_ref,
-                                             *ms);
+                                             ms.as_slice());
                 vtable::resolve_impl(ccx.tcx, it, &impl_tpt.generics, impl_trait_ref);
             }
             None => { }
@@ -1397,9 +1397,12 @@ pub fn impl_self_ty(vcx: &VtableContext,
             n_rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
-    let substs = substs {regions: ty::NonerasedRegions(opt_vec::from(rps)),
-                         self_ty: None,
-                         tps: tps};
+    let substs = substs {
+        regions: ty::NonerasedRegions(opt_vec::from(rps.move_iter()
+                                                       .collect())),
+        self_ty: None,
+        tps: tps,
+    };
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
@@ -1453,7 +1456,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
     // Verify that no lifetimes or type parameters are present anywhere
     // except the final two elements of the path.
     for i in range(0, path.segments.len() - 2) {
-        for lifetime in path.segments[i].lifetimes.iter() {
+        for lifetime in path.segments.get(i).lifetimes.iter() {
             function_context.tcx()
                 .sess
                 .span_err(lifetime.span,
@@ -1462,7 +1465,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
             break;
         }
 
-        for typ in path.segments[i].types.iter() {
+        for typ in path.segments.get(i).types.iter() {
             function_context.tcx()
                             .sess
                             .span_err(typ.span,
@@ -1493,7 +1496,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
                 ast::FromImpl(_) => "impl",
             };
 
-            let trait_segment = &path.segments[path.segments.len() - 2];
+            let trait_segment = &path.segments.get(path.segments.len() - 2);
 
             // Make sure lifetime parameterization agrees with the trait or
             // implementation type.
@@ -1567,7 +1570,7 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
         _ => {
             // Verify that no lifetimes or type parameters are present on
             // the penultimate segment of the path.
-            let segment = &path.segments[path.segments.len() - 2];
+            let segment = &path.segments.get(path.segments.len() - 2);
             for lifetime in segment.lifetimes.iter() {
                 function_context.tcx()
                     .sess
@@ -2415,7 +2418,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // Generate the struct type.
         let regions = fcx.infcx().next_region_vars(
             infer::BoundRegionInTypeOrImpl(span),
-            region_parameter_count);
+            region_parameter_count).move_iter().collect();
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             regions: ty::NonerasedRegions(opt_vec::from(regions)),
@@ -2473,7 +2476,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         // Generate the enum type.
         let regions = fcx.infcx().next_region_vars(
             infer::BoundRegionInTypeOrImpl(span),
-            region_parameter_count);
+            region_parameter_count).move_iter().collect();
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             regions: ty::NonerasedRegions(opt_vec::from(regions)),
@@ -2866,7 +2869,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
       }
       ast::ExprMatch(discrim, ref arms) => {
-        _match::check_match(fcx, expr, discrim, *arms);
+        _match::check_match(fcx, expr, discrim, arms.as_slice());
       }
       ast::ExprFnBlock(decl, body) => {
         check_expr_fn(fcx,
@@ -2891,7 +2894,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
       ast::ExprCall(f, ref args) => {
-          check_call(fcx, expr, f, *args);
+          check_call(fcx, expr, f, args.as_slice());
           let f_ty = fcx.expr_ty(f);
           let (args_bot, args_err) = args.iter().fold((false, false),
              |(rest_bot, rest_err), a| {
@@ -2907,7 +2910,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
           }
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, *args, *tps);
+        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice());
         let arg_tys = args.map(|a| fcx.expr_ty(*a));
         let (args_bot, args_err) = arg_tys.iter().fold((false, false),
              |(rest_bot, rest_err), a| {
@@ -3093,11 +3096,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         match def_map.get().find(&id) {
             Some(&ast::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
-                                         *fields, base_expr);
+                                         fields.as_slice(), base_expr);
             }
             Some(&ast::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
-                                          variant_id, *fields);
+                                          variant_id, fields.as_slice());
             }
             _ => {
                 tcx.sess.span_bug(path.span,
@@ -3106,7 +3109,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
       }
       ast::ExprField(base, field, ref tys) => {
-        check_field(fcx, expr, base, field.name, *tys);
+        check_field(fcx, expr, base, field.name, tys.as_slice());
       }
       ast::ExprIndex(base, idx) => {
           check_expr(fcx, base);
@@ -3670,7 +3673,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
         opt_vec::from(fcx.infcx().next_region_vars(
                 infer::BoundRegionInTypeOrImpl(span),
-                num_expected_regions))
+                num_expected_regions).move_iter().collect())
     };
     let regions = ty::NonerasedRegions(regions);
 

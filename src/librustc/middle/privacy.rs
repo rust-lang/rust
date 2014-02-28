@@ -759,7 +759,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         // Do not check privacy inside items with the resolve_unexported
         // attribute. This is used for the test runner.
-        if attr::contains_name(item.attrs, "!resolve_unexported") {
+        if attr::contains_name(item.attrs.as_slice(), "!resolve_unexported") {
             return;
         }
 
@@ -788,7 +788,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             }
             ast::ExprMethodCall(ident, _, ref args) => {
                 // see above
-                let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
+                let t = ty::type_autoderef(ty::expr_ty(self.tcx,
+                                                       *args.get(0)));
                 match ty::get(t).sty {
                     ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
                         match self.method_map.borrow().get().find(&expr.id) {
@@ -857,7 +858,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                     lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 };
-                                let segs = ~[seg];
+                                let segs = vec!(seg);
                                 let path = ast::Path {
                                     global: false,
                                     span: pid.span,

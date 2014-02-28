@@ -1129,7 +1129,8 @@ impl Liveness {
                 let guard_succ =
                     self.propagate_through_opt_expr(arm.guard, body_succ);
                 let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats, guard_succ);
+                    self.define_bindings_in_arm_pats(arm.pats.as_slice(),
+                                                     guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
             };
@@ -1194,7 +1195,7 @@ impl Liveness {
           }
 
           ExprVec(ref exprs, _) => {
-            self.propagate_through_exprs(*exprs, succ)
+            self.propagate_through_exprs(exprs.as_slice(), succ)
           }
 
           ExprRepeat(element, count, _) => {
@@ -1215,7 +1216,7 @@ impl Liveness {
             let t_ret = ty::ty_fn_ret(ty::expr_ty(self.tcx, f));
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
-            let succ = self.propagate_through_exprs(*args, succ);
+            let succ = self.propagate_through_exprs(args.as_slice(), succ);
             self.propagate_through_expr(f, succ)
           }
 
@@ -1225,11 +1226,11 @@ impl Liveness {
             let t_ret = ty::node_id_to_type(self.tcx, expr.id);
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
-            self.propagate_through_exprs(*args, succ)
+            self.propagate_through_exprs(args.as_slice(), succ)
           }
 
           ExprTup(ref exprs) => {
-            self.propagate_through_exprs(*exprs, succ)
+            self.propagate_through_exprs(exprs.as_slice(), succ)
           }
 
           ExprBinary(op, l, r) if ast_util::lazy_binop(op) => {
@@ -1493,7 +1494,7 @@ fn check_local(this: &mut Liveness, local: &Local) {
 }
 
 fn check_arm(this: &mut Liveness, arm: &Arm) {
-    this.arm_pats_bindings(arm.pats, |ln, var, sp, id| {
+    this.arm_pats_bindings(arm.pats.as_slice(), |ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
     visit::walk_arm(this, arm, ());

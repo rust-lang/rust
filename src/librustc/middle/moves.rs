@@ -409,11 +409,11 @@ impl VisitContext {
                     }
                 }
                 self.use_expr(callee, mode);
-                self.use_fn_args(*args);
+                self.use_fn_args(args.as_slice());
             }
 
             ExprMethodCall(_, _, ref args) => { // callee.m(args)
-                self.use_fn_args(*args);
+                self.use_fn_args(args.as_slice());
             }
 
             ExprStruct(_, ref fields, opt_with) => {
@@ -468,7 +468,7 @@ impl VisitContext {
             }
 
             ExprTup(ref exprs) => {
-                self.consume_exprs(*exprs);
+                self.consume_exprs(exprs.as_slice());
             }
 
             ExprIf(cond_expr, then_blk, opt_else_expr) => {
@@ -497,7 +497,7 @@ impl VisitContext {
             }
 
             ExprVec(ref exprs, _) => {
-                self.consume_exprs(*exprs);
+                self.consume_exprs(exprs.as_slice());
             }
 
             ExprAddrOf(_, base) => {   // &base
