@@ -90,6 +90,12 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
 /// buffered access is not desired, the `stdin_raw` function is provided to
 /// provided unbuffered access to stdin.
 ///
+/// Care should be taken when creating multiple handles to the stdin of a
+/// process. Beause this is a buffered reader by default, it's possible for
+/// pending input to be unconsumed in one reader and unavailable to other
+/// readers. It is recommended that only one handle at a time is created for the
+/// stdin of a process.
+///
 /// See `stdout()` for more notes about this function.
 pub fn stdin() -> BufferedReader<StdReader> {
     BufferedReader::new(stdin_raw())
@@ -104,20 +110,38 @@ pub fn stdin_raw() -> StdReader {
     src(libc::STDIN_FILENO, true, |src| StdReader { inner: src })
 }
 
-/// Creates a new non-blocking handle to the stdout of the current process.
+/// Creates a line-buffered handle to the stdout of the current process.
 ///
 /// Note that this is a fairly expensive operation in that at least one memory
 /// allocation is performed. Additionally, this must be called from a runtime
 /// task context because the stream returned will be a non-blocking object using
 /// the local scheduler to perform the I/O.
-pub fn stdout() -> StdWriter {
+///
+/// Care should be taken when creating multiple handles to an output stream for
+/// a single process. While usage is still safe, the output may be surprising if
+/// no synchronization is performed to ensure a sane output.
+pub fn stdout() -> LineBufferedWriter<StdWriter> {
+    LineBufferedWriter::new(stdout_raw())
+}
+
+/// Creates an unbuffered handle to the stdout of the current process
+///
+/// See notes in `stdout()` for more information.
+pub fn stdout_raw() -> StdWriter {
     src(libc::STDOUT_FILENO, false, |src| StdWriter { inner: src })
 }
 
-/// Creates a new non-blocking handle to the stderr of the current process.
+/// Creates a line-buffered handle to the stderr of the current process.
 ///
 /// See `stdout()` for notes about this function.
-pub fn stderr() -> StdWriter {
+pub fn stderr() -> LineBufferedWriter<StdWriter> {
+    LineBufferedWriter::new(stderr_raw())
+}
+
+/// Creates an unbuffered handle to the stderr of the current process
+///
+/// See notes in `stdout()` for more information.
+pub fn stderr_raw() -> StdWriter {
     src(libc::STDERR_FILENO, false, |src| StdWriter { inner: src })
 }
 
@@ -182,7 +206,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
             Local::put(task);
 
             if my_stdout.is_none() {
-                my_stdout = Some(~LineBufferedWriter::new(stdout()) as ~Writer);
+                my_stdout = Some(~stdout() as ~Writer);
             }
             let ret = f(*my_stdout.get_mut_ref());
 

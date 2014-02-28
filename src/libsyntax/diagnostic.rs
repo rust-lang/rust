@@ -227,8 +227,8 @@ enum Destination {
 impl EmitterWriter {
     pub fn stderr() -> EmitterWriter {
         let stderr = io::stderr();
-        if stderr.isatty() {
-            let dst = match term::Terminal::new(stderr) {
+        if stderr.get_ref().isatty() {
+            let dst = match term::Terminal::new(stderr.unwrap()) {
                 Ok(t) => Terminal(t),
                 Err(..) => Raw(~io::stderr()),
             };
