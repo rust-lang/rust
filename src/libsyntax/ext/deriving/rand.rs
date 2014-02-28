@@ -16,6 +16,8 @@ use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 use opt_vec;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -64,7 +66,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     let rand_call = |cx: &mut ExtCtxt, span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
-                            vec!( rng[0] ))
+                            vec!( *rng.get(0) ))
     };
 
     return match *substr.fields {
@@ -90,7 +92,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
             // ::std::rand::Rand::rand(rng)
             let rv_call = cx.expr_call(trait_span,
                                        rand_name,
-                                       vec!( rng[0] ));
+                                       vec!( *rng.get(0) ));
 
             // need to specify the uint-ness of the random number
             let uint_ty = cx.ty_ident(trait_span, cx.ident_of("uint"));

@@ -20,6 +20,7 @@ use parse::token;
 use std::io;
 use std::str;
 use std::uint;
+use std::vec_ng::Vec;
 
 #[deriving(Clone, Eq)]
 pub enum CommentStyle {
@@ -58,20 +59,20 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let mut i = 0u;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if lines.len() > 0 && lines[0].chars().all(|c| c == '*') {
+        if lines.len() > 0 && lines.get(0).chars().all(|c| c == '*') {
             i += 1;
         }
-        while i < j && lines[i].trim().is_empty() {
+        while i < j && lines.get(i).trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
+        if j > i && lines.get(j - 1).chars().skip(1).all(|c| c == '*') {
             j -= 1;
         }
-        while j > i && lines[j - 1].trim().is_empty() {
+        while j > i && lines.get(j - 1).trim().is_empty() {
             j -= 1;
         }
-        return lines.slice(i, j).to_owned();
+        return lines.slice(i, j).iter().map(|x| (*x).clone()).collect();
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible

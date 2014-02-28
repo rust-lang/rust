@@ -14,7 +14,9 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+
 use std::cmp::{Ordering, Equal, Less, Greater};
+use std::vec_ng::Vec;
 
 pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                                 span: Span,

@@ -637,7 +637,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_expr(subexpression, env.clone())
         }
         ExprVec(ref subexpressions, _) => {
-            walk_exprs(visitor, *subexpressions, env.clone())
+            walk_exprs(visitor, subexpressions.as_slice(), env.clone())
         }
         ExprRepeat(element, count, _) => {
             visitor.visit_expr(element, env.clone());
@@ -662,7 +662,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_expr(callee_expression, env.clone())
         }
         ExprMethodCall(_, ref types, ref arguments) => {
-            walk_exprs(visitor, *arguments, env.clone());
+            walk_exprs(visitor, arguments.as_slice(), env.clone());
             for &typ in types.iter() {
                 visitor.visit_ty(typ, env.clone())
             }

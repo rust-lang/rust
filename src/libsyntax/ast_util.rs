@@ -23,6 +23,7 @@ use std::cmp;
 use collections::HashMap;
 use std::u32;
 use std::local_data;
+use std::vec_ng::Vec;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -795,7 +796,7 @@ pub fn resolve_internal(id : Ident,
             let resolved = {
                 let result = {
                     let table = table.table.borrow();
-                    table.get()[id.ctxt]
+                    *table.get().get(id.ctxt as uint)
                 };
                 match result {
                     EmptyCtxt => id.name,
@@ -844,7 +845,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> Vec<Mrk>
     loop {
         let table_entry = {
             let table = table.table.borrow();
-            table.get()[loopvar]
+            *table.get().get(loopvar as uint)
         };
         match table_entry {
             EmptyCtxt => {
@@ -873,7 +874,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> Vec<Mrk>
 pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
     let sctable = get_sctable();
     let table = sctable.table.borrow();
-    match table.get()[ctxt] {
+    match *table.get().get(ctxt as uint) {
         ast::Mark(mrk,_) => mrk,
         _ => fail!("can't retrieve outer mark when outside is not a mark")
     }
@@ -901,7 +902,7 @@ pub fn getLast(arr: &Vec<Mrk> ) -> Mrk {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    && (segments_name_eq(a.segments, b.segments))
+    && (segments_name_eq(a.segments.as_slice(), b.segments.as_slice()))
 }
 
 // are two arrays of segments equal when compared unhygienically?
@@ -937,6 +938,8 @@ mod test {
     use super::*;
     use opt_vec;
     use collections::HashMap;
+
+    use std::vec_ng::Vec;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
@@ -1000,7 +1003,7 @@ mod test {
         let mut result = Vec::new();
         loop {
             let table = table.table.borrow();
-            match table.get()[sc] {
+            match *table.get().get(sc as uint) {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -1024,9 +1027,9 @@ mod test {
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
-            assert!(table.get()[2] == Mark(9,0));
-            assert!(table.get()[3] == Rename(id(101,0),14,2));
-            assert!(table.get()[4] == Mark(3,3));
+            assert!(*table.get().get(2) == Mark(9,0));
+            assert!(*table.get().get(3) == Rename(id(101,0),14,2));
+            assert!(*table.get().get(4) == Mark(3,3));
         }
         assert_eq!(refold_test_sc(4,&t),test_sc);
     }
@@ -1045,8 +1048,8 @@ mod test {
         assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),3);
         {
             let table = t.table.borrow();
-            assert!(table.get()[2] == Mark(7,0));
-            assert!(table.get()[3] == Mark(3,2));
+            assert!(*table.get().get(2) == Mark(7,0));
+            assert!(*table.get().get(3) == Mark(3,2));
         }
     }
 

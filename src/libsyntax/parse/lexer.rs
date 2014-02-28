@@ -1005,6 +1005,7 @@ mod test {
     use parse::token;
     use parse::token::{str_to_ident};
     use std::io::util;
+    use std::vec_ng::Vec;
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {

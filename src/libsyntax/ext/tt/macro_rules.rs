@@ -25,8 +25,10 @@ use parse::token::{special_idents, gensym_ident};
 use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
 use parse::token;
 use print;
-use std::cell::RefCell;
 use util::small_vector::SmallVector;
+
+use std::cell::RefCell;
+use std::vec_ng::Vec;
 
 struct ParserAnyMacro {
     parser: RefCell<Parser>,
@@ -100,7 +102,12 @@ impl MacroExpander for MacroRulesMacroExpander {
               sp: Span,
               arg: &[ast::TokenTree])
               -> MacResult {
-        generic_extension(cx, sp, self.name, arg, *self.lhses, *self.rhses)
+        generic_extension(cx,
+                          sp,
+                          self.name,
+                          arg,
+                          self.lhses.as_slice(),
+                          self.rhses.as_slice())
     }
 }
 
@@ -115,7 +122,9 @@ fn generic_extension(cx: &ExtCtxt,
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                  token::get_ident(name),
-                 print::pprust::tt_to_str(&TTDelim(@arg.to_owned())));
+                 print::pprust::tt_to_str(&TTDelim(@arg.iter()
+                                                       .map(|x| (*x).clone())
+                                                       .collect())));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -128,8 +137,12 @@ fn generic_extension(cx: &ExtCtxt,
         match **lhs {
           MatchedNonterminal(NtMatchers(ref mtcs)) => {
             // `None` is because we're not interpolating
-            let arg_rdr = new_tt_reader(s_d, None, arg.to_owned());
-            match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
+            let arg_rdr = new_tt_reader(s_d,
+                                        None,
+                                        arg.iter()
+                                           .map(|x| (*x).clone())
+                                           .collect());
+            match parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs.as_slice()) {
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
@@ -137,7 +150,10 @@ fn generic_extension(cx: &ExtCtxt,
                         match *tt {
                             // cut off delimiters; don't parse 'em
                             TTDelim(ref tts) => {
-                                (*tts).slice(1u,(*tts).len()-1u).to_owned()
+                                (*tts).slice(1u,(*tts).len()-1u)
+                                      .iter()
+                                      .map(|x| (*x).clone())
+                                      .collect()
                             }
                             _ => cx.span_fatal(
                                 sp, "macro rhs must be delimited")

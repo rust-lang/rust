@@ -21,6 +21,8 @@ use opt_vec::OptVec;
 use parse::token::special_idents;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 pub struct Field {
     ident: ast::Ident,
     ex: @ast::Expr
@@ -132,7 +134,7 @@ pub trait AstBuilder {
 
     fn expr_vstore(&self, sp: Span, expr: @ast::Expr, vst: ast::ExprVstore) -> @ast::Expr;
     fn expr_vec(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr;
-    fn expr_vec_uniq(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr;
+    fn expr_vec_ng(&self, sp: Span) -> @ast::Expr;
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr;
     fn expr_str(&self, sp: Span, s: InternedString) -> @ast::Expr;
     fn expr_str_uniq(&self, sp: Span, s: InternedString) -> @ast::Expr;
@@ -580,8 +582,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_vec(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr {
         self.expr(sp, ast::ExprVec(exprs, ast::MutImmutable))
     }
-    fn expr_vec_uniq(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr {
-        self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::ExprVstoreUniq)
+    fn expr_vec_ng(&self, sp: Span) -> @ast::Expr {
+        self.expr_call_global(sp,
+                              vec!(self.ident_of("std"),
+                                   self.ident_of("vec_ng"),
+                                   self.ident_of("Vec"),
+                                   self.ident_of("new")),
+                              Vec::new())
     }
     fn expr_vec_slice(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr {
         self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::ExprVstoreSlice)
@@ -701,14 +708,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
         self.expr(span, ast::ExprFnBlock(fn_decl, blk))
     }
-    fn lambda0(&self, _span: Span, blk: P<ast::Block>) -> @ast::Expr {
-        let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(self, || $blk_e )
+    fn lambda0(&self, span: Span, blk: P<ast::Block>) -> @ast::Expr {
+        self.lambda(span, Vec::new(), blk)
     }
 
-    fn lambda1(&self, _span: Span, blk: P<ast::Block>, ident: ast::Ident) -> @ast::Expr {
-        let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(self, |$ident| $blk_e )
+    fn lambda1(&self, span: Span, blk: P<ast::Block>, ident: ast::Ident) -> @ast::Expr {
+        self.lambda(span, vec!(ident), blk)
     }
 
     fn lambda_expr(&self, span: Span, ids: Vec<ast::Ident> , expr: @ast::Expr) -> @ast::Expr {
@@ -721,7 +726,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.lambda1(span, self.block_expr(expr), ident)
     }
 
-    fn lambda_stmts(&self, span: Span, ids: Vec<ast::Ident> , stmts: Vec<@ast::Stmt> ) -> @ast::Expr {
+    fn lambda_stmts(&self,
+                    span: Span,
+                    ids: Vec<ast::Ident>,
+                    stmts: Vec<@ast::Stmt>)
+                    -> @ast::Expr {
         self.lambda(span, ids, self.block(span, stmts, None))
     }
     fn lambda_stmts_0(&self, span: Span, stmts: Vec<@ast::Stmt> ) -> @ast::Expr {
@@ -921,7 +930,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.view_use(sp, vis,
                       vec!(@respan(sp,
                                 ast::ViewPathList(self.path(sp, path),
-                                                  imports,
+                                                  imports.iter()
+                                                         .map(|x| *x)
+                                                         .collect(),
                                                   ast::DUMMY_NODE_ID))))
     }
 

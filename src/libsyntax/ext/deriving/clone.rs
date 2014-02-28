@@ -14,6 +14,8 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: @MetaItem,
@@ -99,7 +101,7 @@ fn cs_clone(
                                                                  name))
     }
 
-    if all_fields.len() >= 1 && all_fields[0].name.is_none() {
+    if all_fields.len() >= 1 && all_fields.get(0).name.is_none() {
         // enum-like
         let subcalls = all_fields.map(subcall);
         cx.expr_call_ident(trait_span, ctor_ident, subcalls)

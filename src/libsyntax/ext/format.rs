@@ -22,6 +22,7 @@ use rsparse = parse;
 use std::fmt::parse;
 use collections::{HashMap, HashSet};
 use std::vec;
+use std::vec_ng::Vec;
 
 #[deriving(Eq)]
 enum ArgumentType {
@@ -49,7 +50,7 @@ struct Context<'a> {
     // were declared in.
     names: HashMap<~str, @ast::Expr>,
     name_types: HashMap<~str, ArgumentType>,
-    name_ordering: ~[~str],
+    name_ordering: Vec<~str>,
 
     // Collection of the compiled `rt::Piece` structures
     pieces: Vec<@ast::Expr> ,
@@ -70,15 +71,17 @@ struct Context<'a> {
 ///     Some((fmtstr, unnamed arguments, ordering of named arguments,
 ///           named arguments))
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> (@ast::Expr, Option<(@ast::Expr, Vec<@ast::Expr>, ~[~str],
+    -> (@ast::Expr, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<~str>,
                             HashMap<~str, @ast::Expr>)>) {
     let mut args = Vec::new();
     let mut names = HashMap::<~str, @ast::Expr>::new();
-    let mut order = ~[];
+    let mut order = Vec::new();
 
     let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
                                              ecx.cfg(),
-                                             tts.to_owned());
+                                             tts.iter()
+                                                .map(|x| (*x).clone())
+                                                .collect());
     // Parse the leading function expression (maybe a block, maybe a path)
     let extra = p.parse_expr();
     if !p.eat(&token::COMMA) {
@@ -275,14 +278,14 @@ impl<'a> Context<'a> {
                     return;
                 }
                 {
-                    let arg_type = match self.arg_types[arg] {
-                        None => None,
-                        Some(ref x) => Some(x)
+                    let arg_type = match self.arg_types.get(arg) {
+                        &None => None,
+                        &Some(ref x) => Some(x)
                     };
-                    self.verify_same(self.args[arg].span, &ty, arg_type);
+                    self.verify_same(self.args.get(arg).span, &ty, arg_type);
                 }
-                if self.arg_types[arg].is_none() {
-                    self.arg_types[arg] = Some(ty);
+                if self.arg_types.get(arg).is_none() {
+                    *self.arg_types.get_mut(arg) = Some(ty);
                 }
             }
 
@@ -653,7 +656,9 @@ impl<'a> Context<'a> {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, &e) in self.args.iter().enumerate() {
-            if self.arg_types[i].is_none() { continue } // error already generated
+            if self.arg_types.get(i).is_none() {
+                continue // error already generated
+            }
 
             let name = self.ecx.ident_of(format!("__arg{}", i));
             pats.push(self.ecx.pat_ident(e.span, name));
@@ -748,7 +753,7 @@ impl<'a> Context<'a> {
     fn format_arg(&self, sp: Span, argno: Position, arg: @ast::Expr)
                   -> @ast::Expr {
         let ty = match argno {
-            Exact(ref i) => self.arg_types[*i].get_ref(),
+            Exact(ref i) => self.arg_types.get(*i).get_ref(),
             Named(ref s) => self.name_types.get(s)
         };
 
@@ -822,7 +827,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     efmt: @ast::Expr, args: Vec<@ast::Expr>,
                                     name_ordering: Vec<~str>,
                                     names: HashMap<~str, @ast::Expr>) -> @ast::Expr {
-    let arg_types = vec::from_fn(args.len(), |_| None);
+    let arg_types = Vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
         ecx: ecx,
         args: args,
@@ -871,7 +876,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.is_none() {
-            cx.ecx.span_err(cx.args[i].span, "argument never used");
+            cx.ecx.span_err(cx.args.get(i).span, "argument never used");
         }
     }
     for (name, e) in cx.names.iter() {

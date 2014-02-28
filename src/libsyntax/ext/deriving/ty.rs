@@ -21,6 +21,8 @@ use codemap::{Span,respan};
 use opt_vec;
 use opt_vec::OptVec;
 
+use std::vec_ng::Vec;
+
 /// The types of pointers
 pub enum PtrTy<'a> {
     Send, // ~
@@ -188,10 +190,10 @@ impl<'a> Ty<'a> {
 fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds = opt_vec::from(
-        bounds.map(|b| {
+        bounds.iter().map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
-        }));
+        }).collect());
     cx.typaram(cx.ident_of(name), bounds, None)
 }
 
@@ -204,8 +206,8 @@ fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -
 
 /// Lifetimes and bounds on type parameters
 pub struct LifetimeBounds<'a> {
-    lifetimes: Vec<&'a str> ,
-    bounds: vec!((&'a str, Vec<Path<'a>> ))
+    lifetimes: Vec<&'a str>,
+    bounds: Vec<(&'a str, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {
@@ -226,7 +228,12 @@ impl<'a> LifetimeBounds<'a> {
         let ty_params = self.bounds.map(|t| {
             match t {
                 &(ref name, ref bounds) => {
-                    mk_ty_param(cx, span, *name, *bounds, self_ty, self_generics)
+                    mk_ty_param(cx,
+                                span,
+                                *name,
+                                bounds.as_slice(),
+                                self_ty,
+                                self_generics)
                 }
             }
         });

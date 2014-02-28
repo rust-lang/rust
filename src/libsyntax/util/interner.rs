@@ -21,6 +21,7 @@ use std::cmp::Equiv;
 use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 pub struct Interner<T> {
     priv map: RefCell<HashMap<T, Name>>,
@@ -68,7 +69,7 @@ impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
 
     pub fn get(&self, idx: Name) -> T {
         let vect = self.vect.borrow();
-        vect.get()[idx].clone()
+        (*vect.get().get(idx as uint)).clone()
     }
 
     pub fn len(&self) -> uint {
@@ -189,21 +190,21 @@ impl StrInterner {
         let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        let existing = vect.get()[idx].clone();
+        let existing = (*vect.get().get(idx as uint)).clone();
         vect.get().push(existing);
         new_idx
     }
 
     pub fn get(&self, idx: Name) -> RcStr {
         let vect = self.vect.borrow();
-        vect.get()[idx].clone()
+        (*vect.get().get(idx as uint)).clone()
     }
 
     /// Returns this string with lifetime tied to the interner. Since
     /// strings may never be removed from the interner, this is safe.
     pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
         let vect = self.vect.borrow();
-        let s: &str = vect.get()[idx].as_slice();
+        let s: &str = vect.get().get(idx as uint).as_slice();
         unsafe {
             cast::transmute(s)
         }

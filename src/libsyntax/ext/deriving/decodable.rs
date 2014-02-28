@@ -21,6 +21,8 @@ use ext::deriving::generic::*;
 use parse::token::InternedString;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
