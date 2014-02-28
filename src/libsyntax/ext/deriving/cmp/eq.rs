@@ -36,8 +36,8 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 name: $name,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~["bool"])),
+                args: vec!(borrowed_self()),
+                ret_ty: Literal(Path::new(vec!("bool"))),
                 inline: true,
                 const_nonmatching: true,
                 combine_substructure: $f
@@ -47,14 +47,14 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
 
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "cmp", "Eq"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "cmp", "Eq")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             md!("eq", cs_eq),
             md!("ne", cs_ne)
-        ]
+        )
     };
     trait_def.expand(cx, mitem, item, push)
 }

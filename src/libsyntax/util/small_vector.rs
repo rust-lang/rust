@@ -14,7 +14,7 @@ use std::vec;
 pub enum SmallVector<T> {
     priv Zero,
     priv One(T),
-    priv Many(~[T]),
+    priv Many(Vec<T> ),
 }
 
 impl<T> Container for SmallVector<T> {
@@ -46,7 +46,7 @@ impl<T> SmallVector<T> {
         One(v)
     }
 
-    pub fn many(vs: ~[T]) -> SmallVector<T> {
+    pub fn many(vs: Vec<T> ) -> SmallVector<T> {
         Many(vs)
     }
 
@@ -56,7 +56,7 @@ impl<T> SmallVector<T> {
             One(..) => {
                 let one = mem::replace(self, Zero);
                 match one {
-                    One(v1) => mem::replace(self, Many(~[v1, v])),
+                    One(v1) => mem::replace(self, Many(vec!(v1, v))),
                     _ => unreachable!()
                 };
             }
@@ -142,7 +142,7 @@ mod test {
         assert_eq!(0, v.len());
 
         assert_eq!(1, SmallVector::one(1).len());
-        assert_eq!(5, SmallVector::many(~[1, 2, 3, 4, 5]).len());
+        assert_eq!(5, SmallVector::many(vec!(1, 2, 3, 4, 5)).len());
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod test {
 
     #[test]
     fn test_from_iterator() {
-        let v: SmallVector<int> = (~[1, 2, 3]).move_iter().collect();
+        let v: SmallVector<int> = (vec!(1, 2, 3)).move_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -171,14 +171,14 @@ mod test {
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
-        let v: ~[int] = v.move_iter().collect();
-        assert_eq!(~[], v);
+        let v: Vec<int> = v.move_iter().collect();
+        assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1);
-        assert_eq!(~[1], v.move_iter().collect());
+        assert_eq!(vec!(1), v.move_iter().collect());
 
-        let v = SmallVector::many(~[1, 2, 3]);
-        assert_eq!(~[1, 2, 3], v.move_iter().collect());
+        let v = SmallVector::many(vec!(1, 2, 3));
+        assert_eq!(vec!(1, 2, 3), v.move_iter().collect());
     }
 
     #[test]
@@ -190,12 +190,12 @@ mod test {
     #[test]
     #[should_fail]
     fn test_expect_one_many() {
-        SmallVector::many(~[1, 2]).expect_one("");
+        SmallVector::many(vec!(1, 2)).expect_one("");
     }
 
     #[test]
     fn test_expect_one_one() {
         assert_eq!(1, SmallVector::one(1).expect_one(""));
-        assert_eq!(1, SmallVector::many(~[1]).expect_one(""));
+        assert_eq!(1, SmallVector::many(vec!(1)).expect_one(""));
     }
 }

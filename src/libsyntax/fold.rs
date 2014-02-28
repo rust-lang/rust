@@ -22,11 +22,11 @@ pub trait Folder {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> ~[@MetaItem] {
+    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> Vec<@MetaItem> {
         meta_items.map(|x| fold_meta_item_(*x, self))
     }
 
-    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> ~[@ViewPath] {
+    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> Vec<@ViewPath> {
         view_paths.map(|view_path| {
             let inner_view_path = match view_path.node {
                 ViewPathSimple(ref ident, ref path, node_id) => {
@@ -283,7 +283,7 @@ pub trait Folder {
         }
     }
 
-    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> ~[@Expr] {
+    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> Vec<@Expr> {
         es.map(|x| f(*x))
     }
 
@@ -370,7 +370,7 @@ fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
 // since many token::IDENT are not necessary part of let bindings and most
 // token::LIFETIME are certainly not loop labels. But we can't tell in their
 // token form. So this is less ideal and hacky but it works.
-pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> ~[TokenTree] {
+pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
     tts.map(|tt| {
         match *tt {
             TTTok(span, ref tok) =>

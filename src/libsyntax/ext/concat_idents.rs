@@ -48,13 +48,13 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             ast::Path {
                  span: sp,
                  global: false,
-                 segments: ~[
+                 segments: vec!(
                     ast::PathSegment {
                         identifier: res,
                         lifetimes: opt_vec::Empty,
                         types: opt_vec::Empty,
                     }
-                ]
+                )
             }
         ),
         span: sp,

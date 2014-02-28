@@ -24,7 +24,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
         None => return MacResult::dummy_expr(sp),
         Some(e) => e,
     };
-    let mut bytes = ~[];
+    let mut bytes = Vec::new();
 
     for expr in exprs.iter() {
         match expr.node {

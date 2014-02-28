@@ -90,8 +90,8 @@ impl AnyMacro for ParserAnyMacro {
 
 struct MacroRulesMacroExpander {
     name: Ident,
-    lhses: @~[@NamedMatch],
-    rhses: @~[@NamedMatch],
+    lhses: @Vec<@NamedMatch> ,
+    rhses: @Vec<@NamedMatch> ,
 }
 
 impl MacroExpander for MacroRulesMacroExpander {
@@ -174,7 +174,7 @@ fn generic_extension(cx: &ExtCtxt,
 pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
-                         arg: ~[ast::TokenTree])
+                         arg: Vec<ast::TokenTree> )
                          -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
@@ -191,15 +191,14 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
     // The grammar for macro_rules! is:
     // $( $lhs:mtcs => $rhs:tt );+
     // ...quasiquoting this would be nice.
-    let argument_gram = ~[
-        ms(MatchSeq(~[
+    let argument_gram = vec!(
+        ms(MatchSeq(vec!(
             ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(MatchTok(FAT_ARROW)),
-            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u)),
-        ], Some(SEMI), false, 0u, 2u)),
+            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u))), Some(SEMI), false, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(MatchSeq(~[ms(MatchTok(SEMI))], None, true, 2u, 2u))];
+        ms(MatchSeq(vec!(ms(MatchTok(SEMI))), None, true, 2u, 2u)));
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):

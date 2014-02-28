@@ -197,20 +197,19 @@ pub struct TraitDef<'a> {
     /// The span for the current #[deriving(Foo)] header.
     span: Span,
 
-    attributes: ~[ast::Attribute],
+    attributes: Vec<ast::Attribute> ,
 
     /// Path of the trait, including any type parameters
     path: Path<'a>,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    additional_bounds: ~[Ty<'a>],
+    additional_bounds: Vec<Ty<'a>> ,
 
     /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
     generics: LifetimeBounds<'a>,
 
-    methods: ~[MethodDef<'a>]
-}
+    methods: Vec<MethodDef<'a>> }
 
 
 pub struct MethodDef<'a> {
@@ -225,7 +224,7 @@ pub struct MethodDef<'a> {
     explicit_self: Option<Option<PtrTy<'a>>>,
 
     /// Arguments other than the self argument
-    args: ~[Ty<'a>],
+    args: Vec<Ty<'a>> ,
 
     /// Return type
     ret_ty: Ty<'a>,
@@ -264,39 +263,38 @@ pub struct FieldInfo {
     self_: @Expr,
     /// The expressions corresponding to references to this field in
     /// the other Self arguments.
-    other: ~[@Expr]
-}
+    other: Vec<@Expr> }
 
 /// Fields for a static method
 pub enum StaticFields {
     /// Tuple structs/enum variants like this
-    Unnamed(~[Span]),
+    Unnamed(Vec<Span> ),
     /// Normal structs/struct variants.
-    Named(~[(Ident, Span)])
+    Named(Vec<(Ident, Span)> )
 }
 
 /// A summary of the possible sets of fields. See above for details
 /// and examples
 pub enum SubstructureFields<'a> {
-    Struct(~[FieldInfo]),
+    Struct(Vec<FieldInfo> ),
     /**
     Matching variants of the enum: variant index, ast::Variant,
     fields: the field name is only non-`None` in the case of a struct
     variant.
     */
-    EnumMatching(uint, &'a ast::Variant, ~[FieldInfo]),
+    EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo> ),
 
     /**
     non-matching variants of the enum, [(variant index, ast::Variant,
     [field span, field ident, fields])] (i.e. all fields for self are in the
     first tuple, for other1 are in the second tuple, etc.)
     */
-    EnumNonMatching(&'a [(uint, P<ast::Variant>, ~[(Span, Option<Ident>, @Expr)])]),
+    EnumNonMatching(&'a [(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, @Expr)> )]),
 
     /// A static method where Self is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
     /// A static method where Self is an enum.
-    StaticEnum(&'a ast::EnumDef, ~[(Ident, Span, StaticFields)])
+    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)> )
 }
 
 
@@ -316,7 +314,7 @@ representing each variant: (variant index, ast::Variant instance,
 pub type EnumNonMatchFunc<'a> =
     'a |&mut ExtCtxt,
            Span,
-           &[(uint, P<ast::Variant>, ~[(Span, Option<Ident>, @Expr)])],
+           &[(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, @Expr)> )],
            &[@Expr]|
            -> @Expr;
 
@@ -360,7 +358,7 @@ impl<'a> TraitDef<'a> {
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
                            generics: &Generics,
-                           methods: ~[@ast::Method]) -> @ast::Item {
+                           methods: Vec<@ast::Method> ) -> @ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         let mut trait_generics = self.generics.to_generics(cx, self.span,
@@ -397,7 +395,7 @@ impl<'a> TraitDef<'a> {
 
         // Create the type of `self`.
         let self_type = cx.ty_path(
-            cx.path_all(self.span, false, ~[ type_ident ], self_lifetimes,
+            cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
                         opt_vec::take_vec(self_ty_params)), None);
 
         let doc_attr = cx.attribute(
@@ -412,7 +410,7 @@ impl<'a> TraitDef<'a> {
         cx.item(
             self.span,
             ident,
-            vec::append(~[doc_attr], self.attributes),
+            vec_ng::append(vec!(doc_attr), self.attributes),
             ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods.map(|x| *x)))
     }
@@ -524,11 +522,11 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                type_ident: Ident,
                                generics: &Generics)
-        -> (ast::ExplicitSelf, ~[@Expr], ~[@Expr], ~[(Ident, P<ast::Ty>)]) {
+        -> (ast::ExplicitSelf, Vec<@Expr> , Vec<@Expr> , Vec<(Ident, P<ast::Ty>)> ) {
 
-        let mut self_args = ~[];
-        let mut nonself_args = ~[];
-        let mut arg_tys = ~[];
+        let mut self_args = Vec::new();
+        let mut nonself_args = Vec::new();
+        let mut arg_tys = Vec::new();
         let mut nonstatic = false;
 
         let ast_explicit_self = match self.explicit_self {
@@ -575,7 +573,7 @@ impl<'a> MethodDef<'a> {
                      type_ident: Ident,
                      generics: &Generics,
                      explicit_self: ast::ExplicitSelf,
-                     arg_types: ~[(Ident, P<ast::Ty>)],
+                     arg_types: Vec<(Ident, P<ast::Ty>)> ,
                      body: @Expr) -> @ast::Method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
@@ -598,16 +596,16 @@ impl<'a> MethodDef<'a> {
         let body_block = cx.block_expr(body);
 
         let attrs = if self.inline {
-            ~[
+            vec!(
                 cx
                       .attribute(trait_.span,
                                  cx
                                        .meta_word(trait_.span,
                                                   InternedString::new(
                                                       "inline")))
-            ]
+            )
         } else {
-            ~[]
+            Vec::new()
         };
 
         // Create the method.
@@ -655,9 +653,9 @@ impl<'a> MethodDef<'a> {
                                  nonself_args: &[@Expr])
         -> @Expr {
 
-        let mut raw_fields = ~[]; // ~[[fields of self],
+        let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
-        let mut patterns = ~[];
+        let mut patterns = Vec::new();
         for i in range(0u, self_args.len()) {
             let (pat, ident_expr) = trait_.create_struct_pattern(cx, type_ident, struct_def,
                                                                  format!("__self_{}", i),
@@ -703,7 +701,7 @@ impl<'a> MethodDef<'a> {
         // matter.
         for (&arg_expr, &pat) in self_args.iter().zip(patterns.iter()) {
             body = cx.expr_match(trait_.span, arg_expr,
-                                     ~[ cx.arm(trait_.span, ~[pat], body) ])
+                                     vec!( cx.arm(trait_.span, vec!(pat), body) ))
         }
         body
     }
@@ -759,7 +757,7 @@ impl<'a> MethodDef<'a> {
                                self_args: &[@Expr],
                                nonself_args: &[@Expr])
                                -> @Expr {
-        let mut matches = ~[];
+        let mut matches = Vec::new();
         self.build_enum_match(cx, trait_, enum_def, type_ident,
                               self_args, nonself_args,
                               None, &mut matches, 0)
@@ -795,8 +793,8 @@ impl<'a> MethodDef<'a> {
                         self_args: &[@Expr],
                         nonself_args: &[@Expr],
                         matching: Option<uint>,
-                        matches_so_far: &mut ~[(uint, P<ast::Variant>,
-                                              ~[(Span, Option<Ident>, @Expr)])],
+                        matches_so_far: &mut Vec<(uint, P<ast::Variant>,
+                                              Vec<(Span, Option<Ident>, @Expr)> )> ,
                         match_count: uint) -> @Expr {
         if match_count == self_args.len() {
             // we've matched against all arguments, so make the final
@@ -826,7 +824,7 @@ impl<'a> MethodDef<'a> {
                         (_, v, ref s) => (v, s)
                     };
 
-                    let mut enum_matching_fields = vec::from_elem(self_vec.len(), ~[]);
+                    let mut enum_matching_fields = vec::from_elem(self_vec.len(), Vec::new());
 
                     for triple in matches_so_far.tail().iter() {
                         match triple {
@@ -865,7 +863,7 @@ impl<'a> MethodDef<'a> {
                 format!("__arg_{}", match_count)
             };
 
-            let mut arms = ~[];
+            let mut arms = Vec::new();
 
             // the code for nonmatching variants only matters when
             // we've seen at least one other variant already
@@ -895,7 +893,7 @@ impl<'a> MethodDef<'a> {
                                                      matches_so_far,
                                                      match_count + 1);
                 matches_so_far.pop().unwrap();
-                arms.push(cx.arm(trait_.span, ~[ pattern ], arm_expr));
+                arms.push(cx.arm(trait_.span, vec!( pattern ), arm_expr));
 
                 if enum_def.variants.len() > 1 {
                     let e = &EnumNonMatching(&[]);
@@ -904,7 +902,7 @@ impl<'a> MethodDef<'a> {
                                                                   e);
                     let wild_arm = cx.arm(
                         trait_.span,
-                        ~[ cx.pat_wild(trait_.span) ],
+                        vec!( cx.pat_wild(trait_.span) ),
                         wild_expr);
                     arms.push(wild_arm);
                 }
@@ -933,7 +931,7 @@ impl<'a> MethodDef<'a> {
                                                          match_count + 1);
                     matches_so_far.pop().unwrap();
 
-                    let arm = cx.arm(trait_.span, ~[ pattern ], arm_expr);
+                    let arm = cx.arm(trait_.span, vec!( pattern ), arm_expr);
                     arms.push(arm);
                 }
             }
@@ -997,8 +995,8 @@ impl<'a> TraitDef<'a> {
     fn summarise_struct(&self,
                         cx: &mut ExtCtxt,
                         struct_def: &StructDef) -> StaticFields {
-        let mut named_idents = ~[];
-        let mut just_spans = ~[];
+        let mut named_idents = Vec::new();
+        let mut just_spans = Vec::new();
         for field in struct_def.fields.iter(){
             let sp = self.set_expn_info(cx, field.span);
             match field.node.kind {
@@ -1020,9 +1018,9 @@ impl<'a> TraitDef<'a> {
 
     fn create_subpatterns(&self,
                           cx: &mut ExtCtxt,
-                          field_paths: ~[ast::Path],
+                          field_paths: Vec<ast::Path> ,
                           mutbl: ast::Mutability)
-                          -> ~[@ast::Pat] {
+                          -> Vec<@ast::Pat> {
         field_paths.map(|path| {
             cx.pat(path.span,
                         ast::PatIdent(ast::BindByRef(mutbl), (*path).clone(), None))
@@ -1035,18 +1033,18 @@ impl<'a> TraitDef<'a> {
                              struct_def: &StructDef,
                              prefix: &str,
                              mutbl: ast::Mutability)
-                             -> (@ast::Pat, ~[(Span, Option<Ident>, @Expr)]) {
+                             -> (@ast::Pat, Vec<(Span, Option<Ident>, @Expr)> ) {
         if struct_def.fields.is_empty() {
             return (
                 cx.pat_ident_binding_mode(
                     self.span, struct_ident, ast::BindByValue(ast::MutImmutable)),
-                ~[]);
+                Vec::new());
         }
 
-        let matching_path = cx.path(self.span, ~[ struct_ident ]);
+        let matching_path = cx.path(self.span, vec!( struct_ident ));
 
-        let mut paths = ~[];
-        let mut ident_expr = ~[];
+        let mut paths = Vec::new();
+        let mut ident_expr = Vec::new();
         let mut struct_type = Unknown;
 
         for (i, struct_field) in struct_def.fields.iter().enumerate() {
@@ -1096,20 +1094,20 @@ impl<'a> TraitDef<'a> {
                                    variant: &ast::Variant,
                                    prefix: &str,
                                    mutbl: ast::Mutability)
-        -> (@ast::Pat, ~[(Span, Option<Ident>, @Expr)]) {
+        -> (@ast::Pat, Vec<(Span, Option<Ident>, @Expr)> ) {
         let variant_ident = variant.node.name;
         match variant.node.kind {
             ast::TupleVariantKind(ref variant_args) => {
                 if variant_args.is_empty() {
                     return (cx.pat_ident_binding_mode(variant.span, variant_ident,
                                                           ast::BindByValue(ast::MutImmutable)),
-                            ~[]);
+                            Vec::new());
                 }
 
                 let matching_path = cx.path_ident(variant.span, variant_ident);
 
-                let mut paths = ~[];
-                let mut ident_expr = ~[];
+                let mut paths = Vec::new();
+                let mut ident_expr = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
                     let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
@@ -1179,7 +1177,7 @@ f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
 ~~~
 */
 #[inline]
-pub fn cs_same_method(f: |&mut ExtCtxt, Span, ~[@Expr]| -> @Expr,
+pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<@Expr> | -> @Expr,
                       enum_nonmatch_f: EnumNonMatchFunc,
                       cx: &mut ExtCtxt,
                       trait_span: Span,

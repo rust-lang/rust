@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::fmt;
+use std::vec_ng::Vec;
 use std::fmt::Show;
 
 #[deriving(Eq)]
@@ -117,7 +118,7 @@ pub fn lookup(name: &str) -> Option<Abi> {
     res
 }
 
-pub fn all_names() -> ~[&'static str] {
+pub fn all_names() -> Vec<&'static str> {
     AbiDatas.map(|d| d.name)
 }
 
@@ -232,7 +233,7 @@ impl AbiSet {
     }
 
     pub fn check_valid(&self) -> Option<(Abi, Abi)> {
-        let mut abis = ~[];
+        let mut abis = Vec::new();
         self.each(|abi| { abis.push(abi); true });
 
         for (i, abi) in abis.iter().enumerate() {
