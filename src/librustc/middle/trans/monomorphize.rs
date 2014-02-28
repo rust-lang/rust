@@ -201,7 +201,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                   ..
               } => {
                   let d = mk_lldecl();
-                  set_llvm_fn_attrs(i.attrs, d);
+                  set_llvm_fn_attrs(i.attrs.as_slice(), d);
                   trans_fn(ccx, decl, body, d, Some(psubsts), fn_id.node, []);
                   d
               }
@@ -232,7 +232,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                     trans_enum_variant(ccx,
                                        parent,
                                        v,
-                                       (*args).clone(),
+                                       args.as_slice(),
                                        this_tv.disr_val,
                                        Some(psubsts),
                                        d);
@@ -244,7 +244,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         }
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
-            set_llvm_fn_attrs(mth.attrs, d);
+            set_llvm_fn_attrs(mth.attrs.as_slice(), d);
             trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
             d
         }
@@ -252,7 +252,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             match *method {
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
-                    set_llvm_fn_attrs(mth.attrs, d);
+                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
                     d
                 }
@@ -266,7 +266,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             let d = mk_lldecl();
             set_inline_hint(d);
             base::trans_tuple_struct(ccx,
-                                     struct_def.fields,
+                                     struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
                                      Some(psubsts),

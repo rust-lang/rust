@@ -23,6 +23,7 @@ use metadata::loader;
 use metadata::loader::Os;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashMap;
 use syntax::ast;
 use syntax::abi;
@@ -140,7 +141,7 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
     let should_load = i.attrs.iter().all(|attr| {
         attr.name().get() != "phase" ||
             attr.meta_item_list().map_or(false, |phases| {
-                attr::contains_name(phases, "link")
+                attr::contains_name(phases.as_slice(), "link")
             })
     });
 
@@ -420,8 +421,9 @@ impl CrateLoader for Loader {
         }
     }
 
-    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[~str] {
-        csearch::get_exported_macros(self.env.sess.cstore, cnum)
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> Vec<~str> {
+        csearch::get_exported_macros(self.env.sess.cstore, cnum).move_iter()
+                                                                .collect()
     }
 
     fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {

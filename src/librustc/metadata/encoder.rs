@@ -349,7 +349,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_name(ebml_w, variant.node.name.name);
         encode_parent_item(ebml_w, local_def(id));
         encode_visibility(ebml_w, variant.node.vis);
-        encode_attributes(ebml_w, variant.node.attrs);
+        encode_attributes(ebml_w, variant.node.attrs.as_slice());
         match variant.node.kind {
             ast::TupleVariantKind(ref args)
                     if args.len() > 0 && generics.ty_params.len() == 0 => {
@@ -357,7 +357,10 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             }
             ast::TupleVariantKind(_) => {},
             ast::StructVariantKind(def) => {
-                let idx = encode_info_for_struct(ecx, ebml_w, def.fields, index);
+                let idx = encode_info_for_struct(ecx,
+                                                 ebml_w,
+                                                 def.fields.as_slice(),
+                                                 index);
                 encode_struct_fields(ebml_w, def);
                 let bkts = create_index(idx);
                 encode_index(ebml_w, bkts, write_i64);
@@ -516,7 +519,7 @@ fn each_auxiliary_node_id(item: @Item, callback: |NodeId| -> bool) -> bool {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
                 Some(ctor_id) if struct_def.fields.len() > 0 &&
-                        struct_def.fields[0].node.kind ==
+                        struct_def.fields.get(0).node.kind ==
                         ast::UnnamedField => {
                     continue_ = callback(ctor_id);
                 }
@@ -799,13 +802,17 @@ fn encode_info_for_method(ecx: &EncodeContext,
     let elem = ast_map::PathName(m.ident.name);
     encode_path(ebml_w, impl_path.chain(Some(elem).move_iter()));
     match ast_method_opt {
-        Some(ast_method) => encode_attributes(ebml_w, ast_method.attrs),
+        Some(ast_method) => {
+            encode_attributes(ebml_w, ast_method.attrs.as_slice())
+        }
         None => ()
     }
 
     for &ast_method in ast_method_opt.iter() {
         let num_params = tpt.generics.type_param_defs().len();
-        if num_params > 0u || is_default_impl || should_inline(ast_method.attrs) {
+        if num_params > 0u ||
+                is_default_impl ||
+                should_inline(ast_method.attrs.as_slice()) {
             (ecx.encode_inlined_item)(
                 ecx, ebml_w, IIMethodRef(local_def(parent_id), false, ast_method));
         } else {
@@ -930,8 +937,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
-        encode_attributes(ebml_w, item.attrs);
-        if tps_len > 0u || should_inline(item.attrs) {
+        encode_attributes(ebml_w, item.attrs.as_slice());
+        if tps_len > 0u || should_inline(item.attrs.as_slice()) {
             (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
@@ -986,7 +993,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(ebml_w, ecx, item.id);
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ebml_w, item.ident.name);
-        encode_attributes(ebml_w, item.attrs);
+        encode_attributes(ebml_w, item.attrs.as_slice());
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
@@ -1002,7 +1009,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_enum_variant_info(ecx,
                                  ebml_w,
                                  item.id,
-                                 (*enum_definition).variants,
+                                 (*enum_definition).variants.as_slice(),
                                  index,
                                  generics);
       }
@@ -1012,7 +1019,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
            the index, and the index needs to be in the item for the
            class itself */
         let idx = encode_info_for_struct(ecx, ebml_w,
-                                         struct_def.fields, index);
+                                         struct_def.fields.as_slice(), index);
 
         /* Index the class*/
         add_to_index(item, ebml_w, index);
@@ -1025,7 +1032,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
         encode_item_variances(ebml_w, ecx, item.id);
         encode_name(ebml_w, item.ident.name);
-        encode_attributes(ebml_w, item.attrs);
+        encode_attributes(ebml_w, item.attrs.as_slice());
         encode_path(ebml_w, path.clone());
         encode_visibility(ebml_w, vis);
 
@@ -1065,7 +1072,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, 'i');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ebml_w, item.ident.name);
-        encode_attributes(ebml_w, item.attrs);
+        encode_attributes(ebml_w, item.attrs.as_slice());
         match ty.node {
             ast::TyPath(ref path, ref bounds, _) if path.segments
                                                         .len() == 1 => {
@@ -1097,7 +1104,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let num_implemented_methods = ast_methods.len();
         for (i, m) in imp.methods.iter().enumerate() {
             let ast_method = if i < num_implemented_methods {
-                Some(ast_methods[i])
+                Some(*ast_methods.get(i))
             } else { None };
 
             {
@@ -1129,7 +1136,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_region_param_defs(ebml_w, trait_def.generics.region_param_defs());
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ebml_w, item.ident.name);
-        encode_attributes(ebml_w, item.attrs);
+        encode_attributes(ebml_w, item.attrs.as_slice());
         encode_visibility(ebml_w, vis);
         for &method_def_id in ty::trait_method_def_ids(tcx, def_id).iter() {
             ebml_w.start_tag(tag_item_trait_method);
@@ -1195,14 +1202,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 }
             }
 
-            match ms[i] {
-                Required(ref tm) => {
-                    encode_attributes(ebml_w, tm.attrs);
+            match ms.get(i) {
+                &Required(ref tm) => {
+                    encode_attributes(ebml_w, tm.attrs.as_slice());
                     encode_method_sort(ebml_w, 'r');
                 }
 
-                Provided(m) => {
-                    encode_attributes(ebml_w, m.attrs);
+                &Provided(m) => {
+                    encode_attributes(ebml_w, m.attrs.as_slice());
                     // If this is a static method, we've already encoded
                     // this.
                     if method_ty.explicit_self != SelfStatic {

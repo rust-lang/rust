@@ -54,6 +54,7 @@ use std::os;
 use std::str;
 use std::task;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
@@ -334,19 +335,22 @@ pub fn run_compiler(args: &[~str]) {
     d::compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
-fn parse_crate_attrs(sess: session::Session,
-                     input: &d::Input) -> ~[ast::Attribute] {
-    match *input {
+fn parse_crate_attrs(sess: session::Session, input: &d::Input) ->
+                     ~[ast::Attribute] {
+    let result = match *input {
         d::FileInput(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
+            parse::parse_crate_attrs_from_file(ifile,
+                                               Vec::new(),
+                                               sess.parse_sess)
         }
         d::StrInput(ref src) => {
             parse::parse_crate_attrs_from_source_str(d::anon_src(),
                                                      (*src).clone(),
-                                                     ~[],
+                                                     Vec::new(),
                                                      sess.parse_sess)
         }
-    }
+    };
+    result.move_iter().collect()
 }
 
 /// Run a procedure which will detect failures in the compiler and print nicer

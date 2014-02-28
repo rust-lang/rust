@@ -3730,8 +3730,11 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
                         ItemTrait(_, _, ref ms) => {
-                            let (_, p) = ast_util::split_trait_methods(*ms);
-                            p.map(|m| method(cx, ast_util::local_def(m.id)))
+                            let (_, p) =
+                                ast_util::split_trait_methods(ms.as_slice());
+                            p.iter()
+                             .map(|m| method(cx, ast_util::local_def(m.id)))
+                             .collect()
                         }
                         _ => {
                             cx.sess.bug(format!("provided_trait_methods: \
@@ -3947,7 +3950,7 @@ impl VariantInfo {
             },
             ast::StructVariantKind(ref struct_def) => {
 
-                let fields: &[StructField] = struct_def.fields;
+                let fields: &[StructField] = struct_def.fields.as_slice();
 
                 assert!(fields.len() > 0);
 
@@ -4280,7 +4283,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
            Some(ast_map::NodeItem(i)) => {
              match i.node {
                 ast::ItemStruct(struct_def, _) => {
-                   struct_field_tys(struct_def.fields)
+                   struct_field_tys(struct_def.fields.as_slice())
                 }
                 _ => cx.sess.bug("struct ID bound to non-struct")
              }
@@ -4288,7 +4291,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
            Some(ast_map::NodeVariant(ref variant)) => {
               match (*variant).node.kind {
                 ast::StructVariantKind(struct_def) => {
-                  struct_field_tys(struct_def.fields)
+                  struct_field_tys(struct_def.fields.as_slice())
                 }
                 _ => {
                   cx.sess.bug("struct ID bound to enum variant that isn't \

@@ -100,13 +100,20 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let r = ia.asm.get().with_c_str(|a| {
         constraints.with_c_str(|c| {
-            InlineAsmCall(bcx, a, c, inputs, output_type, ia.volatile, ia.alignstack, dialect)
+            InlineAsmCall(bcx,
+                          a,
+                          c,
+                          inputs.as_slice(),
+                          output_type,
+                          ia.volatile,
+                          ia.alignstack,
+                          dialect)
         })
     });
 
     // Again, based on how many outputs we have
     if numOutputs == 1 {
-        Store(bcx, r, outputs[0]);
+        Store(bcx, r, *outputs.get(0));
     } else {
         for (i, o) in outputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);
