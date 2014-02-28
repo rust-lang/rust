@@ -29,6 +29,7 @@ use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 use vec::{ImmutableVector, OwnedVector};
 
+/// Signals that can be sent and received
 #[repr(int)]
 #[deriving(Eq, Hash)]
 pub enum Signum {
