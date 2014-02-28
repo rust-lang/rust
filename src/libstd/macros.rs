@@ -368,3 +368,47 @@ macro_rules! vec(
     })
 )
 
+
+/// A macro to select an event from a number of ports.
+///
+/// This macro is used to wait for the first event to occur on a number of
+/// ports. It places no restrictions on the types of ports given to this macro,
+/// this can be viewed as a heterogeneous select.
+///
+/// # Example
+///
+/// ```
+/// let (p1, c1) = Chan::new();
+/// let (p2, c2) = Chan::new();
+/// # fn long_running_task() {}
+/// # fn calculate_the_answer() -> int { 42 }
+///
+/// spawn(proc() { long_running_task(); c1.send(()) });
+/// spawn(proc() { c2.send(calculate_the_answer()) });
+///
+/// select! (
+///     () = p1.recv() => println!("the long running task finished first"),
+///     answer = p2.recv() => {
+///         println!("the answer was: {}", answer);
+///     }
+/// )
+/// ```
+///
+/// For more information about select, see the `std::comm::Select` structure.
+#[macro_export]
+#[experimental]
+macro_rules! select {
+    (
+        $($name:pat = $port:ident.$meth:ident() => $code:expr),+
+    ) => ({
+        use std::comm::Select;
+        let sel = Select::new();
+        $( let mut $port = sel.handle(&$port); )+
+        unsafe {
+            $( $port.add(); )+
+        }
+        let ret = sel.wait();
+        $( if ret == $port.id() { let $name = $port.$meth(); $code } else )+
+        { unreachable!() }
+    })
+}

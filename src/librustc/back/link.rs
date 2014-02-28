@@ -1132,8 +1132,41 @@ fn link_args(sess: Session,
         args.push(~"-Wl,--allow-multiple-definition");
     }
 
-    add_local_native_libraries(&mut args, sess);
+    // Take careful note of the ordering of the arguments we pass to the linker
+    // here. Linkers will assume that things on the left depend on things to the
+    // right. Things on the right cannot depend on things on the left. This is
+    // all formally implemented in terms of resolving symbols (libs on the right
+    // resolve unknown symbols of libs on the left, but not vice versa).
+    //
+    // For this reason, we have organized the arguments we pass to the linker as
+    // such:
+    //
+    //  1. The local object that LLVM just generated
+    //  2. Upstream rust libraries
+    //  3. Local native libraries
+    //  4. Upstream native libraries
+    //
+    // This is generally fairly natural, but some may expect 2 and 3 to be
+    // swapped. The reason that all native libraries are put last is that it's
+    // not recommended for a native library to depend on a symbol from a rust
+    // crate. If this is the case then a staticlib crate is recommended, solving
+    // the problem.
+    //
+    // Additionally, it is occasionally the case that upstream rust libraries
+    // depend on a local native library. In the case of libraries such as
+    // lua/glfw/etc the name of the library isn't the same across all platforms,
+    // so only the consumer crate of a library knows the actual name. This means
+    // that downstream crates will provide the #[link] attribute which upstream
+    // crates will depend on. Hence local native libraries are after out
+    // upstream rust crates.
+    //
+    // In theory this means that a symbol in an upstream native library will be
+    // shadowed by a local native library when it wouldn't have been before, but
+    // this kind of behavior is pretty platform specific and generally not
+    // recommended anyway, so I don't think we're shooting ourself in the foot
+    // much with that.
     add_upstream_rust_crates(&mut args, sess, dylib, tmpdir);
+    add_local_native_libraries(&mut args, sess);
     add_upstream_native_libraries(&mut args, sess);
 
     // # Telling the linker what we're doing

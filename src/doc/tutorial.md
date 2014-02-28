@@ -133,6 +133,10 @@ fn main() {
     println!("hello?");
 }
 ~~~~
+> ***Note:*** An identifier followed by an exclamation point, like
+> `println!`, is a macro invocation.  Macros are explained
+> [later](#syntax-extensions); for now just remember to include the
+> exclamation point.
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce an executable called `hello` (or `hello.exe` on
@@ -1059,7 +1063,7 @@ box, while the owner holds onto a pointer to it:
     list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
             +--------------+    +--------------+    +--------------+    +--------------+
 
-> Note: the above diagram shows the logical contents of the enum. The actual
+> ***Note:*** the above diagram shows the logical contents of the enum. The actual
 > memory layout of the enum may vary. For example, for the `List` enum shown
 > above, Rust guarantees that there will be no enum tag field in the actual
 > structure. See the language reference for more details.
@@ -1114,7 +1118,7 @@ let z = x; // no new memory allocated, `x` can no longer be used
 ~~~~
 
 The `clone` method is provided by the `Clone` trait, and can be derived for
-our `List` type. Traits will be explained in detail later.
+our `List` type. Traits will be explained in detail [later](#traits).
 
 ~~~{.ignore}
 #[deriving(Clone)]
@@ -1207,8 +1211,8 @@ let ys = Cons(5, ~Cons(10, ~Nil));
 assert!(eq(&xs, &ys));
 ~~~
 
-Note that Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
-but LLVM is able to handle a simple case like this with optimizations enabled.
+> ***Note:*** Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
+> but LLVM is able to handle a simple case like this with optimizations enabled.
 
 ## Lists of other types
 
@@ -1217,6 +1221,9 @@ leveraging Rust's support for generics, it can be extended to work for any
 element type.
 
 The `u32` in the previous definition can be substituted with a type parameter:
+
+> ***Note:*** The following code introduces generics, which are explained in a
+> [dedicated section](#generics).
 
 ~~~
 enum List<T> {
@@ -1336,10 +1343,14 @@ impl<T: Eq> Eq for List<T> {
 
 let xs = Cons(5, ~Cons(10, ~Nil));
 let ys = Cons(5, ~Cons(10, ~Nil));
+// The methods below are part of the Eq trait,
+// which we implemented on our linked list.
 assert!(xs.eq(&ys));
-assert!(xs == ys);
 assert!(!xs.ne(&ys));
-assert!(!(xs != ys));
+
+// The Eq trait also allows us to use the shorthand infix operators.
+assert!(xs == ys);    // `xs == ys` is short for `xs.eq(&ys)`
+assert!(!(xs != ys)); // `xs != ys` is short for `xs.ne(&ys)`
 ~~~
 
 # More on boxes
