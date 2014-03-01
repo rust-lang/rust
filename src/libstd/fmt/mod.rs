@@ -654,8 +654,8 @@ uniform_fn_call_workaround! {
 /// use std::fmt;
 /// use std::io;
 ///
-/// let w = &mut io::stdout() as &mut io::Writer;
-/// format_args!(|args| { fmt::write(w, args); }, "Hello, {}!", "world");
+/// let mut w = io::stdout();
+/// format_args!(|args| { fmt::write(&mut w, args); }, "Hello, {}!", "world");
 /// ```
 pub fn write(output: &mut io::Writer, args: &Arguments) -> Result {
     unsafe { write_unsafe(output, args.fmt, args.args) }

@@ -415,8 +415,8 @@ impl<T: Writer> ConsoleTestState<T> {
             Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
-        let out = match term::Terminal::new(io::stdout()) {
-            Err(_) => Raw(io::stdout()),
+        let out = match term::Terminal::new(io::stdio::stdout_raw()) {
+            Err(_) => Raw(io::stdio::stdout_raw()),
             Ok(t) => Pretty(t)
         };
         Ok(ConsoleTestState {

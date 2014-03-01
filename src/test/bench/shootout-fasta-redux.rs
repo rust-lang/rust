@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cmp::min;
-use std::io::{stdout, BufferedWriter, IoResult};
+use std::io::{stdout, IoResult};
 use std::os;
 use std::vec::bytes::copy_memory;
 use std::vec;
@@ -183,7 +183,7 @@ fn main() {
         5
     };
 
-    let mut out = BufferedWriter::new(stdout());
+    let mut out = stdout();
 
     out.write_line(">ONE Homo sapiens alu").unwrap();
     {
