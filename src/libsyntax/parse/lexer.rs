@@ -442,8 +442,7 @@ fn scan_exponent(rdr: &StringReader, start_bpos: BytePos) -> Option<~str> {
     // \x00 hits the `return None` case immediately, so this is fine.
     let mut c = rdr.curr.get().unwrap_or('\x00');
     let mut rslt = ~"";
-    if c == 'e' || c == 'E' {
-        rslt.push_char(c);
+    if c == 'e' || c == 'E' || c == 'p' || c == 'P' {
         bump(rdr);
         c = rdr.curr.get().unwrap_or('\x00');
         if c == '-' || c == '+' {
@@ -475,40 +474,32 @@ fn scan_digits(rdr: &StringReader, radix: uint) -> ~str {
     };
 }
 
-fn check_float_base(rdr: &StringReader, start_bpos: BytePos, last_bpos: BytePos,
-                    base: uint) {
-    match base {
-      16u => fatal_span(rdr, start_bpos, last_bpos,
-                      ~"hexadecimal float literal is not supported"),
-      8u => fatal_span(rdr, start_bpos, last_bpos,
-                     ~"octal float literal is not supported"),
-      2u => fatal_span(rdr, start_bpos, last_bpos,
-                     ~"binary float literal is not supported"),
-      _ => ()
-    }
-}
-
-fn scan_number(c: char, rdr: &StringReader) -> token::Token {
-    let mut num_str;
-    let mut base = 10u;
-    let mut c = c;
-    let mut n = nextch(rdr).unwrap_or('\x00');
-    let start_bpos = rdr.last_pos.get();
+fn scan_radix(rdr: &StringReader) -> uint {
+    let c = rdr.curr.get().unwrap_or('\x00');
+    let n = nextch(rdr).unwrap_or('\x00');
     if c == '0' && n == 'x' {
         bump(rdr);
         bump(rdr);
-        base = 16u;
+        return 16u;
     } else if c == '0' && n == 'o' {
         bump(rdr);
         bump(rdr);
-        base = 8u;
+        return 8u;
     } else if c == '0' && n == 'b' {
         bump(rdr);
         bump(rdr);
-        base = 2u;
+        return 2u;
     }
+    return 10u;
+}
+
+fn scan_number(rdr: &StringReader) -> token::Token {
+    let mut num_str;
+    let start_bpos = rdr.last_pos.get();
+    let mut base = scan_radix(rdr);
     num_str = scan_digits(rdr, base);
-    c = rdr.curr.get().unwrap_or('\x00');
+    let mut c = rdr.curr.get().unwrap_or('\x00');
+    let mut n:char;
     nextch(rdr);
     if c == 'u' || c == 'i' {
         enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
@@ -557,19 +548,71 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         }
     }
     let mut is_float = false;
+    let mut dec_part = ~"";
     if rdr.curr_is('.') && !(ident_start(nextch(rdr)) || nextch_is(rdr, '.')) {
         is_float = true;
         bump(rdr);
-        let dec_part = scan_digits(rdr, 10u);
-        num_str.push_char('.');
-        num_str.push_str(dec_part);
+        let mantissa_base = scan_radix(rdr);
+        if mantissa_base != base {
+            //The ability to switch base, while conceivably useful, is much more
+            //likely to be triggered by accident.
+            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                       ~"float literals must have consistent base before and after decimal point");
+        }
+        base = mantissa_base;
+        dec_part = scan_digits(rdr, mantissa_base);
     }
+    let mut exp_part = ~"";
     match scan_exponent(rdr, start_bpos) {
-      Some(ref s) => {
+      Some(s) => {
         is_float = true;
-        num_str.push_str(*s);
+        exp_part = s;
       }
-      None => ()
+      None => {
+        if is_float && base > 10 {
+            //otherwise we have ambiguity: 0x1.0xffff_f32 gets parsed as
+            //0x1.fffff32, which will create confusing results.
+            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                        ~"hexadecimal float literals must contain exponent");
+        }
+      }
+    }
+    if is_float {
+        if base == 10 || base == 16 {
+            num_str.push_char('.');
+            num_str.push_str( if dec_part.len() > 0 {dec_part} else {~"0"} );
+            if exp_part.len() != 0 {
+                num_str.push_char(if base == 10 {'e'} else {'p'});
+                num_str.push_str(exp_part);
+            }
+        } else {
+            num_str = from_str_radix::<u64>(num_str, base).unwrap().to_str_radix(16);
+            let mut i = 0;
+            let len = dec_part.len();
+            let step = match base { 8 => 2, 2 => 4, _ => fail!("Impossible base for float")};
+            let mut dec_str = ~"";
+            while i < len {
+                let chunk = if i + step > len {
+                    let mut chunk = dec_part.slice_from(i).to_str();
+                    for _ in range(0, i + step - len) {
+                        chunk.push_char('0');
+                    }
+                    chunk
+                } else {
+                    dec_part.slice(i, i + step).to_str()
+                };
+                dec_str.push_str(from_str_radix::<u8>(chunk, base).unwrap_or(0).to_str());
+                i += step;
+            }
+            num_str.push_char('.');
+            num_str.push_str(dec_str);
+            num_str.push_char('p');
+            num_str.push_str(if exp_part.len() > 0 {exp_part} else {~"0"});
+        }
+        if base != 10 {
+            num_str.unshift_char('x');
+            num_str.unshift_char('0');
+        }
     }
 
     if rdr.curr_is('f') {
@@ -579,12 +622,10 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
             return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
             return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
@@ -595,7 +636,6 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         }
     }
     if is_float {
-        check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if num_str.len() == 0u {
@@ -686,7 +726,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         })
     }
     if is_dec_digit(c) {
-        return scan_number(c.unwrap(), rdr);
+        return scan_number(rdr);
     }
     fn binop(rdr: &StringReader, op: token::BinOp) -> token::Token {
         bump(rdr);
@@ -1004,6 +1044,7 @@ mod test {
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
+    use ast;
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
@@ -1136,6 +1177,22 @@ mod test {
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_CHAR('a' as u32));
+    }
+
+    #[test] fn hex_floats() {
+        let env = setup(~"0x1.0xffffffp100_f32");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        let id = token::str_to_ident("0x1.ffffffp100");
+        assert_eq!(tok,token::LIT_FLOAT(id, ast::TyF32));
+    }
+
+    #[test] fn bin_floats() {
+        let env = setup(~"0b1.0b0000_0001_0010_0011_1p100_f32");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        let id = token::str_to_ident("0x1.01238p100");
+        assert_eq!(tok,token::LIT_FLOAT(id, ast::TyF32));
     }
 
 }

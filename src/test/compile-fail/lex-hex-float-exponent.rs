@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let h = 0x8.0e+9; //~ ERROR: hexadecimal float literal is not supported
-}
+static f: float =
+    0x539.0x0 //~ ERROR: hexadecimal float literals must contain exponent
+;

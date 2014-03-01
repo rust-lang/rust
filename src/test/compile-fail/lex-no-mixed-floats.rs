@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:binary float literal is not supported
-
-fn main() {
-    0b101010f64;
-    0b101.010;
-    0b101p4f64;
-}
+static f: float =
+    0x539.0 //~ ERROR: float literals must have consistent base before and after decimal point
+;
