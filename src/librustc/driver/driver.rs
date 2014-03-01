@@ -930,7 +930,7 @@ pub fn build_session(sopts: @session::Options,
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler();
+        diagnostic::default_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -1148,7 +1148,8 @@ pub fn build_output_filenames(input: &Input,
 }
 
 pub fn early_error(msg: &str) -> ! {
-    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal);
+    let mut emitter = diagnostic::EmitterWriter::stderr();
+    emitter.emit(None, msg, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
 }
 

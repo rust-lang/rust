@@ -25,6 +25,7 @@ use rustc::metadata::creader::Loader;
 use getopts;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::codemap::CodeMap;
 
 use core;
 use clean;
@@ -35,7 +36,6 @@ use passes;
 use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
-    let parsesess = parse::new_parse_sess();
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
@@ -49,9 +49,12 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     };
 
 
-    let diagnostic_handler = diagnostic::mk_handler();
+    let cm = @CodeMap::new();
+    let diagnostic_handler = diagnostic::default_handler();
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
+        diagnostic::mk_span_handler(diagnostic_handler, cm);
+    let parsesess = parse::new_parse_sess_special_handler(span_diagnostic_handler,
+                                                          cm);
 
     let sess = driver::build_session_(sessopts,
                                       Some(input_path),
@@ -112,7 +115,30 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
         .. (*session::basic_options()).clone()
     };
 
-    let diagnostic_handler = diagnostic::mk_handler();
+    // Shuffle around a few input and output handles here. We're going to pass
+    // an explicit handle into rustc to collect output messages, but we also
+    // want to catch the error message that rustc prints when it fails.
+    //
+    // We take our task-local stderr (likely set by the test runner), and move
+    // it into another task. This helper task then acts as a sink for both the
+    // stderr of this task and stderr of rustc itself, copying all the info onto
+    // the stderr channel we originally started with.
+    //
+    // The basic idea is to not use a default_handler() for rustc, and then also
+    // not print things by default to the actual stderr.
+    let (p, c) = Chan::new();
+    let w1 = io::ChanWriter::new(c);
+    let w2 = w1.clone();
+    let old = io::stdio::set_stderr(~w1);
+    spawn(proc() {
+        let mut p = io::PortReader::new(p);
+        let mut err = old.unwrap_or(~io::stderr() as ~Writer);
+        io::util::copy(&mut p, &mut err).unwrap();
+    });
+    let emitter = diagnostic::EmitterWriter::new(~w2);
+
+    // Compile the code
+    let diagnostic_handler = diagnostic::mk_handler(~emitter);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
@@ -126,6 +152,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     let cfg = driver::build_configuration(sess);
     driver::compile_input(sess, cfg, &input, &out, &None);
 
+    // Run the code!
     let exe = outdir.path().join("rust_out");
     let out = Process::output(exe.as_str().unwrap(), []);
     match out {

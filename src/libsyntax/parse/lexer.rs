@@ -1004,6 +1004,7 @@ mod test {
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
+    use std::io::util;
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
@@ -1014,7 +1015,10 @@ mod test {
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", teststr);
-        let span_handler = diagnostic::mk_span_handler(diagnostic::mk_handler(), @cm);
+        let writer = ~util::NullWriter;
+        let emitter = diagnostic::EmitterWriter::new(writer);
+        let handler = diagnostic::mk_handler(~emitter);
+        let span_handler = diagnostic::mk_span_handler(handler, @cm);
         Env {
             string_reader: new_string_reader(span_handler,fm)
         }
