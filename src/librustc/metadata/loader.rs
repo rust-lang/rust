@@ -318,12 +318,17 @@ impl<'a> Context<'a> {
     }
 
     fn crate_matches(&mut self, crate_data: &[u8]) -> bool {
-        let other_id = decoder::get_crate_id(crate_data);
-        if !self.crate_id.matches(&other_id) { return false }
+        match decoder::maybe_get_crate_id(crate_data) {
+            Some(ref id) if self.crate_id.matches(id) => {}
+            _ => return false
+        }
+        let hash = match decoder::maybe_get_crate_hash(crate_data) {
+            Some(hash) => hash, None => return false
+        };
         match self.hash {
             None => true,
-            Some(hash) => {
-                if *hash != decoder::get_crate_hash(crate_data) {
+            Some(myhash) => {
+                if *myhash != hash {
                     self.rejected_via_hash = true;
                     false
                 } else {
