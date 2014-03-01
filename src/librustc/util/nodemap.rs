@@ -15,34 +15,81 @@ use std::hash::{Hasher, Hash};
 use std::io;
 use syntax::ast;
 
+#[cfg(not(stage0))]
 pub type NodeMap<T> = HashMap<ast::NodeId, T, FnvHasher>;
+#[cfg(not(stage0))]
 pub type DefIdMap<T> = HashMap<ast::DefId, T, FnvHasher>;
+#[cfg(not(stage0))]
 pub type NodeSet = HashSet<ast::NodeId, FnvHasher>;
+#[cfg(not(stage0))]
 pub type DefIdSet = HashSet<ast::DefId, FnvHasher>;
 
 // Hacks to get good names
+#[cfg(not(stage0))]
 pub mod NodeMap {
     use collections::HashMap;
     pub fn new<T>() -> super::NodeMap<T> {
         HashMap::with_hasher(super::FnvHasher)
     }
 }
+#[cfg(not(stage0))]
 pub mod NodeSet {
     use collections::HashSet;
     pub fn new() -> super::NodeSet {
         HashSet::with_hasher(super::FnvHasher)
     }
 }
+#[cfg(not(stage0))]
 pub mod DefIdMap {
     use collections::HashMap;
     pub fn new<T>() -> super::DefIdMap<T> {
         HashMap::with_hasher(super::FnvHasher)
     }
 }
+#[cfg(not(stage0))]
 pub mod DefIdSet {
     use collections::HashSet;
     pub fn new() -> super::DefIdSet {
         HashSet::with_hasher(super::FnvHasher)
+    }
+}
+
+#[cfg(stage0)]
+pub type NodeMap<T> = HashMap<ast::NodeId, T>;
+#[cfg(stage0)]
+pub type DefIdMap<T> = HashMap<ast::DefId, T>;
+#[cfg(stage0)]
+pub type NodeSet = HashSet<ast::NodeId>;
+#[cfg(stage0)]
+pub type DefIdSet = HashSet<ast::DefId>;
+
+// Hacks to get good names
+#[cfg(stage0)]
+pub mod NodeMap {
+    use collections::HashMap;
+    pub fn new<T>() -> super::NodeMap<T> {
+        HashMap::new()
+    }
+}
+#[cfg(stage0)]
+pub mod NodeSet {
+    use collections::HashSet;
+    pub fn new() -> super::NodeSet {
+        HashSet::new()
+    }
+}
+#[cfg(stage0)]
+pub mod DefIdMap {
+    use collections::HashMap;
+    pub fn new<T>() -> super::DefIdMap<T> {
+        HashMap::new()
+    }
+}
+#[cfg(stage0)]
+pub mod DefIdSet {
+    use collections::HashSet;
+    pub fn new() -> super::DefIdSet {
+        HashSet::new()
     }
 }
 
@@ -56,7 +103,7 @@ pub mod DefIdSet {
 #[deriving(Clone)]
 pub struct FnvHasher;
 
-struct FnvState(u64);
+pub struct FnvState(u64);
 
 impl Hasher<FnvState> for FnvHasher {
     fn hash<T: Hash<FnvState>>(&self, t: &T) -> u64 {
