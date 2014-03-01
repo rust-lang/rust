@@ -64,7 +64,7 @@ mod imp {
 /// A record specifying a time value in seconds and nanoseconds.
 
 
-#[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
+#[deriving(Clone, DeepClone, Eq, Encodable, Decodable, Show)]
 pub struct Timespec { sec: i64, nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -191,7 +191,7 @@ pub fn tzset() {
     }
 }
 
-#[deriving(Clone, DeepClone, Eq, Encodable, Decodable)]
+#[deriving(Clone, DeepClone, Eq, Encodable, Decodable, Show)]
 pub struct Tm {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
@@ -1138,7 +1138,7 @@ mod tests {
         let time = Timespec::new(1234567890, 54321);
         let local = at(time);
 
-        error!("time_at: {:?}", local);
+        debug!("time_at: {:?}", local);
 
         assert_eq!(local.tm_sec, 30_i32);
         assert_eq!(local.tm_min, 31_i32);
@@ -1355,7 +1355,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        error!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
+        debug!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
 
         assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
         assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");

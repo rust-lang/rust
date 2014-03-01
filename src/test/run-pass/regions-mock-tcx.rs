@@ -27,6 +27,7 @@ use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 
+#[deriving(Show)]
 enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),

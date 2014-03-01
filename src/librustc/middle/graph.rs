@@ -349,19 +349,19 @@ mod test {
                                       start_data: N,
                                       expected_incoming: &[(E,N)],
                                       expected_outgoing: &[(E,N)]) {
-        assert_eq!(graph.node_data(start_index), &start_data);
+        assert!(graph.node_data(start_index) == &start_data);
 
         let mut counter = 0;
         graph.each_incoming_edge(start_index, |edge_index, edge| {
-            assert_eq!(graph.edge_data(edge_index), &edge.data);
+            assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_incoming.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
                 (ref e, ref n) => {
-                    assert_eq!(e, &edge.data);
-                    assert_eq!(n, graph.node_data(edge.source));
-                    assert_eq!(start_index, edge.target);
+                    assert!(e == &edge.data);
+                    assert!(n == graph.node_data(edge.source));
+                    assert!(start_index == edge.target);
                 }
             }
             counter += 1;
@@ -371,15 +371,15 @@ mod test {
 
         let mut counter = 0;
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
-            assert_eq!(graph.edge_data(edge_index), &edge.data);
+            assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_outgoing.len());
             debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {
                 (ref e, ref n) => {
-                    assert_eq!(e, &edge.data);
-                    assert_eq!(start_index, edge.source);
-                    assert_eq!(n, graph.node_data(edge.target));
+                    assert!(e == &edge.data);
+                    assert!(start_index == edge.source);
+                    assert!(n == graph.node_data(edge.target));
                 }
             }
             counter += 1;

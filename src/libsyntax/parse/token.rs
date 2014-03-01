@@ -23,7 +23,7 @@ use std::local_data;
 use std::path::BytesContainer;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
 pub enum BinOp {
     PLUS,
     MINUS,
@@ -38,7 +38,7 @@ pub enum BinOp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -116,6 +116,24 @@ pub enum Nonterminal {
     NtPath(~ast::Path),
     NtTT(  @ast::TokenTree), // needs @ed to break a circularity
     NtMatchers(~[ast::Matcher])
+}
+
+impl fmt::Show for Nonterminal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            NtItem(..) => f.pad("NtItem(..)"),
+            NtBlock(..) => f.pad("NtBlock(..)"),
+            NtStmt(..) => f.pad("NtStmt(..)"),
+            NtPat(..) => f.pad("NtPat(..)"),
+            NtExpr(..) => f.pad("NtExpr(..)"),
+            NtTy(..) => f.pad("NtTy(..)"),
+            NtIdent(..) => f.pad("NtIdent(..)"),
+            NtAttr(..) => f.pad("NtAttr(..)"),
+            NtPath(..) => f.pad("NtPath(..)"),
+            NtTT(..) => f.pad("NtTT(..)"),
+            NtMatchers(..) => f.pad("NtMatchers(..)"),
+        }
+    }
 }
 
 pub fn binop_to_str(o: BinOp) -> ~str {

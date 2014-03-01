@@ -384,7 +384,7 @@ the trailing underscore is a workaround for issue #5898 and will be removed.
 ~~~
 let mut ys = [1, 2, 3, 4, 5];
 ys.mut_iter().reverse_();
-assert_eq!(ys, [5, 4, 3, 2, 1]);
+assert!(ys == [5, 4, 3, 2, 1]);
 ~~~
 
 ## Random-access iterators

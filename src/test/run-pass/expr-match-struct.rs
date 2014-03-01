@@ -20,6 +20,7 @@ fn test_rec() {
     assert_eq!(rs.i, 100);
 }
 
+#[deriving(Show)]
 enum mood { happy, sad, }
 
 impl Eq for mood {

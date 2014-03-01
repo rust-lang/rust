@@ -455,13 +455,13 @@ mod tests {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert_eq!(path.as_str(), Some($exp));
+                assert!(path.as_str() == Some($exp));
             }
         );
         (v: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert_eq!(path.as_vec(), $exp);
+                assert!(path.as_vec() == $exp);
             }
         )
     )
@@ -484,7 +484,7 @@ mod tests {
         t!(v: Path::new(b!("a/b/c", 0xff)), b!("a/b/c", 0xff));
         t!(v: Path::new(b!(0xff, "/../foo", 0x80)), b!("foo", 0x80));
         let p = Path::new(b!("a/b/c", 0xff));
-        assert_eq!(p.as_str(), None);
+        assert!(p.as_str() == None);
 
         t!(s: Path::new(""), ".");
         t!(s: Path::new("/"), "/");
@@ -509,19 +509,19 @@ mod tests {
         t!(s: Path::new("foo/../../.."), "../..");
         t!(s: Path::new("foo/../../bar"), "../bar");
 
-        assert_eq!(Path::new(b!("foo/bar")).into_vec(), b!("foo/bar").to_owned());
-        assert_eq!(Path::new(b!("/foo/../../bar")).into_vec(),
+        assert!(Path::new(b!("foo/bar")).into_vec() == b!("foo/bar").to_owned());
+        assert!(Path::new(b!("/foo/../../bar")).into_vec() ==
                    b!("/bar").to_owned());
 
         let p = Path::new(b!("foo/bar", 0x80));
-        assert_eq!(p.as_str(), None);
+        assert!(p.as_str() == None);
     }
 
     #[test]
     fn test_opt_paths() {
-        assert_eq!(Path::new_opt(b!("foo/bar", 0)), None);
+        assert!(Path::new_opt(b!("foo/bar", 0)) == None);
         t!(v: Path::new_opt(b!("foo/bar")).unwrap(), b!("foo/bar"));
-        assert_eq!(Path::new_opt("foo/bar\0"), None);
+        assert!(Path::new_opt("foo/bar\0") == None);
         t!(s: Path::new_opt("foo/bar").unwrap(), "foo/bar");
     }
 
@@ -550,7 +550,7 @@ mod tests {
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    assert_eq!(path.$disp().to_str(), ~$exp);
+                    assert!(path.$disp().to_str() == ~$exp);
                 }
             )
         )
@@ -566,14 +566,14 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let mo = path.display().as_maybe_owned();
-                    assert_eq!(mo.as_slice(), $exp);
+                    assert!(mo.as_slice() == $exp);
                 }
             );
             ($path:expr, $exp:expr, filename) => (
                 {
                     let path = Path::new($path);
                     let mo = path.filename_display().as_maybe_owned();
-                    assert_eq!(mo.as_slice(), $exp);
+                    assert!(mo.as_slice() == $exp);
                 }
             )
         )
@@ -593,9 +593,9 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let f = format!("{}", path.display());
-                    assert_eq!(f.as_slice(), $exp);
+                    assert!(f.as_slice() == $exp);
                     let f = format!("{}", path.filename_display());
-                    assert_eq!(f.as_slice(), $expf);
+                    assert!(f.as_slice() == $expf);
                 }
             )
         )
@@ -615,21 +615,21 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    assert_eq!(path.$op(), ($exp).as_bytes());
+                    assert!(path.$op() == ($exp).as_bytes());
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::new($path);
                     let left = path.$op().map(|x| str::from_utf8(x).unwrap());
-                    assert_eq!(left, $exp);
+                    assert!(left == $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let arg = $path;
                     let path = Path::new(arg);
-                    assert_eq!(path.$op(), $exp);
+                    assert!(path.$op() == $exp);
                 }
             );
         )
@@ -703,7 +703,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     let p2 = p1.clone();
                     p1.push(join);
-                    assert_eq!(p1, p2.join(join));
+                    assert!(p1 == p2.join(join));
                 }
             )
         )
@@ -722,7 +722,7 @@ mod tests {
                     let mut p = Path::new($path);
                     let push = Path::new($push);
                     p.push(&push);
-                    assert_eq!(p.as_str(), Some($exp));
+                    assert!(p.as_str() == Some($exp));
                 }
             )
         )
@@ -742,14 +742,14 @@ mod tests {
                 {
                     let mut p = Path::new($path);
                     p.push_many($push);
-                    assert_eq!(p.as_str(), Some($exp));
+                    assert!(p.as_str() == Some($exp));
                 }
             );
             (v: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
                     p.push_many($push);
-                    assert_eq!(p.as_vec(), $exp);
+                    assert!(p.as_vec() == $exp);
                 }
             )
         )
@@ -770,16 +770,16 @@ mod tests {
                 {
                     let mut p = Path::new($path);
                     let result = p.pop();
-                    assert_eq!(p.as_str(), Some($left));
-                    assert_eq!(result, $right);
+                    assert!(p.as_str() == Some($left));
+                    assert!(result == $right);
                 }
             );
             (v: [$($path:expr),+], [$($left:expr),+], $right:expr) => (
                 {
                     let mut p = Path::new(b!($($path),+));
                     let result = p.pop();
-                    assert_eq!(p.as_vec(), b!($($left),+));
-                    assert_eq!(result, $right);
+                    assert!(p.as_vec() == b!($($left),+));
+                    assert!(result == $right);
                 }
             )
         )
@@ -802,8 +802,8 @@ mod tests {
 
     #[test]
     fn test_root_path() {
-        assert_eq!(Path::new(b!("a/b/c")).root_path(), None);
-        assert_eq!(Path::new(b!("/a/b/c")).root_path(), Some(Path::new("/")));
+        assert!(Path::new(b!("a/b/c")).root_path() == None);
+        assert!(Path::new(b!("/a/b/c")).root_path() == Some(Path::new("/")));
     }
 
     #[test]
@@ -827,7 +827,7 @@ mod tests {
                     let path = Path::new($path);
                     let join = Path::new($join);
                     let res = path.join(&join);
-                    assert_eq!(res.as_str(), Some($exp));
+                    assert!(res.as_str() == Some($exp));
                 }
             )
         )
@@ -847,14 +847,14 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let res = path.join_many($join);
-                    assert_eq!(res.as_str(), Some($exp));
+                    assert!(res.as_str() == Some($exp));
                 }
             );
             (v: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
                     let res = path.join_many($join);
-                    assert_eq!(res.as_vec(), $exp);
+                    assert!(res.as_vec() == $exp);
                 }
             )
         )
@@ -928,7 +928,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert_eq!(p1, p2.$with(arg));
+                    assert!(p1 == p2.$with(arg));
                 }
             );
             (v: $path:expr, $set:ident, $with:ident, $arg:expr) => (
@@ -938,7 +938,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert_eq!(p1, p2.$with(arg));
+                    assert!(p1 == p2.$with(arg));
                 }
             )
         )
@@ -989,10 +989,10 @@ mod tests {
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
-                    assert_eq!(path.filename(), $filename);
-                    assert_eq!(path.dirname(), $dirname);
-                    assert_eq!(path.filestem(), $filestem);
-                    assert_eq!(path.extension(), $ext);
+                    assert!(path.filename() == $filename);
+                    assert!(path.dirname() == $dirname);
+                    assert!(path.filestem() == $filestem);
+                    assert!(path.extension() == $ext);
                 }
             )
         )

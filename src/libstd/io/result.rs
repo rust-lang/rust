@@ -111,7 +111,7 @@ mod test {
             Ok(MemReader::new(~[0, 1, 2, 3]));
         let mut buf = [0, 0];
         reader.read(buf).unwrap();
-        assert_eq!(buf, [0, 1]);
+        assert_eq!(buf.as_slice(), &[0, 1]);
     }
 
     #[test]

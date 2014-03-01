@@ -657,7 +657,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: ~[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert_eq!(p, parser.collect());
+        assert!(p == parser.collect());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {

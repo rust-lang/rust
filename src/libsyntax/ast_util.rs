@@ -979,7 +979,7 @@ mod test {
 
     // because of the SCTable, I now need a tidy way of
     // creating syntax objects. Sigh.
-    #[deriving(Clone, Eq)]
+    #[deriving(Clone, Eq, Show)]
     enum TestSC {
         M(Mrk),
         R(Ident,Name)
@@ -1024,9 +1024,9 @@ mod test {
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(9,0));
-            assert_eq!(table.get()[3],Rename(id(101,0),14,2));
-            assert_eq!(table.get()[4],Mark(3,3));
+            assert!(table.get()[2] == Mark(9,0));
+            assert!(table.get()[3] == Rename(id(101,0),14,2));
+            assert!(table.get()[4] == Mark(3,3));
         }
         assert_eq!(refold_test_sc(4,&t),test_sc);
     }
@@ -1045,8 +1045,8 @@ mod test {
         assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
         {
             let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(7,0));
-            assert_eq!(table.get()[3],Mark(3,2));
+            assert!(table.get()[2] == Mark(7,0));
+            assert!(table.get()[3] == Mark(3,2));
         }
     }
 

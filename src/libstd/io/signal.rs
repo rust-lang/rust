@@ -31,7 +31,7 @@ use vec::{ImmutableVector, OwnedVector};
 
 /// Signals that can be sent and received
 #[repr(int)]
-#[deriving(Eq, Hash)]
+#[deriving(Eq, Hash, Show)]
 pub enum Signum {
     /// Equivalent to SIGBREAK, delivered when the user presses Ctrl-Break.
     Break = 21i,
