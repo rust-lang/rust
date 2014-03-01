@@ -117,6 +117,6 @@ fn main() {
         let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
         run(&mut file);
     } else {
-        run(&mut BufferedWriter::new(io::stdout()));
+        run(&mut io::stdout());
     }
 }

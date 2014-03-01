@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::io;
-use std::io::BufferedWriter;
 
 struct DummyWriter;
 impl Writer for DummyWriter {
@@ -27,7 +26,7 @@ fn main() {
         (1000, ~DummyWriter as ~Writer)
     } else {
         (from_str(args[1]).unwrap(),
-         ~BufferedWriter::new(std::io::stdout()) as ~Writer)
+         ~std::io::stdout() as ~Writer)
     };
     let h = w;
     let mut byte_acc = 0u8;
