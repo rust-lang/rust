@@ -163,7 +163,7 @@ pub struct TestDescAndFn {
     testfn: TestFn,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq)]
+#[deriving(Clone, Encodable, Decodable, Eq, Show)]
 pub struct Metric {
     priv value: f64,
     priv noise: f64
@@ -186,7 +186,7 @@ impl Clone for MetricMap {
 }
 
 /// Analysis of a single change in metric
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -1341,7 +1341,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrIgnored);
+        assert!(res == TrIgnored);
     }
 
     #[test]
@@ -1358,7 +1358,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrOk);
+        assert!(res == TrOk);
     }
 
     #[test]
@@ -1375,7 +1375,7 @@ mod tests {
         let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res, _) = p.recv();
-        assert_eq!(res, TrFailed);
+        assert!(res == TrFailed);
     }
 
     #[test]

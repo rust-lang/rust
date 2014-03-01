@@ -224,7 +224,7 @@ macro_rules! assert_eq(
         if !((*given_val == *expected_val) &&
              (*expected_val == *given_val)) {
             fail!("assertion failed: `(left == right) && (right == left)` \
-                   (left: `{:?}`, right: `{:?}`)", *given_val, *expected_val)
+                   (left: `{}`, right: `{}`)", *given_val, *expected_val)
         }
     })
 )

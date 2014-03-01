@@ -1361,7 +1361,7 @@ mod tests {
                                 aliases: ~[] }];
         let verbose = reqopt("b", "banana", "some bananas", "VAL");
 
-        assert_eq!(verbose.long_to_short(), short);
+        assert!(verbose.long_to_short() == short);
     }
 
     #[test]

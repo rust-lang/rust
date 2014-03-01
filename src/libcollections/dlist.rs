@@ -982,11 +982,11 @@ mod tests {
     fn test_eq() {
         let mut n: DList<u8> = list_from([]);
         let mut m = list_from([]);
-        assert_eq!(&n, &m);
+        assert!(n == m);
         n.push_front(1);
         assert!(n != m);
         m.push_back(1);
-        assert_eq!(&n, &m);
+        assert!(n == m);
 
         let n = list_from([2,3,4]);
         let m = list_from([1,2,3]);

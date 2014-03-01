@@ -2127,7 +2127,7 @@ pub trait MutableVector<'a, T> {
     /// ```rust
     /// let mut v = ["a", "b", "c", "d"];
     /// v.swap(1, 3);
-    /// assert_eq!(v, ["a", "d", "c", "b"]);
+    /// assert!(v == ["a", "d", "c", "b"]);
     /// ```
     fn swap(self, a: uint, b: uint);
 
@@ -2148,24 +2148,23 @@ pub trait MutableVector<'a, T> {
     /// // scoped to restrict the lifetime of the borrows
     /// {
     ///    let (left, right) = v.mut_split_at(0);
-    ///    assert_eq!(left, &mut []);
-    ///    assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    ///    assert!(left == &mut []);
+    ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.mut_split_at(2);
-    ///     assert_eq!(left, &mut [1, 2]);
-    ///     assert_eq!(right, &mut [3, 4, 5, 6]);
+    ///     assert!(left == &mut [1, 2]);
+    ///     assert!(right == &mut [3, 4, 5, 6]);
     /// }
     ///
     /// {
     ///     let (left, right) = v.mut_split_at(6);
-    ///     assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
-    ///     assert_eq!(right, &mut []);
+    ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
+    ///     assert!(right == &mut []);
     /// }
     /// ```
-    fn mut_split_at(self, mid: uint) -> (&'a mut [T],
-                                      &'a mut [T]);
+    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]);
 
     /// Reverse the order of elements in a vector, in place.
     ///
@@ -2174,7 +2173,7 @@ pub trait MutableVector<'a, T> {
     /// ```rust
     /// let mut v = [1, 2, 3];
     /// v.reverse();
-    /// assert_eq!(v, [3, 2, 1]);
+    /// assert!(v == [3, 2, 1]);
     /// ```
     fn reverse(self);
 
@@ -2189,11 +2188,11 @@ pub trait MutableVector<'a, T> {
     /// ```rust
     /// let mut v = [5i, 4, 1, 3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
-    /// assert_eq!(v, [1, 2, 3, 4, 5]);
+    /// assert!(v == [1, 2, 3, 4, 5]);
     ///
     /// // reverse sorting
     /// v.sort_by(|a, b| b.cmp(a));
-    /// assert_eq!(v, [5, 4, 3, 2, 1]);
+    /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
     fn sort_by(self, compare: |&T, &T| -> Ordering);
 
@@ -2434,12 +2433,12 @@ pub trait MutableCloneableVector<T> {
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2];
     ///
-    /// assert_eq!(dst.copy_from(src), 2);
-    /// assert_eq!(dst, [1, 2, 0]);
+    /// assert!(dst.copy_from(src) == 2);
+    /// assert!(dst == [1, 2, 0]);
     ///
     /// let src2 = [3, 4, 5, 6];
-    /// assert_eq!(dst.copy_from(src2), 3);
-    /// assert_eq!(dst, [3, 4, 5]);
+    /// assert!(dst.copy_from(src2) == 3);
+    /// assert!(dst == [3, 4, 5]);
     /// ```
     fn copy_from(self, &[T]) -> uint;
 }
@@ -2467,7 +2466,7 @@ pub trait MutableTotalOrdVector<T> {
     /// let mut v = [-5, 4, 1, -3, 2];
     ///
     /// v.sort();
-    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// assert!(v == [-5, -3, 1, 2, 4]);
     /// ```
     fn sort(self);
 }
@@ -3391,12 +3390,12 @@ mod tests {
         for (i, (a, b)) in ElementSwaps::new(v.len()).enumerate() {
             v.swap(a, b);
             match i {
-                0 => assert_eq!(v, [1, 3, 2]),
-                1 => assert_eq!(v, [3, 1, 2]),
-                2 => assert_eq!(v, [3, 2, 1]),
-                3 => assert_eq!(v, [2, 3, 1]),
-                4 => assert_eq!(v, [2, 1, 3]),
-                5 => assert_eq!(v, [1, 2, 3]),
+                0 => assert!(v == [1, 3, 2]),
+                1 => assert!(v == [3, 1, 2]),
+                2 => assert!(v == [3, 2, 1]),
+                3 => assert!(v == [2, 3, 1]),
+                4 => assert!(v == [2, 1, 3]),
+                5 => assert!(v == [1, 2, 3]),
                 _ => fail!(),
             }
         }
@@ -3530,7 +3529,7 @@ mod tests {
 
         let mut v = [0xDEADBEEFu];
         v.sort();
-        assert_eq!(v, [0xDEADBEEF]);
+        assert!(v == [0xDEADBEEF]);
     }
 
     #[test]
@@ -3896,7 +3895,7 @@ mod tests {
         for x in xs.mut_iter() {
             *x += 1;
         }
-        assert_eq!(xs, [2, 3, 4, 5, 6])
+        assert!(xs == [2, 3, 4, 5, 6])
     }
 
     #[test]
@@ -3920,7 +3919,7 @@ mod tests {
         for (i,x) in xs.mut_rev_iter().enumerate() {
             *x += i;
         }
-        assert_eq!(xs, [5, 5, 5, 5, 5])
+        assert!(xs == [5, 5, 5, 5, 5])
     }
 
     #[test]
@@ -4048,19 +4047,19 @@ mod tests {
         let mut a = [1,2,3,4,5];
         let b = ~[6,7,8];
         assert_eq!(a.move_from(b, 0, 3), 3);
-        assert_eq!(a, [6,7,8,4,5]);
+        assert!(a == [6,7,8,4,5]);
         let mut a = [7,2,8,1];
         let b = ~[3,1,4,1,5,9];
         assert_eq!(a.move_from(b, 0, 6), 4);
-        assert_eq!(a, [3,1,4,1]);
+        assert!(a == [3,1,4,1]);
         let mut a = [1,2,3,4];
         let b = ~[5,6,7,8,9,0];
         assert_eq!(a.move_from(b, 2, 3), 1);
-        assert_eq!(a, [7,2,3,4]);
+        assert!(a == [7,2,3,4]);
         let mut a = [1,2,3,4,5];
         let b = ~[5,6,7,8,9,0];
         assert_eq!(a.mut_slice(2,4).move_from(b,1,6), 2);
-        assert_eq!(a, [1,2,6,7,5]);
+        assert!(a == [1,2,6,7,5]);
     }
 
     #[test]
@@ -4068,18 +4067,18 @@ mod tests {
         let mut a = [1,2,3,4,5];
         let b = [6,7,8];
         assert_eq!(a.copy_from(b), 3);
-        assert_eq!(a, [6,7,8,4,5]);
+        assert!(a == [6,7,8,4,5]);
         let mut c = [7,2,8,1];
         let d = [3,1,4,1,5,9];
         assert_eq!(c.copy_from(d), 4);
-        assert_eq!(c, [3,1,4,1]);
+        assert!(c == [3,1,4,1]);
     }
 
     #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
         values.mut_slice(1, 4).reverse();
-        assert_eq!(values, [1,4,3,2,5]);
+        assert!(values == [1,4,3,2,5]);
     }
 
     #[test]
@@ -4117,9 +4116,9 @@ mod tests {
         use vec::bytes::MutableByteVector;
         let mut values = [1u8,2,3,4,5];
         values.mut_slice(0,5).set_memory(0xAB);
-        assert_eq!(values, [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
+        assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
         values.mut_slice(2,4).set_memory(0xFF);
-        assert_eq!(values, [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
+        assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 
     #[test]
@@ -4145,18 +4144,18 @@ mod tests {
         let mut values = [1u8,2,3,4,5];
         {
             let (left, right) = values.mut_split_at(2);
-            assert_eq!(left.slice(0, left.len()), [1, 2]);
+            assert!(left.slice(0, left.len()) == [1, 2]);
             for p in left.mut_iter() {
                 *p += 1;
             }
 
-            assert_eq!(right.slice(0, right.len()), [3, 4, 5]);
+            assert!(right.slice(0, right.len()) == [3, 4, 5]);
             for p in right.mut_iter() {
                 *p += 2;
             }
         }
 
-        assert_eq!(values, [2, 3, 5, 6, 7]);
+        assert!(values == [2, 3, 5, 6, 7]);
     }
 
     #[deriving(Clone, Eq)]
@@ -4280,13 +4279,13 @@ mod tests {
         for slice in xs.mut_split(|x| *x == 0) {
             slice.reverse();
         }
-        assert_eq!(xs, [0,1,0,3,2,0,0,5,4,0]);
+        assert!(xs == [0,1,0,3,2,0,0,5,4,0]);
 
         let mut xs = [0,1,0,2,3,0,0,4,5,0,6,7];
         for slice in xs.mut_split(|x| *x == 0).take(5) {
             slice.reverse();
         }
-        assert_eq!(xs, [0,1,0,3,2,0,0,5,4,0,6,7]);
+        assert!(xs == [0,1,0,3,2,0,0,5,4,0,6,7]);
     }
 
     #[test]
@@ -4295,7 +4294,7 @@ mod tests {
         for slice in xs.mut_split(|x| *x == 0).rev().take(4) {
             slice.reverse();
         }
-        assert_eq!(xs, [1,2,0,4,3,0,0,6,5,0]);
+        assert!(xs == [1,2,0,4,3,0,0,6,5,0]);
     }
 
     #[test]
@@ -4307,7 +4306,7 @@ mod tests {
             }
         }
         let result = [0u8, 0, 0, 1, 1, 1, 2];
-        assert_eq!(v, result);
+        assert!(v == result);
     }
 
     #[test]
@@ -4319,7 +4318,7 @@ mod tests {
             }
         }
         let result = [2u8, 2, 2, 1, 1, 1, 0];
-        assert_eq!(v, result);
+        assert!(v == result);
     }
 
     #[test]

@@ -20,9 +20,9 @@
 
 struct S<T> { i:u8, t:T }
 impl<T> S<T> { fn unwrap(self) -> T { self.t } }
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct A((u32, u32));
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct B(u64);
 
 pub fn main() {

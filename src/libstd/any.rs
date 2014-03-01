@@ -167,7 +167,7 @@ mod tests {
     use prelude::*;
     use super::*;
 
-    #[deriving(Eq)]
+    #[deriving(Eq, Show)]
     struct Test;
 
     static TEST: &'static str = "Test";

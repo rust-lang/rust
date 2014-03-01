@@ -215,7 +215,7 @@ mod test {
     #[test]
     fn test_minimize1() {
         let res = minimize_rpaths([~"rpath1", ~"rpath2", ~"rpath1"]);
-        assert_eq!(res.as_slice(), [~"rpath1", ~"rpath2"]);
+        assert!(res.as_slice() == [~"rpath1", ~"rpath2"]);
     }
 
     #[test]
@@ -224,7 +224,7 @@ mod test {
                                    ~"1a", ~"4a", ~"1a",
                                    ~"2",  ~"3",  ~"4a",
                                    ~"3"]);
-        assert_eq!(res.as_slice(), [~"1a", ~"2", ~"4a", ~"3"]);
+        assert!(res.as_slice() == [~"1a", ~"2", ~"4a", ~"3"]);
     }
 
     #[test]

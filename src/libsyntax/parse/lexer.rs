@@ -32,7 +32,7 @@ pub trait Reader {
     fn dup(&self) -> ~Reader:;
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub struct TokenAndSpan {
     tok: token::Token,
     sp: Span,

@@ -257,7 +257,7 @@ mod tests {
     use rand::*;
     use super::*;
 
-    #[deriving(Eq)]
+    #[deriving(Eq, Show)]
     struct ConstRand(uint);
     impl Rand for ConstRand {
         fn rand<R: Rng>(_: &mut R) -> ConstRand {

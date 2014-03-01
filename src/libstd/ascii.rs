@@ -475,7 +475,7 @@ mod tests {
     use char::from_u32;
 
     macro_rules! v2ascii (
-        ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
+        ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (~[$($e:expr),*]) => (~[$(Ascii{chr:$e}),*]);
     )
