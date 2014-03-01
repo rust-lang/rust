@@ -1528,7 +1528,7 @@ fn compile_submatch_continue<'r,
         Some(ref rec_fields) => {
             let pat_ty = node_id_type(bcx, pat_id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-            expr::with_field_tys(tcx, pat_ty, None, |discr, field_tys| {
+            expr::with_field_tys(tcx, pat_ty, Some(pat_id), |discr, field_tys| {
                 let rec_vals = rec_fields.map(|field_name| {
                         let ix = ty::field_idx_strict(tcx, field_name.name, field_tys);
                         adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
@@ -2208,7 +2208,7 @@ fn bind_irrefutable_pat<'a>(
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-            expr::with_field_tys(tcx, pat_ty, None, |discr, field_tys| {
+            expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
                 for f in fields.iter() {
                     let ix = ty::field_idx_strict(tcx, f.ident.name, field_tys);
                     let fldptr = adt::trans_field_ptr(bcx, pat_repr, val,
