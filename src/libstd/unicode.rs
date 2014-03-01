@@ -13,26 +13,26 @@
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
 
+
+fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
+    use cmp::{Equal, Less, Greater};
+    use vec::ImmutableVector;
+    use option::None;
+    r.bsearch(|&(lo,hi)| {
+        if lo <= c && c <= hi { Equal }
+        else if hi < c { Less }
+        else { Greater }
+    }) != None
+}
+
+
 pub mod general_category {
-
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::ImmutableVector;
-        use option::None;
-        r.bsearch(|&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }
-
-
     static Cc_table : &'static [(char,char)] = &[
         ('\x00', '\x1f'), ('\x7f', '\x9f')
     ];
 
     pub fn Cc(c: char) -> bool {
-        bsearch_range_table(c, Cc_table)
+        super::bsearch_range_table(c, Cc_table)
     }
 
     static Nd_table : &'static [(char,char)] = &[
@@ -60,7 +60,7 @@ pub mod general_category {
     ];
 
     pub fn Nd(c: char) -> bool {
-        bsearch_range_table(c, Nd_table)
+        super::bsearch_range_table(c, Nd_table)
     }
 
     static Nl_table : &'static [(char,char)] = &[
@@ -73,7 +73,7 @@ pub mod general_category {
     ];
 
     pub fn Nl(c: char) -> bool {
-        bsearch_range_table(c, Nl_table)
+        super::bsearch_range_table(c, Nl_table)
     }
 
     static No_table : &'static [(char,char)] = &[
@@ -101,7 +101,7 @@ pub mod general_category {
     ];
 
     pub fn No(c: char) -> bool {
-        bsearch_range_table(c, No_table)
+        super::bsearch_range_table(c, No_table)
     }
 
 }
@@ -2323,19 +2323,6 @@ pub mod decompose {
 }
 
 pub mod derived_property {
-
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::ImmutableVector;
-        use option::None;
-        r.bsearch(|&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }
-
-
     static Alphabetic_table : &'static [(char,char)] = &[
         ('\x41', '\x5a'), ('\x61', '\x7a'),
         ('\xaa', '\xaa'), ('\xb5', '\xb5'),
@@ -2745,7 +2732,7 @@ pub mod derived_property {
     ];
 
     pub fn Alphabetic(c: char) -> bool {
-        bsearch_range_table(c, Alphabetic_table)
+        super::bsearch_range_table(c, Alphabetic_table)
     }
 
     static Lowercase_table : &'static [(char,char)] = &[
@@ -3067,7 +3054,7 @@ pub mod derived_property {
     ];
 
     pub fn Lowercase(c: char) -> bool {
-        bsearch_range_table(c, Lowercase_table)
+        super::bsearch_range_table(c, Lowercase_table)
     }
 
     static Uppercase_table : &'static [(char,char)] = &[
@@ -3379,7 +3366,7 @@ pub mod derived_property {
     ];
 
     pub fn Uppercase(c: char) -> bool {
-        bsearch_range_table(c, Uppercase_table)
+        super::bsearch_range_table(c, Uppercase_table)
     }
 
     static XID_Continue_table : &'static [(char,char)] = &[
@@ -3863,7 +3850,7 @@ pub mod derived_property {
     ];
 
     pub fn XID_Continue(c: char) -> bool {
-        bsearch_range_table(c, XID_Continue_table)
+        super::bsearch_range_table(c, XID_Continue_table)
     }
 
     static XID_Start_table : &'static [(char,char)] = &[
@@ -4147,24 +4134,11 @@ pub mod derived_property {
     ];
 
     pub fn XID_Start(c: char) -> bool {
-        bsearch_range_table(c, XID_Start_table)
+        super::bsearch_range_table(c, XID_Start_table)
     }
 
 }
 pub mod property {
-
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::ImmutableVector;
-        use option::None;
-        r.bsearch(|&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }
-
-
     static White_Space_table : &'static [(char,char)] = &[
         ('\x09', '\x0d'), ('\x20', '\x20'),
         ('\x85', '\x85'), ('\xa0', '\xa0'),
@@ -4175,7 +4149,7 @@ pub mod property {
     ];
 
     pub fn White_Space(c: char) -> bool {
-        bsearch_range_table(c, White_Space_table)
+        super::bsearch_range_table(c, White_Space_table)
     }
 
 }
@@ -4184,7 +4158,7 @@ pub mod conversions {
     use cmp::{Equal, Less, Greater};
     use vec::ImmutableVector;
     use tuple::Tuple2;
-    use option::{ Option, Some, None };
+    use option::{Option, Some, None};
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
