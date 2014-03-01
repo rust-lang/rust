@@ -1732,7 +1732,13 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                 ty::ty_rptr(_, mt) => formal_ty = mt.ty,
                                 ty::ty_err => (),
                                 _ => {
-                                    fcx.ccx.tcx.sess.span_bug(arg.span, "no ref");
+                                    // So we hit this case when one implements the
+                                    // operator traits but leaves an argument as
+                                    // just T instead of &T. We'll catch it in the
+                                    // mismatch impl/trait method phase no need to
+                                    // ICE here.
+                                    // See: #11450
+                                    formal_ty = ty::mk_err();
                                 }
                             }
                         }
