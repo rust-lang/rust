@@ -1097,13 +1097,13 @@ mod tests {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert_eq!(path.as_str(), Some($exp));
+                assert!(path.as_str() == Some($exp));
             }
         );
         (v: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert_eq!(path.as_vec(), $exp);
+                assert!(path.as_vec() == $exp);
             }
         )
     )
@@ -1270,10 +1270,10 @@ mod tests {
 
     #[test]
     fn test_opt_paths() {
-        assert_eq!(Path::new_opt(b!("foo\\bar", 0)), None);
-        assert_eq!(Path::new_opt(b!("foo\\bar", 0x80)), None);
+        assert!(Path::new_opt(b!("foo\\bar", 0)) == None);
+        assert!(Path::new_opt(b!("foo\\bar", 0x80)) == None);
         t!(v: Path::new_opt(b!("foo\\bar")).unwrap(), b!("foo\\bar"));
-        assert_eq!(Path::new_opt("foo\\bar\0"), None);
+        assert!(Path::new_opt("foo\\bar\0") == None);
         t!(s: Path::new_opt("foo\\bar").unwrap(), "foo\\bar");
     }
 
@@ -1343,7 +1343,7 @@ mod tests {
                 {
                     let path = $path;
                     let path = Path::new(path);
-                    assert_eq!(path.$op(), Some($exp));
+                    assert!(path.$op() == Some($exp));
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
@@ -1351,14 +1351,14 @@ mod tests {
                     let path = $path;
                     let path = Path::new(path);
                     let left = path.$op();
-                    assert_eq!(left, $exp);
+                    assert!(left == $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = $path;
                     let path = Path::new(path);
-                    assert_eq!(path.$op(), $exp);
+                    assert!(path.$op() == $exp);
                 }
             )
         )
@@ -1469,7 +1469,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     let p2 = p1.clone();
                     p1.push(join);
-                    assert_eq!(p1, p2.join(join));
+                    assert!(p1 == p2.join(join));
                 }
             )
         )
@@ -1483,9 +1483,9 @@ mod tests {
 
         // we do want to check one odd case though to ensure the prefix is re-parsed
         let mut p = Path::new("\\\\?\\C:");
-        assert_eq!(prefix(&p), Some(VerbatimPrefix(2)));
+        assert!(prefix(&p) == Some(VerbatimPrefix(2)));
         p.push("foo");
-        assert_eq!(prefix(&p), Some(VerbatimDiskPrefix));
+        assert!(prefix(&p) == Some(VerbatimDiskPrefix));
         assert_eq!(p.as_str(), Some("\\\\?\\C:\\foo"));
 
         // and another with verbatim non-normalized paths
@@ -1586,7 +1586,7 @@ mod tests {
                     assert!(p.as_str() == Some(left),
                         "`{}`.pop() failed; expected remainder `{}`, found `{}`",
                         pstr, left, p.as_str().unwrap());
-                    assert_eq!(result, $right);
+                    assert!(result == $right);
                 }
             );
             (v: [$($path:expr),+], [$($left:expr),+], $right:expr) => (
@@ -1594,7 +1594,7 @@ mod tests {
                     let mut p = Path::new(b!($($path),+));
                     let result = p.pop();
                     assert_eq!(p.as_vec(), b!($($left),+));
-                    assert_eq!(result, $right);
+                    assert!(result == $right);
                 }
             )
         )
@@ -1637,16 +1637,16 @@ mod tests {
 
     #[test]
     fn test_root_path() {
-        assert_eq!(Path::new("a\\b\\c").root_path(), None);
-        assert_eq!(Path::new("\\a\\b\\c").root_path(), Some(Path::new("\\")));
-        assert_eq!(Path::new("C:a").root_path(), Some(Path::new("C:")));
-        assert_eq!(Path::new("C:\\a").root_path(), Some(Path::new("C:\\")));
-        assert_eq!(Path::new("\\\\a\\b\\c").root_path(), Some(Path::new("\\\\a\\b")));
-        assert_eq!(Path::new("\\\\?\\a\\b").root_path(), Some(Path::new("\\\\?\\a")));
-        assert_eq!(Path::new("\\\\?\\C:\\a").root_path(), Some(Path::new("\\\\?\\C:\\")));
-        assert_eq!(Path::new("\\\\?\\UNC\\a\\b\\c").root_path(),
-                   Some(Path::new("\\\\?\\UNC\\a\\b")));
-        assert_eq!(Path::new("\\\\.\\a\\b").root_path(), Some(Path::new("\\\\.\\a")));
+        assert!(Path::new("a\\b\\c").root_path() == None);
+        assert!(Path::new("\\a\\b\\c").root_path() == Some(Path::new("\\")));
+        assert!(Path::new("C:a").root_path() == Some(Path::new("C:")));
+        assert!(Path::new("C:\\a").root_path() == Some(Path::new("C:\\")));
+        assert!(Path::new("\\\\a\\b\\c").root_path() == Some(Path::new("\\\\a\\b")));
+        assert!(Path::new("\\\\?\\a\\b").root_path() == Some(Path::new("\\\\?\\a")));
+        assert!(Path::new("\\\\?\\C:\\a").root_path() == Some(Path::new("\\\\?\\C:\\")));
+        assert!(Path::new("\\\\?\\UNC\\a\\b\\c").root_path() ==
+                Some(Path::new("\\\\?\\UNC\\a\\b")));
+        assert!(Path::new("\\\\.\\a\\b").root_path() == Some(Path::new("\\\\.\\a")));
     }
 
     #[test]
@@ -1808,7 +1808,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert_eq!(p1, p2.$with(arg));
+                    assert!(p1 == p2.$with(arg));
                 }
             );
             (v: $path:expr, $set:ident, $with:ident, $arg:expr) => (
@@ -1818,7 +1818,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert_eq!(p1, p2.$with(arg));
+                    assert!(p1 == p2.$with(arg));
                 }
             )
         )
@@ -1870,10 +1870,10 @@ mod tests {
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
-                    assert_eq!(path.filename(), $filename);
-                    assert_eq!(path.dirname(), $dirname);
-                    assert_eq!(path.filestem(), $filestem);
-                    assert_eq!(path.extension(), $ext);
+                    assert!(path.filename() == $filename);
+                    assert!(path.dirname() == $dirname);
+                    assert!(path.filestem() == $filestem);
+                    assert!(path.extension() == $ext);
                 }
             )
         )
@@ -2325,7 +2325,7 @@ mod tests {
                     let path = Path::new($path);
                     let exp: Option<&str> = $exp;
                     let exp = exp.map(|s| Path::new(s));
-                    assert_eq!(make_non_verbatim(&path), exp);
+                    assert!(make_non_verbatim(&path) == exp);
                 }
             )
         )

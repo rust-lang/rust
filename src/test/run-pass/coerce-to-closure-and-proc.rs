@@ -12,10 +12,10 @@ fn id<T>(x: T) -> T {
     x
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct Foo<T>(T);
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 enum Bar<T> {
     Bar(T)
 }

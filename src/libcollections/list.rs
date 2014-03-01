@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn test_from_vec_empty() {
         let empty : list::List<int> = List::from_vec([]);
-        assert_eq!(empty, Nil::<int>);
+        assert!(empty == Nil::<int>);
     }
 
     #[test]
@@ -222,8 +222,8 @@ mod tests {
 
     #[test]
     fn test_append() {
-        assert_eq!(List::from_vec([1, 2, 3, 4]),
-                   List::from_vec([1, 2]).append(List::from_vec([3, 4])));
+        assert!(List::from_vec([1, 2, 3, 4]) ==
+                List::from_vec([1, 2]).append(List::from_vec([3, 4])));
     }
 
     #[test]
@@ -232,6 +232,6 @@ mod tests {
         let new_list = list.unshift(0);
         assert_eq!(list.len(), 1u);
         assert_eq!(new_list.len(), 2u);
-        assert_eq!(new_list, List::from_vec([0, 1]));
+        assert!(new_list == List::from_vec([0, 1]));
     }
 }

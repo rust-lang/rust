@@ -761,7 +761,7 @@ impl RegionVarBindings {
 
 // ______________________________________________________________________
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 enum Classification { Expanding, Contracting }
 
 enum VarValue { NoValue, Value(Region), ErrorValue }

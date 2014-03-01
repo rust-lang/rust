@@ -45,6 +45,7 @@ fn test_str() {
     assert_eq!(s1[3], 't' as u8);
 }
 
+#[deriving(Show)]
 enum t {
     tag1,
     tag2(int),

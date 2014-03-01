@@ -1588,20 +1588,20 @@ mod tests {
     use std::io;
     use collections::TreeMap;
 
-    #[deriving(Eq, Encodable, Decodable)]
+    #[deriving(Eq, Encodable, Decodable, Show)]
     enum Animal {
         Dog,
         Frog(~str, int)
     }
 
-    #[deriving(Eq, Encodable, Decodable)]
+    #[deriving(Eq, Encodable, Decodable, Show)]
     struct Inner {
         a: (),
         b: uint,
         c: ~[~str],
     }
 
-    #[deriving(Eq, Encodable, Decodable)]
+    #[deriving(Eq, Encodable, Decodable, Show)]
     struct Outer {
         inner: ~[Inner],
     }

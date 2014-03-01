@@ -636,6 +636,6 @@ pub mod ptr_tests {
         let mut xs = [0u8, ..20];
         let ptr = xs.as_mut_ptr();
         unsafe { set_memory(ptr, 5u8, xs.len()); }
-        assert_eq!(xs, [5u8, ..20]);
+        assert!(xs == [5u8, ..20]);
     }
 }

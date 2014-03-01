@@ -295,7 +295,7 @@ pub fn checked_next_power_of_two<T: Unsigned + Int>(n: T) -> Option<T> {
 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
     FPNaN,
@@ -1075,7 +1075,7 @@ pub trait CheckedDiv: Div<Self, Self> {
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast + Show>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12).unwrap());
     assert_eq!(ten.sub(&two),  cast(8).unwrap());
     assert_eq!(ten.mul(&two),  cast(20).unwrap());
@@ -1650,7 +1650,7 @@ mod tests {
     test_checked_next_power_of_two!(test_checked_next_power_of_two_u64, u64)
     test_checked_next_power_of_two!(test_checked_next_power_of_two_uint, uint)
 
-    #[deriving(Eq)]
+    #[deriving(Eq, Show)]
     struct Value { x: int }
 
     impl ToPrimitive for Value {
