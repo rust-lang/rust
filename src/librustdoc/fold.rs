@@ -87,7 +87,10 @@ pub trait DocFolder {
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {
-        Module { items: m.items.move_iter().filter_map(|i| self.fold_item(i)).collect() }
+        Module {
+            is_crate: m.is_crate,
+            items: m.items.move_iter().filter_map(|i| self.fold_item(i)).collect()
+        }
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
