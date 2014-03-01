@@ -1,5 +1,7 @@
 -include ../tools.mk
 
+# FIXME
+ifneq ($(shell uname),FreeBSD)
 all:
 	$(RUSTC) --dep-info $(TMPDIR)/custom-deps-file.d --crate-type=lib lib.rs
 	sleep 1
@@ -10,3 +12,7 @@ all:
 	pwd
 	$(MAKE) -drf Makefile.foo
 	rm $(TMPDIR)/done && exit 1 || exit 0
+else
+all:
+
+endif
