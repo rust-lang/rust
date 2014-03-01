@@ -224,8 +224,12 @@ pub fn phase_2_configure_and_expand(sess: Session,
                  front::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "expansion", krate, |krate| {
+        let cfg = syntax::ext::expand::ExpansionConfig {
+            loader: loader,
+            deriving_hash_type_parameter: sess.features.default_type_params.get()
+        };
         syntax::ext::expand::expand_crate(sess.parse_sess,
-                                          loader,
+                                          cfg,
                                           krate)
     });
     // dump the syntax-time crates

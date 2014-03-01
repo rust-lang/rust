@@ -22,19 +22,31 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             item: @Item,
                             push: |@Item|) {
 
+    let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
+        (Path::new_(vec!("std", "hash", "Hash"), None,
+                    vec!(~Literal(Path::new_local("__H"))), true),
+         LifetimeBounds {
+             lifetimes: Vec::new(),
+             bounds: vec!(("__H", vec!(Path::new(vec!("std", "io", "Writer"))))),
+         },
+         Path::new_local("__H"))
+    } else {
+        (Path::new(vec!("std", "hash", "Hash")),
+         LifetimeBounds::empty(),
+         Path::new(vec!("std", "hash", "sip", "SipState")))
+    };
     let hash_trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "hash", "Hash")),
+        path: path,
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: generics,
         methods: vec!(
             MethodDef {
                 name: "hash",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(~Literal(Path::new(vec!("std", "hash", "sip", "SipState"))),
-                            Borrowed(None, MutMutable))),
+                args: vec!(Ptr(~Literal(args), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 inline: true,
                 const_nonmatching: false,

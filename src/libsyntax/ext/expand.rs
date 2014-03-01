@@ -443,7 +443,7 @@ pub fn expand_view_item(vi: &ast::ViewItem,
 }
 
 fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
-    let MacroCrate { lib, cnum } = fld.cx.loader.load_crate(krate);
+    let MacroCrate { lib, cnum } = fld.cx.ecfg.loader.load_crate(krate);
 
     let crate_name = match krate.node {
         ast::ViewItemExternMod(name, _, _) => name,
@@ -451,7 +451,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     };
     let name = format!("<{} macros>", token::get_ident(crate_name));
 
-    let exported_macros = fld.cx.loader.get_exported_macros(cnum);
+    let exported_macros = fld.cx.ecfg.loader.get_exported_macros(cnum);
     for source in exported_macros.iter() {
         let item = parse::parse_item_from_source_str(name.clone(),
                                                      (*source).clone(),
@@ -468,7 +468,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     // Make sure the path contains a / or the linker will search for it.
     let path = os::make_absolute(&path);
 
-    let registrar = match fld.cx.loader.get_registrar_symbol(cnum) {
+    let registrar = match fld.cx.ecfg.loader.get_registrar_symbol(cnum) {
         Some(registrar) => registrar,
         None => return
     };
@@ -823,10 +823,15 @@ impl<'a> Folder for MacroExpander<'a> {
     }
 }
 
+pub struct ExpansionConfig<'a> {
+    loader: &'a mut CrateLoader,
+    deriving_hash_type_parameter: bool,
+}
+
 pub fn expand_crate(parse_sess: @parse::ParseSess,
-                    loader: &mut CrateLoader,
+                    cfg: ExpansionConfig,
                     c: Crate) -> Crate {
-    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), loader);
+    let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander {
         extsbox: syntax_expander_table(),
         cx: &mut cx,
@@ -995,7 +1000,11 @@ mod test {
             Vec::new(),sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,crate_ast);
+        let cfg = ::syntax::ext::expand::ExpansionConfig {
+            loader: &mut loader,
+            deriving_hash_type_parameter: false,
+        };
+        expand_crate(sess,cfg,crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -1010,7 +1019,11 @@ mod test {
             Vec::new(),sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,crate_ast);
+        let cfg = ::syntax::ext::expand::ExpansionConfig {
+            loader: &mut loader,
+            deriving_hash_type_parameter: false,
+        };
+        expand_crate(sess,cfg,crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -1024,7 +1037,11 @@ mod test {
             Vec::new(), sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess, &mut loader, crate_ast);
+        let cfg = ::syntax::ext::expand::ExpansionConfig {
+            loader: &mut loader,
+            deriving_hash_type_parameter: false,
+        };
+        expand_crate(sess, cfg, crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1062,7 +1079,11 @@ mod test {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
-        expand_crate(ps,&mut loader,crate_ast)
+        let cfg = ::syntax::ext::expand::ExpansionConfig {
+            loader: &mut loader,
+            deriving_hash_type_parameter: false,
+        };
+        expand_crate(ps,cfg,crate_ast)
     }
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {

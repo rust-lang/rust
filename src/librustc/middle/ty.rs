@@ -179,6 +179,13 @@ impl cmp::Eq for intern_key {
     }
 }
 
+#[cfg(stage0)]
+impl Hash for intern_key {
+    fn hash(&self, s: &mut sip::SipState) {
+        unsafe { (*self.sty).hash(s) }
+    }
+}
+#[cfg(not(stage0))]
 impl<W:Writer> Hash<W> for intern_key {
     fn hash(&self, s: &mut W) {
         unsafe { (*self.sty).hash(s) }
@@ -251,6 +258,9 @@ pub struct ctxt_ {
     diag: @syntax::diagnostic::SpanHandler,
     // Specifically use a speedy hash algorithm for this hash map, it's used
     // quite often.
+    #[cfg(stage0)]
+    interner: RefCell<HashMap<intern_key, ~t_box_>>,
+    #[cfg(not(stage0))]
     interner: RefCell<HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher>>,
     next_id: Cell<uint>,
     cstore: @metadata::cstore::CStore,
@@ -1081,12 +1091,19 @@ pub fn mk_ctxt(s: session::Session,
                region_maps: middle::region::RegionMaps,
                lang_items: @middle::lang_items::LanguageItems)
             -> ctxt {
-
+    #[cfg(stage0)]
+    fn hasher() -> HashMap<intern_key, ~t_box_> {
+        HashMap::new()
+    }
+    #[cfg(not(stage0))]
+    fn hasher() -> HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher> {
+        HashMap::with_hasher(::util::nodemap::FnvHasher)
+    }
     @ctxt_ {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         diag: s.diagnostic(),
-        interner: RefCell::new(HashMap::with_hasher(::util::nodemap::FnvHasher)),
+        interner: RefCell::new(hasher()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         cstore: s.cstore,
         sess: s,
