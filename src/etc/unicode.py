@@ -160,23 +160,22 @@ def ch_prefix(ix):
 
 def emit_bsearch_range_table(f):
     f.write("""
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::ImmutableVector;
-        use option::None;
-        r.bsearch(|&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }\n\n
+fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
+    use cmp::{Equal, Less, Greater};
+    use vec::ImmutableVector;
+    use option::None;
+    r.bsearch(|&(lo,hi)| {
+        if lo <= c && c <= hi { Equal }
+        else if hi < c { Less }
+        else { Greater }
+    }) != None
+}\n\n
 """);
 
 def emit_property_module(f, mod, tbl):
     f.write("pub mod %s {\n" % mod)
     keys = tbl.keys()
     keys.sort()
-    emit_bsearch_range_table(f);
 
     for cat in keys:
         if cat not in ["Nd", "Nl", "No", "Cc",
@@ -192,7 +191,7 @@ def emit_property_module(f, mod, tbl):
         f.write("\n    ];\n\n")
 
         f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-        f.write("        bsearch_range_table(c, %s_table)\n" % cat)
+        f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
     f.write("}\n")
 
@@ -203,7 +202,7 @@ def emit_conversions_module(f, lowerupper, upperlower):
     use cmp::{Equal, Less, Greater};
     use vec::ImmutableVector;
     use tuple::Tuple2;
-    use option::{ Option, Some, None };
+    use option::{Option, Some, None};
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
@@ -227,23 +226,15 @@ def emit_conversions_module(f, lowerupper, upperlower):
         })
     }
 """);
-    emit_caseconversions(f, lowerupper, upperlower)
+    emit_caseconversion_table(f, "LuLl", upperlower)
+    emit_caseconversion_table(f, "LlLu", lowerupper)
     f.write("}\n")
 
-def emit_caseconversions(f, lowerupper, upperlower):
-    f.write("   static LuLl_table : &'static [(char, char)] = &[\n")
-    sorted_by_lu = sorted(upperlower.iteritems(), key=operator.itemgetter(0))
+def emit_caseconversion_table(f, name, table):
+    f.write("   static %s_table : &'static [(char, char)] = &[\n" % name)
+    sorted_table = sorted(table.iteritems(), key=operator.itemgetter(0))
     ix = 0
-    for key, value in sorted_by_lu:
-        f.write(ch_prefix(ix))
-        f.write("(%s, %s)" % (escape_char(key), escape_char(value)))
-        ix += 1
-    f.write("\n    ];\n\n")
-
-    f.write("   static LlLu_table : &'static [(char, char)] = &[\n")
-    sorted_by_ll = sorted(lowerupper.iteritems(), key=operator.itemgetter(0))
-    ix = 0
-    for key, value in sorted_by_ll:
+    for key, value in sorted_table:
         f.write(ch_prefix(ix))
         f.write("(%s, %s)" % (escape_char(key), escape_char(value)))
         ix += 1
@@ -425,6 +416,7 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 ''')
 
+emit_bsearch_range_table(rf);
 emit_property_module(rf, "general_category", gencats)
 
 emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
