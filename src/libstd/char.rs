@@ -36,13 +36,14 @@ use unicode::{derived_property, property, general_category, decompose};
 #[cfg(not(test))] use default::Default;
 
 // UTF-8 ranges and tags for encoding characters
-static TAG_CONT: uint = 128u;
-static MAX_ONE_B: uint = 128u;
-static TAG_TWO_B: uint = 192u;
-static MAX_TWO_B: uint = 2048u;
-static TAG_THREE_B: uint = 224u;
-static MAX_THREE_B: uint = 65536u;
-static TAG_FOUR_B: uint = 240u;
+static TAG_CONT: u8 = 128u8;
+static MAX_ONE_B: u32 = 128u32;
+static TAG_TWO_B: u8 = 192u8;
+static MAX_TWO_B: u32 = 2048u32;
+static TAG_THREE_B: u8 = 224u8;
+static MAX_THREE_B: u32 = 65536u32;
+static TAG_FOUR_B: u8 = 240u8;
+static MAX_FOUR_B:  u32 = 2097152u32;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -256,37 +257,37 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 }
 
 // Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
-static S_BASE: uint = 0xAC00;
-static L_BASE: uint = 0x1100;
-static V_BASE: uint = 0x1161;
-static T_BASE: uint = 0x11A7;
-static L_COUNT: uint = 19;
-static V_COUNT: uint = 21;
-static T_COUNT: uint = 28;
-static N_COUNT: uint = (V_COUNT * T_COUNT);
-static S_COUNT: uint = (L_COUNT * N_COUNT);
+static S_BASE: u32 = 0xAC00;
+static L_BASE: u32 = 0x1100;
+static V_BASE: u32 = 0x1161;
+static T_BASE: u32 = 0x11A7;
+static L_COUNT: u32 = 19;
+static V_COUNT: u32 = 21;
+static T_COUNT: u32 = 28;
+static N_COUNT: u32 = (V_COUNT * T_COUNT);
+static S_COUNT: u32 = (L_COUNT * N_COUNT);
 
 // Decompose a precomposed Hangul syllable
 fn decompose_hangul(s: char, f: |char|) {
-    let si = s as uint - S_BASE;
+    let si = s as u32 - S_BASE;
 
     let li = si / N_COUNT;
     unsafe {
-        f(transmute((L_BASE + li) as u32));
+        f(transmute(L_BASE + li));
 
         let vi = (si % N_COUNT) / T_COUNT;
-        f(transmute((V_BASE + vi) as u32));
+        f(transmute(V_BASE + vi));
 
         let ti = si % T_COUNT;
         if ti > 0 {
-            f(transmute((T_BASE + ti) as u32));
+            f(transmute(T_BASE + ti));
         }
     }
 }
 
 /// Returns the canonical decomposition of a character
 pub fn decompose_canonical(c: char, f: |char|) {
-    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
+    if (c as u32) < S_BASE || (c as u32) >= (S_BASE + S_COUNT) {
         decompose::canonical(c, f);
     } else {
         decompose_hangul(c, f);
@@ -295,7 +296,7 @@ pub fn decompose_canonical(c: char, f: |char|) {
 
 /// Returns the compatibility decomposition of a character
 pub fn decompose_compatible(c: char, f: |char|) {
-    if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
+    if (c as u32) < S_BASE || (c as u32) >= (S_BASE + S_COUNT) {
         decompose::compatibility(c, f);
     } else {
         decompose_hangul(c, f);
@@ -357,12 +358,7 @@ pub fn escape_default(c: char, f: |char|) {
 
 /// Returns the amount of bytes this `char` would need if encoded in UTF-8
 pub fn len_utf8_bytes(c: char) -> uint {
-    static MAX_ONE_B:   uint = 128u;
-    static MAX_TWO_B:   uint = 2048u;
-    static MAX_THREE_B: uint = 65536u;
-    static MAX_FOUR_B:  uint = 2097152u;
-
-    let code = c as uint;
+    let code = c as u32;
     match () {
         _ if code < MAX_ONE_B   => 1u,
         _ if code < MAX_TWO_B   => 2u,
@@ -430,24 +426,24 @@ impl Char for char {
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 
     fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
-        let code = *self as uint;
+        let code = *self as u32;
         if code < MAX_ONE_B {
             dst[0] = code as u8;
             return 1;
         } else if code < MAX_TWO_B {
-            dst[0] = (code >> 6u & 31u | TAG_TWO_B) as u8;
-            dst[1] = (code & 63u | TAG_CONT) as u8;
+            dst[0] = (code >> 6u & 31u32) as u8 | TAG_TWO_B;
+            dst[1] = (code & 63u32) as u8 | TAG_CONT;
             return 2;
         } else if code < MAX_THREE_B {
-            dst[0] = (code >> 12u & 15u | TAG_THREE_B) as u8;
-            dst[1] = (code >> 6u & 63u | TAG_CONT) as u8;
-            dst[2] = (code & 63u | TAG_CONT) as u8;
+            dst[0] = (code >> 12u & 15u32) as u8 | TAG_THREE_B;
+            dst[1] = (code >> 6u & 63u32) as u8 | TAG_CONT;
+            dst[2] = (code & 63u32) as u8 | TAG_CONT;
             return 3;
         } else {
-            dst[0] = (code >> 18u & 7u | TAG_FOUR_B) as u8;
-            dst[1] = (code >> 12u & 63u | TAG_CONT) as u8;
-            dst[2] = (code >> 6u & 63u | TAG_CONT) as u8;
-            dst[3] = (code & 63u | TAG_CONT) as u8;
+            dst[0] = (code >> 18u & 7u32) as u8 | TAG_FOUR_B;
+            dst[1] = (code >> 12u & 63u32) as u8 | TAG_CONT;
+            dst[2] = (code >> 6u & 63u32) as u8 | TAG_CONT;
+            dst[3] = (code & 63u32) as u8 | TAG_CONT;
             return 4;
         }
     }
