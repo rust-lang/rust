@@ -864,7 +864,7 @@ pub fn fail_if_zero<'a>(
       }
     };
     with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, Some(span), InternedString::new(text))
+        controlflow::trans_fail(bcx, span, InternedString::new(text))
     })
 }
 
