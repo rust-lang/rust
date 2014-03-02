@@ -14,6 +14,8 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                span: Span,
                                mitem: @MetaItem,
@@ -26,22 +28,22 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
 
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "cmp", "TotalEq"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "cmp", "TotalEq")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "equals",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~["bool"])),
+                args: vec!(borrowed_self()),
+                ret_ty: Literal(Path::new(vec!("bool"))),
                 inline: true,
                 const_nonmatching: true,
                 combine_substructure: cs_equals
             }
-        ]
+        )
     };
     trait_def.expand(cx, mitem, item, push)
 }

@@ -60,7 +60,7 @@ use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 use util::ppaux::Repr;
 
-use std::vec;
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
@@ -186,8 +186,8 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => opt_vec::from(v),
-            Err(()) => opt_vec::from(vec::from_fn(expected_num_region_params,
+            Ok(v) => opt_vec::from(v.move_iter().collect()),
+            Err(()) => opt_vec::from(Vec::from_fn(expected_num_region_params,
                                                   |_| ty::ReStatic)) // hokey
         }
     };
@@ -519,7 +519,9 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                            |tmt| ty::mk_rptr(tcx, r, tmt))
             }
             ast::TyTup(ref fields) => {
-                let flds = fields.map(|&t| ast_ty_to_ty(this, rscope, t));
+                let flds = fields.iter()
+                                 .map(|&t| ast_ty_to_ty(this, rscope, t))
+                                 .collect();
                 ty::mk_tup(tcx, flds)
             }
             ast::TyBareFn(ref bf) => {

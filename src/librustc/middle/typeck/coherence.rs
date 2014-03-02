@@ -524,7 +524,8 @@ impl CoherenceChecker {
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
         let substitutions = substs {
-            regions: ty::NonerasedRegions(opt_vec::from(region_parameters)),
+            regions: ty::NonerasedRegions(opt_vec::from(
+                             region_parameters.move_iter().collect())),
             self_ty: None,
             tps: type_parameters
         };

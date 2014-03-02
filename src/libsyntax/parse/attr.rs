@@ -15,21 +15,23 @@ use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
+use std::vec_ng::Vec;
+
 // a parser that can parse attributes.
 pub trait ParserAttr {
-    fn parse_outer_attributes(&mut self) -> ~[ast::Attribute];
+    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> ;
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
     fn parse_inner_attrs_and_next(&mut self)
-                                  -> (~[ast::Attribute], ~[ast::Attribute]);
+                                  -> (Vec<ast::Attribute> , Vec<ast::Attribute> );
     fn parse_meta_item(&mut self) -> @ast::MetaItem;
-    fn parse_meta_seq(&mut self) -> ~[@ast::MetaItem];
-    fn parse_optional_meta(&mut self) -> ~[@ast::MetaItem];
+    fn parse_meta_seq(&mut self) -> Vec<@ast::MetaItem> ;
+    fn parse_optional_meta(&mut self) -> Vec<@ast::MetaItem> ;
 }
 
 impl ParserAttr for Parser {
     // Parse attributes that appear before an item
-    fn parse_outer_attributes(&mut self) -> ~[ast::Attribute] {
-        let mut attrs: ~[ast::Attribute] = ~[];
+    fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
+        let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
@@ -116,9 +118,9 @@ impl ParserAttr for Parser {
     // you can make the 'next' field an Option, but the result is going to be
     // more useful as a vector.
     fn parse_inner_attrs_and_next(&mut self)
-                                  -> (~[ast::Attribute], ~[ast::Attribute]) {
-        let mut inner_attrs: ~[ast::Attribute] = ~[];
-        let mut next_outer_attrs: ~[ast::Attribute] = ~[];
+                                  -> (Vec<ast::Attribute> , Vec<ast::Attribute> ) {
+        let mut inner_attrs: Vec<ast::Attribute> = Vec::new();
+        let mut next_outer_attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             let attr = match self.token {
                 token::INTERPOLATED(token::NtAttr(..)) => {
@@ -188,17 +190,17 @@ impl ParserAttr for Parser {
     }
 
     // matches meta_seq = ( COMMASEP(meta_item) )
-    fn parse_meta_seq(&mut self) -> ~[@ast::MetaItem] {
+    fn parse_meta_seq(&mut self) -> Vec<@ast::MetaItem> {
         self.parse_seq(&token::LPAREN,
                        &token::RPAREN,
                        seq_sep_trailing_disallowed(token::COMMA),
                        |p| p.parse_meta_item()).node
     }
 
-    fn parse_optional_meta(&mut self) -> ~[@ast::MetaItem] {
+    fn parse_optional_meta(&mut self) -> Vec<@ast::MetaItem> {
         match self.token {
             token::LPAREN => self.parse_meta_seq(),
-            _ => ~[]
+            _ => Vec::new()
         }
     }
 }

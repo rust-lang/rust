@@ -20,6 +20,8 @@ use parse;
 use parse::token::InternedString;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 enum State {
     Asm,
     Outputs,
@@ -42,12 +44,14 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                -> base::MacResult {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
-                                           tts.to_owned());
+                                           tts.iter()
+                                              .map(|x| (*x).clone())
+                                              .collect());
 
     let mut asm = InternedString::new("");
     let mut asm_str_style = None;
-    let mut outputs = ~[];
-    let mut inputs = ~[];
+    let mut outputs = Vec::new();
+    let mut inputs = Vec::new();
     let mut cons = ~"";
     let mut volatile = false;
     let mut alignstack = false;
@@ -119,7 +123,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             }
             Clobbers => {
-                let mut clobs = ~[];
+                let mut clobs = Vec::new();
                 while p.token != token::EOF &&
                       p.token != token::COLON &&
                       p.token != token::MOD_SEP {

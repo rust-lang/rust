@@ -198,7 +198,7 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     contains_lint(attrs, allow, DEAD_CODE_LINT_STR)
-    || attr::contains_name(attrs, "lang")
+    || attr::contains_name(attrs.as_slice(), "lang")
 }
 
 // This visitor seeds items that
@@ -220,7 +220,7 @@ struct LifeSeeder {
 
 impl Visitor<()> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        if has_allow_dead_code_or_lang_attr(item.attrs) {
+        if has_allow_dead_code_or_lang_attr(item.attrs.as_slice()) {
             self.worklist.push(item.id);
         }
         match item.node {
@@ -240,7 +240,7 @@ impl Visitor<()> for LifeSeeder {
         // Check for method here because methods are not ast::Item
         match *fk {
             visit::FkMethod(_, _, method) => {
-                if has_allow_dead_code_or_lang_attr(method.attrs) {
+                if has_allow_dead_code_or_lang_attr(method.attrs.as_slice()) {
                     self.worklist.push(id);
                 }
             }

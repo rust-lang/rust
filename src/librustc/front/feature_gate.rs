@@ -171,7 +171,7 @@ impl Visitor<()> for Context {
             }
 
             ast::ItemForeignMod(..) => {
-                if attr::contains_name(i.attrs, "link_args") {
+                if attr::contains_name(i.attrs.as_slice(), "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -180,7 +180,7 @@ impl Visitor<()> for Context {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs, "macro_registrar") {
+                if attr::contains_name(i.attrs.as_slice(), "macro_registrar") {
                     self.gate_feature("macro_registrar", i.span,
                                       "cross-crate macro exports are \
                                        experimental and possibly buggy");
@@ -188,7 +188,7 @@ impl Visitor<()> for Context {
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(i.attrs, "simd") {
+                if attr::contains_name(i.attrs.as_slice(), "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }

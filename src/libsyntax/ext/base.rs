@@ -20,6 +20,7 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 
 // new-style macro! tt code:
 //
@@ -74,7 +75,7 @@ pub trait IdentMacroExpander {
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::TokenTree])
+              token_tree: Vec<ast::TokenTree> )
               -> MacResult;
 }
 
@@ -83,14 +84,14 @@ impl IdentMacroExpander for BasicIdentMacroExpander {
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::TokenTree])
+              token_tree: Vec<ast::TokenTree> )
               -> MacResult {
         (self.expander)(cx, sp, ident, token_tree)
     }
 }
 
 pub type IdentMacroExpanderFn =
-    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree]) -> MacResult;
+    fn(&mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree> ) -> MacResult;
 
 pub type MacroCrateRegistrationFun =
     fn(|ast::Name, SyntaxExtension|);
@@ -154,13 +155,13 @@ impl BlockInfo {
     pub fn new() -> BlockInfo {
         BlockInfo {
             macros_escape: false,
-            pending_renames: ~[],
+            pending_renames: Vec::new(),
         }
     }
 }
 
 // a list of ident->name renamings
-pub type RenameList = ~[(ast::Ident,Name)];
+pub type RenameList = Vec<(ast::Ident,Name)> ;
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
@@ -271,7 +272,7 @@ pub struct MacroCrate {
 
 pub trait CrateLoader {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate;
-    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> ~[~str];
+    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> Vec<~str> ;
     fn get_registrar_symbol(&mut self, crate_num: ast::CrateNum) -> Option<~str>;
 }
 
@@ -284,7 +285,7 @@ pub struct ExtCtxt<'a> {
     backtrace: Option<@ExpnInfo>,
     loader: &'a mut CrateLoader,
 
-    mod_path: ~[ast::Ident],
+    mod_path: Vec<ast::Ident> ,
     trace_mac: bool
 }
 
@@ -296,7 +297,7 @@ impl<'a> ExtCtxt<'a> {
             cfg: cfg,
             backtrace: None,
             loader: loader,
-            mod_path: ~[],
+            mod_path: Vec::new(),
             trace_mac: false
         }
     }
@@ -329,7 +330,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn backtrace(&self) -> Option<@ExpnInfo> { self.backtrace }
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
-    pub fn mod_path(&self) -> ~[ast::Ident] { self.mod_path.clone() }
+    pub fn mod_path(&self) -> Vec<ast::Ident> { self.mod_path.clone() }
     pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {
@@ -458,11 +459,13 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 /// parsing error, emit a non-fatal error and return None.
 pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
-                          tts: &[ast::TokenTree]) -> Option<~[@ast::Expr]> {
+                          tts: &[ast::TokenTree]) -> Option<Vec<@ast::Expr> > {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
-                                           tts.to_owned());
-    let mut es = ~[];
+                                           tts.iter()
+                                              .map(|x| (*x).clone())
+                                              .collect());
+    let mut es = Vec::new();
     while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
             cx.span_err(sp, "expected token: `,`");
@@ -507,12 +510,12 @@ impl Drop for MapChainFrame {
 
 // Only generic to make it easy to test
 pub struct SyntaxEnv {
-    priv chain: ~[MapChainFrame],
+    priv chain: Vec<MapChainFrame> ,
 }
 
 impl SyntaxEnv {
     pub fn new() -> SyntaxEnv {
-        let mut map = SyntaxEnv { chain: ~[] };
+        let mut map = SyntaxEnv { chain: Vec::new() };
         map.push_frame();
         map
     }
@@ -553,6 +556,7 @@ impl SyntaxEnv {
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
-        &mut self.chain[self.chain.len()-1].info
+        let last_chain_index = self.chain.len() - 1;
+        &mut self.chain.get_mut(last_chain_index).info
     }
 }

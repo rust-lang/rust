@@ -531,7 +531,9 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                     // determine the bits for the body and then union
                     // them into `in_out`, which reflects all bodies to date
                     let mut body = guards.to_owned();
-                    self.walk_pat_alternatives(arm.pats, body, loop_scopes);
+                    self.walk_pat_alternatives(arm.pats.as_slice(),
+                                               body,
+                                               loop_scopes);
                     self.walk_block(arm.body, body, loop_scopes);
                     join_bits(&self.dfcx.oper, body, in_out);
                 }
@@ -562,7 +564,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
 
             ast::ExprVec(ref exprs, _) => {
-                self.walk_exprs(*exprs, in_out, loop_scopes)
+                self.walk_exprs(exprs.as_slice(), in_out, loop_scopes)
             }
 
             ast::ExprRepeat(l, r, _) => {
@@ -579,11 +581,11 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
             ast::ExprCall(f, ref args) => {
                 self.walk_expr(f, in_out, loop_scopes);
-                self.walk_call(expr.id, *args, in_out, loop_scopes);
+                self.walk_call(expr.id, args.as_slice(), in_out, loop_scopes);
             }
 
             ast::ExprMethodCall(_, _, ref args) => {
-                self.walk_call(expr.id, *args, in_out, loop_scopes);
+                self.walk_call(expr.id, args.as_slice(), in_out, loop_scopes);
             }
 
             ast::ExprIndex(l, r) |
@@ -596,7 +598,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
 
             ast::ExprTup(ref exprs) => {
-                self.walk_exprs(*exprs, in_out, loop_scopes);
+                self.walk_exprs(exprs.as_slice(), in_out, loop_scopes);
             }
 
             ast::ExprBinary(op, l, r) if ast_util::lazy_binop(op) => {

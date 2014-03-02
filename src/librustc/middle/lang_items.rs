@@ -114,7 +114,7 @@ struct LanguageItemVisitor<'a> {
 
 impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        match extract(item.attrs) {
+        match extract(item.attrs.as_slice()) {
             Some(value) => {
                 let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
 

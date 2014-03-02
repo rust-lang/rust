@@ -15,22 +15,24 @@ use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 // map a string to tts, using a made-up filename: return both the TokenTree's
 // and the ParseSess
-pub fn string_to_tts_and_sess (source_str : ~str) -> (~[ast::TokenTree], @ParseSess) {
+pub fn string_to_tts_and_sess (source_str : ~str) -> (Vec<ast::TokenTree> , @ParseSess) {
     let ps = new_parse_sess();
     (filemap_to_tts(ps,string_to_filemap(ps,source_str,~"bogofile")),ps)
 }
 
 // map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str : ~str) -> ~[ast::TokenTree] {
+pub fn string_to_tts(source_str : ~str) -> Vec<ast::TokenTree> {
     let (tts,_) = string_to_tts_and_sess(source_str);
     tts
 }
 
 pub fn string_to_parser_and_sess(source_str: ~str) -> (Parser,@ParseSess) {
     let ps = new_parse_sess();
-    (new_parser_from_source_str(ps,~[],~"bogofile",source_str),ps)
+    (new_parser_from_source_str(ps,Vec::new(),~"bogofile",source_str),ps)
 }
 
 // map string to parser (via tts)
@@ -69,14 +71,14 @@ pub fn string_to_expr (source_str : ~str) -> @ast::Expr {
 // parse a string, return an item
 pub fn string_to_item (source_str : ~str) -> Option<@ast::Item> {
     with_error_checking_parse(source_str, |p| {
-        p.parse_item(~[])
+        p.parse_item(Vec::new())
     })
 }
 
 // parse a string, return a stmt
 pub fn string_to_stmt(source_str : ~str) -> @ast::Stmt {
     with_error_checking_parse(source_str, |p| {
-        p.parse_stmt(~[])
+        p.parse_stmt(Vec::new())
     })
 }
 
@@ -87,7 +89,7 @@ pub fn string_to_pat(source_str : ~str) -> @ast::Pat {
 }
 
 // convert a vector of strings to a vector of ast::Ident's
-pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::Ident] {
+pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<ast::Ident> {
     ids.map(|u| token::str_to_ident(*u))
 }
 

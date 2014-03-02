@@ -603,7 +603,7 @@ impl<T:Repr> Repr for OptVec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             opt_vec::Empty => ~"[]",
-            opt_vec::Vec(ref v) => repr_vec(tcx, *v)
+            opt_vec::Vec(ref v) => repr_vec(tcx, v.as_slice())
         }
     }
 }

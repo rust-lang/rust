@@ -22,7 +22,7 @@ use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
 use collections::HashMap;
-use std::vec;
+use std::vec_ng::Vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -99,11 +99,11 @@ nonempty body. */
 
 #[deriving(Clone)]
 pub struct MatcherPos {
-    elts: ~[ast::Matcher], // maybe should be <'>? Need to understand regions.
+    elts: Vec<ast::Matcher> , // maybe should be <'>? Need to understand regions.
     sep: Option<Token>,
     idx: uint,
     up: Option<~MatcherPos>,
-    matches: ~[~[@NamedMatch]],
+    matches: Vec<Vec<@NamedMatch>>,
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
 }
@@ -112,12 +112,14 @@ pub fn count_names(ms: &[Matcher]) -> uint {
     ms.iter().fold(0, |ct, m| {
         ct + match m.node {
             MatchTok(_) => 0u,
-            MatchSeq(ref more_ms, _, _, _, _) => count_names((*more_ms)),
+            MatchSeq(ref more_ms, _, _, _, _) => {
+                count_names(more_ms.as_slice())
+            }
             MatchNonterminal(_, _, _) => 1u
         }})
 }
 
-pub fn initial_matcher_pos(ms: ~[Matcher], sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(ms: Vec<Matcher> , sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
     for elt in ms.iter() {
@@ -131,7 +133,7 @@ pub fn initial_matcher_pos(ms: ~[Matcher], sep: Option<Token>, lo: BytePos)
             }
         }
     }
-    let matches = vec::from_fn(count_names(ms), |_i| ~[]);
+    let matches = Vec::from_fn(count_names(ms.as_slice()), |_i| Vec::new());
     ~MatcherPos {
         elts: ms,
         sep: sep,
@@ -164,7 +166,7 @@ pub fn initial_matcher_pos(ms: ~[Matcher], sep: Option<Token>, lo: BytePos)
 // ast::Matcher it was derived from.
 
 pub enum NamedMatch {
-    MatchedSeq(~[@NamedMatch], codemap::Span),
+    MatchedSeq(Vec<@NamedMatch> , codemap::Span),
     MatchedNonterminal(Nonterminal)
 }
 
@@ -206,9 +208,9 @@ pub enum ParseResult {
 pub fn parse_or_else<R: Reader>(sess: @ParseSess,
                                 cfg: ast::CrateConfig,
                                 rdr: R,
-                                ms: ~[Matcher])
+                                ms: Vec<Matcher> )
                                 -> HashMap<Ident, @NamedMatch> {
-    match parse(sess, cfg, rdr, ms) {
+    match parse(sess, cfg, rdr, ms.as_slice()) {
         Success(m) => m,
         Failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
         Error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
@@ -230,13 +232,17 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                         rdr: R,
                         ms: &[Matcher])
                         -> ParseResult {
-    let mut cur_eis = ~[];
-    cur_eis.push(initial_matcher_pos(ms.to_owned(), None, rdr.peek().sp.lo));
+    let mut cur_eis = Vec::new();
+    cur_eis.push(initial_matcher_pos(ms.iter()
+                                       .map(|x| (*x).clone())
+                                       .collect(),
+                                     None,
+                                     rdr.peek().sp.lo));
 
     loop {
-        let mut bb_eis = ~[]; // black-box parsed by parser.rs
-        let mut next_eis = ~[]; // or proceed normally
-        let mut eof_eis = ~[];
+        let mut bb_eis = Vec::new(); // black-box parsed by parser.rs
+        let mut next_eis = Vec::new(); // or proceed normally
+        let mut eof_eis = Vec::new();
 
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
@@ -274,8 +280,9 @@ pub fn parse<R: Reader>(sess: @ParseSess,
 
                         // Only touch the binders we have actually bound
                         for idx in range(ei.match_lo, ei.match_hi) {
-                            let sub = ei.matches[idx].clone();
-                            new_pos.matches[idx]
+                            let sub = (*ei.matches.get(idx)).clone();
+                            new_pos.matches
+                                   .get_mut(idx)
                                    .push(@MatchedSeq(sub, mk_sp(ei.sp_lo,
                                                                 sp.hi)));
                         }
@@ -308,7 +315,7 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                     eof_eis.push(ei);
                 }
             } else {
-                match ei.elts[idx].node.clone() {
+                match ei.elts.get(idx).node.clone() {
                   /* need to descend into sequence */
                   MatchSeq(ref matchers, ref sep, zero_ok,
                            match_idx_lo, match_idx_hi) => {
@@ -317,13 +324,15 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
                         for idx in range(match_idx_lo, match_idx_hi) {
-                            new_ei.matches[idx].push(@MatchedSeq(~[], sp));
+                            new_ei.matches
+                                  .get_mut(idx)
+                                  .push(@MatchedSeq(Vec::new(), sp));
                         }
 
                         cur_eis.push(new_ei);
                     }
 
-                    let matches = vec::from_elem(ei.matches.len(), ~[]);
+                    let matches = Vec::from_elem(ei.matches.len(), Vec::new());
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
                         elts: (*matchers).clone(),
@@ -351,11 +360,11 @@ pub fn parse<R: Reader>(sess: @ParseSess,
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&tok, &EOF) {
             if eof_eis.len() == 1u {
-                let mut v = ~[];
-                for dv in eof_eis[0u].matches.mut_iter() {
+                let mut v = Vec::new();
+                for dv in eof_eis.get_mut(0).matches.mut_iter() {
                     v.push(dv.pop().unwrap());
                 }
-                return Success(nameize(sess, ms, v));
+                return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
                 return Error(sp, ~"ambiguity: multiple successful parses");
             } else {
@@ -365,7 +374,7 @@ pub fn parse<R: Reader>(sess: @ParseSess,
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
                 let nts = bb_eis.map(|ei| {
-                    match ei.elts[ei.idx].node {
+                    match ei.elts.get(ei.idx).node {
                       MatchNonterminal(bind, name, _) => {
                         format!("{} ('{}')",
                                 token::get_ident(name),
@@ -390,10 +399,10 @@ pub fn parse<R: Reader>(sess: @ParseSess,
                 let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
                 let mut ei = bb_eis.pop().unwrap();
-                match ei.elts[ei.idx].node {
+                match ei.elts.get(ei.idx).node {
                   MatchNonterminal(_, name, idx) => {
                     let name_string = token::get_ident(name);
-                    ei.matches[idx].push(@MatchedNonterminal(
+                    ei.matches.get_mut(idx).push(@MatchedNonterminal(
                         parse_nt(&mut rust_parser, name_string.get())));
                     ei.idx += 1u;
                   }
@@ -413,12 +422,12 @@ pub fn parse<R: Reader>(sess: @ParseSess,
 
 pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
     match name {
-      "item" => match p.parse_item(~[]) {
+      "item" => match p.parse_item(Vec::new()) {
         Some(i) => token::NtItem(i),
         None => p.fatal("expected an item keyword")
       },
       "block" => token::NtBlock(p.parse_block()),
-      "stmt" => token::NtStmt(p.parse_stmt(~[])),
+      "stmt" => token::NtStmt(p.parse_stmt(Vec::new())),
       "pat" => token::NtPat(p.parse_pat()),
       "expr" => token::NtExpr(p.parse_expr()),
       "ty" => token::NtTy(p.parse_ty(false /* no need to disambiguate*/)),

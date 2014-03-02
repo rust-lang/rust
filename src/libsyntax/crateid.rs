@@ -19,6 +19,7 @@ use std::fmt;
 /// to be `0.0`.
 
 use std::from_str::FromStr;
+use std::vec_ng::Vec;
 
 #[deriving(Clone, Eq)]
 pub struct CrateId {
@@ -48,25 +49,27 @@ impl fmt::Show for CrateId {
 
 impl FromStr for CrateId {
     fn from_str(s: &str) -> Option<CrateId> {
-        let pieces: ~[&str] = s.splitn('#', 1).collect();
-        let path = pieces[0].to_owned();
+        let pieces: Vec<&str> = s.splitn('#', 1).collect();
+        let path = pieces.get(0).to_owned();
 
         if path.starts_with("/") || path.ends_with("/") ||
             path.starts_with(".") || path.is_empty() {
             return None;
         }
 
-        let path_pieces: ~[&str] = path.rsplitn('/', 1).collect();
-        let inferred_name = path_pieces[0];
+        let path_pieces: Vec<&str> = path.rsplitn('/', 1).collect();
+        let inferred_name = *path_pieces.get(0);
 
         let (name, version) = if pieces.len() == 1 {
             (inferred_name.to_owned(), None)
         } else {
-            let hash_pieces: ~[&str] = pieces[1].splitn(':', 1).collect();
+            let hash_pieces: Vec<&str> = pieces.get(1)
+                                               .splitn(':', 1)
+                                               .collect();
             let (hash_name, hash_version) = if hash_pieces.len() == 1 {
-                ("", hash_pieces[0])
+                ("", *hash_pieces.get(0))
             } else {
-                (hash_pieces[0], hash_pieces[1])
+                (*hash_pieces.get(0), *hash_pieces.get(1))
             };
 
             let name = if !hash_name.is_empty() {
@@ -89,7 +92,7 @@ impl FromStr for CrateId {
         };
 
         Some(CrateId {
-            path: path,
+            path: path.clone(),
             name: name,
             version: version,
         })

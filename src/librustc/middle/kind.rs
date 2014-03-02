@@ -160,7 +160,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
 }
 
 fn check_item(cx: &mut Context, item: &Item) {
-    if !attr::contains_name(item.attrs, "unsafe_destructor") {
+    if !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor") {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), self_type, _) => {
                 check_impl_of_trait(cx, item, trait_ref, self_type);

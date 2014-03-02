@@ -519,7 +519,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
 pub fn build_link_meta(krate: &ast::Crate,
                        output: &OutputFilenames) -> LinkMeta {
     let r = LinkMeta {
-        crateid: find_crate_id(krate.attrs, output),
+        crateid: find_crate_id(krate.attrs.as_slice(), output),
         crate_hash: Svh::calculate(krate),
     };
     info!("{}", r);

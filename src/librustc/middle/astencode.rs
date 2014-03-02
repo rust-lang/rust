@@ -36,6 +36,7 @@ use std::libc;
 use std::cast;
 use std::io::Seek;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -334,8 +335,8 @@ impl Folder for NestedItemsDropper {
             }
         }).collect();
         let blk_sans_items = ast::P(ast::Block {
-            view_items: ~[], // I don't know if we need the view_items here,
-                             // but it doesn't break tests!
+            view_items: Vec::new(), // I don't know if we need the view_items
+                                    // here, but it doesn't break tests!
             stmts: stmts_sans_items,
             expr: blk.expr,
             id: blk.id,
@@ -396,7 +397,10 @@ fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
                         map: &ast_map::Map,
                         path: ~[ast_map::PathElem],
                         ii: ast::InlinedItem) -> ast::InlinedItem {
-    ast_map::map_decoded_item(map, path, AstRenumberer { xcx: xcx }, |fld| {
+    ast_map::map_decoded_item(map,
+                              path.move_iter().collect(),
+                              AstRenumberer { xcx: xcx },
+                              |fld| {
         match ii {
             ast::IIItem(i) => {
                 ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
@@ -1436,7 +1440,9 @@ trait fake_ext_ctxt {
 
 #[cfg(test)]
 impl fake_ext_ctxt for @parse::ParseSess {
-    fn cfg(&self) -> ast::CrateConfig { ~[] }
+    fn cfg(&self) -> ast::CrateConfig {
+        Vec::new()
+    }
     fn parse_sess(&self) -> @parse::ParseSess { *self }
     fn call_site(&self) -> Span {
         codemap::Span {
