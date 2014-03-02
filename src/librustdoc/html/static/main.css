@@ -43,7 +43,7 @@ h2 code, h3 code, h4 code {
 }
 
 code, pre, h1.fqn {
-    font-family: Menlo, Monaco, Consolas, "Inconsolata", "Courier New", monospace;
+    font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
 }
 code, pre {
     color: #333;
@@ -304,18 +304,18 @@ a {
 
 :target { background: #FDFFD3; }
 
-pre.rust .kw { color: #cc782f; }
-pre.rust .kw-2 { color: #3bbb33; }
-pre.rust .prelude-ty { color: #3bbb33; }
-pre.rust .number { color: #c13928; }
-pre.rust .self { color: #c13928; }
-pre.rust .boolval { color: #c13928; }
-pre.rust .prelude-val { color: #c13928; }
-pre.rust .op { color: #cc782f; }
-pre.rust .comment { color: #533add; }
-pre.rust .doccomment { color: #d343d0; }
-pre.rust .macro { color: #d343d0; }
-pre.rust .macro-nonterminal { color: #d343d0; }
-pre.rust .string { color: #c13928; }
-pre.rust .lifetime { color: #d343d0; }
-pre.rust .attribute { color: #d343d0 !important; }
+pre.rust, pre.line-numbers { background-color: #FDFDFD; }
+
+/* Code Highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number { color: #718C00; }
+pre.rust .self { color: #C13928; }
+pre.rust .boolval { color: #C13928; }
+pre.rust .prelude-val { color: #C13928; }
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999f; }
+pre.rust .string { color: #718C00; }
+pre.rust .lifetime { color: #C13928; }
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
