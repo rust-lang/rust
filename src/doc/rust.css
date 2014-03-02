@@ -111,11 +111,11 @@ h5 a:link, h5 a:visited {color: black;}
 /* Code
    ========================================================================== */
 pre, code {
-    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-family: Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
     border-radius: 4px;
 }
 pre {
-    background-color: #F5F5F5;
+    background-color: #FDFDFD;
     border: 1px solid #CCC;
     border-radius: 0.5em;
     white-space: pre-wrap;
@@ -142,24 +142,24 @@ pre code {
 }
 
 /* Code highlighting */
-.cm-s-default span.cm-keyword {color: #803C8D;}
+.cm-s-default span.cm-keyword {color: #8959A8;}
 .cm-s-default span.cm-atom {color: #219;}
-.cm-s-default span.cm-number {color: #2AA198;}
-.cm-s-default span.cm-def {color: #256EB8;}
-.cm-s-default span.cm-variable {color: black;}
-.cm-s-default span.cm-variable-2 {color: #817E61;}
-.cm-s-default span.cm-variable-3 {color: #085;}
+.cm-s-default span.cm-number {color: #3E999F;}
+.cm-s-default span.cm-def {color: #4271AE;}
+/*.cm-s-default span.cm-variable {color: #C82829;}*/
+.cm-s-default span.cm-variable-2 {color: #6F906C;}
+.cm-s-default span.cm-variable-3 {color: #B76514;}
 .cm-s-default span.cm-property {color: black;}
 .cm-s-default span.cm-operator {color: black;}
-.cm-s-default span.cm-comment {color: #A82323;}
-.cm-s-default span.cm-string {color: #866544;}
-.cm-s-default span.cm-string-2 {color: #F50;}
+.cm-s-default span.cm-comment {color: #8E908C;}
+.cm-s-default span.cm-string {color: #718C00;}
+.cm-s-default span.cm-string-2 {color: #866544;}
 .cm-s-default span.cm-meta {color: #555;}
 /*.cm-s-default span.cm-error {color: #F00;}*/
 .cm-s-default span.cm-qualifier {color: #555;}
 .cm-s-default span.cm-builtin {color: #30A;}
 .cm-s-default span.cm-bracket {color: #CC7;}
-.cm-s-default span.cm-tag {color: #170;}
+.cm-s-default span.cm-tag {color: #C82829;}
 .cm-s-default span.cm-attribute {color: #00C;}
 
 /* The rest
