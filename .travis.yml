@@ -26,16 +26,11 @@ before_script:
 # Note that this is meant to run in a "fairly small" amount of time, so this
 # isn't exhaustive at all.
 #
-# The "-lffi and -lncurses" are required for LLVM. The LLVM that rust builds
-# manually disables bringing in these two libraries, but the stock LLVM was
-# apparently built with these options. We provide these options when building so
-# the `rustc` binary can successfully link.
-#
 # As a result of https://github.com/travis-ci/travis-ci/issues/1066, we run
 # everything in one large command instead of multiple commands.
 script: |
   make tidy &&
-  RUSTFLAGS="-C link-args='-lffi -lncurses'" make -j4 rustc-stage1 &&
+  make -j4 rustc-stage1 &&
   make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail
 
 env:
