@@ -65,6 +65,7 @@
 #[allow(non_camel_case_types)];
 #[allow(non_uppercase_statics)];
 #[allow(missing_doc)];
+#[allow(uppercase_variables)];
 
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.
