@@ -74,7 +74,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                     let g = get_item_val(ccx, item.id);
                     // see the comment in get_item_val() as to why this check is
                     // performed here.
-                    if !attr::contains_name(item.attrs,
+                    if !attr::contains_name(item.attrs.as_slice(),
                                             "address_insignificant") {
                         SetLinkage(g, AvailableExternallyLinkage);
                     }

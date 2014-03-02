@@ -142,6 +142,7 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             return MacResult::dummy_expr(sp);
         }
         Ok(bytes) => {
+            let bytes = bytes.iter().map(|x| *x).collect();
             base::MRExpr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }

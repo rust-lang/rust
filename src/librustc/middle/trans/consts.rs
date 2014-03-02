@@ -75,7 +75,9 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         ast::LitBool(b) => C_bool(b),
         ast::LitNil => C_nil(),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => C_binary_slice(cx, *data.borrow()),
+        ast::LitBinary(ref data) => {
+            C_binary_slice(cx, data.borrow().as_slice())
+        }
     }
 }
 
@@ -529,7 +531,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
           ast::ExprTup(ref es) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
-              let (vals, inlineable) = map_list(*es);
+              let (vals, inlineable) = map_list(es.as_slice());
               (adt::trans_const(cx, repr, 0, vals), inlineable)
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
@@ -564,7 +566,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               })
           }
           ast::ExprVec(ref es, ast::MutImmutable) => {
-            let (v, _, inlineable) = const_vec(cx, e, *es, is_local);
+            let (v, _, inlineable) = const_vec(cx,
+                                               e,
+                                               es.as_slice(),
+                                               is_local);
             (v, inlineable)
           }
           ast::ExprVstore(sub, ast::ExprVstoreSlice) => {
@@ -576,7 +581,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 }
               }
               ast::ExprVec(ref es, ast::MutImmutable) => {
-                let (cv, llunitty, _) = const_vec(cx, e, *es, is_local);
+                let (cv, llunitty, _) = const_vec(cx,
+                                                  e,
+                                                  es.as_slice(),
+                                                  is_local);
                 let llty = val_ty(cv);
                 let gv = "const".with_c_str(|name| {
                     llvm::LLVMAddGlobal(cx.llmod, llty.to_ref(), name)
@@ -657,7 +665,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                   Some(ast::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
-                      let (arg_vals, inlineable) = map_list(*args);
+                      let (arg_vals, inlineable) = map_list(args.as_slice());
                       (adt::trans_const(cx, repr, 0, arg_vals), inlineable)
                   }
                   Some(ast::DefVariant(enum_did, variant_did, _)) => {
@@ -666,7 +674,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                       let vinfo = ty::enum_variant_with_id(cx.tcx,
                                                            enum_did,
                                                            variant_did);
-                      let (arg_vals, inlineable) = map_list(*args);
+                      let (arg_vals, inlineable) = map_list(args.as_slice());
                       (adt::trans_const(cx, repr, vinfo.disr_val, arg_vals),
                        inlineable)
                   }

@@ -82,7 +82,8 @@ use std::cell::Cell;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
@@ -93,7 +94,7 @@ enum restriction {
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
-type ItemInfo = (Ident, Item_, Option<~[Attribute]>);
+type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -129,7 +130,7 @@ pub struct PathAndBounds {
 enum ItemOrViewItem {
     // Indicates a failure to parse any kind of item. The attributes are
     // returned.
-    IoviNone(~[Attribute]),
+    IoviNone(Vec<Attribute> ),
     IoviItem(@Item),
     IoviForeignItem(@ForeignItem),
     IoviViewItem(ViewItem)
@@ -257,7 +258,7 @@ macro_rules! maybe_whole (
             };
             match __found__ {
                 Some(INTERPOLATED(token::$constructor(x))) => {
-                    return (~[], x)
+                    return (Vec::new(), x)
                 }
                 _ => {}
             }
@@ -266,21 +267,20 @@ macro_rules! maybe_whole (
 )
 
 
-fn maybe_append(lhs: ~[Attribute], rhs: Option<~[Attribute]>)
-             -> ~[Attribute] {
+fn maybe_append(lhs: Vec<Attribute> , rhs: Option<Vec<Attribute> >)
+             -> Vec<Attribute> {
     match rhs {
         None => lhs,
-        Some(ref attrs) => vec::append(lhs, (*attrs))
+        Some(ref attrs) => vec_ng::append(lhs, attrs.as_slice())
     }
 }
 
 
 struct ParsedItemsAndViewItems {
-    attrs_remaining: ~[Attribute],
-    view_items: ~[ViewItem],
-    items: ~[@Item],
-    foreign_items: ~[@ForeignItem]
-}
+    attrs_remaining: Vec<Attribute> ,
+    view_items: Vec<ViewItem> ,
+    items: Vec<@Item> ,
+    foreign_items: Vec<@ForeignItem> }
 
 /* ident is handled by common.rs */
 
@@ -314,8 +314,8 @@ pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
         restriction: UNRESTRICTED,
         quote_depth: 0,
         obsolete_set: HashSet::new(),
-        mod_path_stack: ~[],
-        open_braces: ~[],
+        mod_path_stack: Vec::new(),
+        open_braces: Vec::new(),
         nopod: marker::NoPod
     }
 }
@@ -343,9 +343,9 @@ pub struct Parser {
     /// extra detail when the same error is seen twice
     obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: ~[InternedString],
+    mod_path_stack: Vec<InternedString> ,
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: ~[Span],
+    open_braces: Vec<Span> ,
     /* do not copy the parser; its state is tied to outside state */
     priv nopod: marker::NoPod
 }
@@ -407,8 +407,11 @@ impl Parser {
         } else if inedible.contains(&self.token) {
             // leave it in the input
         } else {
-            let expected = vec::append(edible.to_owned(), inedible);
-            let expect = tokens_to_str(expected);
+            let expected = vec_ng::append(edible.iter()
+                                                .map(|x| (*x).clone())
+                                                .collect(),
+                                          inedible);
+            let expect = tokens_to_str(expected.as_slice());
             let actual = self.this_token_to_str();
             self.fatal(
                 if expected.len() != 1 {
@@ -446,8 +449,12 @@ impl Parser {
         match e.node {
             ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
-                let expected = vec::append(edible.to_owned(), inedible);
-                self.check_for_erroneous_unit_struct_expecting(expected);
+                let expected = vec_ng::append(edible.iter()
+                                                    .map(|x| (*x).clone())
+                                                    .collect(),
+                                              inedible);
+                self.check_for_erroneous_unit_struct_expecting(
+                    expected.as_slice());
             }
             _ => {}
         }
@@ -465,8 +472,12 @@ impl Parser {
         debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
         if self.last_token.as_ref().map_or(false, |t| is_ident_or_path(*t)) {
-            let expected = vec::append(edible.to_owned(), inedible);
-            self.check_for_erroneous_unit_struct_expecting(expected);
+            let expected = vec_ng::append(edible.iter()
+                                                .map(|x| (*x).clone())
+                                                .collect(),
+                                          inedible.as_slice());
+            self.check_for_erroneous_unit_struct_expecting(
+                expected.as_slice());
         }
         self.expect_one_of(edible, inedible)
     }
@@ -578,9 +589,9 @@ impl Parser {
                               &mut self,
                               sep: &token::Token,
                               f: |&mut Parser| -> T)
-                              -> ~[T] {
+                              -> Vec<T> {
         let mut first = true;
-        let mut vector = ~[];
+        let mut vector = Vec::new();
         while self.token != token::BINOP(token::OR) &&
                 self.token != token::OROR {
             if first {
@@ -655,7 +666,7 @@ impl Parser {
                             ket: &token::Token,
                             sep: SeqSep,
                             f: |&mut Parser| -> T)
-                            -> ~[T] {
+                            -> Vec<T> {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         val
@@ -669,9 +680,9 @@ impl Parser {
                                    ket: &token::Token,
                                    sep: SeqSep,
                                    f: |&mut Parser| -> T)
-                                   -> ~[T] {
+                                   -> Vec<T> {
         let mut first: bool = true;
-        let mut v: ~[T] = ~[];
+        let mut v: Vec<T> = Vec::new();
         while self.token != *ket {
             match sep.sep {
               Some(ref t) => {
@@ -695,7 +706,7 @@ impl Parser {
                                ket: &token::Token,
                                sep: SeqSep,
                                f: |&mut Parser| -> T)
-                               -> ~[T] {
+                               -> Vec<T> {
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -710,7 +721,7 @@ impl Parser {
                      ket: &token::Token,
                      sep: SeqSep,
                      f: |&mut Parser| -> T)
-                     -> Spanned<~[T]> {
+                     -> Spanned<Vec<T> > {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end(ket, sep, f);
@@ -950,7 +961,7 @@ impl Parser {
                 };
 
                 let inputs = if self.eat(&token::OROR) {
-                    ~[]
+                    Vec::new()
                 } else {
                     self.expect_or();
                     let inputs = self.parse_seq_to_before_or(
@@ -1034,7 +1045,7 @@ impl Parser {
     }
 
     // parse the methods in a trait declaration
-    pub fn parse_trait_methods(&mut self) -> ~[TraitMethod] {
+    pub fn parse_trait_methods(&mut self) -> Vec<TraitMethod> {
         self.parse_unspanned_seq(
             &token::LBRACE,
             &token::RBRACE,
@@ -1083,7 +1094,7 @@ impl Parser {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
-                let attrs = vec::append(attrs, inner_attrs);
+                let attrs = vec_ng::append(attrs, inner_attrs.as_slice());
                 Provided(@ast::Method {
                     ident: ident,
                     attrs: attrs,
@@ -1176,7 +1187,7 @@ impl Parser {
                 // (t) is a parenthesized ty
                 // (t,) is the type of a tuple with only one field,
                 // of type t
-                let mut ts = ~[self.parse_ty(false)];
+                let mut ts = vec!(self.parse_ty(false));
                 let mut one_tuple = false;
                 while self.token == token::COMMA {
                     self.bump();
@@ -1190,7 +1201,7 @@ impl Parser {
 
                 if ts.len() == 1 && !one_tuple {
                     self.expect(&token::RPAREN);
-                    return ts[0]
+                    return *ts.get(0)
                 }
 
                 let t = TyTup(ts);
@@ -1479,7 +1490,7 @@ impl Parser {
         // Parse any number of segments and bound sets. A segment is an
         // identifier followed by an optional lifetime and a set of types.
         // A bound set is a set of type parameter bounds.
-        let mut segments = ~[];
+        let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_ident();
@@ -1541,7 +1552,7 @@ impl Parser {
         let span = mk_sp(lo, self.last_span.hi);
 
         // Assemble the path segments.
-        let mut path_segments = ~[];
+        let mut path_segments = Vec::new();
         let mut bounds = None;
         let last_segment_index = segments.len() - 1;
         for (i, segment_and_bounds) in segments.move_iter().enumerate() {
@@ -1690,11 +1701,11 @@ impl Parser {
         ExprBinary(binop, lhs, rhs)
     }
 
-    pub fn mk_call(&mut self, f: @Expr, args: ~[@Expr]) -> ast::Expr_ {
+    pub fn mk_call(&mut self, f: @Expr, args: Vec<@Expr> ) -> ast::Expr_ {
         ExprCall(f, args)
     }
 
-    fn mk_method_call(&mut self, ident: Ident, tps: ~[P<Ty>], args: ~[@Expr]) -> ast::Expr_ {
+    fn mk_method_call(&mut self, ident: Ident, tps: Vec<P<Ty>> , args: Vec<@Expr> ) -> ast::Expr_ {
         ExprMethodCall(ident, tps, args)
     }
 
@@ -1702,7 +1713,7 @@ impl Parser {
         ExprIndex(expr, idx)
     }
 
-    pub fn mk_field(&mut self, expr: @Expr, ident: Ident, tys: ~[P<Ty>]) -> ast::Expr_ {
+    pub fn mk_field(&mut self, expr: @Expr, ident: Ident, tys: Vec<P<Ty>> ) -> ast::Expr_ {
         ExprField(expr, ident, tys)
     }
 
@@ -1754,7 +1765,7 @@ impl Parser {
                 let lit = @spanned(lo, hi, LitNil);
                 return self.mk_expr(lo, hi, ExprLit(lit));
             }
-            let mut es = ~[self.parse_expr()];
+            let mut es = vec!(self.parse_expr());
             self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
             while self.token == token::COMMA {
                 self.bump();
@@ -1770,7 +1781,7 @@ impl Parser {
             self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
             return if es.len() == 1 && !trailing_comma {
-                self.mk_expr(lo, hi, ExprParen(es[0]))
+                self.mk_expr(lo, hi, ExprParen(*es.get(0)))
             }
             else {
                 self.mk_expr(lo, hi, ExprTup(es))
@@ -1786,8 +1797,8 @@ impl Parser {
             let decl = self.parse_proc_decl();
             let body = self.parse_expr();
             let fakeblock = P(ast::Block {
-                view_items: ~[],
-                stmts: ~[],
+                view_items: Vec::new(),
+                stmts: Vec::new(),
                 expr: Some(body),
                 id: ast::DUMMY_NODE_ID,
                 rules: DefaultBlock,
@@ -1840,7 +1851,7 @@ impl Parser {
             if self.token == token::RBRACKET {
                 // Empty vector.
                 self.bump();
-                ex = ExprVec(~[], mutbl);
+                ex = ExprVec(Vec::new(), mutbl);
             } else {
                 // Nonempty vector.
                 let first_expr = self.parse_expr();
@@ -1860,11 +1871,13 @@ impl Parser {
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_expr()
                     );
-                    ex = ExprVec(~[first_expr] + remaining_exprs, mutbl);
+                    let mut exprs = vec!(first_expr);
+                    exprs.push_all_move(remaining_exprs);
+                    ex = ExprVec(exprs, mutbl);
                 } else {
                     // Vector with one element.
                     self.expect(&token::RBRACKET);
-                    ex = ExprVec(~[first_expr], mutbl);
+                    ex = ExprVec(vec!(first_expr), mutbl);
                 }
             }
             hi = self.last_span.hi;
@@ -1919,7 +1932,7 @@ impl Parser {
                 if self.looking_at_struct_literal() {
                     // It's a struct literal.
                     self.bump();
-                    let mut fields = ~[];
+                    let mut fields = Vec::new();
                     let mut base = None;
 
                     while self.token != token::RBRACE {
@@ -1981,7 +1994,7 @@ impl Parser {
                         self.expect(&token::LT);
                         self.parse_generic_values_after_lt()
                     } else {
-                        (opt_vec::Empty, ~[])
+                        (opt_vec::Empty, Vec::new())
                     };
 
                     // expr.f() method call
@@ -2143,7 +2156,7 @@ impl Parser {
 
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
-                let mut result = ~[parse_any_tt_tok(self)];
+                let mut result = vec!(parse_any_tt_tok(self));
 
                 let trees =
                     self.parse_seq_to_before_end(&close_delim,
@@ -2163,15 +2176,15 @@ impl Parser {
 
     // parse a stream of tokens into a list of TokenTree's,
     // up to EOF.
-    pub fn parse_all_token_trees(&mut self) -> ~[TokenTree] {
-        let mut tts = ~[];
+    pub fn parse_all_token_trees(&mut self) -> Vec<TokenTree> {
+        let mut tts = Vec::new();
         while self.token != token::EOF {
             tts.push(self.parse_token_tree());
         }
         tts
     }
 
-    pub fn parse_matchers(&mut self) -> ~[Matcher] {
+    pub fn parse_matchers(&mut self) -> Vec<Matcher> {
         // unification of Matcher's and TokenTree's would vastly improve
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
@@ -2192,8 +2205,8 @@ impl Parser {
     pub fn parse_matcher_subseq_upto(&mut self,
                                      name_idx: @Cell<uint>,
                                      ket: &token::Token)
-                                     -> ~[Matcher] {
-        let mut ret_val = ~[];
+                                     -> Vec<Matcher> {
+        let mut ret_val = Vec::new();
         let mut lparens = 0u;
 
         while self.token != *ket || lparens > 0u {
@@ -2478,7 +2491,7 @@ impl Parser {
                     _ => {
                         // No argument list - `do foo {`
                         P(FnDecl {
-                            inputs: ~[],
+                            inputs: Vec::new(),
                             output: P(Ty {
                                 id: ast::DUMMY_NODE_ID,
                                 node: TyInfer,
@@ -2513,8 +2526,8 @@ impl Parser {
         let decl = parse_decl(self);
         let body = parse_body(self);
         let fakeblock = P(ast::Block {
-            view_items: ~[],
-            stmts: ~[],
+            view_items: Vec::new(),
+            stmts: Vec::new(),
             expr: Some(body),
             id: ast::DUMMY_NODE_ID,
             rules: DefaultBlock,
@@ -2601,7 +2614,7 @@ impl Parser {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr();
         self.commit_expr_expecting(discriminant, token::LBRACE);
-        let mut arms: ~[Arm] = ~[];
+        let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
             let pats = self.parse_pats();
             let mut guard = None;
@@ -2622,8 +2635,8 @@ impl Parser {
             }
 
             let blk = P(ast::Block {
-                view_items: ~[],
-                stmts: ~[],
+                view_items: Vec::new(),
+                stmts: Vec::new(),
                 expr: Some(expr),
                 id: ast::DUMMY_NODE_ID,
                 rules: DefaultBlock,
@@ -2662,8 +2675,8 @@ impl Parser {
     }
 
     // parse patterns, separated by '|' s
-    fn parse_pats(&mut self) -> ~[@Pat] {
-        let mut pats = ~[];
+    fn parse_pats(&mut self) -> Vec<@Pat> {
+        let mut pats = Vec::new();
         loop {
             pats.push(self.parse_pat());
             if self.token == token::BINOP(token::OR) { self.bump(); }
@@ -2673,10 +2686,10 @@ impl Parser {
 
     fn parse_pat_vec_elements(
         &mut self,
-    ) -> (~[@Pat], Option<@Pat>, ~[@Pat]) {
-        let mut before = ~[];
+    ) -> (Vec<@Pat> , Option<@Pat>, Vec<@Pat> ) {
+        let mut before = Vec::new();
         let mut slice = None;
-        let mut after = ~[];
+        let mut after = Vec::new();
         let mut first = true;
         let mut before_slice = true;
 
@@ -2733,8 +2746,8 @@ impl Parser {
     }
 
     // parse the fields of a struct-like pattern
-    fn parse_pat_fields(&mut self) -> (~[ast::FieldPat], bool) {
-        let mut fields = ~[];
+    fn parse_pat_fields(&mut self) -> (Vec<ast::FieldPat> , bool) {
+        let mut fields = Vec::new();
         let mut etc = false;
         let mut first = true;
         while self.token != token::RBRACE {
@@ -2900,7 +2913,7 @@ impl Parser {
                 let expr = self.mk_expr(lo, hi, ExprLit(lit));
                 pat = PatLit(expr);
             } else {
-                let mut fields = ~[self.parse_pat()];
+                let mut fields = vec!(self.parse_pat());
                 if self.look_ahead(1, |t| *t != token::RPAREN) {
                     while self.token == token::COMMA {
                         self.bump();
@@ -3002,7 +3015,7 @@ impl Parser {
                         pat = PatStruct(enum_path, fields, etc);
                     }
                     _ => {
-                        let mut args: ~[@Pat] = ~[];
+                        let mut args: Vec<@Pat> = Vec::new();
                         match self.token {
                           token::LPAREN => {
                             let is_star = self.look_ahead(1, |t| {
@@ -3128,7 +3141,7 @@ impl Parser {
 
     // parse a structure field
     fn parse_name_and_ty(&mut self, pr: Visibility,
-                         attrs: ~[Attribute]) -> StructField {
+                         attrs: Vec<Attribute> ) -> StructField {
         let lo = self.span.lo;
         if !is_plain_ident(&self.token) {
             self.fatal("expected ident");
@@ -3146,7 +3159,7 @@ impl Parser {
 
     // parse a statement. may include decl.
     // precondition: any attributes are parsed already
-    pub fn parse_stmt(&mut self, item_attrs: ~[Attribute]) -> @Stmt {
+    pub fn parse_stmt(&mut self, item_attrs: Vec<Attribute> ) -> @Stmt {
         maybe_whole!(self, NtStmt);
 
         fn check_expected_item(p: &mut Parser, found_attrs: bool) {
@@ -3229,7 +3242,7 @@ impl Parser {
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
                             ItemMac(spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT))),
-                            Inherited, ~[/*no attrs*/]))),
+                            Inherited, Vec::new(/*no attrs*/)))),
                     ast::DUMMY_NODE_ID));
             }
 
@@ -3275,12 +3288,12 @@ impl Parser {
         }
         self.expect(&token::LBRACE);
 
-        return self.parse_block_tail_(lo, DefaultBlock, ~[]);
+        return self.parse_block_tail_(lo, DefaultBlock, Vec::new());
     }
 
     // parse a block. Inner attrs are allowed.
     fn parse_inner_attrs_and_block(&mut self)
-        -> (~[Attribute], P<Block>) {
+        -> (Vec<Attribute> , P<Block>) {
 
         maybe_whole!(pair_empty self, NtBlock);
 
@@ -3299,13 +3312,13 @@ impl Parser {
     // necessary, and this should take a qualifier.
     // some blocks start with "#{"...
     fn parse_block_tail(&mut self, lo: BytePos, s: BlockCheckMode) -> P<Block> {
-        self.parse_block_tail_(lo, s, ~[])
+        self.parse_block_tail_(lo, s, Vec::new())
     }
 
     // parse the rest of a block expression or function body
     fn parse_block_tail_(&mut self, lo: BytePos, s: BlockCheckMode,
-                         first_item_attrs: ~[Attribute]) -> P<Block> {
-        let mut stmts = ~[];
+                         first_item_attrs: Vec<Attribute> ) -> P<Block> {
+        let mut stmts = Vec::new();
         let mut expr = None;
 
         // wouldn't it be more uniform to parse view items only, here?
@@ -3328,12 +3341,12 @@ impl Parser {
         while self.token != token::RBRACE {
             // parsing items even when they're not allowed lets us give
             // better error messages and recover more gracefully.
-            attributes_box.push_all(self.parse_outer_attributes());
+            attributes_box.push_all(self.parse_outer_attributes().as_slice());
             match self.token {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
                         self.span_err(self.last_span, "expected item after attributes");
-                        attributes_box = ~[];
+                        attributes_box = Vec::new();
                     }
                     self.bump(); // empty
                 }
@@ -3342,7 +3355,7 @@ impl Parser {
                 }
                 _ => {
                     let stmt = self.parse_stmt(attributes_box);
-                    attributes_box = ~[];
+                    attributes_box = Vec::new();
                     match stmt.node {
                         StmtExpr(e, stmt_id) => {
                             // expression without semicolon
@@ -3510,7 +3523,7 @@ impl Parser {
         }
     }
 
-    fn parse_generic_values_after_lt(&mut self) -> (OptVec<ast::Lifetime>, ~[P<Ty>]) {
+    fn parse_generic_values_after_lt(&mut self) -> (OptVec<ast::Lifetime>, Vec<P<Ty>> ) {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
@@ -3519,9 +3532,9 @@ impl Parser {
     }
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
-                     -> (~[Arg], bool) {
+                     -> (Vec<Arg> , bool) {
         let sp = self.span;
-        let mut args: ~[Option<Arg>] =
+        let mut args: Vec<Option<Arg>> =
             self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
@@ -3716,7 +3729,7 @@ impl Parser {
                     fn_inputs
                 }
                 token::RPAREN => {
-                    ~[Arg::new_self(explicit_self_sp, mutbl_self)]
+                    vec!(Arg::new_self(explicit_self_sp, mutbl_self))
                 }
                 _ => {
                     let token_str = self.this_token_to_str();
@@ -3749,7 +3762,7 @@ impl Parser {
     fn parse_fn_block_decl(&mut self) -> P<FnDecl> {
         let inputs_captures = {
             if self.eat(&token::OROR) {
-                ~[]
+                Vec::new()
             } else {
                 self.parse_unspanned_seq(
                     &token::BINOP(token::OR),
@@ -3812,7 +3825,7 @@ impl Parser {
 
     fn mk_item(&mut self, lo: BytePos, hi: BytePos, ident: Ident,
                node: Item_, vis: Visibility,
-               attrs: ~[Attribute]) -> @Item {
+               attrs: Vec<Attribute> ) -> @Item {
         @Item {
             ident: ident,
             attrs: attrs,
@@ -3832,7 +3845,7 @@ impl Parser {
     }
 
     // parse a method in a trait impl, starting with `attrs` attributes.
-    fn parse_method(&mut self, already_parsed_attrs: Option<~[Attribute]>) -> @Method {
+    fn parse_method(&mut self, already_parsed_attrs: Option<Vec<Attribute> >) -> @Method {
         let next_attrs = self.parse_outer_attributes();
         let attrs = match already_parsed_attrs {
             Some(mut a) => { a.push_all_move(next_attrs); a }
@@ -3851,7 +3864,7 @@ impl Parser {
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
-        let attrs = vec::append(attrs, inner_attrs);
+        let attrs = vec_ng::append(attrs, inner_attrs.as_slice());
         @ast::Method {
             ident: ident,
             attrs: attrs,
@@ -3877,7 +3890,7 @@ impl Parser {
             self.bump();
             traits = self.parse_trait_ref_list(&token::LBRACE);
         } else {
-            traits = ~[];
+            traits = Vec::new();
         }
 
         let meths = self.parse_trait_methods();
@@ -3925,7 +3938,7 @@ impl Parser {
             None
         };
 
-        let mut meths = ~[];
+        let mut meths = Vec::new();
         self.expect(&token::LBRACE);
         let (inner_attrs, next) = self.parse_inner_attrs_and_next();
         let mut method_attrs = Some(next);
@@ -3948,7 +3961,7 @@ impl Parser {
     }
 
     // parse B + C<~str,int> + D
-    fn parse_trait_ref_list(&mut self, ket: &token::Token) -> ~[TraitRef] {
+    fn parse_trait_ref_list(&mut self, ket: &token::Token) -> Vec<TraitRef> {
         self.parse_seq_to_before_end(
             ket,
             seq_sep_trailing_disallowed(token::BINOP(token::PLUS)),
@@ -3961,13 +3974,13 @@ impl Parser {
         let class_name = self.parse_ident();
         let generics = self.parse_generics();
 
-        let mut fields: ~[StructField];
+        let mut fields: Vec<StructField> ;
         let is_tuple_like;
 
         if self.eat(&token::LBRACE) {
             // It's a record-like struct.
             is_tuple_like = false;
-            fields = ~[];
+            fields = Vec::new();
             while self.token != token::RBRACE {
                 fields.push(self.parse_struct_decl_field());
             }
@@ -3998,7 +4011,7 @@ impl Parser {
         } else if self.eat(&token::SEMI) {
             // It's a unit-like struct.
             is_tuple_like = true;
-            fields = ~[];
+            fields = Vec::new();
         } else {
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `\\{`, `(`, or `;` after struct \
@@ -4019,7 +4032,7 @@ impl Parser {
     // parse a structure field declaration
     pub fn parse_single_struct_field(&mut self,
                                      vis: Visibility,
-                                     attrs: ~[Attribute])
+                                     attrs: Vec<Attribute> )
                                      -> StructField {
         let a_var = self.parse_name_and_ty(vis, attrs);
         match self.token {
@@ -4064,7 +4077,7 @@ impl Parser {
     // attributes (of length 0 or 1), parse all of the items in a module
     fn parse_mod_items(&mut self,
                        term: token::Token,
-                       first_item_attrs: ~[Attribute])
+                       first_item_attrs: Vec<Attribute> )
                        -> Mod {
         // parse all of the items up to closing or an attribute.
         // view items are legal here.
@@ -4074,7 +4087,7 @@ impl Parser {
             items: starting_items,
             ..
         } = self.parse_items_and_view_items(first_item_attrs, true, true);
-        let mut items: ~[@Item] = starting_items;
+        let mut items: Vec<@Item> = starting_items;
         let attrs_remaining_len = attrs_remaining.len();
 
         // don't think this other loop is even necessary....
@@ -4083,7 +4096,8 @@ impl Parser {
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
             if first {
-                attrs = attrs_remaining + attrs;
+                attrs = vec_ng::append(attrs_remaining.clone(),
+                                       attrs.as_slice());
                 first = false;
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
@@ -4162,10 +4176,10 @@ impl Parser {
                     id: ast::Ident,
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
-                    -> (ast::Item_, ~[ast::Attribute]) {
+                    -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut prefix = Path::new(self.sess.cm.span_to_filename(self.span));
         prefix.pop();
-        let mod_path = Path::new(".").join_many(self.mod_path_stack);
+        let mod_path = Path::new(".").join_many(self.mod_path_stack.as_slice());
         let dir_path = prefix.join(&mod_path);
         let file_path = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
@@ -4195,14 +4209,14 @@ impl Parser {
         };
 
         self.eval_src_mod_from_path(file_path,
-                                    outer_attrs.to_owned(),
+                                    outer_attrs.iter().map(|x| *x).collect(),
                                     id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
                               path: Path,
-                              outer_attrs: ~[ast::Attribute],
-                              id_sp: Span) -> (ast::Item_, ~[ast::Attribute]) {
+                              outer_attrs: Vec<ast::Attribute> ,
+                              id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         {
             let mut included_mod_stack = self.sess
                                              .included_mod_stack
@@ -4232,7 +4246,7 @@ impl Parser {
                                      &path,
                                      id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec::append(outer_attrs, inner);
+        let mod_attrs = vec_ng::append(outer_attrs, inner.as_slice());
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         {
@@ -4246,7 +4260,7 @@ impl Parser {
 
     // parse a function declaration from a foreign module
     fn parse_item_foreign_fn(&mut self, vis: ast::Visibility,
-                             attrs: ~[Attribute]) -> @ForeignItem {
+                             attrs: Vec<Attribute> ) -> @ForeignItem {
         let lo = self.span.lo;
 
         // Parse obsolete purity.
@@ -4269,7 +4283,7 @@ impl Parser {
 
     // parse a static item from a foreign module
     fn parse_item_foreign_static(&mut self, vis: ast::Visibility,
-                                 attrs: ~[Attribute]) -> @ForeignItem {
+                                 attrs: Vec<Attribute> ) -> @ForeignItem {
         let lo = self.span.lo;
 
         self.expect_keyword(keywords::Static);
@@ -4303,7 +4317,7 @@ impl Parser {
     // parse_foreign_items.
     fn parse_foreign_mod_items(&mut self,
                                abis: AbiSet,
-                               first_item_attrs: ~[Attribute])
+                               first_item_attrs: Vec<Attribute> )
                                -> ForeignMod {
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
@@ -4332,7 +4346,7 @@ impl Parser {
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,
                                 visibility: Visibility,
-                                attrs: ~[Attribute])
+                                attrs: Vec<Attribute> )
                                 -> ItemOrViewItem {
 
         let (maybe_path, ident) = match self.token {
@@ -4377,7 +4391,7 @@ impl Parser {
                               lo: BytePos,
                               opt_abis: Option<AbiSet>,
                               visibility: Visibility,
-                              attrs: ~[Attribute])
+                              attrs: Vec<Attribute> )
                               -> ItemOrViewItem {
 
         self.expect(&token::LBRACE);
@@ -4410,7 +4424,7 @@ impl Parser {
     // parse a structure-like enum variant definition
     // this should probably be renamed or refactored...
     fn parse_struct_def(&mut self) -> @StructDef {
-        let mut fields: ~[StructField] = ~[];
+        let mut fields: Vec<StructField> = Vec::new();
         while self.token != token::RBRACE {
             fields.push(self.parse_struct_decl_field());
         }
@@ -4424,7 +4438,7 @@ impl Parser {
 
     // parse the part of an "enum" decl following the '{'
     fn parse_enum_def(&mut self, _generics: &ast::Generics) -> EnumDef {
-        let mut variants = ~[];
+        let mut variants = Vec::new();
         let mut all_nullary = true;
         let mut have_disr = false;
         while self.token != token::RBRACE {
@@ -4435,7 +4449,7 @@ impl Parser {
 
             let ident;
             let kind;
-            let mut args = ~[];
+            let mut args = Vec::new();
             let mut disr_expr = None;
             ident = self.parse_ident();
             if self.eat(&token::LBRACE) {
@@ -4462,7 +4476,7 @@ impl Parser {
                 disr_expr = Some(self.parse_expr());
                 kind = TupleVariantKind(args);
             } else {
-                kind = TupleVariantKind(~[]);
+                kind = TupleVariantKind(Vec::new());
             }
 
             let vr = ast::Variant_ {
@@ -4551,13 +4565,13 @@ impl Parser {
     // NB: this function no longer parses the items inside an
     // extern crate.
     fn parse_item_or_view_item(&mut self,
-                               attrs: ~[Attribute],
+                               attrs: Vec<Attribute> ,
                                macros_allowed: bool)
                                -> ItemOrViewItem {
         match self.token {
             INTERPOLATED(token::NtItem(item)) => {
                 self.bump();
-                let new_attrs = vec::append(attrs, item.attrs);
+                let new_attrs = vec_ng::append(attrs, item.attrs.as_slice());
                 return IoviItem(@Item {
                     attrs: new_attrs,
                     ..(*item).clone()
@@ -4663,7 +4677,8 @@ impl Parser {
         }
         if self.eat_keyword(keywords::Mod) {
             // MODULE ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_mod(attrs.as_slice());
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,
@@ -4732,7 +4747,7 @@ impl Parser {
 
     // parse a foreign item; on failure, return IoviNone.
     fn parse_foreign_item(&mut self,
-                          attrs: ~[Attribute],
+                          attrs: Vec<Attribute> ,
                           macros_allowed: bool)
                           -> ItemOrViewItem {
         maybe_whole!(iovi self, NtItem);
@@ -4756,7 +4771,7 @@ impl Parser {
     // this is the fall-through for parsing items.
     fn parse_macro_use_or_failure(
         &mut self,
-        attrs: ~[Attribute],
+        attrs: Vec<Attribute> ,
         macros_allowed: bool,
         lo: BytePos,
         visibility: Visibility
@@ -4820,7 +4835,7 @@ impl Parser {
         return IoviNone(attrs);
     }
 
-    pub fn parse_item(&mut self, attrs: ~[Attribute]) -> Option<@Item> {
+    pub fn parse_item(&mut self, attrs: Vec<Attribute> ) -> Option<@Item> {
         match self.parse_item_or_view_item(attrs, true) {
             IoviNone(_) => None,
             IoviViewItem(_) =>
@@ -4854,20 +4869,20 @@ impl Parser {
             let path = ast::Path {
                 span: mk_sp(lo, self.span.hi),
                 global: false,
-                segments: ~[]
+                segments: Vec::new()
             };
             return @spanned(lo, self.span.hi,
                             ViewPathList(path, idents, ast::DUMMY_NODE_ID));
         }
 
         let first_ident = self.parse_ident();
-        let mut path = ~[first_ident];
+        let mut path = vec!(first_ident);
         match self.token {
           token::EQ => {
             // x = foo::bar
             self.bump();
             let path_lo = self.span.lo;
-            path = ~[self.parse_ident()];
+            path = vec!(self.parse_ident());
             while self.token == token::MOD_SEP {
                 self.bump();
                 let id = self.parse_ident();
@@ -4947,7 +4962,7 @@ impl Parser {
           }
           _ => ()
         }
-        let last = path[path.len() - 1u];
+        let last = *path.get(path.len() - 1u);
         let path = ast::Path {
             span: mk_sp(lo, self.span.hi),
             global: false,
@@ -4965,8 +4980,8 @@ impl Parser {
     }
 
     // matches view_paths = view_path | view_path , view_paths
-    fn parse_view_paths(&mut self) -> ~[@ViewPath] {
-        let mut vp = ~[self.parse_view_path()];
+    fn parse_view_paths(&mut self) -> Vec<@ViewPath> {
+        let mut vp = vec!(self.parse_view_path());
         while self.token == token::COMMA {
             self.bump();
             self.obsolete(self.last_span, ObsoleteMultipleImport);
@@ -4980,15 +4995,16 @@ impl Parser {
     // - mod_items uses extern_mod_allowed = true
     // - block_tail_ uses extern_mod_allowed = false
     fn parse_items_and_view_items(&mut self,
-                                  first_item_attrs: ~[Attribute],
+                                  first_item_attrs: Vec<Attribute> ,
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                   -> ParsedItemsAndViewItems {
-        let mut attrs = vec::append(first_item_attrs,
-                                    self.parse_outer_attributes());
+        let mut attrs = vec_ng::append(first_item_attrs,
+                                       self.parse_outer_attributes()
+                                           .as_slice());
         // First, parse view items.
-        let mut view_items : ~[ast::ViewItem] = ~[];
-        let mut items = ~[];
+        let mut view_items : Vec<ast::ViewItem> = Vec::new();
+        let mut items = Vec::new();
 
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern crates,
@@ -5001,7 +5017,7 @@ impl Parser {
                         attrs_remaining: attrs,
                         view_items: view_items,
                         items: items,
-                        foreign_items: ~[]
+                        foreign_items: Vec::new()
                     }
                 }
                 IoviViewItem(view_item) => {
@@ -5056,18 +5072,19 @@ impl Parser {
             attrs_remaining: attrs,
             view_items: view_items,
             items: items,
-            foreign_items: ~[]
+            foreign_items: Vec::new()
         }
     }
 
     // Parses a sequence of foreign items. Stops when it finds program
     // text that can't be parsed as an item
-    fn parse_foreign_items(&mut self, first_item_attrs: ~[Attribute],
+    fn parse_foreign_items(&mut self, first_item_attrs: Vec<Attribute> ,
                            macros_allowed: bool)
         -> ParsedItemsAndViewItems {
-        let mut attrs = vec::append(first_item_attrs,
-                                    self.parse_outer_attributes());
-        let mut foreign_items = ~[];
+        let mut attrs = vec_ng::append(first_item_attrs,
+                                       self.parse_outer_attributes()
+                                           .as_slice());
+        let mut foreign_items = Vec::new();
         loop {
             match self.parse_foreign_item(attrs, macros_allowed) {
                 IoviNone(returned_attrs) => {
@@ -5095,8 +5112,8 @@ impl Parser {
 
         ParsedItemsAndViewItems {
             attrs_remaining: attrs,
-            view_items: ~[],
-            items: ~[],
+            view_items: Vec::new(),
+            items: Vec::new(),
             foreign_items: foreign_items
         }
     }

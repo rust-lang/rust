@@ -33,6 +33,7 @@ use std::char;
 use std::str;
 use std::io;
 use std::io::MemWriter;
+use std::vec_ng::Vec;
 
 // The &mut State is stored here to prevent recursive type.
 pub enum AnnNode<'a, 'b> {
@@ -60,10 +61,10 @@ pub struct State<'a> {
     s: pp::Printer,
     cm: Option<@CodeMap>,
     intr: @token::IdentInterner,
-    comments: Option<~[comments::Comment]>,
-    literals: Option<~[comments::Literal]>,
+    comments: Option<Vec<comments::Comment> >,
+    literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
-    boxes: RefCell<~[pp::Breaks]>,
+    boxes: RefCell<Vec<pp::Breaks> >,
     ann: &'a PpAnn
 }
 
@@ -98,7 +99,7 @@ pub fn rust_printer_annotated<'a>(writer: ~io::Writer, ann: &'a PpAnn) -> State<
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(~[]),
+        boxes: RefCell::new(Vec::new()),
         ann: ann
     }
 }
@@ -140,14 +141,14 @@ pub fn print_crate(cm: @CodeMap,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(~[]),
+        boxes: RefCell::new(Vec::new()),
         ann: ann
     };
     print_crate_(&mut s, krate)
 }
 
 pub fn print_crate_(s: &mut State, krate: &ast::Crate) -> io::IoResult<()> {
-    try!(print_mod(s, &krate.module, krate.attrs));
+    try!(print_mod(s, &krate.module, krate.attrs.as_slice()));
     try!(print_remaining_comments(s));
     try!(eof(&mut s.s));
     Ok(())
@@ -319,7 +320,7 @@ pub fn in_cbox(s: &mut State) -> bool {
     let boxes = s.boxes.borrow();
     let len = boxes.get().len();
     if len == 0u { return false; }
-    return boxes.get()[len - 1u] == pp::Consistent;
+    return *boxes.get().get(len - 1u) == pp::Consistent;
 }
 
 pub fn hardbreak_if_not_bol(s: &mut State) -> io::IoResult<()> {
@@ -463,7 +464,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
         }
         ast::TyTup(ref elts) => {
             try!(popen(s));
-            try!(commasep(s, Inconsistent, *elts, print_type_ref));
+            try!(commasep(s, Inconsistent, elts.as_slice(), print_type_ref));
             if elts.len() == 1 {
                 try!(word(&mut s.s, ","));
             }
@@ -517,7 +518,7 @@ pub fn print_foreign_item(s: &mut State,
                           item: &ast::ForeignItem) -> io::IoResult<()> {
     try!(hardbreak_if_not_bol(s));
     try!(maybe_print_comment(s, item.span.lo));
-    try!(print_outer_attributes(s, item.attrs));
+    try!(print_outer_attributes(s, item.attrs.as_slice()));
     match item.node {
         ast::ForeignItemFn(decl, ref generics) => {
             try!(print_fn(s, decl, None, AbiSet::Rust(), item.ident, generics,
@@ -545,7 +546,7 @@ pub fn print_foreign_item(s: &mut State,
 pub fn print_item(s: &mut State, item: &ast::Item) -> io::IoResult<()> {
     try!(hardbreak_if_not_bol(s));
     try!(maybe_print_comment(s, item.span.lo));
-    try!(print_outer_attributes(s, item.attrs));
+    try!(print_outer_attributes(s, item.attrs.as_slice()));
     {
         let ann_node = NodeItem(s, item);
         try!(s.ann.pre(ann_node));
@@ -580,21 +581,21 @@ pub fn print_item(s: &mut State, item: &ast::Item) -> io::IoResult<()> {
             item.vis
         ));
         try!(word(&mut s.s, " "));
-        try!(print_block_with_attrs(s, body, item.attrs));
+        try!(print_block_with_attrs(s, body, item.attrs.as_slice()));
       }
       ast::ItemMod(ref _mod) => {
         try!(head(s, visibility_qualified(item.vis, "mod")));
         try!(print_ident(s, item.ident));
         try!(nbsp(s));
         try!(bopen(s));
-        try!(print_mod(s, _mod, item.attrs));
+        try!(print_mod(s, _mod, item.attrs.as_slice()));
         try!(bclose(s, item.span));
       }
       ast::ItemForeignMod(ref nmod) => {
         try!(head(s, "extern"));
         try!(word_nbsp(s, nmod.abis.to_str()));
         try!(bopen(s));
-        try!(print_foreign_mod(s, nmod, item.attrs));
+        try!(print_foreign_mod(s, nmod, item.attrs.as_slice()));
         try!(bclose(s, item.span));
       }
       ast::ItemTy(ty, ref params) => {
@@ -646,7 +647,7 @@ pub fn print_item(s: &mut State, item: &ast::Item) -> io::IoResult<()> {
 
         try!(space(&mut s.s));
         try!(bopen(s));
-        try!(print_inner_attributes(s, item.attrs));
+        try!(print_inner_attributes(s, item.attrs.as_slice()));
         for meth in methods.iter() {
            try!(print_method(s, *meth));
         }
@@ -706,7 +707,7 @@ pub fn print_enum_def(s: &mut State, enum_definition: &ast::EnumDef,
     try!(print_ident(s, ident));
     try!(print_generics(s, generics));
     try!(space(&mut s.s));
-    try!(print_variants(s, enum_definition.variants, span));
+    try!(print_variants(s, enum_definition.variants.as_slice(), span));
     Ok(())
 }
 
@@ -717,7 +718,7 @@ pub fn print_variants(s: &mut State,
     for &v in variants.iter() {
         try!(space_if_not_bol(s));
         try!(maybe_print_comment(s, v.span.lo));
-        try!(print_outer_attributes(s, v.node.attrs));
+        try!(print_outer_attributes(s, v.node.attrs.as_slice()));
         try!(ibox(s, indent_unit));
         try!(print_variant(s, v));
         try!(word(&mut s.s, ","));
@@ -761,7 +762,10 @@ pub fn print_struct(s: &mut State,
     if ast_util::struct_def_is_tuple_like(struct_def) {
         if !struct_def.fields.is_empty() {
             try!(popen(s));
-            try!(commasep(s, Inconsistent, struct_def.fields, |s, field| {
+            try!(commasep(s,
+                          Inconsistent,
+                          struct_def.fields.as_slice(),
+                          |s, field| {
                 match field.node.kind {
                     ast::NamedField(..) => fail!("unexpected named field"),
                     ast::UnnamedField => {
@@ -787,7 +791,8 @@ pub fn print_struct(s: &mut State,
                 ast::NamedField(ident, visibility) => {
                     try!(hardbreak_if_not_bol(s));
                     try!(maybe_print_comment(s, field.span.lo));
-                    try!(print_outer_attributes(s, field.node.attrs));
+                    try!(print_outer_attributes(s,
+                                                field.node.attrs.as_slice()));
                     try!(print_visibility(s, visibility));
                     try!(print_ident(s, ident));
                     try!(word_nbsp(s, ":"));
@@ -857,7 +862,10 @@ pub fn print_variant(s: &mut State, v: &ast::Variant) -> io::IoResult<()> {
                                      arg: &ast::VariantArg) -> io::IoResult<()> {
                     print_type(s, arg.ty)
                 }
-                try!(commasep(s, Consistent, *args, print_variant_arg));
+                try!(commasep(s,
+                              Consistent,
+                              args.as_slice(),
+                              print_variant_arg));
                 try!(pclose(s));
             }
         }
@@ -881,7 +889,7 @@ pub fn print_variant(s: &mut State, v: &ast::Variant) -> io::IoResult<()> {
 pub fn print_ty_method(s: &mut State, m: &ast::TypeMethod) -> io::IoResult<()> {
     try!(hardbreak_if_not_bol(s));
     try!(maybe_print_comment(s, m.span.lo));
-    try!(print_outer_attributes(s, m.attrs));
+    try!(print_outer_attributes(s, m.attrs.as_slice()));
     try!(print_ty_fn(s,
                        None,
                        None,
@@ -907,12 +915,12 @@ pub fn print_trait_method(s: &mut State,
 pub fn print_method(s: &mut State, meth: &ast::Method) -> io::IoResult<()> {
     try!(hardbreak_if_not_bol(s));
     try!(maybe_print_comment(s, meth.span.lo));
-    try!(print_outer_attributes(s, meth.attrs));
+    try!(print_outer_attributes(s, meth.attrs.as_slice()));
     try!(print_fn(s, meth.decl, Some(meth.purity), AbiSet::Rust(),
                     meth.ident, &meth.generics, Some(meth.explicit_self.node),
                     meth.vis));
     try!(word(&mut s.s, " "));
-    print_block_with_attrs(s, meth.body, meth.attrs)
+    print_block_with_attrs(s, meth.body, meth.attrs.as_slice())
 }
 
 pub fn print_outer_attributes(s: &mut State,
@@ -1184,7 +1192,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
             try!(word(&mut s.s, "mut"));
             if exprs.len() > 0u { try!(nbsp(s)); }
         }
-        try!(commasep_exprs(s, Inconsistent, *exprs));
+        try!(commasep_exprs(s, Inconsistent, exprs.as_slice()));
         try!(word(&mut s.s, "]"));
         try!(end(s));
       }
@@ -1207,7 +1215,11 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       ast::ExprStruct(ref path, ref fields, wth) => {
         try!(print_path(s, path, true));
         try!(word(&mut s.s, "{"));
-        try!(commasep_cmnt(s, Consistent, (*fields), print_field, get_span));
+        try!(commasep_cmnt(s,
+                           Consistent,
+                           fields.as_slice(),
+                           print_field,
+                           get_span));
         match wth {
             Some(expr) => {
                 try!(ibox(s, indent_unit));
@@ -1225,7 +1237,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       }
       ast::ExprTup(ref exprs) => {
         try!(popen(s));
-        try!(commasep_exprs(s, Inconsistent, *exprs));
+        try!(commasep_exprs(s, Inconsistent, exprs.as_slice()));
         if exprs.len() == 1 {
             try!(word(&mut s.s, ","));
         }
@@ -1233,16 +1245,16 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
       }
       ast::ExprCall(func, ref args) => {
         try!(print_expr(s, func));
-        try!(print_call_post(s, *args));
+        try!(print_call_post(s, args.as_slice()));
       }
       ast::ExprMethodCall(ident, ref tys, ref args) => {
         let base_args = args.slice_from(1);
-        try!(print_expr(s, args[0]));
+        try!(print_expr(s, *args.get(0)));
         try!(word(&mut s.s, "."));
         try!(print_ident(s, ident));
         if tys.len() > 0u {
             try!(word(&mut s.s, "::<"));
-            try!(commasep(s, Inconsistent, *tys, print_type_ref));
+            try!(commasep(s, Inconsistent, tys.as_slice(), print_type_ref));
             try!(word(&mut s.s, ">"));
         }
         try!(print_call_post(s, base_args));
@@ -1455,7 +1467,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
         try!(print_ident(s, id));
         if tys.len() > 0u {
             try!(word(&mut s.s, "::<"));
-            try!(commasep(s, Inconsistent, *tys, print_type_ref));
+            try!(commasep(s, Inconsistent, tys.as_slice(), print_type_ref));
             try!(word(&mut s.s, ">"));
         }
       }
@@ -1649,7 +1661,7 @@ fn print_path_(s: &mut State,
                 }
                 try!(commasep(s,
                                 Inconsistent,
-                                segment.types.map_to_vec(|&t| t),
+                                segment.types.map_to_vec(|&t| t).as_slice(),
                                 print_type_ref));
             }
 
@@ -1708,7 +1720,7 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
           Some(ref args) => {
             if !args.is_empty() {
               try!(popen(s));
-              try!(commasep(s, Inconsistent, *args,
+              try!(commasep(s, Inconsistent, args.as_slice(),
                               |s, &p| print_pat(s, p)));
               try!(pclose(s));
             } else { }
@@ -1727,7 +1739,7 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
             Ok(())
         }
         fn get_span(f: &ast::FieldPat) -> codemap::Span { return f.pat.span; }
-        try!(commasep_cmnt(s, Consistent, *fields,
+        try!(commasep_cmnt(s, Consistent, fields.as_slice(),
                              |s, f| print_field(s,f),
                              get_span));
         if etc {
@@ -1738,7 +1750,10 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
       }
       ast::PatTup(ref elts) => {
         try!(popen(s));
-        try!(commasep(s, Inconsistent, *elts, |s, &p| print_pat(s, p)));
+        try!(commasep(s,
+                      Inconsistent,
+                      elts.as_slice(),
+                      |s, &p| print_pat(s, p)));
         if elts.len() == 1 {
             try!(word(&mut s.s, ","));
         }
@@ -1761,7 +1776,10 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
       }
       ast::PatVec(ref before, slice, ref after) => {
         try!(word(&mut s.s, "["));
-        try!(commasep(s, Inconsistent, *before, |s, &p| print_pat(s, p)));
+        try!(commasep(s,
+                      Inconsistent,
+                      before.as_slice(),
+                      |s, &p| print_pat(s, p)));
         for &p in slice.iter() {
             if !before.is_empty() { try!(word_space(s, ",")); }
             match *p {
@@ -1773,7 +1791,10 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
             try!(print_pat(s, p));
             if !after.is_empty() { try!(word_space(s, ",")); }
         }
-        try!(commasep(s, Inconsistent, *after, |s, &p| print_pat(s, p)));
+        try!(commasep(s,
+                      Inconsistent,
+                      after.as_slice(),
+                      |s, &p| print_pat(s, p)));
         try!(word(&mut s.s, "]"));
       }
     }
@@ -1842,7 +1863,7 @@ pub fn print_fn_args(s: &mut State, decl: &ast::FnDecl,
     for &explicit_self in opt_explicit_self.iter() {
         let m = match explicit_self {
             ast::SelfStatic => ast::MutImmutable,
-            _ => match decl.inputs[0].pat.node {
+            _ => match decl.inputs.get(0).pat.node {
                 ast::PatIdent(ast::BindByValue(m), _, _) => m,
                 _ => ast::MutImmutable
             }
@@ -1981,12 +2002,12 @@ pub fn print_generics(s: &mut State,
             }
         }
 
-        let mut ints = ~[];
+        let mut ints = Vec::new();
         for i in range(0u, total) {
             ints.push(i);
         }
 
-        try!(commasep(s, Inconsistent, ints,
+        try!(commasep(s, Inconsistent, ints.as_slice(),
                         |s, &i| print_item(s, generics, i)));
         try!(word(&mut s.s, ">"));
     }
@@ -2041,7 +2062,7 @@ pub fn print_view_path(s: &mut State, vp: &ast::ViewPath) -> io::IoResult<()> {
             try!(print_path(s, path, false));
             try!(word(&mut s.s, "::{"));
         }
-        try!(commasep(s, Inconsistent, (*idents), |s, w| {
+        try!(commasep(s, Inconsistent, idents.as_slice(), |s, w| {
             print_ident(s, w.node.name)
         }));
         word(&mut s.s, "}")
@@ -2057,7 +2078,7 @@ pub fn print_view_paths(s: &mut State,
 pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> {
     try!(hardbreak_if_not_bol(s));
     try!(maybe_print_comment(s, item.span.lo));
-    try!(print_outer_attributes(s, item.attrs));
+    try!(print_outer_attributes(s, item.attrs.as_slice()));
     try!(print_visibility(s, item.vis));
     match item.node {
         ast::ViewItemExternMod(id, ref optional_path, _) => {
@@ -2073,7 +2094,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> 
 
         ast::ViewItemUse(ref vps) => {
             try!(head(s, "use"));
-            try!(print_view_paths(s, *vps));
+            try!(print_view_paths(s, vps.as_slice()));
         }
     }
     try!(word(&mut s.s, ";"));
@@ -2103,7 +2124,7 @@ pub fn print_arg(s: &mut State, input: &ast::Arg) -> io::IoResult<()> {
             match input.pat.node {
                 ast::PatIdent(_, ref path, _) if
                     path.segments.len() == 1 &&
-                    path.segments[0].identifier.name ==
+                    path.segments.get(0).identifier.name ==
                         parse::token::special_idents::invalid.name => {
                     // Do nothing.
                 }
@@ -2286,7 +2307,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
       ast::LitBinary(ref arr) => {
         try!(ibox(s, indent_unit));
         try!(word(&mut s.s, "["));
-        try!(commasep_cmnt(s, Inconsistent, *arr.borrow(),
+        try!(commasep_cmnt(s, Inconsistent, arr.borrow().as_slice(),
                              |s, u| word(&mut s.s, format!("{}", *u)),
                              |_| lit.span));
         try!(word(&mut s.s, "]"));
@@ -2303,7 +2324,7 @@ pub fn next_lit(s: &mut State, pos: BytePos) -> Option<comments::Literal> {
     match s.literals {
       Some(ref lits) => {
         while s.cur_cmnt_and_lit.cur_lit < lits.len() {
-            let ltrl = (*lits)[s.cur_cmnt_and_lit.cur_lit].clone();
+            let ltrl = (*(*lits).get(s.cur_cmnt_and_lit.cur_lit)).clone();
             if ltrl.pos > pos { return None; }
             s.cur_cmnt_and_lit.cur_lit += 1u;
             if ltrl.pos == pos { return Some(ltrl); }
@@ -2335,7 +2356,7 @@ pub fn print_comment(s: &mut State,
         comments::Mixed => {
             assert_eq!(cmnt.lines.len(), 1u);
             try!(zerobreak(&mut s.s));
-            try!(word(&mut s.s, cmnt.lines[0]));
+            try!(word(&mut s.s, *cmnt.lines.get(0)));
             try!(zerobreak(&mut s.s));
         }
         comments::Isolated => {
@@ -2352,7 +2373,7 @@ pub fn print_comment(s: &mut State,
         comments::Trailing => {
             try!(word(&mut s.s, " "));
             if cmnt.lines.len() == 1u {
-                try!(word(&mut s.s, cmnt.lines[0]));
+                try!(word(&mut s.s, *cmnt.lines.get(0)));
                 try!(hardbreak(&mut s.s));
             } else {
                 try!(ibox(s, 0u));
@@ -2414,7 +2435,7 @@ pub fn next_comment(s: &mut State) -> Option<comments::Comment> {
     match s.comments {
         Some(ref cmnts) => {
             if s.cur_cmnt_and_lit.cur_cmnt < cmnts.len() {
-                Some(cmnts[s.cur_cmnt_and_lit.cur_cmnt].clone())
+                Some((*cmnts.get(s.cur_cmnt_and_lit.cur_cmnt)).clone())
             } else {
                 None
             }
@@ -2535,12 +2556,14 @@ mod test {
     use codemap;
     use parse::token;
 
+    use std::vec_ng::Vec;
+
     #[test]
     fn test_fun_to_str() {
         let abba_ident = token::str_to_ident("abba");
 
         let decl = ast::FnDecl {
-            inputs: ~[],
+            inputs: Vec::new(),
             output: ast::P(ast::Ty {id: 0,
                                     node: ast::TyNil,
                                     span: codemap::DUMMY_SP}),
@@ -2559,9 +2582,9 @@ mod test {
 
         let var = codemap::respan(codemap::DUMMY_SP, ast::Variant_ {
             name: ident,
-            attrs: ~[],
+            attrs: Vec::new(),
             // making this up as I go.... ?
-            kind: ast::TupleVariantKind(~[]),
+            kind: ast::TupleVariantKind(Vec::new()),
             id: 0,
             disr_expr: None,
             vis: ast::Public,

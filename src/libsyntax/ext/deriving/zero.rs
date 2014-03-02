@@ -14,6 +14,8 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -21,16 +23,16 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                             push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "num", "Zero"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "num", "Zero")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "zero",
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
-                args: ~[],
+                args: Vec::new(),
                 ret_ty: Self,
                 inline: true,
                 const_nonmatching: false,
@@ -40,8 +42,8 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 name: "is_zero",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[],
-                ret_ty: Literal(Path::new(~["bool"])),
+                args: Vec::new(),
+                ret_ty: Literal(Path::new(vec!("bool"))),
                 inline: true,
                 const_nonmatching: false,
                 combine_substructure: |cx, span, substr| {
@@ -52,19 +54,19 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                            cx, span, substr)
                 }
             }
-        ]
+        )
     };
     trait_def.expand(cx, mitem, item, push)
 }
 
 fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
-    let zero_ident = ~[
+    let zero_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("num"),
         cx.ident_of("Zero"),
         cx.ident_of("zero")
-    ];
-    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), ~[]);
+    );
+    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {

@@ -89,6 +89,8 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
@@ -96,27 +98,26 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                  push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new_(~["serialize", "Encodable"], None,
-                         ~[~Literal(Path::new_local("__E"))], true),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new_(vec!("serialize", "Encodable"), None,
+                         vec!(~Literal(Path::new_local("__E"))), true),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds {
-            lifetimes: ~[],
-            bounds: ~[("__E", ~[Path::new(~["serialize", "Encoder"])])],
+            lifetimes: Vec::new(),
+            bounds: vec!(("__E", vec!(Path::new(vec!("serialize", "Encoder"))))),
         },
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[Ptr(~Literal(Path::new_local("__E")),
-                            Borrowed(None, MutMutable))],
+                args: vec!(Ptr(~Literal(Path::new_local("__E")),
+                            Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 inline: false,
                 const_nonmatching: true,
                 combine_substructure: encodable_substructure,
-            },
-        ]
+            })
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -133,7 +134,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     return match *substr.fields {
         Struct(ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
-            let mut stmts = ~[];
+            let mut stmts = Vec::new();
             for (i, &FieldInfo {
                     name,
                     self_,
@@ -146,13 +147,13 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                         token::intern_and_get_ident(format!("_field{}", i))
                     }
                 };
-                let enc = cx.expr_method_call(span, self_, encode, ~[blkencoder]);
+                let enc = cx.expr_method_call(span, self_, encode, vec!(blkencoder));
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder,
                                                emit_struct_field,
-                                               ~[cx.expr_str(span, name),
+                                               vec!(cx.expr_str(span, name),
                                                  cx.expr_uint(span, i),
-                                                 lambda]);
+                                                 lambda));
                 stmts.push(cx.stmt_expr(call));
             }
 
@@ -160,11 +161,11 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             cx.expr_method_call(trait_span,
                                 encoder,
                                 cx.ident_of("emit_struct"),
-                                ~[
+                                vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
                 cx.expr_uint(trait_span, fields.len()),
                 blk
-            ])
+            ))
         }
 
         EnumMatching(idx, variant, ref fields) => {
@@ -175,14 +176,14 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let me = cx.stmt_let(trait_span, false, blkarg, encoder);
             let encoder = cx.expr_ident(trait_span, blkarg);
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
-            let mut stmts = ~[];
+            let mut stmts = Vec::new();
             for (i, &FieldInfo { self_, span, .. }) in fields.iter().enumerate() {
-                let enc = cx.expr_method_call(span, self_, encode, ~[blkencoder]);
+                let enc = cx.expr_method_call(span, self_, encode, vec!(blkencoder));
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder,
                                                emit_variant_arg,
-                                               ~[cx.expr_uint(span, i),
-                                                 lambda]);
+                                               vec!(cx.expr_uint(span, i),
+                                                 lambda));
                 stmts.push(cx.stmt_expr(call));
             }
 
@@ -190,19 +191,19 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let name = cx.expr_str(trait_span, token::get_ident(variant.node.name));
             let call = cx.expr_method_call(trait_span, blkencoder,
                                            cx.ident_of("emit_enum_variant"),
-                                           ~[name,
+                                           vec!(name,
                                              cx.expr_uint(trait_span, idx),
                                              cx.expr_uint(trait_span, fields.len()),
-                                             blk]);
+                                             blk));
             let blk = cx.lambda_expr_1(trait_span, call, blkarg);
             let ret = cx.expr_method_call(trait_span,
                                           encoder,
                                           cx.ident_of("emit_enum"),
-                                          ~[
+                                          vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
                 blk
-            ]);
-            cx.expr_block(cx.block(trait_span, ~[me], Some(ret)))
+            ));
+            cx.expr_block(cx.block(trait_span, vec!(me), Some(ret)))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in deriving(Encodable)")

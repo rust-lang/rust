@@ -16,6 +16,8 @@ use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 use opt_vec;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
@@ -23,48 +25,48 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "rand", "Rand"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "rand", "Rand")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "rand",
                 generics: LifetimeBounds {
-                    lifetimes: ~[],
-                    bounds: ~[("R",
-                               ~[ Path::new(~["std", "rand", "Rng"]) ])]
+                    lifetimes: Vec::new(),
+                    bounds: vec!(("R",
+                               vec!( Path::new(vec!("std", "rand", "Rng")) )))
                 },
                 explicit_self: None,
-                args: ~[
+                args: vec!(
                     Ptr(~Literal(Path::new_local("R")),
                         Borrowed(None, ast::MutMutable))
-                ],
+                ),
                 ret_ty: Self,
                 inline: false,
                 const_nonmatching: false,
                 combine_substructure: rand_substructure
             }
-        ]
+        )
     };
     trait_def.expand(cx, mitem, item, push)
 }
 
 fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let rng = match substr.nonself_args {
-        [rng] => ~[ rng ],
+        [rng] => vec!( rng ),
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
     };
-    let rand_ident = ~[
+    let rand_ident = vec!(
         cx.ident_of("std"),
         cx.ident_of("rand"),
         cx.ident_of("Rand"),
         cx.ident_of("rand")
-    ];
+    );
     let rand_call = |cx: &mut ExtCtxt, span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
-                            ~[ rng[0] ])
+                            vec!( *rng.get(0) ))
     };
 
     return match *substr.fields {
@@ -84,13 +86,13 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                         true,
                                         rand_ident.clone(),
                                         opt_vec::Empty,
-                                        ~[]);
+                                        Vec::new());
             let rand_name = cx.expr_path(rand_name);
 
             // ::std::rand::Rand::rand(rng)
             let rv_call = cx.expr_call(trait_span,
                                        rand_name,
-                                       ~[ rng[0] ]);
+                                       vec!( *rng.get(0) ));
 
             // need to specify the uint-ness of the random number
             let uint_ty = cx.ty_ident(trait_span, cx.ident_of("uint"));
@@ -113,15 +115,15 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 let pat = cx.pat_lit(v_span, i_expr);
 
                 let thing = rand_thing(cx, v_span, ident, summary, |cx, sp| rand_call(cx, sp));
-                cx.arm(v_span, ~[ pat ], thing)
-            }).collect::<~[ast::Arm]>();
+                cx.arm(v_span, vec!( pat ), thing)
+            }).collect::<Vec<ast::Arm> >();
 
             // _ => {} at the end. Should never occur
             arms.push(cx.arm_unreachable(trait_span));
 
             let match_expr = cx.expr_match(trait_span, rand_variant, arms);
 
-            let block = cx.block(trait_span, ~[ let_statement ], Some(match_expr));
+            let block = cx.block(trait_span, vec!( let_statement ), Some(match_expr));
             cx.expr_block(block)
         }
         _ => cx.bug("Non-static method in `deriving(Rand)`")

@@ -3690,7 +3690,7 @@ impl Resolver {
                                             generics,
                                             implemented_traits,
                                             self_type,
-                                            *methods);
+                                            methods.as_slice());
             }
 
             ItemTrait(ref generics, ref traits, ref methods) => {
@@ -3764,7 +3764,7 @@ impl Resolver {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
-                                    struct_def.fields);
+                                    struct_def.fields.as_slice());
             }
 
             ItemMod(ref module_) => {
@@ -4187,8 +4187,10 @@ impl Resolver {
     // check that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, arm: &Arm) {
-        if arm.pats.len() == 0 { return; }
-        let map_0 = self.binding_mode_map(arm.pats[0]);
+        if arm.pats.len() == 0 {
+            return
+        }
+        let map_0 = self.binding_mode_map(*arm.pats.get(0));
         for (i, p) in arm.pats.iter().enumerate() {
             let map_i = self.binding_mode_map(*p);
 
@@ -4408,7 +4410,7 @@ impl Resolver {
                     // such a value is simply disallowed (since it's rarely
                     // what you want).
 
-                    let ident = path.segments[0].identifier;
+                    let ident = path.segments.get(0).identifier;
                     let renamed = mtwt_resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {

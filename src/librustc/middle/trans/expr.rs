@@ -731,13 +731,18 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             controlflow::trans_if(bcx, expr.id, cond, thn, els, dest)
         }
         ast::ExprMatch(discr, ref arms) => {
-            _match::trans_match(bcx, expr, discr, *arms, dest)
+            _match::trans_match(bcx, expr, discr, arms.as_slice(), dest)
         }
         ast::ExprBlock(blk) => {
             controlflow::trans_block(bcx, blk, dest)
         }
         ast::ExprStruct(_, ref fields, base) => {
-            trans_rec_or_struct(bcx, (*fields), base, expr.span, expr.id, dest)
+            trans_rec_or_struct(bcx,
+                                fields.as_slice(),
+                                base,
+                                expr.span,
+                                expr.id,
+                                dest)
         }
         ast::ExprTup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
@@ -777,10 +782,19 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args) => {
-            callee::trans_call(bcx, expr, f, callee::ArgExprs(*args), expr.id, dest)
+            callee::trans_call(bcx,
+                               expr,
+                               f,
+                               callee::ArgExprs(args.as_slice()),
+                               expr.id,
+                               dest)
         }
         ast::ExprMethodCall(_, _, ref args) => {
-            callee::trans_method_call(bcx, expr, args[0], callee::ArgExprs(*args), dest)
+            callee::trans_method_call(bcx,
+                                      expr,
+                                      *args.get(0),
+                                      callee::ArgExprs(args.as_slice()),
+                                      dest)
         }
         ast::ExprBinary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr

@@ -149,7 +149,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys = args.map(|va| ccx.to_ty(&rs, va.ty));
-                ty::mk_ctor_fn(tcx, scope, input_tys, enum_ty)
+                ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -166,7 +166,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 
                 let input_tys = struct_def.fields.map(
                     |f| ty::node_id_to_type(ccx.tcx, f.node.id));
-                ty::mk_ctor_fn(tcx, scope, input_tys, enum_ty)
+                ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
             }
         };
 
@@ -235,8 +235,11 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
                     let trait_def_id = local_def(trait_id);
                     let mut trait_method_def_ids = tcx.trait_method_def_ids
                                                       .borrow_mut();
-                    trait_method_def_ids.get().insert(trait_def_id,
-                                                      method_def_ids);
+                    trait_method_def_ids.get()
+                                        .insert(trait_def_id,
+                                                @method_def_ids.iter()
+                                                               .map(|x| *x)
+                                                               .collect());
                 }
                 _ => {} // Ignore things that aren't traits.
             }
@@ -575,7 +578,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             write_ty_to_tcx(tcx, it.id, tpt.ty);
             get_enum_variant_types(ccx,
                                    tpt.ty,
-                                   enum_definition.variants,
+                                   enum_definition.variants.as_slice(),
                                    generics);
         },
         ast::ItemImpl(ref generics, ref opt_trait_ref, selfty, ref ms) => {
@@ -604,7 +607,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             convert_methods(ccx,
                             ImplContainer(local_def(it.id)),
-                            *ms,
+                            ms.as_slice(),
                             selfty,
                             &i_ty_generics,
                             generics,
@@ -626,11 +629,11 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             // Run convert_methods on the provided methods.
             let (_, provided_methods) =
-                split_trait_methods(*trait_methods);
+                split_trait_methods(trait_methods.as_slice());
             let untransformed_rcvr_ty = ty::mk_self(tcx, local_def(it.id));
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
-                            provided_methods,
+                            provided_methods.as_slice(),
                             untransformed_rcvr_ty,
                             &trait_def.generics,
                             generics,
@@ -701,7 +704,8 @@ pub fn convert_struct(ccx: &CrateCtxt,
                     let mut tcache = tcx.tcache.borrow_mut();
                     tcache.get().insert(local_def(ctor_id), tpt);
                 }
-            } else if struct_def.fields[0].node.kind == ast::UnnamedField {
+            } else if struct_def.fields.get(0).node.kind ==
+                    ast::UnnamedField {
                 // Tuple-like.
                 let inputs = {
                     let tcache = tcx.tcache.borrow();
@@ -709,7 +713,10 @@ pub fn convert_struct(ccx: &CrateCtxt,
                         |field| tcache.get().get(
                             &local_def(field.node.id)).ty)
                 };
-                let ctor_fn_ty = ty::mk_ctor_fn(tcx, ctor_id, inputs, selfty);
+                let ctor_fn_ty = ty::mk_ctor_fn(tcx,
+                                                ctor_id,
+                                                inputs.as_slice(),
+                                                selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 {
                     let mut tcache = tcx.tcache.borrow_mut();
@@ -802,7 +809,10 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> @ty::TraitDef {
             let self_ty = ty::mk_self(tcx, def_id);
             let ty_generics = ty_generics(ccx, generics, 0);
             let substs = mk_item_substs(ccx, &ty_generics, Some(self_ty));
-            let bounds = ensure_supertraits(ccx, it.id, it.span, *supertraits);
+            let bounds = ensure_supertraits(ccx,
+                                            it.id,
+                                            it.span,
+                                            supertraits.as_slice());
             let trait_ref = @ty::TraitRef {def_id: def_id,
                                            substs: substs};
             let trait_def = @ty::TraitDef {generics: ty_generics,
@@ -980,7 +990,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     def
                 }
             }
-        }))
+        }).move_iter().collect())
     };
 
     fn compute_bounds(
@@ -1032,7 +1042,10 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                           -> ty::ty_param_bounds_and_ty {
     let ty_generics = ty_generics(ccx, ast_generics, 0);
     let rb = BindingRscope::new(def_id.node);
-    let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, &rb, a, None) );
+    let input_tys = decl.inputs
+                        .iter()
+                        .map(|a| ty_of_arg(ccx, &rb, a, None))
+                        .collect();
     let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
 
     let t_fn = ty::mk_bare_fn(

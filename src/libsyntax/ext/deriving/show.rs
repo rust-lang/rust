@@ -19,6 +19,7 @@ use ext::deriving::generic::*;
 use parse::token;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 
 pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
@@ -26,27 +27,27 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             item: @Item,
                             push: |@Item|) {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ptr(~Literal(Path::new(~["std", "fmt", "Formatter"])),
+    let fmtr = Ptr(~Literal(Path::new(vec!("std", "fmt", "Formatter"))),
                    Borrowed(None, ast::MutMutable));
 
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new(~["std", "fmt", "Show"]),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new(vec!("std", "fmt", "Show")),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "fmt",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: ~[fmtr],
-                ret_ty: Literal(Path::new(~["std", "fmt", "Result"])),
+                args: vec!(fmtr),
+                ret_ty: Literal(Path::new(vec!("std", "fmt", "Result"))),
                 inline: false,
                 const_nonmatching: false,
                 combine_substructure: show_substructure
             }
-        ]
+        )
     };
     trait_def.expand(cx, mitem, item, push)
 }
@@ -70,7 +71,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     let mut format_string = token::get_ident(name).get().to_owned();
     // the internal fields we're actually formatting
-    let mut exprs = ~[];
+    let mut exprs = Vec::new();
 
     // Getting harder... making the format string:
     match *substr.fields {
@@ -79,7 +80,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         EnumMatching(_, _, ref fields) if fields.len() == 0 => {}
 
         Struct(ref fields) | EnumMatching(_, _, ref fields) => {
-            if fields[0].name.is_none() {
+            if fields.get(0).name.is_none() {
                 // tuple struct/"normal" variant
 
                 format_string.push_str("(");
@@ -124,10 +125,10 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let formatter = substr.nonself_args[0];
     let buf = cx.expr_field_access(span, formatter, cx.ident_of("buf"));
 
-    let std_write = ~[cx.ident_of("std"), cx.ident_of("fmt"), cx.ident_of("write")];
+    let std_write = vec!(cx.ident_of("std"), cx.ident_of("fmt"), cx.ident_of("write"));
     let args = cx.ident_of("__args");
-    let write_call = cx.expr_call_global(span, std_write, ~[buf, cx.expr_ident(span, args)]);
-    let format_closure = cx.lambda_expr(span, ~[args], write_call);
+    let write_call = cx.expr_call_global(span, std_write, vec!(buf, cx.expr_ident(span, args)));
+    let format_closure = cx.lambda_expr(span, vec!(args), write_call);
 
     let s = token::intern_and_get_ident(format_string);
     let format_string = cx.expr_str(span, s);
@@ -135,6 +136,6 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // phew, not our responsibility any more!
     format::expand_preparsed_format_args(cx, span,
                                          format_closure,
-                                         format_string, exprs, ~[],
+                                         format_string, exprs, Vec::new(),
                                          HashMap::new())
 }

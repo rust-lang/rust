@@ -26,12 +26,16 @@ use parse::token::InternedString;
 use parse::token;
 use parse;
 
+use std::vec_ng::Vec;
+
 pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
-                                           tts.to_owned());
+                                           tts.iter()
+                                              .map(|x| (*x).clone())
+                                              .collect());
 
-    let mut cfgs = ~[];
+    let mut cfgs = Vec::new();
     // parse `cfg!(meta_item, meta_item(x,y), meta_item="foo", ...)`
     while p.token != token::EOF {
         cfgs.push(p.parse_meta_item());
@@ -42,7 +46,8 @@ pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::M
     // test_cfg searches for meta items looking like `cfg(foo, ...)`
     let in_cfg = &[cx.meta_list(sp, InternedString::new("cfg"), cfgs)];
 
-    let matches_cfg = attr::test_cfg(cx.cfg(), in_cfg.iter().map(|&x| x));
+    let matches_cfg = attr::test_cfg(cx.cfg().as_slice(),
+                                     in_cfg.iter().map(|&x| x));
     let e = cx.expr_bool(sp, matches_cfg);
     MRExpr(e)
 }

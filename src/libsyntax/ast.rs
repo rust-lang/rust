@@ -23,6 +23,7 @@ use std::cell::RefCell;
 use collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
@@ -98,7 +99,7 @@ pub type SyntaxContext = u32;
 // it should cut down on memory use *a lot*; applying a mark
 // to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
-    table: RefCell<~[SyntaxContext_]>,
+    table: RefCell<Vec<SyntaxContext_> >,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
     rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
@@ -164,7 +165,7 @@ pub struct Path {
     /// module (like paths in an import).
     global: bool,
     /// The segments in the path: the things separated by `::`.
-    segments: ~[PathSegment],
+    segments: Vec<PathSegment> ,
 }
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of
@@ -288,12 +289,12 @@ pub enum DefRegion {
 
 // The set of MetaItems that define the compilation environment of the crate,
 // used to drive conditional compilation
-pub type CrateConfig = ~[@MetaItem];
+pub type CrateConfig = Vec<@MetaItem> ;
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Crate {
     module: Mod,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     config: CrateConfig,
     span: Span,
 }
@@ -303,7 +304,7 @@ pub type MetaItem = Spanned<MetaItem_>;
 #[deriving(Clone, Encodable, Decodable, Hash)]
 pub enum MetaItem_ {
     MetaWord(InternedString),
-    MetaList(InternedString, ~[@MetaItem]),
+    MetaList(InternedString, Vec<@MetaItem> ),
     MetaNameValue(InternedString, Lit),
 }
 
@@ -334,8 +335,8 @@ impl Eq for MetaItem_ {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Block {
-    view_items: ~[ViewItem],
-    stmts: ~[@Stmt],
+    view_items: Vec<ViewItem> ,
+    stmts: Vec<@Stmt> ,
     expr: Option<@Expr>,
     id: NodeId,
     rules: BlockCheckMode,
@@ -373,17 +374,17 @@ pub enum Pat_ {
     // records this pattern's NodeId in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     PatIdent(BindingMode, Path, Option<@Pat>),
-    PatEnum(Path, Option<~[@Pat]>), /* "none" means a * pattern where
+    PatEnum(Path, Option<Vec<@Pat> >), /* "none" means a * pattern where
                                      * we don't bind the fields to names */
-    PatStruct(Path, ~[FieldPat], bool),
-    PatTup(~[@Pat]),
+    PatStruct(Path, Vec<FieldPat> , bool),
+    PatTup(Vec<@Pat> ),
     PatUniq(@Pat),
     PatRegion(@Pat), // reference pattern
     PatLit(@Expr),
     PatRange(@Expr, @Expr),
     // [a, b, ..i, y, z] is represented as
     // PatVec(~[a, b], Some(i), ~[y, z])
-    PatVec(~[@Pat], Option<@Pat>, ~[@Pat])
+    PatVec(Vec<@Pat> , Option<@Pat>, Vec<@Pat> )
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
@@ -488,7 +489,7 @@ pub enum Decl_ {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Arm {
-    pats: ~[@Pat],
+    pats: Vec<@Pat> ,
     guard: Option<@Expr>,
     body: P<Block>,
 }
@@ -526,10 +527,10 @@ pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     // First expr is the place; second expr is the value.
     ExprBox(@Expr, @Expr),
-    ExprVec(~[@Expr], Mutability),
-    ExprCall(@Expr, ~[@Expr]),
-    ExprMethodCall(Ident, ~[P<Ty>], ~[@Expr]),
-    ExprTup(~[@Expr]),
+    ExprVec(Vec<@Expr> , Mutability),
+    ExprCall(@Expr, Vec<@Expr> ),
+    ExprMethodCall(Ident, Vec<P<Ty>> , Vec<@Expr> ),
+    ExprTup(Vec<@Expr> ),
     ExprBinary(BinOp, @Expr, @Expr),
     ExprUnary(UnOp, @Expr),
     ExprLit(@Lit),
@@ -541,14 +542,14 @@ pub enum Expr_ {
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name>
     ExprLoop(P<Block>, Option<Ident>),
-    ExprMatch(@Expr, ~[Arm]),
+    ExprMatch(@Expr, Vec<Arm> ),
     ExprFnBlock(P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(@Expr, @Expr),
     ExprAssignOp(BinOp, @Expr, @Expr),
-    ExprField(@Expr, Ident, ~[P<Ty>]),
+    ExprField(@Expr, Ident, Vec<P<Ty>> ),
     ExprIndex(@Expr, @Expr),
 
     /// Expression that looks like a "name". For example,
@@ -569,7 +570,7 @@ pub enum Expr_ {
     ExprMac(Mac),
 
     // A struct literal expression.
-    ExprStruct(Path, ~[Field], Option<@Expr> /* base */),
+    ExprStruct(Path, Vec<Field> , Option<@Expr> /* base */),
 
     // A vector literal constructed from one repeated element.
     ExprRepeat(@Expr /* element */, @Expr /* count */, Mutability),
@@ -600,14 +601,14 @@ pub enum TokenTree {
     TTTok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
-    TTDelim(@~[TokenTree]),
+    TTDelim(@Vec<TokenTree> ),
 
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a TTForest,
     // an optional separator, and a boolean where true indicates
     // zero or more (..), and false indicates one or more (+).
-    TTSeq(Span, @~[TokenTree], Option<::parse::token::Token>, bool),
+    TTSeq(Span, @Vec<TokenTree> , Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
@@ -673,7 +674,7 @@ pub enum Matcher_ {
     MatchTok(::parse::token::Token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    MatchSeq(~[Matcher], Option<::parse::token::Token>, bool, uint, uint),
+    MatchSeq(Vec<Matcher> , Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     MatchNonterminal(Ident, Ident, uint)
 }
@@ -686,7 +687,7 @@ pub type Mac = Spanned<Mac_>;
 // There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum Mac_ {
-    MacInvocTT(Path, ~[TokenTree], SyntaxContext),   // new macro-invocation
+    MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
@@ -700,7 +701,7 @@ pub type Lit = Spanned<Lit_>;
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum Lit_ {
     LitStr(InternedString, StrStyle),
-    LitBinary(Rc<~[u8]>),
+    LitBinary(Rc<Vec<u8> >),
     LitChar(u32),
     LitInt(i64, IntTy),
     LitUint(u64, UintTy),
@@ -729,7 +730,7 @@ pub struct TypeField {
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct TypeMethod {
     ident: Ident,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     purity: Purity,
     decl: P<FnDecl>,
     generics: Generics,
@@ -858,7 +859,7 @@ pub enum Ty_ {
     TyRptr(Option<Lifetime>, MutTy),
     TyClosure(@ClosureTy),
     TyBareFn(@BareFnTy),
-    TyTup(~[P<Ty>]),
+    TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
     // TyInfer means the type should be inferred instead of it having been
@@ -878,8 +879,8 @@ pub struct InlineAsm {
     asm: InternedString,
     asm_str_style: StrStyle,
     clobbers: InternedString,
-    inputs: ~[(InternedString, @Expr)],
-    outputs: ~[(InternedString, @Expr)],
+    inputs: Vec<(InternedString, @Expr)> ,
+    outputs: Vec<(InternedString, @Expr)> ,
     volatile: bool,
     alignstack: bool,
     dialect: AsmDialect
@@ -914,7 +915,7 @@ impl Arg {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct FnDecl {
-    inputs: ~[Arg],
+    inputs: Vec<Arg> ,
     output: P<Ty>,
     cf: RetStyle,
     variadic: bool
@@ -957,7 +958,7 @@ pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 #[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct Method {
     ident: Ident,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     generics: Generics,
     explicit_self: ExplicitSelf,
     purity: Purity,
@@ -970,15 +971,15 @@ pub struct Method {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Mod {
-    view_items: ~[ViewItem],
-    items: ~[@Item],
+    view_items: Vec<ViewItem> ,
+    items: Vec<@Item> ,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct ForeignMod {
     abis: AbiSet,
-    view_items: ~[ViewItem],
-    items: ~[@ForeignItem],
+    view_items: Vec<ViewItem> ,
+    items: Vec<@ForeignItem> ,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
@@ -989,19 +990,19 @@ pub struct VariantArg {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum VariantKind {
-    TupleVariantKind(~[VariantArg]),
+    TupleVariantKind(Vec<VariantArg> ),
     StructVariantKind(@StructDef),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct EnumDef {
-    variants: ~[P<Variant>],
+    variants: Vec<P<Variant>> ,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Variant_ {
     name: Ident,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     kind: VariantKind,
     id: NodeId,
     disr_expr: Option<@Expr>,
@@ -1034,13 +1035,13 @@ pub enum ViewPath_ {
     ViewPathGlob(Path, NodeId),
 
     // foo::bar::{a,b,c}
-    ViewPathList(Path, ~[PathListIdent], NodeId)
+    ViewPathList(Path, Vec<PathListIdent> , NodeId)
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct ViewItem {
     node: ViewItem_,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     vis: Visibility,
     span: Span,
 }
@@ -1052,7 +1053,7 @@ pub enum ViewItem_ {
     // (containing arbitrary characters) from which to fetch the crate sources
     // For example, extern crate whatever = "github.com/mozilla/rust"
     ViewItemExternMod(Ident, Option<(InternedString,StrStyle)>, NodeId),
-    ViewItemUse(~[@ViewPath]),
+    ViewItemUse(Vec<@ViewPath> ),
 }
 
 // Meta-data associated with an item
@@ -1109,7 +1110,7 @@ pub struct StructField_ {
     kind: StructFieldKind,
     id: NodeId,
     ty: P<Ty>,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
 }
 
 pub type StructField = Spanned<StructField_>;
@@ -1122,7 +1123,7 @@ pub enum StructFieldKind {
 
 #[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct StructDef {
-    fields: ~[StructField], /* fields, not including ctor */
+    fields: Vec<StructField> , /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<NodeId>
@@ -1135,7 +1136,7 @@ pub struct StructDef {
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Item {
     ident: Ident,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     id: NodeId,
     node: Item_,
     vis: Visibility,
@@ -1151,11 +1152,11 @@ pub enum Item_ {
     ItemTy(P<Ty>, Generics),
     ItemEnum(EnumDef, Generics),
     ItemStruct(@StructDef, Generics),
-    ItemTrait(Generics, ~[TraitRef], ~[TraitMethod]),
+    ItemTrait(Generics, Vec<TraitRef> , Vec<TraitMethod> ),
     ItemImpl(Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             ~[@Method]),
+             Vec<@Method> ),
     // a macro invocation (which includes macro definition)
     ItemMac(Mac),
 }
@@ -1163,7 +1164,7 @@ pub enum Item_ {
 #[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct ForeignItem {
     ident: Ident,
-    attrs: ~[Attribute],
+    attrs: Vec<Attribute> ,
     node: ForeignItem_,
     id: NodeId,
     span: Span,
@@ -1193,6 +1194,8 @@ mod test {
     use codemap::*;
     use super::*;
 
+    use std::vec_ng::Vec;
+
     fn is_freeze<T: Freeze>() {}
 
     // Assert that the AST remains Freeze (#10693).
@@ -1205,9 +1208,9 @@ mod test {
     #[test]
     fn check_asts_encodable() {
         let e = Crate {
-            module: Mod {view_items: ~[], items: ~[]},
-            attrs: ~[],
-            config: ~[],
+            module: Mod {view_items: Vec::new(), items: Vec::new()},
+            attrs: Vec::new(),
+            config: Vec::new(),
             span: Span {
                 lo: BytePos(10),
                 hi: BytePos(20),

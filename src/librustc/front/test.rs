@@ -10,6 +10,8 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
+#[allow(dead_code)];
+#[allow(unused_imports)];
 
 use driver::session;
 use front::config;
@@ -18,6 +20,8 @@ use metadata::creader::Loader;
 
 use std::cell::RefCell;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -57,7 +61,7 @@ pub fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(krate.config, "test");
+    let should_test = attr::contains_name(krate.config.as_slice(), "test");
 
     if should_test {
         generate_test_harness(sess, krate)
@@ -189,13 +193,13 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(krate, |attrs| {
-        !attr::contains_name(attrs, "test") &&
-        !attr::contains_name(attrs, "bench")
+        !attr::contains_name(attrs.as_slice(), "test") &&
+        !attr::contains_name(attrs.as_slice(), "bench")
     })
 }
 
 fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
-    let has_test_attr = attr::contains_name(i.attrs, "test");
+    let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
 
     fn has_test_signature(i: @ast::Item) -> bool {
         match &i.node {
@@ -224,7 +228,7 @@ fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
 }
 
 fn is_bench_fn(i: @ast::Item) -> bool {
-    let has_bench_attr = attr::contains_name(i.attrs, "bench");
+    let has_bench_attr = attr::contains_name(i.attrs.as_slice(), "bench");
 
     fn has_test_signature(i: @ast::Item) -> bool {
         match i.node {
@@ -251,20 +255,22 @@ fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         attr.name().equiv(&("ignore")) && match attr.meta_item_list() {
-            Some(ref cfgs) => attr::test_cfg(cx.config, cfgs.iter().map(|x| *x)),
+            Some(ref cfgs) => {
+                attr::test_cfg(cx.config.as_slice(), cfgs.iter().map(|x| *x))
+            }
             None => true
         }
     })
 }
 
 fn should_fail(i: @ast::Item) -> bool {
-    attr::contains_name(i.attrs, "should_fail")
+    attr::contains_name(i.attrs.as_slice(), "should_fail")
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
     ast::Mod {
-        items: vec::append_one(m.items.clone(), testmod),
+        items: vec_ng::append_one(m.items.clone(), testmod),
         ..(*m).clone()
     }
 }
@@ -291,9 +297,9 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let id_test = token::str_to_ident("test");
     let vi = if cx.is_test_crate {
         ast::ViewItemUse(
-            ~[@nospan(ast::ViewPathSimple(id_test,
-                                          path_node(~[id_test]),
-                                          ast::DUMMY_NODE_ID))])
+            vec!(@nospan(ast::ViewPathSimple(id_test,
+                                             path_node(~[id_test]),
+                                             ast::DUMMY_NODE_ID))))
     } else {
         ast::ViewItemExternMod(id_test,
                                with_version("test"),
@@ -301,16 +307,21 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     };
     ast::ViewItem {
         node: vi,
-        attrs: ~[],
+        attrs: Vec::new(),
         vis: ast::Inherited,
         span: DUMMY_SP
     }
 }
 
-fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
+#[cfg(stage0)]
+fn mk_test_module(_: &TestCtxt) -> @ast::Item {
+    fail!("test disabled in this stage due to quasiquoter")
+}
 
+#[cfg(not(stage0))]
+fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // Link to test crate
-    let view_items = ~[mk_std(cx)];
+    let view_items = vec!(mk_std(cx));
 
     // A constant vector of test descriptors.
     let tests = mk_tests(cx);
@@ -326,7 +337,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
 
     let testmod = ast::Mod {
         view_items: view_items,
-        items: ~[mainfn, tests],
+        items: vec!(mainfn, tests),
     };
     let item_ = ast::ItemMod(testmod);
 
@@ -337,7 +348,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
 
     let item = ast::Item {
         ident: token::str_to_ident("__test"),
-        attrs: ~[resolve_unexported_attr],
+        attrs: vec!(resolve_unexported_attr),
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
@@ -377,6 +388,12 @@ fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
     }
 }
 
+#[cfg(stage0)]
+fn mk_tests(_: &TestCtxt) -> @ast::Item {
+    fail!("tests disabled in this stage due to quasiquoter")
+}
+
+#[cfg(not(stage0))]
 fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
@@ -389,14 +406,14 @@ fn mk_tests(cx: &TestCtxt) -> @ast::Item {
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crateid(krate.attrs) {
+    match attr::find_crateid(krate.attrs.as_slice()) {
         Some(ref s) if "test" == s.name => true,
         _ => false
     }
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    let mut descs = ~[];
+    let mut descs = Vec::new();
     {
         let testfns = cx.testfns.borrow();
         debug!("building test vector from {} tests", testfns.get().len());
@@ -418,6 +435,12 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
     }
 }
 
+#[cfg(stage0)]
+fn mk_test_desc_and_fn_rec(_: &TestCtxt, _: &Test) -> @ast::Expr {
+    fail!("tests disabled in this stage due to quasiquoter")
+}
+
+#[cfg(not(stage0))]
 fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
