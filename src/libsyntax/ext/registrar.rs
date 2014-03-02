@@ -15,15 +15,18 @@ use diagnostic;
 use visit;
 use visit::Visitor;
 
+use std::vec_ng::Vec;
+
 struct MacroRegistrarContext {
-    registrars: ~[(ast::NodeId, Span)],
+    registrars: Vec<(ast::NodeId, Span)> ,
 }
 
 impl Visitor<()> for MacroRegistrarContext {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match item.node {
             ast::ItemFn(..) => {
-                if attr::contains_name(item.attrs, "macro_registrar") {
+                if attr::contains_name(item.attrs.as_slice(),
+                                       "macro_registrar") {
                     self.registrars.push((item.id, item.span));
                 }
             }
@@ -36,7 +39,7 @@ impl Visitor<()> for MacroRegistrarContext {
 
 pub fn find_macro_registrar(diagnostic: @diagnostic::SpanHandler,
                             krate: &ast::Crate) -> Option<ast::DefId> {
-    let mut ctx = MacroRegistrarContext { registrars: ~[] };
+    let mut ctx = MacroRegistrarContext { registrars: Vec::new() };
     visit::walk_crate(&mut ctx, krate, ());
 
     match ctx.registrars.len() {

@@ -62,7 +62,7 @@
  */
 
 use std::io;
-use std::vec;
+use std::vec_ng::Vec;
 
 #[deriving(Clone, Eq)]
 pub enum Breaks {
@@ -119,7 +119,7 @@ pub fn tok_str(t: Token) -> ~str {
     }
 }
 
-pub fn buf_str(toks: ~[Token], szs: ~[int], left: uint, right: uint,
+pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
                lim: uint) -> ~str {
     let n = toks.len();
     assert_eq!(n, szs.len());
@@ -131,7 +131,7 @@ pub fn buf_str(toks: ~[Token], szs: ~[int], left: uint, right: uint,
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(format!("{}={}", szs[i], tok_str(toks[i].clone())));
+        s.push_str(format!("{}={}", szs.get(i), tok_str(toks.get(i).clone())));
         i += 1u;
         i %= n;
     }
@@ -156,9 +156,9 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
     // fall behind.
     let n: uint = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
-    let token: ~[Token] = vec::from_elem(n, Eof);
-    let size: ~[int] = vec::from_elem(n, 0);
-    let scan_stack: ~[uint] = vec::from_elem(n, 0u);
+    let token: Vec<Token> = Vec::from_elem(n, Eof);
+    let size: Vec<int> = Vec::from_elem(n, 0);
+    let scan_stack: Vec<uint> = Vec::from_elem(n, 0u);
     Printer {
         out: out,
         buf_len: n,
@@ -174,7 +174,7 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
         scan_stack_empty: true,
         top: 0,
         bottom: 0,
-        print_stack: ~[],
+        print_stack: Vec::new(),
         pending_indentation: 0
     }
 }
@@ -264,8 +264,8 @@ pub struct Printer {
     space: int, // number of spaces left on line
     left: uint, // index of left side of input stream
     right: uint, // index of right side of input stream
-    token: ~[Token], // ring-buffr stream goes through
-    size: ~[int], // ring-buffer of calculated sizes
+    token: Vec<Token> , // ring-buffr stream goes through
+    size: Vec<int> , // ring-buffer of calculated sizes
     left_total: int, // running size of stream "...left"
     right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
@@ -274,23 +274,23 @@ pub struct Printer {
     // Begin (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    scan_stack: ~[uint],
+    scan_stack: Vec<uint> ,
     scan_stack_empty: bool, // top==bottom disambiguator
     top: uint, // index of top of scan_stack
     bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    print_stack: ~[PrintStackElem],
+    print_stack: Vec<PrintStackElem> ,
     // buffered indentation to avoid writing trailing whitespace
     pending_indentation: int,
 }
 
 impl Printer {
     pub fn last_token(&mut self) -> Token {
-        self.token[self.right].clone()
+        (*self.token.get(self.right)).clone()
     }
     // be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
-        self.token[self.right] = t;
+        *self.token.get_mut(self.right) = t;
     }
     pub fn pretty_print(&mut self, t: Token) -> io::IoResult<()> {
         debug!("pp ~[{},{}]", self.left, self.right);
@@ -298,8 +298,9 @@ impl Printer {
           Eof => {
             if !self.scan_stack_empty {
                 self.check_stack(0);
-                let left = self.token[self.left].clone();
-                try!(self.advance_left(left, self.size[self.left]));
+                let left = (*self.token.get(self.left)).clone();
+                let left_size = *self.size.get(self.left);
+                try!(self.advance_left(left, left_size));
             }
             self.indent(0);
             Ok(())
@@ -313,8 +314,8 @@ impl Printer {
             } else { self.advance_right(); }
             debug!("pp Begin({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
-            self.token[self.right] = t;
-            self.size[self.right] = -self.right_total;
+            *self.token.get_mut(self.right) = t;
+            *self.size.get_mut(self.right) = -self.right_total;
             self.scan_push(self.right);
             Ok(())
           }
@@ -325,8 +326,8 @@ impl Printer {
             } else {
                 debug!("pp End/buffer ~[{},{}]", self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = t;
-                self.size[self.right] = -1;
+                *self.token.get_mut(self.right) = t;
+                *self.size.get_mut(self.right) = -1;
                 self.scan_push(self.right);
                 Ok(())
             }
@@ -342,8 +343,8 @@ impl Printer {
                    b.offset, self.left, self.right);
             self.check_stack(0);
             self.scan_push(self.right);
-            self.token[self.right] = t;
-            self.size[self.right] = -self.right_total;
+            *self.token.get_mut(self.right) = t;
+            *self.size.get_mut(self.right) = -self.right_total;
             self.right_total += b.blank_space;
             Ok(())
           }
@@ -356,8 +357,8 @@ impl Printer {
                 debug!("pp String('{}')/buffer ~[{},{}]",
                        *s, self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = t.clone();
-                self.size[self.right] = len;
+                *self.token.get_mut(self.right) = t.clone();
+                *self.size.get_mut(self.right) = len;
                 self.right_total += len;
                 self.check_stream()
             }
@@ -371,13 +372,15 @@ impl Printer {
             debug!("scan window is {}, longer than space on line ({})",
                    self.right_total - self.left_total, self.space);
             if !self.scan_stack_empty {
-                if self.left == self.scan_stack[self.bottom] {
+                if self.left == *self.scan_stack.get(self.bottom) {
                     debug!("setting {} to infinity and popping", self.left);
-                    self.size[self.scan_pop_bottom()] = SIZE_INFINITY;
+                    let scanned = self.scan_pop_bottom();
+                    *self.size.get_mut(scanned) = SIZE_INFINITY;
                 }
             }
-            let left = self.token[self.left].clone();
-            try!(self.advance_left(left, self.size[self.left]));
+            let left = (*self.token.get(self.left)).clone();
+            let left_size = *self.size.get(self.left);
+            try!(self.advance_left(left, left_size));
             if self.left != self.right {
                 try!(self.check_stream());
             }
@@ -393,26 +396,30 @@ impl Printer {
             self.top %= self.buf_len;
             assert!((self.top != self.bottom));
         }
-        self.scan_stack[self.top] = x;
+        *self.scan_stack.get_mut(self.top) = x;
     }
     pub fn scan_pop(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
-        let x = self.scan_stack[self.top];
+        let x = *self.scan_stack.get(self.top);
         if self.top == self.bottom {
             self.scan_stack_empty = true;
-        } else { self.top += self.buf_len - 1u; self.top %= self.buf_len; }
+        } else {
+            self.top += self.buf_len - 1u; self.top %= self.buf_len;
+        }
         return x;
     }
     pub fn scan_top(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
-        return self.scan_stack[self.top];
+        return *self.scan_stack.get(self.top);
     }
     pub fn scan_pop_bottom(&mut self) -> uint {
         assert!((!self.scan_stack_empty));
-        let x = self.scan_stack[self.bottom];
+        let x = *self.scan_stack.get(self.bottom);
         if self.top == self.bottom {
             self.scan_stack_empty = true;
-        } else { self.bottom += 1u; self.bottom %= self.buf_len; }
+        } else {
+            self.bottom += 1u; self.bottom %= self.buf_len;
+        }
         return x;
     }
     pub fn advance_right(&mut self) {
@@ -435,8 +442,9 @@ impl Printer {
             if self.left != self.right {
                 self.left += 1u;
                 self.left %= self.buf_len;
-                let left = self.token[self.left].clone();
-                try!(self.advance_left(left, self.size[self.left]));
+                let left = (*self.token.get(self.left)).clone();
+                let left_size = *self.size.get(self.left);
+                try!(self.advance_left(left, left_size));
             }
             ret
         } else {
@@ -446,22 +454,28 @@ impl Printer {
     pub fn check_stack(&mut self, k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
-            match self.token[x] {
-              Begin(_) => {
+            match self.token.get(x) {
+              &Begin(_) => {
                 if k > 0 {
-                    self.size[self.scan_pop()] = self.size[x] +
+                    let popped = self.scan_pop();
+                    *self.size.get_mut(popped) = *self.size.get(x) +
                         self.right_total;
                     self.check_stack(k - 1);
                 }
               }
-              End => {
+              &End => {
                 // paper says + not =, but that makes no sense.
-                self.size[self.scan_pop()] = 1;
+                let popped = self.scan_pop();
+                *self.size.get_mut(popped) = 1;
                 self.check_stack(k + 1);
               }
               _ => {
-                self.size[self.scan_pop()] = self.size[x] + self.right_total;
-                if k > 0 { self.check_stack(k); }
+                let popped = self.scan_pop();
+                *self.size.get_mut(popped) = *self.size.get(x) +
+                    self.right_total;
+                if k > 0 {
+                    self.check_stack(k);
+                }
               }
             }
         }
@@ -481,7 +495,7 @@ impl Printer {
         let print_stack = &mut self.print_stack;
         let n = print_stack.len();
         if n != 0u {
-            print_stack[n - 1u]
+            *print_stack.get(n - 1u)
         } else {
             PrintStackElem {
                 offset: 0,

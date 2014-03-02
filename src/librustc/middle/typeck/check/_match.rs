@@ -20,6 +20,7 @@ use middle::typeck::infer;
 use middle::typeck::require_same_types;
 
 use collections::{HashMap, HashSet};
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
@@ -40,7 +41,7 @@ pub fn check_match(fcx: @FnCtxt,
     for arm in arms.iter() {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(tcx.def_map, arm.pats[0]),
+            map: pat_id_map(tcx.def_map, *arm.pats.get(0)),
         };
 
         for p in arm.pats.iter() { check_pat(&mut pcx, *p, discrim_ty);}
@@ -108,13 +109,13 @@ pub struct pat_ctxt {
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
-                         subpats: &Option<~[@ast::Pat]>, expected: ty::t) {
+                         subpats: &Option<Vec<@ast::Pat>>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let arg_types;
+    let arg_types: ~[ty::t];
     let kind_name;
 
     // structure_of requires type variables to be resolved.
@@ -174,8 +175,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
                     arg_types = subpats.clone()
-                                          .unwrap_or_default()
-                                          .map(|_| ty::mk_err());
+                                       .unwrap_or_default()
+                                       .move_iter()
+                                       .map(|_| ty::mk_err())
+                                       .collect();
                 }
             }
         }
@@ -223,8 +226,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             fcx.write_error(pat.id);
             kind_name = "[error]";
             arg_types = subpats.clone()
-                                  .unwrap_or_default()
-                                  .map(|_| ty::mk_err());
+                               .unwrap_or_default()
+                               .iter()
+                               .map(|_| ty::mk_err())
+                               .collect();
         }
     }
 
@@ -509,7 +514,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         }
       }
       ast::PatIdent(_, ref path, _) => {
-        check_pat_variant(pcx, pat, path, &Some(~[]), expected);
+        check_pat_variant(pcx, pat, path, &Some(Vec::new()), expected);
       }
       ast::PatEnum(ref path, ref subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
@@ -521,12 +526,18 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         match *structure {
             ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
-                                 *fields, etc, cid, substs);
+                                 fields.as_slice(), etc, cid, substs);
             }
             ty::ty_enum(eid, ref substs) => {
-                check_struct_like_enum_variant_pat(
-                    pcx, pat.id, pat.span, expected, path, *fields, etc, eid,
-                    substs);
+                check_struct_like_enum_variant_pat(pcx,
+                                                   pat.id,
+                                                   pat.span,
+                                                   expected,
+                                                   path,
+                                                   fields.as_slice(),
+                                                   etc,
+                                                   eid,
+                                                   substs);
             }
             _ => {
                // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
@@ -540,9 +551,19 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 let def_map = tcx.def_map.borrow();
                 match def_map.get().find(&pat.id) {
                     Some(&ast::DefStruct(supplied_def_id)) => {
-                         check_struct_pat(pcx, pat.id, pat.span, ty::mk_err(), path, *fields, etc,
-                         supplied_def_id,
-                         &ty::substs { self_ty: None, tps: ~[], regions: ty::ErasedRegions} );
+                         check_struct_pat(pcx,
+                                          pat.id,
+                                          pat.span,
+                                          ty::mk_err(),
+                                          path,
+                                          fields.as_slice(),
+                                          etc,
+                                          supplied_def_id,
+                                          &ty::substs {
+                                              self_ty: None,
+                                              tps: ~[],
+                                              regions: ty::ErasedRegions,
+                                          });
                     }
                     _ => () // Error, but we're already in an error case
                 }

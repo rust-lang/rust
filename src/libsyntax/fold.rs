@@ -16,18 +16,20 @@ use parse::token;
 use opt_vec::OptVec;
 use util::small_vector::SmallVector;
 
+use std::vec_ng::Vec;
+
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {
     fn fold_crate(&mut self, c: Crate) -> Crate {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> ~[@MetaItem] {
-        meta_items.map(|x| fold_meta_item_(*x, self))
+    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> Vec<@MetaItem> {
+        meta_items.iter().map(|x| fold_meta_item_(*x, self)).collect()
     }
 
-    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> ~[@ViewPath] {
-        view_paths.map(|view_path| {
+    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> Vec<@ViewPath> {
+        view_paths.iter().map(|view_path| {
             let inner_view_path = match view_path.node {
                 ViewPathSimple(ref ident, ref path, node_id) => {
                     ViewPathSimple(ident.clone(),
@@ -60,7 +62,7 @@ pub trait Folder {
                 node: inner_view_path,
                 span: self.new_span(view_path.span),
             }
-        })
+        }).collect()
     }
 
     fn fold_view_item(&mut self, vi: &ViewItem) -> ViewItem {
@@ -275,7 +277,7 @@ pub trait Folder {
             node: match macro.node {
                 MacInvocTT(ref p, ref tts, ctxt) => {
                     MacInvocTT(self.fold_path(p),
-                               fold_tts(*tts, self),
+                               fold_tts(tts.as_slice(), self),
                                ctxt)
                 }
             },
@@ -283,8 +285,8 @@ pub trait Folder {
         }
     }
 
-    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> ~[@Expr] {
-        es.map(|x| f(*x))
+    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> Vec<@Expr> {
+        es.iter().map(|x| f(*x)).collect()
     }
 
     fn new_id(&mut self, i: NodeId) -> NodeId {
@@ -370,21 +372,21 @@ fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
 // since many token::IDENT are not necessary part of let bindings and most
 // token::LIFETIME are certainly not loop labels. But we can't tell in their
 // token form. So this is less ideal and hacky but it works.
-pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> ~[TokenTree] {
-    tts.map(|tt| {
+pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
+    tts.iter().map(|tt| {
         match *tt {
             TTTok(span, ref tok) =>
             TTTok(span,maybe_fold_ident(tok,fld)),
-            TTDelim(tts) => TTDelim(@fold_tts(*tts, fld)),
+            TTDelim(tts) => TTDelim(@fold_tts(tts.as_slice(), fld)),
             TTSeq(span, pattern, ref sep, is_optional) =>
             TTSeq(span,
-                  @fold_tts(*pattern, fld),
+                  @fold_tts(pattern.as_slice(), fld),
                   sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                   is_optional),
             TTNonterminal(sp,ref ident) =>
             TTNonterminal(sp,fld.fold_ident(*ident))
         }
-    })
+    }).collect()
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
@@ -518,7 +520,7 @@ pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
                               folder.new_id(node_id))
         }
         ViewItemUse(ref view_paths) => {
-            ViewItemUse(folder.fold_view_paths(*view_paths))
+            ViewItemUse(folder.fold_view_paths(view_paths.as_slice()))
         }
     };
     ViewItem {
@@ -881,7 +883,7 @@ mod test {
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State,
                         krate: &ast::Crate) -> io::IoResult<()> {
-        pprust::print_mod(s, &krate.module, krate.attrs)
+        pprust::print_mod(s, &krate.module, krate.attrs.as_slice())
     }
 
     // change every identifier to "zz"

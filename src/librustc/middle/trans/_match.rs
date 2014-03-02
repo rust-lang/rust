@@ -652,7 +652,9 @@ fn enter_opt<'r,'b>(
                     // FIXME: Must we clone?
                     match *subpats {
                         None => Some(vec::from_elem(variant_size, dummy)),
-                        _ => (*subpats).clone(),
+                        Some(ref subpats) => {
+                            Some((*subpats).iter().map(|x| *x).collect())
+                        }
                     }
                 } else {
                     None
@@ -719,8 +721,15 @@ fn enter_opt<'r,'b>(
                         let this_opt = vec_len(n, vec_len_ge(before.len()),
                                                (lo, hi));
                         if opt_eq(tcx, &this_opt, opt) {
-                            Some(vec::append_one((*before).clone(), slice) +
-                                    *after)
+                            let mut new_before = ~[];
+                            for pat in before.iter() {
+                                new_before.push(*pat);
+                            }
+                            new_before.push(slice);
+                            for pat in after.iter() {
+                                new_before.push(*pat);
+                            }
+                            Some(new_before)
                         } else {
                             None
                         }
@@ -728,7 +737,11 @@ fn enter_opt<'r,'b>(
                     None if i >= lo && i <= hi => {
                         let n = before.len();
                         if opt_eq(tcx, &vec_len(n, vec_len_eq, (lo,hi)), opt) {
-                            Some((*before).clone())
+                            let mut new_before = ~[];
+                            for pat in before.iter() {
+                                new_before.push(*pat);
+                            }
+                            Some(new_before)
                         } else {
                             None
                         }
@@ -811,7 +824,13 @@ fn enter_tup<'r,'b>(
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
-            ast::PatTup(ref elts) => Some((*elts).clone()),
+            ast::PatTup(ref elts) => {
+                let mut new_elts = ~[];
+                for elt in elts.iter() {
+                    new_elts.push((*elt).clone())
+                }
+                Some(new_elts)
+            }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -838,7 +857,9 @@ fn enter_tuple_struct<'r,'b>(
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
-            ast::PatEnum(_, Some(ref elts)) => Some((*elts).clone()),
+            ast::PatEnum(_, Some(ref elts)) => {
+                Some(elts.iter().map(|x| (*x)).collect())
+            }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -1094,7 +1115,7 @@ fn collect_record_or_struct_fields<'a>(
           ast::PatStruct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
               ty::ty_struct(..) => {
-                   extend(&mut fields, *fs);
+                   extend(&mut fields, fs.as_slice());
                    found = true;
               }
               _ => ()
@@ -1866,7 +1887,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     let mut matches = ~[];
     for arm in arms.iter() {
         let body = fcx.new_id_block("case_body", arm.body.id);
-        let bindings_map = create_bindings_map(bcx, arm.pats[0]);
+        let bindings_map = create_bindings_map(bcx, *arm.pats.get(0));
         let arm_data = ArmData {
             bodycx: body,
             arm: arm,
@@ -2172,7 +2193,7 @@ fn bind_irrefutable_pat<'a>(
                                                     val);
                     for sub_pat in sub_pats.iter() {
                         for (i, argval) in args.vals.iter().enumerate() {
-                            bcx = bind_irrefutable_pat(bcx, sub_pat[i],
+                            bcx = bind_irrefutable_pat(bcx, *sub_pat.get(i),
                                                        *argval, binding_mode,
                                                        cleanup_scope);
                         }

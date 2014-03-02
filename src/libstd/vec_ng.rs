@@ -15,6 +15,8 @@ use cast::{forget, transmute};
 use clone::Clone;
 use cmp::{Eq, Ordering, TotalEq, TotalOrd};
 use container::Container;
+use default::Default;
+use fmt;
 use iter::{DoubleEndedIterator, FromIterator, Iterator};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
@@ -26,7 +28,8 @@ use ptr::RawPtr;
 use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
-use vec::{ImmutableVector, Items, MutItems, MutableVector, RevItems};
+use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
+use vec::{RevItems};
 
 pub struct Vec<T> {
     priv len: uint,
@@ -79,6 +82,26 @@ impl<T: Clone> Vec<T> {
         for element in other.iter() {
             self.push((*element).clone())
         }
+    }
+
+
+    pub fn grow(&mut self, n: uint, initval: &T) {
+        let new_len = self.len() + n;
+        self.reserve(new_len);
+        let mut i: uint = 0u;
+
+        while i < n {
+            self.push((*initval).clone());
+            i += 1u;
+        }
+    }
+
+    pub fn grow_set(&mut self, index: uint, initval: &T, val: T) {
+        let l = self.len();
+        if index >= l {
+            self.grow(index - l + 1u, initval);
+        }
+        *self.get_mut(index) = val;
     }
 }
 
@@ -340,12 +363,32 @@ impl<T> Vec<T> {
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
         self.as_slice().slice_from(start)
     }
+
+    #[inline]
+    pub fn init<'a>(&'a self) -> &'a [T] {
+        self.slice(0, self.len() - 1)
+    }
+}
+
+impl<T:Eq> Vec<T> {
+    /// Return true if a vector contains an element with the given value
+    pub fn contains(&self, x: &T) -> bool {
+        self.as_slice().contains(x)
+    }
 }
 
 #[inline]
 pub fn append<T:Clone>(mut first: Vec<T>, second: &[T]) -> Vec<T> {
     first.push_all(second);
     first
+}
+
+/// Appends one element to the vector provided. The vector itself is then
+/// returned for use again.
+#[inline]
+pub fn append_one<T>(mut lhs: Vec<T>, x: T) -> Vec<T> {
+    lhs.push(x);
+    lhs
 }
 
 #[unsafe_destructor]
@@ -357,6 +400,18 @@ impl<T> Drop for Vec<T> {
             }
             free(self.ptr as *mut c_void)
         }
+    }
+}
+
+impl<T> Default for Vec<T> {
+    fn default() -> Vec<T> {
+        Vec::new()
+    }
+}
+
+impl<T:fmt::Show> fmt::Show for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_slice().fmt(f)
     }
 }
 

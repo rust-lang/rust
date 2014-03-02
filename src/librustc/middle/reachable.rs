@@ -44,7 +44,7 @@ fn generics_require_inlining(generics: &ast::Generics) -> bool {
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
 fn item_might_be_inlined(item: &ast::Item) -> bool {
-    if attributes_specify_inlining(item.attrs) {
+    if attributes_specify_inlining(item.attrs.as_slice()) {
         return true
     }
 
@@ -59,7 +59,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
 fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
-    if attributes_specify_inlining(method.attrs) ||
+    if attributes_specify_inlining(method.attrs.as_slice()) ||
         generics_require_inlining(&method.generics) {
         return true
     }
@@ -217,7 +217,7 @@ impl ReachableContext {
             }
             Some(ast_map::NodeMethod(method)) => {
                 if generics_require_inlining(&method.generics) ||
-                        attributes_specify_inlining(method.attrs) {
+                        attributes_specify_inlining(method.attrs.as_slice()) {
                     true
                 } else {
                     let impl_did = tcx.map.get_parent_did(node_id);
@@ -324,7 +324,7 @@ impl ReachableContext {
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
                     ast::ItemStatic(..) => {
-                        if attr::contains_name(item.attrs,
+                        if attr::contains_name(item.attrs.as_slice(),
                                                "address_insignificant") {
                             let mut reachable_symbols =
                                 self.reachable_symbols.borrow_mut();

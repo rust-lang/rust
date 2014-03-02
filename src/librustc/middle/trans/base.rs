@@ -1473,7 +1473,11 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys);
 
-    bcx = copy_args_to_allocas(&fcx, arg_scope, bcx, decl.inputs, arg_datums);
+    bcx = copy_args_to_allocas(&fcx,
+                               arg_scope,
+                               bcx,
+                               decl.inputs.as_slice(),
+                               arg_datums);
 
     bcx = maybe_load_env(bcx);
 
@@ -1637,7 +1641,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
         match variant.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, variant, *args,
+                trans_enum_variant(ccx, id, variant, args.as_slice(),
                                    disr_val, None, llfn);
             }
             ast::TupleVariantKind(_) => {
@@ -1667,10 +1671,16 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
         if purity == ast::ExternFn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
-                ccx, decl, body, item.attrs, llfndecl, item.id);
+                ccx, decl, body, item.attrs.as_slice(), llfndecl, item.id);
         } else if !generics.is_type_parameterized() {
             let llfn = get_item_val(ccx, item.id);
-            trans_fn(ccx, decl, body, llfn, None, item.id, item.attrs);
+            trans_fn(ccx,
+                     decl,
+                     body,
+                     llfn,
+                     None,
+                     item.id,
+                     item.attrs.as_slice());
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
@@ -1679,7 +1689,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
         }
       }
       ast::ItemImpl(ref generics, _, _, ref ms) => {
-        meth::trans_impl(ccx, item.ident, *ms, generics, item.id);
+        meth::trans_impl(ccx, item.ident, ms.as_slice(), generics, item.id);
       }
       ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
@@ -1695,7 +1705,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
-          if attr::contains_name(item.attrs, "static_assert") {
+          if attr::contains_name(item.attrs.as_slice(), "static_assert") {
               if m == ast::MutMutable {
                   ccx.sess.span_fatal(expr.span,
                                       "cannot have static_assert on a mutable \
@@ -1738,7 +1748,7 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::StructDef) {
         // otherwise this is a unit-like struct.
         Some(ctor_id) if struct_def.fields.len() > 0 => {
             let llfndecl = get_item_val(ccx, ctor_id);
-            trans_tuple_struct(ccx, struct_def.fields,
+            trans_tuple_struct(ccx, struct_def.fields.as_slice(),
                                ctor_id, None, llfndecl);
         }
         Some(_) | None => {}
@@ -1925,7 +1935,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
             let val = match item {
                 ast_map::NodeItem(i) => {
                     let ty = ty::node_id_to_type(ccx.tcx, i.id);
-                    let sym = exported_name(ccx, id, ty, i.attrs);
+                    let sym = exported_name(ccx, id, ty, i.attrs.as_slice());
 
                     let v = match i.node {
                         ast::ItemStatic(_, _, expr) => {
@@ -1974,7 +1984,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
                                 // Apply the `unnamed_addr` attribute if
                                 // requested
-                                if attr::contains_name(i.attrs,
+                                if attr::contains_name(i.attrs.as_slice(),
                                                        "address_insignificant"){
                                     {
                                         let reachable =
@@ -2006,7 +2016,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                     inlineable = true;
                                 }
 
-                                if attr::contains_name(i.attrs, "thread_local") {
+                                if attr::contains_name(i.attrs.as_slice(),
+                                                       "thread_local") {
                                     lib::llvm::set_thread_local(g, true);
                                 }
 
@@ -2034,14 +2045,16 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                                                            sym,
                                                                            i.id)
                             };
-                            set_llvm_fn_attrs(i.attrs, llfn);
+                            set_llvm_fn_attrs(i.attrs.as_slice(), llfn);
                             llfn
                         }
 
                         _ => fail!("get_item_val: weird result in table")
                     };
 
-                    match attr::first_attr_value_str_by_name(i.attrs, "link_section") {
+                    match attr::first_attr_value_str_by_name(i.attrs
+                                                              .as_slice(),
+                                                             "link_section") {
                         Some(sect) => unsafe {
                             sect.get().with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
@@ -2087,7 +2100,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             // with weak linkage, but if we're building a
                             // library then we've already declared the crate map
                             // so use that instead.
-                            if attr::contains_name(ni.attrs, "crate_map") {
+                            if attr::contains_name(ni.attrs.as_slice(),
+                                                   "crate_map") {
                                 if ccx.sess.building_library.get() {
                                     let s = "_rust_crate_map_toplevel";
                                     let g = unsafe {
@@ -2126,7 +2140,10 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             let ty = ty::node_id_to_type(ccx.tcx, id);
                             let parent = ccx.tcx.map.get_parent(id);
                             let enm = ccx.tcx.map.expect_item(parent);
-                            let sym = exported_name(ccx, id, ty, enm.attrs);
+                            let sym = exported_name(ccx,
+                                                    id,
+                                                    ty,
+                                                    enm.attrs.as_slice());
 
                             llfn = match enm.node {
                                 ast::ItemEnum(_, _) => {
@@ -2154,7 +2171,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             let parent = ccx.tcx.map.get_parent(id);
                             let struct_item = ccx.tcx.map.expect_item(parent);
                             let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
-                            let sym = exported_name(ccx, id, ty, struct_item.attrs);
+                            let sym = exported_name(ccx,
+                                                    id,
+                                                    ty,
+                                                    struct_item.attrs
+                                                               .as_slice());
                             let llfn = register_fn(ccx, struct_item.span,
                                                    sym, ctor_id, ty);
                             set_inline_hint(llfn);
@@ -2190,10 +2211,10 @@ fn register_method(ccx: @CrateContext, id: ast::NodeId,
                    m: &ast::Method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
-    let sym = exported_name(ccx, id, mty, m.attrs);
+    let sym = exported_name(ccx, id, mty, m.attrs.as_slice());
 
     let llfn = register_fn(ccx, m.span, sym, id, mty);
-    set_llvm_fn_attrs(m.attrs, llfn);
+    set_llvm_fn_attrs(m.attrs.as_slice(), llfn);
     llfn
 }
 

@@ -21,6 +21,8 @@ use ext::deriving::generic::*;
 use parse::token::InternedString;
 use parse::token;
 
+use std::vec_ng::Vec;
+
 pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
@@ -28,27 +30,26 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  push: |@Item|) {
     let trait_def = TraitDef {
         span: span,
-        attributes: ~[],
-        path: Path::new_(~["serialize", "Decodable"], None,
-                         ~[~Literal(Path::new_local("__D"))], true),
-        additional_bounds: ~[],
+        attributes: Vec::new(),
+        path: Path::new_(vec!("serialize", "Decodable"), None,
+                         vec!(~Literal(Path::new_local("__D"))), true),
+        additional_bounds: Vec::new(),
         generics: LifetimeBounds {
-            lifetimes: ~[],
-            bounds: ~[("__D", ~[Path::new(~["serialize", "Decoder"])])],
+            lifetimes: Vec::new(),
+            bounds: vec!(("__D", vec!(Path::new(vec!("serialize", "Decoder"))))),
         },
-        methods: ~[
+        methods: vec!(
             MethodDef {
                 name: "decode",
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
-                args: ~[Ptr(~Literal(Path::new_local("__D")),
-                            Borrowed(None, MutMutable))],
+                args: vec!(Ptr(~Literal(Path::new_local("__D")),
+                            Borrowed(None, MutMutable))),
                 ret_ty: Self,
                 inline: false,
                 const_nonmatching: true,
                 combine_substructure: decodable_substructure,
-            },
-        ]
+            })
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -57,13 +58,13 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
 fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let decoder = substr.nonself_args[0];
-    let recurse = ~[cx.ident_of("serialize"),
+    let recurse = vec!(cx.ident_of("serialize"),
                     cx.ident_of("Decodable"),
-                    cx.ident_of("decode")];
+                    cx.ident_of("decode"));
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_d");
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
-    let calldecode = cx.expr_call_global(trait_span, recurse, ~[blkdecoder]);
+    let calldecode = cx.expr_call_global(trait_span, recurse, vec!(blkdecoder));
     let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
     return match *substr.fields {
@@ -80,24 +81,24 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               summary,
                                               |cx, span, name, field| {
                 cx.expr_method_call(span, blkdecoder, read_struct_field,
-                                    ~[cx.expr_str(span, name),
+                                    vec!(cx.expr_str(span, name),
                                       cx.expr_uint(span, field),
-                                      lambdadecode])
+                                      lambdadecode))
             });
             cx.expr_method_call(trait_span,
                                 decoder,
                                 cx.ident_of("read_struct"),
-                                ~[
+                                vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
                 cx.expr_uint(trait_span, nfields),
                 cx.lambda_expr_1(trait_span, result, blkarg)
-            ])
+            ))
         }
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
 
-            let mut arms = ~[];
-            let mut variants = ~[];
+            let mut arms = Vec::new();
+            let mut variants = Vec::new();
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
             for (i, &(name, v_span, ref parts)) in fields.iter().enumerate() {
@@ -110,29 +111,29 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                    |cx, span, _, field| {
                     let idx = cx.expr_uint(span, field);
                     cx.expr_method_call(span, blkdecoder, rvariant_arg,
-                                        ~[idx, lambdadecode])
+                                        vec!(idx, lambdadecode))
                 });
 
                 arms.push(cx.arm(v_span,
-                                 ~[cx.pat_lit(v_span, cx.expr_uint(v_span, i))],
+                                 vec!(cx.pat_lit(v_span, cx.expr_uint(v_span, i))),
                                  decoded));
             }
 
             arms.push(cx.arm_unreachable(trait_span));
 
             let result = cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms);
-            let lambda = cx.lambda_expr(trait_span, ~[blkarg, variant], result);
+            let lambda = cx.lambda_expr(trait_span, vec!(blkarg, variant), result);
             let variant_vec = cx.expr_vec(trait_span, variants);
             let result = cx.expr_method_call(trait_span, blkdecoder,
                                              cx.ident_of("read_enum_variant"),
-                                             ~[variant_vec, lambda]);
+                                             vec!(variant_vec, lambda));
             cx.expr_method_call(trait_span,
                                 decoder,
                                 cx.ident_of("read_enum"),
-                                ~[
+                                vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
                 cx.lambda_expr_1(trait_span, result, blkarg)
-            ])
+            ))
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in deriving(Decodable)")
     };

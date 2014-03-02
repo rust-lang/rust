@@ -298,7 +298,8 @@ impl CFGBuilder {
                 let mut guard_exit = discr_exit;
                 for arm in arms.iter() {
                     guard_exit = self.opt_expr(arm.guard, guard_exit); // 2
-                    let pats_exit = self.pats_any(arm.pats, guard_exit); // 3
+                    let pats_exit = self.pats_any(arm.pats.as_slice(),
+                                                  guard_exit); // 3
                     let body_exit = self.block(arm.body, pats_exit);    // 4
                     self.add_contained_edge(body_exit, expr_exit);       // 5
                 }
@@ -348,15 +349,15 @@ impl CFGBuilder {
             }
 
             ast::ExprVec(ref elems, _) => {
-                self.straightline(expr, pred, *elems)
+                self.straightline(expr, pred, elems.as_slice())
             }
 
             ast::ExprCall(func, ref args) => {
-                self.call(expr, pred, func, *args)
+                self.call(expr, pred, func, args.as_slice())
             }
 
             ast::ExprMethodCall(_, _, ref args) => {
-                self.call(expr, pred, args[0], args.slice_from(1))
+                self.call(expr, pred, *args.get(0), args.slice_from(1))
             }
 
             ast::ExprIndex(l, r) |
@@ -369,7 +370,7 @@ impl CFGBuilder {
             }
 
             ast::ExprTup(ref exprs) => {
-                self.straightline(expr, pred, *exprs)
+                self.straightline(expr, pred, exprs.as_slice())
             }
 
             ast::ExprStruct(_, ref fields, base) => {

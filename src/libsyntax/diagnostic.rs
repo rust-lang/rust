@@ -325,7 +325,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     if lines.lines.len() == 1u {
         let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0u;
-        let mut num = (lines.lines[0] + 1u) / 10u;
+        let mut num = (*lines.lines.get(0) + 1u) / 10u;
 
         // how many digits must be indent past?
         while num > 0u { num /= 10u; digits += 1u; }
@@ -337,7 +337,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
         for _ in range(0, skip) { s.push_char(' '); }
-        let orig = fm.get_line(lines.lines[0] as int);
+        let orig = fm.get_line(*lines.lines.get(0) as int);
         for pos in range(0u, left-skip) {
             let curChar = orig[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on

@@ -21,6 +21,7 @@ use parse::parser::Parser;
 use std::cell::RefCell;
 use std::io::File;
 use std::str;
+use std::vec_ng::Vec;
 
 pub mod lexer;
 pub mod parser;
@@ -42,7 +43,7 @@ pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     span_diagnostic: @SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<~[Path]>,
+    included_mod_stack: RefCell<Vec<Path> >,
 }
 
 pub fn new_parse_sess() -> @ParseSess {
@@ -50,7 +51,7 @@ pub fn new_parse_sess() -> @ParseSess {
     @ParseSess {
         cm: cm,
         span_diagnostic: mk_span_handler(default_handler(), cm),
-        included_mod_stack: RefCell::new(~[]),
+        included_mod_stack: RefCell::new(Vec::new()),
     }
 }
 
@@ -60,7 +61,7 @@ pub fn new_parse_sess_special_handler(sh: @SpanHandler,
     @ParseSess {
         cm: cm,
         span_diagnostic: sh,
-        included_mod_stack: RefCell::new(~[]),
+        included_mod_stack: RefCell::new(Vec::new()),
     }
 }
 
@@ -82,7 +83,7 @@ pub fn parse_crate_attrs_from_file(
     input: &Path,
     cfg: ast::CrateConfig,
     sess: @ParseSess
-) -> ~[ast::Attribute] {
+) -> Vec<ast::Attribute> {
     let mut parser = new_parser_from_file(sess, cfg, input);
     let (inner, _) = parser.parse_inner_attrs_and_next();
     return inner;
@@ -104,7 +105,7 @@ pub fn parse_crate_attrs_from_source_str(name: ~str,
                                          source: ~str,
                                          cfg: ast::CrateConfig,
                                          sess: @ParseSess)
-                                         -> ~[ast::Attribute] {
+                                         -> Vec<ast::Attribute> {
     let mut p = new_parser_from_source_str(sess,
                                            cfg,
                                            name,
@@ -144,7 +145,7 @@ pub fn parse_meta_from_source_str(name: ~str,
 pub fn parse_stmt_from_source_str(name: ~str,
                                   source: ~str,
                                   cfg: ast::CrateConfig,
-                                  attrs: ~[ast::Attribute],
+                                  attrs: Vec<ast::Attribute> ,
                                   sess: @ParseSess)
                                   -> @ast::Stmt {
     let mut p = new_parser_from_source_str(
@@ -160,7 +161,7 @@ pub fn parse_tts_from_source_str(name: ~str,
                                  source: ~str,
                                  cfg: ast::CrateConfig,
                                  sess: @ParseSess)
-                                 -> ~[ast::TokenTree] {
+                                 -> Vec<ast::TokenTree> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -214,7 +215,7 @@ pub fn filemap_to_parser(sess: @ParseSess,
 // compiler expands into it
 pub fn new_parser_from_tts(sess: @ParseSess,
                      cfg: ast::CrateConfig,
-                     tts: ~[ast::TokenTree]) -> Parser {
+                     tts: Vec<ast::TokenTree> ) -> Parser {
     tts_to_parser(sess,tts,cfg)
 }
 
@@ -256,10 +257,10 @@ pub fn string_to_filemap(sess: @ParseSess, source: ~str, path: ~str)
 
 // given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: @ParseSess, filemap: @FileMap)
-    -> ~[ast::TokenTree] {
+    -> Vec<ast::TokenTree> {
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
-    let cfg = ~[];
+    let cfg = Vec::new();
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
     let mut p1 = Parser(sess, cfg, ~srdr);
     p1.parse_all_token_trees()
@@ -267,7 +268,7 @@ pub fn filemap_to_tts(sess: @ParseSess, filemap: @FileMap)
 
 // given tts and cfg, produce a parser
 pub fn tts_to_parser(sess: @ParseSess,
-                     tts: ~[ast::TokenTree],
+                     tts: Vec<ast::TokenTree> ,
                      cfg: ast::CrateConfig) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
     Parser(sess, cfg, ~trdr)
@@ -288,6 +289,7 @@ mod test {
     use std::io;
     use std::io::MemWriter;
     use std::str;
+    use std::vec_ng::Vec;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
     use ast;
@@ -318,13 +320,13 @@ mod test {
                     node: ast::ExprPath(ast::Path {
                         span: sp(0, 1),
                         global: false,
-                        segments: ~[
+                        segments: vec!(
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
                                 lifetimes: opt_vec::Empty,
                                 types: opt_vec::Empty,
                             }
-                        ],
+                        ),
                     }),
                     span: sp(0, 1)
                    })
@@ -337,7 +339,7 @@ mod test {
                     node: ast::ExprPath(ast::Path {
                             span: sp(0, 6),
                             global: true,
-                            segments: ~[
+                            segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
                                     lifetimes: opt_vec::Empty,
@@ -348,7 +350,7 @@ mod test {
                                     lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
-                            ]
+                            )
                         }),
                     span: sp(0, 6)
                    })
@@ -362,27 +364,28 @@ mod test {
     // check the token-tree-ization of macros
     #[test] fn string_to_tts_macro () {
         let tts = string_to_tts(~"macro_rules! zip (($a)=>($a))");
-        let tts: &[ast::TokenTree] = tts;
+        let tts: &[ast::TokenTree] = tts.as_slice();
         match tts {
             [ast::TTTok(_,_),
              ast::TTTok(_,token::NOT),
              ast::TTTok(_,_),
              ast::TTDelim(delim_elts)] => {
-                let delim_elts: &[ast::TokenTree] = *delim_elts;
+                let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
                 match delim_elts {
                     [ast::TTTok(_,token::LPAREN),
                      ast::TTDelim(first_set),
                      ast::TTTok(_,token::FAT_ARROW),
                      ast::TTDelim(second_set),
                      ast::TTTok(_,token::RPAREN)] => {
-                        let first_set: &[ast::TokenTree] = *first_set;
+                        let first_set: &[ast::TokenTree] =
+                            first_set.as_slice();
                         match first_set {
                             [ast::TTTok(_,token::LPAREN),
                              ast::TTTok(_,token::DOLLAR),
                              ast::TTTok(_,_),
                              ast::TTTok(_,token::RPAREN)] => {
                                 let second_set: &[ast::TokenTree] =
-                                    *second_set;
+                                    second_set.as_slice();
                                 match second_set {
                                     [ast::TTTok(_,token::LPAREN),
                                      ast::TTTok(_,token::DOLLAR),
@@ -550,13 +553,13 @@ mod test {
                         node:ast::ExprPath(ast::Path{
                             span: sp(7, 8),
                             global: false,
-                            segments: ~[
+                            segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
                                     lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
-                            ],
+                            ),
                         }),
                         span:sp(7,8)
                     })),
@@ -572,13 +575,13 @@ mod test {
                            node: ast::ExprPath(ast::Path {
                                span:sp(0,1),
                                global:false,
-                               segments: ~[
+                               segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     lifetimes: opt_vec::Empty,
                                     types: opt_vec::Empty,
                                 }
-                               ],
+                               ),
                             }),
                            span: sp(0,1)},
                                            ast::DUMMY_NODE_ID),
@@ -599,13 +602,13 @@ mod test {
                                 ast::Path {
                                     span:sp(0,1),
                                     global:false,
-                                    segments: ~[
+                                    segments: vec!(
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
                                             lifetimes: opt_vec::Empty,
                                             types: opt_vec::Empty,
                                         }
-                                    ],
+                                    ),
                                 },
                                 None /* no idea */),
                              span: sp(0,1)});
@@ -618,22 +621,22 @@ mod test {
         assert!(string_to_item(~"fn a (b : int) { b; }") ==
                   Some(
                       @ast::Item{ident:str_to_ident("a"),
-                            attrs:~[],
+                            attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
                             node: ast::ItemFn(ast::P(ast::FnDecl {
-                                inputs: ~[ast::Arg{
+                                inputs: vec!(ast::Arg{
                                     ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                        node: ast::TyPath(ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        segments: ~[
+                                        segments: vec!(
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
                                                 lifetimes: opt_vec::Empty,
                                                 types: opt_vec::Empty,
                                             }
-                                        ],
+                                        ),
                                         }, None, ast::DUMMY_NODE_ID),
                                         span:sp(10,13)
                                     }),
@@ -644,21 +647,21 @@ mod test {
                                             ast::Path {
                                                 span:sp(6,7),
                                                 global:false,
-                                                segments: ~[
+                                                segments: vec!(
                                                     ast::PathSegment {
                                                         identifier:
                                                             str_to_ident("b"),
                                                         lifetimes: opt_vec::Empty,
                                                         types: opt_vec::Empty,
                                                     }
-                                                ],
+                                                ),
                                             },
                                             None // no idea
                                         ),
                                         span: sp(6,7)
                                     },
                                     id: ast::DUMMY_NODE_ID
-                                }],
+                                }),
                                 output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                        node: ast::TyNil,
                                                        span:sp(15,15)}), // not sure
@@ -672,15 +675,15 @@ mod test {
                                         ty_params: opt_vec::Empty,
                                     },
                                     ast::P(ast::Block {
-                                        view_items: ~[],
-                                        stmts: ~[@Spanned{
+                                        view_items: Vec::new(),
+                                        stmts: vec!(@Spanned{
                                             node: ast::StmtSemi(@ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprPath(
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
-                                                        segments: ~[
+                                                        segments: vec!(
                                                             ast::PathSegment {
                                                                 identifier:
                                                                 str_to_ident(
@@ -690,11 +693,11 @@ mod test {
                                                                 types:
                                                                 opt_vec::Empty
                                                             }
-                                                        ],
+                                                        ),
                                                       }),
                                                 span: sp(17,18)},
                                                 ast::DUMMY_NODE_ID),
-                                            span: sp(17,18)}],
+                                            span: sp(17,18)}),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::DefaultBlock, // no idea

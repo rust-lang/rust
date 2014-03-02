@@ -690,7 +690,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     {
         let mut scope_map = fn_debug_context.scope_map.borrow_mut();
         populate_scope_map(cx,
-                           arg_pats,
+                           arg_pats.as_slice(),
                            top_level_block,
                            fn_metadata,
                            scope_map.get());
@@ -2650,7 +2650,7 @@ fn populate_scope_map(cx: &CrateContext,
                 // they all must contain the same binding names
 
                 for arm_ref in arms.iter() {
-                    let arm_span = arm_ref.pats[0].span;
+                    let arm_span = arm_ref.pats.get(0).span;
 
                     with_new_scope(cx,
                                    arm_span,
