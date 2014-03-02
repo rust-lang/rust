@@ -1630,13 +1630,13 @@ impl<'a> fmt::Show for Source<'a> {
             try!(write!(fmt.buf, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
         }
         try!(write!(fmt.buf, "</pre>"));
-        try!(write!(fmt.buf, "{}", highlight::highlight(s.as_slice())));
+        try!(write!(fmt.buf, "{}", highlight::highlight(s.as_slice(), None)));
         Ok(())
     }
 }
 
 fn item_macro(w: &mut Writer, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(write!(w, "<pre class='macro'>{}</pre>", t.source));
+    try!(w.write_str(highlight::highlight(t.source, Some("macro"))));
     document(w, it)
 }
