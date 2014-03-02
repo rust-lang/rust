@@ -146,7 +146,7 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
                 };
 
                 if !rendered {
-                    let output = highlight::highlight(text).to_c_str();
+                    let output = highlight::highlight(text, None).to_c_str();
                     output.with_ref(|r| {
                         bufputs(ob, r)
                     })
