@@ -670,7 +670,7 @@ pub fn fresh_name(src: &ast::Ident) -> Name {
     // following: debug version. Could work in final except that it's incompatible with
     // good error messages and uses of struct names in ambiguous could-be-binding
     // locations. Also definitely destroys the guarantee given above about ptr_eq.
-    /*let num = rand::rng().gen_uint_range(0,0xffff);
+    /*let num = rand::task_rng().gen_uint_range(0,0xffff);
     gensym(format!("{}_{}",ident_to_str(src),num))*/
 }
 

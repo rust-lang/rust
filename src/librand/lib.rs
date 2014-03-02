@@ -50,7 +50,7 @@ randomness.
 ```rust
 use rand::Rng;
 
-let mut rng = rand::rng();
+let mut rng = rand::task_rng();
 if rng.gen() { // bool
     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
 }
@@ -396,6 +396,7 @@ pub trait SeedableRng<Seed>: Rng {
 /// operation. If one does not require high performance generation of
 /// random numbers, `task_rng` and/or `random` may be more
 /// appropriate.
+#[deprecated="use `task_rng` or `StdRng::new`"]
 pub fn rng() -> StdRng {
     StdRng::new()
 }
@@ -411,14 +412,26 @@ pub struct StdRng { priv rng: IsaacRng }
 pub struct StdRng { priv rng: Isaac64Rng }
 
 impl StdRng {
-    /// Create a randomly seeded instance of `StdRng`. This reads
-    /// randomness from the OS to seed the PRNG.
+    /// Create a randomly seeded instance of `StdRng`.
+    ///
+    /// This is a very expensive operation as it has to read
+    /// randomness from the operating system and use this in an
+    /// expensive seeding operation. If one is only generating a small
+    /// number of random numbers, or doesn't need the utmost speed for
+    /// generating each number, `task_rng` and/or `random` may be more
+    /// appropriate.
     #[cfg(not(target_word_size="64"))]
     pub fn new() -> StdRng {
         StdRng { rng: IsaacRng::new() }
     }
-    /// Create a randomly seeded instance of `StdRng`. This reads
-    /// randomness from the OS to seed the PRNG.
+    /// Create a randomly seeded instance of `StdRng`.
+    ///
+    /// This is a very expensive operation as it has to read
+    /// randomness from the operating system and use this in an
+    /// expensive seeding operation. If one is only generating a small
+    /// number of random numbers, or doesn't need the utmost speed for
+    /// generating each number, `task_rng` and/or `random` may be more
+    /// appropriate.
     #[cfg(target_word_size="64")]
     pub fn new() -> StdRng {
         StdRng { rng: Isaac64Rng::new() }
