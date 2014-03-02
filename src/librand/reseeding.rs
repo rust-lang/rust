@@ -11,9 +11,8 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use container::Container;
-use default::Default;
-use rand::{Rng, SeedableRng};
+use std::default::Default;
+use {Rng, SeedableRng};
 
 /// How many bytes of entropy the underling RNG is allowed to generate
 /// before it is reseeded.
@@ -101,9 +100,8 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::{Rng, SeedableRng};
-/// use std::rand::reseeding::{Reseeder, ReseedingRng};
+/// use rand::{Rng, SeedableRng};
+/// use rand::reseeding::{Reseeder, ReseedingRng};
 ///
 /// struct TickTockReseeder { tick: bool }
 /// impl Reseeder<rand::StdRng> for TickTockReseeder {
@@ -142,10 +140,9 @@ impl Default for ReseedWithDefault {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-    use super::*;
-    use default::Default;
-    use rand::{SeedableRng, Rng};
+    use super::{ReseedingRng, ReseedWithDefault};
+    use std::default::Default;
+    use {SeedableRng, Rng};
 
     struct Counter {
         i: u32
@@ -205,7 +202,7 @@ mod test {
     static fill_bytes_v_len: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
-        use rand::task_rng;
+        use task_rng;
         let mut v = ~[0u8, .. fill_bytes_v_len];
         task_rng().fill_bytes(v);
 
