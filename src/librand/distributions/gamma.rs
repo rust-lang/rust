@@ -10,9 +10,9 @@
 
 //! The Gamma and derived distributions.
 
-use num::Float;
-use num;
-use rand::{Rng, Open01};
+use std::num::Float;
+use std::num;
+use {Rng, Open01};
 use super::normal::StandardNormal;
 use super::{IndependentSample, Sample, Exp};
 
@@ -20,7 +20,7 @@ use super::{IndependentSample, Sample, Exp};
 ///
 /// The density function of this distribution is
 ///
-/// ```ignore
+/// ```notrust
 /// f(x) =  x^(k - 1) * exp(-x / θ) / (Γ(k) * θ^k)
 /// ```
 ///
@@ -35,8 +35,7 @@ use super::{IndependentSample, Sample, Exp};
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{IndependentSample, Gamma};
+/// use rand::distributions::{IndependentSample, Gamma};
 ///
 /// let gamma = Gamma::new(2.0, 5.0);
 /// let v = gamma.ind_sample(&mut rand::task_rng());
@@ -179,8 +178,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{ChiSquared, IndependentSample};
+/// use rand::distributions::{ChiSquared, IndependentSample};
 ///
 /// let chi = ChiSquared::new(11.0);
 /// let v = chi.ind_sample(&mut rand::task_rng());
@@ -231,8 +229,7 @@ impl IndependentSample<f64> for ChiSquared {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{FisherF, IndependentSample};
+/// use rand::distributions::{FisherF, IndependentSample};
 ///
 /// let f = FisherF::new(2.0, 32.0);
 /// let v = f.ind_sample(&mut rand::task_rng());
@@ -275,8 +272,7 @@ impl IndependentSample<f64> for FisherF {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{StudentT, IndependentSample};
+/// use rand::distributions::{StudentT, IndependentSample};
 ///
 /// let t = StudentT::new(11.0);
 /// let v = t.ind_sample(&mut rand::task_rng());
@@ -310,10 +306,9 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
-    use rand::distributions::*;
-    use prelude::*;
-    use rand::*;
-    use super::*;
+    use distributions::{Sample, IndependentSample};
+    use {Rng, task_rng};
+    use super::{ChiSquared, StudentT, FisherF};
 
     #[test]
     fn test_chi_squared_one() {
@@ -344,7 +339,7 @@ mod test {
     }
     #[test]
     #[should_fail]
-    fn test_log_normal_invalid_dof() {
+    fn test_chi_squared_invalid_dof() {
         ChiSquared::new(-1.0);
     }
 
@@ -373,11 +368,10 @@ mod test {
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use mem::size_of;
-    use prelude::*;
-    use rand::distributions::IndependentSample;
-    use rand::{StdRng, RAND_BENCH_N};
-    use super::*;
+    use std::mem::size_of;
+    use distributions::IndependentSample;
+    use {StdRng, RAND_BENCH_N};
+    use super::Gamma;
 
 
     #[bench]

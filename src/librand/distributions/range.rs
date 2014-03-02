@@ -12,10 +12,9 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use cmp::Ord;
-use num::Bounded;
-use rand::Rng;
-use rand::distributions::{Sample, IndependentSample};
+use std::num::Bounded;
+use Rng;
+use distributions::{Sample, IndependentSample};
 
 /// Sample values uniformly between two bounds.
 ///
@@ -34,8 +33,7 @@ use rand::distributions::{Sample, IndependentSample};
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{IndependentSample, Range};
+/// use rand::distributions::{IndependentSample, Range};
 ///
 /// fn main() {
 ///     let between = Range::new(10u, 10000u);
@@ -163,11 +161,10 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use super::*;
-    use rand::*;
-    use rand::distributions::*;
-    use num::Bounded;
+    use distributions::{Sample, IndependentSample};
+    use {Rng, task_rng};
+    use super::Range;
+    use std::num::Bounded;
 
     #[should_fail]
     #[test]

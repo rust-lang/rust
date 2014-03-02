@@ -20,14 +20,9 @@ that do not need to record state.
 
 */
 
-use container::Container;
-use iter::{range, Iterator};
-use option::{Some, None};
-use num;
-use num::CheckedAdd;
-use rand::{Rng, Rand};
-use clone::Clone;
-use vec::MutableVector;
+use std::num;
+use std::num::CheckedAdd;
+use {Rng, Rand};
 
 pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
@@ -94,8 +89,7 @@ pub struct Weighted<T> {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{Weighted, WeightedChoice, IndependentSample};
+/// use rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 ///
 /// let wc = WeightedChoice::new(~[Weighted { weight: 2, item: 'a' },
 ///                                Weighted { weight: 4, item: 'b' },
@@ -253,9 +247,8 @@ fn ziggurat<R:Rng>(
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use rand::*;
-    use super::*;
+    use {task_rng, Rng, Rand};
+    use super::{RandSample, WeightedChoice, Weighted, Sample, IndependentSample};
 
     #[deriving(Eq, Show)]
     struct ConstRand(uint);
