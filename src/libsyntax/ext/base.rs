@@ -405,11 +405,13 @@ impl<'a> ExtCtxt<'a> {
     }
 }
 
-/// Extract a string literal from `expr`, emitting `err_msg` if `expr`
-/// is not a string literal. This does not stop compilation on error,
-/// merely emits a non-fatal error and returns None.
-pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str)
+/// Extract a string literal from the macro expanded version of `expr`,
+/// emitting `err_msg` if `expr` is not a string literal. This does not stop
+/// compilation on error, merely emits a non-fatal error and returns None.
+pub fn expr_to_str(cx: &mut ExtCtxt, expr: @ast::Expr, err_msg: &str)
                    -> Option<(InternedString, ast::StrStyle)> {
+    // we want to be able to handle e.g. concat("foo", "bar")
+    let expr = cx.expand_expr(expr);
     match expr.node {
         ast::ExprLit(l) => match l.node {
             ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
@@ -457,7 +459,7 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 
 /// Extract comma-separated expressions from `tts`. If there is a
 /// parsing error, emit a non-fatal error and return None.
-pub fn get_exprs_from_tts(cx: &ExtCtxt,
+pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
                           sp: Span,
                           tts: &[ast::TokenTree]) -> Option<Vec<@ast::Expr> > {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
@@ -471,7 +473,7 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
             cx.span_err(sp, "expected token: `,`");
             return None;
         }
-        es.push(p.parse_expr());
+        es.push(cx.expand_expr(p.parse_expr()));
     }
     Some(es)
 }
@@ -481,9 +483,6 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
 // environment.
 
 // This environment maps Names to SyntaxExtensions.
-
-// Actually, the following implementation is parameterized
-// by both key and value types.
 
 //impl question: how to implement it? Initially, the
 // env will contain only macros, so it might be painful
@@ -498,14 +497,6 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
 struct MapChainFrame {
     info: BlockInfo,
     map: HashMap<Name, SyntaxExtension>,
-}
-
-#[unsafe_destructor]
-impl Drop for MapChainFrame {
-    fn drop(&mut self) {
-        // make sure that syntax extension dtors run before we drop the libs
-        self.map.clear();
-    }
 }
 
 // Only generic to make it easy to test
