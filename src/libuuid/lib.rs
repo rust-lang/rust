@@ -780,7 +780,7 @@ mod test {
 
     #[test]
     fn test_rand_rand() {
-        let mut rng = rand::rng();
+        let mut rng = rand::task_rng();
         let u: ~Uuid = rand::Rand::rand(&mut rng);
         let ub = u.as_bytes();
 

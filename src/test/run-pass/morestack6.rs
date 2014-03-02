@@ -67,7 +67,7 @@ pub fn main() {
         calllink08,
         calllink10
     ];
-    let mut rng = rand::rng();
+    let mut rng = rand::task_rng();
     for f in fns.iter() {
         let f = *f;
         let sz = rng.gen::<u32>() % 256u32 + 256u32;
