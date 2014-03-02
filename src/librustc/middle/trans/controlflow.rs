@@ -18,8 +18,6 @@ use middle::trans::debuginfo;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
-use middle::ty;
-use util::ppaux;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
@@ -327,67 +325,23 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_fail_expr<'a>(
-                       bcx: &'a Block<'a>,
-                       sp_opt: Option<Span>,
-                       fail_expr: Option<@ast::Expr>)
-                       -> &'a Block<'a> {
-    let _icx = push_ctxt("trans_fail_expr");
-    let mut bcx = bcx;
-    match fail_expr {
-        Some(arg_expr) => {
-            let ccx = bcx.ccx();
-            let tcx = ccx.tcx;
-            let arg_datum =
-                unpack_datum!(bcx, expr::trans_to_lvalue(bcx, arg_expr, "fail"));
-
-            if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _) = arg_datum.get_vec_base_and_len(bcx);
-                return trans_fail_value(bcx, sp_opt, lldata);
-            } else if bcx.unreachable.get() || ty::type_is_bot(arg_datum.ty) {
-                return bcx;
-            } else {
-                bcx.sess().span_bug(
-                    arg_expr.span, ~"fail called with unsupported type " +
-                    ppaux::ty_to_str(tcx, arg_datum.ty));
-            }
-        }
-        _ => trans_fail(bcx, sp_opt, InternedString::new("explicit failure"))
-    }
-}
-
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
-                  sp_opt: Option<Span>,
+                  sp: Span,
                   fail_str: InternedString)
                   -> &'a Block<'a> {
-    let _icx = push_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
-    return trans_fail_value(bcx, sp_opt, V_fail_str);
-}
-
-fn trans_fail_value<'a>(
-                    bcx: &'a Block<'a>,
-                    sp_opt: Option<Span>,
-                    V_fail_str: ValueRef)
-                    -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
-    let (V_filename, V_line) = match sp_opt {
-      Some(sp) => {
-        let sess = bcx.sess();
-        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), token::intern_and_get_ident(loc.file.name)),
-         loc.line as int)
-      }
-      None => {
-        (C_cstr(bcx.ccx(), InternedString::new("<runtime>")), 0)
-      }
-    };
+    let sess = bcx.sess();
+    let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
+    let V_filename = C_cstr(bcx.ccx(),
+                            token::intern_and_get_ident(loc.file.name));
+    let V_line = loc.line as int;
     let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
     let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let did = langcall(bcx, sp_opt, "", FailFnLangItem);
+    let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
