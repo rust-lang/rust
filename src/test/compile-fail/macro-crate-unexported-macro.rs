@@ -11,6 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 // ignore-android
+// ignore-cross-compile #12102
 
 #[feature(phase)];
 
