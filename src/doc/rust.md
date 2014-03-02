@@ -3422,6 +3422,17 @@ impl Printable for ~str {
 `self` refers to the value of type `~str` that is the receiver for a
 call to the method `make_string`.
 
+The `self` argument may be destructured using `self @ pattern` syntax.
+For example:
+
+~~~~
+struct Foo(uint);
+
+impl Foo {
+    fn b(&self@&Foo(ref u)) { ... }
+} 
+~~~~
+
 ## Type kinds
 
 Types in Rust are categorized into kinds, based on various properties of the components of the type.

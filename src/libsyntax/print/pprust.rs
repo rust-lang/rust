@@ -1786,14 +1786,15 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) -> io::IoResult<()> {
 
 pub fn explicit_self_to_str(explicit_self: &ast::ExplicitSelf_) -> ~str {
     to_str(explicit_self, |a, &b| {
-        print_explicit_self(a, b, ast::MutImmutable).map(|_| ())
+        print_explicit_self(a, b, ast::MutImmutable, None).map(|_| ())
     })
 }
 
 // Returns whether it printed anything
 fn print_explicit_self(s: &mut State,
                        explicit_self: ast::ExplicitSelf_,
-                       mutbl: ast::Mutability) -> io::IoResult<bool> {
+                       mutbl: ast::Mutability,
+                       self_pat: Option<P<ast::Pat>>) -> io::IoResult<bool> {
     try!(print_mutability(s, mutbl));
     match explicit_self {
         ast::SelfStatic => { return Ok(false); }
@@ -1809,6 +1810,13 @@ fn print_explicit_self(s: &mut State,
             try!(print_mutability(s, m));
             try!(word(&mut s.s, "self"));
         }
+    }
+    match self_pat {
+        Some(pat) => {
+            try!(word(&mut s.s, "@"));
+            try!(print_pat(s, pat));
+        }
+        None => ()
     }
     return Ok(true);
 }
@@ -1840,14 +1848,14 @@ pub fn print_fn_args(s: &mut State, decl: &ast::FnDecl,
     try!(rbox(s, 0u, Inconsistent));
     let mut first = true;
     for &explicit_self in opt_explicit_self.iter() {
-        let m = match explicit_self {
-            ast::SelfStatic => ast::MutImmutable,
+        let (m,self_pat) = match explicit_self {
+            ast::SelfStatic => (ast::MutImmutable,None),
             _ => match decl.inputs[0].pat.node {
-                ast::PatIdent(ast::BindByValue(m), _, _) => m,
-                _ => ast::MutImmutable
+                ast::PatIdent(ast::BindByValue(m), _, pat) => (m,pat),
+                _ => (ast::MutImmutable,None),
             }
         };
-        first = !try!(print_explicit_self(s, explicit_self, m));
+        first = !try!(print_explicit_self(s, explicit_self, m, self_pat));
     }
 
     // HACK(eddyb) ignore the separately printed self argument.

@@ -77,5 +77,13 @@ fn f4b() -> int {
     }
 }
 
+struct Foo(int);
+
+impl Foo {
+    fn foo(&self@&Foo(i)) {
+        //~^ ERROR: unused variable: `i`
+    }
+}
+
 fn main() {
 }
