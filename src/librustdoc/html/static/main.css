@@ -315,6 +315,7 @@ pre.rust .op { color: #cc782f; }
 pre.rust .comment { color: #533add; }
 pre.rust .doccomment { color: #d343d0; }
 pre.rust .macro { color: #d343d0; }
+pre.rust .macro-nonterminal { color: #d343d0; }
 pre.rust .string { color: #c13928; }
 pre.rust .lifetime { color: #d343d0; }
 pre.rust .attribute { color: #d343d0 !important; }
