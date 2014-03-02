@@ -71,6 +71,7 @@ dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-win: PREPARE_CLEAN=true
 dist-prepare-win: prepare-base
 
 endif
@@ -156,3 +157,24 @@ distcheck-osx: $(PKG_OSX)
 	@echo -----------------------------------------------
 
 endif
+
+dist-installer: $(foreach host,$(CFG_HOST),dist-installer-$(host))
+
+define DEF_INSTALLER
+dist-installer-$(1): PREPARE_HOST=$(1)
+dist-installer-$(1): PREPARE_TARGETS=$(1)
+dist-installer-$(1): PREPARE_STAGE=2
+dist-installer-$(1): PREPARE_DEST_DIR=tmp/dist/installer-$(1)
+dist-installer-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-installer-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-installer-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-installer-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-installer-$(1): PREPARE_CLEAN=true
+dist-installer-$(1): prepare-base
+	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find -type f) \
+      > $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/$$(CFG_RUSTLIBDIR)/manifest
+	$$(Q)cp $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
+endef
+
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call DEF_INSTALLER,$(host))))
