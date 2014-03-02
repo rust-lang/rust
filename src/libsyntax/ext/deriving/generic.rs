@@ -216,7 +216,7 @@ pub struct TraitDef<'a> {
 pub struct MethodDef<'a> {
     /// name of the method
     name: &'a str,
-    /// List of generics, e.g. `R: std::rand::Rng`
+    /// List of generics, e.g. `R: rand::Rng`
     generics: LifetimeBounds<'a>,
 
     /// Whether there is a self argument (outer Option) i.e. whether

@@ -12,8 +12,8 @@
 
 
 use std::os;
-use std::rand::Rng;
-use std::rand;
+use rand::Rng;
+use rand;
 use std::io;
 use std::io::fs;
 

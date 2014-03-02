@@ -90,9 +90,10 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
 
 #[cfg(test)]
 mod tests {
+    extern crate rand;
+
     use super::{inflate_bytes, deflate_bytes};
-    use std::rand;
-    use std::rand::Rng;
+    use self::rand::Rng;
 
     #[test]
     fn test_flate_round_trip() {

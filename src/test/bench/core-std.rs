@@ -12,13 +12,13 @@
 
 #[feature(macro_rules)];
 
+extern crate rand;
 extern crate time;
 
 use time::precise_time_s;
+use rand::Rng;
 use std::mem::swap;
 use std::os;
-use std::rand::Rng;
-use std::rand;
 use std::str;
 use std::vec;
 use std::io::File;
