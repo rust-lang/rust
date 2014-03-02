@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast #7103 `extern crate` does not work on check-fast
+extern crate rand;
+
 use std::task;
-use std::rand::{task_rng, Rng};
+use rand::{task_rng, Rng};
 
 static MAX_LEN: uint = 20;
 static mut drop_counts: [uint, .. MAX_LEN] = [0, .. MAX_LEN];

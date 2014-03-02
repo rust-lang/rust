@@ -898,7 +898,7 @@ mod test_map {
 mod bench_map {
     extern crate test;
     use super::TrieMap;
-    use std::rand::{weak_rng, Rng};
+    use rand::{weak_rng, Rng};
     use self::test::BenchHarness;
 
     #[bench]

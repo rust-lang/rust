@@ -1009,8 +1009,8 @@ mod test_treemap {
 
     use super::{TreeMap, TreeNode};
 
-    use std::rand::Rng;
-    use std::rand;
+    use rand::Rng;
+    use rand;
 
     #[test]
     fn find_empty() {

@@ -524,12 +524,14 @@ static H256: [u32, ..8] = [
 
 #[cfg(test)]
 mod tests {
+    extern crate rand;
+
     use super::{Digest, Sha256, FixedBuffer};
     use std::num::Bounded;
     use std::vec;
     use std::vec_ng::Vec;
-    use std::rand::isaac::IsaacRng;
-    use std::rand::Rng;
+    use self::rand::isaac::IsaacRng;
+    use self::rand::Rng;
     use serialize::hex::FromHex;
 
     // A normal addition - no overflow occurs

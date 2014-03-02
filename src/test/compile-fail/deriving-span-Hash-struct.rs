@@ -12,8 +12,8 @@
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
-use std::hash::Hash;
 
 struct Error;
 
