@@ -843,11 +843,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         fmtsp: sp,
     };
     cx.fmtsp = efmt.span;
-    // Be sure to recursively expand macros just in case the format string uses
-    // a macro to build the format expression.
-    let expr = cx.ecx.expand_expr(efmt);
     let fmt = match expr_to_str(cx.ecx,
-                                expr,
+                                efmt,
                                 "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
         None => return MacResult::raw_dummy_expr(sp)
