@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::{spanned, Spanned, mk_sp};
+use codemap::{spanned, Spanned, mk_sp, Span};
 use parse::common::*; //resolve bug?
 use parse::token;
 use parse::parser::Parser;
@@ -156,10 +156,22 @@ impl ParserAttr for Parser {
     // | IDENT meta_seq
     fn parse_meta_item(&mut self) -> @ast::MetaItem {
         let lo = self.span.lo;
-        let ident = self.parse_ident();
-        let name = self.id_to_interned_str(ident);
+
+        let (ident, name) = match self.parse_optional_str() {
+            Some((s, _)) => (None, s),
+            None => {
+                let ident = self.parse_ident();
+                (Some(self.id_to_interned_str(ident)), self.id_to_interned_str(ident))
+            }
+        };
+
         match self.token {
             token::EQ => {
+                if ident.is_none() {
+                    self.span_fatal(
+                        Span { lo: lo, hi: self.span.hi, expn_info: self.span.expn_info },
+                        "expected ident but found string");
+                }
                 self.bump();
                 let lit = self.parse_lit();
                 // FIXME #623 Non-string meta items are not serialized correctly;
@@ -173,12 +185,17 @@ impl ParserAttr for Parser {
                     }
                 }
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::MetaNameValue(name, lit))
+                @spanned(lo, hi, ast::MetaNameValue(ident.unwrap(), lit))
             }
             token::LPAREN => {
+                if ident.is_none() {
+                    self.span_fatal(
+                        Span { lo: lo, hi: self.span.hi, expn_info: self.span.expn_info },
+                        "expected ident but found string");
+                }
                 let inner_items = self.parse_meta_seq();
                 let hi = self.span.hi;
-                @spanned(lo, hi, ast::MetaList(name, inner_items))
+                @spanned(lo, hi, ast::MetaList(ident.unwrap(), inner_items))
             }
             _ => {
                 let hi = self.last_span.hi;
