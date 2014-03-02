@@ -126,9 +126,9 @@ use syntax::{visit, ast_util};
 use syntax::visit::{Visitor, FnKind};
 
 #[deriving(Eq)]
-struct Variable(uint);
+pub struct Variable(uint);
 #[deriving(Eq)]
-struct LiveNode(uint);
+pub struct LiveNode(uint);
 
 impl Variable {
     fn get(&self) -> uint { let Variable(v) = *self; v }
@@ -145,7 +145,7 @@ impl Clone for LiveNode {
 }
 
 #[deriving(Eq)]
-enum LiveNodeKind {
+pub enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
     VarDefNode(Span),
@@ -226,32 +226,32 @@ impl LiveNode {
 
 fn invalid_node() -> LiveNode { LiveNode(uint::MAX) }
 
-struct CaptureInfo {
+pub struct CaptureInfo {
     ln: LiveNode,
     is_move: bool,
     var_nid: NodeId
 }
 
-enum LocalKind {
+pub enum LocalKind {
     FromMatch(BindingMode),
     FromLetWithInitializer,
     FromLetNoInitializer
 }
 
-struct LocalInfo {
+pub struct LocalInfo {
     id: NodeId,
     ident: Ident,
     is_mutbl: bool,
     kind: LocalKind,
 }
 
-enum VarKind {
+pub enum VarKind {
     Arg(NodeId, Ident),
     Local(LocalInfo),
     ImplicitRet
 }
 
-struct IrMaps {
+pub struct IrMaps {
     tcx: ty::ctxt,
     method_map: typeck::MethodMap,
     capture_map: moves::CaptureMap,
@@ -560,7 +560,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
 // the same basic propagation framework in all cases.
 
 #[deriving(Clone)]
-struct Users {
+pub struct Users {
     reader: LiveNode,
     writer: LiveNode,
     used: bool
@@ -574,7 +574,7 @@ fn invalid_users() -> Users {
     }
 }
 
-struct Specials {
+pub struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
     no_ret_var: Variable
@@ -584,7 +584,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-type LiveNodeMap = @RefCell<HashMap<NodeId, LiveNode>>;
+pub type LiveNodeMap = @RefCell<HashMap<NodeId, LiveNode>>;
 
 pub struct Liveness {
     tcx: ty::ctxt,
@@ -1554,7 +1554,7 @@ fn check_fn(_v: &Liveness,
     // do not check contents of nested fns
 }
 
-enum ReadKind {
+pub enum ReadKind {
     PossiblyUninitializedVariable,
     PossiblyUninitializedField,
     MovedValue,

@@ -54,7 +54,7 @@ pub enum DefIdSource {
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 }
-type conv_did<'a> =
+pub type conv_did<'a> =
     'a |source: DefIdSource, ast::DefId| -> ast::DefId;
 
 pub struct PState<'a> {

@@ -1322,8 +1322,8 @@ fn arg_kind(cx: &FunctionContext, t: ty::t) -> datum::Rvalue {
 }
 
 // work around bizarre resolve errors
-type RvalueDatum = datum::Datum<datum::Rvalue>;
-type LvalueDatum = datum::Datum<datum::Lvalue>;
+pub type RvalueDatum = datum::Datum<datum::Rvalue>;
+pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
 // create_datums_for_fn_args: creates rvalue datums for each of the
 // incoming function arguments. These will later be stored into

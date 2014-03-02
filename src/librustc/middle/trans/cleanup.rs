@@ -51,20 +51,20 @@ pub static EXIT_BREAK: uint = 0;
 pub static EXIT_LOOP: uint = 1;
 pub static EXIT_MAX: uint = 2;
 
-enum CleanupScopeKind<'a> {
+pub enum CleanupScopeKind<'a> {
     CustomScopeKind,
     AstScopeKind(ast::NodeId),
     LoopScopeKind(ast::NodeId, [&'a Block<'a>, ..EXIT_MAX])
 }
 
 #[deriving(Eq)]
-enum EarlyExitLabel {
+pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
     LoopExit(ast::NodeId, uint)
 }
 
-struct CachedEarlyExit {
+pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
 }
