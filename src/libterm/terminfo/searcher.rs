@@ -42,12 +42,14 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
                         dirs_to_search.push(Path::new(i.to_owned()));
                     }
                 },
-                // Found nothing, use the default paths
-                // /usr/share/terminfo is the de facto location, but it seems
-                // Ubuntu puts it in /lib/terminfo
+                // Found nothing in TERMINFO_DIRS, use the default paths:
+                // According to  /etc/terminfo/README, after looking at
+                // ~/.terminfo, ncurses will search /etc/terminfo, then
+                // /lib/terminfo, and eventually /usr/share/terminfo.
                 None => {
-                    dirs_to_search.push(Path::new("/usr/share/terminfo"));
+                    dirs_to_search.push(Path::new("/etc/terminfo"));
                     dirs_to_search.push(Path::new("/lib/terminfo"));
+                    dirs_to_search.push(Path::new("/usr/share/terminfo"));
                 }
             }
         }
