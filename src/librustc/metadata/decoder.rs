@@ -1145,10 +1145,24 @@ fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
     Ok(())
 }
 
+pub fn maybe_get_crate_hash(data: &[u8]) -> Option<Svh> {
+    let cratedoc = reader::Doc(data);
+    reader::maybe_get_doc(cratedoc, tag_crate_hash).map(|doc| {
+        Svh::new(doc.as_str_slice())
+    })
+}
+
 pub fn get_crate_hash(data: &[u8]) -> Svh {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
     Svh::new(hashdoc.as_str_slice())
+}
+
+pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
+    let cratedoc = reader::Doc(data);
+    reader::maybe_get_doc(cratedoc, tag_crate_crateid).map(|doc| {
+        from_str(doc.as_str_slice()).unwrap()
+    })
 }
 
 pub fn get_crate_id(data: &[u8]) -> CrateId {
