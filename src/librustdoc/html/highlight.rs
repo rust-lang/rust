@@ -26,7 +26,7 @@ use html::escape::Escape;
 use t = syntax::parse::token;
 
 /// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str) -> ~str {
+pub fn highlight(src: &str, class: Option<&str>) -> ~str {
     let sess = parse::new_parse_sess();
     let handler = diagnostic::default_handler();
     let span_handler = diagnostic::mk_span_handler(handler, sess.cm);
@@ -35,6 +35,7 @@ pub fn highlight(src: &str) -> ~str {
     let mut out = io::MemWriter::new();
     doit(sess,
          lexer::new_string_reader(span_handler, fm),
+         class,
          &mut out).unwrap();
     str::from_utf8_lossy(out.unwrap()).into_owned()
 }
@@ -46,14 +47,15 @@ pub fn highlight(src: &str) -> ~str {
 /// it's used. All source code emission is done as slices from the source map,
 /// not from the tokens themselves, in order to stay true to the original
 /// source.
-fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader,
+fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader, class: Option<&str>,
         out: &mut Writer) -> io::IoResult<()> {
     use syntax::parse::lexer::Reader;
 
-    try!(write!(out, "<pre class='rust'>\n"));
+    try!(write!(out, "<pre class='rust {}'>\n", class.unwrap_or("")));
     let mut last = BytePos(0);
     let mut is_attribute = false;
     let mut is_macro = false;
+    let mut is_macro_nonterminal = false;
     loop {
         let next = lexer.next_token();
         let test = if next.tok == t::EOF {lexer.pos.get()} else {next.sp.lo};
@@ -101,8 +103,15 @@ fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader,
             // miscellaneous, no highlighting
             t::DOT | t::DOTDOT | t::DOTDOTDOT | t::COMMA | t::SEMI |
                 t::COLON | t::MOD_SEP | t::LARROW | t::DARROW | t::LPAREN |
-                t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE |
-                t::DOLLAR => "",
+                t::RPAREN | t::LBRACKET | t::LBRACE | t::RBRACE => "",
+            t::DOLLAR => {
+                if t::is_ident(&lexer.peek().tok) {
+                    is_macro_nonterminal = true;
+                    "macro-nonterminal"
+                } else {
+                    ""
+                }
+            }
 
             // This is the start of an attribute. We're going to want to
             // continue highlighting it as an attribute until the ending ']' is
@@ -143,7 +152,10 @@ fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader,
 
                     _ if t::is_any_keyword(&next.tok) => "kw",
                     _ => {
-                        if lexer.peek().tok == t::NOT {
+                        if is_macro_nonterminal {
+                            is_macro_nonterminal = false;
+                            "macro-nonterminal"
+                        } else if lexer.peek().tok == t::NOT {
                             is_macro = true;
                             "macro"
                         } else {
@@ -171,4 +183,3 @@ fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader,
 
     write!(out, "</pre>\n")
 }
-
