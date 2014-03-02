@@ -106,7 +106,7 @@ prepare-host-tools: \
             $(foreach host,$(CFG_HOST),\
               prepare-host-tool-$(tool)-$(stage)-$(host))))
 
-prepare-host-dirs:
+prepare-host-dirs: prepare-maybe-clean
 	$(call PREPARE_DIR,$(PREPARE_DEST_BIN_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_LIB_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_MAN_DIR))
@@ -115,7 +115,8 @@ prepare-host-dirs:
 # $(2) is stage
 # $(3) is host
 define DEF_PREPARE_HOST_TOOL
-prepare-host-tool-$(1)-$(2)-$(3): $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
+prepare-host-tool-$(1)-$(2)-$(3): prepare-maybe-clean \
+                                  $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
                                   $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
                                   prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
@@ -140,7 +141,8 @@ $(foreach tool,$(PREPARE_TOOLS),\
 define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
-prepare-host-lib-$(1)-$(2)-$(3): $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
+prepare-host-lib-$(1)-$(2)-$(3): prepare-maybe-clean \
+                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
                                  prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
@@ -166,7 +168,7 @@ define DEF_PREPARE_TARGET_N
 # Rebind PREPARE_*_LIB_DIR to point to rustlib, then install the libs for the targets
 prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
 prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1): \
+prepare-target-$(2)-host-$(3)-$(1): prepare-maybe-clean \
         $$(foreach crate,$$(TARGET_CRATES), \
           $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
         $$(if $$(findstring $(2),$$(CFG_HOST)), \
@@ -194,3 +196,9 @@ $(foreach host,$(CFG_HOST),\
   $(foreach target,$(CFG_TARGET), \
     $(foreach stage,$(PREPARE_STAGES),\
       $(eval $(call DEF_PREPARE_TARGET_N,$(stage),$(target),$(host))))))
+
+prepare-maybe-clean:
+	$(if $(findstring true,$(PREPARE_CLEAN)),\
+      @$(call E, cleaning destination $@),)
+	$(if $(findstring true,$(PREPARE_CLEAN)),\
+      $(Q)rm -r $(PREPARE_DEST_DIR),)
