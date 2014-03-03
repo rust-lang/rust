@@ -679,7 +679,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         ast::Arm {
             pats: pats,
             guard: None,
-            body: self.block_expr(expr)
+            body: expr
         }
     }
 
