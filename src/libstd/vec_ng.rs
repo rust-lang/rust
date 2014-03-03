@@ -17,11 +17,11 @@ use cmp::{Eq, Ordering, TotalEq, TotalOrd};
 use container::Container;
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Iterator};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
 use num;
-use num::CheckedMul;
+use num::{CheckedMul, CheckedAdd};
 use ops::Drop;
 use option::{None, Option, Some};
 use ptr::RawPtr;
@@ -126,6 +126,16 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+impl<T> Extendable<T> for Vec<T> {
+    fn extend<I: Iterator<T>>(&mut self, iterator: &mut I) {
+        let (lower, _) = iterator.size_hint();
+        self.reserve_additional(lower);
+        for element in *iterator {
+            self.push(element)
+        }
+    }
+}
+
 impl<T:Eq> Eq for Vec<T> {
     #[inline]
     fn eq(&self, other: &Vec<T>) -> bool {
@@ -158,6 +168,15 @@ impl<T> Vec<T> {
     #[inline]
     pub fn capacity(&self) -> uint {
         self.cap
+    }
+
+    pub fn reserve_additional(&mut self, extra: uint) {
+        if self.cap - self.len < extra {
+            match self.len.checked_add(&extra) {
+                None => fail!("Vec::reserve_additional: `uint` overflow"),
+                Some(new_cap) => self.reserve(new_cap)
+            }
+        }
     }
 
     pub fn reserve(&mut self, capacity: uint) {
@@ -451,5 +470,50 @@ impl<T> Drop for MoveItems<T> {
         unsafe {
             free(self.allocation)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Vec;
+    use iter::{Iterator, range, Extendable};
+    use option::{Some, None};
+
+    #[test]
+    fn test_reserve_additional() {
+        let mut v = Vec::new();
+        assert_eq!(v.capacity(), 0);
+
+        v.reserve_additional(2);
+        assert!(v.capacity() >= 2);
+
+        for i in range(0, 16) {
+            v.push(i);
+        }
+
+        assert!(v.capacity() >= 16);
+        v.reserve_additional(16);
+        assert!(v.capacity() >= 32);
+
+        v.push(16);
+
+        v.reserve_additional(16);
+        assert!(v.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_extend() {
+        let mut v = Vec::new();
+        let mut w = Vec::new();
+
+        v.extend(&mut range(0, 3));
+        for i in range(0, 3) { w.push(i) }
+
+        assert_eq!(v, w);
+
+        v.extend(&mut range(3, 10));
+        for i in range(3, 10) { w.push(i) }
+
+        assert_eq!(v, w);
     }
 }
