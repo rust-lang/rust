@@ -4248,7 +4248,7 @@ impl Resolver {
         self.check_consistent_bindings(arm);
 
         visit::walk_expr_opt(self, arm.guard, ());
-        self.resolve_block(arm.body);
+        self.resolve_expr(arm.body);
 
         let mut value_ribs = self.value_ribs.borrow_mut();
         value_ribs.get().pop();

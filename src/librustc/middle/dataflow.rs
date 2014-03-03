@@ -534,7 +534,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                     self.walk_pat_alternatives(arm.pats.as_slice(),
                                                body,
                                                loop_scopes);
-                    self.walk_block(arm.body, body, loop_scopes);
+                    self.walk_expr(arm.body, body, loop_scopes);
                     join_bits(&self.dfcx.oper, body, in_out);
                 }
             }
@@ -915,4 +915,3 @@ fn bit_str(bit: uint) -> ~str {
     let lobits = 1 << (bit & 0xFF);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
-

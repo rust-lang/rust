@@ -1352,38 +1352,22 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
             }
             try!(word_space(s, "=>"));
 
-            // Extract the expression from the extra block the parser adds
-            // in the case of foo => expr
-            if arm.body.view_items.is_empty() &&
-                arm.body.stmts.is_empty() &&
-                arm.body.rules == ast::DefaultBlock &&
-                arm.body.expr.is_some()
-            {
-                match arm.body.expr {
-                    Some(expr) => {
-                        match expr.node {
-                            ast::ExprBlock(blk) => {
-                                // the block will close the pattern's ibox
-                                try!(print_block_unclosed_indent(
-                                    s, blk, indent_unit));
-                            }
-                            _ => {
-                                try!(end(s)); // close the ibox for the pattern
-                                try!(print_expr(s, expr));
-                            }
-                        }
-                        if !expr_is_simple_block(expr)
-                            && i < len - 1 {
-                            try!(word(&mut s.s, ","));
-                        }
-                        try!(end(s)); // close enclosing cbox
-                    }
-                    None => fail!()
+            match arm.body.node {
+                ast::ExprBlock(blk) => {
+                    // the block will close the pattern's ibox
+                    try!(print_block_unclosed_indent(
+                                s, blk, indent_unit));
                 }
-            } else {
-                // the block will close the pattern's ibox
-                try!(print_block_unclosed_indent(s, arm.body, indent_unit));
+                _ => {
+                    try!(end(s)); // close the ibox for the pattern
+                    try!(print_expr(s, arm.body));
+                }
             }
+            if !expr_is_simple_block(expr)
+                && i < len - 1 {
+                try!(word(&mut s.s, ","));
+            }
+            try!(end(s)); // close enclosing cbox
         }
         try!(bclose_(s, expr.span, indent_unit));
       }

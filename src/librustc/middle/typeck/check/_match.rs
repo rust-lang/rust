@@ -13,7 +13,7 @@
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::ty;
 use middle::typeck::check::demand;
-use middle::typeck::check::{check_block, check_expr_has_type, FnCtxt};
+use middle::typeck::check::{check_expr, check_expr_has_type, FnCtxt};
 use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::infer;
@@ -74,7 +74,7 @@ pub fn check_match(fcx: @FnCtxt,
           },
           None => ()
         }
-        check_block(fcx, arm.body);
+        check_expr(fcx, arm.body);
         let bty = fcx.node_ty(arm.body.id);
         saw_err = saw_err || ty::type_is_error(bty);
         if guard_err {
