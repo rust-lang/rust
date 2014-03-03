@@ -76,8 +76,3 @@ The file `rust-mode-tests.el` contains tests that can be run via
 [ERT](http://www.gnu.org/software/emacs/manual/html_node/ert/index.html).
 You can use `run_rust_emacs_tests.sh` to run them in batch mode, if
 Emacs is somewhere in your `$PATH`.
-
-### Known bugs
-
-* Combining `global-whitespace-mode` and `rust-mode` is generally glitchy.
-  See [Issue #3994](https://github.com/mozilla/rust/issues/3994).
