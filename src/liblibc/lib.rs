@@ -3663,18 +3663,12 @@ pub mod funcs {
             // opendir$INODE64, etc. but for some reason rustc
             // doesn't link it correctly on i686, so we're going
             // through a C function that mysteriously does work.
-            pub unsafe fn opendir(dirname: *c_char) -> *DIR {
-                rust_opendir(dirname)
-            }
-            pub unsafe fn readdir_r(dirp: *DIR,
-                                    entry: *mut dirent_t,
-                                    result: *mut *mut dirent_t) -> c_int {
-                rust_readdir_r(dirp, entry, result)
-            }
 
             extern {
-                fn rust_opendir(dirname: *c_char) -> *DIR;
-                fn rust_readdir_r(dirp: *DIR, entry: *mut dirent_t,
+                #[link_name="rust_opendir"]
+                pub fn opendir(dirname: *c_char) -> *DIR;
+                #[link_name="rust_readdir_r"]
+                pub fn readdir_r(dirp: *DIR, entry: *mut dirent_t,
                                   result: *mut *mut dirent_t) -> c_int;
             }
 
@@ -4271,4 +4265,4 @@ pub mod funcs {
     }
 }
 
-#[test] fn work_on_windows() { } // this is needed to make rustc happy on windows
+#[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
