@@ -10,6 +10,13 @@
 
 #[allow(missing_doc)];
 
+//! Contains struct definitions for the layout of compiler built-in types.
+//!
+//! They can be used as targets of transmutes in unsafe code for manipulating
+//! the raw representations directly.
+//!
+//! Their definitition should always match the ABI defined in `rustc::back::abi`.
+
 use cast;
 
 /// The representation of a Rust managed box
@@ -49,13 +56,22 @@ pub struct Procedure {
     env: *(),
 }
 
+/// The representation of a Rust trait object.
+///
+/// This struct does not have a `Repr` implementation
+/// because there is no way to refer to all trait objects generically.
+pub struct TraitObject {
+    vtable: *(),
+    data: *(),
+}
+
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
 pub trait Repr<T> {
     /// This function "unwraps" a rust value (without consuming it) into its raw
     /// struct representation. This can be used to read/write different values
     /// for the struct. This is a safe method because by default it does not
-    /// give write-access to the struct returned.
+    /// enable write-access to the fields of the return value in safe code.
     #[inline]
     fn repr(&self) -> T { unsafe { cast::transmute_copy(self) } }
 }
