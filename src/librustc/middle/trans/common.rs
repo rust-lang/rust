@@ -212,8 +212,8 @@ impl Repr for param_substs {
 }
 
 // work around bizarre resolve errors
-type RvalueDatum = datum::Datum<datum::Rvalue>;
-type LvalueDatum = datum::Datum<datum::Lvalue>;
+pub type RvalueDatum = datum::Datum<datum::Rvalue>;
+pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.

@@ -158,9 +158,9 @@ pub struct creader_cache_key {
     len: uint
 }
 
-type creader_cache = RefCell<HashMap<creader_cache_key, t>>;
+pub type creader_cache = RefCell<HashMap<creader_cache_key, t>>;
 
-struct intern_key {
+pub struct intern_key {
     sty: *sty,
 }
 
@@ -1068,7 +1068,7 @@ pub struct ty_param_substs_and_ty {
     ty: ty::t
 }
 
-type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
+pub type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 

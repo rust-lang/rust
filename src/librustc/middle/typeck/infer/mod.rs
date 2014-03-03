@@ -500,7 +500,7 @@ fn rollback_to<V:Clone + Vid,T:Clone>(vb: &mut ValsAndBindings<V, T>,
     }
 }
 
-struct Snapshot {
+pub struct Snapshot {
     ty_var_bindings_len: uint,
     int_var_bindings_len: uint,
     float_var_bindings_len: uint,
