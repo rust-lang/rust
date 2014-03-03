@@ -1027,7 +1027,7 @@ pub fn print_block_with_attrs(s: &mut State,
                                   true)
 }
 
-enum EmbedType {
+pub enum EmbedType {
     BlockBlockFn,
     BlockNormal,
 }

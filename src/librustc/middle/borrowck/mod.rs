@@ -907,7 +907,7 @@ impl Repr for LoanPath {
 
 ///////////////////////////////////////////////////////////////////////////
 
-struct TcxTyper {
+pub struct TcxTyper {
     tcx: ty::ctxt,
     method_map: typeck::MethodMap,
 }

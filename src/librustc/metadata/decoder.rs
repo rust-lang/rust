@@ -46,7 +46,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::crateid::CrateId;
 
-type Cmd = @crate_metadata;
+pub type Cmd = @crate_metadata;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a

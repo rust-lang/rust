@@ -236,7 +236,7 @@ pub struct Candidate {
 /// now we must check that the type `T` is correct).  Unfortunately,
 /// because traits are not types, this is a pain to do.
 #[deriving(Clone)]
-enum RcvrMatchCondition {
+pub enum RcvrMatchCondition {
     RcvrMatchesIfObject(ast::DefId),
     RcvrMatchesIfSubtype(ty::t)
 }

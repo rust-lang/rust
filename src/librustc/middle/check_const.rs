@@ -20,7 +20,7 @@ use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-struct CheckCrateVisitor {
+pub struct CheckCrateVisitor {
     sess: Session,
     def_map: resolve::DefMap,
     method_map: typeck::MethodMap,

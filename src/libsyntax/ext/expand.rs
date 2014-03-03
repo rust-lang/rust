@@ -660,7 +660,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 #[deriving(Clone)]
-struct NewNameFinderContext {
+pub struct NewNameFinderContext {
     ident_accumulator: Vec<ast::Ident> ,
 }
 
@@ -748,7 +748,7 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-struct IdentRenamer<'a> {
+pub struct IdentRenamer<'a> {
     renames: &'a mut RenameList,
 }
 
