@@ -87,7 +87,7 @@ use std::vec_ng;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
-enum restriction {
+pub enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
     RESTRICT_NO_BAR_OP,

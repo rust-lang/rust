@@ -139,12 +139,12 @@ pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
     return s;
 }
 
-enum PrintStackBreak {
+pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
-struct PrintStackElem {
+pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak
 }

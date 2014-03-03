@@ -52,7 +52,7 @@ use syntax;
 use writer = serialize::ebml::writer;
 
 // used by astencode:
-type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
+pub type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
 
 /// A borrowed version of ast::InlinedItem.
 pub enum InlinedItemRef<'a> {
@@ -76,7 +76,7 @@ pub struct EncodeParams<'a> {
     encode_inlined_item: EncodeInlinedItem<'a>,
 }
 
-struct Stats {
+pub struct Stats {
     inline_bytes: Cell<u64>,
     attr_bytes: Cell<u64>,
     dep_bytes: Cell<u64>,
