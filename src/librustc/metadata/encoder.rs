@@ -31,6 +31,7 @@ use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::abi::AbiSet;
 use syntax::ast::*;
@@ -366,9 +367,9 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                 encode_index(ebml_w, bkts, write_i64);
             }
         }
-        if vi[i].disr_val != disr_val {
-            encode_disr_val(ecx, ebml_w, vi[i].disr_val);
-            disr_val = vi[i].disr_val;
+        if vi.get(i).disr_val != disr_val {
+            encode_disr_val(ecx, ebml_w, vi.get(i).disr_val);
+            disr_val = vi.get(i).disr_val;
         }
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx, def_id));
@@ -1389,7 +1390,7 @@ fn create_index<T:Clone + Hash + 'static>(
     }
     for elt in index.iter() {
         let h = hash::hash(&elt.val) as uint;
-        let mut bucket = buckets[h % 256].borrow_mut();
+        let mut bucket = buckets.get_mut(h % 256).borrow_mut();
         bucket.get().push((*elt).clone());
     }
 
@@ -1769,7 +1770,7 @@ pub static metadata_encoding_version : &'static [u8] =
 pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
     let mut wr = MemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
-    wr.unwrap()
+    wr.unwrap().move_iter().collect()
 }
 
 fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate) {
@@ -1821,7 +1822,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);
-    encode_attributes(&mut ebml_w, crate_attrs);
+    encode_attributes(&mut ebml_w, crate_attrs.as_slice());
     ecx.stats.attr_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     i = ebml_w.writer.tell().unwrap();

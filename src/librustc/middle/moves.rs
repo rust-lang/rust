@@ -138,6 +138,7 @@ use util::ppaux::UserString;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use collections::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;

@@ -18,6 +18,7 @@ use middle::ty;
 use middle::typeck;
 
 use collections::HashSet;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, def_id_of_def, is_local};

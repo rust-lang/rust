@@ -15,6 +15,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;

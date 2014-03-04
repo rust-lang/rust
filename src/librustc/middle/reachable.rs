@@ -20,6 +20,7 @@ use middle::typeck;
 use middle::privacy;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;

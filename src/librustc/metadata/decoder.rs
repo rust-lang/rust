@@ -33,7 +33,7 @@ use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::rc::Rc;
-use std::vec;
+use std::vec_ng::Vec;
 use serialize::ebml::reader;
 use serialize::ebml;
 use serialize::Decodable;
@@ -304,7 +304,7 @@ fn item_path(item_doc: ebml::Doc) -> Vec<ast_map::PathElem> {
     let len_doc = reader::get_doc(path_doc, tag_path_len);
     let len = reader::doc_as_u32(len_doc) as uint;
 
-    let mut result = vec::with_capacity(len);
+    let mut result = Vec::with_capacity(len);
     reader::docs(path_doc, |tag, elt_doc| {
         if tag == tag_path_elem_mod {
             let s = elt_doc.as_str_slice();
@@ -682,7 +682,7 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
                           -> csearch::found_ast {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
-    let path = item_path(item_doc).init().to_owned();
+    let path = Vec::from_slice(item_path(item_doc).init());
     match decode_inlined_item(cdata, tcx, path, item_doc) {
         Ok(ref ii) => csearch::found(*ii),
         Err(path) => {
@@ -1072,7 +1072,7 @@ fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
             // Currently it's only possible to have a single meta item on
             // an attribute
             assert_eq!(meta_items.len(), 1u);
-            let meta_item = meta_items[0];
+            let meta_item = *meta_items.get(0);
             attrs.push(
                 codemap::Spanned {
                     node: ast::Attribute_ {

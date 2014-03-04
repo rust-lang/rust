@@ -72,6 +72,7 @@ use util::ppaux;
 use std::cell::RefCell;
 use collections::HashMap;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use collections::List;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;

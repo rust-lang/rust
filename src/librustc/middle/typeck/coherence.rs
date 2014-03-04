@@ -46,10 +46,11 @@ use syntax::opt_vec;
 use syntax::parse::token;
 use syntax::visit;
 
-use std::cell::RefCell;
 use collections::HashSet;
+use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 struct UniversalQuantificationResult {
     monotype: t,
@@ -355,7 +356,8 @@ impl CoherenceChecker {
             let new_generics = ty::Generics {
                 type_param_defs:
                     Rc::new(vec_ng::append(
-                        impl_poly_type.generics.type_param_defs().to_owned(),
+                        Vec::from_slice(impl_poly_type.generics
+                                                      .type_param_defs()),
                             new_method_ty.generics.type_param_defs())),
                 region_param_defs:
                     impl_poly_type.generics.region_param_defs.clone()
@@ -722,7 +724,7 @@ impl CoherenceChecker {
                 // We'll error out later. For now, just don't ICE.
                 continue;
             }
-            let method_def_id = impl_info.methods[0].def_id;
+            let method_def_id = impl_info.methods.get(0).def_id;
 
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
@@ -789,10 +791,10 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
         num_trait_type_parameters + method.generics.type_param_defs().len();
 
     // the new method type will have the type parameters from the impl + method
-    let combined_tps = vec::from_fn(num_method_type_parameters, |i| {
+    let combined_tps = Vec::from_fn(num_method_type_parameters, |i| {
         if i < num_trait_type_parameters {
             // replace type parameters that come from trait with new value
-            trait_ref.substs.tps[i]
+            *trait_ref.substs.tps.get(i)
         } else {
             // replace type parameters that belong to method with another
             // type parameter, this time with the index adjusted

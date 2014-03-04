@@ -115,7 +115,7 @@ use std::fmt;
 use std::io;
 use std::str;
 use std::uint;
-use std::vec;
+use std::vec_ng::Vec;
 use collections::HashMap;
 use syntax::ast::*;
 use syntax::codemap::Span;
@@ -339,11 +339,11 @@ impl IrMaps {
 
     pub fn variable_name(&self, var: Variable) -> ~str {
         let var_kinds = self.var_kinds.borrow();
-        match var_kinds.get()[var.get()] {
-            Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
+        match var_kinds.get().get(var.get()) {
+            &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
                 token::get_ident(nm).get().to_str()
             },
-            ImplicitRet => ~"<implicit-ret>"
+            &ImplicitRet => ~"<implicit-ret>"
         }
     }
 
@@ -364,7 +364,7 @@ impl IrMaps {
 
     pub fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
         let lnks = self.lnks.borrow();
-        lnks.get()[ln.get()]
+        *lnks.get().get(ln.get())
     }
 }
 
@@ -607,9 +607,9 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
         ir: ir,
         tcx: ir.tcx,
         s: specials,
-        successors: @RefCell::new(vec::from_elem(ir.num_live_nodes.get(),
+        successors: @RefCell::new(Vec::from_elem(ir.num_live_nodes.get(),
                                                  invalid_node())),
-        users: @RefCell::new(vec::from_elem(ir.num_live_nodes.get() *
+        users: @RefCell::new(Vec::from_elem(ir.num_live_nodes.get() *
                                             ir.num_vars.get(),
                                             invalid_users())),
         loop_scope: @RefCell::new(Vec::new()),
@@ -686,7 +686,7 @@ impl Liveness {
                          -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
         let users = self.users.borrow();
-        let reader = users.get()[self.idx(ln, var)].reader;
+        let reader = users.get().get(self.idx(ln, var)).reader;
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
 
@@ -697,7 +697,7 @@ impl Liveness {
                         -> Option<LiveNodeKind> {
         let successor = {
             let successors = self.successors.borrow();
-            successors.get()[ln.get()]
+            *successors.get().get(ln.get())
         };
         self.live_on_entry(successor, var)
     }
@@ -705,14 +705,14 @@ impl Liveness {
     pub fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
         assert!(ln.is_valid());
         let users = self.users.borrow();
-        users.get()[self.idx(ln, var)].used
+        users.get().get(self.idx(ln, var)).used
     }
 
     pub fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
                              -> Option<LiveNodeKind> {
         assert!(ln.is_valid());
         let users = self.users.borrow();
-        let writer = users.get()[self.idx(ln, var)].writer;
+        let writer = users.get().get(self.idx(ln, var)).writer;
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
 
@@ -720,7 +720,7 @@ impl Liveness {
                             -> Option<LiveNodeKind> {
         let successor = {
             let successors = self.successors.borrow();
-            successors.get()[ln.get()]
+            *successors.get().get(ln.get())
         };
         self.assigned_on_entry(successor, var)
     }
@@ -795,14 +795,14 @@ impl Liveness {
                 write!(wr,
                        "[ln({}) of kind {:?} reads",
                        ln.get(),
-                       lnks.and_then(|lnks| Some(lnks.get()[ln.get()])));
+                       lnks.and_then(|lnks| Some(*lnks.get().get(ln.get()))));
             }
             let users = self.users.try_borrow();
             match users {
                 Some(users) => {
-                    self.write_vars(wr, ln, |idx| users.get()[idx].reader);
+                    self.write_vars(wr, ln, |idx| users.get().get(idx).reader);
                     write!(wr, "  writes");
-                    self.write_vars(wr, ln, |idx| users.get()[idx].writer);
+                    self.write_vars(wr, ln, |idx| users.get().get(idx).writer);
                 }
                 None => {
                     write!(wr, "  (users borrowed)");
@@ -811,7 +811,9 @@ impl Liveness {
             let successors = self.successors.try_borrow();
             match successors {
                 Some(successors) => {
-                    write!(wr, "  precedes {}]", successors.get()[ln.get()].to_str());
+                    write!(wr,
+                           "  precedes {}]",
+                           successors.get().get(ln.get()).to_str());
                 }
                 None => {
                     write!(wr, "  precedes (successors borrowed)]");
@@ -824,7 +826,7 @@ impl Liveness {
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {
         {
             let mut successors = self.successors.borrow_mut();
-            successors.get()[ln.get()] = succ_ln;
+            *successors.get().get_mut(ln.get()) = succ_ln;
         }
 
         // It is not necessary to initialize the
@@ -841,12 +843,12 @@ impl Liveness {
         // more efficient version of init_empty() / merge_from_succ()
         {
             let mut successors = self.successors.borrow_mut();
-            successors.get()[ln.get()] = succ_ln;
+            *successors.get().get_mut(ln.get()) = succ_ln;
         }
 
         self.indices2(ln, succ_ln, |idx, succ_idx| {
             let mut users = self.users.borrow_mut();
-            users.get()[idx] = users.get()[succ_idx]
+            *users.get().get_mut(idx) = *users.get().get(succ_idx)
         });
         debug!("init_from_succ(ln={}, succ={})",
                self.ln_str(ln), self.ln_str(succ_ln));
@@ -862,12 +864,12 @@ impl Liveness {
         let mut changed = false;
         self.indices2(ln, succ_ln, |idx, succ_idx| {
             let mut users = self.users.borrow_mut();
-            changed |= copy_if_invalid(users.get()[succ_idx].reader,
-                                       &mut users.get()[idx].reader);
-            changed |= copy_if_invalid(users.get()[succ_idx].writer,
-                                       &mut users.get()[idx].writer);
-            if users.get()[succ_idx].used && !users.get()[idx].used {
-                users.get()[idx].used = true;
+            changed |= copy_if_invalid(users.get().get(succ_idx).reader,
+                                       &mut users.get().get_mut(idx).reader);
+            changed |= copy_if_invalid(users.get().get(succ_idx).writer,
+                                       &mut users.get().get_mut(idx).writer);
+            if users.get().get(succ_idx).used && !users.get().get(idx).used {
+                users.get().get_mut(idx).used = true;
                 changed = true;
             }
         });
@@ -893,8 +895,8 @@ impl Liveness {
     pub fn define(&self, writer: LiveNode, var: Variable) {
         let idx = self.idx(writer, var);
         let mut users = self.users.borrow_mut();
-        users.get()[idx].reader = invalid_node();
-        users.get()[idx].writer = invalid_node();
+        users.get().get_mut(idx).reader = invalid_node();
+        users.get().get_mut(idx).writer = invalid_node();
 
         debug!("{} defines {} (idx={}): {}", writer.to_str(), var.to_str(),
                idx, self.ln_str(writer));
@@ -904,7 +906,7 @@ impl Liveness {
     pub fn acc(&self, ln: LiveNode, var: Variable, acc: uint) {
         let idx = self.idx(ln, var);
         let mut users = self.users.borrow_mut();
-        let user = &mut users.get()[idx];
+        let user = users.get().get_mut(idx);
 
         if (acc & ACC_WRITE) != 0 {
             user.reader = invalid_node();

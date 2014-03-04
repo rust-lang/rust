@@ -12,6 +12,7 @@
 use middle::resolve;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::codemap::Span;

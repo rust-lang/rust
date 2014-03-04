@@ -58,8 +58,10 @@ pub fn read_crates(sess: Session,
         visit::walk_crate(&mut v, krate, ());
     }
     let crate_cache = e.crate_cache.borrow();
-    dump_crates(*crate_cache.get());
-    warn_if_multiple_versions(&mut e, sess.diagnostic(), *crate_cache.get());
+    dump_crates(crate_cache.get().as_slice());
+    warn_if_multiple_versions(&mut e,
+                              sess.diagnostic(),
+                              crate_cache.get().as_slice());
 }
 
 struct ReadCrateVisitor<'a> {
@@ -121,7 +123,7 @@ fn warn_if_multiple_versions(e: &mut Env,
 struct Env {
     sess: Session,
     os: loader::Os,
-    crate_cache: @RefCell<vec!(cache_entry)>,
+    crate_cache: @RefCell<Vec<cache_entry>>,
     next_crate_num: ast::CrateNum,
     intr: @IdentInterner
 }

@@ -17,6 +17,7 @@ use middle::resolve;
 use middle::ty;
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
 use syntax::{ast, ast_util};
 use syntax::visit;

@@ -319,7 +319,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             Some(&(index, ref mut used)) => {
                 *used = true;
-                let class_field = class_fields[index];
+                let class_field = *class_fields.get(index);
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
                                                        class_field.id,
@@ -585,7 +585,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         match *s {
             ty::ty_tup(ref ex_elts) if e_count == ex_elts.len() => {
                 for (i, elt) in elts.iter().enumerate() {
-                    check_pat(pcx, *elt, ex_elts[i]);
+                    check_pat(pcx, *elt, *ex_elts.get(i));
                 }
                 fcx.write_ty(pat.id, expected);
             }

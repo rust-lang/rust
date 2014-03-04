@@ -33,6 +33,7 @@ use syntax::visit::Visitor;
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::mem::replace;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 
 // Definition mapping
@@ -825,7 +826,7 @@ fn Resolver(session: Session,
 
         primitive_type_table: @PrimitiveTypeTable(),
 
-        namespaces: Vec<TypeNS, ValueNS > ,
+        namespaces: vec!(TypeNS, ValueNS),
 
         def_map: @RefCell::new(HashMap::new()),
         export_map2: @RefCell::new(HashMap::new()),
@@ -1971,7 +1972,7 @@ impl Resolver {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.idents_to_str(directive.module_path),
+                       self.idents_to_str(directive.module_path.as_slice()),
                        token::get_ident(target));
 
                 let mut import_resolutions = module_.import_resolutions
@@ -2084,13 +2085,14 @@ impl Resolver {
         let import_count = imports.get().len();
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = imports.get()[import_index];
+            let import_directive = *imports.get().get(import_index);
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     let msg = format!("failed to resolve import `{}`",
                                    self.import_path_to_str(
-                                       import_directive.module_path,
+                                       import_directive.module_path
+                                                       .as_slice(),
                                        *import_directive.subclass));
                     self.resolve_error(import_directive.span, msg);
                 }
@@ -2127,7 +2129,7 @@ impl Resolver {
                                              .iter()
                                              .map(|seg| seg.identifier)
                                              .collect();
-        self.idents_to_str(identifiers)
+        self.idents_to_str(identifiers.as_slice())
     }
 
     fn import_directive_subclass_to_str(&mut self,
@@ -2168,7 +2170,7 @@ impl Resolver {
 
         debug!("(resolving import for module) resolving import `{}::...` in \
                 `{}`",
-               self.idents_to_str(*module_path),
+               self.idents_to_str(module_path.as_slice()),
                self.module_to_str(module_));
 
         // First, resolve the module path for the directive, if necessary.
@@ -2177,7 +2179,7 @@ impl Resolver {
             Some((self.graph_root.get_module(), LastMod(AllPublic)))
         } else {
             match self.resolve_module_path(module_,
-                                           *module_path,
+                                           module_path.as_slice(),
                                            DontUseLexicalScope,
                                            import_directive.span,
                                            ImportSearch) {
@@ -3273,15 +3275,15 @@ impl Resolver {
         if index != import_count {
             let sn = self.session
                          .codemap
-                         .span_to_snippet(imports.get()[index].span)
+                         .span_to_snippet(imports.get().get(index).span)
                          .unwrap();
             if sn.contains("::") {
-                self.resolve_error(imports.get()[index].span,
+                self.resolve_error(imports.get().get(index).span,
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
                                sn.slice(0, sn.len()));
-                self.resolve_error(imports.get()[index].span, err);
+                self.resolve_error(imports.get().get(index).span, err);
             }
         }
 
@@ -3519,7 +3521,7 @@ impl Resolver {
 
         let mut rib_index = rib_index + 1;
         while rib_index < ribs.len() {
-            match ribs[rib_index].kind {
+            match ribs.get(rib_index).kind {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
@@ -3620,7 +3622,7 @@ impl Resolver {
         while i != 0 {
             i -= 1;
             let binding_opt = {
-                let bindings = ribs[i].bindings.borrow();
+                let bindings = ribs.get(i).bindings.borrow();
                 bindings.get().find_copy(&name)
             };
             match binding_opt {
@@ -4491,8 +4493,9 @@ impl Resolver {
                                     {
                                         let mut value_ribs =
                                             this.value_ribs.borrow_mut();
-                                        let last_rib = value_ribs.get()[
-                                            value_ribs.get().len() - 1];
+                                        let length = value_ribs.get().len();
+                                        let last_rib = value_ribs.get().get(
+                                            length - 1);
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -4517,8 +4520,9 @@ impl Resolver {
                                     {
                                         let mut value_ribs =
                                             this.value_ribs.borrow_mut();
-                                        let last_rib = value_ribs.get()[
-                                                value_ribs.get().len() - 1];
+                                        let length = value_ribs.get().len();
+                                        let last_rib = value_ribs.get().get(
+                                                length - 1);
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -5063,7 +5067,7 @@ impl Resolver {
         while j != 0 {
             j -= 1;
             let value_ribs = this.value_ribs.borrow();
-            let bindings = value_ribs.get()[j].bindings.borrow();
+            let bindings = value_ribs.get().get(j).bindings.borrow();
             for (&k, _) in bindings.get().iter() {
                 maybes.push(token::get_name(k));
                 values.push(uint::MAX);
@@ -5072,20 +5076,20 @@ impl Resolver {
 
         let mut smallest = 0;
         for (i, other) in maybes.iter().enumerate() {
-            values[i] = name.lev_distance(other.get());
+            *values.get_mut(i) = name.lev_distance(other.get());
 
-            if values[i] <= values[smallest] {
+            if *values.get(i) <= *values.get(smallest) {
                 smallest = i;
             }
         }
 
         if values.len() > 0 &&
-            values[smallest] != uint::MAX &&
-            values[smallest] < name.len() + 2 &&
-            values[smallest] <= max_distance &&
-            name != maybes[smallest].get() {
+            *values.get(smallest) != uint::MAX &&
+            *values.get(smallest) < name.len() + 2 &&
+            *values.get(smallest) <= max_distance &&
+            name != maybes.get(smallest).get() {
 
-            Some(maybes[smallest].get().to_str())
+            Some(maybes.get(smallest).get().to_str())
 
         } else {
             None
@@ -5211,8 +5215,8 @@ impl Resolver {
                     let def_like = DlDef(DefLabel(expr.id));
                     {
                         let mut label_ribs = this.label_ribs.borrow_mut();
-                        let rib = label_ribs.get()[label_ribs.get().len() -
-                                                   1];
+                        let length = label_ribs.get().len();
+                        let rib = label_ribs.get().get(length - 1);
                         let mut bindings = rib.bindings.borrow_mut();
                         let renamed = mtwt::resolve(label);
                         bindings.get().insert(renamed, def_like);
@@ -5515,7 +5519,9 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.move_rev_iter().collect::<Vec<ast::Ident> >());
+        return self.idents_to_str(idents.move_rev_iter()
+                                        .collect::<Vec<ast::Ident>>()
+                                        .as_slice());
     }
 
     #[allow(dead_code)]   // useful for debugging

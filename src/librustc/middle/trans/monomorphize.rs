@@ -23,6 +23,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
@@ -51,7 +52,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let mut must_cast = false;
 
     let psubsts = @param_substs {
-        tys: real_substs.tps.to_owned(),
+        tys: real_substs.tps.clone(),
         vtables: vtables,
         self_ty: real_substs.self_ty.clone(),
         self_vtables: self_vtables
@@ -124,7 +125,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx));
     let mono_ty = match is_static_provided {
-        None => ty::subst_tps(ccx.tcx, psubsts.tys,
+        None => ty::subst_tps(ccx.tcx, psubsts.tys.as_slice(),
                               psubsts.self_ty, llitem_ty),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
@@ -186,7 +187,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, false,
-                                           f.sig.inputs,
+                                           f.sig.inputs.as_slice(),
                                            f.sig.output, s);
         let mut monomorphized = ccx.monomorphized.borrow_mut();
         monomorphized.get().insert(hash_id, lldecl);

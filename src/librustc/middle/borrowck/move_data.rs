@@ -17,6 +17,7 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 use std::cell::RefCell;
 use std::uint;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
@@ -184,47 +185,47 @@ impl MoveData {
 
     fn path_loan_path(&self, index: MovePathIndex) -> @LoanPath {
         let paths = self.paths.borrow();
-        paths.get()[index.get()].loan_path
+        paths.get().get(index.get()).loan_path
     }
 
     fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[index.get()].parent
+        paths.get().get(index.get()).parent
     }
 
     fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
         let paths = self.paths.borrow();
-        paths.get()[index.get()].first_move
+        paths.get().get(index.get()).first_move
     }
 
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[index.get()].first_child
+        paths.get().get(index.get()).first_child
     }
 
     fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[index.get()].next_sibling
+        paths.get().get(index.get()).next_sibling
     }
 
     fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
         let mut paths = self.paths.borrow_mut();
-        paths.get()[index.get()].first_move = first_move
+        paths.get().get_mut(index.get()).first_move = first_move
     }
 
     fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
         let mut paths = self.paths.borrow_mut();
-        paths.get()[index.get()].first_child = first_child
+        paths.get().get_mut(index.get()).first_child = first_child
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
         let moves = self.moves.borrow();
-        moves.get()[index.get()].next_move
+        moves.get().get(index.get()).next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -605,7 +606,7 @@ impl FlowedMoveData {
 
         self.dfcx_moves.each_gen_bit_frozen(id, |index| {
             let moves = self.move_data.moves.borrow();
-            let move = &moves.get()[index];
+            let move = moves.get().get(index);
             let moved_path = move.path;
             f(move, self.move_data.path_loan_path(moved_path))
         })
@@ -644,7 +645,7 @@ impl FlowedMoveData {
 
         self.dfcx_moves.each_bit_on_entry_frozen(id, |index| {
             let moves = self.move_data.moves.borrow();
-            let move = &moves.get()[index];
+            let move = moves.get().get(index);
             let moved_path = move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
@@ -702,7 +703,7 @@ impl FlowedMoveData {
 
         self.dfcx_assign.each_bit_on_entry_frozen(id, |index| {
             let var_assignments = self.move_data.var_assignments.borrow();
-            let assignment = &var_assignments.get()[index];
+            let assignment = var_assignments.get().get(index);
             if assignment.path == loan_path_index && !f(assignment) {
                 false
             } else {

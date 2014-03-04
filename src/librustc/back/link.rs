@@ -34,6 +34,7 @@ use std::str;
 use std::io;
 use std::io::Process;
 use std::io::fs;
+use std::vec_ng::Vec;
 use flate;
 use serialize::hex::ToHex;
 use extra::tempfile::TempDir;
@@ -104,6 +105,7 @@ pub mod write {
     use std::io::Process;
     use std::libc::{c_uint, c_int};
     use std::str;
+    use std::vec_ng::Vec;
 
     // On android, we by default compile for armv7 processors. This enables
     // things like double word CAS instructions (rather than emulating them)
@@ -220,7 +222,7 @@ pub mod write {
 
             if sess.lto() {
                 time(sess.time_passes(), "all lto passes", (), |()|
-                     lto::run(sess, llmod, tm, trans.reachable));
+                     lto::run(sess, llmod, tm, trans.reachable.as_slice()));
 
                 if sess.opts.cg.save_temps {
                     output.with_extension("lto.bc").with_c_str(|buf| {
@@ -929,7 +931,8 @@ fn link_rlib(sess: Session,
             // the same filename for metadata (stomping over one another)
             let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
             let metadata = tmpdir.path().join(METADATA_FILENAME);
-            match fs::File::create(&metadata).write(trans.metadata) {
+            match fs::File::create(&metadata).write(trans.metadata
+                                                         .as_slice()) {
                 Ok(..) => {}
                 Err(e) => {
                     sess.err(format!("failed to write {}: {}",
@@ -1033,7 +1036,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
     let prog = time(sess.time_passes(), "running linker", (), |()|
-                    Process::output(cc_prog, cc_args));
+                    Process::output(cc_prog, cc_args.as_slice()));
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
@@ -1196,7 +1199,7 @@ fn link_args(sess: Session,
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if !sess.opts.cg.no_rpath {
-        args.push_all(rpath::get_rpath_flags(sess, out_filename));
+        args.push_all(rpath::get_rpath_flags(sess, out_filename).as_slice());
     }
 
     // Stack growth requires statically linking a __morestack function
@@ -1208,7 +1211,7 @@ fn link_args(sess: Session,
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    args.push_all(sess.opts.cg.link_args);
+    args.push_all(sess.opts.cg.link_args.as_slice());
     let used_link_args = sess.cstore.get_used_link_args();
     let used_link_args = used_link_args.borrow();
     for arg in used_link_args.get().iter() {

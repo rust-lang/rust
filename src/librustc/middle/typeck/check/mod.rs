@@ -117,6 +117,8 @@ use collections::HashMap;
 use std::mem::replace;
 use std::result;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::abi::AbiSet;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
@@ -901,7 +903,7 @@ fn compare_impl_method(tcx: ty::ctxt,
                 bound_region: ty::BrNamed(l.def_id, l.ident)})).
         collect();
     let dummy_substs = ty::substs {
-        tps: vec_ng::append(dummy_impl_tps, dummy_method_tps),
+        tps: vec_ng::append(dummy_impl_tps, dummy_method_tps.as_slice()),
         regions: ty::NonerasedRegions(dummy_impl_regions),
         self_ty: None };
 
@@ -928,7 +930,7 @@ fn compare_impl_method(tcx: ty::ctxt,
                      self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
         let substs = substs {
             regions: trait_regions,
-            tps: vec_ng::append(trait_tps, dummy_method_tps),
+            tps: vec_ng::append(trait_tps, dummy_method_tps.as_slice()),
             self_ty: self_ty,
         };
         debug!("trait_fty (pre-subst): {} substs={}",
@@ -987,7 +989,7 @@ impl FnCtxt {
 impl RegionScope for infer::InferCtxt {
     fn anon_regions(&self, span: Span, count: uint)
                     -> Result<Vec<ty::Region> , ()> {
-        Ok(vec::from_fn(count, |_| {
+        Ok(Vec::from_fn(count, |_| {
             self.next_region_var(infer::MiscVariable(span))
         }))
     }
@@ -1671,7 +1673,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         let args = args.slice_from(1);
         if ty::type_is_error(method_fn_ty) {
             let err_inputs = err_args(args.len());
-            check_argument_types(fcx, sp, err_inputs, callee_expr,
+            check_argument_types(fcx, sp, err_inputs.as_slice(), callee_expr,
                                  args, deref_args, false);
             method_fn_ty
         } else {
@@ -1712,10 +1714,10 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         let supplied_arg_count = args.len();
         let expected_arg_count = fn_inputs.len();
         let formal_tys = if expected_arg_count == supplied_arg_count {
-            fn_inputs.map(|a| *a)
+            fn_inputs.iter().map(|a| *a).collect()
         } else if variadic {
             if supplied_arg_count >= expected_arg_count {
-                fn_inputs.map(|a| *a)
+                fn_inputs.iter().map(|a| *a).collect()
             } else {
                 let msg = format!(
                     "this function takes at least {nexpected, plural, =1{# parameter} \
@@ -1781,7 +1783,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
 
                 if is_block == check_blocks {
                     debug!("checking the argument");
-                    let mut formal_ty = formal_tys[i];
+                    let mut formal_ty = *formal_tys.get(i);
 
                     match deref_args {
                         DoDerefArgs => {
@@ -1840,7 +1842,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
     }
 
     fn err_args(len: uint) -> Vec<ty::t> {
-        vec::from_fn(len, |_| ty::mk_err())
+        Vec::from_fn(len, |_| ty::mk_err())
     }
 
     fn write_call(fcx: @FnCtxt, call_expr: &ast::Expr, output: ty::t) {
@@ -1891,7 +1893,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         });
 
         // Call the generic checker.
-        check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
+        check_argument_types(fcx, call_expr.span, fn_sig.inputs.as_slice(), f,
                              args, DontDerefArgs, fn_sig.variadic);
 
         write_call(fcx, call_expr, fn_sig.output);
@@ -2309,7 +2311,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                 // field
                 debug!("class named {}", ppaux::ty_to_str(tcx, base_t));
                 let cls_items = ty::lookup_struct_fields(tcx, base_id);
-                match lookup_field_ty(tcx, base_id, cls_items,
+                match lookup_field_ty(tcx, base_id, cls_items.as_slice(),
                                       field, &(*substs)) {
                     Some(field_ty) => {
                         // (2) look up what field's type is, and return it
@@ -2329,7 +2331,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                              base,
                              field,
                              expr_t,
-                             tps,
+                             tps.as_slice(),
                              DontDerefArgs,
                              CheckTraitsAndInherentMethods,
                              AutoderefReceiver) {
@@ -2483,7 +2485,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                                            class_id,
                                            id,
                                            substitutions,
-                                           class_fields,
+                                           class_fields.as_slice(),
                                            fields,
                                            base_expr.is_none());
         if ty::type_is_error(fcx.node_ty(id)) {
@@ -2541,7 +2543,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                                        variant_id,
                                        id,
                                        substitutions,
-                                       variant_fields,
+                                       variant_fields.as_slice(),
                                        fields,
                                        true);
         fcx.write_ty(id, enum_type);
@@ -2620,18 +2622,21 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
                   let def_id = ast_util::def_id_of_def(definition);
-                  match tcx.lang_items.items[ExchangeHeapLangItem as uint] {
-                      Some(item_def_id) if def_id == item_def_id => {
+                  match tcx.lang_items
+                           .items
+                           .get(ExchangeHeapLangItem as uint) {
+                      &Some(item_def_id) if def_id == item_def_id => {
                           fcx.write_ty(id, ty::mk_uniq(tcx,
                                                        fcx.expr_ty(subexpr)));
                           checked = true
                       }
-                      Some(_) | None => {}
+                      &Some(_) | &None => {}
                   }
                   if !checked {
                       match tcx.lang_items
-                               .items[ManagedHeapLangItem as uint] {
-                          Some(item_def_id) if def_id == item_def_id => {
+                               .items
+                               .get(ManagedHeapLangItem as uint) {
+                          &Some(item_def_id) if def_id == item_def_id => {
                               // Assign the magic `Gc<T>` struct.
                               let gc_struct_id =
                                   match tcx.lang_items
@@ -2660,7 +2665,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                               fcx.write_ty(id, sty);
                               checked = true
                           }
-                          Some(_) | None => {}
+                          &Some(_) | &None => {}
                       }
                   }
               }
@@ -2749,7 +2754,8 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                                     ty::ty_struct(did, ref substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
-                                        && fields[0].ident == token::special_idents::unnamed_field
+                                        && fields.get(0).ident ==
+                                        token::special_idents::unnamed_field
                                     }
                                     _ => false
                                 };
@@ -3128,7 +3134,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
 
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
             let opt_hint = match flds {
-                Some(ref fs) if i < fs.len() => Some(fs[i]),
+                Some(ref fs) if i < fs.len() => Some(*fs.get(i)),
                 _ => None
             };
             check_expr_with_opt_hint(fcx, *e, opt_hint);
@@ -3491,7 +3497,7 @@ pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
                 tcx.sess.span_err(sp, "SIMD vector cannot be empty");
                 return;
             }
-            let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
+            let e = ty::lookup_field_type(tcx, did, fields.get(0).id, substs);
             if !fields.iter().all(
                          |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
                 tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
@@ -3804,7 +3810,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
                                    .enumerate() {
             match self_parameter_index {
                 Some(index) if index == i => {
-                    tps.push(fcx.infcx().next_ty_vars(1)[0]);
+                    tps.push(*fcx.infcx().next_ty_vars(1).get(0));
                     pushed = true;
                 }
                 _ => {}
@@ -3828,7 +3834,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
         for (i, default) in defaults.skip(ty_substs_len).enumerate() {
             match self_parameter_index {
                 Some(index) if index == i + ty_substs_len => {
-                    substs.tps.push(fcx.infcx().next_ty_vars(1)[0]);
+                    substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0));
                     pushed = true;
                 }
                 _ => {}
@@ -3847,7 +3853,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
 
         // If the self parameter goes at the end, insert it there.
         if !pushed && self_parameter_index.is_some() {
-            substs.tps.push(fcx.infcx().next_ty_vars(1)[0])
+            substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0))
         }
 
         assert_eq!(substs.tps.len(), ty_param_count)
@@ -4027,7 +4033,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
         //We only care about the operation here
-        match split[1] {
+        match *split.get(1) {
             "cxchg" => (1, vec!(ty::mk_mut_rptr(tcx,
                                              ty::ReLateBound(it.id, ty::BrAnon(0)),
                                              param(ccx, 0)),

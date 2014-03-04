@@ -92,7 +92,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             path.get().push(i.ident);
         }
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.get()));
+               ast_util::path_name_i(self.cx.path.get().as_slice()));
 
         if is_test_fn(&self.cx, i) || is_bench_fn(i) {
             match i.node {
@@ -427,11 +427,12 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
 
-    debug!("encoding {}", ast_util::path_name_i(path));
+    debug!("encoding {}", ast_util::path_name_i(path.as_slice()));
 
     let name_lit: ast::Lit =
         nospan(ast::LitStr(token::intern_and_get_ident(
-                    ast_util::path_name_i(path)), ast::CookedStr));
+                    ast_util::path_name_i(path.as_slice())),
+                    ast::CookedStr));
 
     let name_expr = @ast::Expr {
           id: ast::DUMMY_NODE_ID,

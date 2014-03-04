@@ -12,7 +12,8 @@
  * Computes the restrictions that result from a borrow.
  */
 
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -173,9 +174,11 @@ impl<'a> RestrictionsContext<'a> {
             Safe => Safe,
             SafeIf(base_lp, base_vec) => {
                 let lp = @LpExtend(base_lp, mc, elem);
-                SafeIf(lp, vec::append_one(base_vec,
-                                           Restriction {loan_path: lp,
-                                                        set: restrictions}))
+                SafeIf(lp, vec_ng::append_one(base_vec,
+                                              Restriction {
+                                                  loan_path: lp,
+                                                  set: restrictions
+                                              }))
             }
         }
     }

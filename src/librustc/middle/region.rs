@@ -26,6 +26,7 @@ use middle::ty::{FreeRegion};
 use middle::ty;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
@@ -286,7 +287,7 @@ impl RegionMaps {
         let mut i = 0;
         while i < queue.len() {
             let free_region_map = self.free_region_map.borrow();
-            match free_region_map.get().find(&queue[i]) {
+            match free_region_map.get().find(queue.get(i)) {
                 Some(parents) => {
                     for parent in parents.iter() {
                         if *parent == sup {
@@ -368,7 +369,7 @@ impl RegionMaps {
         // where they diverge.  If one vector is a suffix of the other,
         // then the corresponding scope is a superscope of the other.
 
-        if a_ancestors[a_index] != b_ancestors[b_index] {
+        if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
             return None;
         }
 
@@ -379,8 +380,8 @@ impl RegionMaps {
             if b_index == 0u { return Some(scope_b); }
             a_index -= 1u;
             b_index -= 1u;
-            if a_ancestors[a_index] != b_ancestors[b_index] {
-                return Some(a_ancestors[a_index + 1u]);
+            if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
+                return Some(*a_ancestors.get(a_index + 1u));
             }
         }
 
