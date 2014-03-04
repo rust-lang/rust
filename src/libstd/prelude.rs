@@ -35,7 +35,6 @@ pub use mem::drop;
 
 // Reexported types and traits
 
-pub use any::{Any, AnyOwnExt, AnyRefExt, AnyMutRefExt};
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, IntoBytes};
 pub use c_str::ToCStr;
 pub use char::Char;
