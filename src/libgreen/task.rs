@@ -18,6 +18,7 @@
 //! contains the rust task itself in order to juggle around ownership of the
 //! values.
 
+use std::any::Any;
 use std::cast;
 use std::rt::env;
 use std::rt::Runtime;

@@ -20,9 +20,10 @@
 //! value. `~Any` adds the `move` method, which will unwrap a `~T` from the object.  See the
 //! extension traits (`*Ext`) for the full details.
 
-use cast::transmute;
+use cast::{transmute, transmute_copy};
 use fmt;
 use option::{Option, Some, None};
+use raw::TraitObject;
 use result::{Result, Ok, Err};
 use intrinsics::TypeId;
 use intrinsics;
@@ -39,12 +40,6 @@ pub enum Void { }
 pub trait Any {
     /// Get the `TypeId` of `self`
     fn get_type_id(&self) -> TypeId;
-
-    /// Get a void pointer to `self`
-    fn as_void_ptr(&self) -> *Void;
-
-    /// Get a mutable void pointer to `self`
-    fn as_mut_void_ptr(&mut self) -> *mut Void;
 }
 
 impl<T: 'static> Any for T {
@@ -52,21 +47,11 @@ impl<T: 'static> Any for T {
     fn get_type_id(&self) -> TypeId {
         TypeId::of::<T>()
     }
-
-    /// Get a void pointer to `self`
-    fn as_void_ptr(&self) -> *Void {
-        self as *T as *Void
-    }
-
-    /// Get a mutable void pointer to `self`
-    fn as_mut_void_ptr(&mut self) -> *mut Void {
-        self as *mut T as *mut Void
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
-// Implemented as three extension traits so that generics work.
+// Implemented as three extension traits so that the methods can be generic.
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Extension methods for a referenced `Any` trait object
@@ -95,7 +80,13 @@ impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
     fn as_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
-            Some(unsafe { transmute(self.as_void_ptr()) })
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject = transmute_copy(&self);
+
+                // Extract the data pointer
+                Some(transmute(to.data))
+            }
         } else {
             None
         }
@@ -113,7 +104,13 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
     fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
-            Some(unsafe { transmute(self.as_mut_void_ptr()) })
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject = transmute_copy(&self);
+
+                // Extract the data pointer
+                Some(transmute(to.data))
+            }
         } else {
             None
         }
@@ -132,13 +129,14 @@ impl AnyOwnExt for ~Any {
     fn move<T: 'static>(self) -> Result<~T, ~Any> {
         if self.is::<T>() {
             unsafe {
-                // Extract the pointer to the boxed value, temporary alias with self
-                let ptr: ~T = transmute(self.as_void_ptr());
+                // Get the raw representation of the trait object
+                let to: TraitObject = transmute_copy(&self);
 
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
 
-                Ok(ptr)
+                // Extract the data pointer
+                Ok(transmute(to.data))
             }
         } else {
             Err(self)
@@ -171,100 +169,6 @@ mod tests {
     struct Test;
 
     static TEST: &'static str = "Test";
-
-    #[test]
-    fn any_as_void_ptr() {
-        let (a, b, c) = (~5u as ~Any, ~TEST as ~Any, ~Test as ~Any);
-        let a_r: &Any = a;
-        let b_r: &Any = b;
-        let c_r: &Any = c;
-
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
-
-        let (a, b, c) = (&5u as &Any, &TEST as &Any, &Test as &Any);
-        let a_r: &Any = a;
-        let b_r: &Any = b;
-        let c_r: &Any = c;
-
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
-
-        let mut x = Test;
-        let mut y: &'static str = "Test";
-        let (a, b, c) = (&mut 5u as &mut Any,
-                         &mut y as &mut Any,
-                         &mut x as &mut Any);
-        let a_r: &Any = a;
-        let b_r: &Any = b;
-        let c_r: &Any = c;
-
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
-
-        let (a, b, c) = (5u, "hello", Test);
-        let (a_r, b_r, c_r) = (&a as &Any, &b as &Any, &c as &Any);
-
-        assert_eq!(a.as_void_ptr(), a_r.as_void_ptr());
-        assert_eq!(b.as_void_ptr(), b_r.as_void_ptr());
-        assert_eq!(c.as_void_ptr(), c_r.as_void_ptr());
-    }
-
-    #[test]
-    fn any_as_mut_void_ptr() {
-        let y: &'static str = "Test";
-        let mut a = ~5u as ~Any;
-        let mut b = ~y as ~Any;
-        let mut c = ~Test as ~Any;
-
-        let a_ptr = a.as_mut_void_ptr();
-        let b_ptr = b.as_mut_void_ptr();
-        let c_ptr = c.as_mut_void_ptr();
-
-        let a_r: &mut Any = a;
-        let b_r: &mut Any = b;
-        let c_r: &mut Any = c;
-
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
-
-        let mut x = Test;
-        let mut y: &'static str = "Test";
-        let a = &mut 5u as &mut Any;
-        let b = &mut y as &mut Any;
-        let c = &mut x as &mut Any;
-
-        let a_ptr = a.as_mut_void_ptr();
-        let b_ptr = b.as_mut_void_ptr();
-        let c_ptr = c.as_mut_void_ptr();
-
-        let a_r: &mut Any = a;
-        let b_r: &mut Any = b;
-        let c_r: &mut Any = c;
-
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
-
-        let y: &'static str = "Test";
-        let mut a = 5u;
-        let mut b = y;
-        let mut c = Test;
-
-        let a_ptr = a.as_mut_void_ptr();
-        let b_ptr = b.as_mut_void_ptr();
-        let c_ptr = c.as_mut_void_ptr();
-
-        let (a_r, b_r, c_r) = (&mut a as &mut Any, &mut b as &mut Any, &mut c as &mut Any);
-
-        assert_eq!(a_ptr, a_r.as_mut_void_ptr());
-        assert_eq!(b_ptr, b_r.as_mut_void_ptr());
-        assert_eq!(c_ptr, c_r.as_mut_void_ptr());
-    }
 
     #[test]
     fn any_referenced() {
@@ -393,5 +297,23 @@ mod tests {
         let b = &Test as &Any;
         assert_eq!(format!("{}", a), ~"&Any");
         assert_eq!(format!("{}", b), ~"&Any");
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    extern crate test;
+
+    use any::{Any, AnyRefExt};
+    use option::Some;
+    use self::test::BenchHarness;
+
+    #[bench]
+    fn bench_as_ref(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut x = 0; let mut y = &mut x as &mut Any;
+            test::black_box(&mut y);
+            test::black_box(y.as_ref::<int>() == Some(&0));
+        });
     }
 }

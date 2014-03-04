@@ -14,6 +14,7 @@
 //! by rust tasks. This implements the necessary API traits laid out by std::rt
 //! in order to spawn new tasks and deschedule the current task.
 
+use std::any::Any;
 use std::cast;
 use std::rt::env;
 use std::rt::local::Local;

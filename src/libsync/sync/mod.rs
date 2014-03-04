@@ -976,6 +976,8 @@ mod tests {
     }
     #[test]
     fn test_mutex_killed_simple() {
+        use std::any::Any;
+
         // Mutex must get automatically unlocked if failed/killed within.
         let m = Mutex::new();
         let m2 = m.clone();
@@ -992,6 +994,8 @@ mod tests {
     #[ignore(reason = "linked failure")]
     #[test]
     fn test_mutex_killed_cond() {
+        use std::any::Any;
+
         // Getting killed during cond wait must not corrupt the mutex while
         // unwinding (e.g. double unlock).
         let m = Mutex::new();
@@ -1019,6 +1023,7 @@ mod tests {
     #[ignore(reason = "linked failure")]
     #[test]
     fn test_mutex_killed_broadcast() {
+        use std::any::Any;
         use std::unstable::finally::Finally;
 
         let m = Mutex::new();
@@ -1329,6 +1334,8 @@ mod tests {
     }
     #[cfg(test)]
     fn rwlock_kill_helper(mode1: RWLockMode, mode2: RWLockMode) {
+        use std::any::Any;
+
         // Mutex must get automatically unlocked if failed/killed within.
         let x = RWLock::new();
         let x2 = x.clone();

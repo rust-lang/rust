@@ -2229,6 +2229,7 @@ mod tests {
         B(~str)
     }
     fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
+        use std::any::AnyRefExt;
         use std::task;
         let res = task::try(proc() {
             // either fails in `decode` (which is what we want), or
