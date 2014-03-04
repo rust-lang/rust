@@ -765,5 +765,5 @@ pub fn walk_arm<E: Clone, V: Visitor<E>>(visitor: &mut V, arm: &Arm, env: E) {
         visitor.visit_pat(*pattern, env.clone())
     }
     walk_expr_opt(visitor, arm.guard, env.clone());
-    visitor.visit_block(arm.body, env)
+    visitor.visit_expr(arm.body, env)
 }

@@ -2634,16 +2634,7 @@ impl Parser {
                 self.eat(&token::COMMA);
             }
 
-            let blk = P(ast::Block {
-                view_items: Vec::new(),
-                stmts: Vec::new(),
-                expr: Some(expr),
-                id: ast::DUMMY_NODE_ID,
-                rules: DefaultBlock,
-                span: expr.span,
-            });
-
-            arms.push(ast::Arm { pats: pats, guard: guard, body: blk });
+            arms.push(ast::Arm { pats: pats, guard: guard, body: expr });
         }
         let hi = self.span.hi;
         self.bump();
