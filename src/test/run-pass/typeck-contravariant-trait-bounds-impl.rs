@@ -39,7 +39,6 @@ impl B for u32 {
 trait Foo {
     fn test_fn<T: B>(&self, x: T) -> int;
     fn test_duplicated_bounds1_fn<T: B+B>(&self) -> int;
-    //~^ warn: duplicated bound `B`, ignoring it
     fn test_duplicated_bounds2_fn<T: B>(&self) -> int;
 }
 
@@ -49,12 +48,10 @@ impl Foo for int {
     }
 
     fn test_duplicated_bounds1_fn<T: B+B>(&self) -> int {
-        //~^ warn: duplicated bound `B`, ignoring it
         99
     }
 
     fn test_duplicated_bounds2_fn<T: B+B>(&self) -> int {
-        //~^ warn: duplicated bound `B`, ignoring it
         199
     }
 }

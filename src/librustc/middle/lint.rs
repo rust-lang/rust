@@ -102,6 +102,7 @@ pub enum Lint {
     DeadCode,
     VisiblePrivateTypes,
     UnnecessaryTypecast,
+    DuplicatedTypeBound,
 
     MissingDoc,
     UnreachableCode,
@@ -302,6 +303,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: UnnecessaryTypecast,
         desc: "detects unnecessary type casts, that can be removed",
         default: allow,
+    }),
+
+    ("duplicated_type_bound",
+     LintSpec {
+        lint: DuplicatedTypeBound,
+        desc: "detects duplicated type bound",
+        default: warn
     }),
 
     ("unused_mut",
