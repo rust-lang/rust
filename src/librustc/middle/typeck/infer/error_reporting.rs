@@ -71,14 +71,15 @@ use middle::typeck::infer::region_inference::RegionResolutionError;
 use middle::typeck::infer::region_inference::ConcreteFailure;
 use middle::typeck::infer::region_inference::SubSupConflict;
 use middle::typeck::infer::region_inference::SupSupConflict;
-use syntax::opt_vec::OptVec;
 use util::ppaux::UserString;
 use util::ppaux::bound_region_to_str;
 use util::ppaux::note_and_explain_region;
 
+use std::vec_ng::Vec;
+
 pub trait ErrorReporting {
     fn report_region_errors(&self,
-                            errors: &OptVec<RegionResolutionError>);
+                            errors: &Vec<RegionResolutionError>);
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace,
@@ -121,7 +122,7 @@ trait ErrorReportingHelpers {
 
 impl ErrorReporting for InferCtxt {
     fn report_region_errors(&self,
-                            errors: &OptVec<RegionResolutionError>) {
+                            errors: &Vec<RegionResolutionError>) {
         for error in errors.iter() {
             match *error {
                 ConcreteFailure(origin, sub, sup) => {
@@ -661,4 +662,3 @@ impl Resolvable for @ty::TraitRef {
         ty::trait_ref_contains_error(*self)
     }
 }
-

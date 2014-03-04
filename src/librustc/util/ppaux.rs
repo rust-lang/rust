@@ -28,8 +28,8 @@ use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
-use syntax::opt_vec;
-use syntax::opt_vec::OptVec;
+
+use std::vec_ng::Vec;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {
@@ -599,12 +599,9 @@ impl<'a, T:Repr> Repr for &'a [T] {
     }
 }
 
-impl<T:Repr> Repr for OptVec<T> {
+impl<T:Repr> Repr for Vec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
-        match *self {
-            opt_vec::Empty => ~"[]",
-            opt_vec::Vec(ref v) => repr_vec(tcx, v.as_slice())
-        }
+        repr_vec(tcx, self.as_slice())
     }
 }
 

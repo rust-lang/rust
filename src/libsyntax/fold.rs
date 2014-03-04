@@ -13,7 +13,6 @@ use ast;
 use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
-use opt_vec::OptVec;
 use util::small_vector::SmallVector;
 
 use std::vec_ng::Vec;
@@ -426,8 +425,8 @@ pub fn fold_ty_param<T: Folder>(tp: &TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn fold_ty_params<T: Folder>(tps: &OptVec<TyParam>, fld: &mut T)
-                                   -> OptVec<TyParam> {
+pub fn fold_ty_params<T: Folder>(tps: &Vec<TyParam>, fld: &mut T)
+                                   -> Vec<TyParam> {
     tps.map(|tp| fold_ty_param(tp, fld))
 }
 
@@ -439,8 +438,8 @@ pub fn fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
     }
 }
 
-pub fn fold_lifetimes<T: Folder>(lts: &OptVec<Lifetime>, fld: &mut T)
-                                   -> OptVec<Lifetime> {
+pub fn fold_lifetimes<T: Folder>(lts: &Vec<Lifetime>, fld: &mut T)
+                                   -> Vec<Lifetime> {
     lts.map(|l| fold_lifetime(l, fld))
 }
 
@@ -495,8 +494,8 @@ fn fold_mt<T: Folder>(mt: &MutTy, folder: &mut T) -> MutTy {
     }
 }
 
-fn fold_opt_bounds<T: Folder>(b: &Option<OptVec<TyParamBound>>, folder: &mut T)
-                              -> Option<OptVec<TyParamBound>> {
+fn fold_opt_bounds<T: Folder>(b: &Option<Vec<TyParamBound>>, folder: &mut T)
+                              -> Option<Vec<TyParamBound>> {
     b.as_ref().map(|bounds| {
         bounds.map(|bound| {
             fold_ty_param_bound(bound, folder)
@@ -933,4 +932,3 @@ mod test {
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
 }
-

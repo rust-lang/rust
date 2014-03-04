@@ -198,9 +198,9 @@ use arena::Arena;
 use middle::ty;
 use std::vec;
 use std::fmt;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
@@ -287,8 +287,8 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
         // cache and share the variance struct used for items with
         // no type/region parameters
         empty_variances: @ty::ItemVariances { self_param: None,
-                                              type_params: opt_vec::Empty,
-                                              region_params: opt_vec::Empty }
+                                              type_params: Vec::new(),
+                                              region_params: Vec::new() }
     };
 
     visit::walk_crate(&mut terms_cx, krate, ());
@@ -905,8 +905,8 @@ impl<'a> SolveContext<'a> {
             let item_id = inferred_infos[index].item_id;
             let mut item_variances = ty::ItemVariances {
                 self_param: None,
-                type_params: opt_vec::Empty,
-                region_params: opt_vec::Empty
+                type_params: Vec::new(),
+                region_params: Vec::new()
             };
             while index < num_inferred &&
                   inferred_infos[index].item_id == item_id {

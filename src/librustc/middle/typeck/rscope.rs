@@ -13,9 +13,9 @@ use middle::ty;
 
 use std::cell::Cell;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
 
 /// Defines strategies for handling regions that are omitted.  For
 /// example, if one writes the type `&Foo`, then the lifetime of of
@@ -75,7 +75,7 @@ impl RegionScope for BindingRscope {
 }
 
 pub fn bound_type_regions(defs: &[ty::RegionParameterDef])
-                          -> OptVec<ty::Region> {
+                          -> Vec<ty::Region> {
     assert!(defs.iter().all(|def| def.def_id.krate == ast::LOCAL_CRATE));
     defs.iter().enumerate().map(
         |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.ident)).collect()

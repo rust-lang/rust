@@ -27,10 +27,9 @@ use util::ppaux::{Repr};
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::vec;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
-use syntax::opt_vec;
-use syntax::opt_vec::OptVec;
 
 mod doc;
 
@@ -526,9 +525,9 @@ impl RegionVarBindings {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    pub fn resolve_regions(&self) -> OptVec<RegionResolutionError> {
+    pub fn resolve_regions(&self) -> Vec<RegionResolutionError> {
         debug!("RegionVarBindings: resolve_regions()");
-        let mut errors = opt_vec::Empty;
+        let mut errors = Vec::new();
         let v = self.infer_variable_values(&mut errors);
         let mut values = self.values.borrow_mut();
         *values.get() = Some(v);
@@ -780,7 +779,7 @@ type RegionGraph = graph::Graph<(), Constraint>;
 
 impl RegionVarBindings {
     fn infer_variable_values(&self,
-                             errors: &mut OptVec<RegionResolutionError>)
+                             errors: &mut Vec<RegionResolutionError>)
                              -> ~[VarValue] {
         let mut var_data = self.construct_var_data();
         self.expansion(var_data);
@@ -969,7 +968,7 @@ impl RegionVarBindings {
 
     fn collect_concrete_region_errors(
         &self,
-        errors: &mut OptVec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError>)
     {
         let constraints = self.constraints.borrow();
         for (constraint, _) in constraints.get().iter() {
@@ -998,7 +997,7 @@ impl RegionVarBindings {
     fn extract_values_and_collect_conflicts(
         &self,
         var_data: &[VarData],
-        errors: &mut OptVec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError>)
         -> ~[VarValue]
     {
         debug!("extract_values_and_collect_conflicts()");
@@ -1123,7 +1122,7 @@ impl RegionVarBindings {
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
-        errors: &mut OptVec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError>)
     {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -1172,7 +1171,7 @@ impl RegionVarBindings {
         var_data: &[VarData],
         dup_vec: &mut [uint],
         node_idx: RegionVid,
-        errors: &mut OptVec<RegionResolutionError>)
+        errors: &mut Vec<RegionResolutionError>)
     {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.

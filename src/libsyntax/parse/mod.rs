@@ -291,7 +291,6 @@ mod test {
     use std::str;
     use std::vec_ng::Vec;
     use codemap::{Span, BytePos, Spanned};
-    use opt_vec;
     use ast;
     use abi;
     use parse::parser::Parser;
@@ -323,8 +322,8 @@ mod test {
                         segments: vec!(
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetimes: opt_vec::Empty,
-                                types: opt_vec::Empty,
+                                lifetimes: Vec::new(),
+                                types: Vec::new(),
                             }
                         ),
                     }),
@@ -342,13 +341,13 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetimes: opt_vec::Empty,
-                                    types: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
+                                    types: Vec::new(),
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: opt_vec::Empty,
-                                    types: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
+                                    types: Vec::new(),
                                 }
                             )
                         }),
@@ -556,8 +555,8 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
-                                    lifetimes: opt_vec::Empty,
-                                    types: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
+                                    types: Vec::new(),
                                 }
                             ),
                         }),
@@ -578,8 +577,8 @@ mod test {
                                segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: opt_vec::Empty,
-                                    types: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
+                                    types: Vec::new(),
                                 }
                                ),
                             }),
@@ -605,8 +604,8 @@ mod test {
                                     segments: vec!(
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
-                                            lifetimes: opt_vec::Empty,
-                                            types: opt_vec::Empty,
+                                            lifetimes: Vec::new(),
+                                            types: Vec::new(),
                                         }
                                     ),
                                 },
@@ -633,8 +632,8 @@ mod test {
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
-                                                lifetimes: opt_vec::Empty,
-                                                types: opt_vec::Empty,
+                                                lifetimes: Vec::new(),
+                                                types: Vec::new(),
                                             }
                                         ),
                                         }, None, ast::DUMMY_NODE_ID),
@@ -651,8 +650,8 @@ mod test {
                                                     ast::PathSegment {
                                                         identifier:
                                                             str_to_ident("b"),
-                                                        lifetimes: opt_vec::Empty,
-                                                        types: opt_vec::Empty,
+                                                        lifetimes: Vec::new(),
+                                                        types: Vec::new(),
                                                     }
                                                 ),
                                             },
@@ -671,8 +670,8 @@ mod test {
                                     ast::ImpureFn,
                                     abi::AbiSet::Rust(),
                                     ast::Generics{ // no idea on either of these:
-                                        lifetimes: opt_vec::Empty,
-                                        ty_params: opt_vec::Empty,
+                                        lifetimes: Vec::new(),
+                                        ty_params: Vec::new(),
                                     },
                                     ast::P(ast::Block {
                                         view_items: Vec::new(),
@@ -689,9 +688,9 @@ mod test {
                                                                 str_to_ident(
                                                                     "b"),
                                                                 lifetimes:
-                                                                opt_vec::Empty,
+                                                                Vec::new(),
                                                                 types:
-                                                                opt_vec::Empty
+                                                                Vec::new()
                                                             }
                                                         ),
                                                       }),

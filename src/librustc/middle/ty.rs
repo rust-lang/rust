@@ -40,6 +40,7 @@ use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
 use std::vec;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
@@ -50,8 +51,6 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
 use syntax::abi::AbiSet;
 use syntax;
 use collections::enum_set::{EnumSet, CLike};
@@ -194,8 +193,8 @@ pub enum ast_ty_to_ty_cache_entry {
 #[deriving(Clone, Eq, Decodable, Encodable)]
 pub struct ItemVariances {
     self_param: Option<Variance>,
-    type_params: OptVec<Variance>,
-    region_params: OptVec<Variance>
+    type_params: Vec<Variance>,
+    region_params: Vec<Variance>
 }
 
 #[deriving(Clone, Eq, Decodable, Encodable, Show)]
@@ -650,7 +649,7 @@ pub enum BoundRegion {
 #[deriving(Clone, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
-    NonerasedRegions(OptVec<ty::Region>)
+    NonerasedRegions(Vec<ty::Region>)
 }
 
 /**
@@ -4660,7 +4659,7 @@ pub fn visitor_object_ty(tcx: ctxt,
         Err(s) => { return Err(s); }
     };
     let substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::Empty),
+        regions: ty::NonerasedRegions(Vec::new()),
         self_ty: None,
         tps: ~[]
     };
@@ -5110,7 +5109,7 @@ impl substs {
         substs {
             self_ty: None,
             tps: ~[],
-            regions: NonerasedRegions(opt_vec::Empty)
+            regions: NonerasedRegions(Vec::new())
         }
     }
 }

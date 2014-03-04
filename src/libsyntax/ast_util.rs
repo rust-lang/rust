@@ -12,7 +12,6 @@ use ast::*;
 use ast;
 use ast_util;
 use codemap::Span;
-use opt_vec;
 use parse::token;
 use print::pprust;
 use visit::Visitor;
@@ -197,8 +196,8 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
         segments: vec!(
             ast::PathSegment {
                 identifier: identifier,
-                lifetimes: opt_vec::Empty,
-                types: opt_vec::Empty,
+                lifetimes: Vec::new(),
+                types: Vec::new(),
             }
         ),
     }
@@ -313,8 +312,8 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
-    Generics {lifetimes: opt_vec::Empty,
-              ty_params: opt_vec::Empty}
+    Generics {lifetimes: Vec::new(),
+              ty_params: Vec::new()}
 }
 
 // ______________________________________________________________________
@@ -936,15 +935,14 @@ pub fn lit_is_str(lit: @Lit) -> bool {
 mod test {
     use ast::*;
     use super::*;
-    use opt_vec;
     use collections::HashMap;
 
     use std::vec_ng::Vec;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
-                     lifetimes: opt_vec::Empty,
-                     types: opt_vec::Empty}
+                     lifetimes: Vec::new(),
+                     types: Vec::new()}
     }
 
     #[test] fn idents_name_eq_test() {

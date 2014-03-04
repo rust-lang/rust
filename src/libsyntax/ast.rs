@@ -13,7 +13,6 @@
 use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
 use ast_util;
-use opt_vec::OptVec;
 use parse::token::{InternedString, special_idents, str_to_ident};
 use parse::token;
 
@@ -175,9 +174,9 @@ pub struct PathSegment {
     /// The identifier portion of this path segment.
     identifier: Ident,
     /// The lifetime parameters for this path segment.
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    types: OptVec<P<Ty>>,
+    types: Vec<P<Ty>>,
 }
 
 pub type CrateNum = u32;
@@ -214,14 +213,14 @@ pub enum TyParamBound {
 pub struct TyParam {
     ident: Ident,
     id: NodeId,
-    bounds: OptVec<TyParamBound>,
+    bounds: Vec<TyParamBound>,
     default: Option<P<Ty>>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Generics {
-    lifetimes: OptVec<Lifetime>,
-    ty_params: OptVec<TyParam>,
+    lifetimes: Vec<Lifetime>,
+    ty_params: Vec<TyParam>,
 }
 
 impl Generics {
@@ -828,7 +827,7 @@ impl fmt::Show for Onceness {
 pub struct ClosureTy {
     sigil: Sigil,
     region: Option<Lifetime>,
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     purity: Purity,
     onceness: Onceness,
     decl: P<FnDecl>,
@@ -836,14 +835,14 @@ pub struct ClosureTy {
     // implement issue #7264. None means "fn()", which means infer a default
     // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
     // which means use no bounds (e.g., not even Owned on a ~fn()).
-    bounds: Option<OptVec<TyParamBound>>,
+    bounds: Option<Vec<TyParamBound>>,
 }
 
 #[deriving(Eq, Encodable, Decodable, Hash)]
 pub struct BareFnTy {
     purity: Purity,
     abis: AbiSet,
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     decl: P<FnDecl>
 }
 
@@ -860,7 +859,7 @@ pub enum Ty_ {
     TyClosure(@ClosureTy),
     TyBareFn(@BareFnTy),
     TyTup(Vec<P<Ty>> ),
-    TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
+    TyPath(Path, Option<Vec<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
     // TyInfer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
