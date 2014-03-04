@@ -260,7 +260,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 fn new_ValsAndBindings<V:Clone,T:Clone>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
         vals: SmallIntMap::new(),
-        bindings: ~[]
+        bindings: Vec::new()
     }
 }
 
@@ -622,7 +622,7 @@ impl InferCtxt {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    pub fn next_ty_vars(&self, n: uint) -> ~[ty::t] {
+    pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
@@ -659,7 +659,7 @@ impl InferCtxt {
     pub fn next_region_vars(&self,
                             origin: RegionVariableOrigin,
                             count: uint)
-                            -> ~[ty::Region] {
+                            -> Vec<ty::Region> {
         vec::from_fn(count, |_| self.next_region_var(origin))
     }
 

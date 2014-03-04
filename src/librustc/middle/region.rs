@@ -76,7 +76,7 @@ The region maps encode information about region relationships.
 pub struct RegionMaps {
     priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv var_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
+    priv free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
     priv rvalue_scopes: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
@@ -112,7 +112,7 @@ impl RegionMaps {
 
         debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
 
-        free_region_map.get().insert(sub, ~[sup]);
+        free_region_map.get().insert(sub, vec!(sup));
     }
 
     pub fn record_encl_scope(&self, sub: ast::NodeId, sup: ast::NodeId) {
@@ -282,7 +282,7 @@ impl RegionMaps {
         // doubles as a way to detect if we've seen a particular FR
         // before.  Note that we expect this graph to be an *extremely
         // shallow* tree.
-        let mut queue = ~[sub];
+        let mut queue = vec!(sub);
         let mut i = 0;
         while i < queue.len() {
             let free_region_map = self.free_region_map.borrow();
@@ -385,10 +385,9 @@ impl RegionMaps {
         }
 
         fn ancestors_of(this: &RegionMaps, scope: ast::NodeId)
-            -> ~[ast::NodeId]
-        {
+            -> Vec<ast::NodeId> {
             // debug!("ancestors_of(scope={})", scope);
-            let mut result = ~[scope];
+            let mut result = vec!(scope);
             let mut scope = scope;
             loop {
                 let scope_map = this.scope_map.borrow();

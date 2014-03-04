@@ -132,9 +132,9 @@ fn padding_ty(align: uint, offset: uint) -> Option<Type> {
     return None;
 }
 
-fn coerce_to_int(size: uint) -> ~[Type] {
+fn coerce_to_int(size: uint) -> Vec<Type> {
     let int_ty = Type::i32();
-    let mut args = ~[];
+    let mut args = Vec::new();
 
     let mut n = size / 32;
     while n > 0 {
@@ -169,7 +169,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
     };
 
     let sret = ret_ty.is_indirect();
-    let mut arg_tys = ~[];
+    let mut arg_tys = Vec::new();
     let mut offset = if sret { 4 } else { 0 };
 
     for aty in atys.iter() {

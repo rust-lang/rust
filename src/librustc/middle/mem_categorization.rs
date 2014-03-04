@@ -723,7 +723,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         // know what type lies at the other end, so we just call it
         // `()` (the empty tuple).
 
-        let opaque_ty = ty::mk_tup(self.tcx(), ~[]);
+        let opaque_ty = ty::mk_tup(self.tcx(), Vec::new());
         return self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty);
     }
 

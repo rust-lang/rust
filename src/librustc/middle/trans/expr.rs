@@ -742,7 +742,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprTup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
-            let numbered_fields: ~[(uint, @ast::Expr)] =
+            let numbered_fields: Vec<(uint, @ast::Expr)> =
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             trans_adt(bcx, repr, 0, numbered_fields, None, dest)
         }
@@ -1048,7 +1048,7 @@ fn trans_rec_or_struct<'a>(
         });
         let optbase = match base {
             Some(base_expr) => {
-                let mut leftovers = ~[];
+                let mut leftovers = Vec::new();
                 for (i, b) in need_base.iter().enumerate() {
                     if *b {
                         leftovers.push((i, field_tys[i].mt.ty))
@@ -1082,8 +1082,7 @@ struct StructBaseInfo {
     /// The base expression; will be evaluated after all explicit fields.
     expr: @ast::Expr,
     /// The indices of fields to copy paired with their types.
-    fields: ~[(uint, ty::t)]
-}
+    fields: Vec<(uint, ty::t)> }
 
 /**
  * Constructs an ADT instance:
@@ -1710,7 +1709,7 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>) -> DatumBlock<'a, Expr> {
                     _ => false
                 }
             });
-            let modpath: ~[ast_map::PathElem] = path.collect();
+            let modpath: Vec<ast_map::PathElem> = path.collect();
             let modname = ast_map::path_to_str(ast_map::Values(modpath.iter()));
             (modpath, modname)
         })

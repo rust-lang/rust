@@ -32,23 +32,23 @@ use util::ppaux::Repr;
 
 pub struct MoveData {
     /// Move paths. See section "Move paths" in `doc.rs`.
-    paths: RefCell<~[MovePath]>,
+    paths: RefCell<Vec<MovePath> >,
 
     /// Cache of loan path to move path index, for easy lookup.
     path_map: RefCell<HashMap<@LoanPath, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
-    moves: RefCell<~[Move]>,
+    moves: RefCell<Vec<Move> >,
 
     /// Assignments to a variable, like `x = foo`. These are assigned
     /// bits for dataflow, since we must track them to ensure that
     /// immutable variables are assigned at most once along each path.
-    var_assignments: RefCell<~[Assignment]>,
+    var_assignments: RefCell<Vec<Assignment> >,
 
     /// Assignments to a path, like `x.f = foo`. These are not
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
-    path_assignments: RefCell<~[Assignment]>,
+    path_assignments: RefCell<Vec<Assignment> >,
     assignee_ids: RefCell<HashSet<ast::NodeId>>,
 }
 
@@ -173,11 +173,11 @@ pub type AssignDataFlow = DataFlowContext<AssignDataFlowOperator>;
 impl MoveData {
     pub fn new() -> MoveData {
         MoveData {
-            paths: RefCell::new(~[]),
+            paths: RefCell::new(Vec::new()),
             path_map: RefCell::new(HashMap::new()),
-            moves: RefCell::new(~[]),
-            path_assignments: RefCell::new(~[]),
-            var_assignments: RefCell::new(~[]),
+            moves: RefCell::new(Vec::new()),
+            path_assignments: RefCell::new(Vec::new()),
+            var_assignments: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(HashSet::new()),
         }
     }

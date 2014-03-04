@@ -83,7 +83,7 @@ pub struct ResolveState<'a> {
     infcx: &'a InferCtxt,
     modes: uint,
     err: Option<fixup_err>,
-    v_seen: ~[TyVid],
+    v_seen: Vec<TyVid> ,
     type_depth: uint
 }
 
@@ -92,7 +92,7 @@ pub fn resolver<'a>(infcx: &'a InferCtxt, modes: uint) -> ResolveState<'a> {
         infcx: infcx,
         modes: modes,
         err: None,
-        v_seen: ~[],
+        v_seen: Vec::new(),
         type_depth: 0
     }
 }

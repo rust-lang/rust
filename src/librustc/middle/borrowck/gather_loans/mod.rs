@@ -70,10 +70,9 @@ struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
     id_range: IdRange,
     move_data: move_data::MoveData,
-    all_loans: @RefCell<~[Loan]>,
+    all_loans: @RefCell<Vec<Loan> >,
     item_ub: ast::NodeId,
-    repeating_ids: ~[ast::NodeId]
-}
+    repeating_ids: Vec<ast::NodeId> }
 
 impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
@@ -103,13 +102,13 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 }
 
 pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
-                    -> (IdRange, @RefCell<~[Loan]>, move_data::MoveData) {
+                    -> (IdRange, @RefCell<Vec<Loan> >, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: IdRange::max(),
-        all_loans: @RefCell::new(~[]),
+        all_loans: @RefCell::new(Vec::new()),
         item_ub: body.id,
-        repeating_ids: ~[body.id],
+        repeating_ids: vec!(body.id),
         move_data: MoveData::new()
     };
     glcx.gather_fn_arg_patterns(decl, body);

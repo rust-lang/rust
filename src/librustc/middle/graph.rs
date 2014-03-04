@@ -38,8 +38,8 @@ use std::uint;
 use std::vec;
 
 pub struct Graph<N,E> {
-    priv nodes: ~[Node<N>],
-    priv edges: ~[Edge<E>],
+    priv nodes: Vec<Node<N>> ,
+    priv edges: Vec<Edge<E>> ,
 }
 
 pub struct Node<N> {
@@ -77,7 +77,7 @@ impl EdgeIndex {
 
 impl<N,E> Graph<N,E> {
     pub fn new() -> Graph<N,E> {
-        Graph {nodes: ~[], edges: ~[]}
+        Graph {nodes: Vec::new(), edges: Vec::new()}
     }
 
     pub fn with_capacity(num_nodes: uint,

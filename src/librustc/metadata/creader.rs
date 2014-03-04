@@ -46,7 +46,7 @@ pub fn read_crates(sess: Session,
     let mut e = Env {
         sess: sess,
         os: os,
-        crate_cache: @RefCell::new(~[]),
+        crate_cache: @RefCell::new(Vec::new()),
         next_crate_num: 1,
         intr: intr
     };
@@ -121,7 +121,7 @@ fn warn_if_multiple_versions(e: &mut Env,
 struct Env {
     sess: Session,
     os: loader::Os,
-    crate_cache: @RefCell<~[cache_entry]>,
+    crate_cache: @RefCell<vec!(cache_entry)>,
     next_crate_num: ast::CrateNum,
     intr: @IdentInterner
 }
@@ -401,7 +401,7 @@ impl Loader {
             env: Env {
                 sess: sess,
                 os: os,
-                crate_cache: @RefCell::new(~[]),
+                crate_cache: @RefCell::new(Vec::new()),
                 next_crate_num: 1,
                 intr: token::get_ident_interner(),
             }

@@ -218,7 +218,7 @@ fn resolve_default_method_vtables(bcx: &Block,
                 vtables.len() - num_method_vtables;
             vtables.tailn(num_impl_type_parameters).to_owned()
         },
-        None => vec::from_elem(num_method_vtables, @~[])
+        None => vec::from_elem(num_method_vtables, @Vec::new())
     };
 
     let param_vtables = @(*trait_vtables_fixed + method_vtables);
@@ -640,7 +640,7 @@ pub fn trans_call_inner<'a>(
     // written in opt_llretslot (if it is Some) or `llresult` will be
     // set appropriately (otherwise).
     if is_rust_fn {
-        let mut llargs = ~[];
+        let mut llargs = Vec::new();
 
         // Push the out-pointer if we use an out-pointer for this
         // return type, otherwise push "undef".
@@ -666,7 +666,7 @@ pub fn trans_call_inner<'a>(
         // available, so we have to apply any attributes with ABI
         // implications directly to the call instruction. Right now,
         // the only attribute we need to worry about is `sret`.
-        let mut attrs = ~[];
+        let mut attrs = Vec::new();
         if type_of::return_uses_outptr(ccx, ret_ty) {
             attrs.push((1, StructRetAttribute));
         }
@@ -704,7 +704,7 @@ pub fn trans_call_inner<'a>(
         // they are always Rust fns.
         assert!(dest.is_some());
 
-        let mut llargs = ~[];
+        let mut llargs = Vec::new();
         bcx = trans_args(bcx, args, callee_ty, &mut llargs,
                          cleanup::CustomScope(arg_cleanup_scope), false);
         fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
@@ -746,7 +746,7 @@ pub enum CallArgs<'a> {
 fn trans_args<'a>(cx: &'a Block<'a>,
                   args: CallArgs,
                   fn_ty: ty::t,
-                  llargs: &mut ~[ValueRef],
+                  llargs: &mut Vec<ValueRef> ,
                   arg_cleanup_scope: cleanup::ScopeId,
                   ignore_self: bool)
                   -> &'a Block<'a> {

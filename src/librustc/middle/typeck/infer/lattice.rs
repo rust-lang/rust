@@ -522,7 +522,7 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 
 pub fn var_ids<T:Combine>(this: &T,
                           map: &HashMap<ty::BoundRegion, ty::Region>)
-                          -> ~[RegionVid] {
+                          -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }
             r => {

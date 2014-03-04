@@ -27,7 +27,7 @@ pub enum VarValue<V, T> {
 
 pub struct ValsAndBindings<V, T> {
     vals: SmallIntMap<VarValue<V, T>>,
-    bindings: ~[(V, VarValue<V, T>)],
+    bindings: Vec<(V, VarValue<V, T>)> ,
 }
 
 pub struct Node<V, T> {

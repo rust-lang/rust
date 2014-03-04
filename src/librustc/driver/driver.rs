@@ -141,7 +141,7 @@ pub fn build_configuration(sess: Session) -> ast::CrateConfig {
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str])
+fn parse_cfgspecs(cfgspecs: Vec<~str> )
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess();
@@ -391,8 +391,8 @@ pub struct CrateTranslation {
     module: ModuleRef,
     metadata_module: ModuleRef,
     link: LinkMeta,
-    metadata: ~[u8],
-    reachable: ~[~str],
+    metadata: Vec<u8> ,
+    reachable: Vec<~str> ,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -481,7 +481,7 @@ fn write_out_deps(sess: Session,
                   krate: &ast::Crate) -> io::IoResult<()> {
     let id = link::find_crate_id(krate.attrs.as_slice(), outputs);
 
-    let mut out_filenames = ~[];
+    let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.iter() {
         let file = outputs.path(*output_type);
         match *output_type {
@@ -516,7 +516,7 @@ fn write_out_deps(sess: Session,
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[~str] = {
+    let files: Vec<~str> = {
         let files = sess.codemap.files.borrow();
         files.get()
              .iter()
@@ -778,14 +778,14 @@ pub fn build_session_options(matches: &getopts::Matches)
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
-    let mut lint_opts = ~[];
+    let mut lint_opts = Vec::new();
     let lint_dict = lint::get_lint_dict();
     for level in lint_levels.iter() {
         let level_name = lint::level_to_str(*level);
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec::append(matches.opt_strs(level_short),
+        let flags = vec_ng::append(matches.opt_strs(level_short),
                                 matches.opt_strs(level_name));
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
@@ -821,7 +821,7 @@ pub fn build_session_options(matches: &getopts::Matches)
     }
 
     let mut output_types = if parse_only || no_trans {
-        ~[]
+        Vec::new()
     } else {
         matches.opt_strs("emit").flat_map(|s| {
             s.split(',').map(|part| {
@@ -986,7 +986,7 @@ pub fn build_session_(sopts: @session::Options,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
-        crate_types: @RefCell::new(~[]),
+        crate_types: @RefCell::new(Vec::new()),
         features: front::feature_gate::Features::new()
     }
 }
@@ -1007,8 +1007,8 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
 }
 
 // rustc command line options
-pub fn optgroups() -> ~[getopts::OptGroup] {
- ~[
+pub fn optgroups() -> Vec<getopts::OptGroup> {
+ vec!(
   optflag("h", "help", "Display this message"),
   optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
   optmulti("L", "",   "Add a directory to the library search path", "PATH"),
@@ -1066,8 +1066,7 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                         "Set a codegen option", "OPT[=VALUE]"),
   optmulti("Z", "",   "Set internal debugging options", "FLAG"),
   optflag( "v", "version",
-                        "Print version info and exit"),
- ]
+                        "Print version info and exit"))
 }
 
 pub struct OutputFilenames {

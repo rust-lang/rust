@@ -286,7 +286,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             enc_trait_store(w, cx, store);
             enc_mutability(w, mt);
             let bounds = ty::ParamBounds {builtin_bounds: bounds,
-                                          trait_bounds: ~[]};
+                                          trait_bounds: Vec::new()};
             enc_bounds(w, cx, &bounds);
             mywrite!(w, "]");
         }
@@ -383,7 +383,7 @@ fn enc_closure_ty(w: &mut MemWriter, cx: @ctxt, ft: &ty::ClosureTy) {
     enc_onceness(w, ft.onceness);
     enc_region(w, cx, ft.region);
     let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
-                                  trait_bounds: ~[]};
+                                  trait_bounds: Vec::new()};
     enc_bounds(w, cx, &bounds);
     enc_fn_sig(w, cx, &ft.sig);
 }

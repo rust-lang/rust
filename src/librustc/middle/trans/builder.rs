@@ -540,7 +540,7 @@ impl<'a> Builder<'a> {
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<~[ValueRef]>();
+            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<Vec<ValueRef> >();
             self.count_insn("gepi");
             self.inbounds_gep(base, v)
         }

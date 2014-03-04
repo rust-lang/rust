@@ -83,7 +83,7 @@ pub enum Repr {
      * General-case enums: for each case there is a struct, and they
      * all start with a field for the discriminant.
      */
-    General(IntType, ~[Struct]),
+    General(IntType, Vec<Struct> ),
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
      * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
@@ -96,7 +96,7 @@ pub enum Repr {
      * identity function.
      */
     NullablePointer{ nonnull: Struct, nndiscr: Disr, ptrfield: uint,
-                     nullfields: ~[ty::t] }
+                     nullfields: Vec<ty::t> }
 }
 
 /// For structs, and struct-like parts of anything fancier.
@@ -104,8 +104,7 @@ pub struct Struct {
     size: u64,
     align: u64,
     packed: bool,
-    fields: ~[ty::t]
-}
+    fields: Vec<ty::t> }
 
 /**
  * Convenience for `represent_type`.  There should probably be more or
@@ -217,7 +216,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             let bounds = IntBounds { ulo: 0, uhi: (cases.len() - 1) as u64,
                                      slo: 0, shi: (cases.len() - 1) as i64 };
             let ity = range_to_inttype(cx, hint, &bounds);
-            let discr = ~[ty_of_inttype(ity)];
+            let discr = vec!(ty_of_inttype(ity));
             return General(ity, cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
         _ => cx.sess.bug("adt::represent_type called on non-ADT type")
@@ -254,7 +253,7 @@ pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 }
 
 // this should probably all be in ty
-struct Case { discr: Disr, tys: ~[ty::t] }
+struct Case { discr: Disr, tys: Vec<ty::t> }
 impl Case {
     fn is_zerolen(&self, cx: &CrateContext) -> bool {
         mk_struct(cx, self.tys, false).size == 0
@@ -264,7 +263,7 @@ impl Case {
     }
 }
 
-fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> ~[Case] {
+fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> Vec<Case> {
     ty::enum_variants(tcx, def_id).map(|vi| {
         let arg_tys = vi.args.map(|&raw_ty| {
             ty::subst(tcx, substs, raw_ty)
@@ -438,9 +437,9 @@ fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool
             };
             assert_eq!(machine::llalign_of_min(cx, pad_ty) as u64, align);
             assert_eq!(align % discr_size, 0);
-            let fields = ~[discr_ty,
+            let fields = vec!(discr_ty,
                            Type::array(&discr_ty, align / discr_size - 1),
-                           pad_ty];
+                           pad_ty);
             match name {
                 None => Type::struct_(fields, false),
                 Some(name) => {
@@ -453,7 +452,7 @@ fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool
     }
 }
 
-fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool) -> ~[Type] {
+fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool) -> Vec<Type> {
     if sizing {
         st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
     } else {
@@ -741,7 +740,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             let case = &cases[discr];
             let max_sz = cases.iter().map(|x| x.size).max().unwrap();
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
-            let contents = build_const_struct(ccx, case, ~[lldiscr] + vals);
+            let contents = build_const_struct(ccx, case, vec!(lldiscr) + vals);
             C_struct(contents + &[padding(max_sz - case.size)], false)
         }
         Univariant(ref st, _dro) => {
@@ -756,7 +755,7 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
                 let vals = nonnull.fields.iter().enumerate().map(|(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                }).collect::<~[ValueRef]>();
+                }).collect::<Vec<ValueRef> >();
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             }
         }
@@ -774,11 +773,11 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
  * will read the wrong memory.
  */
 fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
-    -> ~[ValueRef] {
+    -> Vec<ValueRef> {
     assert_eq!(vals.len(), st.fields.len());
 
     let mut offset = 0;
-    let mut cfields = ~[];
+    let mut cfields = Vec::new();
     for (i, &ty) in st.fields.iter().enumerate() {
         let llty = type_of::sizing_type_of(ccx, ty);
         let type_align = machine::llalign_of_min(ccx, llty)

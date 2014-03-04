@@ -151,7 +151,7 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
 
 fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let ptr = ty::mk_imm_ptr(tcx, ty::mk_i8());
-    ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t])
+    ty::mk_tup(tcx, vec!(ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t))
 }
 
 fn allocate_cbox<'a>(bcx: &'a Block<'a>,
@@ -190,7 +190,7 @@ pub struct ClosureResult<'a> {
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 pub fn store_environment<'a>(
                          bcx: &'a Block<'a>,
-                         bound_values: ~[EnvValue],
+                         bound_values: Vec<EnvValue> ,
                          sigil: ast::Sigil)
                          -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::store_environment");
@@ -257,7 +257,7 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
     let bcx = bcx0;
 
     // Package up the captured upvars
-    let mut env_vals = ~[];
+    let mut env_vals = Vec::new();
     for cap_var in cap_vars.iter() {
         debug!("Building closure: captured variable {:?}", *cap_var);
         let datum = expr::trans_local_var(bcx, cap_var.def);
@@ -470,7 +470,7 @@ pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
     let bcx = fcx.entry_bcx.get().unwrap();
 
     let args = create_datums_for_fn_args(&fcx, ty::ty_fn_args(closure_ty));
-    let mut llargs = ~[];
+    let mut llargs = Vec::new();
     match fcx.llretptr.get() {
         Some(llretptr) => {
             llargs.push(llretptr);

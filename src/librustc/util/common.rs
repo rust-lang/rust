@@ -66,7 +66,7 @@ pub fn indenter() -> _indenter {
 
 pub fn field_expr(f: ast::Field) -> @ast::Expr { return f.expr; }
 
-pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
+pub fn field_exprs(fields: Vec<ast::Field> ) -> Vec<@ast::Expr> {
     fields.map(|f| f.expr)
 }
 

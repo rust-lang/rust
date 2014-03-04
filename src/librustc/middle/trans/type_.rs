@@ -295,11 +295,11 @@ impl Type {
         }
     }
 
-    pub fn field_types(&self) -> ~[Type] {
+    pub fn field_types(&self) -> Vec<Type> {
         unsafe {
             let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
             if n_elts == 0 {
-                return ~[];
+                return Vec::new();
             }
             let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
             llvm::LLVMGetStructElementTypes(self.to_ref(), &mut elts[0]);
@@ -311,7 +311,7 @@ impl Type {
         ty!(llvm::LLVMGetReturnType(self.to_ref()))
     }
 
-    pub fn func_params(&self) -> ~[Type] {
+    pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
             let args = vec::from_elem(n_args, 0 as TypeRef);

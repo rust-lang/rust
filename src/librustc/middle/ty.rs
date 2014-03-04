@@ -121,8 +121,7 @@ impl Method {
 pub struct Impl {
     did: DefId,
     ident: Ident,
-    methods: ~[@Method]
-}
+    methods: Vec<@Method> }
 
 #[deriving(Clone, Eq, Hash)]
 pub struct mt {
@@ -269,16 +268,16 @@ pub struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: RefCell<HashMap<NodeId, ~[t]>>,
+    node_type_substs: RefCell<HashMap<NodeId, vec!(t)>>,
 
     // Maps from a method to the method "descriptor"
     methods: RefCell<HashMap<DefId, @Method>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
-    trait_method_def_ids: RefCell<HashMap<DefId, @~[DefId]>>,
+    trait_method_def_ids: RefCell<HashMap<DefId, @Vec<DefId> >>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: RefCell<HashMap<DefId, @~[@Method]>>,
+    trait_methods_cache: RefCell<HashMap<DefId, @Vec<@Method> >>,
 
     impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
 
@@ -294,14 +293,14 @@ pub struct ctxt_ {
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
-    enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
+    enum_var_cache: RefCell<HashMap<DefId, @Vec<@VariantInfo> >>,
     ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
     adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
     normalized_cache: RefCell<HashMap<t, t>>,
     lang_items: @middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
-    supertraits: RefCell<HashMap<ast::DefId, @~[@TraitRef]>>,
+    supertraits: RefCell<HashMap<ast::DefId, @Vec<@TraitRef> >>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
@@ -317,12 +316,12 @@ pub struct ctxt_ {
     destructors: RefCell<HashSet<ast::DefId>>,
 
     // Maps a trait onto a list of impls of that trait.
-    trait_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
+    trait_impls: RefCell<HashMap<ast::DefId, @RefCell<Vec<@Impl> >>>,
 
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
+    inherent_impls: RefCell<HashMap<ast::DefId, @RefCell<Vec<@Impl> >>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
@@ -450,7 +449,7 @@ pub struct ClosureTy {
 #[deriving(Clone, Eq, Hash)]
 pub struct FnSig {
     binder_id: ast::NodeId,
-    inputs: ~[t],
+    inputs: vec!(t),
     output: t,
     variadic: bool
 }
@@ -673,7 +672,7 @@ pub enum RegionSubsts {
 #[deriving(Clone, Eq, Hash)]
 pub struct substs {
     self_ty: Option<ty::t>,
-    tps: ~[t],
+    tps: vec!(t),
     regions: RegionSubsts,
 }
 
@@ -745,7 +744,7 @@ pub enum sty {
     ty_closure(ClosureTy),
     ty_trait(DefId, substs, TraitStore, ast::Mutability, BuiltinBounds),
     ty_struct(DefId, substs),
-    ty_tup(~[t]),
+    ty_tup(vec!(t)),
 
     ty_param(param_ty), // type parameter
     ty_self(DefId), /* special, implicit `self` type parameter;
@@ -825,8 +824,7 @@ pub enum type_err {
 #[deriving(Eq, Hash)]
 pub struct ParamBounds {
     builtin_bounds: BuiltinBounds,
-    trait_bounds: ~[@TraitRef]
-}
+    trait_bounds: Vec<@TraitRef> }
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
@@ -995,10 +993,10 @@ pub struct RegionParameterDef {
 #[deriving(Clone)]
 pub struct Generics {
     /// List of type parameters declared on the item.
-    type_param_defs: Rc<~[TypeParameterDef]>,
+    type_param_defs: Rc<Vec<TypeParameterDef> >,
 
     /// List of region parameters declared on the item.
-    region_param_defs: Rc<~[RegionParameterDef]>,
+    region_param_defs: Rc<Vec<RegionParameterDef> >,
 }
 
 impl Generics {
@@ -1037,7 +1035,7 @@ pub struct ParameterEnvironment {
     self_param_bound: Option<@TraitRef>,
 
     /// Bounds on each numbered type parameter
-    type_param_bounds: ~[ParamBounds],
+    type_param_bounds: Vec<ParamBounds> ,
 }
 
 /// A polytype.
@@ -1394,7 +1392,7 @@ pub fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec(mt {ty: ty, mutbl: ast::MutImmutable}))
 }
 
-pub fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
+pub fn mk_tup(cx: ctxt, ts: vec!(t)) -> t { mk_t(cx, ty_tup(ts)) }
 
 pub fn mk_closure(cx: ctxt, fty: ClosureTy) -> t {
     mk_t(cx, ty_closure(fty))
@@ -2373,7 +2371,7 @@ pub fn type_moves_by_default(cx: ctxt, ty: t) -> bool {
 
 // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
 pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
-    fn type_requires(cx: ctxt, seen: &mut ~[DefId],
+    fn type_requires(cx: ctxt, seen: &mut Vec<DefId> ,
                      r_ty: t, ty: t) -> bool {
         debug!("type_requires({}, {})?",
                ::util::ppaux::ty_to_str(cx, r_ty),
@@ -2391,7 +2389,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         return r;
     }
 
-    fn subtypes_require(cx: ctxt, seen: &mut ~[DefId],
+    fn subtypes_require(cx: ctxt, seen: &mut Vec<DefId> ,
                         r_ty: t, ty: t) -> bool {
         debug!("subtypes_require({}, {})?",
                ::util::ppaux::ty_to_str(cx, r_ty),
@@ -2479,7 +2477,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         return r;
     }
 
-    let mut seen = ~[];
+    let mut seen = Vec::new();
     !subtypes_require(cx, &mut seen, r_ty, r_ty)
 }
 
@@ -2500,7 +2498,7 @@ pub enum Representability {
 pub fn is_type_representable(cx: ctxt, ty: t) -> Representability {
 
     // Iterate until something non-representable is found
-    fn find_nonrepresentable<It: Iterator<t>>(cx: ctxt, seen: &mut ~[DefId],
+    fn find_nonrepresentable<It: Iterator<t>>(cx: ctxt, seen: &mut Vec<DefId> ,
                                               mut iter: It) -> Representability {
         for ty in iter {
             let r = type_structurally_recursive(cx, seen, ty);
@@ -2513,7 +2511,7 @@ pub fn is_type_representable(cx: ctxt, ty: t) -> Representability {
 
     // Does the type `ty` directly (without indirection through a pointer)
     // contain any types on stack `seen`?
-    fn type_structurally_recursive(cx: ctxt, seen: &mut ~[DefId],
+    fn type_structurally_recursive(cx: ctxt, seen: &mut Vec<DefId> ,
                                    ty: t) -> Representability {
         debug!("type_structurally_recursive: {}",
                ::util::ppaux::ty_to_str(cx, ty));
@@ -2579,7 +2577,7 @@ pub fn is_type_representable(cx: ctxt, ty: t) -> Representability {
     // To avoid a stack overflow when checking an enum variant or struct that
     // contains a different, structurally recursive type, maintain a stack
     // of seen types and check recursion for each of them (issues #3008, #3779).
-    let mut seen: ~[DefId] = ~[];
+    let mut seen: Vec<DefId> = Vec::new();
     type_structurally_recursive(cx, &mut seen, ty)
 }
 
@@ -2770,10 +2768,10 @@ pub fn node_id_to_type_opt(cx: ctxt, id: ast::NodeId) -> Option<t> {
 }
 
 // FIXME(pcwalton): Makes a copy, bleh. Probably better to not do that.
-pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> ~[t] {
+pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> Vec<t> {
     let node_type_substs = cx.node_type_substs.borrow();
     match node_type_substs.get().find(&id) {
-      None => return ~[],
+      None => return Vec::new(),
       Some(ts) => return (*ts).clone(),
     }
 }
@@ -2804,7 +2802,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
 }
 
 // Type accessors for substructures of types
-pub fn ty_fn_args(fty: t) -> ~[t] {
+pub fn ty_fn_args(fty: t) -> Vec<t> {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.inputs.clone(),
         ty_closure(ref f) => f.sig.inputs.clone(),
@@ -2907,7 +2905,7 @@ pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
 }
 
 // Returns a vec of all the input and output types of fty.
-pub fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
+pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
     vec::append_one(sig.inputs.map(|a| *a), sig.output)
 }
 
@@ -3195,7 +3193,7 @@ impl AutoRef {
 }
 
 pub struct ParamsTy {
-    params: ~[t],
+    params: vec!(t),
     ty: t
 }
 
@@ -3213,7 +3211,7 @@ pub fn expr_has_ty_params(cx: ctxt, expr: &ast::Expr) -> bool {
 }
 
 pub fn method_call_type_param_defs(tcx: ctxt, origin: typeck::MethodOrigin)
-                                   -> Rc<~[TypeParameterDef]> {
+                                   -> Rc<Vec<TypeParameterDef> > {
     match origin {
         typeck::MethodStatic(did) => {
             // n.b.: When we encode impl methods, the bounds
@@ -3232,7 +3230,7 @@ pub fn method_call_type_param_defs(tcx: ctxt, origin: typeck::MethodOrigin)
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
                 lookup_trait_def(tcx, trt_id).generics.type_param_defs();
-            Rc::new(vec::append(
+            Rc::new(vec_ng::append(
                 trait_type_param_defs.to_owned(),
                 ty::trait_method(tcx,
                                  trt_id,
@@ -3462,8 +3460,8 @@ pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
 /// Returns a vector containing the indices of all type parameters that appear
 /// in `ty`.  The vector may contain duplicates.  Probably should be converted
 /// to a bitset or some other representation.
-pub fn param_tys_in_type(ty: t) -> ~[param_ty] {
-    let mut rslt = ~[];
+pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
+    let mut rslt = Vec::new();
     walk_ty(ty, |ty| {
         match get(ty).sty {
           ty_param(p) => {
@@ -3478,8 +3476,8 @@ pub fn param_tys_in_type(ty: t) -> ~[param_ty] {
 pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
     // Returns a vec of all the type variables occurring in `ty`. It may
     // contain duplicates.  (Integral type vars aren't counted.)
-    fn vars_in_type(ty: t) -> ~[TyVid] {
-        let mut rslt = ~[];
+    fn vars_in_type(ty: t) -> Vec<TyVid> {
+        let mut rslt = Vec::new();
         walk_ty(ty, |ty| {
             match get(ty).sty {
               ty_infer(TyVar(v)) => rslt.push(v),
@@ -3724,7 +3722,7 @@ pub fn provided_source(cx: ctxt, id: ast::DefId) -> Option<ast::DefId> {
     provided_method_sources.get().find(&id).map(|x| *x)
 }
 
-pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
+pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> Vec<@Method> {
     if is_local(id) {
         {
             match cx.map.find(id.node) {
@@ -3756,7 +3754,7 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
     }
 }
 
-pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @~[@TraitRef] {
+pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
     // Check the cache.
     {
         let supertraits = cx.supertraits.borrow();
@@ -3778,7 +3776,7 @@ pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @~[@TraitRef] {
     return result;
 }
 
-pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef] {
+pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> Vec<@TraitRef> {
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
     supertrait_refs.map(
         |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs))
@@ -3818,7 +3816,7 @@ pub fn trait_method(cx: ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
 }
 
 
-pub fn trait_methods(cx: ctxt, trait_did: ast::DefId) -> @~[@Method] {
+pub fn trait_methods(cx: ctxt, trait_did: ast::DefId) -> @Vec<@Method> {
     let mut trait_methods_cache = cx.trait_methods_cache.borrow_mut();
     match trait_methods_cache.get().find(&trait_did) {
         Some(&methods) => methods,
@@ -3838,7 +3836,7 @@ pub fn method(cx: ctxt, id: ast::DefId) -> @Method {
     })
 }
 
-pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
+pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @Vec<DefId> {
     let mut trait_method_def_ids = cx.trait_method_def_ids.borrow_mut();
     lookup_locally_or_in_crate_store("trait_method_def_ids",
                                      id,
@@ -3916,8 +3914,8 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
 // Enum information
 #[deriving(Clone)]
 pub struct VariantInfo {
-    args: ~[t],
-    arg_names: Option<~[ast::Ident]>,
+    args: vec!(t),
+    arg_names: Option<Vec<ast::Ident> >,
     ctor_ty: t,
     name: ast::Ident,
     id: ast::DefId,
@@ -3937,7 +3935,7 @@ impl VariantInfo {
 
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
-                let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { ~[] };
+                let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { Vec::new() };
 
                 return VariantInfo {
                     args: arg_tys,
@@ -3981,7 +3979,7 @@ impl VariantInfo {
 pub fn substd_enum_variants(cx: ctxt,
                             id: ast::DefId,
                             substs: &substs)
-                         -> ~[@VariantInfo] {
+                         -> Vec<@VariantInfo> {
     enum_variants(cx, id).iter().map(|variant_info| {
         let substd_args = variant_info.args.iter()
             .map(|aty| subst(cx, substs, *aty)).collect();
@@ -4062,7 +4060,7 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
      }
 }
 
-pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
+pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
     {
         let enum_var_cache = cx.enum_var_cache.borrow();
         match enum_var_cache.get().find(&id) {
@@ -4277,7 +4275,7 @@ pub fn lookup_field_type(tcx: ctxt,
 
 // Look up the list of field names and IDs for a given struct
 // Fails if the id is not bound to a struct.
-pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
+pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> Vec<field_ty> {
   if did.krate == ast::LOCAL_CRATE {
       {
           match cx.map.find(did.node) {
@@ -4324,7 +4322,7 @@ pub fn lookup_struct_field(cx: ctxt,
     }
 }
 
-fn struct_field_tys(fields: &[StructField]) -> ~[field_ty] {
+fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
     fields.map(|field| {
         match field.node.kind {
             NamedField(ident, visibility) => {
@@ -4348,7 +4346,7 @@ fn struct_field_tys(fields: &[StructField]) -> ~[field_ty] {
 // Returns a list of fields corresponding to the struct's items. trans uses
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields(cx: ctxt, did: ast::DefId, substs: &substs)
-                     -> ~[field] {
+                     -> Vec<field> {
     lookup_struct_fields(cx, did).map(|f| {
        field {
             // FIXME #6993: change type of field to Name and get rid of new()
@@ -4433,7 +4431,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     return tbl[tycat(cx, ty)][opcat(op)];
 }
 
-pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> ~[t] {
+pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> Vec<t> {
     vec::from_fn(generics.ty_params.len(), |i| {
         let id = generics.ty_params.get(i).id;
         ty::mk_param(tcx, i, ast_util::local_def(id))
@@ -4589,7 +4587,7 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         -> bool {
     for &bound_trait_ref in bounds.iter() {
         let mut supertrait_set = HashMap::new();
-        let mut trait_refs = ~[];
+        let mut trait_refs = Vec::new();
         let mut i = 0;
 
         // Seed the worklist with the trait from the bound
@@ -4663,7 +4661,7 @@ pub fn visitor_object_ty(tcx: ctxt,
     let substs = substs {
         regions: ty::NonerasedRegions(opt_vec::Empty),
         self_ty: None,
-        tps: ~[]
+        tps: Vec::new()
     };
     let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
     Ok((trait_ref,
@@ -4690,7 +4688,7 @@ fn record_trait_implementation(tcx: ctxt,
     let mut trait_impls = tcx.trait_impls.borrow_mut();
     match trait_impls.get().find(&trait_def_id) {
         None => {
-            implementation_list = @RefCell::new(~[]);
+            implementation_list = @RefCell::new(Vec::new());
             trait_impls.get().insert(trait_def_id, implementation_list);
         }
         Some(&existing_implementation_list) => {
@@ -4745,7 +4743,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
             let mut inherent_impls = tcx.inherent_impls.borrow_mut();
             match inherent_impls.get().find(&type_id) {
                 None => {
-                    implementation_list = @RefCell::new(~[]);
+                    implementation_list = @RefCell::new(Vec::new());
                     inherent_impls.get().insert(type_id, implementation_list);
                 }
                 Some(&existing_implementation_list) => {
@@ -5110,7 +5108,7 @@ impl substs {
     pub fn empty() -> substs {
         substs {
             self_ty: None,
-            tps: ~[],
+            tps: Vec::new(),
             regions: NonerasedRegions(opt_vec::Empty)
         }
     }

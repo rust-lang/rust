@@ -86,7 +86,7 @@ pub fn fold_opt_ty<T:TypeFolder>(this: &mut T,
 
 pub fn fold_ty_vec<T:TypeFolder>(this: &mut T,
                                  tys: &[ty::t])
-                                 -> ~[ty::t] {
+                                 -> Vec<ty::t> {
     tys.map(|t| this.fold_ty(*t))
 }
 

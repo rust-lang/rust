@@ -320,7 +320,7 @@ pub enum const_val {
     const_int(i64),
     const_uint(u64),
     const_str(InternedString),
-    const_binary(Rc<~[u8]>),
+    const_binary(Rc<Vec<u8> >),
     const_bool(bool)
 }
 

@@ -361,8 +361,8 @@ pub mod write {
         let vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
                             sess.opts.optimize == session::Aggressive;
 
-        let mut llvm_c_strs = ~[];
-        let mut llvm_args = ~[];
+        let mut llvm_c_strs = Vec::new();
+        let mut llvm_args = Vec::new();
         {
             let add = |arg: &str| {
                 let s = arg.to_c_str();
@@ -779,8 +779,8 @@ fn remove(sess: Session, path: &Path) {
 pub fn link_binary(sess: Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
-                   id: &CrateId) -> ~[Path] {
-    let mut out_filenames = ~[];
+                   id: &CrateId) -> Vec<Path> {
+    let mut out_filenames = Vec::new();
     let crate_types = sess.crate_types.borrow();
     for &crate_type in crate_types.get().iter() {
         let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
@@ -1069,7 +1069,7 @@ fn link_args(sess: Session,
              dylib: bool,
              tmpdir: &Path,
              obj_filename: &Path,
-             out_filename: &Path) -> ~[~str] {
+             out_filename: &Path) -> Vec<~str> {
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
@@ -1077,7 +1077,7 @@ fn link_args(sess: Session,
     let lib_path = sess.filesearch.get_target_lib_path();
     let stage: ~str = ~"-L" + lib_path.as_str().unwrap();
 
-    let mut args = ~[stage];
+    let mut args = vec!(stage);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push_all([
@@ -1228,7 +1228,7 @@ fn link_args(sess: Session,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
+fn add_local_native_libraries(args: &mut Vec<~str> , sess: Session) {
     let addl_lib_search_paths = sess.opts.addl_lib_search_paths.borrow();
     for path in addl_lib_search_paths.get().iter() {
         // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1261,7 +1261,7 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
+fn add_upstream_rust_crates(args: &mut Vec<~str> , sess: Session,
                             dylib: bool, tmpdir: &Path) {
 
     // As a limitation of the current implementation, we require that everything
@@ -1345,7 +1345,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     // returning `None` if not all libraries could be found with that
     // preference.
     fn get_deps(cstore: &cstore::CStore,  preference: cstore::LinkagePreference)
-            -> Option<~[(ast::CrateNum, Path)]>
+            -> Option<Vec<(ast::CrateNum, Path)> >
     {
         let crates = cstore.get_used_crates(preference);
         if crates.iter().all(|&(_, ref p)| p.is_some()) {
@@ -1356,8 +1356,8 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
-    fn add_static_crates(args: &mut ~[~str], sess: Session, tmpdir: &Path,
-                         crates: ~[(ast::CrateNum, Path)]) {
+    fn add_static_crates(args: &mut Vec<~str> , sess: Session, tmpdir: &Path,
+                         crates: Vec<(ast::CrateNum, Path)> ) {
         for (cnum, cratepath) in crates.move_iter() {
             // When performing LTO on an executable output, all of the
             // bytecode from the upstream libraries has already been
@@ -1403,8 +1403,8 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
-    fn add_dynamic_crates(args: &mut ~[~str], sess: Session,
-                          crates: ~[(ast::CrateNum, Path)]) {
+    fn add_dynamic_crates(args: &mut Vec<~str> , sess: Session,
+                          crates: Vec<(ast::CrateNum, Path)> ) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
         assert!(!sess.lto());
@@ -1438,7 +1438,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(args: &mut ~[~str], sess: Session) {
+fn add_upstream_native_libraries(args: &mut Vec<~str> , sess: Session) {
     let cstore = sess.cstore;
     cstore.iter_crate_data(|cnum, _| {
         let libs = csearch::get_native_libraries(cstore, cnum);
