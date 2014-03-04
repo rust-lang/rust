@@ -376,17 +376,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     ast_map::NodeExpr(e) => e.span,
                     _ => fail!("transmute has non-expr arg"),
                 };
-                let pluralize = |n| if 1 == n { "" } else { "s" };
                 ccx.sess.span_fatal(sp,
-                                    format!("transmute called on types with \
-                                          different sizes: {} ({} bit{}) to \
-                                          {} ({} bit{})",
-                                         ty_to_str(ccx.tcx, in_type),
-                                         in_type_size,
-                                         pluralize(in_type_size),
-                                         ty_to_str(ccx.tcx, out_type),
-                                         out_type_size,
-                                         pluralize(out_type_size)));
+                    format!("transmute called on types with different sizes: \
+                             {intype} ({insize, plural, =1{# bit} other{# bits}}) to \
+                             {outtype} ({outsize, plural, =1{# bit} other{# bits}})",
+                            intype = ty_to_str(ccx.tcx, in_type),
+                            insize = in_type_size as uint,
+                            outtype = ty_to_str(ccx.tcx, out_type),
+                            outsize = out_type_size as uint));
             }
 
             if !return_type_is_void(ccx, out_type) {
