@@ -2311,11 +2311,13 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
             if mem::size_of::<T>() == 0 {
                 MutItems{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
-                         marker: marker::ContravariantLifetime::<'a>}
+                         marker: marker::ContravariantLifetime::<'a>,
+                         marker2: marker::NoPod}
             } else {
                 MutItems{ptr: p,
                          end: p.offset(self.len() as int),
-                         marker: marker::ContravariantLifetime::<'a>}
+                         marker: marker::ContravariantLifetime::<'a>,
+                         marker2: marker::NoPod}
             }
         }
     }
@@ -2682,15 +2684,23 @@ impl<A> Default for ~[A] {
     fn default() -> ~[A] { ~[] }
 }
 
+/// Immutable slice iterator
+pub struct Items<'a, T> {
+    priv ptr: *T,
+    priv end: *T,
+    priv marker: marker::ContravariantLifetime<'a>
+}
+
+/// Mutable slice iterator
+pub struct MutItems<'a, T> {
+    priv ptr: *mut T,
+    priv end: *mut T,
+    priv marker: marker::ContravariantLifetime<'a>,
+    priv marker2: marker::NoPod
+}
+
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
-        /// An iterator for iterating over a vector.
-        pub struct $name<'a, T> {
-            priv ptr: $ptr,
-            priv end: $ptr,
-            priv marker: marker::ContravariantLifetime<'a>,
-        }
-
         impl<'a, T> Iterator<$elem> for $name<'a, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
