@@ -117,7 +117,7 @@ pub trait Folder {
         Arm {
             pats: a.pats.map(|x| self.fold_pat(*x)),
             guard: a.guard.map(|x| self.fold_expr(x)),
-            body: self.fold_block(a.body),
+            body: self.fold_expr(a.body),
         }
     }
 
@@ -933,4 +933,3 @@ mod test {
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
 }
-

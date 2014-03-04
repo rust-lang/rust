@@ -632,7 +632,7 @@ impl VisitContext {
             self.consume_expr(*guard);
         }
 
-        self.consume_block(arm.body);
+        self.consume_expr(arm.body);
     }
 
     pub fn use_pat(&mut self, pat: @Pat) {

@@ -110,7 +110,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
                         let arm = ast::Arm {
                             pats: vec!(cx.pat_wild(span)),
                             guard: Some(guard),
-                            body: cx.block_expr(body),
+                            body: body,
                         };
 
                         arms.push(arm);
@@ -129,7 +129,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
             let arm = ast::Arm {
                 pats: vec!(cx.pat_wild(trait_span)),
                 guard: None,
-                body: cx.block_expr(cx.expr_none(trait_span)),
+                body: cx.expr_none(trait_span),
             };
             arms.push(arm);
 

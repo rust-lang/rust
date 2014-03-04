@@ -300,7 +300,7 @@ impl CFGBuilder {
                     guard_exit = self.opt_expr(arm.guard, guard_exit); // 2
                     let pats_exit = self.pats_any(arm.pats.as_slice(),
                                                   guard_exit); // 3
-                    let body_exit = self.block(arm.body, pats_exit);    // 4
+                    let body_exit = self.expr(arm.body, pats_exit);      // 4
                     self.add_contained_edge(body_exit, expr_exit);       // 5
                 }
                 expr_exit

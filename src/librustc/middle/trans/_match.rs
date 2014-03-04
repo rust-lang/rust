@@ -1939,7 +1939,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         let cleanup_scope = fcx.push_custom_cleanup_scope();
         bcx = insert_lllocals(bcx, arm_data.bindings_map,
                               cleanup::CustomScope(cleanup_scope));
-        bcx = controlflow::trans_block(bcx, arm_data.arm.body, dest);
+        bcx = expr::trans_into(bcx, arm_data.arm.body, dest);
         bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         arm_cxs.push(bcx);
     }
