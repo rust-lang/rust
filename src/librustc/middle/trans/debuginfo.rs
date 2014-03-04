@@ -2665,7 +2665,7 @@ fn populate_scope_map(cx: &CrateContext,
                             walk_expr(cx, *guard_exp, scope_stack, scope_map)
                         }
 
-                        walk_block(cx, arm_ref.body, scope_stack, scope_map);
+                        walk_expr(cx, arm_ref.body, scope_stack, scope_map);
                     })
                 }
             }

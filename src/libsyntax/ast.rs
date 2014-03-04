@@ -491,7 +491,7 @@ pub enum Decl_ {
 pub struct Arm {
     pats: Vec<@Pat> ,
     guard: Option<@Expr>,
-    body: P<Block>,
+    body: @Expr,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
