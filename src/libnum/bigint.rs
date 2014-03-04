@@ -21,6 +21,7 @@ use Integer;
 use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
+use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use std::rand::Rng;
@@ -336,6 +337,40 @@ impl Rem<BigUint, BigUint> for BigUint {
 impl Neg<BigUint> for BigUint {
     #[inline]
     fn neg(&self) -> BigUint { fail!() }
+}
+
+impl CheckedAdd for BigUint {
+    #[inline]
+    fn checked_add(&self, v: &BigUint) -> Option<BigUint> {
+        return Some(self.add(v));
+    }
+}
+
+impl CheckedSub for BigUint {
+    #[inline]
+    fn checked_sub(&self, v: &BigUint) -> Option<BigUint> {
+        if *self < *v {
+            return None;
+        }
+        return Some(self.sub(v));
+    }
+}
+
+impl CheckedMul for BigUint {
+    #[inline]
+    fn checked_mul(&self, v: &BigUint) -> Option<BigUint> {
+        return Some(self.mul(v));
+    }
+}
+
+impl CheckedDiv for BigUint {
+    #[inline]
+    fn checked_div(&self, v: &BigUint) -> Option<BigUint> {
+        if v.is_zero() {
+            return None;
+        }
+        return Some(self.div(v));
+    }
 }
 
 impl Integer for BigUint {
@@ -1053,6 +1088,38 @@ impl Neg<BigInt> for BigInt {
     }
 }
 
+impl CheckedAdd for BigInt {
+    #[inline]
+    fn checked_add(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.add(v));
+    }
+}
+
+impl CheckedSub for BigInt {
+    #[inline]
+    fn checked_sub(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.sub(v));
+    }
+}
+
+impl CheckedMul for BigInt {
+    #[inline]
+    fn checked_mul(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.mul(v));
+    }
+}
+
+impl CheckedDiv for BigInt {
+    #[inline]
+    fn checked_div(&self, v: &BigInt) -> Option<BigInt> {
+        if v.is_zero() {
+            return None;
+        }
+        return Some(self.div(v));
+    }
+}
+
+
 impl Integer for BigInt {
     #[inline]
     fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
@@ -1402,6 +1469,7 @@ mod biguint_tests {
     use std::i64;
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
+    use std::num::CheckedDiv;
     use std::rand::{task_rng};
     use std::str;
     use std::u64;
@@ -1823,6 +1891,82 @@ mod biguint_tests {
     }
 
     #[test]
+    fn test_checked_add() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(a.checked_add(&b).unwrap() == c);
+            assert!(b.checked_add(&a).unwrap() == c);
+        }
+    }
+
+    #[test]
+    fn test_checked_sub() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(c.checked_sub(&a).unwrap() == b);
+            assert!(c.checked_sub(&b).unwrap() == a);
+
+            if a > c {
+                assert!(a.checked_sub(&c).is_none());
+            }
+            if b > c {
+                assert!(b.checked_sub(&c).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(a.checked_mul(&b).unwrap() == c);
+            assert!(b.checked_mul(&a).unwrap() == c);
+        }
+
+        for elm in div_rem_quadruples.iter() {
+            let (aVec, bVec, cVec, dVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+            let d = BigUint::from_slice(dVec);
+
+            assert!(a == b.checked_mul(&c).unwrap() + d);
+            assert!(a == c.checked_mul(&b).unwrap() + d);
+        }
+    }
+
+    #[test]
+    fn test_checked_div() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            if !a.is_zero() {
+                assert!(c.checked_div(&a).unwrap() == b);
+            }
+            if !b.is_zero() {
+                assert!(c.checked_div(&b).unwrap() == a);
+            }
+
+            assert!(c.checked_div(&Zero::zero()).is_none());
+        }
+    }
+
+    #[test]
     fn test_gcd() {
         fn check(a: uint, b: uint, c: uint) {
             let big_a: BigUint = FromPrimitive::from_uint(a).unwrap();
@@ -2058,6 +2202,7 @@ mod bigint_tests {
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
+    use std::num::CheckedDiv;
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::rand::{task_rng};
@@ -2396,6 +2541,94 @@ mod bigint_tests {
             if !b.is_zero() {
                 check(&a, &b, &c, &d);
             }
+        }
+    }
+
+    #[test]
+    fn test_checked_add() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            assert!(a.checked_add(&b).unwrap() == c);
+            assert!(b.checked_add(&a).unwrap() == c);
+            assert!(c.checked_add(&(-a)).unwrap() == b);
+            assert!(c.checked_add(&(-b)).unwrap() == a);
+            assert!(a.checked_add(&(-c)).unwrap() == (-b));
+            assert!(b.checked_add(&(-c)).unwrap() == (-a));
+            assert!((-a).checked_add(&(-b)).unwrap() == (-c))
+            assert!(a.checked_add(&(-a)).unwrap() == Zero::zero());
+        }
+    }
+
+    #[test]
+    fn test_checked_sub() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            assert!(c.checked_sub(&a).unwrap() == b);
+            assert!(c.checked_sub(&b).unwrap() == a);
+            assert!((-b).checked_sub(&a).unwrap() == (-c))
+            assert!((-a).checked_sub(&b).unwrap() == (-c))
+            assert!(b.checked_sub(&(-a)).unwrap() == c);
+            assert!(a.checked_sub(&(-b)).unwrap() == c);
+            assert!((-c).checked_sub(&(-a)).unwrap() == (-b));
+            assert!(a.checked_sub(&a).unwrap() == Zero::zero());
+        }
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            assert!(a.checked_mul(&b).unwrap() == c);
+            assert!(b.checked_mul(&a).unwrap() == c);
+
+            assert!((-a).checked_mul(&b).unwrap() == -c);
+            assert!((-b).checked_mul(&a).unwrap() == -c);
+        }
+
+        for elm in div_rem_quadruples.iter() {
+            let (aVec, bVec, cVec, dVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+            let d = BigInt::from_slice(Plus, dVec);
+
+            assert!(a == b.checked_mul(&c).unwrap() + d);
+            assert!(a == c.checked_mul(&b).unwrap() + d);
+        }
+    }
+    #[test]
+    fn test_checked_div() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            if !a.is_zero() {
+                assert!(c.checked_div(&a).unwrap() == b);
+                assert!((-c).checked_div(&(-a)).unwrap() == b);
+                assert!((-c).checked_div(&a).unwrap() == -b);
+            }
+            if !b.is_zero() {
+                assert!(c.checked_div(&b).unwrap() == a);
+                assert!((-c).checked_div(&(-b)).unwrap() == a);
+                assert!((-c).checked_div(&b).unwrap() == -a);
+            }
+
+            assert!(c.checked_div(&Zero::zero()).is_none());
+            assert!((-c).checked_div(&Zero::zero()).is_none());
         }
     }
 
