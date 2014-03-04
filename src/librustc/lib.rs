@@ -46,6 +46,7 @@ use middle::lint;
 
 use d = driver::driver;
 
+use std::any::AnyRefExt;
 use std::cmp;
 use std::io;
 use std::os;
