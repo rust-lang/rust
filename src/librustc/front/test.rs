@@ -313,12 +313,6 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     }
 }
 
-#[cfg(stage0)]
-fn mk_test_module(_: &TestCtxt) -> @ast::Item {
-    fail!("test disabled in this stage due to quasiquoter")
-}
-
-#[cfg(not(stage0))]
 fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // Link to test crate
     let view_items = vec!(mk_std(cx));
@@ -388,12 +382,6 @@ fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
     }
 }
 
-#[cfg(stage0)]
-fn mk_tests(_: &TestCtxt) -> @ast::Item {
-    fail!("tests disabled in this stage due to quasiquoter")
-}
-
-#[cfg(not(stage0))]
 fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
@@ -435,12 +423,6 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
     }
 }
 
-#[cfg(stage0)]
-fn mk_test_desc_and_fn_rec(_: &TestCtxt, _: &Test) -> @ast::Expr {
-    fail!("tests disabled in this stage due to quasiquoter")
-}
-
-#[cfg(not(stage0))]
 fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
