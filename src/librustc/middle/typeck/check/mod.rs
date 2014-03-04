@@ -813,24 +813,26 @@ fn compare_impl_method(tcx: ty::ctxt,
     if num_impl_m_type_params != num_trait_m_type_params {
         tcx.sess.span_err(
             impl_m_span,
-            format!("method `{}` has {} type parameter(s), but its trait \
-                    declaration has {} type parameter(s)",
-                    token::get_ident(trait_m.ident),
-                    num_impl_m_type_params,
-                    num_trait_m_type_params));
+            format!("method `{method}` has {nimpl, plural, =1{# type parameter} \
+                                                        other{# type parameters}}, \
+                     but its trait declaration has {ntrait, plural, =1{# type parameter} \
+                                                                 other{# type parameters}}",
+                    method = token::get_ident(trait_m.ident),
+                    nimpl = num_impl_m_type_params,
+                    ntrait = num_trait_m_type_params));
         return;
     }
 
     if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
         tcx.sess.span_err(
             impl_m_span,
-            format!("method `{}` has {} parameter{} \
-                  but the declaration in trait `{}` has {}",
-                 token::get_ident(trait_m.ident),
-                 impl_m.fty.sig.inputs.len(),
-                 if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
-                 ty::item_path_str(tcx, trait_m.def_id),
-                 trait_m.fty.sig.inputs.len()));
+            format!("method `{method}` has {nimpl, plural, =1{# parameter} \
+                                                        other{# parameters}} \
+                     but the declaration in trait `{trait}` has {ntrait}",
+                 method = token::get_ident(trait_m.ident),
+                 nimpl = impl_m.fty.sig.inputs.len(),
+                 trait = ty::item_path_str(tcx, trait_m.def_id),
+                 ntrait = trait_m.fty.sig.inputs.len()));
         return;
     }
 
@@ -865,13 +867,16 @@ fn compare_impl_method(tcx: ty::ctxt,
         {
             tcx.sess.span_err(
                 impl_m_span,
-                format!("in method `{}`, \
-                        type parameter {} has {} trait bound(s), but the \
-                        corresponding type parameter in \
-                        the trait declaration has {} trait bound(s)",
-                        token::get_ident(trait_m.ident),
-                        i, impl_param_def.bounds.trait_bounds.len(),
-                        trait_param_def.bounds.trait_bounds.len()));
+                format!("in method `{method}`, \
+                        type parameter {typaram} has \
+                        {nimpl, plural, =1{# trait bound} other{# trait bounds}}, \
+                        but the corresponding type parameter in \
+                        the trait declaration has \
+                        {ntrait, plural, =1{# trait bound} other{# trait bounds}}",
+                        method = token::get_ident(trait_m.ident),
+                        typaram = i,
+                        nimpl = impl_param_def.bounds.trait_bounds.len(),
+                        ntrait = trait_param_def.bounds.trait_bounds.len()));
             return;
         }
     }
@@ -1507,10 +1512,12 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
                 function_context.tcx()
                     .sess
                     .span_err(path.span,
-                              format!("expected {} lifetime parameter(s), \
-                                      found {} lifetime parameter(s)",
-                                      trait_region_parameter_count,
-                                      supplied_region_parameter_count));
+                              format!("expected {nexpected, plural, =1{# lifetime parameter} \
+                                                                 other{# lifetime parameters}}, \
+                                       found {nsupplied, plural, =1{# lifetime parameter} \
+                                                              other{# lifetime parameters}}",
+                                      nexpected = trait_region_parameter_count,
+                                      nsupplied = supplied_region_parameter_count));
             }
 
             // Make sure the number of type parameters supplied on the trait
@@ -1522,49 +1529,47 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
                                                   .len();
             let supplied_ty_param_count = trait_segment.types.len();
             if supplied_ty_param_count < required_ty_param_count {
-                let trait_count_suffix = if required_ty_param_count == 1 {
-                    ""
+                let msg = if required_ty_param_count < generics.type_param_defs().len() {
+                    format!("the {trait_or_impl} referenced by this path needs at least \
+                             {nexpected, plural, =1{# type parameter} \
+                                              other{# type parameters}}, \
+                             but {nsupplied, plural, =1{# type parameter} \
+                                                  other{# type parameters}} were supplied",
+                            trait_or_impl = name,
+                            nexpected = required_ty_param_count,
+                            nsupplied = supplied_ty_param_count)
                 } else {
-                    "s"
+                    format!("the {trait_or_impl} referenced by this path needs \
+                             {nexpected, plural, =1{# type parameter} \
+                                              other{# type parameters}}, \
+                             but {nsupplied, plural, =1{# type parameter} \
+                                                  other{# type parameters}} were supplied",
+                            trait_or_impl = name,
+                            nexpected = required_ty_param_count,
+                            nsupplied = supplied_ty_param_count)
                 };
-                let supplied_count_suffix = if supplied_ty_param_count == 1 {
-                    ""
-                } else {
-                    "s"
-                };
-                let needs = if required_ty_param_count < generics.type_param_defs().len() {
-                    "needs at least"
-                } else {
-                    "needs"
-                };
-                function_context.tcx().sess.span_err(path.span,
-                    format!("the {} referenced by this path {} {} type \
-                            parameter{}, but {} type parameter{} were supplied",
-                            name, needs,
-                            required_ty_param_count, trait_count_suffix,
-                            supplied_ty_param_count, supplied_count_suffix))
+                function_context.tcx().sess.span_err(path.span, msg)
             } else if supplied_ty_param_count > formal_ty_param_count {
-                let trait_count_suffix = if formal_ty_param_count == 1 {
-                    ""
+                let msg = if required_ty_param_count < generics.type_param_defs().len() {
+                    format!("the {trait_or_impl} referenced by this path needs at most \
+                             {nexpected, plural, =1{# type parameter} \
+                                              other{# type parameters}}, \
+                             but {nsupplied, plural, =1{# type parameter} \
+                                                  other{# type parameters}} were supplied",
+                            trait_or_impl = name,
+                            nexpected = formal_ty_param_count,
+                            nsupplied = supplied_ty_param_count)
                 } else {
-                    "s"
+                    format!("the {trait_or_impl} referenced by this path needs \
+                             {nexpected, plural, =1{# type parameter} \
+                                              other{# type parameters}}, \
+                             but {nsupplied, plural, =1{# type parameter} \
+                                                  other{# type parameters}} were supplied",
+                            trait_or_impl = name,
+                            nexpected = formal_ty_param_count,
+                            nsupplied = supplied_ty_param_count)
                 };
-                let supplied_count_suffix = if supplied_ty_param_count == 1 {
-                    ""
-                } else {
-                    "s"
-                };
-                let needs = if required_ty_param_count < generics.type_param_defs().len() {
-                    "needs at most"
-                } else {
-                    "needs"
-                };
-                function_context.tcx().sess.span_err(path.span,
-                    format!("the {} referenced by this path {} {} type \
-                            parameter{}, but {} type parameter{} were supplied",
-                            name, needs,
-                            formal_ty_param_count, trait_count_suffix,
-                            supplied_ty_param_count, supplied_count_suffix))
+                function_context.tcx().sess.span_err(path.span, msg)
             }
         }
         _ => {
@@ -1665,12 +1670,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fn_inputs.map(|a| *a)
             } else {
                 let msg = format!(
-                    "this function takes at least {} parameter{} \
-                     but {} parameter{} supplied",
-                     expected_arg_count,
-                     if expected_arg_count == 1 {""} else {"s"},
-                     supplied_arg_count,
-                     if supplied_arg_count == 1 {" was"} else {"s were"});
+                    "this function takes at least {nexpected, plural, =1{# parameter} \
+                                                                   other{# parameters}} \
+                     but {nsupplied, plural, =1{# parameter was} \
+                                          other{# parameters were}} supplied",
+                     nexpected = expected_arg_count,
+                     nsupplied = supplied_arg_count);
 
                 tcx.sess.span_err(sp, msg);
 
@@ -1678,11 +1683,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             }
         } else {
             let msg = format!(
-                "this function takes {} parameter{} \
-                 but {} parameter{} supplied",
-                 expected_arg_count, if expected_arg_count == 1 {""} else {"s"},
-                 supplied_arg_count,
-                 if supplied_arg_count == 1 {" was"} else {"s were"});
+                "this function takes {nexpected, plural, =1{# parameter} \
+                                                      other{# parameters}} \
+                 but {nsupplied, plural, =1{# parameter was} \
+                                      other{# parameters were}} supplied",
+                 nexpected = expected_arg_count,
+                 nsupplied = supplied_arg_count);
 
             tcx.sess.span_err(sp, msg);
 
@@ -2384,13 +2390,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 }
 
                 tcx.sess.span_err(span,
-                                  format!("missing field{}: {}",
-                                       if missing_fields.len() == 1 {
-                                           ""
-                                       } else {
-                                           "s"
-                                       },
-                                       missing_fields.connect(", ")));
+                    format!("missing {nfields, plural, =1{field} other{fields}}: {fields}",
+                            nfields = missing_fields.len(),
+                            fields = missing_fields.connect(", ")));
              }
         }
 
@@ -3556,8 +3558,12 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
 
     let hint = ty::lookup_repr_hint(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id });
     if hint != attr::ReprAny && vs.len() <= 1 {
-        ccx.tcx.sess.span_err(sp, format!("unsupported representation for {}variant enum",
-                                          if vs.len() == 1 { "uni" } else { "zero-" }))
+        let msg = if vs.len() == 1 {
+            "unsupported representation for univariant enum"
+        } else {
+            "unsupported representation for zero-variant enum"
+        };
+        ccx.tcx.sess.span_err(sp, msg)
     }
 
     let variants = do_check(ccx, vs, id, hint);
@@ -3666,9 +3672,12 @@ pub fn instantiate_path(fcx: @FnCtxt,
         if num_supplied_regions != 0 {
             fcx.ccx.tcx.sess.span_err(
                 span,
-                format!("expected {} lifetime parameter(s), \
-                        found {} lifetime parameter(s)",
-                        num_expected_regions, num_supplied_regions));
+                format!("expected {nexpected, plural, =1{# lifetime parameter} \
+                                                   other{# lifetime parameters}}, \
+                         found {nsupplied, plural, =1{# lifetime parameter} \
+                                                other{# lifetime parameters}}",
+                        nexpected = num_expected_regions,
+                        nsupplied = num_supplied_regions));
         }
 
         opt_vec::from(fcx.infcx().next_region_vars(
