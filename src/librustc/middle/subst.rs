@@ -130,10 +130,10 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Other types
 
-impl<T:Subst> Subst for ~[T] {
+impl<T:Subst> Subst for Vec<T> {
     fn subst_spanned(&self, tcx: ty::ctxt,
                      substs: &ty::substs,
-                     span: Option<Span>) -> ~[T] {
+                     span: Option<Span>) -> Vec<T> {
         self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }

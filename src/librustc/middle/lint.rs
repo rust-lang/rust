@@ -432,7 +432,7 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(Lint, level, LintSource)],
+    lint_stack: Vec<(Lint, level, LintSource)> ,
 
     // id of the last visited negated expression
     negated_expr_id: ast::NodeId
@@ -1738,7 +1738,7 @@ pub fn check_crate(tcx: ty::ctxt,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
-        lint_stack: ~[],
+        lint_stack: Vec::new(),
         negated_expr_id: -1
     };
 

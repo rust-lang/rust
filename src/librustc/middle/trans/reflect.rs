@@ -37,7 +37,7 @@ use syntax::parse::token;
 
 pub struct Reflector<'a> {
     visitor_val: ValueRef,
-    visitor_methods: @~[@ty::Method],
+    visitor_methods: @Vec<@ty::Method> ,
     final_bcx: &'a Block<'a>,
     tydesc_ty: Type,
     bcx: &'a Block<'a>
@@ -70,12 +70,12 @@ impl<'a> Reflector<'a> {
         scratch.val
     }
 
-    pub fn c_size_and_align(&mut self, t: ty::t) -> ~[ValueRef] {
+    pub fn c_size_and_align(&mut self, t: ty::t) -> Vec<ValueRef> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = machine::llalign_of_min(self.bcx.ccx(), tr);
-        return ~[self.c_uint(s as uint),
-             self.c_uint(a as uint)];
+        return vec!(self.c_uint(s as uint),
+             self.c_uint(a as uint));
     }
 
     pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
@@ -85,9 +85,9 @@ impl<'a> Reflector<'a> {
         PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
-    pub fn c_mt(&mut self, mt: &ty::mt) -> ~[ValueRef] {
-        ~[self.c_uint(mt.mutbl as uint),
-          self.c_tydesc(mt.ty)]
+    pub fn c_mt(&mut self, mt: &ty::mt) -> Vec<ValueRef> {
+        vec!(self.c_uint(mt.mutbl as uint),
+          self.c_tydesc(mt.ty))
     }
 
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
@@ -130,15 +130,15 @@ impl<'a> Reflector<'a> {
     pub fn vstore_name_and_extra(&mut self,
                                  t: ty::t,
                                  vstore: ty::vstore)
-                                 -> (~str, ~[ValueRef]) {
+                                 -> (~str, Vec<ValueRef> ) {
         match vstore {
             ty::vstore_fixed(n) => {
-                let extra = vec::append(~[self.c_uint(n)],
+                let extra = vec_ng::append(vec!(self.c_uint(n)),
                                         self.c_size_and_align(t));
                 (~"fixed", extra)
             }
-            ty::vstore_slice(_) => (~"slice", ~[]),
-            ty::vstore_uniq => (~"uniq", ~[]),
+            ty::vstore_slice(_) => (~"slice", Vec::new()),
+            ty::vstore_uniq => (~"uniq", Vec::new()),
         }
     }
 
@@ -210,11 +210,11 @@ impl<'a> Reflector<'a> {
           }
 
           ty::ty_tup(ref tys) => {
-              let extra = ~[self.c_uint(tys.len())]
+              let extra = vec!(self.c_uint(tys.len()))
                   + self.c_size_and_align(t);
               self.bracketed("tup", extra, |this| {
                   for (i, t) in tys.iter().enumerate() {
-                      let extra = ~[this.c_uint(i), this.c_tydesc(*t)];
+                      let extra = vec!(this.c_uint(i), this.c_tydesc(*t));
                       this.visit("tup_field", extra);
                   }
               })
@@ -226,10 +226,10 @@ impl<'a> Reflector<'a> {
             let pureval = ast_purity_constant(fty.purity);
             let sigilval = ast_sigil_constant(fty.sigil);
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
-            let extra = ~[self.c_uint(pureval),
+            let extra = vec!(self.c_uint(pureval),
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
-                          self.c_uint(retval)];
+                          self.c_uint(retval));
             self.visit("enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit("leave_fn", extra);
@@ -241,10 +241,10 @@ impl<'a> Reflector<'a> {
             let pureval = ast_purity_constant(fty.purity);
             let sigilval = 0u;
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
-            let extra = ~[self.c_uint(pureval),
+            let extra = vec!(self.c_uint(pureval),
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
-                          self.c_uint(retval)];
+                          self.c_uint(retval));
             self.visit("enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit("leave_fn", extra);
@@ -258,19 +258,19 @@ impl<'a> Reflector<'a> {
                         fields[0].ident.name != special_idents::unnamed_field.name;
               }
 
-              let extra = ~[
+              let extra = vec!(
                   self.c_slice(token::intern_and_get_ident(ty_to_str(tcx,
                                                                      t))),
                   self.c_bool(named_fields),
                   self.c_uint(fields.len())
-              ] + self.c_size_and_align(t);
+              ) + self.c_size_and_align(t);
               self.bracketed("class", extra, |this| {
                   for (i, field) in fields.iter().enumerate() {
-                      let extra = ~[
+                      let extra = vec!(
                         this.c_uint(i),
                         this.c_slice(token::get_ident(field.ident)),
                         this.c_bool(named_fields)
-                      ] + this.c_mt(&field.mt);
+                      ) + this.c_mt(&field.mt);
                       this.visit("class_field", extra);
                   }
               })
@@ -319,24 +319,24 @@ impl<'a> Reflector<'a> {
                 llfdecl
             };
 
-            let enum_args = ~[self.c_uint(variants.len()), make_get_disr()]
+            let enum_args = vec!(self.c_uint(variants.len()), make_get_disr())
                 + self.c_size_and_align(t);
             self.bracketed("enum", enum_args, |this| {
                 for (i, v) in variants.iter().enumerate() {
                     let name = token::get_ident(v.name);
-                    let variant_args = ~[this.c_uint(i),
+                    let variant_args = vec!(this.c_uint(i),
                                          C_u64(v.disr_val),
                                          this.c_uint(v.args.len()),
-                                         this.c_slice(name)];
+                                         this.c_slice(name));
                     this.bracketed("enum_variant", variant_args, |this| {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
                             let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
                             let offset = p2i(ccx, ptr);
-                            let field_args = ~[this.c_uint(j),
+                            let field_args = vec!(this.c_uint(j),
                                                offset,
-                                               this.c_tydesc(*a)];
+                                               this.c_tydesc(*a));
                             this.visit("enum_variant_field", field_args);
                         }
                     })
@@ -355,7 +355,7 @@ impl<'a> Reflector<'a> {
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
           ty::ty_param(ref p) => {
-              let extra = ~[self.c_uint(p.idx)];
+              let extra = vec!(self.c_uint(p.idx));
               self.visit("param", extra)
           }
           ty::ty_self(..) => self.leaf("self")
@@ -365,14 +365,14 @@ impl<'a> Reflector<'a> {
     pub fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
         for (i, arg) in sig.inputs.iter().enumerate() {
             let modeval = 5u;   // "by copy"
-            let extra = ~[self.c_uint(i),
+            let extra = vec!(self.c_uint(i),
                          self.c_uint(modeval),
-                         self.c_tydesc(*arg)];
+                         self.c_tydesc(*arg));
             self.visit("fn_input", extra);
         }
-        let extra = ~[self.c_uint(retval),
+        let extra = vec!(self.c_uint(retval),
                       self.c_bool(sig.variadic),
-                      self.c_tydesc(sig.output)];
+                      self.c_tydesc(sig.output));
         self.visit("fn_output", extra);
     }
 }

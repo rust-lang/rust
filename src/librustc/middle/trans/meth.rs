@@ -292,7 +292,7 @@ fn combine_impl_and_methods_tps(bcx: &Block,
                                 is_method: bool,
                                 rcvr_substs: &[ty::t],
                                 rcvr_origins: typeck::vtable_res)
-                                -> (~[ty::t], typeck::vtable_res) {
+                                -> (Vec<ty::t> , typeck::vtable_res) {
     /*!
     *
     * Creates a concatenated set of substitutions which includes
@@ -316,7 +316,7 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     let node_substs = node_id_type_params(bcx, expr_id, is_method);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx));
     let ty_substs
-        = vec::append(rcvr_substs.to_owned(),
+        = vec_ng::append(rcvr_substs.to_owned(),
                       node_substs.tailn(node_substs.len() - n_m_tps));
     debug!("n_m_tps={:?}", n_m_tps);
     debug!("node_substs={:?}", node_substs.repr(ccx.tcx));
@@ -327,10 +327,10 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     // exist, in which case we need to make them.
     let r_m_origins = match node_vtables(bcx, expr_id) {
         Some(vt) => vt,
-        None => @vec::from_elem(node_substs.len(), @~[])
+        None => @vec::from_elem(node_substs.len(), @Vec::new())
     };
     let vtables
-        = @vec::append(rcvr_origins.to_owned(),
+        = @vec_ng::append(rcvr_origins.to_owned(),
                        r_m_origins.tailn(r_m_origins.len() - n_m_tps));
 
     (ty_substs, vtables)
@@ -496,7 +496,7 @@ pub fn make_vtable(ccx: &CrateContext,
     unsafe {
         let _icx = push_ctxt("meth::make_vtable");
 
-        let mut components = ~[drop_glue];
+        let mut components = vec!(drop_glue);
         for &ptr in ptrs.iter() {
             components.push(ptr)
         }
@@ -517,7 +517,7 @@ fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
                        substs: &[ty::t],
                        vtables: typeck::vtable_res)
-                       -> ~[ValueRef] {
+                       -> Vec<ValueRef> {
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 

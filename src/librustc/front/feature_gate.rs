@@ -85,7 +85,7 @@ impl Features {
 }
 
 struct Context {
-    features: ~[&'static str],
+    features: Vec<&'static str> ,
     sess: Session,
 }
 
@@ -280,7 +280,7 @@ impl Visitor<()> for Context {
 
 pub fn check_crate(sess: Session, krate: &ast::Crate) {
     let mut cx = Context {
-        features: ~[],
+        features: Vec::new(),
         sess: sess,
     };
 

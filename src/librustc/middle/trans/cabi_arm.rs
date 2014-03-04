@@ -131,7 +131,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    let mut arg_tys = ~[];
+    let mut arg_tys = Vec::new();
     for &aty in atys.iter() {
         let ty = classify_arg_ty(aty);
         arg_tys.push(ty);

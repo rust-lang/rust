@@ -84,7 +84,7 @@ impl<'a> ClassList for &'a [RegClass] {
     }
 }
 
-fn classify_ty(ty: Type) -> ~[RegClass] {
+fn classify_ty(ty: Type) -> Vec<RegClass> {
     fn align(off: uint, ty: Type) -> uint {
         let a = ty_align(ty);
         return (off + a - 1u) / a * a;
@@ -304,7 +304,7 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
         return len;
     }
 
-    let mut tys = ~[];
+    let mut tys = Vec::new();
     let mut i = 0u;
     let e = cls.len();
     while i < e {
@@ -352,7 +352,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
         }
     }
 
-    let mut arg_tys = ~[];
+    let mut arg_tys = Vec::new();
     for t in atys.iter() {
         let ty = x86_64_ty(*t, |cls| cls.is_pass_byval(), ByValAttribute);
         arg_tys.push(ty);

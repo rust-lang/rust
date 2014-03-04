@@ -139,8 +139,8 @@ pub fn lookup(
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: @RefCell::new(HashSet::new()),
-        inherent_candidates: @RefCell::new(~[]),
-        extension_candidates: @RefCell::new(~[]),
+        inherent_candidates: @RefCell::new(Vec::new()),
+        extension_candidates: @RefCell::new(Vec::new()),
         deref_args: deref_args,
         check_traits: check_traits,
         autoderef_receiver: autoderef_receiver,
@@ -184,8 +184,8 @@ pub fn lookup_in_trait(
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: @RefCell::new(HashSet::new()),
-        inherent_candidates: @RefCell::new(~[]),
-        extension_candidates: @RefCell::new(~[]),
+        inherent_candidates: @RefCell::new(Vec::new()),
+        extension_candidates: @RefCell::new(Vec::new()),
         deref_args: check::DoDerefArgs,
         check_traits: CheckTraitsOnly,
         autoderef_receiver: autoderef_receiver,
@@ -208,8 +208,8 @@ pub struct LookupContext<'a> {
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
     impl_dups: @RefCell<HashSet<DefId>>,
-    inherent_candidates: @RefCell<~[Candidate]>,
-    extension_candidates: @RefCell<~[Candidate]>,
+    inherent_candidates: @RefCell<Vec<Candidate> >,
+    extension_candidates: @RefCell<Vec<Candidate> >,
     deref_args: check::DerefArgs,
     check_traits: CheckTraitsFlag,
     autoderef_receiver: AutoderefReceiverFlag,
@@ -311,8 +311,8 @@ impl<'a> LookupContext<'a> {
     // Candidate collection (see comment at start of file)
 
     fn reset_candidates(&self) {
-        self.inherent_candidates.set(~[]);
-        self.extension_candidates.set(~[]);
+        self.inherent_candidates.set(Vec::new());
+        self.extension_candidates.set(Vec::new());
     }
 
     fn push_inherent_candidates(&self, self_ty: ty::t) {
@@ -584,7 +584,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn push_candidates_from_impl(&self,
-                                     candidates: &mut ~[Candidate],
+                                     candidates: &mut Vec<Candidate> ,
                                      impl_info: &ty::Impl) {
         {
             let mut impl_dups = self.impl_dups.borrow_mut();
@@ -892,10 +892,10 @@ impl<'a> LookupContext<'a> {
 
     fn consider_candidates(&self,
                            rcvr_ty: ty::t,
-                           candidates: &mut ~[Candidate])
+                           candidates: &mut Vec<Candidate> )
                            -> Option<MethodCallee> {
         // FIXME(pcwalton): Do we need to clone here?
-        let relevant_candidates: ~[Candidate] =
+        let relevant_candidates: Vec<Candidate> =
             candidates.iter().map(|c| (*c).clone()).
                 filter(|c| self.is_relevant(rcvr_ty, c)).collect();
 
@@ -917,8 +917,8 @@ impl<'a> LookupContext<'a> {
         Some(self.confirm_candidate(rcvr_ty, &relevant_candidates[0]))
     }
 
-    fn merge_candidates(&self, candidates: &[Candidate]) -> ~[Candidate] {
-        let mut merged = ~[];
+    fn merge_candidates(&self, candidates: &[Candidate]) -> Vec<Candidate> {
+        let mut merged = Vec::new();
         let mut i = 0;
         while i < candidates.len() {
             let candidate_a = &candidates[i];
@@ -1011,7 +1011,7 @@ impl<'a> LookupContext<'a> {
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
         let all_substs = substs {
-            tps: vec::append(candidate.rcvr_substs.tps.clone(), m_substs),
+            tps: vec_ng::append(candidate.rcvr_substs.tps.clone(), m_substs),
             regions: candidate.rcvr_substs.regions.clone(),
             self_ty: candidate.rcvr_substs.self_ty,
         };

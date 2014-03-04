@@ -92,11 +92,11 @@ struct ReachableContext {
     reachable_symbols: @RefCell<NodeSet>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @RefCell<~[ast::NodeId]>,
+    worklist: @RefCell<Vec<ast::NodeId> >,
 }
 
 struct MarkSymbolVisitor {
-    worklist: @RefCell<~[ast::NodeId]>,
+    worklist: @RefCell<Vec<ast::NodeId> >,
     method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     reachable_symbols: @RefCell<NodeSet>,
@@ -190,7 +190,7 @@ impl ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @RefCell::new(NodeSet::new()),
-            worklist: @RefCell::new(~[]),
+            worklist: @RefCell::new(Vec::new()),
         }
     }
 

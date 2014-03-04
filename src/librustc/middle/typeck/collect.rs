@@ -336,7 +336,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         // the substitution to any traits that appear in their bounds.
 
         // add in the type parameters from the trait
-        let mut new_type_param_defs = ~[];
+        let mut new_type_param_defs = Vec::new();
         let substd_type_param_defs =
             trait_ty_generics.type_param_defs.subst(tcx, &substs);
         new_type_param_defs.push_all(*substd_type_param_defs.borrow());
@@ -349,7 +349,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
             def_id: dummy_defid,
             bounds: @ty::ParamBounds {
                 builtin_bounds: ty::EmptyBuiltinBounds(),
-                trait_bounds: ~[self_trait_ref]
+                trait_bounds: vec!(self_trait_ref)
             },
             default: None
         });
@@ -420,7 +420,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
     }
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
-    let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
+    let mut ty_trait_refs: Vec<@ty::TraitRef> = Vec::new();
     let mut bounds = ty::EmptyBuiltinBounds();
     for ast_trait_ref in ast_trait_refs.iter() {
         let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, ast_trait_ref);
@@ -494,7 +494,7 @@ fn convert_methods(ccx: &CrateCtxt,
                 // itself
                 ty_param_bounds_and_ty {
                     generics: ty::Generics {
-                        type_param_defs: Rc::new(vec::append(
+                        type_param_defs: Rc::new(vec_ng::append(
                             rcvr_ty_generics.type_param_defs().to_owned(),
                             m_ty_generics.type_param_defs())),
                         region_param_defs: rcvr_ty_generics.region_param_defs.clone(),
@@ -860,7 +860,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
             let tpt = ty_param_bounds_and_ty {
                 generics: ty::Generics {
                     type_param_defs: ty_generics.type_param_defs.clone(),
-                    region_param_defs: Rc::new(~[]),
+                    region_param_defs: Rc::new(Vec::new()),
                 },
                 ty: ty::mk_bare_fn(ccx.tcx, tofd)
             };
@@ -946,8 +946,8 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
         ast::ForeignItemStatic(t, _) => {
             ty::ty_param_bounds_and_ty {
                 generics: ty::Generics {
-                    type_param_defs: Rc::new(~[]),
-                    region_param_defs: Rc::new(~[]),
+                    type_param_defs: Rc::new(Vec::new()),
+                    region_param_defs: Rc::new(Vec::new()),
                 },
                 ty: ast_ty_to_ty(ccx, &ExplicitRscope, t)
             }
@@ -1008,7 +1008,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
 
         let mut param_bounds = ty::ParamBounds {
             builtin_bounds: ty::EmptyBuiltinBounds(),
-            trait_bounds: ~[]
+            trait_bounds: Vec::new()
         };
         for ast_bound in ast_bounds.iter() {
             match *ast_bound {
@@ -1083,7 +1083,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
                       ty_generics: &ty::Generics,
                       self_ty: Option<ty::t>) -> ty::substs
 {
-    let params: ~[ty::t] =
+    let params: Vec<ty::t> =
         ty_generics.type_param_defs().iter().enumerate().map(
             |(i, t)| ty::mk_param(ccx.tcx, i, t.def_id)).collect();
 

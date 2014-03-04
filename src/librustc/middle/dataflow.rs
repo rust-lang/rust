@@ -54,15 +54,14 @@ pub struct DataFlowContext<O> {
     // the full vector (see the method `compute_id_range()`).
 
     /// bits generated as we exit the scope `id`. Updated by `add_gen()`.
-    priv gens: ~[uint],
+    priv gens: Vec<uint> ,
 
     /// bits killed as we exit the scope `id`. Updated by `add_kill()`.
-    priv kills: ~[uint],
+    priv kills: Vec<uint> ,
 
     /// bits that are valid on entry to the scope `id`. Updated by
     /// `propagate()`.
-    priv on_entry: ~[uint]
-}
+    priv on_entry: Vec<uint> }
 
 /// Parameterization for the precise form of data flow that is used.
 pub trait DataFlowOperator {
@@ -80,8 +79,7 @@ struct PropagationContext<'a, O> {
 
 struct LoopScope<'a> {
     loop_id: ast::NodeId,
-    break_bits: ~[uint]
-}
+    break_bits: Vec<uint> }
 
 impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
     fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
@@ -131,9 +129,9 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         debug!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
                id_range, bits_per_id, words_per_id);
 
-        let gens = ~[];
-        let kills = ~[];
-        let on_entry = ~[];
+        let gens = Vec::new();
+        let kills = Vec::new();
+        let on_entry = Vec::new();
 
         DataFlowContext {
             tcx: tcx,
@@ -332,7 +330,7 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
             };
 
             let mut temp = vec::from_elem(self.words_per_id, 0u);
-            let mut loop_scopes = ~[];
+            let mut loop_scopes = Vec::new();
 
             while propcx.changed {
                 propcx.changed = false;
@@ -367,7 +365,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_block(&mut self,
                   blk: &ast::Block,
                   in_out: &mut [uint],
-                  loop_scopes: &mut ~[LoopScope]) {
+                  loop_scopes: &mut Vec<LoopScope> ) {
         debug!("DataFlowContext::walk_block(blk.id={}, in_out={})",
                blk.id, bits_to_str(in_out));
 
@@ -385,7 +383,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_stmt(&mut self,
                  stmt: @ast::Stmt,
                  in_out: &mut [uint],
-                 loop_scopes: &mut ~[LoopScope]) {
+                 loop_scopes: &mut Vec<LoopScope> ) {
         match stmt.node {
             ast::StmtDecl(decl, _) => {
                 self.walk_decl(decl, in_out, loop_scopes);
@@ -404,7 +402,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_decl(&mut self,
                  decl: @ast::Decl,
                  in_out: &mut [uint],
-                 loop_scopes: &mut ~[LoopScope]) {
+                 loop_scopes: &mut Vec<LoopScope> ) {
         match decl.node {
             ast::DeclLocal(local) => {
                 self.walk_opt_expr(local.init, in_out, loop_scopes);
@@ -418,7 +416,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_expr(&mut self,
                  expr: &ast::Expr,
                  in_out: &mut [uint],
-                 loop_scopes: &mut ~[LoopScope]) {
+                 loop_scopes: &mut Vec<LoopScope> ) {
         debug!("DataFlowContext::walk_expr(expr={}, in_out={})",
                expr.repr(self.dfcx.tcx), bits_to_str(in_out));
 
@@ -701,7 +699,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_exprs(&mut self,
                   exprs: &[@ast::Expr],
                   in_out: &mut [uint],
-                  loop_scopes: &mut ~[LoopScope]) {
+                  loop_scopes: &mut Vec<LoopScope> ) {
         for &expr in exprs.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
@@ -710,7 +708,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_opt_expr(&mut self,
                      opt_expr: Option<@ast::Expr>,
                      in_out: &mut [uint],
-                     loop_scopes: &mut ~[LoopScope]) {
+                     loop_scopes: &mut Vec<LoopScope> ) {
         for &expr in opt_expr.iter() {
             self.walk_expr(expr, in_out, loop_scopes);
         }
@@ -720,7 +718,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                  call_id: ast::NodeId,
                  args: &[@ast::Expr],
                  in_out: &mut [uint],
-                 loop_scopes: &mut ~[LoopScope]) {
+                 loop_scopes: &mut Vec<LoopScope> ) {
         self.walk_exprs(args, in_out, loop_scopes);
 
         // FIXME(#6268) nested method calls
@@ -737,7 +735,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_pat(&mut self,
                 pat: @ast::Pat,
                 in_out: &mut [uint],
-                _loop_scopes: &mut ~[LoopScope]) {
+                _loop_scopes: &mut Vec<LoopScope> ) {
         debug!("DataFlowContext::walk_pat(pat={}, in_out={})",
                pat.repr(self.dfcx.tcx), bits_to_str(in_out));
 
@@ -752,7 +750,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_pat_alternatives(&mut self,
                              pats: &[@ast::Pat],
                              in_out: &mut [uint],
-                             loop_scopes: &mut ~[LoopScope]) {
+                             loop_scopes: &mut Vec<LoopScope> ) {
         if pats.len() == 1 {
             // Common special case:
             return self.walk_pat(pats[0], in_out, loop_scopes);
@@ -772,7 +770,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn find_scope<'a>(&self,
                       expr: &ast::Expr,
                       label: Option<ast::Ident>,
-                      loop_scopes: &'a mut ~[LoopScope]) -> &'a mut LoopScope {
+                      loop_scopes: &'a mut Vec<LoopScope> ) -> &'a mut LoopScope {
         let index = match label {
             None => {
                 let len = loop_scopes.len();

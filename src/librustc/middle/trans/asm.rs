@@ -32,8 +32,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                         -> &'a Block<'a> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let mut constraints = ~[];
-    let mut output_types = ~[];
+    let mut constraints = Vec::new();
+    let mut output_types = Vec::new();
 
     let temp_scope = fcx.push_custom_cleanup_scope();
 

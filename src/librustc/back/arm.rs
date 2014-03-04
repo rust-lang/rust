@@ -15,9 +15,9 @@ use syntax::abi;
 
 pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::t {
     let cc_args = if target_triple.contains("thumb") {
-        ~[~"-mthumb"]
+        vec!(~"-mthumb")
     } else {
-        ~[~"-marm"]
+        vec!(~"-marm")
     };
     return target_strs::t {
         module_asm: ~"",

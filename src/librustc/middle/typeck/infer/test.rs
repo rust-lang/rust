@@ -46,7 +46,7 @@ static EMPTY_SOURCE_STR: &str = "/* Hello, world! */";
 
 fn setup_env(test_name: &str, source_string: &str) -> Env {
     let messages = @DVec();
-    let matches = getopts(~[~"-Z", ~"verbose"], optgroups()).get();
+    let matches = getopts(vec!(~"-Z", ~"verbose"), optgroups()).get();
     let diag = diagnostic::collect(messages);
     let sessopts = build_session_options(~"rustc", &matches, diag);
     let sess = build_session(sessopts, None, diag);
@@ -186,7 +186,7 @@ impl Env {
                           proto: ast::ProtoBare,
                           onceness: ast::Many,
                           region: ty::ReStatic,
-                          bounds: @~[]},
+                          bounds: @Vec::new()},
             sig: FnSig {
                 inputs: inputs,
                 output: output_ty,

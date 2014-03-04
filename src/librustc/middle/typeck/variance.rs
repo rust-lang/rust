@@ -261,7 +261,7 @@ struct TermsContext<'a> {
     inferred_map: HashMap<ast::NodeId, InferredIndex>,
 
     // Maps from an InferredIndex to the info for that variable.
-    inferred_infos: ~[InferredInfo<'a>],
+    inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
 enum ParamKind { TypeParam, RegionParam, SelfParam }
@@ -282,7 +282,7 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
         tcx: tcx,
         arena: arena,
         inferred_map: HashMap::new(),
-        inferred_infos: ~[],
+        inferred_infos: Vec::new(),
 
         // cache and share the variance struct used for items with
         // no type/region parameters
@@ -410,7 +410,7 @@ struct ConstraintContext<'a> {
     invariant: VarianceTermPtr<'a>,
     bivariant: VarianceTermPtr<'a>,
 
-    constraints: ~[Constraint<'a>],
+    constraints: Vec<Constraint<'a>> ,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
@@ -457,7 +457,7 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
         contravariant: contravariant,
         invariant: invariant,
         bivariant: bivariant,
-        constraints: ~[],
+        constraints: Vec::new(),
     };
     visit::walk_crate(&mut constraint_cx, krate, ());
     constraint_cx
@@ -835,11 +835,10 @@ impl<'a> ConstraintContext<'a> {
 
 struct SolveContext<'a> {
     terms_cx: TermsContext<'a>,
-    constraints: ~[Constraint<'a>],
+    constraints: Vec<Constraint<'a>> ,
 
     // Maps from an InferredIndex to the inferred value for that variable.
-    solutions: ~[ty::Variance]
-}
+    solutions: Vec<ty::Variance> }
 
 fn solve_constraints(constraints_cx: ConstraintContext) {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;

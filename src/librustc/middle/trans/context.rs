@@ -226,7 +226,7 @@ impl CrateContext {
                    n_closures: Cell::new(0u),
                    n_llvm_insns: Cell::new(0u),
                    llvm_insns: RefCell::new(HashMap::new()),
-                   fn_stats: RefCell::new(~[]),
+                   fn_stats: RefCell::new(Vec::new()),
                  },
                  tydesc_type: tydesc_type,
                  int_type: int_type,
@@ -250,7 +250,7 @@ impl CrateContext {
                                indices: &[uint]) -> ValueRef {
         debug!("const_inbounds_gepi: pointer={} indices={:?}",
                self.tn.val_to_str(pointer), indices);
-        let v: ~[ValueRef] =
+        let v: Vec<ValueRef> =
             indices.iter().map(|i| C_i32(*i as i32)).collect();
         unsafe {
             llvm::LLVMConstInBoundsGEP(pointer,

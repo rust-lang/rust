@@ -58,7 +58,7 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)
 }
 
 fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
-    let filtered_items: ~[&@ast::Item] = m.items.iter()
+    let filtered_items: Vec<&@ast::Item> = m.items.iter()
             .filter(|&a| item_in_cfg(cx, *a))
             .collect();
     let flattened_items = filtered_items.move_iter()
@@ -170,7 +170,7 @@ fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
 }
 
 fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
-    let resulting_stmts: ~[&@ast::Stmt] =
+    let resulting_stmts: Vec<&@ast::Stmt> =
         b.stmts.iter().filter(|&a| retain_stmt(cx, *a)).collect();
     let resulting_stmts = resulting_stmts.move_iter()
         .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())

@@ -116,9 +116,9 @@ pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: ~[ast_map::PathElem],
+                           path: Vec<ast_map::PathElem> ,
                            par_doc: ebml::Doc)
-                           -> Result<ast::InlinedItem, ~[ast_map::PathElem]> {
+                           -> Result<ast::InlinedItem, Vec<ast_map::PathElem> > {
     let dcx = @DecodeContext {
         cdata: cdata,
         tcx: tcx,
@@ -395,7 +395,7 @@ impl ast_map::FoldOps for AstRenumberer {
 
 fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
                         map: &ast_map::Map,
-                        path: ~[ast_map::PathElem],
+                        path: Vec<ast_map::PathElem> ,
                         ii: ast::InlinedItem) -> ast::InlinedItem {
     ast_map::map_decoded_item(map,
                               path.move_iter().collect(),
@@ -1100,7 +1100,7 @@ impl<'a> doc_decoder_helpers for ebml::Doc<'a> {
 
 trait ebml_decoder_decoder_helpers {
     fn read_ty(&mut self, xcx: @ExtendedDecodeContext) -> ty::t;
-    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> ~[ty::t];
+    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> Vec<ty::t> ;
     fn read_type_param_def(&mut self, xcx: @ExtendedDecodeContext)
                            -> ty::TypeParameterDef;
     fn read_ty_param_bounds_and_ty(&mut self, xcx: @ExtendedDecodeContext)
@@ -1119,7 +1119,7 @@ trait ebml_decoder_decoder_helpers {
                      tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t;
     fn read_tys_noxcx(&mut self,
                       tcx: ty::ctxt,
-                      cdata: @cstore::crate_metadata) -> ~[ty::t];
+                      cdata: @cstore::crate_metadata) -> Vec<ty::t> ;
 }
 
 impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
@@ -1137,7 +1137,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
 
     fn read_tys_noxcx(&mut self,
                       tcx: ty::ctxt,
-                      cdata: @cstore::crate_metadata) -> ~[ty::t] {
+                      cdata: @cstore::crate_metadata) -> Vec<ty::t> {
         self.read_to_vec(|this| this.read_ty_noxcx(tcx, cdata) )
     }
 
@@ -1169,7 +1169,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }
     }
 
-    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> ~[ty::t] {
+    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> Vec<ty::t> {
         self.read_to_vec(|this| this.read_ty(xcx) )
     }
 
@@ -1510,14 +1510,14 @@ fn test_simplification() {
     let item = quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
-            return alist {eq_fn: eq_int, data: ~[]};
+            return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
     let item_in = e::IIItemRef(item);
     let item_out = simplify_ast(item_in);
     let item_exp = ast::IIItem(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
-            return alist {eq_fn: eq_int, data: ~[]};
+            return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap());
     match (item_out, item_exp) {

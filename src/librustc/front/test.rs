@@ -40,7 +40,7 @@ use syntax::util::small_vector::SmallVector;
 
 struct Test {
     span: Span,
-    path: ~[ast::Ident],
+    path: Vec<ast::Ident> ,
     bench: bool,
     ignore: bool,
     should_fail: bool
@@ -48,9 +48,9 @@ struct Test {
 
 struct TestCtxt<'a> {
     sess: session::Session,
-    path: RefCell<~[ast::Ident]>,
+    path: RefCell<Vec<ast::Ident> >,
     ext_cx: ExtCtxt<'a>,
-    testfns: RefCell<~[Test]>,
+    testfns: RefCell<Vec<Test> >,
     is_test_crate: bool,
     config: ast::CrateConfig,
 }
@@ -171,8 +171,8 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
                                  loader: loader,
                                  deriving_hash_type_parameter: false,
                              }),
-        path: RefCell::new(~[]),
-        testfns: RefCell::new(~[]),
+        path: RefCell::new(Vec::new()),
+        testfns: RefCell::new(Vec::new()),
         is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
@@ -303,7 +303,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let vi = if cx.is_test_crate {
         ast::ViewItemUse(
             vec!(@nospan(ast::ViewPathSimple(id_test,
-                                             path_node(~[id_test]),
+                                             path_node(vec!(id_test)),
                                              ast::DUMMY_NODE_ID))))
     } else {
         ast::ViewItemExternCrate(id_test,
@@ -363,7 +363,7 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
     codemap::Spanned { node: t, span: DUMMY_SP }
 }
 
-fn path_node(ids: ~[ast::Ident]) -> ast::Path {
+fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: false,
@@ -375,7 +375,7 @@ fn path_node(ids: ~[ast::Ident]) -> ast::Path {
     }
 }
 
-fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
+fn path_node_global(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: true,

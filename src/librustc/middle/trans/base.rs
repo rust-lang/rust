@@ -94,7 +94,7 @@ use time;
 
 pub use middle::trans::context::task_llcx;
 
-local_data_key!(task_local_insn_key: ~[&'static str])
+local_data_key!(task_local_insn_key: Vec<&'static str> )
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
     local_data::get(task_local_insn_key, |c| {
@@ -106,7 +106,7 @@ pub fn with_insn_ctxt(blk: |&[&'static str]|) {
 }
 
 pub fn init_insn_ctxt() {
-    local_data::set(task_local_insn_key, ~[]);
+    local_data::set(task_local_insn_key, Vec::new());
 }
 
 pub struct _InsnCtxt { _x: () }
@@ -902,7 +902,7 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
 pub fn invoke<'a>(
               bcx: &'a Block<'a>,
               llfn: ValueRef,
-              llargs: ~[ValueRef],
+              llargs: Vec<ValueRef> ,
               attributes: &[(uint, lib::llvm::Attribute)],
               call_info: Option<NodeInfo>)
               -> (ValueRef, &'a Block<'a>) {
@@ -1255,7 +1255,7 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
-          scopes: RefCell::new(~[])
+          scopes: RefCell::new(Vec::new())
     };
 
     if has_env {
@@ -1331,7 +1331,7 @@ pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 // appropriate lvalue datums.
 pub fn create_datums_for_fn_args(fcx: &FunctionContext,
                                  arg_tys: &[ty::t])
-                                 -> ~[RvalueDatum] {
+                                 -> Vec<RvalueDatum> {
     let _icx = push_ctxt("create_datums_for_fn_args");
 
     // Return an array wrapping the ValueRefs that we get from
@@ -1348,7 +1348,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
                             arg_scope: cleanup::CustomScopeIndex,
                             bcx: &'a Block<'a>,
                             args: &[ast::Arg],
-                            arg_datums: ~[RvalueDatum])
+                            arg_datums: Vec<RvalueDatum> )
                             -> &'a Block<'a> {
     debug!("copy_args_to_allocas");
 
@@ -1633,7 +1633,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
 }
 
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
-                      id: ast::NodeId, vi: @~[@ty::VariantInfo],
+                      id: ast::NodeId, vi: @Vec<@ty::VariantInfo> ,
                       i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
         let disr_val = vi[*i].disr_val;
@@ -1876,19 +1876,19 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                         llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
                     });
 
-                    ~[
+                    vec!(
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
                         llvm::LLVMGetParam(llfn, 1)
-                     ]
+                     )
                 };
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
-                let args = ~[
+                let args = vec!(
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint)
-                ];
+                );
 
                 (rust_main, args)
             };
@@ -2450,13 +2450,13 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
         }
     });
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    let mut elts: ~[ValueRef] = ~[];
+    let mut elts: Vec<ValueRef> = Vec::new();
 
     // This is not ideal, but the borrow checker doesn't
     // like the multiple borrows. At least, it doesn't
     // like them on the current snapshot. (2013-06-14)
     let keys = {
-        let mut keys = ~[];
+        let mut keys = Vec::new();
         let module_data = ccx.module_data.borrow();
         for (k, _) in module_data.get().iter() {
             keys.push(k.clone());
@@ -2526,7 +2526,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
 }
 
 pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
-    let mut subcrates: ~[ValueRef] = ~[];
+    let mut subcrates: Vec<ValueRef> = Vec::new();
     let mut i = 1;
     let cstore = ccx.sess.cstore;
     while cstore.have_crate_data(i) {
@@ -2600,11 +2600,11 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
+pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
     if !cx.sess.building_library.get() {
-        return ~[]
+        return Vec::new()
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =

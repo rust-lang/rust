@@ -501,7 +501,7 @@ pub fn parameterized(cx: ctxt,
                      did: ast::DefId,
                      is_trait: bool) -> ~str {
 
-    let mut strs = ~[];
+    let mut strs = Vec::new();
     match *regions {
         ty::ErasedRegions => { }
         ty::NonerasedRegions(ref regions) => {
@@ -610,7 +610,7 @@ impl<T:Repr> Repr for OptVec<T> {
 
 // This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
-impl<T:Repr> Repr for ~[T] {
+impl<T:Repr> Repr for Vec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
         repr_vec(tcx, *self)
     }
@@ -658,7 +658,7 @@ impl Repr for ty::RegionSubsts {
 
 impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
-        let mut res = ~[];
+        let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
@@ -973,7 +973,7 @@ impl<A:UserString> UserString for @A {
 impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: ctxt) -> ~str {
         if self.is_empty() { ~"<no-bounds>" } else {
-            let mut result = ~[];
+            let mut result = Vec::new();
             for bb in self.iter() {
                 result.push(bb.user_string(tcx));
             }
