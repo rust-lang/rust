@@ -444,14 +444,12 @@ pub fn trans_call<'a>(
                   call_ex: &ast::Expr,
                   f: &ast::Expr,
                   args: CallArgs,
-                  id: ast::NodeId,
                   dest: expr::Dest)
                   -> &'a Block<'a> {
     let _icx = push_ctxt("trans_call");
     trans_call_inner(in_cx,
                      Some(common::expr_info(call_ex)),
                      expr_ty(in_cx, f),
-                     node_id_type(in_cx, id),
                      |cx, _| trans(cx, f),
                      args,
                      Some(dest)).bcx
@@ -471,7 +469,6 @@ pub fn trans_method_call<'a>(
         bcx,
         Some(common::expr_info(call_ex)),
         monomorphize_type(bcx, method_ty),
-        expr_ty(bcx, call_ex),
         |cx, arg_cleanup_scope| {
             meth::trans_method_callee(cx, call_ex.id, rcvr, arg_cleanup_scope)
         },
@@ -490,11 +487,9 @@ pub fn trans_lang_call<'a>(
     } else {
         csearch::get_type(bcx.ccx().tcx, did).ty
     };
-    let rty = ty::ty_fn_ret(fty);
     callee::trans_call_inner(bcx,
                              None,
                              fty,
-                             rty,
                              |bcx, _| {
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
@@ -520,12 +515,10 @@ pub fn trans_lang_call_with_type_params<'a>(
         fty = csearch::get_type(bcx.tcx(), did).ty;
     }
 
-    let rty = ty::ty_fn_ret(fty);
     return callee::trans_call_inner(
         bcx,
         None,
         fty,
-        rty,
         |bcx, _| {
             let callee =
                 trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
@@ -554,7 +547,6 @@ pub fn trans_call_inner<'a>(
                         bcx: &'a Block<'a>,
                         call_info: Option<NodeInfo>,
                         callee_ty: ty::t,
-                        ret_ty: ty::t,
                         get_callee: |bcx: &'a Block<'a>,
                                      arg_cleanup_scope: cleanup::ScopeId|
                                      -> Callee<'a>,
@@ -610,9 +602,10 @@ pub fn trans_call_inner<'a>(
         }
     };
 
-    let abi = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref f) => f.abis,
-        _ => AbiSet::Rust()
+    let (abi, ret_ty) = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref f) => (f.abis, f.sig.output),
+        ty::ty_closure(ref f) => (AbiSet::Rust(), f.sig.output),
+        _ => fail!("expected bare rust fn or closure in trans_call_inner")
     };
     let is_rust_fn =
         abi.is_rust() ||

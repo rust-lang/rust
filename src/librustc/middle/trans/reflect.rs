@@ -105,9 +105,8 @@ impl<'a> Reflector<'a> {
         for (i, a) in args.iter().enumerate() {
             debug!("arg {}: {}", i, bcx.val_to_str(*a));
         }
-        let bool_ty = ty::mk_bool();
         let result = unpack_result!(bcx, callee::trans_call_inner(
-            self.bcx, None, mth_ty, bool_ty,
+            self.bcx, None, mth_ty,
             |bcx, _| meth::trans_trait_callee_from_llval(bcx,
                                                          mth_ty,
                                                          mth_idx,

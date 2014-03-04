@@ -267,6 +267,7 @@ pub type McResult<T> = Result<T, ()>;
 pub trait Typer {
     fn tcx(&self) -> ty::ctxt;
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t>;
     fn adjustment(&mut self, node_id: ast::NodeId) -> Option<@ty::AutoAdjustment>;
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
@@ -433,11 +434,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
           ast::ExprUnary(ast::UnDeref, e_base) => {
-            if self.typer.is_method_call(expr.id) {
-                return Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty));
-            }
-
-            let base_cmt = if_ok!(self.cat_expr(e_base));
+            let base_cmt = match self.typer.node_method_ty(expr.id) {
+                Some(method_ty) => {
+                    let ref_ty = ty::ty_fn_ret(method_ty);
+                    self.cat_rvalue_node(expr.id(), expr.span(), ref_ty)
+                }
+                None => if_ok!(self.cat_expr(e_base))
+            };
             Ok(self.cat_deref(expr, base_cmt, 0))
           }
 
