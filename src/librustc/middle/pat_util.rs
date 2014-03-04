@@ -88,8 +88,8 @@ pub fn pat_bindings(dm: resolve::DefMap,
     });
 }
 
-pub fn pat_binding_ids(dm: resolve::DefMap, pat: &Pat) -> ~[NodeId] {
-    let mut found = ~[];
+pub fn pat_binding_ids(dm: resolve::DefMap, pat: &Pat) -> Vec<NodeId> {
+    let mut found = Vec::new();
     pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| found.push(b_id) );
     return found;
 }

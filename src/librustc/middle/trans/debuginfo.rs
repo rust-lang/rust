@@ -177,7 +177,7 @@ pub struct CrateDebugContext {
     priv current_debug_location: Cell<DebugLocation>,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: RefCell<HashMap<~[ast::Name], @NamespaceTreeNode>>,
+    priv namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     priv composite_types_completed: RefCell<HashSet<DIType>>,
@@ -771,7 +771,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         name_to_append_suffix_to.push_char('<');
 
         // The list to be filled with template parameters:
-        let mut template_params: ~[DIDescriptor] = vec::with_capacity(generics.ty_params.len() + 1);
+        let mut template_params: Vec<DIDescriptor> = vec::with_capacity(generics.ty_params.len() + 1);
 
         // Handle self type
         if has_self_type {
@@ -1136,7 +1136,7 @@ enum MemberDescriptionFactory {
 
 impl MemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         match *self {
             StructMD(ref this) => {
                 this.create_member_descriptions(cx)
@@ -1155,13 +1155,13 @@ impl MemberDescriptionFactory {
 }
 
 struct StructMemberDescriptionFactory {
-    fields: ~[ty::field],
+    fields: Vec<ty::field> ,
     span: Span,
 }
 
 impl StructMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.fields.map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
                 ~""
@@ -1260,13 +1260,13 @@ impl RecursiveTypeDescription {
 }
 
 struct TupleMemberDescriptionFactory {
-    component_types: ~[ty::t],
+    component_types: Vec<ty::t> ,
     span: Span,
 }
 
 impl TupleMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.component_types.map(|&component_type| {
             MemberDescription {
                 name: ~"",
@@ -1308,7 +1308,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 
 struct GeneralMemberDescriptionFactory {
     type_rep: @adt::Repr,
-    variants: @~[@ty::VariantInfo],
+    variants: @Vec<@ty::VariantInfo> ,
     discriminant_type_metadata: ValueRef,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1317,7 +1317,7 @@ struct GeneralMemberDescriptionFactory {
 
 impl GeneralMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         // Capture type_rep, so we don't have to copy the struct_defs array
         let struct_defs = match *self.type_rep {
             adt::General(_, ref struct_defs) => struct_defs,
@@ -1357,14 +1357,14 @@ impl GeneralMemberDescriptionFactory {
 }
 
 struct EnumVariantMemberDescriptionFactory {
-    args: ~[(~str, ty::t)],
+    args: Vec<(~str, ty::t)> ,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
 
 impl EnumVariantMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
                 name: name.to_str(),
@@ -1420,7 +1420,7 @@ fn describe_enum_variant(cx: &CrateContext,
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: ~[(~str, ty::t)] = arg_names.iter()
+    let args: Vec<(~str, ty::t)> = arg_names.iter()
         .zip(struct_def.fields.iter())
         .map(|(s, &t)| (s.to_str(), t))
         .collect();
@@ -1462,7 +1462,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     let variants = ty::enum_variants(cx.tcx, enum_def_id);
 
-    let enumerators_metadata: ~[DIDescriptor] = variants
+    let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
             token::get_ident(v.name).get().with_c_str(|name| {
@@ -1650,7 +1650,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
 
     let loc = span_start(cx, definition_span);
 
-    let member_metadata: ~[DIDescriptor] = member_descriptions
+    let member_metadata: Vec<DIDescriptor> = member_descriptions
         .iter()
         .enumerate()
         .map(|(i, member_description)| {
@@ -1954,7 +1954,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let mut signature_metadata: ~[DIType] = vec::with_capacity(signature.inputs.len() + 1);
+    let mut signature_metadata: Vec<DIType> = vec::with_capacity(signature.inputs.len() + 1);
 
     // return type
     signature_metadata.push(match ty::get(signature.output).sty {
@@ -2265,7 +2265,7 @@ fn populate_scope_map(cx: &CrateContext,
         ident: Option<ast::Ident>
     }
 
-    let mut scope_stack = ~[ScopeStackEntry { scope_metadata: fn_metadata, ident: None }];
+    let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata, ident: None });
 
     // Push argument identifiers onto the stack so arguments integrate nicely with variable
     // shadowing.
@@ -2288,10 +2288,10 @@ fn populate_scope_map(cx: &CrateContext,
     // local helper functions for walking the AST.
     fn with_new_scope(cx: &CrateContext,
                       scope_span: Span,
-                      scope_stack: &mut ~[ScopeStackEntry],
+                      scope_stack: &mut Vec<ScopeStackEntry> ,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>,
                       inner_walk: |&CrateContext,
-                                   &mut ~[ScopeStackEntry],
+                                   &mut Vec<ScopeStackEntry> ,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess.codemap.lookup_char_pos(scope_span.lo);
@@ -2325,7 +2325,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_block(cx: &CrateContext,
                   block: &ast::Block,
-                  scope_stack: &mut ~[ScopeStackEntry],
+                  scope_stack: &mut Vec<ScopeStackEntry> ,
                   scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         scope_map.insert(block.id, scope_stack.last().unwrap().scope_metadata);
 
@@ -2349,7 +2349,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_decl(cx: &CrateContext,
                  decl: &ast::Decl,
-                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_stack: &mut Vec<ScopeStackEntry> ,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
             codemap::Spanned { node: ast::DeclLocal(local), .. } => {
@@ -2367,7 +2367,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_pattern(cx: &CrateContext,
                     pat: @ast::Pat,
-                    scope_stack: &mut ~[ScopeStackEntry],
+                    scope_stack: &mut Vec<ScopeStackEntry> ,
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
         let def_map = cx.tcx.def_map;
@@ -2512,7 +2512,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_expr(cx: &CrateContext,
                  exp: &ast::Expr,
-                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_stack: &mut Vec<ScopeStackEntry> ,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
         scope_map.insert(exp.id, scope_stack.last().unwrap().scope_metadata);
@@ -2741,7 +2741,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
         };
         let mut path = krate.move_iter().chain(path).peekable();
 
-        let mut current_key = ~[];
+        let mut current_key = Vec::new();
         let mut parent_node: Option<@NamespaceTreeNode> = None;
 
         // Create/Lookup namespace for each element of the path.

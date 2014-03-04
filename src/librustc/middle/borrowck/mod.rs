@@ -209,7 +209,7 @@ pub struct Loan {
     loan_path: @LoanPath,
     cmt: mc::cmt,
     kind: ty::BorrowKind,
-    restrictions: ~[Restriction],
+    restrictions: Vec<Restriction> ,
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,

@@ -29,12 +29,12 @@ pub struct freevar_entry {
     def: ast::Def, //< The variable being accessed free.
     span: Span     //< First span where it is accessed (there can be multiple)
 }
-pub type freevar_info = @~[@freevar_entry];
+pub type freevar_info = @Vec<@freevar_entry> ;
 pub type freevar_map = NodeMap<freevar_info>;
 
 struct CollectFreevarsVisitor {
     seen: NodeSet,
-    refs: ~[@freevar_entry],
+    refs: Vec<@freevar_entry> ,
     def_map: resolve::DefMap,
 }
 
@@ -90,7 +90,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block) -> freevar_info {
     let seen = NodeSet::new();
-    let refs = ~[];
+    let refs = Vec::new();
 
     let mut v = CollectFreevarsVisitor {
         seen: seen,

@@ -56,7 +56,7 @@ struct ForeignTypes {
 
 struct LlvmSignature {
     // LLVM versions of the types of this function's arguments.
-    llarg_tys: ~[Type],
+    llarg_tys: Vec<Type> ,
 
     // LLVM version of the type that this function returns.  Note that
     // this *may not be* the declared return type of the foreign
@@ -163,7 +163,7 @@ pub fn trans_native_call<'a>(
                          llfn: ValueRef,
                          llretptr: ValueRef,
                          llargs_rust: &[ValueRef],
-                         passed_arg_tys: ~[ty::t])
+                         passed_arg_tys: Vec<ty::t> )
                          -> &'a Block<'a> {
     /*!
      * Prepares a call to a native function. This requires adapting
@@ -205,7 +205,7 @@ pub fn trans_native_call<'a>(
 
     let arg_tys: &[cabi::ArgType] = fn_type.arg_tys;
 
-    let mut llargs_foreign = ~[];
+    let mut llargs_foreign = Vec::new();
 
     // If the foreign ABI expects return value by pointer, supply the
     // pointer that Rust gave us. Sometimes we have to bitcast
@@ -503,7 +503,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
         llvm::LLVMPositionBuilderAtEnd(builder, the_block);
 
         // Array for the arguments we will pass to the rust function.
-        let mut llrust_args = ~[];
+        let mut llrust_args = Vec::new();
         let mut next_foreign_arg_counter: c_uint = 0;
         let next_foreign_arg: |pad: bool| -> c_uint = |pad: bool| {
             next_foreign_arg_counter += if pad {
@@ -777,7 +777,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
 }
 
 fn lltype_for_fn_from_foreign_types(tys: &ForeignTypes) -> Type {
-    let mut llargument_tys = ~[];
+    let mut llargument_tys = Vec::new();
 
     let ret_ty = tys.fn_ty.ret_ty;
     let llreturn_ty = if ret_ty.is_indirect() {

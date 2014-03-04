@@ -164,7 +164,7 @@ Available lint options:
     let lint_dict = lint::get_lint_dict();
     let mut lint_dict = lint_dict.move_iter()
                                  .map(|(k, v)| (v, k))
-                                 .collect::<~[(lint::LintSpec, &'static str)]>();
+                                 .collect::<Vec<(lint::LintSpec, &'static str)> >();
     lint_dict.sort();
 
     let mut max_key = 0;
@@ -236,7 +236,7 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
-    let lint_flags = vec::append(matches.opt_strs("W"),
+    let lint_flags = vec_ng::append(matches.opt_strs("W"),
                                  matches.opt_strs("warn"));
     if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
@@ -337,7 +337,7 @@ pub fn run_compiler(args: &[~str]) {
 }
 
 fn parse_crate_attrs(sess: session::Session, input: &d::Input) ->
-                     ~[ast::Attribute] {
+                     Vec<ast::Attribute> {
     let result = match *input {
         d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile,

@@ -48,11 +48,11 @@ struct binding_info {
 type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = NodeMap<~[DefId]>;
+pub type TraitMap = NodeMap<Vec<DefId> >;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @RefCell<NodeMap<~[Export2]>>;
+pub type ExportMap2 = @RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
     name: ~str,        // The name of the target.
@@ -319,7 +319,7 @@ impl Rib {
 
 /// One import directive.
 struct ImportDirective {
-    module_path: ~[Ident],
+    module_path: Vec<Ident> ,
     subclass: @ImportDirectiveSubclass,
     span: Span,
     id: NodeId,
@@ -327,7 +327,7 @@ struct ImportDirective {
 }
 
 impl ImportDirective {
-    fn new(module_path: ~[Ident],
+    fn new(module_path: Vec<Ident> ,
            subclass: @ImportDirectiveSubclass,
            span: Span,
            id: NodeId,
@@ -438,7 +438,7 @@ struct Module {
     is_public: bool,
 
     children: RefCell<HashMap<Name, @NameBindings>>,
-    imports: RefCell<~[@ImportDirective]>,
+    imports: RefCell<Vec<@ImportDirective> >,
 
     // The external module children of this node that were declared with
     // `extern crate`.
@@ -488,7 +488,7 @@ impl Module {
             kind: Cell::new(kind),
             is_public: is_public,
             children: RefCell::new(HashMap::new()),
-            imports: RefCell::new(~[]),
+            imports: RefCell::new(Vec::new()),
             external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: RefCell::new(NodeMap::new()),
             import_resolutions: RefCell::new(HashMap::new()),
@@ -815,9 +815,9 @@ fn Resolver(session: Session,
         unresolved_imports: 0,
 
         current_module: current_module,
-        value_ribs: @RefCell::new(~[]),
-        type_ribs: @RefCell::new(~[]),
-        label_ribs: @RefCell::new(~[]),
+        value_ribs: @RefCell::new(Vec::new()),
+        type_ribs: @RefCell::new(Vec::new()),
+        label_ribs: @RefCell::new(Vec::new()),
 
         current_trait_refs: None,
 
@@ -826,7 +826,7 @@ fn Resolver(session: Session,
 
         primitive_type_table: @PrimitiveTypeTable(),
 
-        namespaces: ~[ TypeNS, ValueNS ],
+        namespaces: Vec<TypeNS, ValueNS > ,
 
         def_map: @RefCell::new(NodeMap::new()),
         export_map2: @RefCell::new(NodeMap::new()),
@@ -859,16 +859,16 @@ struct Resolver {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: @RefCell<~[@Rib]>,
+    value_ribs: @RefCell<Vec<@Rib> >,
 
     // The current set of local scopes, for types.
-    type_ribs: @RefCell<~[@Rib]>,
+    type_ribs: @RefCell<Vec<@Rib> >,
 
     // The current set of local scopes, for labels.
-    label_ribs: @RefCell<~[@Rib]>,
+    label_ribs: @RefCell<Vec<@Rib> >,
 
     // The trait that the current context can refer to.
-    current_trait_refs: Option<~[DefId]>,
+    current_trait_refs: Option<Vec<DefId> >,
 
     // The ident for the keyword "self".
     self_ident: Ident,
@@ -879,7 +879,7 @@ struct Resolver {
     primitive_type_table: @PrimitiveTypeTable,
 
     // The four namespaces.
-    namespaces: ~[Namespace],
+    namespaces: Vec<Namespace> ,
 
     def_map: DefMap,
     export_map2: ExportMap2,
@@ -1452,7 +1452,7 @@ impl Resolver {
                     // globs and lists, the path is found directly in the AST;
                     // for simple paths we have to munge the path a little.
 
-                    let mut module_path = ~[];
+                    let mut module_path = Vec::new();
                     match view_path.node {
                         ViewPathSimple(_, ref full_path, _) => {
                             let path_len = full_path.segments.len();
@@ -1951,7 +1951,7 @@ impl Resolver {
     /// Creates and adds an import directive to the given module.
     fn build_import_directive(&mut self,
                               module_: @Module,
-                              module_path: ~[Ident],
+                              module_path: Vec<Ident> ,
                               subclass: @ImportDirectiveSubclass,
                               span: Span,
                               id: NodeId,
@@ -2124,7 +2124,7 @@ impl Resolver {
     }
 
     fn path_idents_to_str(&mut self, path: &Path) -> ~str {
-        let identifiers: ~[ast::Ident] = path.segments
+        let identifiers: Vec<ast::Ident> = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
                                              .collect();
@@ -3374,7 +3374,7 @@ impl Resolver {
     }
 
     fn record_exports_for_module(&mut self, module_: @Module) {
-        let mut exports2 = ~[];
+        let mut exports2 = Vec::new();
 
         self.add_exports_for_module(&mut exports2, module_);
         match module_.def_id.get() {
@@ -3389,7 +3389,7 @@ impl Resolver {
     }
 
     fn add_exports_of_namebindings(&mut self,
-                                   exports2: &mut ~[Export2],
+                                   exports2: &mut Vec<Export2> ,
                                    name: Name,
                                    namebindings: @NameBindings,
                                    ns: Namespace) {
@@ -3410,7 +3410,7 @@ impl Resolver {
     }
 
     fn add_exports_for_module(&mut self,
-                              exports2: &mut ~[Export2],
+                              exports2: &mut Vec<Export2> ,
                               module_: @Module) {
         let import_resolutions = module_.import_resolutions.borrow();
         for (name, importresolution) in import_resolutions.get().iter() {
@@ -3495,7 +3495,7 @@ impl Resolver {
     /// Wraps the given definition in the appropriate number of `def_upvar`
     /// wrappers.
     fn upvarify(&mut self,
-                    ribs: &mut ~[@Rib],
+                    ribs: &mut Vec<@Rib> ,
                     rib_index: uint,
                     def_like: DefLike,
                     span: Span)
@@ -3610,7 +3610,7 @@ impl Resolver {
     }
 
     fn search_ribs(&mut self,
-                       ribs: &mut ~[@Rib],
+                       ribs: &mut Vec<@Rib> ,
                        name: Name,
                        span: Span)
                        -> Option<DefLike> {
@@ -4095,7 +4095,7 @@ impl Resolver {
                         TraitImplementation);
 
                     // Record the current set of trait references.
-                    let mut new_trait_refs = ~[];
+                    let mut new_trait_refs = Vec::new();
                     {
                         let def_map = this.def_map.borrow();
                         let r = def_map.get().find(&trait_reference.ref_id);
@@ -5054,8 +5054,8 @@ impl Resolver {
                                 -> Option<~str> {
         let this = &mut *self;
 
-        let mut maybes: ~[token::InternedString] = ~[];
-        let mut values: ~[uint] = ~[];
+        let mut maybes: Vec<token::InternedString> = Vec::new();
+        let mut values: Vec<uint> = Vec::new();
 
         let mut j = {
             let value_ribs = this.value_ribs.borrow();
@@ -5274,11 +5274,11 @@ impl Resolver {
         }
     }
 
-    fn search_for_traits_containing_method(&mut self, name: Ident) -> ~[DefId] {
+    fn search_for_traits_containing_method(&mut self, name: Ident) -> Vec<DefId> {
         debug!("(searching for traits containing method) looking for '{}'",
                token::get_ident(name));
 
-        let mut found_traits = ~[];
+        let mut found_traits = Vec::new();
         let mut search_module = self.current_module;
         let method_map = self.method_map.borrow();
         match method_map.get().find(&name.name) {
@@ -5350,7 +5350,7 @@ impl Resolver {
     }
 
     fn add_trait_info(&self,
-                          found_traits: &mut ~[DefId],
+                          found_traits: &mut Vec<DefId> ,
                           trait_def_id: DefId,
                           name: Ident) {
         debug!("(adding trait info) found trait {}:{} for method '{}'",
@@ -5495,7 +5495,7 @@ impl Resolver {
 
     /// A somewhat inefficient routine to obtain the name of a module.
     fn module_to_str(&mut self, module_: @Module) -> ~str {
-        let mut idents = ~[];
+        let mut idents = Vec::new();
         let mut current_module = module_;
         loop {
             match current_module.parent_link {
@@ -5516,7 +5516,7 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::Ident]>());
+        return self.idents_to_str(idents.move_rev_iter().collect::<Vec<ast::Ident> >());
     }
 
     #[allow(dead_code)]   // useful for debugging

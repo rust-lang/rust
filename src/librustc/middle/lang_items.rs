@@ -47,7 +47,7 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: ~[Option<ast::DefId>],
+    items: Vec<Option<ast::DefId>> ,
 }
 
 impl LanguageItems {
@@ -55,7 +55,7 @@ impl LanguageItems {
         fn foo(_: LangItem) -> Option<ast::DefId> { None }
 
         LanguageItems {
-            items: ~[$(foo($variant)),*]
+            items: vec!($(foo($variant)),*)
         }
     }
 

@@ -53,8 +53,8 @@ use std::vec;
 
 struct UniversalQuantificationResult {
     monotype: t,
-    type_variables: ~[ty::t],
-    type_param_defs: Rc<~[ty::TypeParameterDef]>
+    type_variables: Vec<ty::t> ,
+    type_param_defs: Rc<Vec<ty::TypeParameterDef> >
 }
 
 fn get_base_type(inference_context: &InferCtxt,
@@ -323,7 +323,7 @@ impl CoherenceChecker {
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
     fn instantiate_default_methods(&self, impl_id: ast::DefId,
                                    trait_ref: &ty::TraitRef,
-                                   all_methods: &mut ~[@Method]) {
+                                   all_methods: &mut Vec<@Method> ) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
@@ -354,7 +354,7 @@ impl CoherenceChecker {
             // construct the polytype for the method based on the method_ty
             let new_generics = ty::Generics {
                 type_param_defs:
-                    Rc::new(vec::append(
+                    Rc::new(vec_ng::append(
                         impl_poly_type.generics.type_param_defs().to_owned(),
                             new_method_ty.generics.type_param_defs())),
                 region_param_defs:
@@ -390,7 +390,7 @@ impl CoherenceChecker {
         let mut inherent_impls = tcx.inherent_impls.borrow_mut();
         match inherent_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @RefCell::new(~[]);
+                implementation_list = @RefCell::new(Vec::new());
                 inherent_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -409,7 +409,7 @@ impl CoherenceChecker {
         let mut trait_impls = tcx.trait_impls.borrow_mut();
         match trait_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @RefCell::new(~[]);
+                implementation_list = @RefCell::new(Vec::new());
                 trait_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -611,7 +611,7 @@ impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         match item.node {
             ItemImpl(_, ref trait_refs, _, ref ast_methods) => {
-                let mut methods = ~[];
+                let mut methods = Vec::new();
                 for ast_method in ast_methods.iter() {
                     methods.push(ty::method(tcx, local_def(ast_method.id)));
                 }

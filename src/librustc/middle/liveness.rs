@@ -261,8 +261,8 @@ pub struct IrMaps {
     live_node_map: RefCell<NodeMap<LiveNode>>,
     variable_map: RefCell<NodeMap<Variable>>,
     capture_info_map: RefCell<NodeMap<@~[CaptureInfo]>>,
-    var_kinds: RefCell<~[VarKind]>,
-    lnks: RefCell<~[LiveNodeKind]>,
+    var_kinds: RefCell<Vec<VarKind> >,
+    lnks: RefCell<Vec<LiveNodeKind> >,
 }
 
 fn IrMaps(tcx: ty::ctxt,
@@ -278,8 +278,8 @@ fn IrMaps(tcx: ty::ctxt,
         live_node_map: RefCell::new(NodeMap::new()),
         variable_map: RefCell::new(NodeMap::new()),
         capture_info_map: RefCell::new(NodeMap::new()),
-        var_kinds: RefCell::new(~[]),
-        lnks: RefCell::new(~[]),
+        var_kinds: RefCell::new(Vec::new()),
+        lnks: RefCell::new(Vec::new()),
     }
 }
 
@@ -347,12 +347,12 @@ impl IrMaps {
         }
     }
 
-    pub fn set_captures(&self, node_id: NodeId, cs: ~[CaptureInfo]) {
+    pub fn set_captures(&self, node_id: NodeId, cs: Vec<CaptureInfo> ) {
         let mut capture_info_map = self.capture_info_map.borrow_mut();
         capture_info_map.get().insert(node_id, @cs);
     }
 
-    pub fn captures(&self, expr: &Expr) -> @~[CaptureInfo] {
+    pub fn captures(&self, expr: &Expr) -> @Vec<CaptureInfo> {
         let capture_info_map = self.capture_info_map.borrow();
         match capture_info_map.get().find(&expr.id) {
           Some(&caps) => caps,
@@ -504,7 +504,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
         // construction site.
         let capture_map = this.capture_map.borrow();
         let cvs = capture_map.get().get(&expr.id);
-        let mut call_caps = ~[];
+        let mut call_caps = Vec::new();
         for cv in cvs.borrow().iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
@@ -590,11 +590,11 @@ pub struct Liveness {
     tcx: ty::ctxt,
     ir: @IrMaps,
     s: Specials,
-    successors: @RefCell<~[LiveNode]>,
-    users: @RefCell<~[Users]>,
+    successors: @RefCell<Vec<LiveNode> >,
+    users: @RefCell<Vec<Users> >,
     // The list of node IDs for the nested loop scopes
     // we're in.
-    loop_scope: @RefCell<~[NodeId]>,
+    loop_scope: @RefCell<Vec<NodeId> >,
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
@@ -612,7 +612,7 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
         users: @RefCell::new(vec::from_elem(ir.num_live_nodes.get() *
                                             ir.num_vars.get(),
                                             invalid_users())),
-        loop_scope: @RefCell::new(~[]),
+        loop_scope: @RefCell::new(Vec::new()),
         break_ln: @RefCell::new(NodeMap::new()),
         cont_ln: @RefCell::new(NodeMap::new()),
     }

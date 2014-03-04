@@ -183,7 +183,7 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // serach is being performed for.
-        let mut libraries = ~[];
+        let mut libraries = Vec::new();
         for (_hash, (rlibs, dylibs)) in candidates.move_iter() {
             let mut metadata = None;
             let rlib = self.extract_one(rlibs, "rlib", &mut metadata);

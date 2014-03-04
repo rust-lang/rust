@@ -299,7 +299,7 @@ pub fn make_mono_id(ccx: @CrateContext,
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
-    let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
+    let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables={} substs={}",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
@@ -309,7 +309,7 @@ pub fn make_mono_id(ccx: @CrateContext,
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }
-      None => substs_iter.map(|subst| (*subst, None::<@~[mono_id]>)).collect()
+      None => substs_iter.map(|subst| (*subst, None::<@Vec<mono_id> >)).collect()
     };
 
 

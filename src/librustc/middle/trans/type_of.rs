@@ -41,7 +41,7 @@ pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
 
 pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
                        inputs: &[ty::t], output: ty::t) -> Type {
-    let mut atys: ~[Type] = ~[];
+    let mut atys: Vec<Type> = Vec::new();
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)

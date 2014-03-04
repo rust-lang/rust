@@ -105,7 +105,7 @@ fn check_expr(v: &mut CheckMatchVisitor,
           _ => { /* We assume only enum types can be uninhabited */ }
        }
 
-       let pats: ~[@Pat] = arms.iter()
+       let pats: Vec<@Pat> = arms.iter()
                                .filter_map(unguarded_pat)
                                .flat_map(|pats| pats.move_iter())
                                .collect();
@@ -121,7 +121,7 @@ fn check_expr(v: &mut CheckMatchVisitor,
 
 // Check for unreachable patterns
 fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
-    let mut seen = ~[];
+    let mut seen = Vec::new();
     for arm in arms.iter() {
         for pat in arm.pats.iter() {
 
@@ -151,7 +151,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
                 true
             });
 
-            let v = ~[*pat];
+            let v = vec!(*pat);
             match is_useful(cx, &seen, v) {
               not_useful => {
                 cx.tcx.sess.span_err(pat.span, "unreachable pattern");
@@ -170,9 +170,9 @@ fn raw_pat(p: @Pat) -> @Pat {
     }
 }
 
-fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
+fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
     assert!((!pats.is_empty()));
-    let ext = match is_useful(cx, &pats.map(|p| ~[*p]), [wild()]) {
+    let ext = match is_useful(cx, &pats.map(|p| vec!(*p)), [wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable
             return;
@@ -218,7 +218,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
     cx.tcx.sess.span_err(sp, msg);
 }
 
-type matrix = ~[~[@Pat]];
+type matrix = Vec<Vec<@Pat> > ;
 
 #[deriving(Clone)]
 enum useful {
@@ -413,7 +413,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         return Some(single);
       }
       ty::ty_enum(eid, _) => {
-        let mut found = ~[];
+        let mut found = Vec::new();
         for r in m.iter() {
             let r = pat_ctor_id(cx, r[0]);
             for id in r.iter() {
@@ -481,7 +481,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
                 }
                 _ => None
             }
-        }).collect::<~[(uint, bool)]>();
+        }).collect::<Vec<(uint, bool)> >();
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
@@ -559,17 +559,17 @@ fn specialize(cx: &MatchCheckCtxt,
                   ctor_id: &ctor,
                   arity: uint,
                   left_ty: ty::t)
-               -> Option<~[@Pat]> {
+               -> Option<Vec<@Pat> > {
     // Sad, but I can't get rid of this easily
     let r0 = (*raw_pat(r[0])).clone();
     match r0 {
         Pat{id: pat_id, node: n, span: pat_span} =>
             match n {
             PatWild => {
-                Some(vec::append(vec::from_elem(arity, wild()), r.tail()))
+                Some(vec_ng::append(vec::from_elem(arity, wild()), r.tail()))
             }
             PatWildMulti => {
-                Some(vec::append(vec::from_elem(arity, wild_multi()), r.tail()))
+                Some(vec_ng::append(vec::from_elem(arity, wild_multi()), r.tail()))
             }
             PatIdent(_, _, _) => {
                 let opt_def = {
@@ -624,7 +624,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                     _ => {
                         Some(
-                            vec::append(
+                            vec_ng::append(
                                 vec::from_elem(arity, wild()),
                                 r.tail()
                             )
@@ -678,7 +678,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             Some(args) => args.iter().map(|x| *x).collect(),
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, r.tail()))
+                        Some(vec_ng::append(args, r.tail()))
                     }
                     DefVariant(_, _, _) => None,
 
@@ -691,7 +691,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             }
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, r.tail()))
+                        Some(vec_ng::append(new_args, r.tail()))
                     }
                     _ => None
                 }
@@ -712,7 +712,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, r.tail()))
+                            Some(vec_ng::append(args, r.tail()))
                         } else {
                             None
                         }
@@ -743,15 +743,15 @@ fn specialize(cx: &MatchCheckCtxt,
                                 _ => wild()
                             }
                         }).collect();
-                        Some(vec::append(args, r.tail()))
+                        Some(vec_ng::append(args, r.tail()))
                     }
                 }
             }
             PatTup(args) => {
-                Some(vec::append(args.iter().map(|x| *x).collect(), r.tail()))
+                Some(vec_ng::append(args.iter().map(|x| *x).collect(), r.tail()))
             }
             PatUniq(a) | PatRegion(a) => {
-                Some(vec::append(~[a], r.tail()))
+                Some(vec_ng::append(vec!(a), r.tail()))
             }
             PatLit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);
@@ -812,7 +812,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     vec(_) => {
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
-                            let mut result = ~[];
+                            let mut result = Vec::new();
                             for pat in before.iter() {
                                 result.push((*pat).clone());
                             }
@@ -827,7 +827,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             }
                             Some(result)
                         } else if num_elements == arity {
-                            let mut result = ~[];
+                            let mut result = Vec::new();
                             for pat in before.iter() {
                                 result.push((*pat).clone());
                             }
@@ -849,7 +849,7 @@ fn specialize(cx: &MatchCheckCtxt,
     }
 }
 
-fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<~[@Pat]> {
+fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
     if is_wild(cx, r[0]) { Some(r.tail().to_owned()) }
     else { None }
 }

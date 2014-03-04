@@ -253,7 +253,7 @@ pub trait Digest {
 
     /// Convenience function that retrieves the result of a digest as a
     /// newly allocated vec of bytes.
-    fn result_bytes(&mut self) -> ~[u8] {
+    fn result_bytes(&mut self) -> Vec<u8> {
         let mut buf = vec::from_elem((self.output_bits()+7)/8, 0u8);
         self.result(buf);
         buf
@@ -576,7 +576,7 @@ mod tests {
     #[test]
     fn test_sha256() {
         // Examples from wikipedia
-        let wikipedia_tests = ~[
+        let wikipedia_tests = vec!(
             Test {
                 input: ~"",
                 output_str: ~"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -588,8 +588,7 @@ mod tests {
             Test {
                 input: ~"The quick brown fox jumps over the lazy dog.",
                 output_str: ~"ef537f25c895bfa782526529a9b63d97aa631564d5d789c2b765448c8635fb6c"
-            },
-        ];
+            });
 
         let tests = wikipedia_tests;
 

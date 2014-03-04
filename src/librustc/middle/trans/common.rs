@@ -161,7 +161,7 @@ pub struct Stats {
     n_llvm_insns: Cell<uint>,
     llvm_insns: RefCell<HashMap<~str, uint>>,
     // (ident, time-in-ms, llvm-instructions)
-    fn_stats: RefCell<~[(~str, uint, uint)]>,
+    fn_stats: RefCell<Vec<(~str, uint, uint)> >,
 }
 
 pub struct BuilderRef_res {
@@ -187,7 +187,7 @@ pub type ExternMap = HashMap<~str, ValueRef>;
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
-    tys: ~[ty::t],
+    tys: Vec<ty::t> ,
     self_ty: Option<ty::t>,
     vtables: Option<typeck::vtable_res>,
     self_vtables: Option<typeck::vtable_param_res>
@@ -285,7 +285,7 @@ pub struct FunctionContext<'a> {
     debug_context: debuginfo::FunctionDebugContext,
 
     // Cleanup scopes.
-    scopes: RefCell<~[cleanup::CleanupScope<'a>]>,
+    scopes: RefCell<Vec<cleanup::CleanupScope<'a>> >,
 }
 
 impl<'a> FunctionContext<'a> {
@@ -639,7 +639,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
 pub fn C_zero_byte_arr(size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
-        let mut elts: ~[ValueRef] = ~[];
+        let mut elts: Vec<ValueRef> = Vec::new();
         while i < size { elts.push(C_u8(0u)); i += 1u; }
         return llvm::LLVMConstArray(Type::i8().to_ref(),
                                     elts.as_ptr(), elts.len() as c_uint);
@@ -725,7 +725,7 @@ pub fn is_null(val: ValueRef) -> bool {
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq, Hash)]
 pub enum mono_param_id {
-    mono_precise(ty::t, Option<@~[mono_id]>),
+    mono_precise(ty::t, Option<@Vec<mono_id> >),
     mono_any,
     mono_repr(uint /* size */,
               uint /* align */,
@@ -758,8 +758,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
 #[deriving(Eq, Hash)]
 pub struct mono_id_ {
     def: ast::DefId,
-    params: ~[mono_param_id]
-}
+    params: Vec<mono_param_id> }
 
 pub type mono_id = @mono_id_;
 
@@ -808,7 +807,7 @@ pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> Vec<ty::t> {
     let tcx = bcx.tcx();
     let params = if is_method {
         bcx.ccx().maps.method_map.borrow().get().get(&id).substs.tps.clone()
@@ -925,7 +924,7 @@ pub fn find_vtable(tcx: ty::ctxt,
     param_bounds[n_bound].clone()
 }
 
-pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
+pub fn dummy_substs(tps: Vec<ty::t> ) -> ty::substs {
     substs {
         regions: ty::ErasedRegions,
         self_ty: None,

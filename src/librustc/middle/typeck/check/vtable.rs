@@ -132,7 +132,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
     let tcx = vcx.tcx();
 
     // ty is the value supplied for the type parameter A...
-    let mut param_result = ~[];
+    let mut param_result = Vec::new();
 
     ty::each_bound_trait_and_supertraits(tcx, type_param_bounds.trait_bounds, |trait_ref| {
         // ...and here trait_ref is each bound that was declared on A,
@@ -323,7 +323,7 @@ fn search_for_vtable(vcx: &VtableContext,
                      -> Option<vtable_origin> {
     let tcx = vcx.tcx();
 
-    let mut found = ~[];
+    let mut found = Vec::new();
     let mut impls_seen = HashSet::new();
 
     // Load the implementations from external metadata if necessary.
@@ -336,7 +336,7 @@ fn search_for_vtable(vcx: &VtableContext,
         let trait_impls = tcx.trait_impls.borrow();
         trait_impls.get()
                    .find(&trait_ref.def_id)
-                   .map_or(@RefCell::new(~[]), |x| *x)
+                   .map_or(@RefCell::new(Vec::new()), |x| *x)
     };
     // impls is the list of all impls in scope for trait_ref.
     let impls = impls.borrow();
@@ -614,7 +614,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
 
                       let param_bounds = ty::ParamBounds {
                           builtin_bounds: ty::EmptyBuiltinBounds(),
-                          trait_bounds: ~[target_trait_ref]
+                          trait_bounds: vec!(target_trait_ref)
                       };
                       let vtables =
                             lookup_vtables_for_param(&vcx,
@@ -625,7 +625,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                                      is_early);
 
                       if !is_early {
-                          insert_vtables(fcx, ex.id, @~[vtables]);
+                          insert_vtables(fcx, ex.id, @vec!(vtables));
                       }
 
                       // Now, if this is &trait, we need to link the
@@ -787,7 +787,7 @@ pub fn resolve_impl(tcx: ty::ctxt,
     // but that falls out of doing this.
     let param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
-        trait_bounds: ~[impl_trait_ref]
+        trait_bounds: vec!(impl_trait_ref)
     };
     let t = ty::node_id_to_type(tcx, impl_item.id);
     let t = t.subst(tcx, &param_env.free_substs);

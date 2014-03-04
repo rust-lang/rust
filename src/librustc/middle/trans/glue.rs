@@ -263,7 +263,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
     let field_scope = bcx.fcx.push_custom_cleanup_scope();
 
     let self_arg = PointerCast(bcx, v0, params[0]);
-    let args = ~[self_arg];
+    let args = vec!(self_arg);
 
     // Add all the fields as a value which needs to be cleaned at the end of
     // this scope.

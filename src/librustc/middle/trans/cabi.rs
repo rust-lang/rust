@@ -83,7 +83,7 @@ impl ArgType {
 /// comments are reverse-engineered and may be inaccurate. -NDM
 pub struct FnType {
     /// The LLVM types of each argument.
-    arg_tys: ~[ArgType],
+    arg_tys: Vec<ArgType> ,
 
     /// LLVM return type.
     ret_ty: ArgType,

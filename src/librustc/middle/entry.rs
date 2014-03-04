@@ -38,7 +38,7 @@ struct EntryContext<'a> {
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
-    non_main_fns: ~[(NodeId, Span)],
+    non_main_fns: Vec<(NodeId, Span)> ,
 }
 
 impl<'a> Visitor<()> for EntryContext<'a> {
@@ -66,7 +66,7 @@ pub fn find_entry_point(session: Session, krate: &Crate, ast_map: &ast_map::Map)
         main_fn: None,
         attr_main_fn: None,
         start_fn: None,
-        non_main_fns: ~[],
+        non_main_fns: Vec::new(),
     };
 
     visit::walk_crate(&mut ctxt, krate, ());
