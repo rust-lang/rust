@@ -3657,13 +3657,16 @@ pub mod funcs {
             pub unsafe fn opendir(dirname: *c_char) -> *DIR {
                 rust_opendir(dirname)
             }
-            pub unsafe fn readdir(dirp: *DIR) -> *dirent_t {
-                rust_readdir(dirp)
+            pub unsafe fn readdir_r(dirp: *DIR,
+                                    entry: *mut dirent_t,
+                                    result: *mut *mut dirent_t) -> c_int {
+                rust_readdir_r(dirp, entry, result)
             }
 
             extern {
                 fn rust_opendir(dirname: *c_char) -> *DIR;
-                fn rust_readdir(dirp: *DIR) -> *dirent_t;
+                fn rust_readdir_r(dirp: *DIR, entry: *mut dirent_t,
+                                  result: *mut *mut dirent_t) -> c_int;
             }
 
             extern {
