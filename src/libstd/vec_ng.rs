@@ -369,6 +369,7 @@ impl<T> Vec<T> {
     }
 
     #[inline]
+    #[deprecated="Use `xs.iter().map(closure)` instead."]
     pub fn map<U>(&self, f: |t: &T| -> U) -> Vec<U> {
         self.iter().map(f).collect()
     }
