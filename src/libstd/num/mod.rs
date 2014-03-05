@@ -313,6 +313,9 @@ pub enum FPCategory {
 pub trait Float: Signed
                + Round
                + Primitive {
+    fn max(self, other: Self) -> Self;
+    fn min(self, other: Self) -> Self;
+
     // FIXME (#5527): These should be associated constants
     fn nan() -> Self;
     fn infinity() -> Self;
