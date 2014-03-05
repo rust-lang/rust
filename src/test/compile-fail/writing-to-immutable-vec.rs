@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn main() {
     let v: Vec<int> = vec!(1, 2, 3);
-    v[1] = 4; //~ ERROR cannot assign
+    *v.get(1) = 4; //~ ERROR cannot assign
 }

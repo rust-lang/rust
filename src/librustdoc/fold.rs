@@ -23,7 +23,7 @@ pub trait DocFolder {
         let inner = inner;
         let inner = match inner {
             StructItem(mut i) => {
-                let mut foo = ~[]; swap(&mut foo, &mut i.fields);
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.fields);
                 let num_fields = foo.len();
                 i.fields.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
                 i.fields_stripped |= num_fields != i.fields.len();
@@ -33,7 +33,7 @@ pub trait DocFolder {
                 ModuleItem(self.fold_mod(i))
             },
             EnumItem(mut i) => {
-                let mut foo = ~[]; swap(&mut foo, &mut i.variants);
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.variants);
                 let num_variants = foo.len();
                 i.variants.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
                 i.variants_stripped |= num_variants != i.variants.len();
@@ -56,12 +56,12 @@ pub trait DocFolder {
                         },
                     }
                 }
-                let mut foo = ~[]; swap(&mut foo, &mut i.methods);
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
                 i.methods.extend(&mut foo.move_iter().filter_map(|x| vtrm(self, x)));
                 TraitItem(i)
             },
             ImplItem(mut i) => {
-                let mut foo = ~[]; swap(&mut foo, &mut i.methods);
+                let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
                 i.methods.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
                 ImplItem(i)
             },
@@ -69,7 +69,7 @@ pub trait DocFolder {
                 let i2 = i.clone(); // this clone is small
                 match i.kind {
                     StructVariant(mut j) => {
-                        let mut foo = ~[]; swap(&mut foo, &mut j.fields);
+                        let mut foo = Vec::new(); swap(&mut foo, &mut j.fields);
                         let num_fields = foo.len();
                         let c = |x| self.fold_item(x);
                         j.fields.extend(&mut foo.move_iter().filter_map(c));

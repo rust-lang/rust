@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 // error-pattern:fail
 
 fn fold_local() -> @Vec<int> {

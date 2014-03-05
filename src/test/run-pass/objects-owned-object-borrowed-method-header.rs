@@ -12,6 +12,8 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 // Test invoked `&self` methods on owned objects where the values
 // closed over contain managed values. This implies that the ~ boxes
 // will have headers that must be skipped over.
@@ -31,13 +33,13 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: vec!( ~FooTrait: ) = vec!(
+    let foos: Vec<~FooTrait:> = vec!(
         ~BarStruct{ x: @0 } as ~FooTrait:,
         ~BarStruct{ x: @1 } as ~FooTrait:,
         ~BarStruct{ x: @2 } as ~FooTrait:
     );
 
     for i in range(0u, foos.len()) {
-        assert_eq!(i, foos[i].foo());
+        assert_eq!(i, foos.get(i).foo());
     }
 }

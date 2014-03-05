@@ -19,7 +19,7 @@ fn a() {
 
 fn b() {
     let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec;
+    let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
         [.._b] => {
             vec[0] = ~4; //~ ERROR cannot assign
@@ -29,7 +29,7 @@ fn b() {
 
 fn c() {
     let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec;
+    let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
         [_a, .._b] => {
             //~^ ERROR cannot move out
@@ -47,7 +47,7 @@ fn c() {
 
 fn d() {
     let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec;
+    let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
         [.._a, _b] => {
             //~^ ERROR cannot move out
@@ -59,7 +59,7 @@ fn d() {
 
 fn e() {
     let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec;
+    let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out
         //~^ ERROR cannot move out

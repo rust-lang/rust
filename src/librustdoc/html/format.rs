@@ -170,7 +170,7 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
             }
         },
         |_cache| {
-            Some((fqn.to_owned(), match kind {
+            Some((Vec::from_slice(fqn), match kind {
                 clean::TypeStruct => "struct",
                 clean::TypeEnum => "enum",
                 clean::TypeFunction => "fn",
@@ -181,7 +181,7 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
 
 fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         root: |&render::Cache, &[~str]| -> Option<~str>,
-        info: |&render::Cache| -> Option<(~[~str], &'static str)>)
+        info: |&render::Cache| -> Option<(Vec<~str> , &'static str)>)
     -> fmt::Result
 {
     // The generics will get written to both the title and link
@@ -210,7 +210,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         local_data::get(cache_key, |cache| {
             let cache = cache.unwrap().get();
             let abs_root = root(cache, loc.as_slice());
-            let rel_root = match path.segments[0].name.as_slice() {
+            let rel_root = match path.segments.get(0).name.as_slice() {
                 "self" => Some(~"./"),
                 _ => None,
             };
@@ -279,7 +279,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
 
 /// Helper to render type parameters
 fn typarams(w: &mut io::Writer,
-            typarams: &Option<~[clean::TyParamBound]>) -> fmt::Result {
+            typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
             try!(write!(w, "&lt;"));
@@ -536,11 +536,11 @@ impl fmt::Show for clean::ViewListIdent {
             Some(did) if ast_util::is_local(did) => {
                 let path = clean::Path {
                     global: false,
-                    segments: ~[clean::PathSegment {
+                    segments: vec!(clean::PathSegment {
                         name: self.name.clone(),
-                        lifetimes: ~[],
-                        types: ~[],
-                    }]
+                        lifetimes: Vec::new(),
+                        types: Vec::new(),
+                    })
                 };
                 resolved_path(f.buf, did.node, &path, false)
             }

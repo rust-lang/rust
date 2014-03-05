@@ -10,6 +10,8 @@
 
 // Test which of the builtin types are considered sendable.
 
+use std::vec_ng::Vec;
+
 fn assert_send<T:Send>() { }
 trait Dummy { }
 

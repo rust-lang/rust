@@ -10,6 +10,8 @@
 
 // Test which of the builtin types are considered freezeable.
 
+use std::vec_ng::Vec;
+
 fn assert_freeze<T:Freeze>() { }
 trait Dummy { }
 

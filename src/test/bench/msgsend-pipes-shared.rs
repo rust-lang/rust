@@ -24,6 +24,7 @@ use std::comm;
 use std::os;
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn move_out<T>(_x: T) {}
 
@@ -100,9 +101,9 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"10000", ~"4")
     } else {
-        args.clone()
+        args.clone().move_iter().collect()
     };
 
     println!("{:?}", args);
-    run(args);
+    run(args.as_slice());
 }

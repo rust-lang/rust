@@ -12,6 +12,8 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
+use std::vec_ng::Vec;
+
 trait iterable<A> {
     fn iterate(&self, blk: |x: &A| -> bool) -> bool;
 }
@@ -38,14 +40,14 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 }
 
 pub fn main() {
-    let x = vec!(0,1,2,3);
+    let x: Vec<int> = vec!(0,1,2,3);
     // Call a method
-    x.iterate(|y| { assert!(x[*y] == *y); true });
+    x.iterate(|y| { assert!(*x.get(*y as uint) == *y); true });
     // Call a parameterized function
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require
     // a borrow
-    assert_eq!(length::<int, &[int]>(x), x.len());
+    assert_eq!(length::<int, &[int]>(x.as_slice()), x.len());
 
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];

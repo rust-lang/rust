@@ -25,6 +25,7 @@ use std::os;
 use std::result::{Ok, Err};
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn fib(n: int) -> int {
     fn pfib(tx: &Sender<int>, n: int) {
@@ -56,7 +57,7 @@ fn parse_opts(argv: Vec<~str> ) -> Config {
 
     let opt_args = argv.slice(1, argv.len());
 
-    match getopts::getopts(opt_args, opts) {
+    match getopts::getopts(opt_args, opts.as_slice()) {
       Ok(ref m) => {
           return Config {stress: m.opt_present("stress")}
       }
@@ -95,7 +96,7 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"8")
     } else {
-        args
+        args.move_iter().collect()
     };
 
     let opts = parse_opts(args.clone());
@@ -103,7 +104,8 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = uint::parse_bytes(args[1].as_bytes(), 10u).unwrap() as int;
+        let max = uint::parse_bytes(args.get(1).as_bytes(), 10u).unwrap() as
+            int;
 
         let num_trials = 10;
 

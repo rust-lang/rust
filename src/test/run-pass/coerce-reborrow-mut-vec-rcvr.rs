@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn bar(v: &mut [uint]) {
     v.reverse();
     v.reverse();
@@ -16,6 +18,6 @@ fn bar(v: &mut [uint]) {
 
 pub fn main() {
     let mut the_vec = vec!(1, 2, 3, 100);
-    bar(the_vec);
+    bar(the_vec.as_mut_slice());
     assert_eq!(the_vec, vec!(100, 3, 2, 1));
 }

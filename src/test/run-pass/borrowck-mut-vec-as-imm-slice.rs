@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for i in v.iter() { sum += *i; }
@@ -15,7 +17,7 @@ fn want_slice(v: &[int]) -> int {
 }
 
 fn has_mut_vec(v: Vec<int> ) -> int {
-    want_slice(v)
+    want_slice(v.as_slice())
 }
 
 pub fn main() {

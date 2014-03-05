@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(deprecated_owned_vector)];
-
 // Verify the compiler fails with an error on infinite function
 // recursions.
 

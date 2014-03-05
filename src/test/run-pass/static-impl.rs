@@ -10,6 +10,8 @@
 
 // ignore-fast
 
+use std::vec_ng::Vec;
+
 pub trait plus {
     fn plus(&self) -> int;
 }
@@ -60,8 +62,10 @@ pub fn main() {
     assert_eq!((~"hi").plus(), 200);
 
     assert_eq!((vec!(1)).length_().str(), ~"1");
-    assert_eq!((vec!(3, 4)).map_(|a| *a + 4 )[0], 7);
-    assert_eq!((vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u )[0], 7u);
+    let vect = vec!(3, 4).map_(|a| *a + 4);
+    assert_eq!(*vect.get(0), 7);
+    let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);
+    assert_eq!(*vect.get(0), 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );
     assert_eq!(x, 20u);

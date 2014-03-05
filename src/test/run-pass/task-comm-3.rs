@@ -11,6 +11,7 @@
 // ignore-fast
 
 use std::task;
+use std::vec_ng::Vec;
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
 

@@ -18,6 +18,7 @@ use std::io;
 use std::io::{BufferedWriter, File};
 use std::cmp::min;
 use std::os;
+use std::vec_ng::Vec;
 
 static LINE_LENGTH: uint = 60;
 static IM: u32 = 139968;

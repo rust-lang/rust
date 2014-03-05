@@ -10,7 +10,9 @@
 
 #[feature(managed_boxes)];
 
-fn test(foo: @Vec<int> ) { assert!((foo[0] == 10)); }
+use std::vec_ng::Vec;
+
+fn test(foo: @Vec<int> ) { assert!((*foo.get(0) == 10)); }
 
 pub fn main() {
     let x = @vec!(10);

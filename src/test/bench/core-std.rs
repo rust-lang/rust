@@ -20,7 +20,6 @@ use rand::Rng;
 use std::mem::swap;
 use std::os;
 use std::str;
-use std::slice;
 use std::vec;
 use std::io::File;
 
@@ -89,11 +88,11 @@ fn vec_plus() {
     let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all_move(rv);
         } else {
-            v = rv + v;
+            v = vec::append(rv.clone(), v.as_slice());
         }
         i += 1;
     }
@@ -105,12 +104,12 @@ fn vec_append() {
     let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v = vec::append(v, rv);
+            v = vec::append(v.clone(), rv.as_slice());
         }
         else {
-            v = vec::append(rv, v);
+            v = vec::append(rv.clone(), v.as_slice());
         }
         i += 1;
     }
@@ -121,13 +120,13 @@ fn vec_push_all() {
 
     let mut v = Vec::new();
     for i in range(0u, 1500) {
-        let mut rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let mut rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v.push_all(rv);
+            v.push_all(rv.as_slice());
         }
         else {
             swap(&mut v, &mut rv);
-            v.push_all(rv);
+            v.push_all(rv.as_slice());
         }
     }
 }
@@ -136,7 +135,7 @@ fn is_utf8_ascii() {
     let mut v : Vec<u8> = Vec::new();
     for _ in range(0u, 20000) {
         v.push('b' as u8);
-        if !str::is_utf8(v) {
+        if !str::is_utf8(v.as_slice()) {
             fail!("is_utf8 failed");
         }
     }
@@ -147,7 +146,7 @@ fn is_utf8_multibyte() {
     let mut v : Vec<u8> = Vec::new();
     for _ in range(0u, 5000) {
         v.push_all(s.as_bytes());
-        if !str::is_utf8(v) {
+        if !str::is_utf8(v.as_slice()) {
             fail!("is_utf8 failed");
         }
     }

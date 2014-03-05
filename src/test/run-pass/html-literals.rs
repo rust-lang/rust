@@ -12,6 +12,8 @@
 
 #[feature(macro_rules)];
 
+use std::vec_ng::Vec;
+
 /*
 
 This is an HTML parser written as a macro. It's all CPS, and we have

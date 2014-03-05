@@ -17,9 +17,9 @@ fn a() {
     let mut p = vec!(1);
 
     // Create an immutable pointer into p's contents:
-    let q: &int = &p[0];
+    let q: &int = p.get(0);
 
-    p[0] = 5; //~ ERROR cannot assign
+    *p.get_mut(0) = 5; //~ ERROR cannot borrow
 
     println!("{}", *q);
 }
@@ -33,16 +33,16 @@ fn b() {
     let mut p = vec!(1);
 
     borrow(
-        p,
-        || p[0] = 5); //~ ERROR cannot borrow `p` as mutable
+        p.as_slice(),
+        || *p.get_mut(0) = 5); //~ ERROR cannot borrow `p` as mutable
 }
 
 fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:
     let mut p = vec!(1);
-    borrow(p, ||{});
-    p[0] = 5;
+    borrow(p.as_slice(), ||{});
+    *p.get_mut(0) = 5;
 }
 
 fn main() {

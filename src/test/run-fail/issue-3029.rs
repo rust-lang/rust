@@ -12,6 +12,8 @@
 #[allow(unreachable_code)];
 #[allow(unused_variable)];
 
+use std::vec_ng::Vec;
+
 // error-pattern:so long
 fn main() {
     let mut x = Vec::new();

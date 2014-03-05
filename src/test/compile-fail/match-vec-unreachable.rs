@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn main() {
     let x: Vec<(int, int)> = Vec::new();
-    let x: &[(int, int)] = x;
+    let x: &[(int, int)] = x.as_slice();
     match x {
         [a, (2, 3), _] => (),
         [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
@@ -18,7 +20,7 @@ fn main() {
     }
 
     let x: Vec<~str> = vec!(~"foo", ~"bar", ~"baz");
-    let x: &[~str] = x;
+    let x: &[~str] = x.as_slice();
     match x {
         [a, _, _, ..] => { println!("{}", a); }
         [_, _, _, _, _] => { } //~ ERROR unreachable pattern
@@ -26,7 +28,7 @@ fn main() {
     }
 
     let x: Vec<char> = vec!('a', 'b', 'c');
-    let x: &[char] = x;
+    let x: &[char] = x.as_slice();
     match x {
         ['a', 'b', 'c', .._tail] => {}
         ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern

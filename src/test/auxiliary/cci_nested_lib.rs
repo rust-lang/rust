@@ -11,6 +11,7 @@
 #[feature(managed_boxes)];
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 
 pub struct Entry<A,B> {
     key: A,

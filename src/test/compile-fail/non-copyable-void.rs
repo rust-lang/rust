@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::libc;
+use std::vec_ng::Vec;
 
 fn main() {
     let x : *Vec<int> = &vec!(1,2,3);

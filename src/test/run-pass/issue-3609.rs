@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::vec_ng::Vec;
 
 type RingBuffer = Vec<f64> ;
 type SamplesFn = proc(samples: &RingBuffer);
@@ -23,7 +24,7 @@ fn foo(name: ~str, samples_chan: Sender<Msg>) {
         let mut samples_chan = samples_chan;
         let callback: SamplesFn = proc(buffer) {
             for i in range(0u, buffer.len()) {
-                println!("{}: {}", i, buffer[i])
+                println!("{}: {}", i, *buffer.get(i))
             }
         };
         samples_chan.send(GetSamples(name.clone(), callback));

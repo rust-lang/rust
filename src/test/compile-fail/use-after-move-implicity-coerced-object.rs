@@ -11,6 +11,7 @@
 // ignore-tidy-linelength
 
 use std::fmt;
+use std::vec_ng::Vec;
 
 struct Number {
     n: i64

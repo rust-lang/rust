@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 struct Pair { x: int, y: int }
 
 pub fn main() {

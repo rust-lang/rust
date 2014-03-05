@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 enum bar { t1((), Option<Vec<int>>), t2, }
 
 // n.b. my change changes this error message, but I think it's right -- tjc
