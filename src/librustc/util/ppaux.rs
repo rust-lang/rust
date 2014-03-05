@@ -634,7 +634,7 @@ impl Repr for ty::TypeParameterDef {
 impl Repr for ty::RegionParameterDef {
     fn repr(&self, _tcx: ctxt) -> ~str {
         format!("RegionParameterDef({}, {:?})",
-                token::get_name(self.ident),
+                token::get_name(self.name),
                 self.def_id)
     }
 }

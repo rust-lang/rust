@@ -901,7 +901,7 @@ fn compare_impl_method(tcx: ty::ctxt,
         impl_generics.region_param_defs().iter().
         map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
-                bound_region: ty::BrNamed(l.def_id, l.ident)})).
+                bound_region: ty::BrNamed(l.def_id, l.name)})).
         collect();
     let dummy_substs = ty::substs {
         tps: vec_ng::append(dummy_impl_tps, dummy_method_tps.as_slice()),

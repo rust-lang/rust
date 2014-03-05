@@ -996,7 +996,7 @@ pub struct TypeParameterDef {
 
 #[deriving(Encodable, Decodable, Clone)]
 pub struct RegionParameterDef {
-    ident: ast::Name,
+    name: ast::Name,
     def_id: ast::DefId,
 }
 
@@ -5107,7 +5107,7 @@ pub fn construct_parameter_environment(
     let region_params = item_region_params.iter().
         map(|r| ty::ReFree(ty::FreeRegion {
                 scope_id: free_id,
-                bound_region: ty::BrNamed(r.def_id, r.ident)})).
+                bound_region: ty::BrNamed(r.def_id, r.name)})).
         collect();
 
     let free_substs = substs {
