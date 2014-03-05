@@ -23,8 +23,6 @@ use num::{Zero, One, Bounded, strconv};
 use num;
 use intrinsics;
 
-pub use cmp::{min, max};
-
 macro_rules! delegate(
     (
         $(
@@ -313,6 +311,16 @@ impl Bounded for f64 {
 impl Primitive for f64 {}
 
 impl Float for f64 {
+    #[inline]
+    fn max(self, other: f64) -> f64 {
+        unsafe { cmath::c_double::fmax(self, other) }
+    }
+
+    #[inline]
+    fn min(self, other: f64) -> f64 {
+        unsafe { cmath::c_double::fmin(self, other) }
+    }
+
     #[inline]
     fn nan() -> f64 { 0.0 / 0.0 }
 

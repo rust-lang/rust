@@ -1063,7 +1063,7 @@ impl MetricMap {
                 Some(v) => {
                     let delta = v.value - vold.value;
                     let noise = match noise_pct {
-                        None => f64::max(vold.noise.abs(), v.noise.abs()),
+                        None => vold.noise.abs().max(v.noise.abs()),
                         Some(pct) => vold.value * pct / 100.0
                     };
                     if delta.abs() <= noise {
