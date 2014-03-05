@@ -921,14 +921,17 @@ impl mc::Typer for TcxTyper {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
 
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
+        self.method_map.borrow().get().find(&id).map(|method| method.ty)
+    }
+
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
         let adjustments = self.tcx.adjustments.borrow();
         adjustments.get().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        let method_map = self.method_map.borrow();
-        method_map.get().contains_key(&id)
+        self.method_map.borrow().get().contains_key(&id)
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {

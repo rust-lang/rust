@@ -226,12 +226,6 @@ impl Rcx {
         self.resolve_type(t)
     }
 
-    /// Try to resolve the callee type for the given method call.
-    pub fn resolve_method_type(&mut self, id: ast::NodeId) -> ty::t {
-        let t = self.fcx.method_ty(id);
-        self.resolve_type(t)
-    }
-
     /// Try to resolve the type for the given node.
     pub fn resolve_expr_type_adjusted(&mut self, expr: &ast::Expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
@@ -258,14 +252,19 @@ impl<'a> mc::Typer for &'a mut Rcx {
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
+        self.fcx.inh.method_map.borrow().get().find(&id).map(|method| {
+            self.resolve_type(method.ty)
+        })
+    }
+
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
         let adjustments = self.fcx.inh.adjustments.borrow();
         adjustments.get().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        let method_map = self.fcx.inh.method_map.borrow();
-        method_map.get().contains_key(&id)
+        self.fcx.inh.method_map.borrow().get().contains_key(&id)
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -489,7 +488,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprUnary(ast::UnDeref, base) => {
             // For *a, the lifetime of a must enclose the deref
-            let base_ty = rcx.resolve_node_type(base.id);
+            let base_ty = match rcx.fcx.inh.method_map.get().find(&expr.id) {
+                Some(method) => {
+                    constrain_call(rcx, None, expr, Some(base), [], true);
+                    ty::ty_fn_ret(method.ty)
+                }
+                None => rcx.resolve_node_type(base.id)
+            };
             constrain_derefs(rcx, expr, 1, base_ty);
 
             visit::walk_expr(rcx, expr, ());
@@ -764,7 +769,7 @@ fn constrain_call(rcx: &mut Rcx,
             implicitly_ref_args);
     let callee_ty = match fn_expr_id {
         Some(id) => rcx.resolve_node_type(id),
-        None => rcx.resolve_method_type(call_expr.id)
+        None => rcx.resolve_type(rcx.fcx.method_ty(call_expr.id))
     };
     if ty::type_is_error(callee_ty) {
         // Bail, as function type is unknown
