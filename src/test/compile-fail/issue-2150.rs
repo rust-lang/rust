@@ -12,6 +12,8 @@
 #[allow(unused_variable)];
 #[allow(dead_code)];
 
+use std::vec_ng::Vec;
+
 fn fail_len(v: Vec<int> ) -> uint {
     let mut i = 3;
     fail!();

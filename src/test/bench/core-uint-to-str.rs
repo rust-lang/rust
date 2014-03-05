@@ -10,6 +10,7 @@
 
 use std::os;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn main() {
     let args = os::args();
@@ -18,10 +19,10 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"100000")
     } else {
-        args
+        args.move_iter().collect()
     };
 
-    let n = from_str::<uint>(args[1]).unwrap();
+    let n = from_str::<uint>(*args.get(1)).unwrap();
 
     for i in range(0u, n) {
         let x = i.to_str();

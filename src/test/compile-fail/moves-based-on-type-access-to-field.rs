@@ -23,8 +23,8 @@ fn f10() {
 
 fn f20() {
     let x = vec!(~"hi");
-    consume(x[0]);
-    touch(&x[0]); //~ ERROR use of partially moved value: `x`
+    consume(x.move_iter().next().unwrap());
+    touch(x.get(0)); //~ ERROR use of moved value: `x`
 }
 
 fn main() {}

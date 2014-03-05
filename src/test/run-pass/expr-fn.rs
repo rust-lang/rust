@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn test_int() {
     fn f() -> int { 10 }
     assert_eq!(f(), 10);
@@ -15,7 +17,8 @@ fn test_int() {
 
 fn test_vec() {
     fn f() -> Vec<int> { vec!(10, 11) }
-    assert_eq!(f()[1], 11);
+    let vect = f();
+    assert_eq!(*vect.get(1), 11);
 }
 
 fn test_generic() {

@@ -15,6 +15,8 @@
 #[allow(dead_code)];
 #[deny(unused_mut)];
 
+use std::vec_ng::Vec;
+
 fn main() {
     // negative cases
     let mut a = 3; //~ ERROR: variable does not need to be mutable

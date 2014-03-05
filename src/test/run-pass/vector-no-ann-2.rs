@@ -10,4 +10,6 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 pub fn main() { let _quux: @Vec<uint> = @Vec::new(); }

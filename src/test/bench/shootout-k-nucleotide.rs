@@ -12,6 +12,7 @@
 
 use std::str;
 use std::vec;
+use std::vec_ng::Vec;
 
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;
@@ -57,7 +58,7 @@ impl Code {
         }
 
         result.reverse();
-        str::from_utf8_owned(result).unwrap()
+        str::from_utf8_owned(result.move_iter().collect()).unwrap()
     }
 }
 
@@ -103,7 +104,7 @@ impl Table {
     fn new() -> Table {
         Table {
             count: 0,
-            items: vec::from_fn(TABLE_SIZE, |_| None),
+            items: Vec::from_fn(TABLE_SIZE, |_| None),
         }
     }
 
@@ -133,20 +134,20 @@ impl Table {
         let index = key.hash() % (TABLE_SIZE as u64);
 
         {
-            if self.items[index].is_none() {
+            if self.items.get(index as uint).is_none() {
                 let mut entry = ~Entry {
                     code: key,
                     count: 0,
                     next: None,
                 };
                 c.f(entry);
-                self.items[index] = Some(entry);
+                *self.items.get_mut(index as uint) = Some(entry);
                 return;
             }
         }
 
         {
-            let entry = &mut *self.items[index].get_mut_ref();
+            let entry = &mut *self.items.get_mut(index as uint).get_mut_ref();
             if entry.code == key {
                 c.f(*entry);
                 return;
@@ -240,7 +241,7 @@ fn print_frequencies(frequencies: &Table, frame: i32) {
     for entry in frequencies.iter() {
         vector.push((entry.code, entry.count));
     }
-    vector.sort();
+    vector.as_mut_slice().sort();
 
     let mut total_count = 0;
     for &(_, count) in vector.iter() {

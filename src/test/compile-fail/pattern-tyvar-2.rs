@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 extern crate extra;
+
+use std::vec_ng::Vec;
 
 enum bar { t1((), Option<Vec<int> >), t2, }
 

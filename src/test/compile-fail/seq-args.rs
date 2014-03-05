@@ -9,6 +9,9 @@
 // except according to those terms.
 
 extern crate extra;
+
+use std::vec_ng::Vec;
+
 fn main() {
 trait seq { }
 

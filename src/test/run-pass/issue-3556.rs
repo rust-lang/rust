@@ -12,6 +12,8 @@
 
 extern crate extra;
 
+use std::vec_ng::Vec;
+
 enum Token {
     Text(@~str),
     ETag(@Vec<~str> , @~str),

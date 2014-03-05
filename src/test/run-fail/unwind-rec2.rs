@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+use std::vec_ng::Vec;
+
 fn build1() -> Vec<int> {
     vec!(0,0,0,0,0,0,0)
 }

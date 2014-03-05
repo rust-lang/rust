@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+use std::vec_ng::Vec;
 
 enum clam<T> { a(T, int), b, }
 
 fn uhoh<T>(v: Vec<clam<T>> ) {
-    match v[1] {
-      a::<T>(ref _t, ref u) => {
+    match v.get(1) {
+      &a::<T>(ref _t, ref u) => {
           info!("incorrect");
           info!("{:?}", u);
           fail!();
       }
-      b::<T> => { info!("correct"); }
+      &b::<T> => { info!("correct"); }
     }
 }
 

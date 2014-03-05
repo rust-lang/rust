@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 trait foo {
     fn foo(&self) -> int;
 }
 
 impl foo for Vec<uint> {
-    fn foo(&self) -> int {1} //~ NOTE candidate #1 is `~[uint].foo::foo`
+    fn foo(&self) -> int {1} //~ NOTE candidate #1 is `Vec<uint>.foo::foo`
 }
 
 impl foo for Vec<int> {
-    fn foo(&self) -> int {2} //~ NOTE candidate #2 is `~[int].foo::foo`
+    fn foo(&self) -> int {2} //~ NOTE candidate #2 is `Vec<int>.foo::foo`
 }
 
 fn main() {

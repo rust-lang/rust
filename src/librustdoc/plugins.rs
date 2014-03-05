@@ -12,6 +12,7 @@ use clean;
 
 use serialize::json;
 use dl = std::unstable::dynamic_lib;
+use std::vec_ng::Vec;
 
 pub type PluginJson = Option<(~str, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);
@@ -19,8 +20,8 @@ pub type PluginCallback = fn (clean::Crate) -> PluginResult;
 
 /// Manages loading and running of plugins
 pub struct PluginManager {
-    priv dylibs: ~[dl::DynamicLibrary],
-    priv callbacks: ~[PluginCallback],
+    priv dylibs: Vec<dl::DynamicLibrary> ,
+    priv callbacks: Vec<PluginCallback> ,
     /// The directory plugins will be loaded from
     prefix: Path,
 }
@@ -29,8 +30,8 @@ impl PluginManager {
     /// Create a new plugin manager
     pub fn new(prefix: Path) -> PluginManager {
         PluginManager {
-            dylibs: ~[],
-            callbacks: ~[],
+            dylibs: Vec::new(),
+            callbacks: Vec::new(),
             prefix: prefix,
         }
     }
@@ -57,8 +58,8 @@ impl PluginManager {
         self.callbacks.push(plugin);
     }
     /// Run all the loaded plugins over the crate, returning their results
-    pub fn run_plugins(&self, krate: clean::Crate) -> (clean::Crate, ~[PluginJson]) {
-        let mut out_json = ~[];
+    pub fn run_plugins(&self, krate: clean::Crate) -> (clean::Crate, Vec<PluginJson> ) {
+        let mut out_json = Vec::new();
         let mut krate = krate;
         for &callback in self.callbacks.iter() {
             let (c, res) = callback(krate);

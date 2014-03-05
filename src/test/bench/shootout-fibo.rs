@@ -11,6 +11,7 @@
 extern crate extra;
 
 use std::os;
+use std::vec_ng::Vec;
 
 fn fib(n: int) -> int {
     if n < 2 {
@@ -27,8 +28,8 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"30")
     } else {
-        args
+        args.move_iter().collect()
     };
-    let n = from_str::<int>(args[1]).unwrap();
+    let n = from_str::<int>(*args.get(1)).unwrap();
     println!("{}\n", fib(n));
 }

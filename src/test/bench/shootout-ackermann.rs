@@ -11,6 +11,7 @@
 extern crate extra;
 
 use std::os;
+use std::vec_ng::Vec;
 
 fn ack(m: int, n: int) -> int {
     if m == 0 {
@@ -31,8 +32,8 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"8")
     } else {
-        args
+        args.move_iter().collect()
     };
-    let n = from_str::<int>(args[1]).unwrap();
+    let n = from_str::<int>(*args.get(1)).unwrap();
     println!("Ack(3,{}): {}\n", n, ack(3, n));
 }

@@ -24,6 +24,7 @@ use collections::HashMap;
 use std::cast;
 use std::libc;
 use std::mem;
+use std::vec_ng::Vec;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 

@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Verify the compiler fails with an error on infinite function
 // recursions.
+
+use std::vec_ng::Vec;
 
 struct Data(~Option<Data>);
 

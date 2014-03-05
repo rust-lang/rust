@@ -16,6 +16,7 @@ extern crate serialize;
 use collections::HashMap;
 use serialize::json;
 use std::option;
+use std::vec_ng::Vec;
 
 enum object {
     bool_value(bool),
@@ -60,9 +61,9 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json
     {
         &json::List(ref interfaces) =>
         {
-          interfaces.map(|interface| {
+          interfaces.iter().map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())
-          })
+          }).collect()
         }
         _ =>
         {

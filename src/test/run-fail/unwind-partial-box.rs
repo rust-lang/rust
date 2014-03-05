@@ -12,6 +12,8 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 fn f() -> Vec<int> { fail!(); }
 
 // Voodoo. In unwind-alt we had to do this to trigger the bug. Might

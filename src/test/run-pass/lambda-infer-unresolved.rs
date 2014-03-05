@@ -11,11 +11,13 @@
 // This should typecheck even though the type of e is not fully
 // resolved when we finish typechecking the ||.
 
+use std::vec_ng::Vec;
+
 struct Refs { refs: Vec<int> , n: int }
 
 pub fn main() {
     let mut e = Refs{refs: Vec::new(), n: 0};
     let _f: || = || error!("{}", e.n);
-    let x: &[int] = e.refs;
+    let x: &[int] = e.refs.as_slice();
     assert_eq!(x.len(), 0);
 }

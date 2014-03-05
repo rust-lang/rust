@@ -16,6 +16,7 @@ extern crate time;
 use collections::SmallIntMap;
 use std::os;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
     for i in range(min, max) {
@@ -36,10 +37,10 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"10000", ~"50")
     } else {
-        args
+        args.move_iter().collect()
     };
-    let max = from_str::<uint>(args[1]).unwrap();
-    let rep = from_str::<uint>(args[2]).unwrap();
+    let max = from_str::<uint>(*args.get(1)).unwrap();
+    let rep = from_str::<uint>(*args.get(2)).unwrap();
 
     let mut checkf = 0.0;
     let mut appendf = 0.0;

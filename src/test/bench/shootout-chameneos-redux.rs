@@ -15,6 +15,7 @@ extern crate extra;
 use std::option;
 use std::os;
 use std::task;
+use std::vec_ng::Vec;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
@@ -41,7 +42,7 @@ fn show_color(cc: color) -> ~str {
     }
 }
 
-fn show_color_list(set: vec!(color)) -> ~str {
+fn show_color_list(set: Vec<color>) -> ~str {
     let mut out = ~"";
     for col in set.iter() {
         out.push_char(' ');
@@ -134,7 +135,7 @@ fn creature(
     }
 }
 
-fn rendezvous(nn: uint, set: vec!(color)) {
+fn rendezvous(nn: uint, set: Vec<color>) {
 
     // these ports will allow us to hear from the creatures
     let (from_creatures, to_rendezvous) = Chan::<CreatureInfo>::new();
@@ -143,7 +144,7 @@ fn rendezvous(nn: uint, set: vec!(color)) {
     // these channels will be passed to the creatures so they can talk to us
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: Vec<Chan<Option<CreatureInfo>>> =
+    let mut to_creature: Vec<Chan<Option<CreatureInfo>>> =
         set.iter().enumerate().map(|(ii, col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
@@ -166,13 +167,13 @@ fn rendezvous(nn: uint, set: vec!(color)) {
 
     // set up meetings...
     for _ in range(0, nn) {
-        let fst_creature: CreatureInfo = from_creatures.recv();
-        let snd_creature: CreatureInfo = from_creatures.recv();
+        let mut fst_creature: CreatureInfo = from_creatures.recv();
+        let mut snd_creature: CreatureInfo = from_creatures.recv();
 
         creatures_met += 2;
 
-        to_creature[fst_creature.name].send(Some(snd_creature));
-        to_creature[snd_creature.name].send(Some(fst_creature));
+        to_creature.get_mut(fst_creature.name).send(Some(snd_creature));
+        to_creature.get_mut(snd_creature.name).send(Some(fst_creature));
     }
 
     // tell each creature to stop
@@ -205,10 +206,10 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"600")
     } else {
-        args
+        args.move_iter().collect()
     };
 
-    let nn = from_str::<uint>(args[1]).unwrap();
+    let nn = from_str::<uint>(*args.get(1)).unwrap();
 
     print_complements();
     println!("");

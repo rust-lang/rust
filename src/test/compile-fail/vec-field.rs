@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:attempted access of field `some_field_name` on type `~[int]`
+// error-pattern:attempted access of field `some_field_name`
 // issue #367
 
 fn f() {

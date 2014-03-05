@@ -14,10 +14,12 @@
 #[allow(dead_assignment)];
 
 extern crate extra;
-use std::vec::*;
+
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 pub fn main() {
-    let mut v = from_elem(0u, 0);
-    v = append(v, [4, 2]);
-    assert_eq!(from_fn(2, |i| 2*(i+1)), vec!(2, 4));
+    let mut v = Vec::from_elem(0u, 0);
+    v = vec_ng::append(v, [4, 2]);
+    assert_eq!(Vec::from_fn(2, |i| 2*(i+1)), vec!(2, 4));
 }

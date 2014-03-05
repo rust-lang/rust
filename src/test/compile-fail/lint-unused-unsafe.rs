@@ -13,6 +13,8 @@
 #[allow(dead_code)];
 #[deny(unused_unsafe)];
 
+use std::vec_ng::Vec;
+
 mod foo {
     extern {
         pub fn bar();

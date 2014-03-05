@@ -365,6 +365,11 @@ impl<T> Vec<T> {
     }
 
     #[inline]
+    pub fn swap(&mut self, a: uint, b: uint) {
+        self.as_mut_slice().swap(a, b)
+    }
+
+    #[inline]
     pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
         if index < length - 1 {
@@ -449,13 +454,26 @@ impl<T> Vec<T> {
     pub fn as_ptr(&self) -> *T {
         self.as_slice().as_ptr()
     }
-}
 
-impl<T> Mutable for Vec<T> {
-    /// Clear the vector, removing all values.
-    #[inline]
-    fn clear(&mut self) {
-        self.truncate(0)
+    pub fn remove(&mut self, i: uint) -> Option<T> {
+        let len = self.len();
+        if i < len {
+            unsafe { // infallible
+                // the place we are taking from.
+                let ptr = self.as_mut_slice().as_mut_ptr().offset(i as int);
+                // copy it out, unsafely having a copy of the value on
+                // the stack and in the vector at the same time.
+                let ret = Some(ptr::read(ptr as *T));
+
+                // Shift everything down to fill in that spot.
+                ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
+                self.set_len(len - 1);
+
+                ret
+            }
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -478,26 +496,13 @@ impl<T> Mutable for Vec<T> {
 
         (lefts, rights)
     }
+}
 
-    pub fn remove(&mut self, i: uint) -> Option<T> {
-        let len = self.len();
-        if i < len {
-            unsafe { // infallible
-                // the place we are taking from.
-                let ptr = self.as_mut_slice().as_mut_ptr().offset(i as int);
-                // copy it out, unsafely having a copy of the value on
-                // the stack and in the vector at the same time.
-                let ret = Some(ptr::read(ptr as *T));
-
-                // Shift everything down to fill in that spot.
-                ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
-                self.set_len(len - 1);
-
-                ret
-            }
-        } else {
-            None
-        }
+impl<T> Mutable for Vec<T> {
+    /// Clear the vector, removing all values.
+    #[inline]
+    fn clear(&mut self) {
+        self.truncate(0)
     }
 }
 

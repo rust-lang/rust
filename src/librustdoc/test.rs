@@ -15,6 +15,7 @@ use std::io::Process;
 use std::local_data;
 use std::os;
 use std::str;
+use std::vec_ng::Vec;
 
 use collections::HashSet;
 use testing;
@@ -35,7 +36,10 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
+pub fn run(input: &str,
+           libs: @RefCell<HashSet<Path>>,
+           mut test_args: Vec<~str>)
+           -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
@@ -77,13 +81,16 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
     let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
 
-    let mut collector = Collector::new(krate.name.to_owned(), libs, false, false);
+    let mut collector = Collector::new(krate.name.to_owned(),
+                                       libs,
+                                       false,
+                                       false);
     collector.fold_crate(krate);
 
     test_args.unshift(~"rustdoctest");
 
-    testing::test_main(test_args, collector.tests);
-
+    testing::test_main(test_args.as_slice(),
+                       collector.tests.move_iter().collect());
     0
 }
 
@@ -194,8 +201,8 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
 }
 
 pub struct Collector {
-    tests: ~[testing::TestDescAndFn],
-    priv names: ~[~str],
+    tests: Vec<testing::TestDescAndFn>,
+    priv names: Vec<~str>,
     priv libs: @RefCell<HashSet<Path>>,
     priv cnt: uint,
     priv use_headers: bool,
@@ -209,8 +216,8 @@ impl Collector {
     pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>,
                use_headers: bool, loose_feature_gating: bool) -> Collector {
         Collector {
-            tests: ~[],
-            names: ~[],
+            tests: Vec::new(),
+            names: Vec::new(),
             libs: libs,
             cnt: 0,
             use_headers: use_headers,

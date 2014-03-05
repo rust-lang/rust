@@ -16,6 +16,8 @@
 // from a vector to a slice. The drop glue was being invoked on
 // the temporary slice with a wrong type, triggering an LLVM assert.
 
+use std::vec_ng::Vec;
+
 struct Thing1<'a> {
     baz: &'a [~int],
     bar: ~u64,
@@ -32,7 +34,7 @@ pub fn main() {
         bar: ~32,
     };
     Thing1 {
-        baz: Vec::new(),
+        baz: Vec::new().as_slice(),
         bar: ~32,
     };
     let _t2_fixed = Thing2 {
@@ -40,7 +42,7 @@ pub fn main() {
         bar: 32,
     };
     Thing2 {
-        baz: Vec::new(),
+        baz: Vec::new().as_slice(),
         bar: 32,
     };
 }

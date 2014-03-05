@@ -10,6 +10,8 @@
 
 // error-pattern: illegal recursive type
 
-type x = vec!(x);
+use std::vec_ng::Vec;
+
+type x = Vec<x>;
 
 fn main() { let b: x = Vec::new(); }

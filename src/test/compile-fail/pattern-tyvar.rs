@@ -10,6 +10,8 @@
 
 extern crate extra;
 
+use std::vec_ng::Vec;
+
 // error-pattern: mismatched types
 
 enum bar { t1((), Option<Vec<int> >), t2, }

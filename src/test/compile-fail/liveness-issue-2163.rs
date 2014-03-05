@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::vec;
+use std::vec_ng::Vec;
 
 fn main() {
     let a: Vec<int> = Vec::new();

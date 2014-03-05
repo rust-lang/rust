@@ -13,6 +13,7 @@
 extern crate extra;
 
 use std::task;
+use std::vec_ng::Vec;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 

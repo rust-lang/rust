@@ -21,7 +21,7 @@ pub fn main() {
         Foo { string: ~"bar" },
         Foo { string: ~"baz" }
     );
-    let x: &[Foo] = x;
+    let x: &[Foo] = x.as_slice();
     match x {
         [_, ..tail] => {
             match tail {

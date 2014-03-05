@@ -18,6 +18,7 @@ extern crate extra;
 
 use std::io;
 use std::fmt;
+use std::vec_ng::Vec;
 
 enum square {
     bot,
@@ -62,7 +63,8 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr) -> vec!(vec!(square)) {
+fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
+                   -> Vec<Vec<square>> {
     let mut input: &mut io::Reader = &mut input;
     let mut grid = Vec::new();
     let mut line = [0, ..10];
@@ -72,7 +74,7 @@ fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr) -> vec!(vec!(square
         row.push(square_from_char(*c as char))
     }
     grid.push(row);
-    let width = grid[0].len();
+    let width = grid.get(0).len();
     for row in grid.iter() { assert!(row.len() == width) }
     grid
 }

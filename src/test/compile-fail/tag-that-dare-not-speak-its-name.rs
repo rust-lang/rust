@@ -13,6 +13,8 @@
 
 #[no_implicit_prelude];
 
+use std::vec_ng::Vec;
+
 fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
     fail!();
 }

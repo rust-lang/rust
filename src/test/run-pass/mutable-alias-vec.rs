@@ -10,6 +10,8 @@
 
 extern crate extra;
 
+use std::vec_ng::Vec;
+
 fn grow(v: &mut Vec<int> ) {
     v.push(1);
 }

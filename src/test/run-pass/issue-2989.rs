@@ -10,7 +10,7 @@
 
 extern crate extra;
 
-use std::vec;
+use std::vec_ng::Vec;
 
 trait methods {
     fn to_bytes(&self) -> Vec<u8> ;
@@ -18,17 +18,17 @@ trait methods {
 
 impl methods for () {
     fn to_bytes(&self) -> Vec<u8> {
-        vec::from_elem(0, 0u8)
+        Vec::from_elem(0, 0u8)
     }
 }
 
 // the position of this function is significant! - if it comes before methods
 // then it works, if it comes after it then it doesn't!
 fn to_bools(bitv: Storage) -> Vec<bool> {
-    vec::from_fn(8, |i| {
+    Vec::from_fn(8, |i| {
         let w = i / 64;
         let b = i % 64;
-        let x = 1u64 & (bitv.storage[w] >> b);
+        let x = 1u64 & (*bitv.storage.get(w) >> b);
         x == 1u64
     })
 }
@@ -40,7 +40,7 @@ pub fn main() {
     let bools2 = to_bools(Storage{storage: vec!(0b01100100)});
 
     for i in range(0u, 8) {
-        println!("{} => {} vs {}", i, bools[i], bools2[i]);
+        println!("{} => {} vs {}", i, *bools.get(i), *bools2.get(i));
     }
 
     assert_eq!(bools, bools2);

@@ -22,6 +22,7 @@ use sync::RWArc;
 use sync::Future;
 use std::os;
 use std::uint;
+use std::vec_ng::Vec;
 
 // A poor man's pipe.
 type pipe = RWArc<Vec<uint> >;
@@ -70,11 +71,11 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"10", ~"100")
     } else {
-        args.clone()
+        args.clone().move_iter().collect()
     };
 
-    let num_tasks = from_str::<uint>(args[1]).unwrap();
-    let msg_per_task = from_str::<uint>(args[2]).unwrap();
+    let num_tasks = from_str::<uint>(*args.get(1)).unwrap();
+    let msg_per_task = from_str::<uint>(*args.get(2)).unwrap();
 
     let (mut num_chan, num_port) = init();
 

@@ -11,6 +11,7 @@
 use std::os;
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn f(n: uint) {
     let mut i = 0u;
@@ -29,9 +30,9 @@ fn main() {
     } else if args.len() <= 1u {
         vec!(~"", ~"10")
     } else {
-        args
+        args.move_iter().collect()
     };
-    let n = from_str::<uint>(args[1]).unwrap();
+    let n = from_str::<uint>(*args.get(1)).unwrap();
     let mut i = 0u;
     while i < n { task::spawn(proc() f(n) ); i += 1u; }
 }

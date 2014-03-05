@@ -19,6 +19,7 @@ extern crate sync;
 
 use sync::Arc;
 use std::task;
+use std::vec_ng::Vec;
 
 trait Pet {
     fn name(&self, blk: |&str|);

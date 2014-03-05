@@ -10,6 +10,8 @@
 
 // ignore-fast
 
+use std::vec_ng::Vec;
+
 trait to_str {
     fn to_string(&self) -> ~str;
 }
