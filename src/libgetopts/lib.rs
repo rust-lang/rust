@@ -455,6 +455,25 @@ pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> Op
     }
 }
 
+/// Create a generic option group, stating all parameters explicitly
+pub fn opt(short_name: &str,
+           long_name: &str,
+           desc: &str,
+           hint: &str,
+           hasarg: HasArg,
+           occur: Occur) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
+        hasarg: hasarg,
+        occur: occur
+    }
+}
+
 impl Fail_ {
     /// Convert a `Fail_` enum into an error string.
     pub fn to_err_msg(self) -> ~str {
