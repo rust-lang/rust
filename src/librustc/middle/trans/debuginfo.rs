@@ -2171,7 +2171,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
     };
 
     unsafe {
-        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, metadata_node);
+        llvm::LLVMSetCurrentDebugLocation(cx.builder.b, metadata_node);
     }
 
     debug_context(cx).current_debug_location.set(debug_location);

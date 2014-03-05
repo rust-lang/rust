@@ -302,8 +302,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                          is_local: bool) -> (ValueRef, bool) {
     let map_list = |exprs: &[@ast::Expr]| {
         exprs.iter().map(|&e| const_expr(cx, e, is_local))
-             .fold((~[], true), |(L, all_inlineable), (val, inlineable)| {
-                (vec::append_one(L, val), all_inlineable && inlineable)
+             .fold((~[], true), |(l, all_inlineable), (val, inlineable)| {
+                (vec::append_one(l, val), all_inlineable && inlineable)
              })
     };
     unsafe {

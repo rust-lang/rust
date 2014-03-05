@@ -1672,15 +1672,15 @@ mod tests {
             ]"
         );
 
-        let longTestList = List(~[
+        let long_test_list = List(~[
             Boolean(false),
             Null,
             List(~[String(~"foo\nbar"), Number(3.5)])]);
 
-        assert_eq!(longTestList.to_str(),
+        assert_eq!(long_test_list.to_str(),
             ~"[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
-            longTestList.to_pretty_str(),
+            long_test_list.to_pretty_str(),
             ~"\
             [\n  \
                 false,\n  \
@@ -1710,7 +1710,7 @@ mod tests {
             }"
         );
 
-        let complexObj = mk_object([
+        let complex_obj = mk_object([
                 (~"b", List(~[
                     mk_object([(~"c", String(~"\x0c\r"))]),
                     mk_object([(~"d", String(~""))])
@@ -1718,7 +1718,7 @@ mod tests {
             ]);
 
         assert_eq!(
-            complexObj.to_str(),
+            complex_obj.to_str(),
             ~"{\
                 \"b\":[\
                     {\"c\":\"\\f\\r\"},\
@@ -1727,7 +1727,7 @@ mod tests {
             }"
         );
         assert_eq!(
-            complexObj.to_pretty_str(),
+            complex_obj.to_pretty_str(),
             ~"\
             {\n  \
                 \"b\": [\n    \

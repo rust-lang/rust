@@ -164,20 +164,20 @@ pub struct Stats {
 }
 
 pub struct BuilderRef_res {
-    B: BuilderRef,
+    b: BuilderRef,
 }
 
 impl Drop for BuilderRef_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeBuilder(self.B);
+            llvm::LLVMDisposeBuilder(self.b);
         }
     }
 }
 
-pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
+pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     BuilderRef_res {
-        B: B
+        b: b
     }
 }
 
@@ -654,9 +654,9 @@ pub fn C_struct(elts: &[ValueRef], packed: bool) -> ValueRef {
     }
 }
 
-pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
+pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMConstNamedStruct(T.to_ref(), elts.as_ptr(), elts.len() as c_uint)
+        llvm::LLVMConstNamedStruct(t.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 
