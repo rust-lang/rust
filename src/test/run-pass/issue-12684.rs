@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,14 +11,18 @@
 // ignore-fast
 
 extern crate native;
-
-use std::io::timer;
+extern crate green;
+extern crate rustuv;
 
 #[start]
-fn start(argc: int, argv: **u8) -> int {
-    native::start(argc, argv, main)
-}
+fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
 
 fn main() {
-    timer::sleep(250);
+    native::task::spawn(proc() customtask());
+}
+
+fn customtask() {
+    let mut timer = std::io::timer::Timer::new().unwrap();
+    let periodic = timer.periodic(10);
+    periodic.recv();
 }
