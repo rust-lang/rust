@@ -44,13 +44,13 @@ impl<'a> Builder<'a> {
     }
 
     pub fn count_insn(&self, category: &str) {
-        if self.ccx.sess.trans_stats() {
+        if self.ccx.sess().trans_stats() {
             self.ccx.stats.n_llvm_insns.set(self.ccx
                                                 .stats
                                                 .n_llvm_insns
                                                 .get() + 1);
         }
-        if self.ccx.sess.count_llvm_insns() {
+        if self.ccx.sess().count_llvm_insns() {
             base::with_insn_ctxt(|v| {
                 let mut h = self.ccx.stats.llvm_insns.borrow_mut();
 
@@ -748,15 +748,15 @@ impl<'a> Builder<'a> {
     }
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
-        if self.ccx.sess.asm_comments() {
-            let s = format!("{} ({})", text, self.ccx.sess.codemap.span_to_str(sp));
+        if self.ccx.sess().asm_comments() {
+            let s = format!("{} ({})", text, self.ccx.sess().codemap.span_to_str(sp));
             debug!("{}", s);
             self.add_comment(s);
         }
     }
 
     pub fn add_comment(&self, text: &str) {
-        if self.ccx.sess.asm_comments() {
+        if self.ccx.sess().asm_comments() {
             let sanitized = text.replace("$", "");
             let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");

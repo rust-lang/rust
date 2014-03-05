@@ -218,7 +218,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("unknown ordering in atomic intrinsic")
+                _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
             }
         };
 
@@ -259,7 +259,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("unknown atomic operation")
+                    _ => ccx.sess().fatal("unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
@@ -377,7 +377,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     ast_map::NodeExpr(e) => e.span,
                     _ => fail!("transmute has non-expr arg"),
                 };
-                ccx.sess.span_fatal(sp,
+                ccx.sess().span_fatal(sp,
                     format!("transmute called on types with different sizes: \
                              {intype} ({insize, plural, =1{# bit} other{# bits}}) to \
                              {outtype} ({outsize, plural, =1{# bit} other{# bits}})",
@@ -527,7 +527,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
-            ccx.sess.span_bug(item.span, "unknown intrinsic");
+            ccx.sess().span_bug(item.span, "unknown intrinsic");
         }
     }
     fcx.cleanup();

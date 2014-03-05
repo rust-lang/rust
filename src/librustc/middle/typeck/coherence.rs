@@ -189,7 +189,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
             ItemImpl(_, None, ast_ty, _) => {
                 if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
                     // This is an error.
-                    let session = self.cc.crate_context.tcx.sess;
+                    let session = &self.cc.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      "cannot associate methods with a type outside the \
                                      crate the type is defined in; define and implement \
@@ -210,7 +210,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                         self.cc.trait_ref_to_trait_def_id(trait_ref);
 
                     if trait_def_id.krate != LOCAL_CRATE {
-                        let session = self.cc.crate_context.tcx.sess;
+                        let session = &self.cc.crate_context.tcx.sess;
                         session.span_err(item.span,
                                 "cannot provide an extension implementation \
                                 where both trait and type are not defined in this crate");
@@ -274,7 +274,7 @@ impl CoherenceChecker {
                                        item.span,
                                        self_type.ty) {
                 None => {
-                    let session = self.crate_context.tcx.sess;
+                    let session = &self.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      "no base type found for inherent implementation; \
                                       implement a trait or new type instead");
@@ -447,7 +447,7 @@ impl CoherenceChecker {
                             implementation_b);
 
                     if self.polytypes_unify(polytype_a.clone(), polytype_b) {
-                        let session = self.crate_context.tcx.sess;
+                        let session = &self.crate_context.tcx.sess;
                         session.span_err(
                             self.span_of_impl(implementation_a),
                             format!("conflicting implementations for trait `{}`",

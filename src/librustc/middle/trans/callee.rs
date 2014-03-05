@@ -365,7 +365,7 @@ pub fn trans_fn_ref_with_vtables(
         true
     } else if def_id.krate == ast::LOCAL_CRATE {
         let map_node = session::expect(
-            ccx.sess,
+            ccx.sess(),
             ccx.tcx.map.find(def_id.node),
             || format!("local item should be in ast map"));
 

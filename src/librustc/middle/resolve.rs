@@ -153,7 +153,7 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl Visitor<()> for Resolver {
+impl<'a> Visitor<()> for Resolver<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         self.resolve_item(item);
     }
@@ -787,9 +787,9 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     }
 }
 
-fn Resolver(session: Session,
-            lang_items: @LanguageItems,
-            crate_span: Span) -> Resolver {
+fn Resolver<'a>(session: &'a Session,
+                lang_items: @LanguageItems,
+                crate_span: Span) -> Resolver<'a> {
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
@@ -802,7 +802,7 @@ fn Resolver(session: Session,
     let current_module = graph_root.get_module();
 
     let this = Resolver {
-        session: @session,
+        session: session,
         lang_items: lang_items,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -843,8 +843,8 @@ fn Resolver(session: Session,
 }
 
 /// The main resolver class.
-struct Resolver {
-    session: @Session,
+struct Resolver<'a> {
+    session: &'a Session,
     lang_items: @LanguageItems,
 
     graph_root: @NameBindings,
@@ -896,11 +896,11 @@ struct Resolver {
     used_imports: HashSet<(NodeId, Namespace)>,
 }
 
-struct BuildReducedGraphVisitor<'a> {
-    resolver: &'a mut Resolver,
+struct BuildReducedGraphVisitor<'a, 'b> {
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
+impl<'a, 'b> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &Item, context: ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
@@ -928,16 +928,16 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
 }
 
-struct UnusedImportCheckVisitor<'a> { resolver: &'a mut Resolver }
+struct UnusedImportCheckVisitor<'a, 'b> { resolver: &'a mut Resolver<'b> }
 
-impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
+impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());
     }
 }
 
-impl Resolver {
+impl<'a> Resolver<'a> {
     /// The main name resolution procedure.
     fn resolve(&mut self, krate: &ast::Crate) {
         self.build_reduced_graph(krate);
@@ -5571,7 +5571,7 @@ pub struct CrateMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate(session: Session,
+pub fn resolve_crate(session: &Session,
                      lang_items: @LanguageItems,
                      krate: &Crate)
                   -> CrateMap {

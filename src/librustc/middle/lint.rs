@@ -530,7 +530,7 @@ impl<'a> Context<'a> {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        each_lint(self.tcx.sess, attrs, |meta, level, lintname| {
+        each_lint(&self.tcx.sess, attrs, |meta, level, lintname| {
             match self.dict.find_equiv(&lintname) {
                 None => {
                     self.span_lint(
@@ -594,7 +594,7 @@ impl<'a> Context<'a> {
 
 // Check that every lint from the list of attributes satisfies `f`.
 // Return true if that's the case. Otherwise return false.
-pub fn each_lint(sess: session::Session,
+pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
                  f: |@ast::MetaItem, level, InternedString| -> bool)
                  -> bool {

@@ -177,9 +177,9 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
             if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as Disr)) {
-                cx.sess.bug(format!("non-C-like enum {} with specified \
-                                  discriminants",
-                                 ty::item_path_str(cx.tcx, def_id)))
+                cx.sess().bug(format!("non-C-like enum {} with specified \
+                                      discriminants",
+                                      ty::item_path_str(cx.tcx, def_id)))
             }
 
             if cases.len() == 1 {
@@ -230,7 +230,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
                           false)
             }))
         }
-        _ => cx.sess.bug("adt::represent_type called on non-ADT type")
+        _ => cx.sess().bug("adt::represent_type called on non-ADT type")
     }
 }
 
@@ -324,12 +324,12 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
     match hint {
         attr::ReprInt(span, ity) => {
             if !bounds_usable(cx, ity, bounds) {
-                cx.sess.span_bug(span, "representation hint insufficient for discriminant range")
+                cx.sess().span_bug(span, "representation hint insufficient for discriminant range")
             }
             return ity;
         }
         attr::ReprExtern => {
-            attempts = match cx.sess.targ_cfg.arch {
+            attempts = match cx.sess().targ_cfg.arch {
                 X86 | X86_64 => at_least_32,
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant
@@ -577,7 +577,7 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
                                                        discr as u64, true)))
         }
         Univariant(..) => {
-            bcx.ccx().sess.bug("no cases for univariants or structs")
+            bcx.ccx().sess().bug("no cases for univariants or structs")
         }
         NullablePointer{ .. } => {
             assert!(discr == 0 || discr == 1);
@@ -651,7 +651,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 pub fn deref_ty(ccx: &CrateContext, r: &Repr) -> ty::t {
     match *r {
         CEnum(..) => {
-            ccx.sess.bug("deref of c-like enum")
+            ccx.sess().bug("deref of c-like enum")
         }
         Univariant(ref st, _) => {
             *st.fields.get(0)
@@ -661,7 +661,7 @@ pub fn deref_ty(ccx: &CrateContext, r: &Repr) -> ty::t {
             *cases.get(0).fields.get(0)
         }
         NullablePointer{ .. } => {
-            ccx.sess.bug("deref of nullable ptr")
+            ccx.sess().bug("deref of nullable ptr")
         }
     }
 }
@@ -674,7 +674,7 @@ pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(..) => {
-            bcx.ccx().sess.bug("element access in C-like enum")
+            bcx.ccx().sess().bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
             assert_eq!(discr, 0);
@@ -719,7 +719,7 @@ fn struct_field_ptr(bcx: &Block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_drop_flag_ptr(bcx: &Block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
-        _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")
+        _ => bcx.ccx().sess().bug("tried to get drop flag of non-droppable type")
     }
 }
 
@@ -874,7 +874,7 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {
-        CEnum(..) => ccx.sess.bug("element access in C-like enum const"),
+        CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
         Univariant(..) => const_struct_field(ccx, val, ix),
         General(..) => const_struct_field(ccx, val, ix + 1),
         NullablePointer{ .. } => const_struct_field(ccx, val, ix)

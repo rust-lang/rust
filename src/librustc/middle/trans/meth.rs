@@ -108,8 +108,8 @@ pub fn trans_method_callee<'a>(
             (method.origin, method.ty)
         }
         None => {
-            bcx.tcx().sess.span_bug(bcx.tcx().map.span(method_call.expr_id),
-                                    "method call expr wasn't in method map")
+            bcx.sess().span_bug(bcx.tcx().map.span(method_call.expr_id),
+                                "method call expr wasn't in method map")
         }
     };
 
@@ -145,9 +145,9 @@ pub fn trans_method_callee<'a>(
             let self_expr = match self_expr {
                 Some(self_expr) => self_expr,
                 None => {
-                    bcx.tcx().sess.span_bug(bcx.tcx().map.span(method_call.expr_id),
-                                            "self expr wasn't provided for trait object \
-                                            callee (trying to call overloaded op?)")
+                    bcx.sess().span_bug(bcx.tcx().map.span(method_call.expr_id),
+                                        "self expr wasn't provided for trait object \
+                                         callee (trying to call overloaded op?)")
                 }
             };
             trans_trait_callee(bcx,
@@ -425,7 +425,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
             type_of_rust_fn(ccx, true, f.sig.inputs.slice_from(1), f.sig.output)
         }
         _ => {
-            ccx.sess.bug("meth::trans_trait_callee given non-bare-rust-fn");
+            ccx.sess().bug("meth::trans_trait_callee given non-bare-rust-fn");
         }
     };
     let llvtable = Load(bcx,
@@ -500,7 +500,7 @@ pub fn get_vtable(bcx: &Block,
                     methods.push(vtable_method)
                 }
             }
-            _ => ccx.sess.bug("get_vtable: expected a static origin"),
+            _ => ccx.sess().bug("get_vtable: expected a static origin"),
         }
     }
 
@@ -548,8 +548,8 @@ fn emit_vtable_methods(bcx: &Block,
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
         Some(t_id) => t_id.def_id,
-        None       => ccx.sess.bug("make_impl_vtable: don't know how to \
-                                    make a vtable for a type impl!")
+        None       => ccx.sess().bug("make_impl_vtable: don't know how to \
+                                      make a vtable for a type impl!")
     };
 
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);

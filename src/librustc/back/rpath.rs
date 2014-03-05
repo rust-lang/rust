@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use driver::session;
+use driver::session::Session;
 use metadata::cstore;
 use metadata::filesearch;
 
@@ -22,7 +22,7 @@ fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
-pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> Vec<~str> {
+pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -54,7 +54,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> Vec<~str>
     flags
 }
 
-fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
+fn get_sysroot_absolute_rt_lib(sess: &Session) -> Path {
     let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
     let mut p = sess.filesearch.sysroot.join(&r);
     p.push(os::dll_filename("rustrt"));

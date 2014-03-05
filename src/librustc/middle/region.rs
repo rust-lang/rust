@@ -92,7 +92,7 @@ pub struct Context {
 }
 
 struct RegionResolutionVisitor<'a> {
-    sess: Session,
+    sess: &'a Session,
 
     // Generated maps:
     region_maps: &'a RegionMaps,
@@ -909,7 +909,7 @@ impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
     }
 }
 
-pub fn resolve_crate(sess: Session, krate: &ast::Crate) -> RegionMaps {
+pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
         scope_map: RefCell::new(NodeMap::new()),
         var_map: RefCell::new(NodeMap::new()),
@@ -928,7 +928,7 @@ pub fn resolve_crate(sess: Session, krate: &ast::Crate) -> RegionMaps {
     return maps;
 }
 
-pub fn resolve_inlined_item(sess: Session,
+pub fn resolve_inlined_item(sess: &Session,
                             region_maps: &RegionMaps,
                             item: &ast::InlinedItem) {
     let cx = Context {parent: None,

@@ -383,13 +383,6 @@ impl<'a> FunctionContext<'a> {
     }
 }
 
-pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
-    if !ccx.do_not_commit_warning_issued.get() {
-        ccx.do_not_commit_warning_issued.set(true);
-        ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
-    }
-}
-
 // Heap selectors. Indicate which heap something should go on.
 #[deriving(Eq)]
 pub enum heap {
@@ -446,7 +439,7 @@ impl<'a> Block<'a> {
     pub fn tcx(&self) -> ty::ctxt {
         self.fcx.ccx.tcx
     }
-    pub fn sess(&self) -> Session { self.fcx.ccx.sess }
+    pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
 
     pub fn ident(&self, ident: Ident) -> ~str {
         token::get_ident(ident).get().to_str()

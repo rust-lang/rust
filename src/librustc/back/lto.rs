@@ -18,7 +18,7 @@ use util::common::time;
 use std::libc;
 use flate;
 
-pub fn run(sess: session::Session, llmod: ModuleRef,
+pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");

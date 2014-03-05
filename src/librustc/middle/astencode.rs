@@ -137,7 +137,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
         });
         let mut ast_dsr = reader::Decoder(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr);
-        let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
+        let to_id_range = reserve_id_range(&dcx.tcx.sess, from_id_range);
         let xcx = @ExtendedDecodeContext {
             dcx: dcx,
             from_id_range: from_id_range,
@@ -154,7 +154,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
         debug!("< Decoded inlined fn: {}::{}",
                path_as_str.unwrap(),
                token::get_ident(ident));
-        region::resolve_inlined_item(tcx.sess, &tcx.region_maps, &ii);
+        region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, &ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::IIItem(i) => {
@@ -178,7 +178,7 @@ pub fn decode_exported_macro(par_doc: ebml::Doc) -> @ast::Item {
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-fn reserve_id_range(sess: Session,
+fn reserve_id_range(sess: &Session,
                     from_id_range: ast_util::IdRange) -> ast_util::IdRange {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
