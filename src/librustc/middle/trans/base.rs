@@ -28,7 +28,7 @@
 use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
-use driver::session::Session;
+use driver::session::{Session, NoDebugInfo, FullDebugInfo};
 use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
@@ -1367,7 +1367,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
         bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
 
-        if fcx.ccx.sess.opts.debuginfo {
+        if fcx.ccx.sess.opts.debuginfo == FullDebugInfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
         }
     }
@@ -2678,7 +2678,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     glue::emit_tydescs(ccx);
-    if ccx.sess.opts.debuginfo {
+    if ccx.sess.opts.debuginfo != NoDebugInfo {
         debuginfo::finalize(ccx);
     }
 

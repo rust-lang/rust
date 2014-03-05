@@ -11,7 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive, CrateTypeExecutable};
+use driver::session::{Aggressive, CrateTypeExecutable, FullDebugInfo, NoDebugInfo};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -865,7 +865,11 @@ pub fn build_session_options(matches: &getopts::Matches)
         } else { No }
     };
     let gc = debugging_opts & session::GC != 0;
-    let debuginfo = matches.opt_present("g") || matches.opt_present("debuginfo");
+    let debuginfo = if matches.opt_present("g") || matches.opt_present("debuginfo") {
+        FullDebugInfo
+    } else {
+        NoDebugInfo
+    };
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
         Path::new(s.as_slice())

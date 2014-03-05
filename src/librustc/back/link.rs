@@ -12,7 +12,7 @@ use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
 use back::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames};
-use driver::session::Session;
+use driver::session::{NoDebugInfo, Session};
 use driver::session;
 use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
@@ -92,7 +92,7 @@ pub mod write {
     use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
     use back::link::{OutputTypeObject};
     use driver::driver::{CrateTranslation, OutputFilenames};
-    use driver::session::Session;
+    use driver::session::{NoDebugInfo, Session};
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
@@ -148,7 +148,7 @@ pub mod write {
 
             // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
             // FIXME: #11954: mac64 unwinding may not work with fp elim
-            let no_fp_elim = sess.opts.debuginfo ||
+            let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
@@ -1052,7 +1052,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
+    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
         // FIXME (#9639): This needs to handle non-utf8 paths
         match Process::status("dsymutil",
                                   [out_filename.as_str().unwrap().to_owned()]) {
