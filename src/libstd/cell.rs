@@ -23,6 +23,7 @@ pub struct Cell<T> {
     priv value: T,
     priv marker1: marker::InvariantType<T>,
     priv marker2: marker::NoFreeze,
+    priv marker3: marker::NoShare,
 }
 
 impl<T:Pod> Cell<T> {
@@ -32,6 +33,7 @@ impl<T:Pod> Cell<T> {
             value: value,
             marker1: marker::InvariantType::<T>,
             marker2: marker::NoFreeze,
+            marker3: marker::NoShare,
         }
     }
 
@@ -75,6 +77,7 @@ pub struct RefCell<T> {
     priv marker1: marker::InvariantType<T>,
     priv marker2: marker::NoFreeze,
     priv marker3: marker::NoPod,
+    priv marker4: marker::NoShare,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -90,6 +93,7 @@ impl<T> RefCell<T> {
             marker1: marker::InvariantType::<T>,
             marker2: marker::NoFreeze,
             marker3: marker::NoPod,
+            marker4: marker::NoShare,
             value: value,
             borrow: UNUSED,
         }
