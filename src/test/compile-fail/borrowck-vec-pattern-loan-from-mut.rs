@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn a() {
-    let mut v = ~[1, 2, 3];
+    let mut v = vec!(1, 2, 3);
     let vb: &mut [int] = v;
     match vb {
         [_a, ..tail] => {

@@ -10,13 +10,13 @@
 
 
 trait Serializable<'self, T> { //~ ERROR: no longer a special lifetime
-    fn serialize(val : &'self T) -> ~[u8];
+    fn serialize(val : &'self T) -> Vec<u8> ;
     fn deserialize(repr : &[u8]) -> &'self T;
 }
 
 impl<'self> Serializable<str> for &'self str {
-    fn serialize(val : &'self str) -> ~[u8] {
-        ~[1]
+    fn serialize(val : &'self str) -> Vec<u8> {
+        vec!(1)
     }
     fn deserialize(repr: &[u8]) -> &'self str {
         "hi"

@@ -44,7 +44,7 @@ impl<'tcx> Eq for TypeStructure<'tcx> {
 
 struct TypeContext<'tcx, 'ast> {
     ty_arena: &'tcx Arena,
-    types: ~[Type<'tcx>],
+    types: Vec<Type<'tcx>> ,
     type_table: HashMap<NodeId, Type<'tcx>>,
 
     ast_arena: &'ast Arena,
@@ -55,7 +55,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     fn new(ty_arena: &'tcx Arena, ast_arena: &'ast Arena)
            -> TypeContext<'tcx, 'ast> {
         TypeContext { ty_arena: ty_arena,
-                      types: ~[],
+                      types: Vec::new(),
                       type_table: HashMap::new(),
 
                       ast_arena: ast_arena,

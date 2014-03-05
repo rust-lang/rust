@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn a() -> &int {
-    let vec = ~[1, 2, 3, 4];
+    let vec = vec!(1, 2, 3, 4);
     let vec: &[int] = vec; //~ ERROR `vec[..]` does not live long enough
     let tail = match vec {
         [_a, ..tail] => &tail[0],

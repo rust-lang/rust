@@ -14,4 +14,4 @@ use zed::baz;
 mod zed {
     pub fn bar() { println!("bar"); }
 }
-fn main(args: ~[str]) { bar(); }
+fn main(args: vec!(str)) { bar(); }

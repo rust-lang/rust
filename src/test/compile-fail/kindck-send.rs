@@ -30,7 +30,7 @@ fn test<'a,T,U:Send>(_: &'a int) {
     // ~ pointers are ok
     assert_send::<~int>();
     assert_send::<~str>();
-    assert_send::<~[int]>();
+    assert_send::<Vec<int> >();
 
     // but not if they own a bad thing
     assert_send::<~&'a int>(); //~ ERROR does not fulfill `Send`

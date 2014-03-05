@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut a = ~[~10];
+    let mut a = vec!(~10);
     let b = a.clone();
 
     assert_eq!(*a[0], 10);

@@ -35,7 +35,7 @@ fn main() {
       (_, a) => {}
       (b, b) => {}
     }
-    let vec = ~[Some(42), None, Some(21)];
+    let vec = vec!(Some(42), None, Some(21));
     let vec: &[Option<int>] = vec;
     match vec {
         //~^ ERROR non-exhaustive patterns: vectors of length 0 not covered
@@ -43,13 +43,13 @@ fn main() {
         [Some(..), Some(..), ..tail] => {}
         [None] => {}
     }
-    let vec = ~[1];
+    let vec = vec!(1);
     let vec: &[int] = vec;
     match vec {
         [_, ..tail] => (),
         [] => ()
     }
-    let vec = ~[0.5];
+    let vec = vec!(0.5);
     let vec: &[f32] = vec;
     match vec { //~ ERROR non-exhaustive patterns: vectors of length 4 not covered
         [0.1, 0.2, 0.3] => (),
@@ -57,7 +57,7 @@ fn main() {
         [0.1] => (),
         [] => ()
     }
-    let vec = ~[Some(42), None, Some(21)];
+    let vec = vec!(Some(42), None, Some(21));
     let vec: &[Option<int>] = vec;
     match vec {
         [Some(..), None, ..tail] => {}

@@ -50,7 +50,7 @@ fn good2() {
        sure that when purity is inherited that the source of the unsafe-ness
        is tracked correctly */
     unsafe {
-        unsafe fn what() -> ~[~str] { fail!() }
+        unsafe fn what() -> Vec<~str> { fail!() }
 
         callback(|| {
             what();

@@ -32,7 +32,7 @@ pub fn main() {
         bar: ~32,
     };
     Thing1 {
-        baz: ~[],
+        baz: Vec::new(),
         bar: ~32,
     };
     let _t2_fixed = Thing2 {
@@ -40,7 +40,7 @@ pub fn main() {
         bar: 32,
     };
     Thing2 {
-        baz: ~[],
+        baz: Vec::new(),
         bar: 32,
     };
 }

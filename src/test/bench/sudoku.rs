@@ -36,7 +36,7 @@ use std::slice;
 //
 
 // internal type of sudoku grids
-type grid = ~[~[u8]];
+type grid = Vec<Vec<u8> > ;
 
 struct Sudoku {
     grid: grid
@@ -68,9 +68,9 @@ impl Sudoku {
     pub fn read(mut reader: BufferedReader<StdReader>) -> Sudoku {
         assert!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
 
-        let mut g = slice::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
+        let mut g = slice::from_fn(10u, { |_i| vec!(0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8) });
         for line in reader.lines() {
-            let comps: ~[&str] = line.unwrap().trim().split(',').collect();
+            let comps: Vec<&str> = line.trim().split(',').collect();
 
             if comps.len() == 3u {
                 let row     = from_str::<uint>(comps[0]).unwrap() as u8;
@@ -96,7 +96,7 @@ impl Sudoku {
 
     // solve sudoku grid
     pub fn solve(&mut self) {
-        let mut work: ~[(u8, u8)] = ~[]; /* queue of uncolored fields */
+        let mut work: Vec<(u8, u8)> = Vec::new(); /* queue of uncolored fields */
         for row in range(0u8, 9u8) {
             for col in range(0u8, 9u8) {
                 let color = self.grid[row][col];

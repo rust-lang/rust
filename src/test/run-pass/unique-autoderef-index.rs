@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = ~~[100];
+    let i = ~vec!(100);
     assert_eq!(i[0], 100);
 }

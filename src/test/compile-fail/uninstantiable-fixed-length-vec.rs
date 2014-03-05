@@ -14,10 +14,10 @@
 
 // ~ to avoid infinite size.
 struct Uninstantiable { //~ ERROR cannot be instantiated without an instance of itself
-    p: ~[Uninstantiable, .. 1]
+    p: vec!(Uninstantiable, .. 1)
 }
 
-struct Instantiable { p: ~[Instantiable, .. 0] }
+struct Instantiable { p: vec!(Instantiable, .. 0) }
 
 
 fn main() {

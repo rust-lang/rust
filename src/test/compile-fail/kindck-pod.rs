@@ -40,7 +40,7 @@ fn test<'a,T,U:Pod>(_: &'a int) {
     // ~ pointers are not ok
     assert_pod::<~int>();   //~ ERROR does not fulfill `Pod`
     assert_pod::<~str>();   //~ ERROR does not fulfill `Pod`
-    assert_pod::<~[int]>(); //~ ERROR does not fulfill `Pod`
+    assert_pod::<Vec<int> >(); //~ ERROR does not fulfill `Pod`
     assert_pod::<~&'a mut int>(); //~ ERROR does not fulfill `Pod`
 
     // borrowed object types are generally ok

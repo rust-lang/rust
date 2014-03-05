@@ -16,11 +16,11 @@ struct Foo {
 }
 
 pub fn main() {
-    let x = ~[
+    let x = vec!(
         Foo { string: ~"foo" },
         Foo { string: ~"bar" },
         Foo { string: ~"baz" }
-    ];
+    );
     let x: &[Foo] = x;
     match x {
         [_, ..tail] => {

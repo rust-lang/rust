@@ -22,17 +22,17 @@ impl<'a> sum for &'a [int] {
 fn call_sum(x: &[int]) -> int { x.sum_() }
 
 pub fn main() {
-    let x = ~[1, 2, 3];
+    let x = vec!(1, 2, 3);
     let y = call_sum(x);
     println!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = ~[1, 2, 3];
+    let x = vec!(1, 2, 3);
     let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = ~[1, 2, 3];
+    let x = vec!(1, 2, 3);
     let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);

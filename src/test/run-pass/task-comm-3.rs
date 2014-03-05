@@ -36,7 +36,7 @@ fn test00() {
     let mut i: int = 0;
 
     // Create and spawn tasks...
-    let mut results = ~[];
+    let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
         let mut builder = task::task();

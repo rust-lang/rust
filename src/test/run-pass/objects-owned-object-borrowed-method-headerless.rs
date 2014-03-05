@@ -27,11 +27,11 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: ~[ ~FooTrait ] = ~[
+    let foos: vec!( ~FooTrait ) = vec!(
         ~BarStruct{ x: 0 } as ~FooTrait,
         ~BarStruct{ x: 1 } as ~FooTrait,
         ~BarStruct{ x: 2 } as ~FooTrait
-    ];
+    );
 
     for i in range(0u, foos.len()) {
         assert_eq!(i, foos[i].foo());

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let v = ~[,]; //~ ERROR unexpected token: `,`
+    let v = vec!(); //~ ERROR unexpected token: `,`
 }

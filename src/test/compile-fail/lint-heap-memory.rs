@@ -25,7 +25,7 @@ fn main() {
     @2; //~ ERROR type uses managed
 
     ~2; //~ ERROR type uses owned
-    ~[1]; //~ ERROR type uses owned
+    vec!(1); //~ ERROR type uses owned
     //~^ ERROR type uses owned
     fn g(_: ~Clone) {} //~ ERROR type uses owned
     ~""; //~ ERROR type uses owned

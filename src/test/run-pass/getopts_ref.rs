@@ -15,8 +15,8 @@ extern crate getopts;
 use getopts::{optopt, getopts};
 
 pub fn main() {
-    let args = ~[];
-    let opts = ~[optopt("b", "", "something", "SMTHNG")];
+    let args = Vec::new();
+    let opts = vec!(optopt("b", "", "something", "SMTHNG"));
 
     match getopts(args, opts) {
         Ok(ref m)  =>

@@ -10,4 +10,4 @@
 
 #[allow(unused_mut)];
 
-pub fn main() { let mut _v: ~[int] = ~[]; }
+pub fn main() { let mut _v: Vec<int> = Vec::new(); }

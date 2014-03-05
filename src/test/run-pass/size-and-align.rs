@@ -13,7 +13,7 @@
 
 enum clam<T> { a(T, int), b, }
 
-fn uhoh<T>(v: ~[clam<T>]) {
+fn uhoh<T>(v: Vec<clam<T>> ) {
     match v[1] {
       a::<T>(ref _t, ref u) => {
           println!("incorrect");
@@ -25,6 +25,6 @@ fn uhoh<T>(v: ~[clam<T>]) {
 }
 
 pub fn main() {
-    let v: ~[clam<int>] = ~[b::<int>, b::<int>, a::<int>(42, 17)];
+    let v: Vec<clam<int>> = vec!(b::<int>, b::<int>, a::<int>(42, 17));
     uhoh::<int>(v);
 }

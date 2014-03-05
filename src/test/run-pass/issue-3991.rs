@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct HasNested {
-    nest: ~[~[int]],
+    nest: Vec<Vec<int> > ,
 }
 
 impl HasNested {

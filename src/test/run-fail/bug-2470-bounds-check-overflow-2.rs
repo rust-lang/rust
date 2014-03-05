@@ -14,7 +14,7 @@
 use std::uint;
 
 fn main() {
-    let x = ~[1u,2u,3u];
+    let x = vec!(1u,2u,3u);
 
     // This should cause a bounds-check failure, but may not if we do our
     // bounds checking by comparing a scaled index value to the vector's

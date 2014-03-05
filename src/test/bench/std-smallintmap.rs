@@ -32,9 +32,9 @@ fn check_sequential(min: uint, max: uint, map: &SmallIntMap<uint>) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"100000", ~"100"]
+        vec!(~"", ~"100000", ~"100")
     } else if args.len() <= 1u {
-        ~[~"", ~"10000", ~"50"]
+        vec!(~"", ~"10000", ~"50")
     } else {
         args
     };

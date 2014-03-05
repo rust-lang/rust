@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let v: ~[int] = ~[1, 2, 3];
+    let v: Vec<int> = vec!(1, 2, 3);
     v[1] = 4; //~ ERROR cannot assign
 }
