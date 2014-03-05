@@ -213,8 +213,8 @@ mod ziggurat_tables;
 fn ziggurat<R:Rng>(
             rng: &mut R,
             symmetric: bool,
-            X: ziggurat_tables::ZigTable,
-            F: ziggurat_tables::ZigTable,
+            x_tab: ziggurat_tables::ZigTable,
+            f_tab: ziggurat_tables::ZigTable,
             pdf: 'static |f64| -> f64,
             zero_case: 'static |&mut R, f64| -> f64)
             -> f64 {
@@ -233,19 +233,19 @@ fn ziggurat<R:Rng>(
         // u is either U(-1, 1) or U(0, 1) depending on if this is a
         // symmetric distribution or not.
         let u = if symmetric {2.0 * f - 1.0} else {f};
-        let x = u * X[i];
+        let x = u * x_tab[i];
 
         let test_x = if symmetric {num::abs(x)} else {x};
 
-        // algebraically equivalent to |u| < X[i+1]/X[i] (or u < X[i+1]/X[i])
-        if test_x < X[i + 1] {
+        // algebraically equivalent to |u| < x_tab[i+1]/x_tab[i] (or u < x_tab[i+1]/x_tab[i])
+        if test_x < x_tab[i + 1] {
             return x;
         }
         if i == 0 {
             return zero_case(rng, u);
         }
         // algebraically equivalent to f1 + DRanU()*(f0 - f1) < 1
-        if F[i + 1] + (F[i] - F[i + 1]) * rng.gen() < pdf(x) {
+        if f_tab[i + 1] + (f_tab[i] - f_tab[i + 1]) * rng.gen() < pdf(x) {
             return x;
         }
     }

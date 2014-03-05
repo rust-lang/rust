@@ -330,17 +330,17 @@ pub fn trans_fail<'a>(
                   sp: Span,
                   fail_str: InternedString)
                   -> &'a Block<'a> {
-    let V_fail_str = C_cstr(bcx.ccx(), fail_str);
+    let v_fail_str = C_cstr(bcx.ccx(), fail_str);
     let _icx = push_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
     let sess = bcx.sess();
     let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-    let V_filename = C_cstr(bcx.ccx(),
+    let v_filename = C_cstr(bcx.ccx(),
                             token::intern_and_get_ident(loc.file.name));
-    let V_line = loc.line as int;
-    let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
-    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
-    let args = ~[V_str, V_filename, C_int(ccx, V_line)];
+    let v_line = loc.line as int;
+    let v_str = PointerCast(bcx, v_fail_str, Type::i8p());
+    let v_filename = PointerCast(bcx, v_filename, Type::i8p());
+    let args = ~[v_str, v_filename, C_int(ccx, v_line)];
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
     Unreachable(bcx);
