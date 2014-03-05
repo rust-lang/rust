@@ -62,15 +62,6 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::opt_vec::OptVec<T> {
-    fn clean(&self) -> Vec<U> {
-        match self {
-            &syntax::opt_vec::Empty => Vec::new(),
-            &syntax::opt_vec::Vec(ref v) => v.clean()
-        }
-    }
-}
-
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Crate {
     name: ~str,

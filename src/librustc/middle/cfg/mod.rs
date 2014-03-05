@@ -20,7 +20,8 @@ use middle::ty;
 use middle::typeck;
 use collections::HashMap;
 use syntax::ast;
-use syntax::opt_vec::OptVec;
+
+use std::vec_ng::Vec;
 
 mod construct;
 
@@ -36,7 +37,7 @@ pub struct CFGNodeData {
 }
 
 pub struct CFGEdgeData {
-    exiting_scopes: OptVec<ast::NodeId>
+    exiting_scopes: Vec<ast::NodeId>
 }
 
 pub type CFGIndex = graph::NodeIndex;

@@ -16,8 +16,6 @@ use codemap::{Span, respan, DUMMY_SP};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use fold::Folder;
-use opt_vec;
-use opt_vec::OptVec;
 use parse::token::special_idents;
 use parse::token;
 
@@ -42,7 +40,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident> ,
-                lifetimes: OptVec<ast::Lifetime>,
+                lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>> )
         -> ast::Path;
 
@@ -50,7 +48,7 @@ pub trait AstBuilder {
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
     fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty>;
-    fn ty_path(&self, ast::Path, Option<OptVec<ast::TyParamBound>>) -> P<ast::Ty>;
+    fn ty_path(&self, ast::Path, Option<Vec<ast::TyParamBound>>) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,
@@ -63,14 +61,14 @@ pub trait AstBuilder {
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
     fn ty_nil(&self) -> P<ast::Ty>;
 
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
+    fn ty_vars(&self, ty_params: &Vec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
+    fn ty_vars_global(&self, ty_params: &Vec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
     fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
     fn typaram(&self,
                id: ast::Ident,
-               bounds: OptVec<ast::TyParamBound>,
+               bounds: Vec<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
@@ -255,19 +253,19 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, opt_vec::Empty, Vec::new())
+        self.path_all(span, false, strs, Vec::new(), Vec::new())
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec!(id))
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, opt_vec::Empty, Vec::new())
+        self.path_all(span, true, strs, Vec::new(), Vec::new())
     }
     fn path_all(&self,
                 sp: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                lifetimes: OptVec<ast::Lifetime>,
+                lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
@@ -275,14 +273,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
-                lifetimes: opt_vec::Empty,
-                types: opt_vec::Empty,
+                lifetimes: Vec::new(),
+                types: Vec::new(),
             }
         }).collect();
         segments.push(ast::PathSegment {
             identifier: last_identifier,
             lifetimes: lifetimes,
-            types: opt_vec::from(types),
+            types: types,
         });
         ast::Path {
             span: sp,
@@ -306,7 +304,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         })
     }
 
-    fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
+    fn ty_path(&self, path: ast::Path, bounds: Option<Vec<ast::TyParamBound>>)
               -> P<ast::Ty> {
         self.ty(path.span,
                 ast::TyPath(path, bounds, ast::DUMMY_NODE_ID))
@@ -342,7 +340,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               self.ident_of("option"),
                               self.ident_of("Option")
                           ),
-                          opt_vec::Empty,
+                          Vec::new(),
                           vec!( ty )), None)
     }
 
@@ -368,7 +366,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn typaram(&self,
                id: ast::Ident,
-               bounds: OptVec<ast::TyParamBound>,
+               bounds: Vec<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
@@ -381,20 +379,18 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     // these are strange, and probably shouldn't be used outside of
     // pipes. Specifically, the global version possible generates
     // incorrect code.
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> {
-        opt_vec::take_vec(
-            ty_params.map(|p| self.ty_ident(DUMMY_SP, p.ident)))
+    fn ty_vars(&self, ty_params: &Vec<ast::TyParam>) -> Vec<P<ast::Ty>> {
+        ty_params.map(|p| self.ty_ident(DUMMY_SP, p.ident))
     }
 
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> {
-        opt_vec::take_vec(
-            ty_params.map(|p| self.ty_path(
-                self.path_global(DUMMY_SP, vec!(p.ident)), None)))
+    fn ty_vars_global(&self, ty_params: &Vec<ast::TyParam>) -> Vec<P<ast::Ty>> {
+        ty_params.map(|p| self.ty_path(
+                self.path_global(DUMMY_SP, vec!(p.ident)), None))
     }
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
         let new_params = generics.ty_params.map(|ty_param| {
-            ast::TyParam { bounds: opt_vec::Empty, ..*ty_param }
+            ast::TyParam { bounds: Vec::new(), ..*ty_param }
         });
         Generics {
             ty_params: new_params,

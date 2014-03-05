@@ -46,6 +46,7 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
@@ -57,7 +58,6 @@ use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{path_to_str};
 use syntax::visit;
-use syntax::opt_vec::OptVec;
 
 struct CollectItemTypesVisitor {
     ccx: @CrateCtxt
@@ -963,7 +963,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 ty::RegionParameterDef { ident: l.ident,
                                          def_id: local_def(l.id) }
             }).collect()),
-        type_param_defs: Rc::new(generics.ty_params.mapi_to_vec(|offset, param| {
+        type_param_defs: Rc::new(generics.ty_params.iter().enumerate().map(|(offset, param)| {
             let existing_def_opt = {
                 let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
                 ty_param_defs.get().find(&param.id).map(|def| *def)
@@ -990,13 +990,13 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     def
                 }
             }
-        }).move_iter().collect())
+        }).collect())
     };
 
     fn compute_bounds(
         ccx: &CrateCtxt,
         param_ty: ty::param_ty,
-        ast_bounds: &OptVec<ast::TyParamBound>) -> ty::ParamBounds
+        ast_bounds: &Vec<ast::TyParamBound>) -> ty::ParamBounds
     {
         /*!
          * Translate the AST's notion of ty param bounds (which are an
@@ -1076,7 +1076,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
         ty_generics.type_param_defs().iter().enumerate().map(
             |(i, t)| ty::mk_param(ccx.tcx, i, t.def_id)).collect();
 
-    let regions: OptVec<ty::Region> =
+    let regions: Vec<ty::Region> =
         ty_generics.region_param_defs().iter().enumerate().map(
             |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.ident)).collect();
 

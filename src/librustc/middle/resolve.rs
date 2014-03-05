@@ -25,12 +25,12 @@ use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{Span, DUMMY_SP, Pos};
-use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
+use std::vec_ng::Vec;
 use std::mem::replace;
 use collections::{HashMap, HashSet};
 
@@ -3966,7 +3966,7 @@ impl Resolver {
     }
 
     fn resolve_type_parameters(&mut self,
-                                   type_parameters: &OptVec<TyParam>) {
+                                   type_parameters: &Vec<TyParam>) {
         for type_parameter in type_parameters.iter() {
             for bound in type_parameter.bounds.iter() {
                 self.resolve_type_parameter_bound(type_parameter.id, bound);

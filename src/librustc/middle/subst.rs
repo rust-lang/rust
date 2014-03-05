@@ -16,8 +16,8 @@ use middle::ty_fold::TypeFolder;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -145,10 +145,10 @@ impl<T:Subst> Subst for Rc<T> {
     }
 }
 
-impl<T:Subst> Subst for OptVec<T> {
+impl<T:Subst> Subst for Vec<T> {
     fn subst_spanned(&self, tcx: ty::ctxt,
                      substs: &ty::substs,
-                     span: Option<Span>) -> OptVec<T> {
+                     span: Option<Span>) -> Vec<T> {
         self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }

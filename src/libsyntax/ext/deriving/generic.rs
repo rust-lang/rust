@@ -184,7 +184,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
-use opt_vec;
 use parse::token::InternedString;
 use parse::token;
 
@@ -372,12 +371,12 @@ impl<'a> TraitDef<'a> {
         for ty_param in generics.ty_params.iter() {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
-            let mut bounds = opt_vec::from(
+            let mut bounds =
                 // extra restrictions on the generics parameters to the type being derived upon
                 self.additional_bounds.map(|p| {
                     cx.typarambound(p.to_path(cx, self.span,
                                                   type_ident, generics))
-                }));
+                });
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
@@ -396,8 +395,8 @@ impl<'a> TraitDef<'a> {
 
         // Create the type of `self`.
         let self_type = cx.ty_path(
-            cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        opt_vec::take_vec(self_ty_params)), None);
+            cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes, self_ty_params),
+            None);
 
         let doc_attr = cx.attribute(
             self.span,

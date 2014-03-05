@@ -148,8 +148,9 @@ use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::sync::atomics;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::codemap::{Span, Pos};
-use syntax::{abi, ast, codemap, ast_util, ast_map, opt_vec};
+use syntax::{abi, ast, codemap, ast_util, ast_map};
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
 
@@ -538,7 +539,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         return FunctionWithoutDebugInfo;
     }
 
-    let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
+    let empty_generics = ast::Generics { lifetimes: Vec::new(), ty_params: Vec::new() };
 
     let fnitem = cx.tcx.map.get(fn_ast_id);
 

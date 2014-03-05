@@ -64,8 +64,6 @@ use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
@@ -186,9 +184,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => opt_vec::from(v.move_iter().collect()),
-            Err(()) => opt_vec::from(Vec::from_fn(expected_num_region_params,
-                                                  |_| ty::ReStatic)) // hokey
+            Ok(v) => v.move_iter().collect(),
+            Err(()) => Vec::from_fn(expected_num_region_params,
+                                    |_| ty::ReStatic) // hokey
         }
     };
 
@@ -816,7 +814,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     }
 }
 
-fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
+fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<Vec<ast::TyParamBound>>,
                        store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`

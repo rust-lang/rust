@@ -12,8 +12,6 @@ use abi::AbiSet;
 use ast::{P, RegionTyParamBound, TraitTyParamBound, Required, Provided};
 use ast;
 use ast_util;
-use opt_vec::OptVec;
-use opt_vec;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{CodeMap, BytePos};
 use codemap;
@@ -473,7 +471,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
         ast::TyBareFn(f) => {
             let generics = ast::Generics {
                 lifetimes: f.lifetimes.clone(),
-                ty_params: opt_vec::Empty
+                ty_params: Vec::new()
             };
             try!(print_ty_fn(s, Some(f.abis), None, &None,
                                f.purity, ast::Many, f.decl, None, &None,
@@ -482,7 +480,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
         ast::TyClosure(f) => {
             let generics = ast::Generics {
                 lifetimes: f.lifetimes.clone(),
-                ty_params: opt_vec::Empty
+                ty_params: Vec::new()
             };
             try!(print_ty_fn(s, None, Some(f.sigil), &f.region,
                                f.purity, f.onceness, f.decl, None, &f.bounds,
@@ -1598,7 +1596,7 @@ pub fn print_for_decl(s: &mut State, loc: &ast::Local,
 fn print_path_(s: &mut State,
                path: &ast::Path,
                colons_before_params: bool,
-               opt_bounds: &Option<OptVec<ast::TyParamBound>>)
+               opt_bounds: &Option<Vec<ast::TyParamBound>>)
     -> io::IoResult<()>
 {
     try!(maybe_print_comment(s, path.span.lo));
@@ -1645,7 +1643,7 @@ fn print_path_(s: &mut State,
                 }
                 try!(commasep(s,
                                 Inconsistent,
-                                segment.types.map_to_vec(|&t| t).as_slice(),
+                                segment.types.map(|&t| t).as_slice(),
                                 print_type_ref));
             }
 
@@ -1661,7 +1659,7 @@ fn print_path(s: &mut State, path: &ast::Path,
 }
 
 fn print_bounded_path(s: &mut State, path: &ast::Path,
-                      bounds: &Option<OptVec<ast::TyParamBound>>)
+                      bounds: &Option<Vec<ast::TyParamBound>>)
     -> io::IoResult<()> {
     print_path_(s, path, false, bounds)
 }
@@ -1929,7 +1927,7 @@ pub fn print_proc_args(s: &mut State, decl: &ast::FnDecl) -> io::IoResult<()> {
     maybe_print_comment(s, decl.output.span.lo)
 }
 
-pub fn print_bounds(s: &mut State, bounds: &OptVec<ast::TyParamBound>,
+pub fn print_bounds(s: &mut State, bounds: &Vec<ast::TyParamBound>,
                     print_colon_anyway: bool) -> io::IoResult<()> {
     if !bounds.is_empty() {
         try!(word(&mut s.s, ":"));
@@ -2132,7 +2130,7 @@ pub fn print_ty_fn(s: &mut State,
                    onceness: ast::Onceness,
                    decl: &ast::FnDecl,
                    id: Option<ast::Ident>,
-                   opt_bounds: &Option<OptVec<ast::TyParamBound>>,
+                   opt_bounds: &Option<Vec<ast::TyParamBound>>,
                    generics: Option<&ast::Generics>,
                    opt_explicit_self: Option<ast::ExplicitSelf_>)
     -> io::IoResult<()>

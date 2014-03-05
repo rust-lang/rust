@@ -17,6 +17,7 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 use std::cell::RefCell;
 use std::uint;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
@@ -26,8 +27,6 @@ use middle::typeck;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
 use util::ppaux::Repr;
 
 pub struct MoveData {
@@ -314,15 +313,15 @@ impl MoveData {
 
     fn existing_base_paths(&self,
                            lp: @LoanPath)
-                           -> OptVec<MovePathIndex> {
-        let mut result = opt_vec::Empty;
+                           -> Vec<MovePathIndex> {
+        let mut result = Vec::new();
         self.add_existing_base_paths(lp, &mut result);
         result
     }
 
     fn add_existing_base_paths(&self,
                                lp: @LoanPath,
-                               result: &mut OptVec<MovePathIndex>) {
+                               result: &mut Vec<MovePathIndex>) {
         /*!
          * Adds any existing move path indices for `lp` and any base
          * paths of `lp` to `result`, but does not add new move paths

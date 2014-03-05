@@ -63,9 +63,10 @@ use util::common::indent;
 use util::ppaux::Repr;
 
 use std::result;
+use std::vec_ng::Vec;
+
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
-use syntax::opt_vec;
 use syntax::abi::AbiSet;
 
 pub trait Combine {
@@ -159,7 +160,7 @@ pub trait Combine {
 
                     assert_eq!(num_region_params, a_rs.len());
                     assert_eq!(num_region_params, b_rs.len());
-                    let mut rs = opt_vec::Empty;
+                    let mut rs = Vec::new();
                     for i in range(0, num_region_params) {
                         let a_r = *a_rs.get(i);
                         let b_r = *b_rs.get(i);

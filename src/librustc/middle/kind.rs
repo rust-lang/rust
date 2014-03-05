@@ -19,7 +19,6 @@ use util::ppaux::UserString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::opt_vec;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit,ast_util};
 use syntax::visit::Visitor;
@@ -49,6 +48,8 @@ use syntax::visit::Visitor;
 // applied, since none of our language primitives send. Instead, the sending
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
+
+use std::vec_ng::Vec;
 
 #[deriving(Clone)]
 pub struct Context {
@@ -92,7 +93,7 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
     let struct_tpt = ty::lookup_item_type(cx.tcx, struct_did);
     if !struct_tpt.generics.has_type_params() {
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
-            regions: ty::NonerasedRegions(opt_vec::Empty),
+            regions: ty::NonerasedRegions(Vec::new()),
             self_ty: None,
             tps: ~[]
         });

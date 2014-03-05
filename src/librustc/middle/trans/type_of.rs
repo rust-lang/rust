@@ -19,8 +19,8 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
+use std::vec_ng::Vec;
 use syntax::ast;
-use syntax::opt_vec;
 
 pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
     !type_is_immediate(ccx, arg_ty)
@@ -320,7 +320,7 @@ pub fn llvm_type_name(cx: &CrateContext,
         an_enum => { "enum" }
     };
     let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did),
-                                    &ty::NonerasedRegions(opt_vec::Empty),
+                                    &ty::NonerasedRegions(Vec::new()),
                                     tps, did, false);
     if did.krate == 0 {
         format!("{}.{}", name, tstr)

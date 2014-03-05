@@ -15,7 +15,8 @@ use middle::ty;
 use collections::HashMap;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::opt_vec;
+
+use std::vec_ng::Vec;
 
 struct CFGBuilder {
     tcx: ty::ctxt,
@@ -471,7 +472,7 @@ impl CFGBuilder {
     fn add_contained_edge(&mut self,
                           source: CFGIndex,
                           target: CFGIndex) {
-        let data = CFGEdgeData {exiting_scopes: opt_vec::Empty};
+        let data = CFGEdgeData {exiting_scopes: Vec::new()};
         self.graph.add_edge(source, target, data);
     }
 
@@ -480,7 +481,7 @@ impl CFGBuilder {
                         from_index: CFGIndex,
                         to_loop: LoopScope,
                         to_index: CFGIndex) {
-        let mut data = CFGEdgeData {exiting_scopes: opt_vec::Empty};
+        let mut data = CFGEdgeData {exiting_scopes: Vec::new()};
         let mut scope_id = from_expr.id;
         while scope_id != to_loop.loop_id {
             data.exiting_scopes.push(scope_id);

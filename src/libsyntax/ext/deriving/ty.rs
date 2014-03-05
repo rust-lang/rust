@@ -18,8 +18,6 @@ use ast::{P,Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
-use opt_vec;
-use opt_vec::OptVec;
 
 use std::vec_ng::Vec;
 
@@ -118,10 +116,10 @@ fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifet
     }
 }
 
-fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
+fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
     match *lt {
-        Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s).name)),
-        None => opt_vec::Empty
+        Some(ref s) => vec!(cx.lifetime(span, cx.ident_of(*s).name)),
+        None => Vec::new()
     }
 }
 
@@ -174,8 +172,7 @@ impl<'a> Ty<'a> {
                 });
                 let lifetimes = self_generics.lifetimes.clone();
 
-                cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            opt_vec::take_vec(self_params))
+                cx.path_all(span, false, vec!(self_ty), lifetimes, self_params)
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
@@ -189,18 +186,18 @@ impl<'a> Ty<'a> {
 
 fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
-    let bounds = opt_vec::from(
+    let bounds =
         bounds.iter().map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
-        }).collect());
+        }).collect();
     cx.typaram(cx.ident_of(name), bounds, None)
 }
 
 fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -> Generics {
     Generics {
-        lifetimes: opt_vec::from(lifetimes),
-        ty_params: opt_vec::from(ty_params)
+        lifetimes: lifetimes,
+        ty_params: ty_params
     }
 }
 

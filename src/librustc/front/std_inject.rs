@@ -19,7 +19,6 @@ use syntax::codemap::DUMMY_SP;
 use syntax::codemap;
 use syntax::fold::Folder;
 use syntax::fold;
-use syntax::opt_vec;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
@@ -164,13 +163,13 @@ impl fold::Folder for PreludeInjector {
             segments: vec!(
                 ast::PathSegment {
                     identifier: token::str_to_ident("std"),
-                    lifetimes: opt_vec::Empty,
-                    types: opt_vec::Empty,
+                    lifetimes: Vec::new(),
+                    types: Vec::new(),
                 },
                 ast::PathSegment {
                     identifier: token::str_to_ident("prelude"),
-                    lifetimes: opt_vec::Empty,
-                    types: opt_vec::Empty,
+                    lifetimes: Vec::new(),
+                    types: Vec::new(),
                 }),
         };
 

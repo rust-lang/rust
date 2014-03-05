@@ -13,6 +13,7 @@
 //! which are available for use externally when compiled as a library.
 
 use std::mem::replace;
+use std::vec_ng::Vec;
 use collections::{HashSet, HashMap};
 
 use metadata::csearch;
@@ -28,7 +29,6 @@ use syntax::ast_util::{is_local, def_id_of_def, local_def};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -855,8 +855,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                 debug!("privacy - list {}", pid.node.id);
                                 let seg = ast::PathSegment {
                                     identifier: pid.node.name,
-                                    lifetimes: opt_vec::Empty,
-                                    types: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
+                                    types: Vec::new(),
                                 };
                                 let segs = vec!(seg);
                                 let path = ast::Path {

@@ -19,10 +19,10 @@ use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use opt_vec;
 use parse::token;
 
 use std::os;
+use std::vec_ng::Vec;
 
 pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
@@ -38,7 +38,7 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                    vec!(cx.ident_of("std"),
                                         cx.ident_of("option"),
                                         cx.ident_of("None")),
-                                   opt_vec::Empty,
+                                   Vec::new(),
                                    vec!(cx.ty_rptr(sp,
                                                    cx.ty_ident(sp,
                                                         cx.ident_of("str")),
