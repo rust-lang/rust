@@ -1243,6 +1243,11 @@ impl FnCtxt {
     }
 }
 
+pub enum LvaluePreference {
+    PreferMutLvalue,
+    NoPreference
+}
+
 pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
     /*!
      *
@@ -1307,6 +1312,40 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
     };
 }
 
+fn try_overloaded_deref(fcx: @FnCtxt,
+                        expr: &ast::Expr,
+                        base_expr: &ast::Expr,
+                        base_ty: ty::t,
+                        lvalue_pref: LvaluePreference)
+                        -> Option<ty::mt> {
+    // Try DerefMut first, if preferred.
+    let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
+        (PreferMutLvalue, Some(trait_did)) => {
+            method::lookup_in_trait(fcx, expr, base_expr, token::intern("deref_mut"),
+                                    trait_did, base_ty, [], DontAutoderefReceiver)
+        }
+        _ => None
+    };
+
+    // Otherwise, fall back to Deref.
+    let method = match (method, fcx.tcx().lang_items.deref_trait()) {
+        (None, Some(trait_did)) => {
+            method::lookup_in_trait(fcx, expr, base_expr, token::intern("deref"),
+                                    trait_did, base_ty, [], DontAutoderefReceiver)
+        }
+        (method, _) => method
+    };
+
+    match method {
+        Some(method) => {
+            let ref_ty = ty::ty_fn_ret(method.ty);
+            fcx.inh.method_map.borrow_mut().get().insert(expr.id, method);
+            ty::deref(ref_ty, true)
+        }
+        None => None
+    }
+}
+
 // AST fragment checking
 pub fn check_lit(fcx: @FnCtxt, lit: &ast::Lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
@@ -1349,34 +1388,42 @@ pub fn valid_range_bounds(ccx: @CrateCtxt,
 pub fn check_expr_has_type(
     fcx: @FnCtxt, expr: &ast::Expr,
     expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), || {
+    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || {
         demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
     });
 }
 
-pub fn check_expr_coercable_to_type(
-    fcx: @FnCtxt, expr: &ast::Expr,
-    expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), || {
+fn check_expr_coercable_to_type(fcx: @FnCtxt, expr: &ast::Expr, expected: ty::t) {
+    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || {
         demand::coerce(fcx, expr.span, expected, expr)
     });
 }
 
-pub fn check_expr_with_hint(
-    fcx: @FnCtxt, expr: &ast::Expr,
-    expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), || ())
+fn check_expr_with_hint(fcx: @FnCtxt, expr: &ast::Expr, expected: ty::t) {
+    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || ())
 }
 
-pub fn check_expr_with_opt_hint(
-    fcx: @FnCtxt, expr: &ast::Expr,
-    expected: Option<ty::t>)  {
-    check_expr_with_unifier(fcx, expr, expected, || ())
+fn check_expr_with_opt_hint(fcx: @FnCtxt, expr: &ast::Expr,
+                            expected: Option<ty::t>)  {
+    check_expr_with_unifier(fcx, expr, expected, NoPreference, || ())
 }
 
-pub fn check_expr(fcx: @FnCtxt, expr: &ast::Expr)  {
-    check_expr_with_unifier(fcx, expr, None, || ())
+fn check_expr_with_opt_hint_and_lvalue_pref(fcx: @FnCtxt,
+                                            expr: &ast::Expr,
+                                            expected: Option<ty::t>,
+                                            lvalue_pref: LvaluePreference) {
+    check_expr_with_unifier(fcx, expr, expected, lvalue_pref, || ())
 }
+
+fn check_expr(fcx: @FnCtxt, expr: &ast::Expr)  {
+    check_expr_with_unifier(fcx, expr, None, NoPreference, || ())
+}
+
+fn check_expr_with_lvalue_pref(fcx: @FnCtxt, expr: &ast::Expr,
+                               lvalue_pref: LvaluePreference)  {
+    check_expr_with_unifier(fcx, expr, None, lvalue_pref, || ())
+}
+
 
 // determine the `self` type, using fresh variables for all variables
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
@@ -1606,10 +1653,11 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
 /// Note that inspecting a type's structure *directly* may expose the fact
 /// that there are actually multiple representations for both `ty_err` and
 /// `ty_bot`, so avoid that when err and bot need to be handled differently.
-pub fn check_expr_with_unifier(fcx: @FnCtxt,
-                               expr: &ast::Expr,
-                               expected: Option<ty::t>,
-                               unifier: ||) {
+fn check_expr_with_unifier(fcx: @FnCtxt,
+                           expr: &ast::Expr,
+                           expected: Option<ty::t>,
+                           lvalue_pref: LvaluePreference,
+                           unifier: ||) {
     debug!(">> typechecking");
 
     fn check_method_argument_types(
@@ -1795,18 +1843,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         vec::from_fn(len, |_| ty::mk_err())
     }
 
-    // A generic function for checking assignment expressions
-    fn check_assignment(fcx: @FnCtxt,
-                        lhs: &ast::Expr,
-                        rhs: &ast::Expr,
-                        id: ast::NodeId) {
-        check_expr(fcx, lhs);
-        let lhs_type = fcx.expr_ty(lhs);
-        check_expr_has_type(fcx, rhs, lhs_type);
-        fcx.write_ty(id, ty::mk_nil());
-        // The callee checks for bot / err, we don't need to
-    }
-
     fn write_call(fcx: @FnCtxt, call_expr: &ast::Expr, output: ty::t) {
         fcx.write_ty(call_expr.id, output);
     }
@@ -1868,7 +1904,10 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                          args: &[@ast::Expr],
                          tps: &[ast::P<ast::Ty>]) {
         let rcvr = args[0];
-        check_expr(fcx, rcvr);
+        // We can't know if we need &mut self before we look up the method,
+        // so treat the receiver as mutable just in case - only explicit
+        // overloaded dereferences care about the distinction.
+        check_expr_with_lvalue_pref(fcx, rcvr, PreferMutLvalue);
 
         // no need to check for bot/err -- callee does that
         let expr_t = structurally_resolved_type(fcx,
@@ -1999,7 +2038,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                    is_binop_assignment: IsBinopAssignment) {
         let tcx = fcx.ccx.tcx;
 
-        check_expr(fcx, lhs);
+        let lvalue_pref = match is_binop_assignment {
+            BinopAssignment => PreferMutLvalue,
+            SimpleBinop => NoPreference
+        };
+        check_expr_with_lvalue_pref(fcx, lhs, lvalue_pref);
+
         // Callee does bot / err checking
         let lhs_t = structurally_resolved_type(fcx, lhs.span,
                                                fcx.expr_ty(lhs));
@@ -2246,11 +2290,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
     // Check field access expressions
     fn check_field(fcx: @FnCtxt,
                    expr: &ast::Expr,
+                   lvalue_pref: LvaluePreference,
                    base: &ast::Expr,
                    field: ast::Name,
                    tys: &[ast::P<ast::Ty>]) {
         let tcx = fcx.ccx.tcx;
-        let bot = check_expr(fcx, base);
+        let bot = check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
@@ -2278,7 +2323,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             _ => ()
         }
 
-        let tps : ~[ty::t] = tys.iter().map(|&ty| fcx.to_ty(ty)).collect();
+        let tps: ~[ty::t] = tys.iter().map(|&ty| fcx.to_ty(ty)).collect();
         match method::lookup(fcx,
                              expr,
                              base,
@@ -2678,10 +2723,13 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 ast::UnDeref => None
             }
         });
-        check_expr_with_opt_hint(fcx, oprnd, exp_inner);
+        let lvalue_pref = match unop {
+            ast::UnDeref => lvalue_pref,
+            _ => NoPreference
+        };
+        check_expr_with_opt_hint_and_lvalue_pref(fcx, oprnd, exp_inner, lvalue_pref);
         let mut oprnd_t = fcx.expr_ty(oprnd);
-        if !ty::type_is_error(oprnd_t) &&
-              !ty::type_is_bot(oprnd_t) {
+        if !ty::type_is_error(oprnd_t) && !ty::type_is_bot(oprnd_t) {
             match unop {
                 ast::UnBox => {
                     oprnd_t = ty::mk_box(tcx, oprnd_t)
@@ -2690,33 +2738,35 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     oprnd_t = ty::mk_uniq(tcx, oprnd_t);
                 }
                 ast::UnDeref => {
-                    let sty = structure_of(fcx, expr.span, oprnd_t);
-                    let operand_ty = ty::deref_sty(sty, true);
-                    match operand_ty {
-                        Some(mt) => {
-                            oprnd_t = mt.ty
-                        }
-                        None => {
-                            match *sty {
-                                ty::ty_struct(did, ref substs) if {
-                                    let fields = ty::struct_fields(fcx.tcx(), did, substs);
-                                    fields.len() == 1
-                                      && fields[0].ident == token::special_idents::unnamed_field
-                                } => {
+                    oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
+                    oprnd_t = match ty::deref(oprnd_t, true) {
+                        Some(mt) => mt.ty,
+                        None => match try_overloaded_deref(fcx, expr, oprnd,
+                                                           oprnd_t, lvalue_pref) {
+                            Some(mt) => mt.ty,
+                            None => {
+                                let is_newtype = match ty::get(oprnd_t).sty {
+                                    ty::ty_struct(did, ref substs) => {
+                                        let fields = ty::struct_fields(fcx.tcx(), did, substs);
+                                        fields.len() == 1
+                                        && fields[0].ident == token::special_idents::unnamed_field
+                                    }
+                                    _ => false
+                                };
+                                if is_newtype {
                                     // This is an obsolete struct deref
-                                    tcx.sess.span_err(
-                                        expr.span,
-                                        "single-field tuple-structs can no longer be dereferenced");
-                                }
-                                _ => {
-                                    fcx.type_error_message(expr.span,
-                                        |actual| {
-                                            format!("type `{}` cannot be dereferenced", actual)
+                                    tcx.sess.span_err(expr.span,
+                                        "single-field tuple-structs can \
+                                         no longer be dereferenced");
+                                } else {
+                                    fcx.type_error_message(expr.span, |actual| {
+                                        format!("type `{}` cannot be dereferenced", actual)
                                     }, oprnd_t, None);
                                 }
+                                ty::mk_err()
                             }
                         }
-                    }
+                    };
                 }
                 ast::UnNot => {
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,
@@ -2747,7 +2797,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
               fcx, expected,
               |sty| match *sty { ty::ty_rptr(_, ref mt) => Some(mt.ty),
                                  _ => None });
-        check_expr_with_opt_hint(fcx, oprnd, hint);
+        let lvalue_pref = match mutbl {
+            ast::MutMutable => PreferMutLvalue,
+            ast::MutImmutable => NoPreference
+        };
+        check_expr_with_opt_hint_and_lvalue_pref(fcx, oprnd, hint, lvalue_pref);
 
         // Note: at this point, we cannot say what the best lifetime
         // is to use for resulting pointer.  We want to use the
@@ -2817,11 +2871,11 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         fcx.write_ty(id, ty::mk_u32())
       }
       ast::ExprParen(a) => {
-        check_expr_with_opt_hint(fcx, a, expected);
+        check_expr_with_opt_hint_and_lvalue_pref(fcx, a, expected, lvalue_pref);
         fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::ExprAssign(lhs, rhs) => {
-        check_assignment(fcx, lhs, rhs, id);
+        check_expr_with_lvalue_pref(fcx, lhs, PreferMutLvalue);
 
         let tcx = fcx.tcx();
         if !ty::expr_is_lval(tcx, fcx.ccx.method_map, lhs) {
@@ -2829,14 +2883,14 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
 
         let lhs_ty = fcx.expr_ty(lhs);
+        check_expr_has_type(fcx, rhs, lhs_ty);
         let rhs_ty = fcx.expr_ty(rhs);
+
         if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
             fcx.write_error(id);
-        }
-        else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
+        } else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
             fcx.write_bot(id);
-        }
-        else {
+        } else {
             fcx.write_nil(id);
         }
       }
@@ -3111,10 +3165,10 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         }
       }
       ast::ExprField(base, field, ref tys) => {
-        check_field(fcx, expr, base, field.name, tys.as_slice());
+        check_field(fcx, expr, lvalue_pref, base, field.name, tys.as_slice());
       }
       ast::ExprIndex(base, idx) => {
-          check_expr(fcx, base);
+          check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
           check_expr(fcx, idx);
           let raw_base_t = fcx.expr_ty(base);
           let idx_t = fcx.expr_ty(idx);

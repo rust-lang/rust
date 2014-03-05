@@ -467,10 +467,6 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
 
             trans_binary(bcx, expr, op, lhs, rhs)
         }
-        ast::ExprUnary(ast::UnDeref, base) => {
-            let basedatum = unpack_datum!(bcx, trans(bcx, base));
-            deref_once(bcx, expr, basedatum, 0)
-        }
         ast::ExprUnary(op, x) => {
             trans_unary_datum(bcx, expr, op, x)
         }
@@ -782,12 +778,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args) => {
-            callee::trans_call(bcx,
-                               expr,
-                               f,
-                               callee::ArgExprs(args.as_slice()),
-                               expr.id,
-                               dest)
+            callee::trans_call(bcx, expr, f, callee::ArgExprs(args.as_slice()), dest)
         }
         ast::ExprMethodCall(_, _, ref args) => {
             callee::trans_method_call(bcx,
@@ -798,18 +789,15 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprBinary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, lhs,
-                                Some(&*rhs), expr_ty(bcx, expr), dest)
+            trans_overloaded_op(bcx, expr, lhs, Some(&*rhs), Some(dest)).bcx
         }
         ast::ExprUnary(_, subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, subexpr,
-                                None, expr_ty(bcx, expr), dest)
+            trans_overloaded_op(bcx, expr, subexpr, None, Some(dest)).bcx
         }
         ast::ExprIndex(base, idx) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, base,
-                                Some(&*idx), expr_ty(bcx, expr), dest)
+            trans_overloaded_op(bcx, expr, base, Some(&*idx), Some(dest)).bcx
         }
         ast::ExprCast(val, _) => {
             // DPS output mode means this is a trait cast:
@@ -1185,17 +1173,14 @@ fn trans_unary_datum<'a>(
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_unary_datum");
 
-    // if deref, would be LvalueExpr
-    assert!(op != ast::UnDeref);
-
-    // if overloaded, would be RvalueDpsExpr
-    {
+    let overloaded = {
         let method_map = bcx.ccx().maps.method_map.borrow();
-        assert!(!method_map.get().contains_key(&un_expr.id));
-    }
+        method_map.get().contains_key(&un_expr.id)
+    };
+    // if overloaded, would be RvalueDpsExpr
+    assert!(!overloaded || op == ast::UnDeref);
 
     let un_ty = expr_ty(bcx, un_expr);
-    let sub_ty = expr_ty(bcx, sub_expr);
 
     return match op {
         ast::UnNot => {
@@ -1226,15 +1211,19 @@ fn trans_unary_datum<'a>(
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
         }
         ast::UnBox => {
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_managed)
+            trans_boxed_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr), heap_managed)
         }
         ast::UnUniq => {
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_exchange)
+            trans_boxed_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr), heap_exchange)
         }
         ast::UnDeref => {
-            bcx.sess().bug("deref expressions should have been \
-                            translated using trans_lvalue(), not \
-                            trans_unary_datum()")
+            if overloaded {
+                let r = trans_overloaded_op(bcx, un_expr, sub_expr, None, None);
+                DatumBlock(r.bcx, Datum(r.val, un_ty, LvalueExpr))
+            } else {
+                let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
+                deref_once(bcx, un_expr, datum, 0)
+            }
         }
     };
 }
@@ -1506,14 +1495,12 @@ fn trans_overloaded_op<'a, 'b>(
                        expr: &ast::Expr,
                        rcvr: &'b ast::Expr,
                        arg: Option<&'b ast::Expr>,
-                       ret_ty: ty::t,
-                       dest: Dest)
-                       -> &'a Block<'a> {
+                       dest: Option<Dest>)
+                       -> Result<'a> {
     let method_ty = bcx.ccx().maps.method_map.borrow().get().get(&expr.id).ty;
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
-                             ret_ty,
                              |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
                                                           expr.id,
@@ -1521,7 +1508,7 @@ fn trans_overloaded_op<'a, 'b>(
                                                           arg_cleanup_scope)
                              },
                              callee::ArgAutorefSecond(rcvr, arg),
-                             Some(dest)).bcx
+                             dest)
 }
 
 fn int_cast(bcx: &Block,
