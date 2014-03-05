@@ -19,8 +19,9 @@ use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
+use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
+use syntax::ext::mtwt;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::path_to_str;
@@ -4176,7 +4177,7 @@ impl Resolver {
     fn binding_mode_map(&mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
         pat_bindings(self.def_map, pat, |binding_mode, _id, sp, path| {
-            let name = mtwt_resolve(path_to_ident(path));
+            let name = mtwt::resolve(path_to_ident(path));
             result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
@@ -4411,7 +4412,7 @@ impl Resolver {
                     // what you want).
 
                     let ident = path.segments.get(0).identifier;
-                    let renamed = mtwt_resolve(ident);
+                    let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def, lp)
@@ -4965,7 +4966,7 @@ impl Resolver {
         let search_result;
         match namespace {
             ValueNS => {
-                let renamed = mtwt_resolve(ident);
+                let renamed = mtwt::resolve(ident);
                 let mut value_ribs = self.value_ribs.borrow_mut();
                 search_result = self.search_ribs(value_ribs.get(),
                                                  renamed,
@@ -5213,7 +5214,7 @@ impl Resolver {
                         let rib = label_ribs.get()[label_ribs.get().len() -
                                                    1];
                         let mut bindings = rib.bindings.borrow_mut();
-                        let renamed = mtwt_resolve(label);
+                        let renamed = mtwt::resolve(label);
                         bindings.get().insert(renamed, def_like);
                     }
 
@@ -5225,7 +5226,7 @@ impl Resolver {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let mut label_ribs = self.label_ribs.borrow_mut();
-                let renamed = mtwt_resolve(label);
+                let renamed = mtwt::resolve(label);
                 match self.search_ribs(label_ribs.get(), renamed, expr.span) {
                     None =>
                         self.resolve_error(expr.span,

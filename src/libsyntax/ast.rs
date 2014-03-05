@@ -19,8 +19,6 @@ use parse::token;
 
 use std::fmt;
 use std::fmt::Show;
-use std::cell::RefCell;
-use collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
 use std::vec_ng::Vec;
@@ -42,7 +40,10 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Clone, Hash, TotalEq, TotalOrd, Show)]
-pub struct Ident { name: Name, ctxt: SyntaxContext }
+pub struct Ident {
+    name: Name,
+    ctxt: SyntaxContext
+}
 
 impl Ident {
     /// Construct an identifier with the given name and an empty context:
@@ -88,42 +89,8 @@ impl Eq for Ident {
 // this uint is a reference to a table stored in thread-local
 // storage.
 pub type SyntaxContext = u32;
-
-// the SCTable contains a table of SyntaxContext_'s. It
-// represents a flattened tree structure, to avoid having
-// managed pointers everywhere (that caused an ICE).
-// the mark_memo and rename_memo fields are side-tables
-// that ensure that adding the same mark to the same context
-// gives you back the same context as before. This shouldn't
-// change the semantics--everything here is immutable--but
-// it should cut down on memory use *a lot*; applying a mark
-// to a tree containing 50 identifiers would otherwise generate
-pub struct SCTable {
-    table: RefCell<Vec<SyntaxContext_> >,
-    mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
-    rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
-}
-
-// NB: these must be placed in any SCTable...
 pub static EMPTY_CTXT : SyntaxContext = 0;
 pub static ILLEGAL_CTXT : SyntaxContext = 1;
-
-#[deriving(Eq, Encodable, Decodable, Hash)]
-pub enum SyntaxContext_ {
-    EmptyCtxt,
-    Mark (Mrk,SyntaxContext),
-    // flattening the name and syntaxcontext into the rename...
-    // HIDDEN INVARIANTS:
-    // 1) the first name in a Rename node
-    // can only be a programmer-supplied name.
-    // 2) Every Rename node with a given Name in the
-    // "to" slot must have the same name and context
-    // in the "from" slot. In essence, they're all
-    // pointers to a single "rename" event node.
-    Rename (Ident,Name,SyntaxContext),
-    // actually, IllegalCtxt may not be necessary.
-    IllegalCtxt
-}
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
