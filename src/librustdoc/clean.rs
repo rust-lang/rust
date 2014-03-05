@@ -110,6 +110,8 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
         ExternalCrate {
             name: self.name.to_owned(),
             attrs: decoder::get_crate_attributes(self.data()).clean()
+                                                             .move_iter()
+                                                             .collect(),
         }
     }
 }
