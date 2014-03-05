@@ -499,7 +499,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
             "the block".with_c_str(
                 |s| llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llwrapfn, s));
 
-        let builder = ccx.builder.B;
+        let builder = ccx.builder.b;
         llvm::LLVMPositionBuilderAtEnd(builder, the_block);
 
         // Array for the arguments we will pass to the rust function.

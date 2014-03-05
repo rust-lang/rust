@@ -1853,7 +1853,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
             }
         });
-        let bld = ccx.builder.B;
+        let bld = ccx.builder.b;
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 

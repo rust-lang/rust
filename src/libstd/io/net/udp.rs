@@ -36,7 +36,7 @@ impl UdpSocket {
     }
 
     pub fn connect(self, other: SocketAddr) -> UdpStream {
-        UdpStream { socket: self, connectedTo: other }
+        UdpStream { socket: self, connected_to: other }
     }
 
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
@@ -59,7 +59,7 @@ impl Clone for UdpSocket {
 
 pub struct UdpStream {
     priv socket: UdpSocket,
-    priv connectedTo: SocketAddr
+    priv connected_to: SocketAddr
 }
 
 impl UdpStream {
@@ -72,7 +72,7 @@ impl UdpStream {
 
 impl Reader for UdpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let peer = self.connectedTo;
+        let peer = self.connected_to;
         self.as_socket(|sock| {
             match sock.recvfrom(buf) {
                 Ok((_nread, src)) if src != peer => Ok(0),
@@ -85,8 +85,8 @@ impl Reader for UdpStream {
 
 impl Writer for UdpStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let connectedTo = self.connectedTo;
-        self.as_socket(|sock| sock.sendto(buf, connectedTo))
+        let connected_to = self.connected_to;
+        self.as_socket(|sock| sock.sendto(buf, connected_to))
     }
 }
 
