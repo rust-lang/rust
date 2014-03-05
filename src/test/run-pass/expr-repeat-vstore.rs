@@ -11,7 +11,7 @@
 #[feature(managed_boxes)];
 
 pub fn main() {
-    let v: ~[int] = ~[ 1, ..5 ];
+    let v: Vec<int> = vec!( 1, ..5 );
     println!("{}", v[0]);
     println!("{}", v[1]);
     println!("{}", v[2]);

@@ -30,7 +30,7 @@ fn f20() {
 }
 
 fn f21() {
-    let x = ~[1, 2, 3];
+    let x = vec!(1, 2, 3);
     let _y = (x[0], 3);
     touch(&x);
 }
@@ -78,24 +78,24 @@ fn f70() {
 
 fn f80() {
     let x = ~"hi";
-    let _y = ~[x];
+    let _y = vec!(x);
     touch(&x); //~ ERROR use of moved value: `x`
 }
 
 fn f100() {
-    let x = ~[~"hi"];
+    let x = vec!(~"hi");
     let _y = x[0];
     touch(&x); //~ ERROR use of partially moved value: `x`
 }
 
 fn f110() {
-    let x = ~[~"hi"];
+    let x = vec!(~"hi");
     let _y = [x[0], ..1];
     touch(&x); //~ ERROR use of partially moved value: `x`
 }
 
 fn f120() {
-    let mut x = ~[~"hi", ~"ho"];
+    let mut x = vec!(~"hi", ~"ho");
     x.swap(0, 1);
     touch(&x[0]);
     touch(&x[1]);

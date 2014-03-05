@@ -13,7 +13,7 @@
 
 // This is a testcase for issue #94.
 pub fn main() {
-    let v: ~[int] = ~[0, 1, 2, 3, 4, 5];
+    let v: Vec<int> = vec!(0, 1, 2, 3, 4, 5);
     let s: ~str = ~"abcdef";
     assert_eq!(v[3u], 3);
     assert_eq!(v[3u8], 3);

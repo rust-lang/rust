@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = ~[1, 2, 3];
+    let x = vec!(1, 2, 3);
     let mut y = 0;
     for i in x.iter() { println!("{:?}", *i); y += *i; }
     println!("{:?}", y);

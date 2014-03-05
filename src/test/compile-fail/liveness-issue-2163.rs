@@ -11,7 +11,7 @@
 use std::slice;
 
 fn main() {
-    let a: ~[int] = ~[];
+    let a: Vec<int> = Vec::new();
     a.iter().advance(|_| -> bool {
         //~^ ERROR mismatched types
     });

@@ -18,7 +18,7 @@ fn a() {
 }
 
 fn b() {
-    let mut vec = ~[~1, ~2, ~3];
+    let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec;
     match vec {
         [.._b] => {
@@ -28,7 +28,7 @@ fn b() {
 }
 
 fn c() {
-    let mut vec = ~[~1, ~2, ~3];
+    let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec;
     match vec {
         [_a, .._b] => {
@@ -46,7 +46,7 @@ fn c() {
 }
 
 fn d() {
-    let mut vec = ~[~1, ~2, ~3];
+    let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec;
     match vec {
         [.._a, _b] => {
@@ -58,7 +58,7 @@ fn d() {
 }
 
 fn e() {
-    let mut vec = ~[~1, ~2, ~3];
+    let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec;
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out

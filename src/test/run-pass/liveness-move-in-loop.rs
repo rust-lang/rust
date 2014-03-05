@@ -11,7 +11,7 @@
 fn take(x: int) -> int {x}
 
 fn the_loop() {
-    let mut list = ~[];
+    let mut list = Vec::new();
     loop {
         let x = 5;
         if x > 3 {

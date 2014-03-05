@@ -59,8 +59,8 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
 ];
 
 // FIXME: Use map().
-fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
-    let mut result = ~[];
+fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
+    let mut result = Vec::new();
     let mut p = 0f32;
     for a_i in a.iter() {
         let mut a_i = *a_i;

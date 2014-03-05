@@ -11,7 +11,7 @@
 #[crate_id="cci_no_inline_lib"];
 
 // same as cci_iter_lib, more-or-less, but not marked inline
-pub fn iter(v: ~[uint], f: |uint|) {
+pub fn iter(v: Vec<uint> , f: |uint|) {
     let mut i = 0u;
     let n = v.len();
     while i < n {

@@ -55,8 +55,7 @@ fn add_interface(_store: int, managed_ip: ~str, data: json::Json) -> (~str, obje
 }
 
 fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json>)
--> ~[(~str, object)]
-{
+-> Vec<(~str, object)> {
     match device.get(&~"interfaces")
     {
         &json::List(ref interfaces) =>
@@ -69,7 +68,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json
         {
             println!("Expected list for {} interfaces but found {:?}", managed_ip,
                    device.get(&~"interfaces"));
-            ~[]
+            Vec::new()
         }
     }
 }

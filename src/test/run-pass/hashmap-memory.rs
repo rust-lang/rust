@@ -31,9 +31,9 @@ mod map_reduce {
 
     pub type mapper = extern fn(~str, putter);
 
-    enum ctrl_proto { find_reducer(~[u8], Sender<int>), mapper_done, }
+    enum ctrl_proto { find_reducer(Vec<u8>, Sender<int>), mapper_done, }
 
-    fn start_mappers(ctrl: Sender<ctrl_proto>, inputs: ~[~str]) {
+    fn start_mappers(ctrl: Sender<ctrl_proto>, inputs: Vec<~str>) {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
@@ -64,7 +64,7 @@ mod map_reduce {
         ctrl_clone.send(mapper_done);
     }
 
-    pub fn map_reduce(inputs: ~[~str]) {
+    pub fn map_reduce(inputs: Vec<~str>) {
         let (tx, rx) = channel();
 
         // This task becomes the master control task. It spawns others
@@ -95,5 +95,5 @@ mod map_reduce {
 }
 
 pub fn main() {
-    map_reduce::map_reduce(~[~"../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(vec!(~"../src/test/run-pass/hashmap-memory.rs"));
 }

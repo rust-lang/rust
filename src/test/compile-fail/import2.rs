@@ -15,4 +15,4 @@ mod baz {}
 mod zed {
     pub fn bar() { println!("bar3"); }
 }
-fn main(args: ~[str]) { bar(); }
+fn main(args: vec!(str)) { bar(); }

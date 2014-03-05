@@ -33,7 +33,7 @@
 
 fn main() {
 
-    let unique: ~[@i64] = ~[@10, @11, @12, @13];
+    let unique: Vec<@i64> = vec!(@10, @11, @12, @13);
 
     zzz();
 }

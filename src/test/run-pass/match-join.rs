@@ -10,7 +10,7 @@
 
 fn foo<T>(y: Option<T>) {
     let mut x: int;
-    let mut rs: ~[int] = ~[];
+    let mut rs: Vec<int> = Vec::new();
     /* tests that x doesn't get put in the precondition for the
        entire if expression */
 

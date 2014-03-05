@@ -19,7 +19,7 @@ pub fn main() {
     let abc = [1, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
-    let y = ~[(), ()];
+    let y = vec!((), ());
     let slice = x.slice(0,1);
     let z = @x;
 

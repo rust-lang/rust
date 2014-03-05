@@ -22,7 +22,7 @@ impl<'a,A> iterable<A> for &'a [A] {
     }
 }
 
-impl<A> iterable<A> for ~[A] {
+impl<A> iterable<A> for Vec<A> {
     fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }
@@ -38,7 +38,7 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
 }
 
 pub fn main() {
-    let x = ~[0,1,2,3];
+    let x = vec!(0,1,2,3);
     // Call a method
     x.iterate(|y| { assert!(x[*y] == *y); true });
     // Call a parameterized function

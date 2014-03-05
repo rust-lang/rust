@@ -148,9 +148,9 @@ fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"1000"]
+        vec!(~"", ~"1000")
     } else if args.len() <= 1u {
-        ~[~"", ~"1000"]
+        vec!(~"", ~"1000")
     } else {
         args
     };

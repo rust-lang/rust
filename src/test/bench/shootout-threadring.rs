@@ -55,7 +55,7 @@ fn main() {
     use std::from_str::FromStr;
 
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"2000000", ~"503"]
+        vec!(~"", ~"2000000", ~"503")
     }
     else {
         os::args()

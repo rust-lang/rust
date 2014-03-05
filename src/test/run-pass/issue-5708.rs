@@ -50,7 +50,7 @@ pub fn main() {
 trait MyTrait<T> { }
 
 pub struct MyContainer<'a, T> {
-    foos: ~[&'a MyTrait<T>],
+    foos: Vec<&'a MyTrait<T>> ,
 }
 
 impl<'a, T> MyContainer<'a, T> {

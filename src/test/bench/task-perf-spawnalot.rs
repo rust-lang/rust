@@ -25,9 +25,9 @@ fn g() { }
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"400"]
+        vec!(~"", ~"400")
     } else if args.len() <= 1u {
-        ~[~"", ~"10"]
+        vec!(~"", ~"10")
     } else {
         args
     };

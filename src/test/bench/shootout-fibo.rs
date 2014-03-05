@@ -21,9 +21,9 @@ fn fib(n: int) -> int {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"40"]
+        vec!(~"", ~"40")
     } else if args.len() <= 1u {
-        ~[~"", ~"30"]
+        vec!(~"", ~"30")
     } else {
         args
     };

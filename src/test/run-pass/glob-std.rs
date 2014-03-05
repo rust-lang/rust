@@ -40,7 +40,7 @@ pub fn main() {
         os::getcwd().join(&Path::new(path))
     }
 
-    fn glob_vec(pattern: &str) -> ~[Path] {
+    fn glob_vec(pattern: &str) -> Vec<Path> {
         glob(pattern).collect()
     }
 
@@ -72,133 +72,133 @@ pub fn main() {
     mk_file("xyz/y", false);
     mk_file("xyz/z", false);
 
-    assert_eq!(glob_vec(""), ~[]);
-    assert_eq!(glob_vec("."), ~[]);
-    assert_eq!(glob_vec(".."), ~[]);
+    assert_eq!(glob_vec(""), Vec::new());
+    assert_eq!(glob_vec("."), Vec::new());
+    assert_eq!(glob_vec(".."), Vec::new());
 
-    assert_eq!(glob_vec("aaa"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aaa/"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("a"), ~[]);
-    assert_eq!(glob_vec("aa"), ~[]);
-    assert_eq!(glob_vec("aaaa"), ~[]);
+    assert_eq!(glob_vec("aaa"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aaa/"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("a"), Vec::new());
+    assert_eq!(glob_vec("aa"), Vec::new());
+    assert_eq!(glob_vec("aaaa"), Vec::new());
 
-    assert_eq!(glob_vec("aaa/apple"), ~[abs_path("aaa/apple")]);
-    assert_eq!(glob_vec("aaa/apple/nope"), ~[]);
+    assert_eq!(glob_vec("aaa/apple"), vec!(abs_path("aaa/apple")));
+    assert_eq!(glob_vec("aaa/apple/nope"), Vec::new());
 
     // windows should support both / and \ as directory separators
     if os::consts::FAMILY == os::consts::windows::FAMILY {
-        assert_eq!(glob_vec("aaa\\apple"), ~[abs_path("aaa/apple")]);
+        assert_eq!(glob_vec("aaa\\apple"), vec!(abs_path("aaa/apple")));
     }
 
-    assert_eq!(glob_vec("???/"), ~[
+    assert_eq!(glob_vec("???/"), vec!(
         abs_path("aaa"),
         abs_path("bbb"),
         abs_path("ccc"),
-        abs_path("xyz")]);
+        abs_path("xyz")));
 
-    assert_eq!(glob_vec("aaa/tomato/tom?to.txt"), ~[
+    assert_eq!(glob_vec("aaa/tomato/tom?to.txt"), vec!(
         abs_path("aaa/tomato/tomato.txt"),
-        abs_path("aaa/tomato/tomoto.txt")]);
+        abs_path("aaa/tomato/tomoto.txt")));
 
-    assert_eq!(glob_vec("xyz/?"), ~[
+    assert_eq!(glob_vec("xyz/?"), vec!(
         abs_path("xyz/x"),
         abs_path("xyz/y"),
-        abs_path("xyz/z")]);
+        abs_path("xyz/z")));
 
-    assert_eq!(glob_vec("a*"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("*a*"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("a*a"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aaa*"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("*aaa"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("*aaa*"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("*a*a*a*"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aaa*/"), ~[abs_path("aaa")]);
+    assert_eq!(glob_vec("a*"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("*a*"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("a*a"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aaa*"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("*aaa"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("*aaa*"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("*a*a*a*"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aaa*/"), vec!(abs_path("aaa")));
 
-    assert_eq!(glob_vec("aaa/*"), ~[
+    assert_eq!(glob_vec("aaa/*"), vec!(
         abs_path("aaa/apple"),
         abs_path("aaa/orange"),
-        abs_path("aaa/tomato")]);
+        abs_path("aaa/tomato")));
 
-    assert_eq!(glob_vec("aaa/*a*"), ~[
+    assert_eq!(glob_vec("aaa/*a*"), vec!(
         abs_path("aaa/apple"),
         abs_path("aaa/orange"),
-        abs_path("aaa/tomato")]);
+        abs_path("aaa/tomato")));
 
-    assert_eq!(glob_vec("*/*/*.txt"), ~[
+    assert_eq!(glob_vec("*/*/*.txt"), vec!(
         abs_path("aaa/tomato/tomato.txt"),
-        abs_path("aaa/tomato/tomoto.txt")]);
+        abs_path("aaa/tomato/tomoto.txt")));
 
-    assert_eq!(glob_vec("*/*/t[aob]m?to[.]t[!y]t"), ~[
+    assert_eq!(glob_vec("*/*/t[aob]m?to[.]t[!y]t"), vec!(
         abs_path("aaa/tomato/tomato.txt"),
-        abs_path("aaa/tomato/tomoto.txt")]);
+        abs_path("aaa/tomato/tomoto.txt")));
 
-    assert_eq!(glob_vec("aa[a]"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aa[abc]"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("a[bca]a"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aa[b]"), ~[]);
-    assert_eq!(glob_vec("aa[xyz]"), ~[]);
-    assert_eq!(glob_vec("aa[]]"), ~[]);
+    assert_eq!(glob_vec("aa[a]"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aa[abc]"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("a[bca]a"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aa[b]"), Vec::new());
+    assert_eq!(glob_vec("aa[xyz]"), Vec::new());
+    assert_eq!(glob_vec("aa[]]"), Vec::new());
 
-    assert_eq!(glob_vec("aa[!b]"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aa[!bcd]"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("a[!bcd]a"), ~[abs_path("aaa")]);
-    assert_eq!(glob_vec("aa[!a]"), ~[]);
-    assert_eq!(glob_vec("aa[!abc]"), ~[]);
+    assert_eq!(glob_vec("aa[!b]"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aa[!bcd]"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("a[!bcd]a"), vec!(abs_path("aaa")));
+    assert_eq!(glob_vec("aa[!a]"), Vec::new());
+    assert_eq!(glob_vec("aa[!abc]"), Vec::new());
 
-    assert_eq!(glob_vec("bbb/specials/[[]"), ~[abs_path("bbb/specials/[")]);
-    assert_eq!(glob_vec("bbb/specials/!"), ~[abs_path("bbb/specials/!")]);
-    assert_eq!(glob_vec("bbb/specials/[]]"), ~[abs_path("bbb/specials/]")]);
+    assert_eq!(glob_vec("bbb/specials/[[]"), vec!(abs_path("bbb/specials/[")));
+    assert_eq!(glob_vec("bbb/specials/!"), vec!(abs_path("bbb/specials/!")));
+    assert_eq!(glob_vec("bbb/specials/[]]"), vec!(abs_path("bbb/specials/]")));
 
     if os::consts::FAMILY != os::consts::windows::FAMILY {
-        assert_eq!(glob_vec("bbb/specials/[*]"), ~[abs_path("bbb/specials/*")]);
-        assert_eq!(glob_vec("bbb/specials/[?]"), ~[abs_path("bbb/specials/?")]);
+        assert_eq!(glob_vec("bbb/specials/[*]"), vec!(abs_path("bbb/specials/*")));
+        assert_eq!(glob_vec("bbb/specials/[?]"), vec!(abs_path("bbb/specials/?")));
     }
 
     if os::consts::FAMILY == os::consts::windows::FAMILY {
 
-        assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[![]"), vec!(
             abs_path("bbb/specials/!"),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
-        assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!]]"), vec!(
             abs_path("bbb/specials/!"),
-            abs_path("bbb/specials/[")]);
+            abs_path("bbb/specials/[")));
 
-        assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!!]"), vec!(
             abs_path("bbb/specials/["),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
     } else {
 
-        assert_eq!(glob_vec("bbb/specials/[![]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[![]"), vec!(
             abs_path("bbb/specials/!"),
             abs_path("bbb/specials/*"),
             abs_path("bbb/specials/?"),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
-        assert_eq!(glob_vec("bbb/specials/[!]]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!]]"), vec!(
             abs_path("bbb/specials/!"),
             abs_path("bbb/specials/*"),
             abs_path("bbb/specials/?"),
-            abs_path("bbb/specials/[")]);
+            abs_path("bbb/specials/[")));
 
-        assert_eq!(glob_vec("bbb/specials/[!!]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!!]"), vec!(
             abs_path("bbb/specials/*"),
             abs_path("bbb/specials/?"),
             abs_path("bbb/specials/["),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
-        assert_eq!(glob_vec("bbb/specials/[!*]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!*]"), vec!(
             abs_path("bbb/specials/!"),
             abs_path("bbb/specials/?"),
             abs_path("bbb/specials/["),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
-        assert_eq!(glob_vec("bbb/specials/[!?]"), ~[
+        assert_eq!(glob_vec("bbb/specials/[!?]"), vec!(
             abs_path("bbb/specials/!"),
             abs_path("bbb/specials/*"),
             abs_path("bbb/specials/["),
-            abs_path("bbb/specials/]")]);
+            abs_path("bbb/specials/]")));
 
     }
 }

@@ -29,8 +29,10 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
     sum
 }
 
-fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
-    // We lanch in different tasks the work to be done.  To finish
+fn mult(v: RWArc<Vec<f64>>,
+        out: RWArc<Vec<f64>>,
+        f: fn(&Vec<f64>, uint) -> f64) {
+    // We launch in different tasks the work to be done.  To finish
     // this fuction, we need to wait for the completion of every
     // tasks.  To do that, we give to each tasks a wait_chan that we
     // drop at the end of the work.  At the end of this function, we
@@ -58,7 +60,7 @@ fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
     for () in rx.iter() {}
 }
 
-fn mult_Av_impl(v: &~[f64], i: uint) -> f64 {
+fn mult_Av_impl(v: &Vec<f64> , i: uint) -> f64 {
     let mut sum = 0.;
     for (j, &v_j) in v.iter().enumerate() {
         sum += v_j / A(i, j);
@@ -66,11 +68,11 @@ fn mult_Av_impl(v: &~[f64], i: uint) -> f64 {
     sum
 }
 
-fn mult_Av(v: RWArc<~[f64]>, out: RWArc<~[f64]>) {
+fn mult_Av(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >) {
     mult(v, out, mult_Av_impl);
 }
 
-fn mult_Atv_impl(v: &~[f64], i: uint) -> f64 {
+fn mult_Atv_impl(v: &Vec<f64> , i: uint) -> f64 {
     let mut sum = 0.;
     for (j, &v_j) in v.iter().enumerate() {
         sum += v_j / A(j, i);
@@ -78,11 +80,11 @@ fn mult_Atv_impl(v: &~[f64], i: uint) -> f64 {
     sum
 }
 
-fn mult_Atv(v: RWArc<~[f64]>, out: RWArc<~[f64]>) {
+fn mult_Atv(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >) {
     mult(v, out, mult_Atv_impl);
 }
 
-fn mult_AtAv(v: RWArc<~[f64]>, out: RWArc<~[f64]>, tmp: RWArc<~[f64]>) {
+fn mult_AtAv(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >, tmp: RWArc<Vec<f64> >) {
     mult_Av(v, tmp.clone());
     mult_Atv(tmp, out);
 }
