@@ -232,6 +232,9 @@ lets_do_this! {
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
 
+    DerefTraitLangItem,              "deref",                   deref_trait;
+    DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
+
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;
 

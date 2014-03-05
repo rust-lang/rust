@@ -3284,6 +3284,7 @@ pub fn expr_kind(tcx: ctxt,
             // exception, as its result is always unit.
             return match expr.node {
                 ast::ExprAssignOp(..) => RvalueStmtExpr,
+                ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
                 _ => RvalueDpsExpr
             };
         }

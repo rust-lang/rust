@@ -27,7 +27,7 @@ use cast::transmute;
 use clone::{Clone, DeepClone};
 use cmp::{Eq, Ord};
 use kinds::marker;
-use ops::Drop;
+use ops::{Deref, Drop};
 use option::{Option, Some, None};
 use ptr;
 use rt::global_heap::exchange_free;
@@ -75,6 +75,14 @@ impl<T> Rc<T> {
             (*self.ptr).weak += 1;
             Weak { ptr: self.ptr, marker: marker::NoSend }
         }
+    }
+}
+
+impl<T> Deref<T> for Rc<T> {
+    /// Borrow the value contained in the reference-counted box
+    #[inline(always)]
+    fn deref<'a>(&'a self) -> &'a T {
+        unsafe { &(*self.ptr).value }
     }
 }
 
