@@ -248,7 +248,7 @@ macro_rules! with_exts_frame (
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                    -> SmallVector<@ast::Item> {
-    let mut decorator_items = SmallVector::zero();
+    let mut decorator_items: SmallVector<@ast::Item> = SmallVector::zero();
     for attr in it.attrs.rev_iter() {
         let mname = attr.name();
 
@@ -262,19 +262,20 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                         span: None
                     }
                 });
+
                 // we'd ideally decorator_items.push_all(expand_item(item, fld)),
                 // but that double-mut-borrows fld
+                let mut items: SmallVector<@ast::Item> = SmallVector::zero();
                 dec_fn(fld.cx, attr.span, attr.node.value, it,
-                       |item| decorator_items.push(item));
+                       |item| items.push(item));
+                decorator_items.extend(&mut items.move_iter()
+                    .flat_map(|item| expand_item(item, fld).move_iter()));
+
                 fld.cx.bt_pop();
             }
             _ => {}
         }
     }
-
-    let decorator_items = decorator_items.move_iter()
-        .flat_map(|item| expand_item(item, fld).move_iter())
-        .collect();
 
     let mut new_items = match it.node {
         ast::ItemMac(..) => expand_item_mac(it, fld),
