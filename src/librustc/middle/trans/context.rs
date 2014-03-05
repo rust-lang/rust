@@ -10,6 +10,7 @@
 
 
 use driver::session;
+use driver::session::NoDebugInfo;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
@@ -151,7 +152,7 @@ impl CrateContext {
             let tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
-            if sess.opts.debuginfo {
+            if sess.opts.debuginfo != NoDebugInfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
@@ -165,7 +166,7 @@ impl CrateContext {
             tn.associate_type("str_slice", &str_slice_ty);
 
             let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta.clone(), llmod);
-            let dbg_cx = if sess.opts.debuginfo {
+            let dbg_cx = if sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
                 None

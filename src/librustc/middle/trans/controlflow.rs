@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use lib::llvm::*;
+use driver::session::FullDebugInfo;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -54,7 +55,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, *local);
-                    if cx.sess().opts.debuginfo {
+                    if cx.sess().opts.debuginfo == FullDebugInfo {
                         debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
