@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Operations and constants for 32-bits floats (`f32` type)
+
 #[allow(missing_doc)];
 
 use prelude::*;
@@ -45,29 +46,25 @@ macro_rules! delegate(
 
 delegate!(
     // intrinsics
-    fn abs(n: f32) -> f32 = intrinsics::fabsf32,
+    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
+    fn powi(n: f32, e: i32) -> f32 = intrinsics::powif32,
+    fn sin(n: f32) -> f32 = intrinsics::sinf32,
     fn cos(n: f32) -> f32 = intrinsics::cosf32,
+    fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
     fn exp(n: f32) -> f32 = intrinsics::expf32,
     fn exp2(n: f32) -> f32 = intrinsics::exp2f32,
-    fn floor(x: f32) -> f32 = intrinsics::floorf32,
     fn ln(n: f32) -> f32 = intrinsics::logf32,
     fn log10(n: f32) -> f32 = intrinsics::log10f32,
     fn log2(n: f32) -> f32 = intrinsics::log2f32,
     fn mul_add(a: f32, b: f32, c: f32) -> f32 = intrinsics::fmaf32,
-    fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
-    // fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
-    fn sin(n: f32) -> f32 = intrinsics::sinf32,
-    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
-
-    // LLVM 3.3 required to use intrinsics for these four
-    fn ceil(n: c_float) -> c_float = cmath::c_float::ceil,
-    fn trunc(n: c_float) -> c_float = cmath::c_float::trunc,
-    /*
+    fn abs(n: f32) -> f32 = intrinsics::fabsf32,
+    fn copysign(x: f32, y: f32) -> f32 = intrinsics::copysignf32,
+    fn floor(x: f32) -> f32 = intrinsics::floorf32,
     fn ceil(n: f32) -> f32 = intrinsics::ceilf32,
     fn trunc(n: f32) -> f32 = intrinsics::truncf32,
     fn rint(n: f32) -> f32 = intrinsics::rintf32,
     fn nearbyint(n: f32) -> f32 = intrinsics::nearbyintf32,
-    */
+    fn round(n: f32) -> f32 = intrinsics::roundf32,
 
     // cmath
     fn acos(n: c_float) -> c_float = cmath::c_float::acos,
@@ -75,7 +72,6 @@ delegate!(
     fn atan(n: c_float) -> c_float = cmath::c_float::atan,
     fn atan2(a: c_float, b: c_float) -> c_float = cmath::c_float::atan2,
     fn cbrt(n: c_float) -> c_float = cmath::c_float::cbrt,
-    fn copysign(x: c_float, y: c_float) -> c_float = cmath::c_float::copysign,
     fn cosh(n: c_float) -> c_float = cmath::c_float::cosh,
     // fn erf(n: c_float) -> c_float = cmath::c_float::erf,
     // fn erfc(n: c_float) -> c_float = cmath::c_float::erfc,
@@ -89,7 +85,6 @@ delegate!(
     fn ln_1p(n: c_float) -> c_float = cmath::c_float::ln_1p,
     // fn ilog_radix(n: c_float) -> c_int = cmath::c_float::ilog_radix,
     // fn modf(n: c_float, iptr: &mut c_float) -> c_float = cmath::c_float::modf,
-    fn round(n: c_float) -> c_float = cmath::c_float::round,
     // fn ldexp_radix(n: c_float, i: c_int) -> c_float = cmath::c_float::ldexp_radix,
     fn sinh(n: c_float) -> c_float = cmath::c_float::sinh,
     fn tan(n: c_float) -> c_float = cmath::c_float::tan,
@@ -311,6 +306,16 @@ impl Bounded for f32 {
 impl Primitive for f32 {}
 
 impl Float for f32 {
+    #[inline]
+    fn max(self, other: f32) -> f32 {
+        unsafe { cmath::c_float::fmax(self, other) }
+    }
+
+    #[inline]
+    fn min(self, other: f32) -> f32 {
+        unsafe { cmath::c_float::fmin(self, other) }
+    }
+
     #[inline]
     fn nan() -> f32 { 0.0 / 0.0 }
 
