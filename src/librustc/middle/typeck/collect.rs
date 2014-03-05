@@ -315,7 +315,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let rps_from_trait =
             trait_ty_generics.region_param_defs().iter().
             enumerate().
-            map(|(index,d)| ty::ReEarlyBound(d.def_id.node, index, d.ident)).
+            map(|(index,d)| ty::ReEarlyBound(d.def_id.node, index, d.name)).
             collect();
 
         // build up the substitution from
@@ -966,7 +966,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                    base_index: uint) -> ty::Generics {
     return ty::Generics {
         region_param_defs: Rc::new(generics.lifetimes.iter().map(|l| {
-                ty::RegionParameterDef { ident: l.ident,
+                ty::RegionParameterDef { name: l.ident,
                                          def_id: local_def(l.id) }
             }).collect()),
         type_param_defs: Rc::new(generics.ty_params.mapi_to_vec(|offset, param| {
@@ -1095,7 +1095,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
 
     let regions: OptVec<ty::Region> =
         ty_generics.region_param_defs().iter().enumerate().map(
-            |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.ident)).collect();
+            |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.name)).collect();
 
     substs {regions: ty::NonerasedRegions(regions),
             self_ty: self_ty,
