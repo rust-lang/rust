@@ -70,7 +70,6 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                                                                    |i| push(i))));
                         match tname.get() {
                             "Clone" => expand!(clone::expand_deriving_clone),
-                            "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
                             "Hash" => expand!(hash::expand_deriving_hash),
 

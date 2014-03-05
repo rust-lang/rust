@@ -38,7 +38,7 @@ pub use mem::drop;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, IntoBytes};
 pub use c_str::ToCStr;
 pub use char::Char;
-pub use clone::{Clone, DeepClone};
+pub use clone::Clone;
 pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use iter::{FromIterator, Extendable};
