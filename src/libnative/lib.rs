@@ -58,7 +58,6 @@
 use std::os;
 use std::rt;
 
-mod bookkeeping;
 pub mod io;
 pub mod task;
 
@@ -105,6 +104,5 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// number of arguments.
 pub fn run(main: proc()) -> int {
     main();
-    bookkeeping::wait_for_other_tasks();
     os::get_exit_status()
 }

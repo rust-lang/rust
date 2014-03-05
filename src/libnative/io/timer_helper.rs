@@ -21,10 +21,10 @@
 //! time.
 
 use std::cast;
+use std::rt::bookkeeping;
 use std::rt;
 use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-use bookkeeping;
 use io::timer::{Req, Shutdown};
 use task;
 
