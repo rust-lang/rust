@@ -11,6 +11,7 @@
 use ast;
 use ast::{P, Ident, Name, Mrk};
 use ast_util;
+use ext::mtwt;
 use parse::token;
 use util::interner::{RcStr, StrInterner};
 use util::interner;
@@ -722,7 +723,7 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
         (&IDENT(id1,_),&IDENT(id2,_)) | (&LIFETIME(id1),&LIFETIME(id2)) =>
-            ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+            mtwt::resolve(id1) == mtwt::resolve(id2),
         _ => *t1 == *t2
     }
 }
@@ -732,10 +733,10 @@ pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
 mod test {
     use super::*;
     use ast;
-    use ast_util;
+    use ext::mtwt;
 
     fn mark_ident(id : ast::Ident, m : ast::Mrk) -> ast::Ident {
-        ast::Ident{name:id.name,ctxt:ast_util::new_mark(m,id.ctxt)}
+        ast::Ident{name:id.name,ctxt:mtwt::new_mark(m,id.ctxt)}
     }
 
     #[test] fn mtwt_token_eq_test() {
