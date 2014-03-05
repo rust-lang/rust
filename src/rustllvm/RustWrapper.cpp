@@ -652,3 +652,8 @@ LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
     LLVMSetLinkage(Value, LLVMDLLExportLinkage);
 }
 #endif
+
+extern "C" int
+LLVMVersionMinor() {
+    return LLVM_VERSION_MINOR;
+}

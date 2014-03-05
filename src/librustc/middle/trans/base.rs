@@ -2286,8 +2286,6 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
 
     ifn!(intrinsics, "llvm.fabs.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.fabs.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.copysign.f32", [Type::f32(), Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.copysign.f64", [Type::f64(), Type::f64()], Type::f64());
 
     ifn!(intrinsics, "llvm.floor.f32",[Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.floor.f64",[Type::f64()], Type::f64());
@@ -2300,8 +2298,6 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!(intrinsics, "llvm.rint.f64", [Type::f64()], Type::f64());
     ifn!(intrinsics, "llvm.nearbyint.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.nearbyint.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.round.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.round.f64", [Type::f64()], Type::f64());
 
     ifn!(intrinsics, "llvm.ctpop.i8", [Type::i8()], Type::i8());
     ifn!(intrinsics, "llvm.ctpop.i16",[Type::i16()], Type::i16());
@@ -2377,6 +2373,32 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
         [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
 
     ifn!(intrinsics, "llvm.expect.i1", [Type::i1(), Type::i1()], Type::i1());
+
+    // Some intrinsics were introduced in later versions of LLVM, but they have
+    // fallbacks in libc or libm and such. Currently, all of these intrinsics
+    // were introduced in LLVM 3.4, so we case on that.
+    macro_rules! compatible_ifn (
+        ($intrinsics:ident, $name:expr, $cname:expr, $args:expr, $ret:expr) => ({
+            let name = $name;
+            if unsafe { llvm::LLVMVersionMinor() >= 4 } {
+                ifn!($intrinsics, $name, $args, $ret);
+            } else {
+                let f = decl_cdecl_fn(llmod, $cname,
+                                      Type::func($args, &$ret),
+                                      ty::mk_nil());
+                $intrinsics.insert(name, f);
+            }
+        })
+    )
+
+    compatible_ifn!(intrinsics, "llvm.copysign.f32", "copysignf",
+                    [Type::f32(), Type::f32()], Type::f32());
+    compatible_ifn!(intrinsics, "llvm.copysign.f64", "copysign",
+                    [Type::f64(), Type::f64()], Type::f64());
+    compatible_ifn!(intrinsics, "llvm.round.f32", "roundf",
+                    [Type::f32()], Type::f32());
+    compatible_ifn!(intrinsics, "llvm.round.f64", "round",
+                    [Type::f64()], Type::f64());
 
     return intrinsics;
 }

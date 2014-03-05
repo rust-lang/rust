@@ -1771,6 +1771,7 @@ pub mod llvm {
         pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
         pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
+        pub fn LLVMVersionMinor() -> c_int;
     }
 }
 
