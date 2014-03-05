@@ -279,9 +279,14 @@ rust_opendir(char *dirname) {
     return opendir(dirname);
 }
 
-struct dirent*
-rust_readdir(DIR *dirp) {
-    return readdir(dirp);
+int
+rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
+    return readdir_r(dirp, entry, result);
+}
+
+int
+rust_dirent_t_size() {
+    return sizeof(struct dirent);
 }
 
 #else
@@ -292,6 +297,10 @@ rust_opendir() {
 
 void
 rust_readdir() {
+}
+
+void
+rust_dirent_t_size() {
 }
 
 #endif
