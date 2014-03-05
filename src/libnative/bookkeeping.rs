@@ -39,12 +39,9 @@ pub fn decrement() {
 /// the entry points of native programs
 pub fn wait_for_other_tasks() {
     unsafe {
-        {
-            let mut guard = TASK_LOCK.lock();
-            while TASK_COUNT.load(atomics::SeqCst) > 0 {
-                guard.wait();
-            }
+        let mut guard = TASK_LOCK.lock();
+        while TASK_COUNT.load(atomics::SeqCst) > 0 {
+            guard.wait();
         }
-        TASK_LOCK.destroy();
     }
 }
