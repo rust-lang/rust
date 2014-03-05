@@ -39,6 +39,14 @@ impl<T> FromIterator<T> for SmallVector<T> {
     }
 }
 
+impl<T> Extendable<T> for SmallVector<T> {
+    fn extend<I: Iterator<T>>(&mut self, iter: &mut I) {
+        for val in *iter {
+            self.push(val);
+        }
+    }
+}
+
 impl<T> SmallVector<T> {
     pub fn zero() -> SmallVector<T> {
         Zero
