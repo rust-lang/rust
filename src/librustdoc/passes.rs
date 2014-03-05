@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cmp;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::local_data;
 use std::uint;
 use syntax::ast;
@@ -150,8 +150,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
-            clean::TyMethodItem(..) => {}
+            // tymethods/macros have no control over privacy
+            clean::MacroItem(..) | clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {
@@ -311,20 +311,19 @@ pub fn unindent(s: &str) -> ~str {
         }
     });
 
-    match lines {
-        [head, .. tail] => {
-            let mut unindented = ~[ head.trim() ];
-            unindented.push_all(tail.map(|&line| {
-                if line.is_whitespace() {
-                    line
-                } else {
-                    assert!(line.len() >= min_indent);
-                    line.slice_from(min_indent)
-                }
-            }));
-            unindented.connect("\n")
-        }
-        [] => s.to_owned()
+    if lines.len() >= 1 {
+        let mut unindented = ~[ lines[0].trim() ];
+        unindented.push_all(lines.tail().map(|&line| {
+            if line.is_whitespace() {
+                line
+            } else {
+                assert!(line.len() >= min_indent);
+                line.slice_from(min_indent)
+            }
+        }));
+        unindented.connect("\n")
+    } else {
+        s.to_owned()
     }
 }
 

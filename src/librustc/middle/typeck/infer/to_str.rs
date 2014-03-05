@@ -70,8 +70,7 @@ impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Redirect(ref vid) => format!("Redirect({})", vid.to_str()),
-          Root(ref pt, rk) => format!("Root({}, {})", pt.inf_str(cx),
-                               rk.to_str_radix(10u))
+          Root(ref pt, rk) => format!("Root({}, {})", pt.inf_str(cx), rk)
         }
     }
 }

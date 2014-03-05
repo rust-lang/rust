@@ -12,7 +12,7 @@
 /// `unsafe`.
 
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::MethodMap;
 use util::ppaux;
 
 use syntax::ast;
@@ -39,7 +39,7 @@ struct EffectCheckVisitor {
     tcx: ty::ctxt,
 
     /// The method map.
-    method_map: method_map,
+    method_map: MethodMap,
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
 }
@@ -65,7 +65,7 @@ impl EffectCheckVisitor {
 
     fn check_str_index(&mut self, e: @ast::Expr) {
         let base_type = match e.node {
-            ast::ExprIndex(_, base, _) => ty::node_id_to_type(self.tcx, base.id),
+            ast::ExprIndex(base, _) => ty::node_id_to_type(self.tcx, base.id),
             _ => return
         };
         debug!("effect: checking index with base type {}",
@@ -106,11 +106,28 @@ impl Visitor<()> for EffectCheckVisitor {
 
     fn visit_block(&mut self, block: &ast::Block, _:()) {
         let old_unsafe_context = self.unsafe_context;
-        let is_unsafe = match block.rules {
-            ast::UnsafeBlock(..) => true, ast::DefaultBlock => false
-        };
-        if is_unsafe && self.unsafe_context == SafeContext {
-            self.unsafe_context = UnsafeBlock(block.id)
+        match block.rules {
+            ast::DefaultBlock => {}
+            ast::UnsafeBlock(source) => {
+                // By default only the outermost `unsafe` block is
+                // "used" and so nested unsafe blocks are pointless
+                // (the inner ones are unnecessary and we actually
+                // warn about them). As such, there are two cases when
+                // we need to create a new context, when we're
+                // - outside `unsafe` and found a `unsafe` block
+                //   (normal case)
+                // - inside `unsafe` but found an `unsafe` block
+                //   created internally to the compiler
+                //
+                // The second case is necessary to ensure that the
+                // compiler `unsafe` blocks don't accidentally "use"
+                // external blocks (e.g. `unsafe { println("") }`,
+                // expands to `unsafe { ... unsafe { ... } }` where
+                // the inner one is compiler generated).
+                if self.unsafe_context == SafeContext || source == ast::CompilerGenerated {
+                    self.unsafe_context = UnsafeBlock(block.id)
+                }
+            }
         }
 
         visit::walk_block(self, block, ());
@@ -120,8 +137,8 @@ impl Visitor<()> for EffectCheckVisitor {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
         match expr.node {
-            ast::ExprMethodCall(callee_id, _, _, _) => {
-                let base_type = ty::node_id_to_type(self.tcx, callee_id);
+            ast::ExprMethodCall(_, _, _) => {
+                let base_type = self.method_map.borrow().get().get(&expr.id).ty;
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
@@ -137,7 +154,7 @@ impl Visitor<()> for EffectCheckVisitor {
                     self.require_unsafe(expr.span, "call to unsafe function")
                 }
             }
-            ast::ExprUnary(_, ast::UnDeref, base) => {
+            ast::ExprUnary(ast::UnDeref, base) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
                 debug!("effect: unary case, base type is {}",
                         ppaux::ty_to_str(self.tcx, base_type));
@@ -149,7 +166,7 @@ impl Visitor<()> for EffectCheckVisitor {
                     _ => {}
                 }
             }
-            ast::ExprAssign(base, _) | ast::ExprAssignOp(_, _, base, _) => {
+            ast::ExprAssign(base, _) | ast::ExprAssignOp(_, base, _) => {
                 self.check_str_index(base);
             }
             ast::ExprAddrOf(ast::MutMutable, base) => {
@@ -173,9 +190,7 @@ impl Visitor<()> for EffectCheckVisitor {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
-                   method_map: method_map,
-                   krate: &ast::Crate) {
+pub fn check_crate(tcx: ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         method_map: method_map,

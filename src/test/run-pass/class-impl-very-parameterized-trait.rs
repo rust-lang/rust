@@ -12,6 +12,7 @@
 
 use std::cmp;
 
+#[deriving(Show)]
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl cmp::Eq for cat_type {

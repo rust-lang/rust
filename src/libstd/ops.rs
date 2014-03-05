@@ -464,10 +464,32 @@ pub trait Index<Index,Result> {
     fn index(&self, index: &Index) -> Result;
 }
 
+#[cfg(stage0)]
+pub trait Deref<Result> {
+    fn deref<'a>(&'a self) -> &'a Result;
+}
+
+#[cfg(not(stage0))]
+#[lang="deref"]
+pub trait Deref<Result> {
+    fn deref<'a>(&'a self) -> &'a Result;
+}
+
+#[cfg(stage0)]
+pub trait DerefMut<Result>: Deref<Result> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
+}
+
+#[cfg(not(stage0))]
+#[lang="deref_mut"]
+pub trait DerefMut<Result>: Deref<Result> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
+}
+
 #[cfg(test)]
 mod bench {
-
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use ops::Drop;
 
     // Overhead of dtors

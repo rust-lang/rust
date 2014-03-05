@@ -21,9 +21,10 @@ use std::char;
 use std::fmt;
 use std::local_data;
 use std::path::BytesContainer;
+use std::vec_ng::Vec;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
 pub enum BinOp {
     PLUS,
     MINUS,
@@ -38,7 +39,7 @@ pub enum BinOp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -102,7 +103,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
+#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(@ast::Item),
@@ -115,7 +116,25 @@ pub enum Nonterminal {
     NtAttr(@ast::Attribute), // #[foo]
     NtPath(~ast::Path),
     NtTT(  @ast::TokenTree), // needs @ed to break a circularity
-    NtMatchers(~[ast::Matcher])
+    NtMatchers(Vec<ast::Matcher> )
+}
+
+impl fmt::Show for Nonterminal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            NtItem(..) => f.pad("NtItem(..)"),
+            NtBlock(..) => f.pad("NtBlock(..)"),
+            NtStmt(..) => f.pad("NtStmt(..)"),
+            NtPat(..) => f.pad("NtPat(..)"),
+            NtExpr(..) => f.pad("NtExpr(..)"),
+            NtTy(..) => f.pad("NtTy(..)"),
+            NtIdent(..) => f.pad("NtIdent(..)"),
+            NtAttr(..) => f.pad("NtAttr(..)"),
+            NtPath(..) => f.pad("NtPath(..)"),
+            NtTT(..) => f.pad("NtTT(..)"),
+            NtMatchers(..) => f.pad("NtMatchers(..)"),
+        }
+    }
 }
 
 pub fn binop_to_str(o: BinOp) -> ~str {
@@ -394,13 +413,11 @@ macro_rules! declare_special_idents_and_keywords {(
         // The indices here must correspond to the numbers in
         // special_idents, in Keyword to_ident(), and in static
         // constants below.
-        let init_vec = ~[
-            $( $si_str, )*
-            $( $sk_str, )*
-            $( $rk_str, )*
-        ];
-
-        interner::StrInterner::prefill(init_vec)
+        let mut init_vec = Vec::new();
+        $(init_vec.push($si_str);)*
+        $(init_vec.push($sk_str);)*
+        $(init_vec.push($rk_str);)*
+        interner::StrInterner::prefill(init_vec.as_slice())
     }
 }}
 
@@ -536,7 +553,7 @@ pub fn get_ident_interner() -> @IdentInterner {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
-#[deriving(Clone, Eq, IterBytes, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, Hash, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
     priv string: RcStr,
 }
@@ -704,8 +721,8 @@ pub fn is_reserved_keyword(tok: &Token) -> bool {
 
 pub fn mtwt_token_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&IDENT(id1,_),&IDENT(id2,_)) =>
-        ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
+        (&IDENT(id1,_),&IDENT(id2,_)) | (&LIFETIME(id1),&LIFETIME(id2)) =>
+            ast_util::mtwt_resolve(id1) == ast_util::mtwt_resolve(id2),
         _ => *t1 == *t2
     }
 }

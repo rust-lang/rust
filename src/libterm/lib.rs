@@ -15,7 +15,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
@@ -23,16 +23,14 @@
 #[deny(non_camel_case_types)];
 #[allow(missing_doc)];
 
+extern crate collections;
+
 use std::os;
 use std::io;
 use terminfo::TermInfo;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
 use terminfo::parm::{expand, Number, Variables};
-
-macro_rules! if_ok (
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
 
 pub mod terminfo;
 
@@ -155,7 +153,7 @@ impl<T: Writer> Terminal<T> {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                if_ok!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap()));
                 return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
@@ -176,7 +174,7 @@ impl<T: Writer> Terminal<T> {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                if_ok!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap()));
                 return Ok(true)
             } else {
                 warn!("{}", s.unwrap_err());
@@ -198,7 +196,7 @@ impl<T: Writer> Terminal<T> {
                 if parm.is_some() {
                     let s = expand(*parm.unwrap(), [], &mut Variables::new());
                     if s.is_ok() {
-                        if_ok!(self.out.write(s.unwrap()));
+                        try!(self.out.write(s.unwrap()));
                         return Ok(true)
                     } else {
                         warn!("{}", s.unwrap_err());

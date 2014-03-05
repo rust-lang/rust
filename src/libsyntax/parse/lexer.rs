@@ -32,7 +32,7 @@ pub trait Reader {
     fn dup(&self) -> ~Reader:;
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub struct TokenAndSpan {
     tok: token::Token,
     sp: Span,
@@ -264,8 +264,7 @@ pub fn bump(rdr: &StringReader) {
         }
 
         if byte_offset_diff > 1 {
-            rdr.filemap.record_multibyte_char(
-                Pos::from_uint(current_byte_offset), byte_offset_diff);
+            rdr.filemap.record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
         }
     } else {
         rdr.curr.set(None);
@@ -1005,6 +1004,8 @@ mod test {
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
+    use std::io::util;
+    use std::vec_ng::Vec;
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
@@ -1015,7 +1016,10 @@ mod test {
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", teststr);
-        let span_handler = diagnostic::mk_span_handler(diagnostic::mk_handler(), @cm);
+        let writer = ~util::NullWriter;
+        let emitter = diagnostic::EmitterWriter::new(writer);
+        let handler = diagnostic::mk_handler(~emitter);
+        let span_handler = diagnostic::mk_span_handler(handler, @cm);
         Env {
             string_reader: new_string_reader(span_handler,fm)
         }
@@ -1045,7 +1049,7 @@ mod test {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization (env: Env, expected: ~[token::Token]) {
+    fn check_tokenization (env: Env, expected: Vec<token::Token> ) {
         for expected_tok in expected.iter() {
             let TokenAndSpan {tok:actual_tok, sp: _} =
                 env.string_reader.next_token();
@@ -1061,32 +1065,32 @@ mod test {
     #[test] fn doublecolonparsing () {
         let env = setup (~"a b");
         check_tokenization (env,
-                           ~[mk_ident("a",false),
-                             mk_ident("b",false)]);
+                           vec!(mk_ident("a",false),
+                             mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_2 () {
         let env = setup (~"a::b");
         check_tokenization (env,
-                           ~[mk_ident("a",true),
+                           vec!(mk_ident("a",true),
                              token::MOD_SEP,
-                             mk_ident("b",false)]);
+                             mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_3 () {
         let env = setup (~"a ::b");
         check_tokenization (env,
-                           ~[mk_ident("a",false),
+                           vec!(mk_ident("a",false),
                              token::MOD_SEP,
-                             mk_ident("b",false)]);
+                             mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_4 () {
         let env = setup (~"a:: b");
         check_tokenization (env,
-                           ~[mk_ident("a",true),
+                           vec!(mk_ident("a",true),
                              token::MOD_SEP,
-                             mk_ident("b",false)]);
+                             mk_ident("b",false)));
     }
 
     #[test] fn character_a() {

@@ -27,13 +27,17 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use serialize::{json, Encodable};
+
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
 use std::io::MemReader;
 use std::os;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
+use collections::{HashMap, HashSet};
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -99,15 +103,15 @@ pub fn default_configuration(sess: Session) ->
     };
 
     let mk = attr::mk_name_value_item_str;
-    return ~[ // Target bindings.
+    return vec!(// Target bindings.
          attr::mk_word_item(fam.clone()),
          mk(InternedString::new("target_os"), tos),
          mk(InternedString::new("target_family"), fam),
          mk(InternedString::new("target_arch"), InternedString::new(arch)),
          mk(InternedString::new("target_endian"), InternedString::new(end)),
          mk(InternedString::new("target_word_size"),
-            InternedString::new(wordsz)),
-    ];
+            InternedString::new(wordsz))
+    );
 }
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig,
@@ -117,8 +121,7 @@ pub fn append_configuration(cfg: &mut ast::CrateConfig,
     }
 }
 
-pub fn build_configuration(sess: Session) ->
-   ast::CrateConfig {
+pub fn build_configuration(sess: Session) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess);
@@ -133,7 +136,8 @@ pub fn build_configuration(sess: Session) ->
     } else {
         InternedString::new("nogc")
     });
-    return vec::append(user_cfg, default_cfg);
+    return vec_ng::append(user_cfg.move_iter().collect(),
+                          default_cfg.as_slice());
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -141,7 +145,10 @@ fn parse_cfgspecs(cfgspecs: ~[~str])
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess();
-        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(),
+                                          s,
+                                          Vec::new(),
+                                          sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -154,7 +161,7 @@ pub enum Input {
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
-    time(sess.time_passes(), "parsing", (), |_| {
+    let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
@@ -166,7 +173,15 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
                                                    sess.parse_sess)
             }
         }
-    })
+    });
+
+    if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    krate
 }
 
 // For continuing compilation after a parsed crate has been
@@ -183,7 +198,9 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &krate));
-    sess.crate_types.set(session::collect_crate_types(&sess, krate.attrs));
+    sess.crate_types.set(session::collect_crate_types(&sess,
+                                                      krate.attrs
+                                                           .as_slice()));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -220,8 +237,16 @@ pub fn phase_2_configure_and_expand(sess: Session,
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
 
-    time(time_passes, "assinging node ids and indexing ast", krate, |krate|
-         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate))
+    let (krate, map) = time(time_passes, "assinging node ids and indexing ast", krate, |krate|
+         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
+
+    if sess.opts.debugging_opts & session::AST_JSON != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    (krate, map)
 }
 
 pub struct CrateAnalysis {
@@ -277,11 +302,14 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(sess, krate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
-                            region_map, lang_items);
+    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
+                            freevars, region_map, lang_items);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, krate);
+
+    time(time_passes, "check static items", (), |_|
+         middle::check_static::check_crate(ty_cx, krate));
 
     // These next two const passes can probably be merged
     time(time_passes, "const marking", (), |_|
@@ -412,7 +440,7 @@ pub fn phase_6_link_output(sess: Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           &trans.link));
+                           &trans.link.crateid));
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -428,7 +456,7 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0;
 }
 
 pub fn stop_after_phase_2(sess: Session) -> bool {
@@ -436,7 +464,7 @@ pub fn stop_after_phase_2(sess: Session) -> bool {
         debug!("invoked with --no-analysis, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON != 0;
 }
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
@@ -451,8 +479,7 @@ fn write_out_deps(sess: Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) -> io::IoResult<()> {
-    let lm = link::build_link_meta(krate.attrs, outputs,
-                                   &mut ::util::sha2::Sha256::new());
+    let id = link::find_crate_id(krate.attrs.as_slice(), outputs);
 
     let mut out_filenames = ~[];
     for output_type in sess.opts.output_types.iter() {
@@ -461,7 +488,7 @@ fn write_out_deps(sess: Session,
             link::OutputTypeExe => {
                 let crate_types = sess.crate_types.borrow();
                 for output in crate_types.get().iter() {
-                    let p = link::filename_for_input(&sess, *output, &lm, &file);
+                    let p = link::filename_for_input(&sess, *output, &id, &file);
                     out_filenames.push(p);
                 }
             }
@@ -502,9 +529,9 @@ fn write_out_deps(sess: Session,
              })
              .collect()
     };
-    let mut file = if_ok!(io::File::create(&deps_filename));
+    let mut file = try!(io::File::create(&deps_filename));
     for path in out_filenames.iter() {
-        if_ok!(write!(&mut file as &mut Writer,
+        try!(write!(&mut file as &mut Writer,
                       "{}: {}\n\n", path.display(), files.connect(" ")));
     }
     Ok(())
@@ -526,8 +553,11 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
             let loader = &mut Loader::new(sess);
             phase_2_configure_and_expand(sess, loader, krate)
         };
-        let outputs = build_output_filenames(input, outdir, output,
-                                             expanded_crate.attrs, sess);
+        let outputs = build_output_filenames(input,
+                                             outdir,
+                                             output,
+                                             expanded_crate.attrs.as_slice(),
+                                             sess);
 
         write_out_deps(sess, input, &outputs, &expanded_crate).unwrap();
 
@@ -556,21 +586,21 @@ impl pprust::PpAnn for IdentifiedAnnotation {
     fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(s, item) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, item.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, item.id.to_str()));
             }
             pprust::NodeBlock(s, blk) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
             }
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, expr.id.to_str()));
-                if_ok!(pprust::pclose(s));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, expr.id.to_str()));
+                try!(pprust::pclose(s));
             }
             pprust::NodePat(s, pat) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
             }
         }
         Ok(())
@@ -592,12 +622,12 @@ impl pprust::PpAnn for TypedAnnotation {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s, "as"));
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s,
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s, "as"));
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s,
                                 ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
-                if_ok!(pprust::pclose(s));
+                try!(pprust::pclose(s));
             }
             _ => ()
         }
@@ -910,7 +940,7 @@ pub fn build_session(sopts: @session::Options,
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler();
+        diagnostic::default_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -957,6 +987,7 @@ pub fn build_session_(sopts: @session::Options,
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
         crate_types: @RefCell::new(~[]),
+        features: front::feature_gate::Features::new()
     }
 }
 
@@ -1127,7 +1158,8 @@ pub fn build_output_filenames(input: &Input,
 }
 
 pub fn early_error(msg: &str) -> ! {
-    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal);
+    let mut emitter = diagnostic::EmitterWriter::stderr();
+    emitter.emit(None, msg, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
 }
 
@@ -1158,7 +1190,7 @@ mod test {
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
         let cfg = build_configuration(sess);
-        assert!((attr::contains_name(cfg, "test")));
+        assert!((attr::contains_name(cfg.as_slice(), "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add

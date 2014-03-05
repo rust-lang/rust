@@ -10,8 +10,8 @@
 
 use libc::{c_void, size_t, free, malloc, realloc};
 use ptr::{RawPtr, mut_null};
-use unstable::intrinsics::abort;
-use unstable::raw;
+use intrinsics::abort;
+use raw;
 use mem::size_of;
 
 #[inline]
@@ -107,7 +107,8 @@ pub unsafe fn exchange_free(ptr: *u8) {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
 
     #[bench]
     fn alloc_owned_small(bh: &mut BenchHarness) {

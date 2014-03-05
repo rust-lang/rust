@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,9 +11,10 @@
 // Type encoding
 
 #[allow(unused_must_use)]; // as with encoding, everything is a no-fail MemWriter
+#[allow(non_camel_case_types)];
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::io;
 use std::io::MemWriter;
 use std::str;
@@ -178,7 +179,7 @@ fn enc_region(w: &mut MemWriter, cx: @ctxt, r: ty::Region) {
             mywrite!(w, "B[{}|{}|{}]",
                      node_id,
                      index,
-                     token::get_ident(ident));
+                     token::get_name(ident));
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
@@ -209,7 +210,7 @@ fn enc_bound_region(w: &mut MemWriter, cx: @ctxt, br: ty::BoundRegion) {
         ty::BrNamed(d, s) => {
             mywrite!(w, "[{}|{}]",
                      (cx.ds)(d),
-                     token::get_ident(s));
+                     token::get_name(s));
         }
         ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);

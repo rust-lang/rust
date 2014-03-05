@@ -9,10 +9,10 @@
 // except according to those terms.
 
 /*!
-The compiler code necessary to implement the #[deriving] extensions.
+The compiler code necessary to implement the `#[deriving]` extensions.
 
 
-FIXME (#2810)--Hygiene. Search for "__" strings (in other files too).
+FIXME (#2810): hygiene. Search for "__" strings (in other files too).
 We also assume "extra" is the standard library, and "std" is the core
 library.
 
@@ -23,11 +23,10 @@ use ext::base::ExtCtxt;
 use codemap::Span;
 
 pub mod clone;
-pub mod iter_bytes;
 pub mod encodable;
 pub mod decodable;
+pub mod hash;
 pub mod rand;
-pub mod to_str;
 pub mod show;
 pub mod zero;
 pub mod default;
@@ -54,7 +53,10 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `deriving`");
         }
-        MetaWord(_) | MetaList(_, []) => {
+        MetaWord(_) => {
+            cx.span_warn(mitem.span, "empty trait list in `deriving`");
+        }
+        MetaList(_, ref titems) if titems.len() == 0 => {
             cx.span_warn(mitem.span, "empty trait list in `deriving`");
         }
         MetaList(_, ref titems) => {
@@ -70,7 +72,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "Clone" => expand!(clone::expand_deriving_clone),
                             "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
-                            "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
+                            "Hash" => expand!(hash::expand_deriving_hash),
 
                             "Encodable" => expand!(encodable::expand_deriving_encodable),
                             "Decodable" => expand!(decodable::expand_deriving_decodable),
@@ -82,7 +84,6 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             "Rand" => expand!(rand::expand_deriving_rand),
 
-                            "ToStr" => expand!(to_str::expand_deriving_to_str),
                             "Show" => expand!(show::expand_deriving_show),
 
                             "Zero" => expand!(zero::expand_deriving_zero),

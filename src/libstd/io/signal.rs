@@ -20,15 +20,18 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
-use result::{Ok, Err};
 use comm::{Port, Chan};
-use container::{Map, MutableMap};
-use hashmap;
 use io;
+use iter::Iterator;
+use mem::drop;
+use option::{Some, None};
+use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
+use vec::{ImmutableVector, OwnedVector};
 
+/// Signals that can be sent and received
 #[repr(int)]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash, Show)]
 pub enum Signum {
     /// Equivalent to SIGBREAK, delivered when the user presses Ctrl-Break.
     Break = 21i,
@@ -78,7 +81,7 @@ pub enum Signum {
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    priv handles: hashmap::HashMap<Signum, ~RtioSignal>,
+    priv handles: ~[(Signum, ~RtioSignal)],
     /// chan is where all the handles send signums, which are received by
     /// the clients from port.
     priv chan: Chan<Signum>,
@@ -97,7 +100,7 @@ impl Listener {
         Listener {
             chan: chan,
             port: port,
-            handles: hashmap::HashMap::new(),
+            handles: ~[],
         }
     }
 
@@ -118,14 +121,14 @@ impl Listener {
     /// If this function fails to register a signal handler, then an error will
     /// be returned.
     pub fn register(&mut self, signum: Signum) -> io::IoResult<()> {
-        if self.handles.contains_key(&signum) {
+        if self.handles.iter().any(|&(sig, _)| sig == signum) {
             return Ok(()); // self is already listening to signum, so succeed
         }
         match LocalIo::maybe_raise(|io| {
             io.signal(signum, self.chan.clone())
         }) {
             Ok(handle) => {
-                self.handles.insert(signum, handle);
+                self.handles.push((signum, handle));
                 Ok(())
             }
             Err(e) => Err(e)
@@ -137,26 +140,27 @@ impl Listener {
     /// notification about the signal. If the signal has already been received,
     /// it may still be returned by `recv`.
     pub fn unregister(&mut self, signum: Signum) {
-        self.handles.pop(&signum);
+        match self.handles.iter().position(|&(i, _)| i == signum) {
+            Some(i) => drop(self.handles.remove(i)),
+            None => {}
+        }
     }
 }
 
-#[cfg(test)]
-mod test {
+#[cfg(test, unix)]
+mod test_unix {
     use libc;
     use comm::Empty;
     use io::timer;
     use super::{Listener, Interrupt};
 
-    // kill is only available on Unixes
-    #[cfg(unix)]
     fn sigint() {
         unsafe {
             libc::funcs::posix88::signal::kill(libc::getpid(), libc::SIGINT);
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_smoketest() {
         let mut signal = Listener::new();
         signal.register(Interrupt).unwrap();
@@ -168,7 +172,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_two_signal_one_signum() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -186,7 +190,7 @@ mod test {
         }
     }
 
-    #[test] #[cfg(unix, not(target_os="android"))] // FIXME(#10378)
+    #[test] #[cfg(not(target_os="android"))] // FIXME(#10378)
     fn test_io_signal_unregister() {
         let mut s1 = Listener::new();
         let mut s2 = Listener::new();
@@ -197,15 +201,16 @@ mod test {
         timer::sleep(10);
         assert_eq!(s2.port.try_recv(), Empty);
     }
+}
 
-    #[cfg(windows)]
+#[cfg(test, windows)]
+mod test_windows {
+    use super::{User1, Listener};
+    use result::{Ok, Err};
+
     #[test]
     fn test_io_signal_invalid_signum() {
-        use io;
-        use super::User1;
-        use result::{Ok, Err};
         let mut s = Listener::new();
-        let mut called = false;
         match s.register(User1) {
             Ok(..) => {
                 fail!("Unexpected successful registry of signum {:?}", User1);

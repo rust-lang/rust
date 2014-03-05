@@ -12,11 +12,14 @@
 
 #[allow(missing_doc)];
 
-use std::io::BufReader;
 use std::cmp::Eq;
-use std::hashmap::HashMap;
-use std::to_bytes;
+use std::fmt;
+use std::hash::{Hash, sip};
+use std::io::BufReader;
+use std::from_str::FromStr;
 use std::uint;
+
+use collections::HashMap;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
 /// Identifier) that includes network location information, such as hostname or
@@ -55,6 +58,17 @@ pub struct Url {
     fragment: Option<~str>
 }
 
+#[deriving(Clone, Eq)]
+pub struct Path {
+    /// The path component of a URL, for example `/foo/bar`.
+    path: ~str,
+    /// The query component of a URL.  `~[(~"baz", ~"qux")]` represents the
+    /// fragment `baz=qux` in the above example.
+    query: Query,
+    /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
+    fragment: Option<~str>
+}
+
 /// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq)]
 pub struct UserInfo {
@@ -81,6 +95,19 @@ impl Url {
             user: user,
             host: host,
             port: port,
+            path: path,
+            query: query,
+            fragment: fragment,
+        }
+    }
+}
+
+impl Path {
+    pub fn new(path: ~str,
+               query: Query,
+               fragment: Option<~str>)
+               -> Path {
+        Path {
             path: path,
             query: query,
             fragment: fragment,
@@ -383,10 +410,12 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     }
 }
 
-fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
-    match userinfo.pass {
-        Some(ref pass) => format!("{}:{}@", userinfo.user, *pass),
-        None => format!("{}@", userinfo.user),
+impl fmt::Show for UserInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.pass {
+            Some(ref pass) => write!(f.buf, "{}:{}@", self.user, *pass),
+            None => write!(f.buf, "{}@", self.user),
+        }
     }
 }
 
@@ -413,19 +442,18 @@ fn query_from_str(rawquery: &str) -> Query {
  * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
+#[allow(unused_must_use)]
 pub fn query_to_str(query: &Query) -> ~str {
-    let mut strvec = ~[];
-    for kv in query.iter() {
-        match kv {
-            &(ref k, ref v) => {
-                strvec.push(format!("{}={}",
-                    encode_component(*k),
-                    encode_component(*v))
-                );
-            }
-        }
+    use std::io::MemWriter;
+    use std::str;
+
+    let mut writer = MemWriter::new();
+    for (i, &(ref k, ref v)) in query.iter().enumerate() {
+        if i != 0 { write!(&mut writer, "&"); }
+        write!(&mut writer, "{}={}", encode_component(*k),
+               encode_component(*v));
     }
-    return strvec.connect("&");
+    str::from_utf8_lossy(writer.unwrap()).into_owned()
 }
 
 /**
@@ -727,6 +755,21 @@ pub fn from_str(rawurl: &str) -> Result<Url, ~str> {
     Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
 }
 
+pub fn path_from_str(rawpath: &str) -> Result<Path, ~str> {
+    let (path, rest) = match get_path(rawpath, false) {
+        Ok(val) => val,
+        Err(e) => return Err(e)
+    };
+
+    // query and fragment
+    let (query, fragment) = match get_query_fragment(rest) {
+        Ok(val) => val,
+        Err(e) => return Err(e),
+    };
+
+    Ok(Path{ path: path, query: query, fragment: fragment })
+}
+
 impl FromStr for Url {
     fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
@@ -736,59 +779,85 @@ impl FromStr for Url {
     }
 }
 
-/**
- * Converts a URL from `Url` to string representation.
- *
- * # Arguments
- *
- * `url` - a URL.
- *
- * # Returns
- *
- * A string that contains the formatted URL. Note that this will usually
- * be an inverse of `from_str` but might strip out unneeded separators;
- * for example, "http://somehost.com?", when parsed and formatted, will
- * result in just "http://somehost.com".
- */
-pub fn to_str(url: &Url) -> ~str {
-    let user = match url.user {
-        Some(ref user) => userinfo_to_str(user),
-        None => ~"",
-    };
-
-    let authority = if url.host.is_empty() {
-        // If port is Some, we're in a nonsensical situation. Too bad.
-        ~""
-    } else {
-        match url.port {
-            Some(ref port) => format!("//{}{}:{}", user, url.host, *port),
-            None => format!("//{}{}", user, url.host),
+impl FromStr for Path {
+    fn from_str(s: &str) -> Option<Path> {
+        match path_from_str(s) {
+            Ok(path) => Some(path),
+            Err(_) => None
         }
-    };
-
-    let query = if url.query.is_empty() {
-        ~""
-    } else {
-        format!("?{}", query_to_str(&url.query))
-    };
-
-    let fragment = match url.fragment {
-        Some(ref fragment) => format!("\\#{}", encode_component(*fragment)),
-        None => ~"",
-    };
-
-    format!("{}:{}{}{}{}", url.scheme, authority, url.path, query, fragment)
-}
-
-impl ToStr for Url {
-    fn to_str(&self) -> ~str {
-        to_str(self)
     }
 }
 
-impl IterBytes for Url {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.to_str().iter_bytes(lsb0, f)
+impl fmt::Show for Url {
+    /**
+     * Converts a URL from `Url` to string representation.
+     *
+     * # Arguments
+     *
+     * `url` - a URL.
+     *
+     * # Returns
+     *
+     * A string that contains the formatted URL. Note that this will usually
+     * be an inverse of `from_str` but might strip out unneeded separators;
+     * for example, "http://somehost.com?", when parsed and formatted, will
+     * result in just "http://somehost.com".
+     */
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}:", self.scheme));
+
+        if !self.host.is_empty() {
+            try!(write!(f.buf, "//"));
+            match self.user {
+                Some(ref user) => try!(write!(f.buf, "{}", *user)),
+                None => {}
+            }
+            match self.port {
+                Some(ref port) => try!(write!(f.buf, "{}:{}", self.host,
+                                                *port)),
+                None => try!(write!(f.buf, "{}", self.host)),
+            }
+        }
+
+        try!(write!(f.buf, "{}", self.path));
+
+        if !self.query.is_empty() {
+            try!(write!(f.buf, "?{}", query_to_str(&self.query)));
+        }
+
+        match self.fragment {
+            Some(ref fragment) => write!(f.buf, "\\#{}",
+                                         encode_component(*fragment)),
+            None => Ok(()),
+        }
+    }
+}
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "{}", self.path));
+        if !self.query.is_empty() {
+            try!(write!(f.buf, "?{}", self.query))
+        }
+
+        match self.fragment {
+            Some(ref fragment) => {
+                write!(f.buf, "\\#{}", encode_component(*fragment))
+            }
+            None => Ok(())
+        }
+    }
+}
+
+impl Hash for Url {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.to_str().hash(s)
+    }
+}
+
+impl Hash for Path {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.to_str().hash(s)
     }
 }
 
@@ -882,7 +951,7 @@ mod tests {
 
     use super::*;
 
-    use std::hashmap::HashMap;
+    use collections::HashMap;
 
     #[test]
     fn test_url_parse() {
@@ -900,11 +969,29 @@ mod tests {
     }
 
     #[test]
+    fn test_path_parse() {
+        let path = ~"/doc/~u?s=v#something";
+
+        let up = path_from_str(path);
+        let u = up.unwrap();
+        assert_eq!(&u.path, &~"/doc/~u");
+        assert_eq!(&u.query, &~[(~"s", ~"v")]);
+        assert_eq!(&u.fragment, &Some(~"something"));
+    }
+
+    #[test]
     fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).unwrap();
         assert!(url.host == ~"0.42.42.42");
         assert!(url.path == ~"/");
+    }
+
+    #[test]
+    fn test_path_parse_host_slash() {
+        let pathstr = ~"/";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/");
     }
 
     #[test]
@@ -931,10 +1018,24 @@ mod tests {
     }
 
     #[test]
+    fn test_path_with_underscores() {
+        let pathstr = ~"/file_name.html";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/file_name.html");
+    }
+
+    #[test]
     fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).unwrap();
         assert!(url.path == ~"/file-name.html");
+    }
+
+    #[test]
+    fn test_path_with_dashes() {
+        let pathstr = ~"/file-name.html";
+        let path = path_from_str(pathstr).unwrap();
+        assert!(path.path == ~"/file-name.html");
     }
 
     #[test]
@@ -1015,6 +1116,14 @@ mod tests {
         let u = from_str(url).unwrap();
         assert!(u.path == ~"/doc uments");
         assert!(u.query == ~[(~"ba%d ", ~"#&+")]);
+    }
+
+    #[test]
+    fn test_path_component_encoding() {
+        let path = ~"/doc%20uments?ba%25d%20=%23%26%2B";
+        let p = path_from_str(path).unwrap();
+        assert!(p.path == ~"/doc uments");
+        assert!(p.query == ~[(~"ba%d ", ~"#&+")]);
     }
 
     #[test]

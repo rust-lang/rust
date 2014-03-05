@@ -23,12 +23,12 @@ This API is completely unstable and subject to change.
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[allow(deprecated)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[allow(unknown_features)]; // Note: remove it after a snapshot.
 #[feature(quote)];
 
 extern crate extra;
@@ -39,6 +39,7 @@ extern crate serialize;
 extern crate sync;
 extern crate getopts;
 extern crate collections;
+extern crate time;
 
 use back::link;
 use driver::session;
@@ -46,14 +47,15 @@ use middle::lint;
 
 use d = driver::driver;
 
+use std::any::AnyRefExt;
 use std::cmp;
 use std::io;
 use std::os;
 use std::str;
 use std::task;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
-use syntax::attr;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
@@ -69,6 +71,7 @@ pub mod middle {
     pub mod check_loop;
     pub mod check_match;
     pub mod check_const;
+    pub mod check_static;
     pub mod lint;
     pub mod borrowck;
     pub mod dataflow;
@@ -101,16 +104,17 @@ pub mod front {
 }
 
 pub mod back {
-    pub mod archive;
-    pub mod link;
     pub mod abi;
+    pub mod archive;
     pub mod arm;
+    pub mod link;
+    pub mod lto;
     pub mod mips;
+    pub mod rpath;
+    pub mod svh;
+    pub mod target_strs;
     pub mod x86;
     pub mod x86_64;
-    pub mod rpath;
-    pub mod target_strs;
-    pub mod lto;
 }
 
 pub mod metadata;
@@ -294,8 +298,7 @@ pub fn run_compiler(args: &[~str]) {
         match input {
           d::FileInput(ref ifile) => {
             let mut stdout = io::stdout();
-            d::list_metadata(sess, &(*ifile),
-                             &mut stdout as &mut io::Writer).unwrap();
+            d::list_metadata(sess, &(*ifile), &mut stdout).unwrap();
           }
           d::StrInput(_) => {
             d::early_error("can not list metadata for stdin");
@@ -309,28 +312,18 @@ pub fn run_compiler(args: &[~str]) {
         let attrs = parse_crate_attrs(sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
                                                   attrs, sess);
-        if crate_id || crate_name {
-            let crateid = match attr::find_crateid(attrs) {
-                Some(crateid) => crateid,
-                None => {
-                    sess.fatal("No crate_id and --crate-id or \
-                                --crate-name requested")
-                }
-            };
-            if crate_id {
-                println!("{}", crateid.to_str());
-            }
-            if crate_name {
-                println!("{}", crateid.name);
-            }
-        }
+        let id = link::find_crate_id(attrs, &t_outputs);
 
+        if crate_id {
+            println!("{}", id.to_str());
+        }
+        if crate_name {
+            println!("{}", id.name);
+        }
         if crate_file_name {
-            let lm = link::build_link_meta(attrs, &t_outputs,
-                                           &mut ::util::sha2::Sha256::new());
             let crate_types = session::collect_crate_types(&sess, attrs);
             for &style in crate_types.iter() {
-                let fname = link::filename_for_input(&sess, style, &lm,
+                let fname = link::filename_for_input(&sess, style, &id,
                                                      &t_outputs.with_extension(""));
                 println!("{}", fname.filename_display());
             }
@@ -342,19 +335,22 @@ pub fn run_compiler(args: &[~str]) {
     d::compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
-fn parse_crate_attrs(sess: session::Session,
-                     input: &d::Input) -> ~[ast::Attribute] {
-    match *input {
+fn parse_crate_attrs(sess: session::Session, input: &d::Input) ->
+                     ~[ast::Attribute] {
+    let result = match *input {
         d::FileInput(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
+            parse::parse_crate_attrs_from_file(ifile,
+                                               Vec::new(),
+                                               sess.parse_sess)
         }
         d::StrInput(ref src) => {
             parse::parse_crate_attrs_from_source_str(d::anon_src(),
                                                      (*src).clone(),
-                                                     ~[],
+                                                     Vec::new(),
                                                      sess.parse_sess)
         }
-    }
+    };
+    result.move_iter().collect()
 }
 
 /// Run a procedure which will detect failures in the compiler and print nicer
@@ -371,8 +367,7 @@ pub fn monitor(f: proc()) {
     #[cfg(not(rtopt))]
     static STACK_SIZE: uint = 20000000; // 20MB
 
-    let mut task_builder = task::task();
-    task_builder.name("rustc");
+    let mut task_builder = task::task().named("rustc");
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
@@ -392,7 +387,8 @@ pub fn monitor(f: proc()) {
         Err(value) => {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                diagnostic::DefaultEmitter.emit(
+                let mut emitter = diagnostic::EmitterWriter::stderr();
+                emitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
                     diagnostic::Error);
@@ -402,9 +398,7 @@ pub fn monitor(f: proc()) {
                      this is a bug",
                 ];
                 for note in xs.iter() {
-                    diagnostic::DefaultEmitter.emit(None,
-                                                    *note,
-                                                    diagnostic::Note)
+                    emitter.emit(None, *note, diagnostic::Note)
                 }
 
                 println!("{}", r.read_to_str());

@@ -12,5 +12,5 @@ static FOO: [int, ..4] = [32, ..4];
 static BAR: [int, ..4] = [32, 32, 32, 32];
 
 pub fn main() {
-    assert_eq!(FOO, BAR);
+    assert!(FOO == BAR);
 }

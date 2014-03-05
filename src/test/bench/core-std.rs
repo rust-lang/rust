@@ -12,9 +12,9 @@
 
 #[feature(macro_rules)];
 
-extern crate extra;
+extern crate time;
 
-use extra::time::precise_time_s;
+use time::precise_time_s;
 use std::mem::swap;
 use std::os;
 use std::rand::Rng;

@@ -217,7 +217,7 @@ impl<'a> Condvar<'a> {
      * wait() is equivalent to wait_on(0).
      */
     pub fn wait_on(&self, condvar_id: uint) {
-        let mut WaitEnd = None;
+        let mut wait_end = None;
         let mut out_of_bounds = None;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
@@ -230,7 +230,7 @@ impl<'a> Condvar<'a> {
                     }
                     // Create waiter nobe, and enqueue ourself to
                     // be woken up by a signaller.
-                    WaitEnd = Some(state.blocked[condvar_id].wait_end());
+                    wait_end = Some(state.blocked[condvar_id].wait_end());
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -244,7 +244,7 @@ impl<'a> Condvar<'a> {
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
             (|| {
-                let _ = WaitEnd.take_unwrap().recv();
+                let _ = wait_end.take_unwrap().recv();
             }).finally(|| {
                 // Reacquire the condvar.
                 match self.order {
@@ -976,6 +976,8 @@ mod tests {
     }
     #[test]
     fn test_mutex_killed_simple() {
+        use std::any::Any;
+
         // Mutex must get automatically unlocked if failed/killed within.
         let m = Mutex::new();
         let m2 = m.clone();
@@ -992,6 +994,8 @@ mod tests {
     #[ignore(reason = "linked failure")]
     #[test]
     fn test_mutex_killed_cond() {
+        use std::any::Any;
+
         // Getting killed during cond wait must not corrupt the mutex while
         // unwinding (e.g. double unlock).
         let m = Mutex::new();
@@ -1019,6 +1023,7 @@ mod tests {
     #[ignore(reason = "linked failure")]
     #[test]
     fn test_mutex_killed_broadcast() {
+        use std::any::Any;
         use std::unstable::finally::Finally;
 
         let m = Mutex::new();
@@ -1329,6 +1334,8 @@ mod tests {
     }
     #[cfg(test)]
     fn rwlock_kill_helper(mode1: RWLockMode, mode2: RWLockMode) {
+        use std::any::Any;
+
         // Mutex must get automatically unlocked if failed/killed within.
         let x = RWLock::new();
         let x2 = x.clone();

@@ -19,7 +19,6 @@ li {list-style-type: none; }
 * [Foreign Function Interface](guide-ffi.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
-* [Conditions](guide-conditions.html)
 * [Rust's Runtime](guide-runtime.html)
 
 # Libraries
@@ -43,6 +42,8 @@ li {list-style-type: none; }
 * [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
 * [The `syntax` library, the Rust parser](syntax/index.html)
 * [The `term` terminal-handling library](term/index.html)
+* [The `test` library containing the unit-testing & micro-benchmark framework](test/index.html)
+* [The `time` library](time/index.html)
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 
 # Tooling

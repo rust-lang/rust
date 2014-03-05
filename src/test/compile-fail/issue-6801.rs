@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-
 // Creating a stack closure which references an owned pointer and then
 // transferring ownership of the owned box before invoking the stack
 // closure results in a crash.
@@ -26,6 +24,6 @@ fn main() {
       let x  : ~uint         = ~9;
       let sq : || -> uint =  || { *x * *x };
 
-      twice(x);
+      twice(x); //~ ERROR: cannot move out of
       invoke(sq);
 }

@@ -10,7 +10,7 @@
 
 //! The Gamma and derived distributions.
 
-use num::Real;
+use num::Float;
 use num;
 use rand::{Rng, Open01};
 use super::normal::StandardNormal;
@@ -371,7 +371,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use mem::size_of;
     use prelude::*;
     use rand::distributions::IndependentSample;

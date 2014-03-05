@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::ty;
 use middle::typeck::check::demand;
-use middle::typeck::check::{check_block, check_expr_has_type, FnCtxt};
+use middle::typeck::check::{check_expr, check_expr_has_type, FnCtxt};
 use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::infer;
 use middle::typeck::require_same_types;
 
-use std::hashmap::{HashMap, HashSet};
+use collections::{HashMap, HashSet};
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
@@ -39,7 +41,7 @@ pub fn check_match(fcx: @FnCtxt,
     for arm in arms.iter() {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(tcx.def_map, arm.pats[0]),
+            map: pat_id_map(tcx.def_map, *arm.pats.get(0)),
         };
 
         for p in arm.pats.iter() { check_pat(&mut pcx, *p, discrim_ty);}
@@ -72,7 +74,7 @@ pub fn check_match(fcx: @FnCtxt,
           },
           None => ()
         }
-        check_block(fcx, arm.body);
+        check_expr(fcx, arm.body);
         let bty = fcx.node_ty(arm.body.id);
         saw_err = saw_err || ty::type_is_error(bty);
         if guard_err {
@@ -107,13 +109,13 @@ pub struct pat_ctxt {
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
-                         subpats: &Option<~[@ast::Pat]>, expected: ty::t) {
+                         subpats: &Option<Vec<@ast::Pat>>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let arg_types;
+    let arg_types: ~[ty::t];
     let kind_name;
 
     // structure_of requires type variables to be resolved.
@@ -173,8 +175,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
                     arg_types = subpats.clone()
-                                          .unwrap_or_default()
-                                          .map(|_| ty::mk_err());
+                                       .unwrap_or_default()
+                                       .move_iter()
+                                       .map(|_| ty::mk_err())
+                                       .collect();
                 }
             }
         }
@@ -222,8 +226,10 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             fcx.write_error(pat.id);
             kind_name = "[error]";
             arg_types = subpats.clone()
-                                  .unwrap_or_default()
-                                  .map(|_| ty::mk_err());
+                               .unwrap_or_default()
+                               .iter()
+                               .map(|_| ty::mk_err())
+                               .collect();
         }
     }
 
@@ -241,12 +247,13 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
     if arg_len > 0 {
         // N-ary variant.
         if arg_len != subpats_len {
-            let s = format!("this pattern has {} field{}, but the corresponding {} has {} field{}",
-                         subpats_len,
-                         if subpats_len == 1u { ~"" } else { ~"s" },
-                         kind_name,
-                         arg_len,
-                         if arg_len == 1u { ~"" } else { ~"s" });
+            let s = format!("this pattern has \
+                             {npat, plural, =1{# field} other{# fields}}, \
+                             but the corresponding {kind} has \
+                             {narg, plural, =1{# field} other{# fields}}",
+                         npat = subpats_len,
+                         kind = kind_name,
+                         narg = arg_len);
             tcx.sess.span_err(pat.span, s);
             error_happened = true;
         }
@@ -260,11 +267,11 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
         }
     } else if subpats_len > 0 {
         tcx.sess.span_err(pat.span,
-                          format!("this pattern has {} field{}, but the corresponding {} has no \
-                                fields",
-                               subpats_len,
-                               if subpats_len == 1u { "" } else { "s" },
-                               kind_name));
+                          format!("this pattern has \
+                                   {npat, plural, =1{# field} other{# fields}}, \
+                                   but the corresponding {kind} has no fields",
+                               npat = subpats_len,
+                               kind = kind_name));
         error_happened = true;
     }
 
@@ -508,7 +515,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         }
       }
       ast::PatIdent(_, ref path, _) => {
-        check_pat_variant(pcx, pat, path, &Some(~[]), expected);
+        check_pat_variant(pcx, pat, path, &Some(Vec::new()), expected);
       }
       ast::PatEnum(ref path, ref subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
@@ -520,12 +527,18 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         match *structure {
             ty::ty_struct(cid, ref substs) => {
                 check_struct_pat(pcx, pat.id, pat.span, expected, path,
-                                 *fields, etc, cid, substs);
+                                 fields.as_slice(), etc, cid, substs);
             }
             ty::ty_enum(eid, ref substs) => {
-                check_struct_like_enum_variant_pat(
-                    pcx, pat.id, pat.span, expected, path, *fields, etc, eid,
-                    substs);
+                check_struct_like_enum_variant_pat(pcx,
+                                                   pat.id,
+                                                   pat.span,
+                                                   expected,
+                                                   path,
+                                                   fields.as_slice(),
+                                                   etc,
+                                                   eid,
+                                                   substs);
             }
             _ => {
                // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
@@ -539,9 +552,19 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 let def_map = tcx.def_map.borrow();
                 match def_map.get().find(&pat.id) {
                     Some(&ast::DefStruct(supplied_def_id)) => {
-                         check_struct_pat(pcx, pat.id, pat.span, ty::mk_err(), path, *fields, etc,
-                         supplied_def_id,
-                         &ty::substs { self_ty: None, tps: ~[], regions: ty::ErasedRegions} );
+                         check_struct_pat(pcx,
+                                          pat.id,
+                                          pat.span,
+                                          ty::mk_err(),
+                                          path,
+                                          fields.as_slice(),
+                                          etc,
+                                          supplied_def_id,
+                                          &ty::substs {
+                                              self_ty: None,
+                                              tps: ~[],
+                                              regions: ty::ErasedRegions,
+                                          });
                     }
                     _ => () // Error, but we're already in an error case
                 }
@@ -603,7 +626,17 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           ty::ty_vec(mt, vstore) => {
             let region_var = match vstore {
                 ty::vstore_slice(r) => r,
-                ty::vstore_uniq | ty::vstore_fixed(_) => {
+                ty::vstore_uniq => {
+                    fcx.type_error_message(pat.span,
+                                           |_| {
+                                            ~"unique vector patterns are no \
+                                              longer supported"
+                                           },
+                                           expected,
+                                           None);
+                    default_region_var
+                }
+                ty::vstore_fixed(_) => {
                     default_region_var
                 }
             };
@@ -687,8 +720,8 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                              e, actual)})},
                 Some(expected),
                 format!("{} pattern", match pointer_kind {
-                    Send => "a ~-box",
-                    Borrowed => "an &-pointer"
+                    Send => "a `~`-box",
+                    Borrowed => "an `&`-pointer"
                 }),
                 None);
             fcx.write_error(pat_id);
@@ -697,4 +730,4 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 }
 
 #[deriving(Eq)]
-enum PointerKind { Send, Borrowed }
+pub enum PointerKind { Send, Borrowed }

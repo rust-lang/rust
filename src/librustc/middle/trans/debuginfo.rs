@@ -142,8 +142,8 @@ use util::ppaux;
 
 use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
-use std::hashmap::HashSet;
+use collections::HashMap;
+use collections::HashSet;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::sync::atomics;
@@ -690,7 +690,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     {
         let mut scope_map = fn_debug_context.scope_map.borrow_mut();
         populate_scope_map(cx,
-                           arg_pats,
+                           arg_pats.as_slice(),
                            top_level_block,
                            fn_metadata,
                            scope_map.get());
@@ -2111,7 +2111,13 @@ fn type_metadata(cx: &CrateContext,
             trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {
-            prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
+            if ty::type_is_simd(cx.tcx, t) {
+                let element_type = ty::simd_type(cx.tcx, t);
+                let len = ty::simd_size(cx.tcx, t);
+                fixed_vec_metadata(cx, element_type, len, usage_site_span)
+            } else {
+                prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
+            }
         },
         ty::ty_tup(ref elements) => {
             prepare_tuple_metadata(cx, t, *elements, usage_site_span).finalize(cx)
@@ -2165,7 +2171,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
     };
 
     unsafe {
-        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, metadata_node);
+        llvm::LLVMSetCurrentDebugLocation(cx.builder.b, metadata_node);
     }
 
     debug_context(cx).current_debug_location.set(debug_location);
@@ -2533,15 +2539,13 @@ fn populate_scope_map(cx: &CrateContext,
                 None => ()
             },
 
-            ast::ExprUnary(node_id, _, sub_exp) => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
+            ast::ExprUnary(_, sub_exp) => {
                 walk_expr(cx, sub_exp, scope_stack, scope_map);
             }
 
-            ast::ExprAssignOp(node_id, _, lhs, rhs) |
-            ast::ExprIndex(node_id, lhs, rhs)        |
-            ast::ExprBinary(node_id, _, lhs, rhs)    => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
+            ast::ExprAssignOp(_, lhs, rhs) |
+            ast::ExprIndex(lhs, rhs)        |
+            ast::ExprBinary(_, lhs, rhs)    => {
                 walk_expr(cx, lhs, scope_stack, scope_map);
                 walk_expr(cx, rhs, scope_stack, scope_map);
             }
@@ -2632,9 +2636,7 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprMethodCall(node_id, _, _, ref args) => {
-                scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
-
+            ast::ExprMethodCall(_, _, ref args) => {
                 for arg_exp in args.iter() {
                     walk_expr(cx, *arg_exp, scope_stack, scope_map);
                 }
@@ -2648,7 +2650,7 @@ fn populate_scope_map(cx: &CrateContext,
                 // they all must contain the same binding names
 
                 for arm_ref in arms.iter() {
-                    let arm_span = arm_ref.pats[0].span;
+                    let arm_span = arm_ref.pats.get(0).span;
 
                     with_new_scope(cx,
                                    arm_span,
@@ -2663,7 +2665,7 @@ fn populate_scope_map(cx: &CrateContext,
                             walk_expr(cx, *guard_exp, scope_stack, scope_map)
                         }
 
-                        walk_block(cx, arm_ref.body, scope_stack, scope_map);
+                        walk_expr(cx, arm_ref.body, scope_stack, scope_map);
                     })
                 }
             }

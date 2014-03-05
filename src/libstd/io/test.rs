@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*! Various utility functions useful for writing I/O tests */
+
 #[macro_escape];
 
 use os;
@@ -38,6 +40,7 @@ macro_rules! iotest (
             use io::net::unix::*;
             use io::timer::*;
             use io::process::*;
+            use unstable::running_on_valgrind;
             use str;
             use util;
 
@@ -120,6 +123,7 @@ fn base_port() -> u16 {
     return final_base;
 }
 
+/// Raises the file descriptor limit when running tests if necessary
 pub fn raise_fd_limit() {
     unsafe { darwin_fd_limit::raise_fd_limit() }
 }

@@ -24,14 +24,18 @@
 //! // ... something using html
 //! ```
 
+#[allow(non_camel_case_types)];
+
 use std::cast;
 use std::fmt;
 use std::io;
 use std::libc;
 use std::mem;
 use std::str;
-use std::unstable::intrinsics;
+use std::intrinsics;
 use std::vec;
+
+use html::highlight;
 
 /// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -93,6 +97,7 @@ extern {
     fn sd_markdown_free(md: *sd_markdown);
 
     fn bufnew(unit: libc::size_t) -> *buf;
+    fn bufputs(b: *buf, c: *libc::c_char);
     fn bufrelease(b: *buf);
 
 }
@@ -125,7 +130,27 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
                     asize: text.len() as libc::size_t,
                     unit: 0,
                 };
-                (my_opaque.dfltblk)(ob, &buf, lang, opaque);
+                let rendered = if lang.is_null() {
+                    false
+                } else {
+                    vec::raw::buf_as_slice((*lang).data,
+                                           (*lang).size as uint, |rlang| {
+                        let rlang = str::from_utf8(rlang).unwrap();
+                        if rlang.contains("notrust") {
+                            (my_opaque.dfltblk)(ob, &buf, lang, opaque);
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                };
+
+                if !rendered {
+                    let output = highlight::highlight(text, None).to_c_str();
+                    output.with_ref(|r| {
+                        bufputs(ob, r)
+                    })
+                }
             })
         }
     }
@@ -179,7 +204,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 vec::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
                     let s = str::from_utf8(lang).unwrap();
-                    (s.contains("should_fail"), s.contains("ignore"))
+                    (s.contains("should_fail"), s.contains("ignore") ||
+                                                s.contains("notrust"))
                 })
             };
             if ignore { return }

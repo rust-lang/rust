@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_bool, const_float};
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
-use middle::typeck::method_map;
+use middle::typeck::MethodMap;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
@@ -30,7 +31,7 @@ use syntax::visit::{Visitor, FnKind};
 
 struct MatchCheckCtxt {
     tcx: ty::ctxt,
-    method_map: method_map,
+    method_map: MethodMap,
     moves_map: moves::MovesMap
 }
 
@@ -51,7 +52,7 @@ impl Visitor<()> for CheckMatchVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: method_map,
+                   method_map: MethodMap,
                    moves_map: moves::MovesMap,
                    krate: &Crate) {
     let cx = @MatchCheckCtxt {tcx: tcx,
@@ -75,10 +76,10 @@ fn check_expr(v: &mut CheckMatchVisitor,
         for arm in arms.iter() {
             check_legality_of_move_bindings(cx,
                                             arm.guard.is_some(),
-                                            arm.pats);
+                                            arm.pats.as_slice());
         }
 
-        check_arms(cx, *arms);
+        check_arms(cx, arms.as_slice());
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
          // types.
@@ -103,11 +104,15 @@ fn check_expr(v: &mut CheckMatchVisitor,
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-       let arms = arms.iter().filter_map(unguarded_pat).collect::<~[~[@Pat]]>().concat_vec();
-       if arms.is_empty() {
+
+       let pats: ~[@Pat] = arms.iter()
+                               .filter_map(unguarded_pat)
+                               .flat_map(|pats| pats.move_iter())
+                               .collect();
+       if pats.is_empty() {
            cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
        } else {
-           check_exhaustive(cx, ex.span, arms);
+           check_exhaustive(cx, ex.span, pats);
        }
      }
      _ => ()
@@ -670,7 +675,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                     DefVariant(_, id, _) if variant(id) == *ctor_id => {
                         let args = match args {
-                            Some(args) => args,
+                            Some(args) => args.iter().map(|x| *x).collect(),
                             None => vec::from_elem(arity, wild())
                         };
                         Some(vec::append(args, r.tail()))
@@ -681,7 +686,9 @@ fn specialize(cx: &MatchCheckCtxt,
                     DefStruct(..) => {
                         let new_args;
                         match args {
-                            Some(args) => new_args = args,
+                            Some(args) => {
+                                new_args = args.iter().map(|x| *x).collect()
+                            }
                             None => new_args = vec::from_elem(arity, wild())
                         }
                         Some(vec::append(new_args, r.tail()))
@@ -740,7 +747,9 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                 }
             }
-            PatTup(args) => Some(vec::append(args, r.tail())),
+            PatTup(args) => {
+                Some(vec::append(args.iter().map(|x| *x).collect(), r.tail()))
+            }
             PatUniq(a) | PatRegion(a) => {
                 Some(vec::append(~[a], r.tail()))
             }
@@ -803,20 +812,32 @@ fn specialize(cx: &MatchCheckCtxt,
                     vec(_) => {
                         let num_elements = before.len() + after.len();
                         if num_elements < arity && slice.is_some() {
-                            Some(vec::append(
-                                [
-                                    before,
-                                    vec::from_elem(
-                                        arity - num_elements, wild()),
-                                    after
-                                ].concat_vec(),
-                                r.tail()
-                            ))
+                            let mut result = ~[];
+                            for pat in before.iter() {
+                                result.push((*pat).clone());
+                            }
+                            for _ in iter::range(0, arity - num_elements) {
+                                result.push(wild())
+                            }
+                            for pat in after.iter() {
+                                result.push((*pat).clone());
+                            }
+                            for pat in r.tail().iter() {
+                                result.push((*pat).clone());
+                            }
+                            Some(result)
                         } else if num_elements == arity {
-                            Some(vec::append(
-                                vec::append(before, after),
-                                r.tail()
-                            ))
+                            let mut result = ~[];
+                            for pat in before.iter() {
+                                result.push((*pat).clone());
+                            }
+                            for pat in after.iter() {
+                                result.push((*pat).clone());
+                            }
+                            for pat in r.tail().iter() {
+                                result.push((*pat).clone());
+                            }
+                            Some(result)
                         } else {
                             None
                         }

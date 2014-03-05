@@ -10,6 +10,8 @@
 
 //! Utility mixins that apply to all Readers and Writers
 
+#[allow(missing_doc)];
+
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
@@ -456,7 +458,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use container::Container;
 
     macro_rules! u64_from_be_bytes_bench_impl(

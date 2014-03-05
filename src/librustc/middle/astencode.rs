@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use c = metadata::common;
 use cstore = metadata::cstore;
@@ -20,7 +21,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
-use middle::typeck::{method_origin, method_map_entry};
+use middle::typeck::{MethodCallee, MethodOrigin};
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
@@ -35,6 +36,7 @@ use std::libc;
 use std::cast;
 use std::io::Seek;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -49,7 +51,7 @@ use writer = serialize::ebml::writer;
 // Auxiliary maps of things to be encoded
 pub struct Maps {
     root_map: middle::borrowck::root_map,
-    method_map: middle::typeck::method_map,
+    method_map: middle::typeck::MethodMap,
     vtable_map: middle::typeck::vtable_map,
     capture_map: middle::moves::CaptureMap,
 }
@@ -333,8 +335,8 @@ impl Folder for NestedItemsDropper {
             }
         }).collect();
         let blk_sans_items = ast::P(ast::Block {
-            view_items: ~[], // I don't know if we need the view_items here,
-                             // but it doesn't break tests!
+            view_items: Vec::new(), // I don't know if we need the view_items
+                                    // here, but it doesn't break tests!
             stmts: stmts_sans_items,
             expr: blk.expr,
             id: blk.id,
@@ -395,7 +397,10 @@ fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
                         map: &ast_map::Map,
                         path: ~[ast_map::PathElem],
                         ii: ast::InlinedItem) -> ast::InlinedItem {
-    ast_map::map_decoded_item(map, path, AstRenumberer { xcx: xcx }, |fld| {
+    ast_map::map_decoded_item(map,
+                              path.move_iter().collect(),
+                              AstRenumberer { xcx: xcx },
+                              |fld| {
         match ii {
             ast::IIItem(i) => {
                 ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
@@ -573,58 +578,68 @@ impl tr for moves::CaptureVar {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of method_map_entry
+// Encoding and decoding of MethodCallee
 
-trait read_method_map_entry_helper {
-    fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
-                             -> method_map_entry;
+trait read_method_callee_helper {
+    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee;
 }
 
-fn encode_method_map_entry(ebml_w: &mut writer::Encoder, mme: method_map_entry) {
-    ebml_w.emit_struct("method_map_entry", 3, |ebml_w| {
-        ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
-            mme.origin.encode(ebml_w);
+fn encode_method_callee(ecx: &e::EncodeContext,
+                        ebml_w: &mut writer::Encoder,
+                        method: &MethodCallee) {
+    ebml_w.emit_struct("MethodCallee", 3, |ebml_w| {
+        ebml_w.emit_struct_field("origin", 0u, |ebml_w| {
+            method.origin.encode(ebml_w);
+        });
+        ebml_w.emit_struct_field("ty", 1u, |ebml_w| {
+            ebml_w.emit_ty(ecx, method.ty);
+        });
+        ebml_w.emit_struct_field("substs", 2u, |ebml_w| {
+            ebml_w.emit_substs(ecx, &method.substs);
         });
     })
 }
 
-impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
-    fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
-                             -> method_map_entry {
-        self.read_struct("method_map_entry", 3, |this| {
-            method_map_entry {
-                origin: this.read_struct_field("origin", 1, |this| {
-                    let method_origin: method_origin =
+impl<'a> read_method_callee_helper for reader::Decoder<'a> {
+    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee {
+        self.read_struct("MethodCallee", 3, |this| {
+            MethodCallee {
+                origin: this.read_struct_field("origin", 0, |this| {
+                    let method_origin: MethodOrigin =
                         Decodable::decode(this);
                     method_origin.tr(xcx)
+                }),
+                ty: this.read_struct_field("ty", 1, |this| {
+                    this.read_ty(xcx)
+                }),
+                substs: this.read_struct_field("substs", 2, |this| {
+                    this.read_substs(xcx)
                 })
             }
         })
     }
 }
 
-impl tr for method_origin {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> method_origin {
+impl tr for MethodOrigin {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> MethodOrigin {
         match *self {
-          typeck::method_static(did) => {
-              typeck::method_static(did.tr(xcx))
-          }
-          typeck::method_param(ref mp) => {
-            typeck::method_param(
-                typeck::method_param {
-                    trait_id: mp.trait_id.tr(xcx),
-                    .. *mp
-                }
-            )
-          }
-          typeck::method_object(ref mo) => {
-            typeck::method_object(
-                typeck::method_object {
-                    trait_id: mo.trait_id.tr(xcx),
-                    .. *mo
-                }
-            )
-          }
+            typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(xcx)),
+            typeck::MethodParam(ref mp) => {
+                typeck::MethodParam(
+                    typeck::MethodParam {
+                        trait_id: mp.trait_id.tr(xcx),
+                        .. *mp
+                    }
+                )
+            }
+            typeck::MethodObject(ref mo) => {
+                typeck::MethodObject(
+                    typeck::MethodObject {
+                        trait_id: mo.trait_id.tr(xcx),
+                        .. *mo
+                    }
+                )
+            }
         }
     }
 }
@@ -1020,17 +1035,13 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    {
-        let method_map = maps.method_map.borrow();
-        let r = method_map.get().find(&id);
-        for &mme in r.iter() {
-            ebml_w.tag(c::tag_table_method_map, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    encode_method_map_entry(ebml_w, *mme)
-                })
+    for &method in maps.method_map.borrow().get().find(&id).iter() {
+        ebml_w.tag(c::tag_table_method_map, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                encode_method_callee(ecx, ebml_w, method)
             })
-        }
+        })
     }
 
     {
@@ -1364,9 +1375,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let entry = val_dsr.read_method_map_entry(xcx);
-                        let mut method_map = dcx.maps.method_map.borrow_mut();
-                        method_map.get().insert(id, entry);
+                        let method = val_dsr.read_method_callee(xcx);
+                        dcx.maps.method_map.borrow_mut().get().insert(id, method);
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =
@@ -1430,7 +1440,9 @@ trait fake_ext_ctxt {
 
 #[cfg(test)]
 impl fake_ext_ctxt for @parse::ParseSess {
-    fn cfg(&self) -> ast::CrateConfig { ~[] }
+    fn cfg(&self) -> ast::CrateConfig {
+        Vec::new()
+    }
     fn parse_sess(&self) -> @parse::ParseSess { *self }
     fn call_site(&self) -> Span {
         codemap::Span {
@@ -1462,7 +1474,7 @@ fn roundtrip(in_item: Option<@ast::Item>) {
     let ebml_doc = reader::Doc(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
-    assert_eq!(in_item, out_item);
+    assert!(in_item == out_item);
 }
 
 #[test]

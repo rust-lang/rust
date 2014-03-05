@@ -12,6 +12,7 @@
 use back::target_strs;
 use back;
 use driver::driver::host_triple;
+use front;
 use metadata::filesearch;
 use metadata;
 use middle::lint;
@@ -26,7 +27,8 @@ use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap,HashSet};
+use std::vec_ng::Vec;
+use collections::{HashMap,HashSet};
 
 pub struct Config {
     os: abi::Os,
@@ -65,7 +67,9 @@ debugging_opts!(
         GC,
         PRINT_LINK_ARGS,
         PRINT_LLVM_PASSES,
-        LTO
+        LTO,
+        AST_JSON,
+        AST_JSON_NOEXPAND
     ]
     0
 )
@@ -97,6 +101,8 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
       "Prints the llvm optimization passes being run",
       PRINT_LLVM_PASSES),
      ("lto", "Perform LLVM link-time optimizations", LTO),
+     ("ast-json", "Print the AST as JSON and halt", AST_JSON),
+     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
     ]
 }
 
@@ -182,6 +188,7 @@ pub struct Session_ {
                            ~[(lint::Lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
     crate_types: @RefCell<~[CrateType]>,
+    features: front::feature_gate::Features
 }
 
 pub type Session = @Session_;
@@ -313,7 +320,7 @@ pub fn basic_options() -> @Options {
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
-        cfg: ~[],
+        cfg: Vec::new(),
         test: false,
         parse_only: false,
         no_trans: false,
@@ -445,7 +452,8 @@ pub fn building_library(options: &Options, krate: &ast::Crate) -> bool {
             CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
         }
     }
-    match syntax::attr::first_attr_value_str_by_name(krate.attrs, "crate_type") {
+    match syntax::attr::first_attr_value_str_by_name(krate.attrs.as_slice(),
+                                                     "crate_type") {
         Some(s) => {
             s.equiv(&("lib")) ||
             s.equiv(&("rlib")) ||

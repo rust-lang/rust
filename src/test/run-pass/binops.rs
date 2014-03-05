@@ -63,7 +63,7 @@ fn test_ptr() {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct p {
   x: int,
   y: int,

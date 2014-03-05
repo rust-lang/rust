@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,7 @@
 
 /*! See doc.rs for documentation */
 
+#[allow(non_camel_case_types)];
 
 pub use middle::ty::IntVarValue;
 pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
@@ -36,7 +37,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::result;
 use std::vec;
 use syntax::ast::{MutImmutable, MutMutable};
@@ -499,7 +500,7 @@ fn rollback_to<V:Clone + Vid,T:Clone>(vb: &mut ValsAndBindings<V, T>,
     }
 }
 
-struct Snapshot {
+pub struct Snapshot {
     ty_var_bindings_len: uint,
     int_var_bindings_len: uint,
     float_var_bindings_len: uint,

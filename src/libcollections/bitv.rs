@@ -938,7 +938,8 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
 
 #[cfg(test)]
 mod tests {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
 
     use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
                from_bytes};
@@ -1541,7 +1542,7 @@ mod tests {
 
         let mut b = a.clone();
 
-        assert_eq!(&a, &b);
+        assert!(a == b);
 
         assert!(b.remove(&1));
         assert!(a.contains(&1));
@@ -1560,7 +1561,7 @@ mod tests {
         let mut r = rng();
         let mut bitv = 0 as uint;
         b.iter(|| {
-            bitv |= (1 << ((r.next_u32() as uint) % uint::BITS));
+            bitv |= 1 << ((r.next_u32() as uint) % uint::BITS);
             &bitv
         })
     }

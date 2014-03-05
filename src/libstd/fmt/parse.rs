@@ -121,7 +121,7 @@ pub enum Method<'a> {
 }
 
 /// A selector for what pluralization a plural method should take
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum PluralSelector {
     /// One of the plural keywords should be used
     Keyword(PluralKeyword),
@@ -143,7 +143,7 @@ pub struct PluralArm<'a> {
 /// specially placed in the `Plural` variant of `Method`
 ///
 /// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 #[allow(missing_doc)]
 pub enum PluralKeyword {
     Zero, One, Two, Few, Many
@@ -657,7 +657,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: ~[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert_eq!(p, parser.collect());
+        assert!(p == parser.collect());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {

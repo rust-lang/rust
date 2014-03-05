@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Synchronous I/O
+// FIXME: cover these topics:
+//        path, reader, writer, stream, raii (close not needed),
+//        stdio, print!, println!, file access, process spawning,
+//        error handling
 
-This module defines the Rust interface for synchronous I/O.
-It models byte-oriented input and output with the Reader and Writer traits.
-Types that implement both `Reader` and `Writer` are called 'streams',
-and automatically implement the `Stream` trait.
-Implementations are provided for common I/O streams like
-file, TCP, UDP, Unix domain sockets.
-Readers and Writers may be composed to add capabilities like string
-parsing, encoding, and compression.
+
+/*! I/O, including files, networking, timers, and processes
+
+`std::io` provides Rust's basic I/O types,
+for reading and writing to files, TCP, UDP,
+and other types of sockets and pipes,
+manipulating the file system, spawning processes and signal handling.
 
 # Examples
 
@@ -26,11 +28,9 @@ Some examples of obvious things you might want to do
 * Read lines from stdin
 
     ```rust
-    use std::io::BufferedReader;
-    use std::io::stdin;
+    use std::io;
 
-    let mut stdin = BufferedReader::new(stdin());
-    for line in stdin.lines() {
+    for line in io::stdin().lines() {
         print!("{}", line);
     }
     ```
@@ -79,9 +79,7 @@ Some examples of obvious things you might want to do
     let lines: ~[~str] = file.lines().collect();
     ```
 
-* Make a simple HTTP request
-  FIXME This needs more improvement: TcpStream constructor taking &str,
-  `write_str` and `write_line` methods.
+* Make a simple TCP client connection and request
 
     ```rust,should_fail
     # #[allow(unused_must_use)];
@@ -94,72 +92,35 @@ Some examples of obvious things you might want to do
     let response = socket.read_to_end();
     ```
 
-* Connect based on URL? Requires thinking about where the URL type lives
-  and how to make protocol handlers extensible, e.g. the "tcp" protocol
-  yields a `TcpStream`.
-  FIXME this is not implemented now.
+* Make a simple TCP server
 
     ```rust
-    // connect("tcp://localhost:8080");
+    # fn main() { }
+    # fn foo() {
+    # #[allow(unused_must_use, dead_code)];
+    use std::io::net::tcp::TcpListener;
+    use std::io::net::ip::{Ipv4Addr, SocketAddr};
+    use std::io::{Acceptor, Listener};
+
+    let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 80 };
+    let listener = TcpListener::bind(addr);
+
+    // bind the listener to the specified address
+    let mut acceptor = listener.listen();
+
+    // accept connections and process them
+    # fn handle_client<T>(_: T) {}
+    for stream in acceptor.incoming() {
+        spawn(proc() {
+            handle_client(stream);
+        });
+    }
+
+    // close the socket server
+    drop(acceptor);
+    # }
     ```
 
-# Terms
-
-* Reader - An I/O source, reads bytes into a buffer
-* Writer - An I/O sink, writes bytes from a buffer
-* Stream - Typical I/O sources like files and sockets are both Readers and Writers,
-  and are collectively referred to a `streams`.
-  such as encoding or decoding
-
-# Blocking and synchrony
-
-When discussing I/O you often hear the terms 'synchronous' and
-'asynchronous', along with 'blocking' and 'non-blocking' compared and
-contrasted. A synchronous I/O interface performs each I/O operation to
-completion before proceeding to the next. Synchronous interfaces are
-usually used in imperative style as a sequence of commands. An
-asynchronous interface allows multiple I/O requests to be issued
-simultaneously, without waiting for each to complete before proceeding
-to the next.
-
-Asynchronous interfaces are used to achieve 'non-blocking' I/O. In
-traditional single-threaded systems, performing a synchronous I/O
-operation means that the program stops all activity (it 'blocks')
-until the I/O is complete. Blocking is bad for performance when
-there are other computations that could be done.
-
-Asynchronous interfaces are most often associated with the callback
-(continuation-passing) style popularised by node.js. Such systems rely
-on all computations being run inside an event loop which maintains a
-list of all pending I/O events; when one completes the registered
-callback is run and the code that made the I/O request continues.
-Such interfaces achieve non-blocking at the expense of being more
-difficult to reason about.
-
-Rust's I/O interface is synchronous - easy to read - and non-blocking by default.
-
-Remember that Rust tasks are 'green threads', lightweight threads that
-are multiplexed onto a single operating system thread. If that system
-thread blocks then no other task may proceed. Rust tasks are
-relatively cheap to create, so as long as other tasks are free to
-execute then non-blocking code may be written by simply creating a new
-task.
-
-When discussing blocking in regards to Rust's I/O model, we are
-concerned with whether performing I/O blocks other Rust tasks from
-proceeding. In other words, when a task calls `read`, it must then
-wait (or 'sleep', or 'block') until the call to `read` is complete.
-During this time, other tasks may or may not be executed, depending on
-how `read` is implemented.
-
-
-Rust's default I/O implementation is non-blocking; by cooperating
-directly with the task scheduler it arranges to never block progress
-of *other* tasks. Under the hood, Rust uses asynchronous I/O via a
-per-scheduler (and hence per-thread) event loop. Synchronous I/O
-requests are implemented by descheduling the running task and
-performing an asynchronous request; the task is only resumed once the
-asynchronous request completes.
 
 # Error Handling
 
@@ -172,10 +133,11 @@ Rust's I/O employs a combination of techniques to reduce boilerplate
 while still providing feedback about errors. The basic strategy:
 
 * All I/O operations return `IoResult<T>` which is equivalent to
-  `Result<T, IoError>`. The core `Result` type is defined in the `std::result`
+  `Result<T, IoError>`. The `Result` type is defined in the `std::result`
   module.
 * If the `Result` type goes unused, then the compiler will by default emit a
-  warning about the unused result.
+  warning about the unused result. This is because `Result` has the
+  `#[must_use]` attribute.
 * Common traits are implemented for `IoResult`, e.g.
   `impl<R: Reader> Reader for IoResult<R>`, so that error values do not have
   to be 'unwrapped' before use.
@@ -194,7 +156,7 @@ If you wanted to handle the error though you might write:
 use std::io::File;
 
 match File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n")) {
-    Ok(()) => { /* succeeded */ }
+    Ok(()) => (), // succeeded
     Err(e) => println!("failed to write to my diary: {}", e),
 }
 
@@ -210,58 +172,8 @@ need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
 on it. If `new` returned an `Err(..)` then the followup call to `write_line`
 will also return an error.
 
-# Issues with i/o scheduler affinity, work stealing, task pinning
-
-# Resource management
-
-* `close` vs. RAII
-
-# Paths, URLs and overloaded constructors
-
-
-
-# Scope
-
-In scope for core
-
-* Url?
-
-Some I/O things don't belong in core
-
-  - url
-  - net - `fn connect`
-    - http
-  - flate
-
-Out of scope
-
-* Async I/O. We'll probably want it eventually
-
-
-# FIXME Questions and issues
-
-* Should default constructors take `Path` or `&str`? `Path` makes simple cases verbose.
-  Overloading would be nice.
-* Add overloading for Path and &str and Url &str
-* stdin/err/out
-* print, println, etc.
-* fsync
-* relationship with filesystem querying, Directory, File types etc.
-* Rename Reader/Writer to ByteReader/Writer, make Reader/Writer generic?
-* Can Port and Chan be implementations of a generic Reader<T>/Writer<T>?
-* Trait for things that are both readers and writers, Stream?
-* How to handle newline conversion
-* String conversion
-* open vs. connect for generic stream opening
-* Do we need `close` at all? dtors might be good enough
-* How does I/O relate to the Iterator trait?
-* std::base64 filters
-* Using conditions is a big unknown since we don't have much experience with them
-* Too many uses of OtherIoError
-
 */
 
-#[allow(missing_doc)];
 #[deny(unused_must_use)];
 
 use cast;
@@ -275,7 +187,6 @@ use path::Path;
 use result::{Ok, Err, Result};
 use str::{StrSlice, OwnedStr};
 use str;
-use to_str::ToStr;
 use uint;
 use unstable::finally::try_finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
@@ -295,53 +206,39 @@ pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
-pub use self::process::Process;
+pub use self::process::{Process, ProcessConfig};
 
 pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
 pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
 pub use self::comm_adapters::{PortReader, ChanWriter};
 
-/// Various utility functions useful for writing I/O tests
 pub mod test;
 
-/// Synchronous, non-blocking filesystem operations.
 pub mod fs;
 
-/// Synchronous, in-memory I/O.
 pub mod pipe;
 
-/// Child process management.
 pub mod process;
 
-/// Synchronous, non-blocking network I/O.
 pub mod net;
 
-/// Readers and Writers for memory buffers and strings.
 mod mem;
 
-/// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
-/// Implementations for Result
 mod result;
 
-/// Extension traits
 pub mod extensions;
 
-/// Basic Timer
 pub mod timer;
 
-/// Buffered I/O wrappers
 mod buffered;
 
-/// Signal handling
 pub mod signal;
 
-/// Utility implementations of Reader and Writer
 pub mod util;
 
-/// Adapatation of Chan/Port types to a Writer/Reader type.
 mod comm_adapters;
 
 /// The default buffer size for various I/O operations
@@ -349,6 +246,7 @@ mod comm_adapters;
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
+/// A convenient typedef of the return value of any I/O action.
 pub type IoResult<T> = Result<T, IoError>;
 
 /// The type passed to I/O condition handlers to indicate error
@@ -358,14 +256,18 @@ pub type IoResult<T> = Result<T, IoError>;
 /// Is something like this sufficient? It's kind of archaic
 #[deriving(Eq, Clone)]
 pub struct IoError {
+    /// An enumeration which can be matched against for determining the flavor
+    /// of error.
     kind: IoErrorKind,
+    /// A human-readable description about the error
     desc: &'static str,
+    /// Detailed information about this error, not always available
     detail: Option<~str>
 }
 
 impl fmt::Show for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        if_ok!(fmt.buf.write_str(self.desc));
+        try!(fmt.buf.write_str(self.desc));
         match self.detail {
             Some(ref s) => write!(fmt.buf, " ({})", *s),
             None => Ok(())
@@ -373,21 +275,8 @@ impl fmt::Show for IoError {
     }
 }
 
-// FIXME: #8242 implementing manually because deriving doesn't work for some reason
-impl ToStr for IoError {
-    fn to_str(&self) -> ~str {
-        let mut s = ~"IoError { kind: ";
-        s.push_str(self.kind.to_str());
-        s.push_str(", desc: ");
-        s.push_str(self.desc);
-        s.push_str(", detail: ");
-        s.push_str(self.detail.to_str());
-        s.push_str(" }");
-        s
-    }
-}
-
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, Show)]
+#[allow(missing_doc)]
 pub enum IoErrorKind {
     OtherIoError,
     EndOfFile,
@@ -408,31 +297,13 @@ pub enum IoErrorKind {
     InvalidInput,
 }
 
-// FIXME: #8242 implementing manually because deriving doesn't work for some reason
-impl ToStr for IoErrorKind {
-    fn to_str(&self) -> ~str {
-        match *self {
-            OtherIoError => ~"OtherIoError",
-            EndOfFile => ~"EndOfFile",
-            FileNotFound => ~"FileNotFound",
-            PermissionDenied => ~"PermissionDenied",
-            ConnectionFailed => ~"ConnectionFailed",
-            Closed => ~"Closed",
-            ConnectionRefused => ~"ConnectionRefused",
-            ConnectionReset => ~"ConnectionReset",
-            NotConnected => ~"NotConnected",
-            BrokenPipe => ~"BrokenPipe",
-            PathAlreadyExists => ~"PathAlreadyExists",
-            PathDoesntExist => ~"PathDoesntExist",
-            MismatchedFileTypeForOperation => ~"MismatchedFileTypeForOperation",
-            IoUnavailable => ~"IoUnavailable",
-            ResourceUnavailable => ~"ResourceUnavailable",
-            ConnectionAborted => ~"ConnectionAborted",
-            InvalidInput => ~"InvalidInput",
-        }
-    }
-}
-
+/// A trait for objects which are byte-oriented streams. Readers are defined by
+/// one method, `read`. This function will block until data is available,
+/// filling in the provided buffer with any data read.
+///
+/// Readers are intended to be composable with one another. Many objects
+/// throughout the I/O and related libraries take and provide types which
+/// implement the `Reader` trait.
 pub trait Reader {
 
     // Only method which need to get implemented for this trait
@@ -581,7 +452,7 @@ pub trait Reader {
         let mut pos = 0;
         let mut i = nbytes;
         while i > 0 {
-            val += (if_ok!(self.read_u8()) as u64) << pos;
+            val += (try!(self.read_u8()) as u64) << pos;
             pos += 8;
             i -= 1;
         }
@@ -605,7 +476,7 @@ pub trait Reader {
         let mut i = nbytes;
         while i > 0 {
             i -= 1;
-            val += (if_ok!(self.read_u8()) as u64) << i * 8;
+            val += (try!(self.read_u8()) as u64) << i * 8;
         }
         Ok(val)
     }
@@ -796,8 +667,33 @@ impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
+/// A `RefReader` is a struct implementing `Reader` which contains a reference
+/// to another reader. This is often useful when composing streams.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn process_input<R: Reader>(r: R) {}
+/// # fn foo() {
+/// use std::io;
+/// use std::io::util::LimitReader;
+///
+/// let mut stream = io::stdin();
+///
+/// // Only allow the function to process at most one kilobyte of input
+/// {
+///     let stream = LimitReader::new(stream.by_ref(), 1024);
+///     process_input(stream);
+/// }
+///
+/// // 'stream' is still available for use here
+///
+/// # }
+/// ```
 pub struct RefReader<'a, R> {
-    priv inner: &'a mut R
+    /// The underlying reader which this is referencing
+    inner: &'a mut R
 }
 
 impl<'a, R: Reader> Reader for RefReader<'a, R> {
@@ -809,6 +705,16 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
     (val << shift) as i64 >> shift
 }
 
+/// A trait for objects which are byte-oriented streams. Writers are defined by
+/// one method, `write`. This function will block until the provided buffer of
+/// bytes has been entirely written, and it will return any failurs which occur.
+///
+/// Another commonly overriden method is the `flush` method for writers such as
+/// buffered writers.
+///
+/// Writers are intended to be composable with one another. Many objects
+/// throughout the I/O and related libraries take and provide types which
+/// implement the `Writer` trait.
 pub trait Writer {
     /// Write the entirety of a given buffer
     ///
@@ -857,12 +763,12 @@ pub trait Writer {
 
     /// Write the result of passing n through `int::to_str_bytes`.
     fn write_int(&mut self, n: int) -> IoResult<()> {
-        int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+        write!(self, "{:d}", n)
     }
 
     /// Write the result of passing n through `uint::to_str_bytes`.
     fn write_uint(&mut self, n: uint) -> IoResult<()> {
-        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+        write!(self, "{:u}", n)
     }
 
     /// Write a little-endian uint (number of bytes depends on system).
@@ -1004,7 +910,32 @@ impl<'a> Writer for &'a mut Writer {
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }
 
+/// A `RefWriter` is a struct implementing `Writer` which contains a reference
+/// to another writer. This is often useful when composing streams.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn process_input<R: Reader>(r: R) {}
+/// # fn foo () {
+/// use std::io::util::TeeReader;
+/// use std::io::{stdin, MemWriter};
+///
+/// let mut output = MemWriter::new();
+///
+/// {
+///     // Don't give ownership of 'output' to the 'tee'. Instead we keep a
+///     // handle to it in the outer scope
+///     let mut tee = TeeReader::new(stdin(), output.by_ref());
+///     process_input(tee);
+/// }
+///
+/// println!("input processed: {}", output.unwrap());
+/// # }
+/// ```
 pub struct RefWriter<'a, W> {
+    /// The underlying writer which this is referencing
     inner: &'a mut W
 }
 
@@ -1014,6 +945,8 @@ impl<'a, W: Writer> Writer for RefWriter<'a, W> {
 }
 
 
+/// A Stream is a readable and a writable object. Data written is typically
+/// received by the object which reads receive data from.
 pub trait Stream: Reader + Writer { }
 
 impl<T: Reader + Writer> Stream for T {}
@@ -1097,10 +1030,9 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::{BufferedReader, stdin};
+    /// use std::io;
     ///
-    /// let mut reader = BufferedReader::new(stdin());
-    ///
+    /// let mut reader = io::stdin();
     /// let input = reader.read_line().ok().unwrap_or(~"nothing");
     /// ```
     ///
@@ -1191,7 +1123,7 @@ pub trait Buffer: Reader {
     /// This function will also return error if the stream does not contain a
     /// valid utf-8 encoded codepoint as the next few bytes in the stream.
     fn read_char(&mut self) -> IoResult<char> {
-        let first_byte = if_ok!(self.read_byte());
+        let first_byte = try!(self.read_byte());
         let width = str::utf8_char_width(first_byte);
         if width == 1 { return Ok(first_byte as char) }
         if width == 0 { return Err(standard_error(InvalidInput)) } // not utf8
@@ -1199,7 +1131,7 @@ pub trait Buffer: Reader {
         {
             let mut start = 1;
             while start < width {
-                match if_ok!(self.read(buf.mut_slice(start, width))) {
+                match try!(self.read(buf.mut_slice(start, width))) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }
                     _ => return Err(standard_error(InvalidInput)),
@@ -1212,7 +1144,8 @@ pub trait Buffer: Reader {
         }
     }
 
-    /// Create an iterator that reads a utf8-encoded character on each iteration until EOF.
+    /// Create an iterator that reads a utf8-encoded character on each iteration
+    /// until EOF.
     ///
     /// # Error
     ///
@@ -1224,6 +1157,8 @@ pub trait Buffer: Reader {
     }
 }
 
+/// When seeking, the resulting cursor is offset from a base by the offset given
+/// to the `seek` function. The base used is specified by this enumeration.
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1233,6 +1168,9 @@ pub enum SeekStyle {
     SeekCur,
 }
 
+/// An object implementing `Seek` internally has some form of cursor which can
+/// be moved within a stream of bytes. The stream typically has a fixed size,
+/// allowing seeking relative to either end.
 pub trait Seek {
     /// Return position of file cursor in the stream
     fn tell(&self) -> IoResult<u64>;
@@ -1287,7 +1225,7 @@ pub trait Acceptor<T> {
 ///
 /// Since connection attempts can continue forever, this iterator always returns
 /// `Some`. The `Some` contains the `IoResult` representing whether the
-/// connection attempt was succesful.  A successful connection will be wrapped
+/// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
 pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
@@ -1299,6 +1237,17 @@ impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A>
     }
 }
 
+/// Creates a standard error for a commonly used flavor of error. The `detail`
+/// field of the returned error will always be `None`.
+///
+/// # Example
+///
+/// ```
+/// use std::io;
+///
+/// let eof = io::standard_error(io::EndOfFile);
+/// let einval = io::standard_error(io::InvalidInput);
+/// ```
 pub fn standard_error(kind: IoErrorKind) -> IoError {
     let desc = match kind {
         EndOfFile => "end of file",
@@ -1310,14 +1259,6 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
         kind: kind,
         desc: desc,
         detail: None,
-    }
-}
-
-pub fn placeholder_error() -> IoError {
-    IoError {
-        kind: OtherIoError,
-        desc: "Placeholder error. You shouldn't be seeing this",
-        detail: None
     }
 }
 
@@ -1336,22 +1277,53 @@ pub enum FileMode {
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
 pub enum FileAccess {
+    /// Read-only access, requests to write will result in an error
     Read,
+    /// Write-only access, requests to read will result in an error
     Write,
+    /// Read-write access, no requests are denied by default
     ReadWrite,
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum FileType {
+    /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
+
+    /// This file is a directory, corresponding to `S_IFDIR`
     TypeDirectory,
+
+    /// This file is a named pipe, corresponding to `S_IFIFO`
     TypeNamedPipe,
+
+    /// This file is a block device, corresponding to `S_IFBLK`
     TypeBlockSpecial,
+
+    /// This file is a symbolic link to another file, corresponding to `S_IFLNK`
     TypeSymlink,
+
+    /// The type of this file is not recognized as one of the other categories
     TypeUnknown,
 }
 
+/// A structure used to describe metadata information about a file. This
+/// structure is created through the `stat` method on a `Path`.
+///
+/// # Example
+///
+/// ```
+/// # fn main() {}
+/// # fn foo() {
+/// let info = match Path::new("foo.txt").stat() {
+///     Ok(stat) => stat,
+///     Err(e) => fail!("couldn't read foo.txt: {}", e),
+/// };
+///
+/// println!("path: {}", info.path.display());
+/// println!("byte size: {}", info.size);
+/// # }
+/// ```
 pub struct FileStat {
     /// The path that this stat structure is describing
     path: Path,
@@ -1392,6 +1364,7 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
+#[allow(missing_doc)]
 pub struct UnstableFileStat {
     device: u64,
     inode: u64,

@@ -65,6 +65,7 @@
 #[allow(non_camel_case_types)];
 #[allow(non_uppercase_statics)];
 #[allow(missing_doc)];
+#[allow(uppercase_variables)];
 
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.
@@ -159,7 +160,7 @@ pub use libc::funcs::c95::stdio::{fread, freopen, fseek, fsetpos, ftell};
 pub use libc::funcs::c95::stdio::{fwrite, perror, puts, remove, rewind};
 pub use libc::funcs::c95::stdio::{setbuf, setvbuf, tmpfile, ungetc};
 
-pub use libc::funcs::c95::stdlib::{abs, atof, atoi, calloc, exit};
+pub use libc::funcs::c95::stdlib::{abs, atof, atoi, calloc, exit, _exit};
 pub use libc::funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
 pub use libc::funcs::c95::stdlib::{realloc, srand, strtod, strtol};
 pub use libc::funcs::c95::stdlib::{strtoul, system};
@@ -319,6 +320,10 @@ pub mod types {
                     ai_addr: *sockaddr,
                     ai_canonname: *c_char,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..108]
                 }
 
                 pub struct ifaddrs {
@@ -723,6 +728,11 @@ pub mod types {
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
                 }
+                pub struct sockaddr_un {
+                    sun_len: u8,
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..104]
+                }
             }
         }
 
@@ -915,6 +925,10 @@ pub mod types {
                     ai_canonname: *c_char,
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..108]
                 }
             }
         }
@@ -1149,7 +1163,7 @@ pub mod types {
                     Data4: [BYTE, ..8],
                 }
 
-                struct WSAPROTOCOLCHAIN {
+                pub struct WSAPROTOCOLCHAIN {
                     ChainLen: c_int,
                     ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
                 }
@@ -1283,6 +1297,11 @@ pub mod types {
                     ai_canonname: *c_char,
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_len: u8,
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..104]
                 }
             }
         }
@@ -1637,11 +1656,20 @@ pub mod consts {
             pub static O_NOINHERIT: c_int = 128;
 
             pub static ERROR_SUCCESS : c_int = 0;
+            pub static ERROR_INVALID_FUNCTION: c_int = 1;
+            pub static ERROR_FILE_NOT_FOUND: c_int = 2;
+            pub static ERROR_ACCESS_DENIED: c_int = 5;
             pub static ERROR_INVALID_HANDLE : c_int = 6;
+            pub static ERROR_BROKEN_PIPE: c_int = 109;
             pub static ERROR_DISK_FULL : c_int = 112;
             pub static ERROR_INSUFFICIENT_BUFFER : c_int = 122;
+            pub static ERROR_INVALID_NAME : c_int = 123;
             pub static ERROR_ALREADY_EXISTS : c_int = 183;
+            pub static ERROR_PIPE_BUSY: c_int = 231;
+            pub static ERROR_NO_DATA: c_int = 232;
             pub static ERROR_INVALID_ADDRESS : c_int = 487;
+            pub static ERROR_PIPE_CONNECTED: c_int = 535;
+            pub static ERROR_IO_PENDING: c_int = 997;
             pub static ERROR_FILE_INVALID : c_int = 1006;
             pub static INVALID_HANDLE_VALUE : c_int = -1;
 
@@ -1751,6 +1779,10 @@ pub mod consts {
             pub static OPEN_EXISTING: DWORD = 3;
             pub static TRUNCATE_EXISTING: DWORD = 5;
 
+            pub static FILE_APPEND_DATA: DWORD = 0x00000004;
+            pub static FILE_READ_DATA: DWORD = 0x00000001;
+            pub static FILE_WRITE_DATA: DWORD = 0x00000002;
+
             pub static FILE_ATTRIBUTE_ARCHIVE: DWORD = 0x20;
             pub static FILE_ATTRIBUTE_COMPRESSED: DWORD = 0x800;
             pub static FILE_ATTRIBUTE_DEVICE: DWORD = 0x40;
@@ -1780,6 +1812,7 @@ pub mod consts {
             pub static FILE_FLAG_SESSION_AWARE: DWORD = 0x00800000;
             pub static FILE_FLAG_SEQUENTIAL_SCAN: DWORD = 0x08000000;
             pub static FILE_FLAG_WRITE_THROUGH: DWORD = 0x80000000;
+            pub static FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
 
             pub static FILE_NAME_NORMALIZED: DWORD = 0x0;
             pub static FILE_NAME_OPENED: DWORD = 0x8;
@@ -1793,6 +1826,20 @@ pub mod consts {
             pub static GENERIC_WRITE: DWORD = 0x40000000;
             pub static GENERIC_EXECUTE: DWORD = 0x20000000;
             pub static GENERIC_ALL: DWORD = 0x10000000;
+            pub static FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
+            pub static FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
+
+            pub static STANDARD_RIGHTS_READ: DWORD = 0x20000;
+            pub static STANDARD_RIGHTS_WRITE: DWORD = 0x20000;
+            pub static FILE_WRITE_EA: DWORD = 0x00000010;
+            pub static FILE_READ_EA: DWORD = 0x00000008;
+            pub static FILE_GENERIC_READ: DWORD =
+                STANDARD_RIGHTS_READ | FILE_READ_DATA |
+                FILE_READ_ATTRIBUTES | FILE_READ_EA | SYNCHRONIZE;
+            pub static FILE_GENERIC_WRITE: DWORD =
+                STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
+                FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | FILE_APPEND_DATA |
+                SYNCHRONIZE;
 
             pub static FILE_BEGIN: DWORD = 0;
             pub static FILE_CURRENT: DWORD = 1;
@@ -1801,6 +1848,22 @@ pub mod consts {
             pub static MAX_PROTOCOL_CHAIN: DWORD = 7;
             pub static WSAPROTOCOL_LEN: DWORD = 255;
             pub static INVALID_SOCKET: DWORD = !0;
+
+            pub static DETACHED_PROCESS: DWORD = 0x00000008;
+            pub static CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
+
+            pub static PIPE_ACCESS_DUPLEX: DWORD = 0x00000003;
+            pub static PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
+            pub static PIPE_ACCESS_OUTBOUND: DWORD = 0x00000002;
+            pub static PIPE_TYPE_BYTE: DWORD = 0x00000000;
+            pub static PIPE_TYPE_MESSAGE: DWORD = 0x00000004;
+            pub static PIPE_READMODE_BYTE: DWORD = 0x00000000;
+            pub static PIPE_READMODE_MESSAGE: DWORD = 0x00000002;
+            pub static PIPE_WAIT: DWORD = 0x00000000;
+            pub static PIPE_NOWAIT: DWORD = 0x00000001;
+            pub static PIPE_ACCEPT_REMOTE_CLIENTS: DWORD = 0x00000000;
+            pub static PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
+            pub static PIPE_UNLIMITED_INSTANCES: DWORD = 255;
         }
         pub mod sysconf {
         }
@@ -2347,6 +2410,7 @@ pub mod consts {
 
             pub static IFF_LOOPBACK: c_int = 0x8;
 
+            pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 10;
             pub static SOCK_STREAM: c_int = 1;
@@ -2804,6 +2868,7 @@ pub mod consts {
 
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 28;
+            pub static AF_UNIX: c_int = 1;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
             pub static SOCK_RAW: c_int = 3;
@@ -3183,6 +3248,7 @@ pub mod consts {
             pub static MINCORE_REFERENCED_OTHER : c_int = 0x8;
             pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
 
+            pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 30;
             pub static SOCK_STREAM: c_int = 1;
@@ -3392,6 +3458,7 @@ pub mod funcs {
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *mut c_void);
                 pub fn exit(status: c_int) -> !;
+                pub fn _exit(status: c_int) -> !;
                 // Omitted: atexit.
                 pub fn system(s: *c_char) -> c_int;
                 pub fn getenv(s: *c_char) -> *c_char;
@@ -4203,11 +4270,40 @@ pub mod funcs {
                             lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
 
                 pub fn GetCurrentProcessId() -> DWORD;
+                pub fn CreateNamedPipeW(
+                            lpName: LPCWSTR,
+                            dwOpenMode: DWORD,
+                            dwPipeMode: DWORD,
+                            nMaxInstances: DWORD,
+                            nOutBufferSize: DWORD,
+                            nInBufferSize: DWORD,
+                            nDefaultTimeOut: DWORD,
+                            lpSecurityAttributes: LPSECURITY_ATTRIBUTES
+                            ) -> HANDLE;
+                pub fn ConnectNamedPipe(hNamedPipe: HANDLE,
+                                        lpOverlapped: LPOVERLAPPED) -> BOOL;
+                pub fn WaitNamedPipeW(lpNamedPipeName: LPCWSTR,
+                                      nTimeOut: DWORD) -> BOOL;
+                pub fn SetNamedPipeHandleState(hNamedPipe: HANDLE,
+                                               lpMode: LPDWORD,
+                                               lpMaxCollectionCount: LPDWORD,
+                                               lpCollectDataTimeout: LPDWORD)
+                                                            -> BOOL;
+                pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,
+                                    bManualReset: BOOL,
+                                    bInitialState: BOOL,
+                                    lpName: LPCWSTR) -> HANDLE;
+                pub fn GetOverlappedResult(hFile: HANDLE,
+                                           lpOverlapped: LPOVERLAPPED,
+                                           lpNumberOfBytesTransferred: LPDWORD,
+                                           bWait: BOOL) -> BOOL;
+                pub fn DisconnectNamedPipe(hNamedPipe: HANDLE) -> BOOL;
             }
         }
 
         pub mod msvcrt {
             use libc::types::os::arch::c95::{c_int, c_long};
+            use libc::types::os::arch::c99::intptr_t;
 
             #[nolink]
             extern {
@@ -4216,6 +4312,10 @@ pub mod funcs {
 
                 #[link_name = "_get_osfhandle"]
                 pub fn get_osfhandle(fd: c_int) -> c_long;
+
+                #[link_name = "_open_osfhandle"]
+                pub fn open_osfhandle(osfhandle: intptr_t,
+                                      flags: c_int) -> c_int;
             }
         }
     }

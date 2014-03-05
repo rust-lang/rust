@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,6 +60,7 @@
  * tied to `x`. The type of `x'` will be a borrowed pointer.
  */
 
+#[allow(non_camel_case_types)];
 
 use middle::ty;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
@@ -93,7 +94,7 @@ pub struct CopiedUpvar {
 }
 
 // different kinds of pointers:
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum PointerKind {
     OwnedPtr,
     GcPtr,
@@ -103,26 +104,26 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum ElementKind {
     VecElement,
     StrElement,
     OtherElement,
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -266,16 +267,11 @@ pub type McResult<T> = Result<T, ()>;
 pub trait Typer {
     fn tcx(&self) -> ty::ctxt;
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t>;
     fn adjustment(&mut self, node_id: ast::NodeId) -> Option<@ty::AutoAdjustment>;
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&mut self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
-}
-
-impl ToStr for MutabilityCategory {
-    fn to_str(&self) -> ~str {
-        format!("{:?}", *self)
-    }
 }
 
 impl MutabilityCategory {
@@ -437,12 +433,14 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
 
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
-          ast::ExprUnary(_, ast::UnDeref, e_base) => {
-            if self.typer.is_method_call(expr.id) {
-                return Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty));
-            }
-
-            let base_cmt = if_ok!(self.cat_expr(e_base));
+          ast::ExprUnary(ast::UnDeref, e_base) => {
+            let base_cmt = match self.typer.node_method_ty(expr.id) {
+                Some(method_ty) => {
+                    let ref_ty = ty::ty_fn_ret(method_ty);
+                    self.cat_rvalue_node(expr.id(), expr.span(), ref_ty)
+                }
+                None => if_ok!(self.cat_expr(e_base))
+            };
             Ok(self.cat_deref(expr, base_cmt, 0))
           }
 
@@ -455,7 +453,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
             Ok(self.cat_field(expr, base_cmt, f_name, expr_ty))
           }
 
-          ast::ExprIndex(_, base, _) => {
+          ast::ExprIndex(base, _) => {
             if self.typer.is_method_call(expr.id) {
                 return Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty));
             }
@@ -1152,7 +1150,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                       format!("captured outer variable")
                   }
                   _ => {
-                      format!("dereference of {} pointer", ptr_sigil(pk))
+                      format!("dereference of `{}`-pointer", ptr_sigil(pk))
                   }
               }
           }

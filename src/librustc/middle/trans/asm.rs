@@ -82,12 +82,12 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     debug!("Asm Constraints: {:?}", constraints);
 
-    let numOutputs = outputs.len();
+    let num_outputs = outputs.len();
 
     // Depending on how many outputs we have, the return type is different
-    let output_type = if numOutputs == 0 {
+    let output_type = if num_outputs == 0 {
         Type::void()
-    } else if numOutputs == 1 {
+    } else if num_outputs == 1 {
         output_types[0]
     } else {
         Type::struct_(output_types, false)
@@ -100,13 +100,20 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let r = ia.asm.get().with_c_str(|a| {
         constraints.with_c_str(|c| {
-            InlineAsmCall(bcx, a, c, inputs, output_type, ia.volatile, ia.alignstack, dialect)
+            InlineAsmCall(bcx,
+                          a,
+                          c,
+                          inputs.as_slice(),
+                          output_type,
+                          ia.volatile,
+                          ia.alignstack,
+                          dialect)
         })
     });
 
     // Again, based on how many outputs we have
-    if numOutputs == 1 {
-        Store(bcx, r, outputs[0]);
+    if num_outputs == 1 {
+        Store(bcx, r, *outputs.get(0));
     } else {
         for (i, o) in outputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);

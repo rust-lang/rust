@@ -25,37 +25,37 @@ use util::common::indenter;
 use util::ppaux::{Repr};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
+use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 
 mod doc;
 
-#[deriving(Eq, IterBytes)]
-enum Constraint {
+#[deriving(Eq, Hash)]
+pub enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
     ConstrainVarSubReg(RegionVid, Region),
     ConstrainRegSubReg(Region, Region),
 }
 
-#[deriving(Eq, IterBytes)]
-struct TwoRegions {
+#[deriving(Eq, Hash)]
+pub struct TwoRegions {
     a: Region,
     b: Region,
 }
 
-enum UndoLogEntry {
+pub enum UndoLogEntry {
     Snapshot,
     AddVar(RegionVid),
     AddConstraint(Constraint),
     AddCombination(CombineMapType, TwoRegions)
 }
 
-enum CombineMapType {
+pub enum CombineMapType {
     Lub, Glb
 }
 
@@ -84,7 +84,7 @@ pub enum RegionResolutionError {
                    SubregionOrigin, Region),
 }
 
-type CombineMap = HashMap<TwoRegions, RegionVid>;
+pub type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
@@ -761,10 +761,10 @@ impl RegionVarBindings {
 
 // ______________________________________________________________________
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 enum Classification { Expanding, Contracting }
 
-enum VarValue { NoValue, Value(Region), ErrorValue }
+pub enum VarValue { NoValue, Value(Region), ErrorValue }
 
 struct VarData {
     classification: Classification,

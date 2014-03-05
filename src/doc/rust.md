@@ -467,10 +467,10 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use std::hashmap::HashMap;
+# struct HashMap<K, V>;
 # fn f() {
 # fn id<T>(t: T) -> T { t }
-type t = HashMap<int,~str>;  // Type arguments used in a type expression
+type T = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
 ~~~~
@@ -701,7 +701,7 @@ An example of a module:
 
 ~~~~
 mod math {
-    type complex = (f64, f64);
+    type Complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
 # fail!();
@@ -752,27 +752,27 @@ mod task {
 #### View items
 
 ~~~~ {.ebnf .gram}
-view_item : extern_mod_decl | use_decl ;
+view_item : extern_crate_decl | use_decl ;
 ~~~~
 
 A view item manages the namespace of a module.
 View items do not define new items, but rather, simply change other items' visibility.
 There are several kinds of view item:
 
- * [`extern crate` declarations](#extern-mod-declarations)
+ * [`extern crate` declarations](#extern-crate-declarations)
  * [`use` declarations](#use-declarations)
 
-##### Extern mod declarations
+##### Extern crate declarations
 
 ~~~~ {.ebnf .gram}
-extern_mod_decl : "extern" "mod" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
+extern_crate_decl : "extern" "crate" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
-The external crate is then bound into the declaring scope
-as the `ident` provided in the `extern_mod_decl`.
+The external crate is then bound into the declaring scope as the `ident` provided
+in the `extern_crate_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
@@ -780,7 +780,7 @@ loading at runtime.  The `soname` is resolved at compile time by scanning the
 compiler's library path and matching the optional `crateid` provided as a string literal
 against the `crateid` attributes that were declared on the external crate when
 it was compiled.  If no `crateid` is provided, a default `name` attribute is
-assumed, equal to the `ident` given in the `extern_mod_decl`.
+assumed, equal to the `ident` given in the `extern_crate_decl`.
 
 Four examples of `extern crate` declarations:
 
@@ -813,7 +813,7 @@ module item. These declarations may appear at the top of [modules](#modules) and
 
 *Note*: Unlike in many languages,
 `use` declarations in Rust do *not* declare linkage dependency with external crates.
-Rather, [`extern crate` declarations](#extern-mod-declarations) declare linkage dependencies.
+Rather, [`extern crate` declarations](#extern-crate-declarations) declare linkage dependencies.
 
 Use declarations support a number of convenient shortcuts:
 
@@ -875,16 +875,16 @@ An example of what will and will not work for `use` items:
 
 ~~~~
 # #[allow(unused_imports)];
-use foo::extra;          // good: foo is at the root of the crate
+use foo::native::start;  // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
 mod foo {
-    extern crate extra;
+    extern crate native;
 
-    use foo::extra::time;  // good: foo is at crate root
-//  use extra::*;          // bad:  extra is not at the crate root
-    use self::baz::foobaz; // good: self refers to module 'foo'
-    use foo::bar::foobar;  // good: foo is at crate root
+    use foo::native::start; // good: foo is at crate root
+//  use native::start;      // bad:  native is not at the crate root
+    use self::baz::foobaz;  // good: self refers to module 'foo'
+    use foo::bar::foobar;   // good: foo is at crate root
 
     pub mod bar {
         pub fn foobar() { }
@@ -2035,7 +2035,7 @@ Supported traits for `deriving` are:
 * Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
 * `Clone` and `DeepClone`, to perform (deep) copies.
-* `IterBytes`, to iterate over the bytes in a data type.
+* `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.
 * `Zero`, to create an zero instance of a numeric data type.
@@ -2485,8 +2485,11 @@ before the expression they apply to.
 `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location.
     For pointers to mutable locations, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
-    For [enums](#enumerated-types) that have only a single variant, containing a single parameter,
-    the dereference operator accesses this parameter.
+    On non-pointer types, it calls calls the `deref` method of the `std::ops::Deref` trait, or the
+    `deref_mut` method of the `std::ops::DerefMut` trait (if implemented by the type and required
+    for an outer expression that will or could mutate the dereference), and produces the
+    result of dereferencing the `&` or `&mut` borrowed pointer returned from the overload method.
+
 `!`
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
@@ -2824,13 +2827,13 @@ provided by an implementation of `std::iter::Iterator`.
 An example of a for loop over the contents of a vector:
 
 ~~~~
-# type foo = int;
-# fn bar(f: foo) { }
+# type Foo = int;
+# fn bar(f: Foo) { }
 # let a = 0;
 # let b = 0;
 # let c = 0;
 
-let v: &[foo] = &[a, b, c];
+let v: &[Foo] = &[a, b, c];
 
 for e in v.iter() {
     bar(*e);
@@ -3256,10 +3259,10 @@ An example of a *recursive* type and its use:
 ~~~~
 enum List<T> {
   Nil,
-  Cons(T, @List<T>)
+  Cons(T, ~List<T>)
 }
 
-let a: List<int> = Cons(7, @Cons(13, @Nil));
+let a: List<int> = Cons(7, ~Cons(13, ~Nil));
 ~~~~
 
 ### Pointer types

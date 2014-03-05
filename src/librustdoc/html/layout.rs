@@ -35,7 +35,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     <meta charset=\"utf-8\" />
     <title>{title}</title>
 
-    <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400'
+    <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400,700'
           rel='stylesheet' type='text/css'>
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}{krate}/main.css\">
 

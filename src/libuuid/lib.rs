@@ -61,20 +61,20 @@ Examples of string representations:
 
 // test harness access
 #[cfg(test)]
-extern crate extra;
+extern crate test;
 extern crate serialize;
 
+use std::cast::{transmute,transmute_copy};
+use std::char::Char;
+use std::default::Default;
+use std::fmt;
+use std::from_str::FromStr;
+use std::hash::{Hash, sip};
+use std::num::FromStrRadix;
+use std::rand::Rng;
+use std::rand;
 use std::str;
 use std::vec;
-use std::num::FromStrRadix;
-use std::char::Char;
-use std::container::Container;
-use std::to_str::ToStr;
-use std::rand;
-use std::rand::Rng;
-use std::cmp::Eq;
-use std::cast::{transmute,transmute_copy};
-use std::to_bytes::{IterBytes, Cb};
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -114,9 +114,9 @@ pub struct Uuid {
     /// The 128-bit number stored in 16 bytes
     bytes: UuidBytes
 }
-impl IterBytes for Uuid {
-    fn iter_bytes(&self, _: bool, f: Cb) -> bool {
-        f(self.bytes.slice_from(0))
+impl Hash for Uuid {
+    fn hash(&self, s: &mut sip::SipState) {
+        self.bytes.slice_from(0).hash(s)
     }
 }
 
@@ -142,22 +142,21 @@ pub enum ParseError {
 }
 
 /// Converts a ParseError to a string
-impl ToStr for ParseError {
-    #[inline]
-    fn to_str(&self) -> ~str {
+impl fmt::Show for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorInvalidLength(found) =>
-                format!("Invalid length; expecting 32, 36 or 45 chars, found {}",
-                        found),
+                write!(f.buf, "Invalid length; expecting 32, 36 or 45 chars, \
+                               found {}", found),
             ErrorInvalidCharacter(found, pos) =>
-                format!("Invalid character; found `{}` (0x{:02x}) at offset {}",
-                        found, found as uint, pos),
+                write!(f.buf, "Invalid character; found `{}` (0x{:02x}) at \
+                               offset {}", found, found as uint, pos),
             ErrorInvalidGroups(found) =>
-                format!("Malformed; wrong number of groups: expected 1 or 5, found {}",
-                        found),
+                write!(f.buf, "Malformed; wrong number of groups: expected 1 \
+                               or 5, found {}", found),
             ErrorInvalidGroupLength(group, found, expecting) =>
-                format!("Malformed; length of group {} was {}, expecting {}",
-                        group, found, expecting),
+                write!(f.buf, "Malformed; length of group {} was {}, \
+                               expecting {}", group, found, expecting),
         }
     }
 }
@@ -296,7 +295,7 @@ impl Uuid {
     ///
     /// This represents the algorithm used to generate the contents
     pub fn get_version(&self) -> Option<UuidVersion> {
-        let v = (self.bytes[6] >> 4);
+        let v = self.bytes[6] >> 4;
         match v {
             1 => Some(Version1Mac),
             2 => Some(Version2Dce),
@@ -308,7 +307,7 @@ impl Uuid {
     }
 
     /// Return an array of 16 octets containing the UUID data
-    pub fn to_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.bytes.as_slice()
     }
 
@@ -465,9 +464,9 @@ impl FromStr for Uuid {
 }
 
 /// Convert the UUID to a hexadecimal-based string representation
-impl ToStr for Uuid {
-    fn to_str(&self) -> ~str {
-        self.to_simple_str()
+impl fmt::Show for Uuid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_simple_str())
     }
 }
 
@@ -519,6 +518,8 @@ impl rand::Rand for Uuid {
 
 #[cfg(test)]
 mod test {
+    extern crate collections;
+
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
@@ -739,9 +740,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_bytes() {
+    fn test_as_bytes() {
         let u = Uuid::new_v4();
-        let ub = u.to_bytes();
+        let ub = u.as_bytes();
 
         assert!(ub.len() == 16);
         assert!(! ub.iter().all(|&b| b == 0));
@@ -754,7 +755,7 @@ mod test {
 
         let u = Uuid::from_bytes(b_in.clone()).unwrap();
 
-        let b_out = u.to_bytes();
+        let b_out = u.as_bytes();
 
         assert!(b_in == b_out);
     }
@@ -779,7 +780,7 @@ mod test {
     fn test_rand_rand() {
         let mut rng = rand::rng();
         let u: ~Uuid = rand::Rand::rand(&mut rng);
-        let ub = u.to_bytes();
+        let ub = u.as_bytes();
 
         assert!(ub.len() == 16);
         assert!(! ub.iter().all(|&b| b == 0));
@@ -800,7 +801,7 @@ mod test {
 
     #[test]
     fn test_iterbytes_impl_for_uuid() {
-        use std::hashmap::HashSet;
+        use self::collections::HashSet;
         let mut set = HashSet::new();
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();
@@ -812,8 +813,9 @@ mod test {
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use super::Uuid;
-    use extra::test::BenchHarness;
 
     #[bench]
     pub fn create_uuids(bh: &mut BenchHarness) {

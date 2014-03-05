@@ -10,7 +10,7 @@
 
 //! The normal and derived distributions.
 
-use num::Real;
+use num::Float;
 use rand::{Rng, Rand, Open01};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -187,7 +187,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use mem::size_of;
     use prelude::*;
     use rand::{XorShiftRng, RAND_BENCH_N};

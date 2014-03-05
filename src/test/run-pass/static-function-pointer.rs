@@ -11,8 +11,8 @@
 fn f(x: int) -> int { x }
 fn g(x: int) -> int { 2 * x }
 
-static F: extern fn(int) -> int = f;
-static mut G: extern fn(int) -> int = f;
+static F: fn(int) -> int = f;
+static mut G: fn(int) -> int = f;
 
 pub fn main() {
     assert_eq!(F(42), 42);

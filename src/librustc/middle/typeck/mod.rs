@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -59,6 +59,7 @@ independently:
 
 */
 
+#[allow(non_camel_case_types)];
 
 use driver::session;
 
@@ -69,10 +70,9 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::rc::Rc;
 use collections::List;
-use collections::list;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -92,22 +92,22 @@ pub enum param_index {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum method_origin {
+pub enum MethodOrigin {
     // fully statically resolved method
-    method_static(ast::DefId),
+    MethodStatic(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
-    method_param(method_param),
+    MethodParam(MethodParam),
 
     // method invoked on a trait instance
-    method_object(method_object),
+    MethodObject(MethodObject),
 
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_param {
+pub struct MethodParam {
     // the trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -124,7 +124,7 @@ pub struct method_param {
 
 // details for a method invoked with a receiver whose type is an object
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_object {
+pub struct MethodObject {
     // the (super)trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -141,16 +141,16 @@ pub struct method_object {
     real_index: uint,
 }
 
-
 #[deriving(Clone)]
-pub struct method_map_entry {
-    // method details being invoked
-    origin: method_origin,
+pub struct MethodCallee {
+    origin: MethodOrigin,
+    ty: ty::t,
+    substs: ty::substs
 }
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @RefCell<HashMap<ast::NodeId, method_map_entry>>;
+pub type MethodMap = @RefCell<HashMap<ast::NodeId, MethodCallee>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -221,7 +221,7 @@ pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
-    method_map: method_map,
+    method_map: MethodMap,
     vtable_map: vtable_map,
     tcx: ty::ctxt
 }
@@ -310,23 +310,18 @@ pub fn require_same_types(tcx: ty::ctxt,
 // corresponding ty::Region
 pub type isr_alist = @List<(ty::BoundRegion, ty::Region)>;
 
-trait get_and_find_region {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region;
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region>;
+trait get_region<'a, T:'static> {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region;
 }
 
-impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region {
-        self.find(br).unwrap()
-    }
-
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
-        let mut ret = None;
-        list::each(*self, |isr| {
+impl<'a, T:'static> get_region <'a, T> for isr_alist {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region {
+        let mut region = None;
+        for isr in self.iter() {
             let (isr_br, isr_r) = *isr;
-            if isr_br == br { ret = Some(isr_r); false } else { true }
-        });
-        ret
+            if isr_br == br { region = Some(isr_r); break; }
+        };
+        region.unwrap()
     }
 }
 
@@ -442,7 +437,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
                    krate: &ast::Crate)
-                -> (method_map, vtable_map) {
+                -> (MethodMap, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub fn main() {
-    #[deriving(ToStr)]
+    #[deriving(Show)]
     struct Foo {
         foo: int,
     }
 
     let f = Foo { foo: 10 };
-    let _ = f.to_str();
+    format!("{}", f);
 }

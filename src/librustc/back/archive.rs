@@ -20,9 +20,9 @@ use std::io::fs;
 use std::io;
 use std::libc;
 use std::os;
-use std::run::{ProcessOptions, Process, ProcessOutput};
+use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;
-use std::unstable::raw;
+use std::raw;
 use extra::tempfile::TempDir;
 use syntax::abi;
 
@@ -44,16 +44,19 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     let mut args = ~[args.to_owned()];
     let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
     args.extend(&mut paths);
-    let mut opts = ProcessOptions::new();
-    opts.dir = cwd;
     debug!("{} {}", ar, args.connect(" "));
     match cwd {
         Some(p) => { debug!("inside {}", p.display()); }
         None => {}
     }
-    match Process::new(ar, args.as_slice(), opts) {
+    match Process::configure(ProcessConfig {
+        program: ar.as_slice(),
+        args: args.as_slice(),
+        cwd: cwd.map(|a| &*a),
+        .. ProcessConfig::new()
+    }) {
         Ok(mut prog) => {
-            let o = prog.finish_with_output();
+            let o = prog.wait_with_output();
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
                                  o.status));
@@ -142,7 +145,10 @@ impl Archive {
     /// Lists all files in an archive
     pub fn files(&self) -> ~[~str] {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
-        str::from_utf8(output.output).unwrap().lines().map(|s| s.to_owned()).collect()
+        let output = str::from_utf8(output.output).unwrap();
+        // use lines_any because windows delimits output with `\r\n` instead of
+        // just `\n`
+        output.lines_any().map(|s| s.to_owned()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str,
@@ -161,7 +167,7 @@ impl Archive {
         // We skip any files explicitly desired for skipping, and we also skip
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
-        let files = if_ok!(fs::readdir(loc.path()));
+        let files = try!(fs::readdir(loc.path()));
         let mut inputs = ~[];
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
@@ -170,9 +176,10 @@ impl Archive {
 
             let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
-            if_ok!(fs::rename(file, &new_filename));
+            try!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
         }
+        if inputs.len() == 0 { return Ok(()) }
 
         // Finally, add all the renamed files to this archive
         let mut args = ~[&self.dst];

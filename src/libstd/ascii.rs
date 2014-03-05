@@ -10,7 +10,7 @@
 
 //! Operations on ASCII strings and characters
 
-use to_str::{ToStr, IntoStr};
+use to_str::{IntoStr};
 use str;
 use str::Str;
 use str::StrSlice;
@@ -20,11 +20,10 @@ use cast;
 use fmt;
 use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
-use to_bytes::IterBytes;
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
-#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq)]
+#[deriving(Clone, Eq, Ord, TotalOrd, TotalEq, Hash)]
 pub struct Ascii { priv chr: u8 }
 
 impl Ascii {
@@ -124,14 +123,6 @@ impl Ascii {
     #[inline]
     pub fn is_hex(&self) -> bool {
         self.is_digit() || ((self.chr | 32u8) - 'a' as u8) < 6
-    }
-}
-
-impl ToStr for Ascii {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        // self.chr is always a valid utf8 byte, no need for the check
-        unsafe { str::raw::from_byte(self.chr) }
     }
 }
 
@@ -314,13 +305,6 @@ impl IntoStr for ~[Ascii] {
     }
 }
 
-impl IterBytes for Ascii {
-    #[inline]
-    fn iter_bytes(&self, _lsb0: bool, f: |buf: &[u8]| -> bool) -> bool {
-        f([self.to_byte()])
-    }
-}
-
 /// Trait to convert to an owned byte array by consuming self
 pub trait IntoBytes {
     /// Converts to an owned byte array by consuming self
@@ -491,7 +475,7 @@ mod tests {
     use char::from_u32;
 
     macro_rules! v2ascii (
-        ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
+        ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (~[$($e:expr),*]) => (~[$(Ascii{chr:$e}),*]);
     )

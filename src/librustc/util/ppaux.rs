@@ -49,11 +49,11 @@ pub fn note_and_explain_region(cx: ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
     }
 }
@@ -73,9 +73,6 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         match cx.map.find(node_id) {
           Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
-          }
-          Some(ast_map::NodeCalleeScope(expr)) => {
-              explain_span(cx, "callee", expr.span)
           }
           Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
@@ -163,7 +160,7 @@ pub fn bound_region_to_str(cx: ctxt,
 
     match br {
         BrNamed(_, ident)   => format!("{}'{}{}", prefix,
-                                       token::get_ident(ident), space_str),
+                                       token::get_name(ident), space_str),
         BrAnon(_)           => prefix.to_str(),
         BrFresh(_)          => prefix.to_str(),
     }
@@ -225,7 +222,7 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         ty::ReScope(_) => prefix.to_str(),
-        ty::ReEarlyBound(_, _, ident) => token::get_ident(ident).get().to_str(),
+        ty::ReEarlyBound(_, _, ident) => token::get_name(ident).get().to_str(),
         ty::ReLateBound(_, br) => bound_region_to_str(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
         ty::ReInfer(ReSkolemized(_, br)) => {
@@ -606,7 +603,7 @@ impl<T:Repr> Repr for OptVec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             opt_vec::Empty => ~"[]",
-            opt_vec::Vec(ref v) => repr_vec(tcx, *v)
+            opt_vec::Vec(ref v) => repr_vec(tcx, v.as_slice())
         }
     }
 }
@@ -630,7 +627,7 @@ impl Repr for ty::TypeParameterDef {
 impl Repr for ty::RegionParameterDef {
     fn repr(&self, _tcx: ctxt) -> ~str {
         format!("RegionParameterDef({}, {:?})",
-                token::get_ident(self.ident),
+                token::get_name(self.ident),
                 self.def_id)
     }
 }
@@ -718,7 +715,7 @@ impl Repr for ty::BoundRegion {
             ty::BrAnon(id) => format!("BrAnon({})", id),
             ty::BrNamed(id, ident) => format!("BrNamed({}, {})",
                                                id.repr(tcx),
-                                               ident.repr(tcx)),
+                                               token::get_name(ident)),
             ty::BrFresh(id) => format!("BrFresh({})", id),
         }
     }
@@ -729,7 +726,7 @@ impl Repr for ty::Region {
         match *self {
             ty::ReEarlyBound(id, index, ident) => {
                 format!("ReEarlyBound({}, {}, {})",
-                        id, index, ident.repr(tcx))
+                        id, index, token::get_name(ident))
             }
 
             ty::ReLateBound(binder_id, ref bound_region) => {
@@ -870,31 +867,34 @@ impl Repr for ty::FnSig {
     }
 }
 
-impl Repr for typeck::method_map_entry {
+impl Repr for typeck::MethodCallee {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_map_entry \\{origin: {}\\}", self.origin.repr(tcx))
+        format!("MethodCallee \\{origin: {}, ty: {}, {}\\}",
+            self.origin.repr(tcx),
+            self.ty.repr(tcx),
+            self.substs.repr(tcx))
     }
 }
 
-impl Repr for typeck::method_origin {
+impl Repr for typeck::MethodOrigin {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
-            &typeck::method_static(def_id) => {
-                format!("method_static({})", def_id.repr(tcx))
+            &typeck::MethodStatic(def_id) => {
+                format!("MethodStatic({})", def_id.repr(tcx))
             }
-            &typeck::method_param(ref p) => {
+            &typeck::MethodParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::method_object(ref p) => {
+            &typeck::MethodObject(ref p) => {
                 p.repr(tcx)
             }
         }
     }
 }
 
-impl Repr for typeck::method_param {
+impl Repr for typeck::MethodParam {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_param({},{:?},{:?},{:?})",
+        format!("MethodParam({},{:?},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.param_num,
@@ -902,9 +902,9 @@ impl Repr for typeck::method_param {
     }
 }
 
-impl Repr for typeck::method_object {
+impl Repr for typeck::MethodObject {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_object({},{:?},{:?})",
+        format!("MethodObject({},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.real_index)

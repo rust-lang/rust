@@ -10,6 +10,7 @@
 
 //! Base64 binary-to-text encoding
 use std::str;
+use std::fmt;
 
 /// Available encoding character sets
 pub enum CharacterSet {
@@ -165,12 +166,12 @@ pub enum FromBase64Error {
     InvalidBase64Length,
 }
 
-impl ToStr for FromBase64Error {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for FromBase64Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidBase64Character(ch, idx) =>
-                format!("Invalid character '{}' at position {}", ch, idx),
-            InvalidBase64Length => ~"Invalid length",
+                write!(f.buf, "Invalid character '{}' at position {}", ch, idx),
+            InvalidBase64Length => write!(f.buf, "Invalid length"),
         }
     }
 }
@@ -198,9 +199,9 @@ impl<'a> FromBase64 for &'a str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.from_base64();
      *     if res.is_ok() {
-     *       let optBytes = str::from_utf8_owned(res.unwrap());
-     *       if optBytes.is_some() {
-     *         println!("decoded from base64: {}", optBytes.unwrap());
+     *       let opt_bytes = str::from_utf8_owned(res.unwrap());
+     *       if opt_bytes.is_some() {
+     *         println!("decoded from base64: {}", opt_bytes.unwrap());
      *       }
      *     }
      * }
@@ -260,8 +261,9 @@ impl<'a> FromBase64 for &'a str {
 }
 
 #[cfg(test)]
-mod test {
-    use extra::test::BenchHarness;
+mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]

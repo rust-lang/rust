@@ -20,9 +20,10 @@ Simple compression
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 
+extern crate extra;
 use std::libc::{c_void, size_t, c_int};
 use std::libc;
-use std::vec;
+use extra::c_vec::CVec;
 
 pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};
@@ -33,13 +34,13 @@ pub mod rustrt {
                                           src_buf_len: size_t,
                                           pout_len: *mut size_t,
                                           flags: c_int)
-                                          -> *c_void;
+                                          -> *mut c_void;
 
         pub fn tinfl_decompress_mem_to_heap(psrc_buf: *c_void,
                                             src_buf_len: size_t,
                                             pout_len: *mut size_t,
                                             flags: c_int)
-                                            -> *c_void;
+                                            -> *mut c_void;
     }
 }
 
@@ -47,49 +48,43 @@ static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
-fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
+fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> CVec<u8> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = rustrt::tdefl_compress_mem_to_heap(bytes.as_ptr() as *c_void,
                                                      bytes.len() as size_t,
                                                      &mut outsz,
                                                      flags);
-        assert!(res as int != 0);
-            let out = vec::raw::from_buf_raw(res as *u8,
-                                             outsz as uint);
-        libc::free(res as *mut c_void);
-        out
+        assert!(!res.is_null());
+        CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res))
     }
 }
 
-pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
+pub fn deflate_bytes(bytes: &[u8]) -> CVec<u8> {
     deflate_bytes_internal(bytes, LZ_NORM)
 }
 
-pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
+pub fn deflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
     deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> CVec<u8> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = rustrt::tinfl_decompress_mem_to_heap(bytes.as_ptr() as *c_void,
                                                        bytes.len() as size_t,
                                                        &mut outsz,
                                                        flags);
-        assert!(res as int != 0);
-        let out = vec::raw::from_buf_raw(res as *u8,
-                                         outsz as uint);
-        libc::free(res as *mut c_void);
-        out
+        assert!(!res.is_null());
+        CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res))
     }
 }
 
-pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
+pub fn inflate_bytes(bytes: &[u8]) -> CVec<u8> {
     inflate_bytes_internal(bytes, 0)
 }
 
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
+pub fn inflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
     inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 
@@ -115,11 +110,11 @@ mod tests {
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
             let cmp = deflate_bytes(input);
-            let out = inflate_bytes(cmp);
+            let out = inflate_bytes(cmp.as_slice());
             debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
-            assert_eq!(input, out);
+            assert_eq!(input.as_slice(), out.as_slice());
         }
     }
 
@@ -127,7 +122,7 @@ mod tests {
     fn test_zlib_flate() {
         let bytes = ~[1, 2, 3, 4, 5];
         let deflated = deflate_bytes(bytes);
-        let inflated = inflate_bytes(deflated);
-        assert_eq!(inflated, bytes);
+        let inflated = inflate_bytes(deflated.as_slice());
+        assert_eq!(inflated.as_slice(), bytes.as_slice());
     }
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -33,7 +33,6 @@ use std::libc;
 use std::ptr;
 use std::os;
 use std::rt::rtio;
-use std::hashmap::HashMap;
 use std::mem;
 
 use io::file::FileDesc;
@@ -45,6 +44,7 @@ pub struct Timer {
     priv on_worker: bool,
 }
 
+#[allow(visible_private_types)]
 pub enum Req {
     NewTimer(libc::c_int, Chan<()>, bool, imp::itimerspec),
     RemoveTimer(libc::c_int, Chan<()>),
@@ -76,7 +76,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
     add(efd, input);
     let events: [imp::epoll_event, ..16] = unsafe { mem::init() };
-    let mut map: HashMap<libc::c_int, (Chan<()>, bool)> = HashMap::new();
+    let mut list: ~[(libc::c_int, Chan<()>, bool)] = ~[];
     'outer: loop {
         let n = match unsafe {
             imp::epoll_wait(efd, events.as_ptr(),
@@ -105,13 +105,17 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 // FIXME: should this perform a send() this number of
                 //      times?
                 let _ = FileDesc::new(fd, false).inner_read(bits).unwrap();
-                let remove = {
-                    match map.find(&fd).expect("fd unregistered") {
-                        &(ref c, oneshot) => !c.try_send(()) || oneshot
+                let (remove, i) = {
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            let (_, ref c, oneshot) = list[i];
+                            (!c.try_send(()) || oneshot, i)
+                        }
+                        None => fail!("fd not active: {}", fd),
                     }
                 };
                 if remove {
-                    map.remove(&fd);
+                    drop(list.remove(i));
                     del(efd, fd);
                 }
             }
@@ -126,8 +130,17 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
                     // If we haven't previously seen the file descriptor, then
                     // we need to add it to the epoll set.
-                    if map.insert(fd, (chan, one)) {
-                        add(efd, fd);
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            drop(mem::replace(&mut list[i], (fd, chan, one)));
+                        }
+                        None => {
+                            match list.iter().position(|&(f, _, _)| f >= fd) {
+                                Some(i) => list.insert(i, (fd, chan, one)),
+                                None => list.push((fd, chan, one)),
+                            }
+                            add(efd, fd);
+                        }
                     }
 
                     // Update the timerfd's time value now that we have control
@@ -139,14 +152,18 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 }
 
                 Data(RemoveTimer(fd, chan)) => {
-                    if map.remove(&fd) {
-                        del(efd, fd);
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            drop(list.remove(i));
+                            del(efd, fd);
+                        }
+                        None => {}
                     }
                     chan.send(());
                 }
 
                 Data(Shutdown) => {
-                    assert!(map.len() == 0);
+                    assert!(list.len() == 0);
                     break 'outer;
                 }
 

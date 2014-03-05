@@ -10,6 +10,7 @@
 
 
 
+#[deriving(Show)]
 enum foo { large, small, }
 
 impl Eq for foo {

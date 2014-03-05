@@ -111,7 +111,7 @@ mod test {
         let mut rng = ReaderRng::new(MemReader::new(v.to_owned()));
         rng.fill_bytes(w);
 
-        assert_eq!(v, w);
+        assert!(v == w);
     }
 
     #[test]

@@ -21,7 +21,7 @@ use syntax;
 use std::cell::RefCell;
 use std::os;
 use std::local_data;
-use std::hashmap::{HashSet};
+use collections::HashSet;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -58,7 +58,7 @@ fn get_ast_and_resolve(cpath: &Path,
     };
 
 
-    let diagnostic_handler = syntax::diagnostic::mk_handler();
+    let diagnostic_handler = syntax::diagnostic::default_handler();
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 

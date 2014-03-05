@@ -30,7 +30,7 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::iter::Enumerate;
 use std::vec;
 
@@ -114,7 +114,7 @@ struct LanguageItemVisitor<'a> {
 
 impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        match extract(item.attrs) {
+        match extract(item.attrs.as_slice()) {
             Some(value) => {
                 let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
 
@@ -231,6 +231,9 @@ lets_do_this! {
     ShlTraitLangItem,                "shl",                     shl_trait;
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
+
+    DerefTraitLangItem,              "deref",                   deref_trait;
+    DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
 
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;

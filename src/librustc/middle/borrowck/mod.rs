@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,7 @@
 
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
+#[allow(non_camel_case_types)];
 
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -20,7 +21,7 @@ use middle::dataflow::DataFlowOperator;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
@@ -69,7 +70,7 @@ impl Visitor<()> for BorrowckCtxt {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    moves_map: moves::MovesMap,
                    moved_variables_set: moves::MovedVariablesSet,
                    capture_map: moves::CaptureMap,
@@ -155,7 +156,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 pub struct BorrowckCtxt {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
@@ -185,7 +186,7 @@ pub struct BorrowStats {
 //
 // Note that there is no entry with derefs:3---the type of that expression
 // is T, which is not a box.
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct root_map_key {
     id: ast::NodeId,
     derefs: uint
@@ -223,13 +224,13 @@ pub enum LoanCause {
     RefBinding,
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
     LpExtend(@LoanPath, mc::MutabilityCategory, LoanPathElem)
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -906,9 +907,9 @@ impl Repr for LoanPath {
 
 ///////////////////////////////////////////////////////////////////////////
 
-struct TcxTyper {
+pub struct TcxTyper {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
 }
 
 impl mc::Typer for TcxTyper {
@@ -920,14 +921,17 @@ impl mc::Typer for TcxTyper {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
 
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
+        self.method_map.borrow().get().find(&id).map(|method| method.ty)
+    }
+
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
         let adjustments = self.tcx.adjustments.borrow();
         adjustments.get().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        let method_map = self.method_map.borrow();
-        method_map.get().contains_key(&id)
+        self.method_map.borrow().get().contains_key(&id)
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {

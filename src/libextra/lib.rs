@@ -25,7 +25,7 @@ Rust extras are part of the standard Rust distribution.
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
@@ -36,35 +36,15 @@ Rust extras are part of the standard Rust distribution.
 
 extern crate sync;
 extern crate serialize;
-
 extern crate collections;
+extern crate time;
 
 // Utility modules
-
 pub mod c_vec;
-
-// And ... other stuff
-
 pub mod url;
-pub mod json;
 pub mod tempfile;
-pub mod time;
 pub mod workcache;
-pub mod enum_set;
 pub mod stats;
 
 #[cfg(unicode)]
 mod unicode;
-
-// Compiler support modules
-
-pub mod test;
-
-// A curious inner-module that's not exported that contains the binding
-// 'extra' so that macro-expanded references to extra::serialize and such
-// can be resolved within libextra.
-#[doc(hidden)]
-pub mod extra {
-    pub use serialize;
-    pub use test;
-}

@@ -7,14 +7,16 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use std::mem;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub enum SmallVector<T> {
     priv Zero,
     priv One(T),
-    priv Many(~[T]),
+    priv Many(Vec<T> ),
 }
 
 impl<T> Container for SmallVector<T> {
@@ -37,6 +39,14 @@ impl<T> FromIterator<T> for SmallVector<T> {
     }
 }
 
+impl<T> Extendable<T> for SmallVector<T> {
+    fn extend<I: Iterator<T>>(&mut self, iter: &mut I) {
+        for val in *iter {
+            self.push(val);
+        }
+    }
+}
+
 impl<T> SmallVector<T> {
     pub fn zero() -> SmallVector<T> {
         Zero
@@ -46,7 +56,7 @@ impl<T> SmallVector<T> {
         One(v)
     }
 
-    pub fn many(vs: ~[T]) -> SmallVector<T> {
+    pub fn many(vs: Vec<T> ) -> SmallVector<T> {
         Many(vs)
     }
 
@@ -56,7 +66,7 @@ impl<T> SmallVector<T> {
             One(..) => {
                 let one = mem::replace(self, Zero);
                 match one {
-                    One(v1) => mem::replace(self, Many(~[v1, v])),
+                    One(v1) => mem::replace(self, Many(vec!(v1, v))),
                     _ => unreachable!()
                 };
             }
@@ -73,7 +83,7 @@ impl<T> SmallVector<T> {
     pub fn get<'a>(&'a self, idx: uint) -> &'a T {
         match *self {
             One(ref v) if idx == 0 => v,
-            Many(ref vs) => &vs[idx],
+            Many(ref vs) => vs.get(idx),
             _ => fail!("out of bounds access")
         }
     }
@@ -81,7 +91,13 @@ impl<T> SmallVector<T> {
     pub fn expect_one(self, err: &'static str) -> T {
         match self {
             One(v) => v,
-            Many([v]) => v,
+            Many(v) => {
+                if v.len() == 1 {
+                    v.move_iter().next().unwrap()
+                } else {
+                    fail!(err)
+                }
+            }
             _ => fail!(err)
         }
     }
@@ -98,7 +114,7 @@ impl<T> SmallVector<T> {
 pub enum MoveItems<T> {
     priv ZeroIterator,
     priv OneIterator(T),
-    priv ManyIterator(vec::MoveItems<T>),
+    priv ManyIterator(vec_ng::MoveItems<T>),
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -130,13 +146,15 @@ impl<T> Iterator<T> for MoveItems<T> {
 mod test {
     use super::*;
 
+    use std::vec_ng::Vec;
+
     #[test]
     fn test_len() {
         let v: SmallVector<int> = SmallVector::zero();
         assert_eq!(0, v.len());
 
         assert_eq!(1, SmallVector::one(1).len());
-        assert_eq!(5, SmallVector::many(~[1, 2, 3, 4, 5]).len());
+        assert_eq!(5, SmallVector::many(vec!(1, 2, 3, 4, 5)).len());
     }
 
     #[test]
@@ -155,7 +173,7 @@ mod test {
 
     #[test]
     fn test_from_iterator() {
-        let v: SmallVector<int> = (~[1, 2, 3]).move_iter().collect();
+        let v: SmallVector<int> = (vec!(1, 2, 3)).move_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -165,14 +183,14 @@ mod test {
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
-        let v: ~[int] = v.move_iter().collect();
-        assert_eq!(~[], v);
+        let v: Vec<int> = v.move_iter().collect();
+        assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1);
-        assert_eq!(~[1], v.move_iter().collect());
+        assert_eq!(vec!(1), v.move_iter().collect());
 
-        let v = SmallVector::many(~[1, 2, 3]);
-        assert_eq!(~[1, 2, 3], v.move_iter().collect());
+        let v = SmallVector::many(vec!(1, 2, 3));
+        assert_eq!(vec!(1, 2, 3), v.move_iter().collect());
     }
 
     #[test]
@@ -184,12 +202,12 @@ mod test {
     #[test]
     #[should_fail]
     fn test_expect_one_many() {
-        SmallVector::many(~[1, 2]).expect_one("");
+        SmallVector::many(vec!(1, 2)).expect_one("");
     }
 
     #[test]
     fn test_expect_one_one() {
         assert_eq!(1, SmallVector::one(1).expect_one(""));
-        assert_eq!(1, SmallVector::many(~[1]).expect_one(""));
+        assert_eq!(1, SmallVector::many(vec!(1)).expect_one(""));
     }
 }

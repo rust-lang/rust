@@ -218,8 +218,12 @@ LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
 define DEF_LLVM_VARS
 # The configure script defines these variables with the target triples
 # separated by Z. This defines new ones with the expected format.
+ifeq ($$(CFG_LLVM_ROOT),)
 CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
+else
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
+endif
 
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
@@ -341,10 +345,10 @@ endif
 ifdef CFG_DISABLE_RPATH
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
   RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(HLIB$(1)_H_$(3))"
+      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
 else
   RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(HLIB$(1)_H_$(3))"
+      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
 endif
 else
     RPATH_VAR$(1)_T_$(2)_H_$(3) :=
@@ -446,13 +450,13 @@ all: $(ALL_TARGET_RULES) $(GENERATED) docs
 # $(1) is the name of the doc <section> in Makefile.in
 # pick everything between tags | remove first line | remove last line
 # | remove extra (?) line | strip leading `#` from lines
-SHOW_DOCS = $(Q)awk '/$(1)/,/<\/$(1)>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^\# \?//'
+SHOW_DOCS = $(Q)awk '/<$(1)>/,/<\/$(1)>/' $(S)/Makefile.in | sed '1d' | sed '$$d' | sed 's/^\# \?//'
 
 help:
 	$(call SHOW_DOCS,help)
 
-hot-tips:
-	$(call SHOW_DOCS,hottips)
+tips:
+	$(call SHOW_DOCS,tips)
 
 nitty-gritty:
-	$(call SHOW_DOCS,nittygritty)
+	$(call SHOW_DOCS,nitty-gritty)

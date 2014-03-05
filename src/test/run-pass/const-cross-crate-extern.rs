@@ -16,5 +16,5 @@ use cci_const::bar;
 static foo: extern "C" fn() = bar;
 
 pub fn main() {
-    assert_eq!(foo, bar);
+    assert!(foo == bar);
 }

@@ -17,6 +17,9 @@ os.putenv('TMPDIR', os.path.abspath(sys.argv[3]))
 os.putenv('CC', sys.argv[4])
 os.putenv('RUSTDOC', os.path.abspath(sys.argv[5]))
 filt = sys.argv[6]
+ldpath = sys.argv[7]
+if ldpath != '':
+    os.putenv(ldpath.split('=')[0], ldpath.split('=')[1])
 
 if not filt in sys.argv[1]:
     sys.exit(0)

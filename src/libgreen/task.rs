@@ -18,6 +18,7 @@
 //! contains the rust task itself in order to juggle around ownership of the
 //! values.
 
+use std::any::Any;
 use std::cast;
 use std::rt::env;
 use std::rt::Runtime;
@@ -26,7 +27,7 @@ use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::unstable::raw;
+use std::raw;
 
 use context::Context;
 use coroutine::Coroutine;
@@ -175,7 +176,6 @@ impl GreenTask {
                      opts: TaskOpts,
                      f: proc()) -> ~GreenTask {
         let TaskOpts {
-            watched: _watched,
             notify_chan, name, stack_size,
             stderr, stdout, logger,
         } = opts;
@@ -267,7 +267,7 @@ impl GreenTask {
     // context switches
 
     pub fn as_uint(&self) -> uint {
-        unsafe { cast::transmute(self) }
+        self as *GreenTask as uint
     }
 
     pub unsafe fn from_uint(val: uint) -> ~GreenTask { cast::transmute(val) }

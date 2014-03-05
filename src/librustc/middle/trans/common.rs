@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+#[allow(non_camel_case_types)];
 
 //! Code that is useful in various trans modules.
 
@@ -30,10 +32,8 @@ use util::ppaux::Repr;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
-use std::cast::transmute;
-use std::cast;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use syntax::ast::Ident;
 use syntax::ast;
@@ -164,20 +164,20 @@ pub struct Stats {
 }
 
 pub struct BuilderRef_res {
-    B: BuilderRef,
+    b: BuilderRef,
 }
 
 impl Drop for BuilderRef_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeBuilder(self.B);
+            llvm::LLVMDisposeBuilder(self.b);
         }
     }
 }
 
-pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
+pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     BuilderRef_res {
-        B: B
+        b: b
     }
 }
 
@@ -212,8 +212,8 @@ impl Repr for param_substs {
 }
 
 // work around bizarre resolve errors
-type RvalueDatum = datum::Datum<datum::Rvalue>;
-type LvalueDatum = datum::Datum<datum::Lvalue>;
+pub type RvalueDatum = datum::Datum<datum::Rvalue>;
+pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -654,9 +654,9 @@ pub fn C_struct(elts: &[ValueRef], packed: bool) -> ValueRef {
     }
 }
 
-pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
+pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMConstNamedStruct(T.to_ref(), elts.as_ptr(), elts.len() as c_uint)
+        llvm::LLVMConstNamedStruct(t.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 
@@ -668,7 +668,7 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = cast::transmute(bytes.as_ptr());
+        let ptr = bytes.as_ptr() as *c_char;
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }
@@ -722,7 +722,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum mono_param_id {
     mono_precise(ty::t, Option<@~[mono_id]>),
     mono_any,
@@ -732,7 +732,7 @@ pub enum mono_param_id {
               datum::RvalueMode),
 }
 
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum MonoDataClass {
     MonoBits,    // Anything not treated differently from arbitrary integer data
     MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
@@ -754,8 +754,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     }
 }
 
-
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct mono_id_ {
     def: ast::DefId,
     params: ~[mono_param_id]
@@ -808,9 +807,13 @@ pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> ~[ty::t] {
     let tcx = bcx.tcx();
-    let params = ty::node_id_to_type_params(tcx, id);
+    let params = if is_method {
+        bcx.ccx().maps.method_map.borrow().get().get(&id).substs.tps.clone()
+    } else {
+        ty::node_id_to_type_params(tcx, id)
+    };
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(

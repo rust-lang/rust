@@ -47,7 +47,6 @@
 //! Note that all time units in this file are in *milliseconds*.
 
 use std::comm::Data;
-use std::hashmap::HashMap;
 use std::libc;
 use std::mem;
 use std::os;
@@ -72,6 +71,7 @@ struct Inner {
     id: uint,
 }
 
+#[allow(visible_private_types)]
 pub enum Req {
     // Add a new timer to the helper thread.
     NewTimer(~Inner),
@@ -103,7 +103,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     // sorted list, and dead timers are those which have expired, but ownership
     // hasn't yet been transferred back to the timer itself.
     let mut active: ~[~Inner] = ~[];
-    let mut dead = HashMap::new();
+    let mut dead = ~[];
 
     // inserts a timer into an array of timers (sorted by firing time)
     fn insert(t: ~Inner, active: &mut ~[~Inner]) {
@@ -114,7 +114,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     }
 
     // signals the first requests in the queue, possible re-enqueueing it.
-    fn signal(active: &mut ~[~Inner], dead: &mut HashMap<uint, ~Inner>) {
+    fn signal(active: &mut ~[~Inner], dead: &mut ~[(uint, ~Inner)]) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
@@ -125,32 +125,30 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
             insert(timer, active);
         } else {
             drop(chan);
-            dead.insert(timer.id, timer);
+            dead.push((timer.id, timer));
         }
     }
 
     'outer: loop {
-        let timeout = match active {
+        let timeout = if active.len() == 0 {
             // Empty array? no timeout (wait forever for the next request)
-            [] => ptr::null(),
-
-            [~Inner { target, .. }, ..] => {
-                let now = now();
-                // If this request has already expired, then signal it and go
-                // through another iteration
-                if target <= now {
-                    signal(&mut active, &mut dead);
-                    continue;
-                }
-
-                // The actual timeout listed in the requests array is an
-                // absolute date, so here we translate the absolute time to a
-                // relative time.
-                let tm = target - now;
-                timeout.tv_sec = (tm / 1000) as libc::time_t;
-                timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
-                &timeout as *libc::timeval
+            ptr::null()
+        } else {
+            let now = now();
+            // If this request has already expired, then signal it and go
+            // through another iteration
+            if active[0].target <= now {
+                signal(&mut active, &mut dead);
+                continue;
             }
+
+            // The actual timeout listed in the requests array is an
+            // absolute date, so here we translate the absolute time to a
+            // relative time.
+            let tm = active[0].target - now;
+            timeout.tv_sec = (tm / 1000) as libc::time_t;
+            timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
+            &timeout as *libc::timeval
         };
 
         imp::fd_set(&mut set, input);
@@ -172,8 +170,12 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                         Data(NewTimer(timer)) => insert(timer, &mut active),
 
                         Data(RemoveTimer(id, ack)) => {
-                            match dead.pop(&id) {
-                                Some(i) => { ack.send(i); continue }
+                            match dead.iter().position(|&(i, _)| id == i) {
+                                Some(i) => {
+                                    let (_, i) = dead.remove(i).unwrap();
+                                    ack.send(i);
+                                    continue
+                                }
                                 None => {}
                             }
                             let i = active.iter().position(|i| i.id == id);

@@ -305,7 +305,6 @@ impl<T: Send> Packet<T> {
             // See the discussion in the stream implementation for why we we
             // might decrement steals.
             Some(data) => {
-                self.steals += 1;
                 if self.steals > MAX_STEALS {
                     match self.cnt.swap(0, atomics::SeqCst) {
                         DISCONNECTED => {
@@ -314,11 +313,12 @@ impl<T: Send> Packet<T> {
                         n => {
                             let m = cmp::min(n, self.steals);
                             self.steals -= m;
-                            self.cnt.fetch_add(n - m, atomics::SeqCst);
+                            self.bump(n - m);
                         }
                     }
                     assert!(self.steals >= 0);
                 }
+                self.steals += 1;
                 Ok(data)
             }
 
@@ -486,14 +486,12 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        unsafe {
-            // Note that this load is not only an assert for correctness about
-            // disconnection, but also a proper fence before the read of
-            // `to_wake`, so this assert cannot be removed with also removing
-            // the `to_wake` assert.
-            assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-            assert_eq!(self.channels.load(atomics::SeqCst), 0);
-        }
+        // Note that this load is not only an assert for correctness about
+        // disconnection, but also a proper fence before the read of
+        // `to_wake`, so this assert cannot be removed with also removing
+        // the `to_wake` assert.
+        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
+        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        assert_eq!(self.channels.load(atomics::SeqCst), 0);
     }
 }

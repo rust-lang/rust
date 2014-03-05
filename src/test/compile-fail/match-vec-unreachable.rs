@@ -10,19 +10,24 @@
 
 fn main() {
     let x: ~[(int, int)] = ~[];
+    let x: &[(int, int)] = x;
     match x {
         [a, (2, 3), _] => (),
         [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
         _ => ()
     }
 
-    match ~[~"foo", ~"bar", ~"baz"] {
+    let x: ~[~str] = ~[~"foo", ~"bar", ~"baz"];
+    let x: &[~str] = x;
+    match x {
         [a, _, _, ..] => { println!("{}", a); }
         [~"foo", ~"bar", ~"baz", ~"foo", ~"bar"] => { } //~ ERROR unreachable pattern
         _ => { }
     }
 
-    match ~['a', 'b', 'c'] {
+    let x: ~[char] = ~['a', 'b', 'c'];
+    let x: &[char] = x;
+    match x {
         ['a', 'b', 'c', .._tail] => {}
         ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern
         _ => {}

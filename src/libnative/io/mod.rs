@@ -45,9 +45,15 @@ pub use self::process::Process;
 
 // Native I/O implementations
 pub mod addrinfo;
-pub mod file;
 pub mod net;
 pub mod process;
+
+#[cfg(unix)]
+#[path = "file_unix.rs"]
+pub mod file;
+#[cfg(windows)]
+#[path = "file_win32.rs"]
+pub mod file;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -62,6 +68,14 @@ pub mod timer;
 #[cfg(target_os = "win32")]
 #[path = "timer_win32.rs"]
 pub mod timer;
+
+#[cfg(unix)]
+#[path = "pipe_unix.rs"]
+pub mod pipe;
+
+#[cfg(windows)]
+#[path = "pipe_win32.rs"]
+pub mod pipe;
 
 mod timer_helper;
 
@@ -80,6 +94,9 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
+            libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
+            libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
             libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
             libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
             libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
@@ -89,6 +106,14 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
+
+            // libuv maps this error code to EISDIR. we do too. if it is found
+            // to be incorrect, we can add in some more machinery to only
+            // return this message when ERROR_INVALID_FUNCTION after certain
+            // win32 calls.
+            libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
+                                             "illegal operation on a directory"),
 
             x => {
                 debug!("ignoring {}: {}", x, os::last_os_error());
@@ -111,6 +136,8 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
             libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ENOENT => (io::FileNotFound, "no such file or directory"),
+            libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause
@@ -177,6 +204,24 @@ fn retry<T:Signed + FromPrimitive>(f: || -> T) -> T {
     }
 }
 
+fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+    let origamt = data.len();
+    let mut data = data.as_ptr();
+    let mut amt = origamt;
+    while amt > 0 {
+        let ret = retry(|| f(data, amt) as libc::c_int);
+        if ret == 0 {
+            break
+        } else if ret != -1 {
+            amt -= ret as uint;
+            data = unsafe { data.offset(ret as int) };
+        } else {
+            return ret as i64;
+        }
+    }
+    return (origamt - amt) as i64;
+}
+
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
 /// native I/O functionality.
 pub struct IoFactory {
@@ -201,11 +246,11 @@ impl rtio::IoFactory for IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
         net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
     }
-    fn unix_bind(&mut self, _path: &CString) -> IoResult<~RtioUnixListener> {
-        Err(unimpl())
+    fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener> {
+        pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener)
     }
-    fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
-        Err(unimpl())
+    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe> {
+        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe)
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
@@ -281,6 +326,9 @@ impl rtio::IoFactory for IoFactory {
             (~p as ~RtioProcess,
              io.move_iter().map(|p| p.map(|p| ~p as ~RtioPipe)).collect())
         })
+    }
+    fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
+        process::Process::kill(pid, signum)
     }
     fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe> {
         Ok(~file::FileDesc::new(fd, true) as ~RtioPipe)

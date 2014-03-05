@@ -16,8 +16,8 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 */
 
 use std::cell::RefCell;
-use std::hashmap::{HashMap, HashSet};
 use std::uint;
+use collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
@@ -565,7 +565,7 @@ impl MoveData {
 impl FlowedMoveData {
     pub fn new(move_data: MoveData,
                tcx: ty::ctxt,
-               method_map: typeck::method_map,
+               method_map: typeck::MethodMap,
                id_range: ast_util::IdRange,
                body: &ast::Block)
                -> FlowedMoveData {

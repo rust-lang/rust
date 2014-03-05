@@ -252,14 +252,19 @@ impl<'a> mc::Typer for &'a mut Rcx {
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
+    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
+        self.fcx.inh.method_map.borrow().get().find(&id).map(|method| {
+            self.resolve_type(method.ty)
+        })
+    }
+
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
         let adjustments = self.fcx.inh.adjustments.borrow();
         adjustments.get().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        let method_map = self.fcx.inh.method_map.borrow();
-        method_map.get().contains_key(&id)
+        self.fcx.inh.method_map.borrow().get().contains_key(&id)
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -378,10 +383,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     debug!("regionck::visit_expr(e={}, repeating_scope={:?})",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
-    let has_method_map = {
-        let method_map = rcx.fcx.inh.method_map;
-        method_map.get().contains_key(&expr.id)
-    };
+    let has_method_map = rcx.fcx.inh.method_map.get().contains_key(&expr.id);
 
     // Check any autoderefs or autorefs that appear.
     {
@@ -434,13 +436,18 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     match expr.node {
         ast::ExprCall(callee, ref args) => {
             constrain_callee(rcx, callee.id, expr, callee);
-            constrain_call(rcx, callee.id, expr, None, *args, false);
+            constrain_call(rcx,
+                           Some(callee.id),
+                           expr,
+                           None,
+                           args.as_slice(),
+                           false);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprMethodCall(callee_id, _, _, ref args) => {
-            constrain_call(rcx, callee_id, expr, Some(args[0]),
+        ast::ExprMethodCall(_, _, ref args) => {
+            constrain_call(rcx, None, expr, Some(*args.get(0)),
                            args.slice_from(1), false);
 
             visit::walk_expr(rcx, expr, ());
@@ -451,9 +458,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprAssignOp(callee_id, _, lhs, rhs) => {
+        ast::ExprAssignOp(_, lhs, rhs) => {
             if has_method_map {
-                constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
+                constrain_call(rcx, None, expr, Some(lhs), [rhs], true);
             }
 
             adjust_borrow_kind_for_assignment_lhs(rcx, lhs);
@@ -461,33 +468,39 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprIndex(callee_id, lhs, rhs) |
-        ast::ExprBinary(callee_id, _, lhs, rhs) if has_method_map => {
+        ast::ExprIndex(lhs, rhs) |
+        ast::ExprBinary(_, lhs, rhs) if has_method_map => {
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
-            constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
+            constrain_call(rcx, None, expr, Some(lhs), [rhs], true);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprUnary(callee_id, _, lhs) if has_method_map => {
+        ast::ExprUnary(_, lhs) if has_method_map => {
             // As above.
-            constrain_call(rcx, callee_id, expr, Some(lhs), [], true);
+            constrain_call(rcx, None, expr, Some(lhs), [], true);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprUnary(_, ast::UnDeref, base) => {
+        ast::ExprUnary(ast::UnDeref, base) => {
             // For *a, the lifetime of a must enclose the deref
-            let base_ty = rcx.resolve_node_type(base.id);
+            let base_ty = match rcx.fcx.inh.method_map.get().find(&expr.id) {
+                Some(method) => {
+                    constrain_call(rcx, None, expr, Some(base), [], true);
+                    ty::ty_fn_ret(method.ty)
+                }
+                None => rcx.resolve_node_type(base.id)
+            };
             constrain_derefs(rcx, expr, 1, base_ty);
 
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprIndex(_, vec_expr, _) => {
+        ast::ExprIndex(vec_expr, _) => {
             // For a[b], the lifetime of a must enclose the deref
             let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
             constrain_index(rcx, expr, vec_type);
@@ -542,7 +555,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
 
         ast::ExprMatch(discr, ref arms) => {
-            link_match(rcx, discr, *arms);
+            link_match(rcx, discr, arms.as_slice());
 
             visit::walk_expr(rcx, expr, ());
         }
@@ -711,8 +724,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 fn constrain_callee(rcx: &mut Rcx,
                     callee_id: ast::NodeId,
                     call_expr: &ast::Expr,
-                    callee_expr: &ast::Expr)
-{
+                    callee_expr: &ast::Expr) {
     let call_region = ty::ReScope(call_expr.id);
 
     let callee_ty = rcx.resolve_node_type(callee_id);
@@ -736,12 +748,11 @@ fn constrain_callee(rcx: &mut Rcx,
 fn constrain_call(rcx: &mut Rcx,
                   // might be expr_call, expr_method_call, or an overloaded
                   // operator
-                  callee_id: ast::NodeId,
+                  fn_expr_id: Option<ast::NodeId>,
                   call_expr: &ast::Expr,
                   receiver: Option<@ast::Expr>,
                   arg_exprs: &[@ast::Expr],
-                  implicitly_ref_args: bool)
-{
+                  implicitly_ref_args: bool) {
     //! Invoked on every call site (i.e., normal calls, method calls,
     //! and overloaded operators). Constrains the regions which appear
     //! in the type of the function. Also constrains the regions that
@@ -756,7 +767,10 @@ fn constrain_call(rcx: &mut Rcx,
             receiver.repr(tcx),
             arg_exprs.repr(tcx),
             implicitly_ref_args);
-    let callee_ty = rcx.resolve_node_type(callee_id);
+    let callee_ty = match fn_expr_id {
+        Some(id) => rcx.resolve_node_type(id),
+        None => rcx.resolve_type(rcx.fcx.method_ty(call_expr.id))
+    };
     if ty::type_is_error(callee_ty) {
         // Bail, as function type is unknown
         return;

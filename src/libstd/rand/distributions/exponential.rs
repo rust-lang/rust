@@ -10,7 +10,7 @@
 
 //! The exponential distribution.
 
-use num::Real;
+use num::Float;
 use rand::{Rng, Rand};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -119,7 +119,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use mem::size_of;
     use prelude::*;
     use rand::{XorShiftRng, RAND_BENCH_N};

@@ -49,14 +49,15 @@ use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
 
-/// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
-pub struct Condvar<'a> {
+/// As sync::condvar, a mechanism for unlock-and-descheduling and
+/// signaling, for use with the Arc types.
+pub struct ArcCondvar<'a> {
     priv is_mutex: bool,
     priv failed: &'a bool,
     priv cond: &'a sync::Condvar<'a>
 }
 
-impl<'a> Condvar<'a> {
+impl<'a> ArcCondvar<'a> {
     /// Atomically exit the associated Arc and block until a signal is sent.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
@@ -192,12 +193,6 @@ impl<T:Send> MutexArc<T> {
      * other tasks wishing to access the data will block until the closure
      * finishes running.
      *
-     * The reason this function is 'unsafe' is because it is possible to
-     * construct a circular reference among multiple Arcs by mutating the
-     * underlying data. This creates potential for deadlock, but worse, this
-     * will guarantee a memory leak of all involved Arcs. Using MutexArcs
-     * inside of other Arcs is safe in absence of circular references.
-     *
      * If you wish to nest MutexArcs, one strategy for ensuring safety at
      * runtime is to add a "nesting level counter" inside the stored data, and
      * when traversing the arcs, assert that they monotonically decrease.
@@ -210,63 +205,33 @@ impl<T:Send> MutexArc<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline]
-    pub unsafe fn unsafe_access<U>(&self, blk: |x: &mut T| -> U) -> U {
-        let state = self.x.get();
-        // Borrowck would complain about this if the function were
-        // not already unsafe. See borrow_rwlock, far below.
-        (&(*state).lock).lock(|| {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail::new(&mut (*state).failed);
-            blk(&mut (*state).data)
-        })
-    }
-
-    /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
-    #[inline]
-    pub unsafe fn unsafe_access_cond<U>(&self,
-                                        blk: |x: &mut T, c: &Condvar| -> U)
-                                        -> U {
-        let state = self.x.get();
-        (&(*state).lock).lock_cond(|cond| {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail::new(&mut (*state).failed);
-            blk(&mut (*state).data,
-                &Condvar {is_mutex: true,
-                          failed: &(*state).failed,
-                          cond: cond })
-        })
-    }
-}
-
-impl<T:Freeze + Send> MutexArc<T> {
-
-    /**
-     * As unsafe_access.
-     *
-     * The difference between access and unsafe_access is that the former
-     * forbids mutexes to be nested. While unsafe_access can be used on
-     * MutexArcs without freezable interiors, this safe version of access
-     * requires the Freeze bound, which prohibits access on MutexArcs which
-     * might contain nested MutexArcs inside.
-     *
-     * The purpose of this is to offer a safe implementation of MutexArc to be
-     * used instead of RWArc in cases where no readers are needed and slightly
-     * better performance is required.
-     *
-     * Both methods have the same failure behaviour as unsafe_access and
-     * unsafe_access_cond.
-     */
-    #[inline]
     pub fn access<U>(&self, blk: |x: &mut T| -> U) -> U {
-        unsafe { self.unsafe_access(blk) }
+        let state = self.x.get();
+        unsafe {
+            // Borrowck would complain about this if the code were
+            // not already unsafe. See borrow_rwlock, far below.
+            (&(*state).lock).lock(|| {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
+                blk(&mut (*state).data)
+            })
+        }
     }
 
-    /// As unsafe_access_cond but safe and Freeze.
+    /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
-    pub fn access_cond<U>(&self,
-                          blk: |x: &mut T, c: &Condvar| -> U)
-                          -> U {
-        unsafe { self.unsafe_access_cond(blk) }
+    pub fn access_cond<U>(&self, blk: |x: &mut T, c: &ArcCondvar| -> U) -> U {
+        let state = self.x.get();
+        unsafe {
+            (&(*state).lock).lock_cond(|cond| {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
+                blk(&mut (*state).data,
+                    &ArcCondvar {is_mutex: true,
+                            failed: &(*state).failed,
+                            cond: cond })
+            })
+        }
     }
 }
 
@@ -381,7 +346,7 @@ impl<T:Freeze + Send> RWArc<T> {
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline]
     pub fn write_cond<U>(&self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         unsafe {
             let state = self.x.get();
@@ -389,7 +354,7 @@ impl<T:Freeze + Send> RWArc<T> {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
-                    &Condvar {is_mutex: false,
+                    &ArcCondvar {is_mutex: false,
                               failed: &(*state).failed,
                               cond: cond})
             })
@@ -517,7 +482,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
 
     /// Access the pre-downgrade RWArc in write mode with a condvar.
     pub fn write_cond<U>(&mut self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         match *self {
             RWWriteMode {
@@ -527,7 +492,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
             } => {
                 token.write_cond(|cond| {
                     unsafe {
-                        let cvar = Condvar {
+                        let cvar = ArcCondvar {
                             is_mutex: false,
                             failed: &*poison.flag,
                             cond: cond
@@ -590,7 +555,6 @@ impl<T:Clone+Send+Freeze> CowArc<T> {
 
 impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
     /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
-    #[inline]
     fn clone(&self) -> CowArc<T> {
         CowArc { x: self.x.clone() }
     }
@@ -692,20 +656,18 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_mutex_arc_nested() {
-        unsafe {
-            // Tests nested mutexes and access
-            // to underlaying data.
-            let arc = ~MutexArc::new(1);
-            let arc2 = ~MutexArc::new(*arc);
-            task::spawn(proc() {
-                (*arc2).unsafe_access(|mutex| {
-                    (*mutex).access(|one| {
-                        assert!(*one == 1);
-                    })
+    fn test_mutex_arc_nested() {
+        // Tests nested mutexes and access
+        // to underlaying data.
+        let arc = ~MutexArc::new(1);
+        let arc2 = ~MutexArc::new(*arc);
+        task::spawn(proc() {
+            (*arc2).access(|mutex| {
+                (*mutex).access(|one| {
+                    assert!(*one == 1);
                 })
-            });
-        }
+            })
+        });
     }
 
     #[test]
@@ -954,7 +916,7 @@ mod tests {
         // rwarc gives us extra shared state to help check for the race.
         // If you want to see this test fail, go to sync.rs and replace the
         // line in RWLock::write_cond() that looks like:
-        //     "blk(&Condvar { order: opt_lock, ..*cond })"
+        //     "blk(&ArcCondvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
         let x = RWArc::new(true);
         let (wp, wc) = Chan::new();

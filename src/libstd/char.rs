@@ -15,8 +15,6 @@ use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use str::StrSlice;
 use unicode::{derived_property, property, general_category, decompose};
-use to_str::ToStr;
-use str;
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -69,6 +67,7 @@ static TAG_FOUR_B: uint = 240u;
 pub static MAX: char = '\U0010ffff';
 
 /// Convert from `u32` to a character.
+#[inline]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
@@ -343,13 +342,6 @@ pub fn len_utf8_bytes(c: char) -> uint {
     }
 }
 
-impl ToStr for char {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        str::from_char(*self)
-    }
-}
-
 #[allow(missing_doc)]
 pub trait Char {
     fn is_alphabetic(&self) -> bool;
@@ -555,6 +547,7 @@ fn test_escape_unicode() {
 
 #[test]
 fn test_to_str() {
+    use to_str::ToStr;
     let s = 't'.to_str();
     assert_eq!(s, ~"t");
 }

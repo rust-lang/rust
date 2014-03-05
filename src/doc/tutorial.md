@@ -133,6 +133,10 @@ fn main() {
     println!("hello?");
 }
 ~~~~
+> ***Note:*** An identifier followed by an exclamation point, like
+> `println!`, is a macro invocation.  Macros are explained
+> [later](#syntax-extensions); for now just remember to include the
+> exclamation point.
 
 If the Rust compiler was installed successfully, running `rustc
 hello.rs` will produce an executable called `hello` (or `hello.exe` on
@@ -495,8 +499,7 @@ reject the previous example if the arm with the wildcard pattern was
 omitted.
 
 A powerful application of pattern matching is *destructuring*:
-matching in order to bind names to the contents of data
-types.
+matching in order to bind names to the contents of data types.
 
 > ***Note:*** The following code makes use of tuples (`(f64, f64)`) which
 > are explained in section 5.3. For now you can think of tuples as a list of
@@ -581,6 +584,32 @@ loop {
 
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
+
+There is also a for-loop that can be used to iterate over a range of numbers:
+
+~~~~
+for n in range(0, 5) {
+    println!("{}", n);
+}
+~~~~
+
+The snippet above prints integer numbers under 5 starting at 0.
+
+More generally, a for loop works with anything implementing the `Iterator` trait.
+Data structures can provide one or more methods that return iterators over
+their contents. For example, strings support iteration over their contents in
+various ways:
+
+~~~~
+let s = "Hello";
+for c in s.chars() {
+    println!("{}", c);
+}
+~~~~
+
+The snippet above prints the characters in "Hello" vertically, adding a new
+line after each character.
+
 
 # Data structures
 
@@ -1001,7 +1030,7 @@ type was invalid because the size was infinite!
 
 An *owned box* (`~`) uses a dynamic memory allocation to provide the invariant
 of always being the size of a pointer, regardless of the contained type. This
-can be leverage to create a valid `List` definition:
+can be leveraged to create a valid `List` definition:
 
 ~~~
 enum List {
@@ -1034,7 +1063,7 @@ box, while the owner holds onto a pointer to it:
     list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
             +--------------+    +--------------+    +--------------+    +--------------+
 
-> Note: the above diagram shows the logical contents of the enum. The actual
+> ***Note:*** the above diagram shows the logical contents of the enum. The actual
 > memory layout of the enum may vary. For example, for the `List` enum shown
 > above, Rust guarantees that there will be no enum tag field in the actual
 > structure. See the language reference for more details.
@@ -1089,7 +1118,7 @@ let z = x; // no new memory allocated, `x` can no longer be used
 ~~~~
 
 The `clone` method is provided by the `Clone` trait, and can be derived for
-our `List` type. Traits will be explained in detail later.
+our `List` type. Traits will be explained in detail [later](#traits).
 
 ~~~{.ignore}
 #[deriving(Clone)]
@@ -1182,8 +1211,8 @@ let ys = Cons(5, ~Cons(10, ~Nil));
 assert!(eq(&xs, &ys));
 ~~~
 
-Note that Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
-but LLVM is able to handle a simple case like this with optimizations enabled.
+> ***Note:*** Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
+> but LLVM is able to handle a simple case like this with optimizations enabled.
 
 ## Lists of other types
 
@@ -1192,6 +1221,9 @@ leveraging Rust's support for generics, it can be extended to work for any
 element type.
 
 The `u32` in the previous definition can be substituted with a type parameter:
+
+> ***Note:*** The following code introduces generics, which are explained in a
+> [dedicated section](#generics).
 
 ~~~
 enum List<T> {
@@ -1311,10 +1343,14 @@ impl<T: Eq> Eq for List<T> {
 
 let xs = Cons(5, ~Cons(10, ~Nil));
 let ys = Cons(5, ~Cons(10, ~Nil));
+// The methods below are part of the Eq trait,
+// which we implemented on our linked list.
 assert!(xs.eq(&ys));
-assert!(xs == ys);
 assert!(!xs.ne(&ys));
-assert!(!(xs != ys));
+
+// The Eq trait also allows us to use the shorthand infix operators.
+assert!(xs == ys);    // `xs == ys` is short for `xs.eq(&ys)`
+assert!(!(xs != ys)); // `xs != ys` is short for `xs.ne(&ys)`
 ~~~
 
 # More on boxes
@@ -1395,8 +1431,8 @@ bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use references to do this:
 
 ~~~
+use std::num::sqrt;
 # struct Point { x: f64, y: f64 }
-# fn sqrt(f: f64) -> f64 { 0.0 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
@@ -1443,14 +1479,14 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an immutable pointer to an object freezes it and prevents mutation.
+Lending an &-pointer to an object freezes it and prevents mutation—even if the object was declared as `mut`.
 `Freeze` objects have freezing enforced statically at compile-time. An example
 of a non-`Freeze` type is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
 {
-    let y = &x; // `x` is now frozen, it cannot be modified
+    let y = &x; // `x` is now frozen. It cannot be modified or re-assigned.
 }
 // `x` is now unfrozen again
 # x = 3;
@@ -1652,7 +1688,7 @@ let x = Rc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x.clone(); // a new owner
 let z = x; // this moves `x` into `z`, rather than creating a new owner
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z.borrow() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
 // the variable is mutable, but not the contents of the box
 let mut a = Rc::new([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
@@ -1671,7 +1707,7 @@ let x = Gc::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 let y = x; // does not perform a move, unlike with `Rc`
 let z = x;
 
-assert_eq!(*z.borrow(), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+assert!(*z.borrow() == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 ~~~
 
 With shared ownership, mutability cannot be inherited so the boxes are always immutable. However,
@@ -1750,6 +1786,24 @@ closures, but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
+Closures can be used to spawn tasks.
+A practical example of this pattern is found when using the `spawn` function,
+which starts a new task.
+
+~~~~
+use std::task::spawn;
+
+// proc is the closure which will be spawned.
+spawn(proc() {
+    debug!("I'm a new task")
+});
+~~~~
+
+> ***Note:*** If you want to see the output of `debug!` statements, you will need to turn on
+> `debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
+> variable to the name of your crate, which, for a file named `foo.rs`, will be
+> `foo` (e.g., with bash, `export RUST_LOG=foo`).
+
 ## Closure compatibility
 
 Rust closures have a convenient subtyping property: you can pass any kind of
@@ -1770,45 +1824,6 @@ call_twice(function);
 > ***Note:*** Both the syntax and the semantics will be changing
 > in small ways. At the moment they can be unsound in some
 > scenarios, particularly with non-copyable types.
-
-## Do syntax
-
-The `do` expression makes it easier to call functions that take procedures
-as arguments.
-
-Consider this function that takes a procedure:
-
-~~~~
-fn call_it(op: proc(v: int)) {
-    op(10)
-}
-~~~~
-
-As a caller, if we use a closure to provide the final operator
-argument, we can write it in a way that has a pleasant, block-like
-structure.
-
-~~~~
-# fn call_it(op: proc(v: int)) { }
-call_it(proc(n) {
-    println!("{}", n);
-});
-~~~~
-
-A practical example of this pattern is found when using the `spawn` function,
-which starts a new task.
-
-~~~~
-use std::task::spawn;
-spawn(proc() {
-    debug!("I'm a new task")
-});
-~~~~
-
-If you want to see the output of `debug!` statements, you will need to turn on
-`debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
-variable to the name of your crate, which, for a file named `foo.rs`, will be
-`foo` (e.g., with bash, `export RUST_LOG=foo`).
 
 # Methods
 
@@ -1973,8 +1988,8 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-use std::hashmap::HashMap;
-type Set<T> = HashMap<T, ()>;
+extern crate collections;
+type Set<T> = collections::HashMap<T, ()>;
 
 struct Stack<T> {
     elements: ~[T]
@@ -1984,6 +1999,7 @@ enum Option<T> {
     Some(T),
     None
 }
+# fn main() {}
 ~~~~
 
 These declarations can be instantiated to valid types like `Set<int>`,
@@ -2016,8 +2032,8 @@ C++ templates.
 
 ## Traits
 
-Within a generic function -- that is, a function parameterized by a
-type parameter, say, `T` -- the operations we can do on arguments of
+Within a generic function—that is, a function parameterized by a
+type parameter, say, `T`—the operations we can do on arguments of
 type `T` are quite limited.  After all, since we don't know what type
 `T` will be instantiated with, we can't safely modify or query values
 of type `T`.  This is where _traits_ come into play. Traits are Rust's
@@ -2514,13 +2530,13 @@ of type `ABC` can be randomly generated and converted to a string:
 #[deriving(Eq)]
 struct Circle { radius: f64 }
 
-#[deriving(Rand, ToStr)]
+#[deriving(Rand, Show)]
 enum ABC { A, B, C }
 ~~~
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
 `TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
-`IterBytes`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
+`Hash`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 
 # Crates and the module system
 
@@ -2721,7 +2737,8 @@ pub mod barn {
 
 In short, `mod foo;` is just syntactic sugar for `mod foo { /* content of <...>/foo.rs or <...>/foo/mod.rs */ }`.
 
-This also means that having two or more identical `mod foo;` declarations somewhere in your crate hierarchy is generally a bad idea,
+This also means that having two or more identical `mod foo;` declarations
+somewhere in your crate hierarchy is generally a bad idea,
 just like copy-and-paste-ing a module into multiple places is a bad idea.
 Both will result in duplicate and mutually incompatible definitions.
 
@@ -2780,11 +2797,11 @@ src/animals.rs
 
     src/mammals/humans.rs
     src/mammals/humans/mod.rs
-~~
+~~~
 
 If the animals file is `src/animals/mod.rs`, `rustc` will look for:
 
-~~ {.notrust}
+~~~ {.notrust}
 src/animals/mod.rs
     src/animals/fish.rs
     src/animals/fish/mod.rs
@@ -3069,11 +3086,6 @@ fn main() {
 It's a bit weird, but it's the result of shadowing rules that have been set that way because
 they model most closely what people expect to shadow.
 
-## Package ids
-
-If you use `extern crate`, per default `rustc` will look for libraries in the library search path (which you can
-extend with the `-L` switch).
-
 ## Crate metadata and settings
 
 For every crate you can define a number of metadata items, such as link name, version or author.
@@ -3091,14 +3103,13 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 // `lib.rs`
 
 # #[crate_type = "lib"];
-// Package ID
 #[crate_id = "farm#2.5"];
 
 // ...
 # fn farm() {}
 ~~~~
 
-You can also specify package ID information in a `extern crate` statement.  For
+You can also specify crate id information in a `extern crate` statement.  For
 example, these `extern crate` statements would both accept and select the
 crate define above:
 
@@ -3156,7 +3167,7 @@ Now compile and run like this (adjust to your platform if necessary):
 Notice that the library produced contains the version in the file name
 as well as an inscrutable string of alphanumerics. As explained in the previous paragraph,
 these are both part of Rust's library versioning scheme. The alphanumerics are
-a hash representing the crates package ID.
+a hash representing the crates id.
 
 ## The standard library and the prelude
 
@@ -3226,8 +3237,7 @@ library.  You can link to a library such as `extra` with an `extern crate extra;
 [extra library]: extra/index.html
 
 Right now `extra` contains those definitions directly, but in the future it will likely just
-re-export a bunch of 'officially blessed' crates that get managed with a
-package manager.
+re-export a bunch of 'officially blessed' crates that get managed with a package manager.
 
 # What next?
 

@@ -15,6 +15,7 @@
 use prelude::*;
 
 use default::Default;
+use from_str::FromStr;
 use num::{Bitwise, Bounded};
 #[cfg(target_word_size = "64")]
 use num::CheckedMul;
@@ -23,7 +24,7 @@ use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
 use str;
-use unstable::intrinsics;
+use intrinsics;
 
 uint_module!(u64, i64, 64)
 

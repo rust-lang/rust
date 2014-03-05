@@ -79,7 +79,7 @@ use str;
 use vec::{ImmutableVector, MutableVector};
 use vec;
 use rt::global_heap::malloc_raw;
-use unstable::raw::Slice;
+use raw::Slice;
 
 /// The representation of a C String.
 ///
@@ -664,7 +664,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use libc;
     use prelude::*;
 

@@ -12,6 +12,7 @@
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
+#[crate_type = "rlib"];
 
 #[feature(globs, struct_variant, managed_boxes)];
 
@@ -22,20 +23,21 @@ extern crate serialize;
 extern crate sync;
 extern crate getopts;
 extern crate collections;
+extern crate testing = "test";
+extern crate time;
 
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
-use extra::json;
-use serialize::{Decodable, Encodable};
-use extra::time;
+use serialize::{json, Decodable, Encodable};
 
 pub mod clean;
 pub mod core;
 pub mod doctree;
 pub mod fold;
 pub mod html {
+    pub mod highlight;
     pub mod escape;
     pub mod format;
     pub mod layout;
@@ -50,7 +52,7 @@ pub mod test;
 pub static SCHEMA_VERSION: &'static str = "0.8.1";
 
 type Pass = (&'static str,                                      // name
-             extern fn(clean::Crate) -> plugins::PluginResult,  // fn
+             fn(clean::Crate) -> plugins::PluginResult,         // fn
              &'static str);                                     // description
 
 static PASSES: &'static [Pass] = &[
@@ -343,13 +345,13 @@ fn json_output(krate: clean::Crate, res: ~[plugins::PluginJson],
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,
-        Err(_) => fail!("Rust generated JSON is invalid??")
+        Err(e) => fail!("Rust generated JSON is invalid: {:?}", e)
     };
 
     json.insert(~"crate", crate_json);
     json.insert(~"plugins", json::Object(plugins_json));
 
-    let mut file = if_ok!(File::create(&dst));
-    if_ok!(json::Object(json).to_writer(&mut file));
+    let mut file = try!(File::create(&dst));
+    try!(json::Object(json).to_writer(&mut file));
     Ok(())
 }

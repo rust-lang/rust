@@ -17,13 +17,13 @@ mod a {
 }
 
 mod b {
-    fn foo(f: Option<||>) { f.iter(|x|x()) }
+    fn foo(f: Option<||>) { f.map(|x|x()); }
     fn bar() {}
     pub fn main() { foo(Some(bar)); }
 }
 
 mod c {
-    fn foo(f: Option<||>) { f.iter(|x|x()) }
+    fn foo(f: Option<||>) { f.map(|x|x()); }
     fn bar() {}
     pub fn main() { foo(Some(||bar())); }
 }

@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
 extern crate collections;
+extern crate time;
 
-use extra::time;
-use collections::TreeMap;
-use std::hashmap::{HashMap, HashSet};
+use collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
-use std::trie::TrieMap;
 use std::uint;
 use std::vec;
 

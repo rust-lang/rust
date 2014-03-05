@@ -1,0 +1,42 @@
+# Use something that's not 'ruby' so we don't set up things like
+# RVM/bundler/ruby and whatnot. Right now 'rust' isn't a language on travis and
+# it treats unknown languages as ruby-like I believe.
+language: c
+
+# Before we start doing anything, install a stock LLVM
+install:
+  - sudo apt-get install llvm-3.3 llvm-3.3-dev clang-3.3 lldb-3.3
+
+# All of the llvm tools are suffixed with "-3.3" which we don't want, so symlink
+# them all into a local directory and just use that
+#
+# FIXME: this shouldn't update the src/llvm sub-repo, that takes about a minute
+#        it's gotta download so much stuff.
+before_script:
+  - mkdir -p local-llvm/bin
+  - ln -nsf /usr/bin/llvm-config-3.3 local-llvm/bin/llvm-config
+  - ln -nsf /usr/bin/llvm-mc-3.3 local-llvm/bin/llvm-mc
+  - ln -nsf /usr/bin/llvm-as-3.3 local-llvm/bin/llvm-as
+  - ln -nsf /usr/bin/llvm-dis-3.3 local-llvm/bin/llvm-dis
+  - ln -nsf /usr/bin/llc-3.3 local-llvm/bin/llc
+  - ln -nsf /usr/include/llvm-3.3 local-llvm/include
+  - ./configure --disable-optimize-tests --llvm-root=`pwd`/local-llvm --enable-fast-make --enable-clang
+
+# Tidy everything up first, then build a few things, and then run a few tests.
+# Note that this is meant to run in a "fairly small" amount of time, so this
+# isn't exhaustive at all.
+#
+# As a result of https://github.com/travis-ci/travis-ci/issues/1066, we run
+# everything in one large command instead of multiple commands.
+script: |
+  make tidy &&
+  make -j4 rustc-stage1 &&
+  make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail
+
+env:
+  - NO_BENCH=1
+
+# We track this ourselves, and in theory we don't have to update the LLVM repo
+# (but sadly we do right now anyway).
+git:
+  submodules: false

@@ -18,10 +18,9 @@
 
 */
 
-extern crate extra;
 extern crate getopts;
+extern crate time;
 
-use extra::time;
 use std::os;
 use std::result::{Ok, Err};
 use std::task;

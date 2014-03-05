@@ -499,7 +499,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
             "the block".with_c_str(
                 |s| llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llwrapfn, s));
 
-        let builder = ccx.builder.B;
+        let builder = ccx.builder.b;
         llvm::LLVMPositionBuilderAtEnd(builder, the_block);
 
         // Array for the arguments we will pass to the rust function.
@@ -713,7 +713,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
 // the massive simplifications that have occurred.
 
 pub fn link_name(i: @ast::ForeignItem) -> InternedString {
-     match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
+     match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
+                                              "link_name") {
         None => token::get_ident(i.ident),
         Some(ln) => ln.clone(),
     }

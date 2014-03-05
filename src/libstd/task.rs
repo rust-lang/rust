@@ -13,26 +13,12 @@
  *
  * An executing Rust program consists of a tree of tasks, each with their own
  * stack, and sole ownership of their allocated heap data. Tasks communicate
- * with each other using ports and channels (see std::rt::comm for more info
+ * with each other using ports and channels (see std::comm for more info
  * about how communication works).
  *
- * Tasks can be spawned in 3 different modes.
- *
- *  * Bidirectionally linked: This is the default mode and it's what ```spawn``` does.
- *  Failures will be propagated from parent to child and vice versa.
- *
- *  * Unidirectionally linked (parent->child): This type of task can be created with
- *  ```spawn_supervised```. In this case, failures are propagated from parent to child
- *  but not the other way around.
- *
- *  * Unlinked: Tasks can be completely unlinked. These tasks can be created by using
- *  ```spawn_unlinked```. In this case failures are not propagated at all.
- *
- * Tasks' failure modes can be further configured. For instance, parent tasks can (un)watch
- * children failures. Please, refer to TaskBuilder's documentation bellow for more information.
- *
- * When a (bi|uni)directionally linked task fails, its failure will be propagated to all tasks
- * linked to it, this will cause such tasks to fail by a `linked failure`.
+ * Failure in one task does not propagate to any others (not to parent, not to child).
+ * Failure propagation is instead handled by using Chan.send() and Port.recv(), which
+ * will fail if the other end has hung up already.
  *
  * Task Scheduling:
  *
@@ -51,8 +37,6 @@
  * ```
  */
 
-#[allow(missing_doc)];
-
 use any::Any;
 use comm::{Chan, Port};
 use io::Writer;
@@ -70,40 +54,24 @@ use str::{Str, SendStr, IntoMaybeOwned};
 /// Indicates the manner in which a task exited.
 ///
 /// A task that completes without failing is considered to exit successfully.
-/// Supervised ancestors and linked siblings may yet fail after this task
-/// succeeds. Also note that in such a case, it may be nondeterministic whether
-/// linked failure or successful exit happen first.
 ///
-/// If you wish for this result's delivery to block until all linked and/or
+/// If you wish for this result's delivery to block until all
 /// children tasks complete, recommend using a result future.
 pub type TaskResult = Result<(), ~Any>;
 
-/**
- * Task configuration options
- *
- * # Fields
- *
- * * watched - Make parent task collect exit status notifications from child
- *             before reporting its own exit status. (This delays the parent
- *             task's death and cleanup until after all transitively watched
- *             children also exit.) True by default.
- *
- * * notify_chan - Enable lifecycle notifications on the given channel
- *
- * * name - A name for the task-to-be, for identification in failure messages.
- *
- * * sched - Specify the configuration of a new scheduler to create the task
- *           in. This is of particular importance for libraries which want to call
- *           into foreign code that blocks. Without doing so in a different
- *           scheduler other tasks will be impeded or even blocked indefinitely.
- */
+/// Task configuration options
 pub struct TaskOpts {
-    watched: bool,
+    /// Enable lifecycle notifications on the given channel
     notify_chan: Option<Chan<TaskResult>>,
+    /// A name for the task-to-be, for identification in failure messages
     name: Option<SendStr>,
+    /// The size of the stack for the spawned task
     stack_size: Option<uint>,
+    /// Task-local logger (see std::logging)
     logger: Option<~Logger>,
+    /// Task-local stdout
     stdout: Option<~Writer>,
+    /// Task-local stderr
     stderr: Option<~Writer>,
 }
 
@@ -120,6 +88,7 @@ pub struct TaskOpts {
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
 pub struct TaskBuilder {
+    /// Options to spawn the new task with
     opts: TaskOpts,
     priv gen_body: Option<proc(v: proc()) -> proc()>,
     priv nopod: Option<marker::NoPod>,
@@ -128,7 +97,6 @@ pub struct TaskBuilder {
 /**
  * Generate the base configuration for spawning a task, off of which more
  * configuration methods can be chained.
- * For example, task().unlinked().spawn is equivalent to spawn_unlinked.
  */
 pub fn task() -> TaskBuilder {
     TaskBuilder {
@@ -139,30 +107,12 @@ pub fn task() -> TaskBuilder {
 }
 
 impl TaskBuilder {
-    /// Cause the parent task to collect the child's exit status (and that of
-    /// all transitively-watched grandchildren) before reporting its own.
-    pub fn watched(&mut self) {
-        self.opts.watched = true;
-    }
-
-    /// Allow the child task to outlive the parent task, at the possible cost
-    /// of the parent reporting success even if the child task fails later.
-    pub fn unwatched(&mut self) {
-        self.opts.watched = false;
-    }
-
     /// Get a future representing the exit status of the task.
     ///
     /// Taking the value of the future will block until the child task
     /// terminates. The future result return value will be created *before* the task is
     /// spawned; as such, do not invoke .get() on it directly;
     /// rather, store it in an outer variable/list for later use.
-    ///
-    /// Note that the future returned by this function is only useful for
-    /// obtaining the value of the next task to be spawning with the
-    /// builder. If additional tasks are spawned with the same builder
-    /// then a new result future must be obtained prior to spawning each
-    /// task.
     ///
     /// # Failure
     /// Fails if a future_result was already set for this task.
@@ -187,8 +137,9 @@ impl TaskBuilder {
 
     /// Name the task-to-be. Currently the name is used for identification
     /// only in failure messages.
-    pub fn name<S: IntoMaybeOwned<'static>>(&mut self, name: S) {
+    pub fn named<S: IntoMaybeOwned<'static>>(mut self, name: S) -> TaskBuilder {
         self.opts.name = Some(name.into_maybe_owned());
+        self
     }
 
     /**
@@ -203,7 +154,7 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    pub fn add_wrapper(&mut self, wrapper: proc(v: proc()) -> proc()) {
+    pub fn with_wrapper(mut self, wrapper: proc(v: proc()) -> proc()) -> TaskBuilder {
         let prev_gen_body = self.gen_body.take();
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
@@ -219,6 +170,7 @@ impl TaskBuilder {
             f
         };
         self.gen_body = Some(next_gen_body);
+        self
     }
 
     /**
@@ -227,11 +179,6 @@ impl TaskBuilder {
      * Sets up a new task with its own call stack and schedules it to run
      * the provided unique closure. The task has the properties and behavior
      * specified by the task_builder.
-     *
-     * # Failure
-     *
-     * When spawning into a new scheduler, the number of threads requested
-     * must be greater than zero.
      */
     pub fn spawn(mut self, f: proc()) {
         let gen_body = self.gen_body.take();
@@ -278,13 +225,9 @@ impl TaskOpts {
     pub fn new() -> TaskOpts {
         /*!
          * The default task options
-         *
-         * By default all tasks are supervised by their parent, are spawned
-         * into the same scheduler, and do not post lifecycle notifications.
          */
 
         TaskOpts {
-            watched: true,
             notify_chan: None,
             name: None,
             stack_size: None,
@@ -313,7 +256,7 @@ pub fn try<T:Send>(f: proc() -> T) -> Result<T, ~Any> {
      * Execute a function in another task and return either the return value
      * of the function or result::err.
      *
-     * This is equivalent to task().supervised().try.
+     * This is equivalent to task().try.
      */
 
     let task = task();
@@ -370,9 +313,7 @@ fn test_unnamed_task() {
 
 #[test]
 fn test_owned_named_task() {
-    let mut t = task();
-    t.name(~"ada lovelace");
-    t.spawn(proc() {
+    task().named(~"ada lovelace").spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -381,9 +322,7 @@ fn test_owned_named_task() {
 
 #[test]
 fn test_static_named_task() {
-    let mut t = task();
-    t.name("ada lovelace");
-    t.spawn(proc() {
+    task().named("ada lovelace").spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -392,9 +331,7 @@ fn test_static_named_task() {
 
 #[test]
 fn test_send_named_task() {
-    let mut t = task();
-    t.name("ada lovelace".into_maybe_owned());
-    t.spawn(proc() {
+    task().named("ada lovelace".into_maybe_owned()).spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -411,18 +348,16 @@ fn test_run_basic() {
 }
 
 #[test]
-fn test_add_wrapper() {
+fn test_with_wrapper() {
     let (po, ch) = Chan::new();
-    let mut b0 = task();
-    b0.add_wrapper(proc(body) {
+    task().with_wrapper(proc(body) {
         let ch = ch;
         let result: proc() = proc() {
             body();
             ch.send(());
         };
         result
-    });
-    b0.spawn(proc() { });
+    }).spawn(proc() { });
     po.recv();
 }
 
@@ -553,15 +488,11 @@ fn test_child_doesnt_ref_parent() {
     fn child_no(x: uint) -> proc() {
         return proc() {
             if x < generations {
-                let mut t = task();
-                t.unwatched();
-                t.spawn(child_no(x+1));
+                task().spawn(child_no(x+1));
             }
         }
     }
-    let mut t = task();
-    t.unwatched();
-    t.spawn(child_no(0));
+    task().spawn(child_no(0));
 }
 
 #[test]

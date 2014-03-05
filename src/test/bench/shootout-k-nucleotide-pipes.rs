@@ -14,10 +14,11 @@
 // multi tasking k-nucleotide
 
 extern crate extra;
+extern crate collections;
 
 use std::cmp::Ord;
 use std::comm;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::mem::replace;
 use std::option;
 use std::os;

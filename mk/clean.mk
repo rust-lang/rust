@@ -58,6 +58,7 @@ clean-generic-$(2)-$(1):
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
+         -name '*.rlib' -o   \
          -name 'stamp.*' -o   \
          -name '*.lib' -o     \
          -name '*.dll' -o     \

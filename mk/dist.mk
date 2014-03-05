@@ -12,6 +12,10 @@ PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
 PKG_EXE = $(PKG_DIR)-install.exe
 endif
 
+ifeq ($(CFG_OSTYPE), apple-darwin)
+PKG_OSX = $(PKG_DIR).pkg
+endif
+
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 
 PKG_FILES := \
@@ -24,10 +28,10 @@ PKG_FILES := \
     $(S)RELEASES.txt                           \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
-    $(S)doc                                    \
     $(addprefix $(S)src/,                      \
       README.md                                \
       compiletest                              \
+      doc                                      \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
@@ -41,10 +45,10 @@ PKG_FILES := \
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
-ifdef CFG_ISCC
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cat $^ > $@
 
+ifdef CFG_ISCC
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
 
@@ -52,12 +56,24 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 	cp $< $@
 
 $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
-            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD))
-	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py i686-pc-mingw32/stage3/bin
+            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+            dist-prepare-win
+	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py tmp/dist/win/bin
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
-endif
 
+dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
+dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
+dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win
+# On windows we're using stage3, unlike Unix...
+dist-prepare-win: PREPARE_STAGE=3
+dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-win: prepare-base
+
+endif
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
@@ -91,7 +107,7 @@ distcheck: dist
 
 else
 
-dist: $(PKG_TAR)
+dist: $(PKG_TAR) $(PKG_OSX)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
@@ -109,6 +125,34 @@ distcheck: $(PKG_TAR)
 	@echo
 	@echo -----------------------------------------------
 	@echo $(PKG_TAR) ready for distribution
+	@echo -----------------------------------------------
+
+endif
+
+ifeq ($(CFG_OSTYPE), apple-darwin)
+
+dist-prepare-osx: PREPARE_HOST=$(CFG_BUILD)
+dist-prepare-osx: PREPARE_TARGETS=$(CFG_BUILD)
+dist-prepare-osx: PREPARE_DEST_DIR=tmp/dist/pkgroot
+dist-prepare-osx: PREPARE_STAGE=2
+dist-prepare-osx: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-prepare-osx: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-prepare-osx: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-prepare-osx: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-osx: prepare-base
+
+$(PKG_OSX): Distribution.xml LICENSE.txt dist-prepare-osx
+	@$(call E, making OS X pkg)
+	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot rust.pkg
+	$(Q)productbuild --distribution Distribution.xml --resources . $(PKG_OSX)
+	$(Q)rm -rf tmp rust.pkg
+
+dist-osx: $(PKG_OSX)
+
+distcheck-osx: $(PKG_OSX)
+	@echo
+	@echo -----------------------------------------------
+	@echo $(PKG_OSX) ready for distribution
 	@echo -----------------------------------------------
 
 endif

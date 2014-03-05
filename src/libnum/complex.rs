@@ -11,6 +11,7 @@
 
 //! Complex numbers.
 
+use std::fmt;
 use std::num::{Zero,One,ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This
@@ -77,7 +78,7 @@ impl<T: Clone + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Real> Cmplx<T> {
+impl<T: Clone + Float> Cmplx<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -85,7 +86,7 @@ impl<T: Clone + Real> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Real> Cmplx<T> {
+impl<T: Clone + Float> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
@@ -167,12 +168,12 @@ impl<T: Clone + Num> One for Cmplx<T> {
 }
 
 /* string conversions */
-impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
-    fn to_str(&self) -> ~str {
+impl<T: fmt::Show + Num + Ord> fmt::Show for Cmplx<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
-            format!("{}-{}i", self.re.to_str(), (-self.im).to_str())
+            write!(f.buf, "{}-{}i", self.re, -self.im)
         } else {
-            format!("{}+{}i", self.re.to_str(), self.im.to_str())
+            write!(f.buf, "{}+{}i", self.re, self.im)
         }
     }
 }
@@ -192,7 +193,7 @@ mod test {
     #[allow(non_uppercase_statics)];
 
     use super::{Complex64, Cmplx};
-    use std::num::{Zero,One,Real};
+    use std::num::{Zero,One,Float};
 
     pub static _0_0i : Complex64 = Cmplx { re: 0.0, im: 0.0 };
     pub static _1_0i : Complex64 = Cmplx { re: 1.0, im: 0.0 };
@@ -270,9 +271,9 @@ mod test {
             assert!((c.arg() - arg).abs() < 1.0e-6)
         }
         test(_1_0i, 0.0);
-        test(_1_1i, 0.25 * Real::pi());
-        test(_neg1_1i, 0.75 * Real::pi());
-        test(_05_05i, 0.25 * Real::pi());
+        test(_1_1i, 0.25 * Float::pi());
+        test(_neg1_1i, 0.75 * Float::pi());
+        test(_05_05i, 0.25 * Float::pi());
     }
 
     #[test]

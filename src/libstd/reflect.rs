@@ -16,9 +16,9 @@ Runtime type reflection
 
 #[allow(missing_doc)];
 
-use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
+use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;
-use unstable::raw;
+use raw;
 
 /**
  * Trait for visitor that wishes to reflect on data. To use this, create a

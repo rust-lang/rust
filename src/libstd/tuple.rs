@@ -17,7 +17,6 @@ use clone::Clone;
 #[cfg(not(test))] use default::Default;
 use fmt;
 use result::{Ok, Err};
-use to_str::ToStr;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -119,12 +118,6 @@ macro_rules! tuple_impls {
                 }
             }
 
-            impl<$($T: fmt::Show),+> ToStr for ($($T,)+) {
-                fn to_str(&self) -> ~str {
-                    format!("{}", *self)
-                }
-            }
-
             impl<$($T: fmt::Show),+> fmt::Show for ($($T,)+) {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     write_tuple!(f.buf, $(self.$refN()),+)
@@ -161,9 +154,9 @@ macro_rules! write_tuple {
         write!($buf, "({},)", *$x)
     );
     ($buf:expr, $hd:expr, $($tl:expr),+) => ({
-        if_ok!(write!($buf, "("));
-        if_ok!(write!($buf, "{}", *$hd));
-        $(if_ok!(write!($buf, ", {}", *$tl));)+
+        try!(write!($buf, "("));
+        try!(write!($buf, "{}", *$hd));
+        $(try!(write!($buf, ", {}", *$tl));)+
         write!($buf, ")")
     });
 }
@@ -352,10 +345,10 @@ mod tests {
         assert!(!big.equals(&small));
 
         // TotalOrd
-        assert_eq!(small.cmp(&small), Equal);
-        assert_eq!(big.cmp(&big), Equal);
-        assert_eq!(small.cmp(&big), Less);
-        assert_eq!(big.cmp(&small), Greater);
+        assert!(small.cmp(&small) == Equal);
+        assert!(big.cmp(&big) == Equal);
+        assert!(small.cmp(&big) == Less);
+        assert!(big.cmp(&small) == Greater);
     }
 
     #[test]

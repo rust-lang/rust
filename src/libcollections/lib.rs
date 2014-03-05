@@ -17,29 +17,38 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
-#[feature(macro_rules, managed_boxes)];
+#[feature(macro_rules, managed_boxes, default_type_params)];
 
-extern crate serialize;
-#[cfg(test)] extern crate extra; // benchmark tests need this
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
+#[allow(default_type_param_usage)];
+
+#[cfg(test)] extern crate test;
 
 pub use bitv::Bitv;
 pub use btree::BTree;
 pub use deque::Deque;
 pub use dlist::DList;
+pub use enum_set::EnumSet;
+pub use hashmap::{HashMap, HashSet};
 pub use list::List;
 pub use lru_cache::LruCache;
 pub use priority_queue::PriorityQueue;
 pub use ringbuf::RingBuf;
 pub use smallintmap::SmallIntMap;
 pub use treemap::{TreeMap, TreeSet};
+pub use trie::{TrieMap, TrieSet};
 
 pub mod bitv;
 pub mod btree;
 pub mod deque;
 pub mod dlist;
+pub mod enum_set;
+pub mod hashmap;
 pub mod list;
 pub mod lru_cache;
 pub mod priority_queue;
 pub mod ringbuf;
 pub mod smallintmap;
 pub mod treemap;
+pub mod trie;

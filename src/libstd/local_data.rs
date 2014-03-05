@@ -281,7 +281,7 @@ fn get_with<T:'static,
 }
 
 fn abort() -> ! {
-    use std::unstable::intrinsics;
+    use intrinsics;
     unsafe { intrinsics::abort() }
 }
 

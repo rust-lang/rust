@@ -17,15 +17,17 @@
 // - Arenas
 
 extern crate arena;
+extern crate collections;
 
 use arena::Arena;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::cast;
 use std::libc;
 use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 
+#[deriving(Show)]
 enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),
@@ -84,7 +86,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 struct NodeId {
     id: uint
 }

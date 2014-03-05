@@ -12,6 +12,7 @@
 // ignore-stage1
 // ignore-fast
 // ignore-android
+// ignore-cross-compile #12102
 
 #[feature(phase)];
 

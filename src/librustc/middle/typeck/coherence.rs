@@ -47,7 +47,7 @@ use syntax::parse::token;
 use syntax::visit;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::rc::Rc;
 use std::vec;
 
@@ -524,7 +524,8 @@ impl CoherenceChecker {
         let type_parameters = self.inference_context.next_ty_vars(bounds_count);
 
         let substitutions = substs {
-            regions: ty::NonerasedRegions(opt_vec::from(region_parameters)),
+            regions: ty::NonerasedRegions(opt_vec::from(
+                             region_parameters.move_iter().collect())),
             self_ty: None,
             tps: type_parameters
         };
@@ -725,6 +726,7 @@ impl CoherenceChecker {
 
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
+                ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) => {
                     let mut destructor_for_type = tcx.destructor_for_type
                                                      .borrow_mut();
