@@ -30,6 +30,7 @@ This API is completely unstable and subject to change.
 #[allow(unknown_features)];// Note: remove it after a snapshot.
 #[feature(quote)];
 
+#[allow(deprecated)];
 #[deny(non_camel_case_types)];
 
 extern crate serialize;

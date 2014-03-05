@@ -27,6 +27,7 @@ This API is completely unstable and subject to change.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[allow(deprecated)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 #[feature(quote)];
 
