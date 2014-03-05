@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Operations and constants for 32-bits floats (`f32` type)
+
 #[allow(missing_doc)];
 
 use prelude::*;
@@ -311,6 +312,16 @@ impl Bounded for f32 {
 impl Primitive for f32 {}
 
 impl Float for f32 {
+    #[inline]
+    fn max(self, other: f32) -> f32 {
+        unsafe { cmath::c_float::fmax(self, other) }
+    }
+
+    #[inline]
+    fn min(self, other: f32) -> f32 {
+        unsafe { cmath::c_float::fmin(self, other) }
+    }
+
     #[inline]
     fn nan() -> f32 { 0.0 / 0.0 }
 
