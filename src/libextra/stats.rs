@@ -10,7 +10,6 @@
 
 #[allow(missing_doc)];
 
-use std::cmp;
 use std::hash::Hash;
 use std::io;
 use std::mem;
@@ -203,12 +202,12 @@ impl<'a> Stats for &'a [f64] {
 
     fn min(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::min(p, *q))
+        self.iter().fold(self[0], |p, q| p.min(*q))
     }
 
     fn max(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::max(p, *q))
+        self.iter().fold(self[0], |p, q| p.max(*q))
     }
 
     fn mean(self) -> f64 {
@@ -442,6 +441,7 @@ mod tests {
     use stats::write_boxplot;
     use std::io;
     use std::str;
+    use std::f64;
 
     macro_rules! assert_approx_eq(
         ($a:expr, $b:expr) => ({
@@ -479,6 +479,14 @@ mod tests {
 
         assert_eq!(summ.quartiles, summ2.quartiles);
         assert_eq!(summ.iqr, summ2.iqr);
+    }
+
+    #[test]
+    fn test_min_max_nan() {
+        let xs = &[1.0, 2.0, f64::NAN, 3.0, 4.0];
+        let summary = Summary::new(xs);
+        assert_eq!(summary.min, 1.0);
+        assert_eq!(summary.max, 4.0);
     }
 
     #[test]
