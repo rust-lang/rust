@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 pub fn main() {
     let i = ~vec!(100);
-    assert_eq!(i[0], 100);
+    assert_eq!(*i.get(0), 100);
 }

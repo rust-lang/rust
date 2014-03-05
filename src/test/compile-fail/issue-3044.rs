@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn main() {
     let needlesArr: Vec<char> = vec!('a', 'f');
     needlesArr.iter().fold(|x, y| {

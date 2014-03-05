@@ -10,4 +10,6 @@
 
 #[allow(unused_mut)];
 
+use std::vec_ng::Vec;
+
 pub fn main() { let mut _v: Vec<int> = Vec::new(); }

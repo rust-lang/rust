@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp;
+use std::vec_ng::Vec;
 
 // Tests of ports and channels on various types
 fn test_rec() {
@@ -29,9 +30,9 @@ fn test_vec() {
     let v0: Vec<int> = vec!(0, 1, 2);
     tx.send(v0);
     let v1 = rx.recv();
-    assert_eq!(v1[0], 0);
-    assert_eq!(v1[1], 1);
-    assert_eq!(v1[2], 2);
+    assert_eq!(*v1.get(0), 0);
+    assert_eq!(*v1.get(1), 1);
+    assert_eq!(*v1.get(2), 2);
 }
 
 fn test_str() {

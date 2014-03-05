@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn foo(c: Vec<int> ) {
     let a: int = 5;
     let mut b: Vec<int> = Vec::new();

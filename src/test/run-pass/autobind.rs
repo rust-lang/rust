@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T>(x: Vec<T> ) -> T { return x[0]; }
+use std::vec_ng::Vec;
+
+fn f<T>(x: Vec<T>) -> T { return x.move_iter().next().unwrap(); }
 
 fn g(act: |Vec<int> | -> int) -> int { return act(vec!(1, 2, 3)); }
 

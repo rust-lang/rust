@@ -10,6 +10,8 @@
 
 // ignore-fast
 
+use std::vec_ng::Vec;
+
 trait to_str {
     fn to_string(&self) -> ~str;
 }
@@ -31,7 +33,7 @@ impl<T> map<T> for Vec<T> {
         let mut r = Vec::new();
         // FIXME: #7355 generates bad code with VecIterator
         for i in range(0u, self.len()) {
-            r.push(f(&self[i]));
+            r.push(f(self.get(i)));
         }
         r
     }
@@ -48,5 +50,5 @@ pub fn main() {
     assert_eq!(foo(vec!(1)), vec!(~"hi"));
     assert_eq!(bar::<int, Vec<int> >(vec!(4, 5)), vec!(~"4", ~"5"));
     assert_eq!(bar::<~str, Vec<~str> >(vec!(~"x", ~"y")), vec!(~"x", ~"y"));
-    assert_eq!(bar::<(), vec!(())>(vec!(())), vec!(~"()"));
+    assert_eq!(bar::<(), Vec<()>>(vec!(())), vec!(~"()"));
 }

@@ -21,6 +21,7 @@ use std::comm;
 use std::os;
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn child_generation(gens_left: uint, tx: comm::Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
@@ -45,11 +46,11 @@ fn main() {
     } else if args.len() <= 1 {
         vec!(~"", ~"100")
     } else {
-        args.clone()
+        args.clone().move_iter().collect()
     };
 
     let (tx, rx) = channel();
-    child_generation(from_str::<uint>(args[1]).unwrap(), tx);
+    child_generation(from_str::<uint>(*args.get(1)).unwrap(), tx);
     if rx.recv_opt().is_none() {
         fail!("it happened when we slumbered");
     }

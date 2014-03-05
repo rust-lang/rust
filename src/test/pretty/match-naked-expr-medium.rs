@@ -14,7 +14,7 @@ fn main() {
     let x = Some(3);
     let _y =
         match x {
-            Some(_) => vec!(~"some(_)", ~"not", ~"SO", ~"long", ~"string"),
-            None => vec!(~"none")
+            Some(_) => [~"some(_)", ~"not", ~"SO", ~"long", ~"string"],
+            None => [~"none", ~"a", ~"a", ~"a", ~"a"]
         };
 }

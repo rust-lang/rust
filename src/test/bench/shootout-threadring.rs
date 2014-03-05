@@ -56,18 +56,17 @@ fn main() {
 
     let args = if os::getenv("RUST_BENCH").is_some() {
         vec!(~"", ~"2000000", ~"503")
-    }
-    else {
-        os::args()
+    } else {
+        os::args().move_iter().collect()
     };
     let token = if args.len() > 1u {
-        FromStr::from_str(args[1]).unwrap()
+        FromStr::from_str(*args.get(1)).unwrap()
     }
     else {
         1000
     };
     let n_tasks = if args.len() > 2u {
-        FromStr::from_str(args[2]).unwrap()
+        FromStr::from_str(*args.get(2)).unwrap()
     }
     else {
         503

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn swap(f: |Vec<int> | -> Vec<int> ) -> Vec<int> {
     let x = vec!(1, 2, 3);
     f(x)

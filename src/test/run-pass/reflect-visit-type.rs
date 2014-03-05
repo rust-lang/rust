@@ -11,6 +11,7 @@
 #[feature(managed_boxes)];
 
 use std::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
+use std::vec_ng::Vec;
 
 struct MyVisitor {
     types: Vec<~str> ,
@@ -151,10 +152,11 @@ pub fn main() {
     visit_ty::<int>(&mut v);
     visit_ty::<i8>(&mut v);
     visit_ty::<i16>(&mut v);
-    visit_ty::<Vec<int> >(&mut v);
 
     for s in v.types.iter() {
         println!("type: {}", (*s).clone());
     }
-    assert_eq!(v.types.clone(), vec!(~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"));
+
+    let vec_types: Vec<~str> = v.types.clone().move_iter().collect();
+    assert_eq!(vec_types, vec!(~"bool", ~"int", ~"i8", ~"i16"));
 }

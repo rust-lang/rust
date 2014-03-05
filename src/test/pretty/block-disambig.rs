@@ -15,6 +15,7 @@
 #[feature(managed_boxes)];
 
 use std::cell::Cell;
+use std::vec_ng::Vec;
 
 fn test1() { let val = @0; { } *val; }
 
@@ -61,7 +62,7 @@ fn test9() {
 fn test10() -> int {
     let regs = @vec!(0);
     match true { true => { } _ => { } }
-    (*regs)[0]
+    *(*regs).get(0)
 }
 
 fn test11() -> Vec<int> { if true { } vec!(1, 2) }

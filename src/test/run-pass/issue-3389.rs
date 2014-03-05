@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 struct trie_node {
     content: Vec<~str> ,
     children: Vec<trie_node> ,

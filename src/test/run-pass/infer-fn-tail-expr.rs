@@ -10,6 +10,8 @@
 
 // issue #680
 
+use std::vec_ng::Vec;
+
 fn f() -> Vec<int> { Vec::new() }
 
 pub fn main() { }

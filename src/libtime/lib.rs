@@ -1044,7 +1044,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    let mut buf = ~[];
+    let mut buf = Vec::new();
 
     let mut rdr = BufReader::new(format.as_bytes());
     loop {
@@ -1063,7 +1063,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    str::from_utf8_owned(buf).unwrap()
+    str::from_utf8(buf.as_slice()).unwrap().to_str()
 }
 
 #[cfg(test)]

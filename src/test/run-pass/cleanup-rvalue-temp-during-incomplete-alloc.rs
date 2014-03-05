@@ -25,6 +25,7 @@
 // scenario worth testing.
 
 use std::task;
+use std::vec_ng::Vec;
 
 enum Conzabble {
     Bickwick(Foo)
@@ -41,7 +42,7 @@ fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }
 pub fn fails() {
     let x = 2;
     let mut y = Vec::new();
-    y.push(~Bickwick(do_it(get_bar(x))));
+    y.push(~Bickwick(do_it(get_bar(x).as_slice())));
 }
 
 pub fn main() {

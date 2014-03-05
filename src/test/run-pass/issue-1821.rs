@@ -9,7 +9,10 @@
 // except according to those terms.
 
 // Issue #1821 - Don't recurse trying to typecheck this
+
+use std::vec_ng::Vec;
+
 enum t {
-    foo(vec!(t))
+    foo(Vec<t>)
 }
 pub fn main() {}

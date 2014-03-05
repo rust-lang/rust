@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 struct F { f: Vec<int> }
 
 fn impure(_v: &[int]) {
@@ -18,7 +20,7 @@ pub fn main() {
 
     match x {
       F {f: ref mut v} => {
-        impure(*v);
+        impure(v.as_slice());
       }
     }
 }

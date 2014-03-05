@@ -10,6 +10,8 @@
 
 // ignore-fast
 
+use std::vec_ng::Vec;
+
 trait vec_monad<A> {
     fn bind<B>(&self, f: |&A| -> Vec<B> ) -> Vec<B> ;
 }

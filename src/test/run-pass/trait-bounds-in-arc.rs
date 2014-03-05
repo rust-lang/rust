@@ -19,6 +19,7 @@ extern crate sync;
 
 use sync::Arc;
 use std::task;
+use std::vec_ng::Vec;
 
 trait Pet {
     fn name(&self, blk: |&str|);
@@ -90,22 +91,14 @@ fn check_legs(arc: Arc<Vec<~Pet:Share+Send>>) {
     }
     assert!(legs == 12);
 }
-<<<<<<< HEAD
-fn check_names(arc: Arc<~[~Pet:Share+Send]>) {
-=======
-fn check_names(arc: Arc<Vec<~Pet:Freeze+Send> >) {
->>>>>>> test: Automatically remove all `~[T]` from tests.
+fn check_names(arc: Arc<Vec<~Pet:Share+Send>>) {
     for pet in arc.get().iter() {
         pet.name(|name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         })
     }
 }
-<<<<<<< HEAD
-fn check_pedigree(arc: Arc<~[~Pet:Share+Send]>) {
-=======
-fn check_pedigree(arc: Arc<Vec<~Pet:Freeze+Send> >) {
->>>>>>> test: Automatically remove all `~[T]` from tests.
+fn check_pedigree(arc: Arc<Vec<~Pet:Share+Send>>) {
     for pet in arc.get().iter() {
         assert!(pet.of_good_pedigree());
     }

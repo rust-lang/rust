@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
+use std::vec_ng::Vec;
 
 fn two(it: |int|) { it(0); it(1); }
 
@@ -17,10 +16,10 @@ pub fn main() {
     let mut a: Vec<int> = vec!(-1, -1, -1, -1);
     let mut p: int = 0;
     two(|i| {
-        two(|j| { a[p] = 10 * i + j; p += 1; })
+        two(|j| { *a.get_mut(p as uint) = 10 * i + j; p += 1; })
     });
-    assert_eq!(a[0], 0);
-    assert_eq!(a[1], 1);
-    assert_eq!(a[2], 10);
-    assert_eq!(a[3], 11);
+    assert_eq!(*a.get(0), 0);
+    assert_eq!(*a.get(1), 1);
+    assert_eq!(*a.get(2), 10);
+    assert_eq!(*a.get(3), 11);
 }

@@ -68,7 +68,10 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
    for &(ref k, v) in pairs_sorted.iter() {
        unsafe {
            buffer.push_str(format!("{} {:0.3f}\n",
-                                   k.to_ascii().to_upper().into_str(), v));
+                                   k.as_slice()
+                                    .to_ascii()
+                                    .to_upper()
+                                    .into_str(), v));
        }
    }
 
@@ -86,7 +89,7 @@ fn find(mm: &HashMap<Vec<u8> , uint>, key: ~str) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
-    let key = key.to_owned();
+    let key = Vec::from_slice(key);
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
         None => 1
@@ -94,7 +97,7 @@ fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
     mm.insert(key, newval);
 }
 
-// given a ~[u8], for each window call a function
+// given a Vec<u8>, for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
 fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
@@ -106,7 +109,7 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
       ii += 1u;
    }
 
-   return bb.slice(len - (nn - 1u), len).to_owned();
+   return Vec::from_slice(bb.slice(len - (nn - 1u), len));
 }
 
 fn make_sequence_processor(sz: uint,
@@ -116,14 +119,17 @@ fn make_sequence_processor(sz: uint,
    let mut carry = Vec::new();
    let mut total: uint = 0u;
 
-   let mut line: Vec<u8> ;
+   let mut line: Vec<u8>;
 
    loop {
 
       line = from_parent.recv();
       if line == Vec::new() { break; }
 
-       carry = windows_with_carry(carry + line, sz, |window| {
+       carry = windows_with_carry(vec::append(carry,
+                                                 line.as_slice()).as_slice(),
+                                  sz,
+                                  |window| {
          update_freq(&mut freqs, window);
          total += 1u;
       });
@@ -203,8 +209,8 @@ fn main() {
                let line_bytes = line.as_bytes();
 
                for (ii, _sz) in sizes.iter().enumerate() {
-                   let lb = line_bytes.to_owned();
-                   to_child[ii].send(lb);
+                   let lb = Vec::from_slice(line_bytes);
+                   to_child.get(ii).send(lb);
                }
            }
 
@@ -215,11 +221,11 @@ fn main() {
 
    // finish...
    for (ii, _sz) in sizes.iter().enumerate() {
-       to_child[ii].send(Vec::new());
+       to_child.get(ii).send(Vec::new());
    }
 
    // now fetch and print result messages
    for (ii, _sz) in sizes.iter().enumerate() {
-       println!("{}", from_child[ii].recv());
+       println!("{}", from_child.get(ii).recv());
    }
 }

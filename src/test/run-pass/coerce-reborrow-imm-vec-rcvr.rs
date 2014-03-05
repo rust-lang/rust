@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn bar(v: &mut [uint]) -> Vec<uint> {
-    v.to_owned()
+    Vec::from_slice(v)
 }
 
 fn bip(v: &[uint]) -> Vec<uint> {
-    v.to_owned()
+    Vec::from_slice(v)
 }
 
 pub fn main() {
     let mut the_vec = vec!(1u, 2, 3, 100);
-    assert_eq!(the_vec.clone(), bar(the_vec));
-    assert_eq!(the_vec.clone(), bip(the_vec));
+    assert_eq!(the_vec.clone(), bar(the_vec.as_mut_slice()));
+    assert_eq!(the_vec.clone(), bip(the_vec.as_slice()));
 }

@@ -13,12 +13,13 @@
 extern crate getopts;
 
 use getopts::{optopt, getopts};
+use std::vec_ng::Vec;
 
 pub fn main() {
     let args = Vec::new();
     let opts = vec!(optopt("b", "", "something", "SMTHNG"));
 
-    match getopts(args, opts) {
+    match getopts(args.as_slice(), opts.as_slice()) {
         Ok(ref m)  =>
             assert!(!m.opt_present("b")),
         Err(ref f) => fail!("{:?}", (*f).clone().to_err_msg())

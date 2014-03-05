@@ -86,9 +86,12 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     let input_str = load_or_return!(input, 1, 2);
 
     let (in_header, before_content, after_content) =
-        match (load_external_files(matches.opt_strs("markdown-in-header")),
-               load_external_files(matches.opt_strs("markdown-before-content")),
-               load_external_files(matches.opt_strs("markdown-after-content"))) {
+        match (load_external_files(matches.opt_strs("markdown-in-header")
+                                          .as_slice()),
+               load_external_files(matches.opt_strs("markdown-before-content")
+                                          .as_slice()),
+               load_external_files(matches.opt_strs("markdown-after-content")
+                                          .as_slice())) {
         (Some(a), Some(b), Some(c)) => (a,b,c),
         _ => return 3
     };

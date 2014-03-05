@@ -11,6 +11,7 @@
 #[feature(macro_rules)];
 
 use std::mem;
+use std::vec_ng::Vec;
 
 enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
 struct S<T>(int, T);
@@ -41,6 +42,5 @@ pub fn main() {
     check_type!(~int);
     check_type!(@int);
     check_type!(~str);
-    check_type!(Vec<int> );
     check_type!(extern fn());
 }

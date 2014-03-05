@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice;
+use std::vec::Vec;
 
 fn main() {
     let a: Vec<int> = Vec::new();

@@ -13,6 +13,7 @@
 #[feature(managed_boxes)];
 
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 fn assert_pod<T:Pod>() { }
 trait Dummy { }

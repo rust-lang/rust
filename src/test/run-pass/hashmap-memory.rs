@@ -14,6 +14,8 @@
 
 extern crate collections;
 
+use std::vec_ng::Vec;
+
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 
@@ -26,6 +28,7 @@ mod map_reduce {
     use collections::HashMap;
     use std::str;
     use std::task;
+    use std::vec_ng::Vec;
 
     pub type putter<'a> = 'a |~str, ~str|;
 
@@ -52,7 +55,7 @@ mod map_reduce {
             }
             let (tx, rx) = channel();
             println!("sending find_reducer");
-            ctrl.send(find_reducer(key.as_bytes().to_owned(), tx));
+            ctrl.send(find_reducer(Vec::from_slice(key.as_bytes()), tx));
             println!("receiving");
             let c = rx.recv();
             println!("{:?}", c);
@@ -83,7 +86,8 @@ mod map_reduce {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                match reducers.find(&str::from_utf8(k).unwrap().to_owned()) {
+                match reducers.find(&str::from_utf8(k.as_slice()).unwrap()
+                                                                 .to_owned()) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }
