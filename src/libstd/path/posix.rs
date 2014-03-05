@@ -38,7 +38,7 @@ pub type RevStrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
                                           RevComponents<'a>>;
 
 /// Represents a POSIX file path
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Path {
     priv repr: ~[u8], // assumed to never be empty or contain NULs
     priv sepidx: Option<uint> // index of the final separator in repr

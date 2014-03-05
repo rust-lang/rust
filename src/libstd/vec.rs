@@ -104,7 +104,7 @@ There are a number of free functions that create or take vectors, for example:
 use cast;
 use cast::transmute;
 use ops::Drop;
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
@@ -2630,24 +2630,6 @@ impl<A: Clone> Clone for ~[A] {
             self.truncate(source.len());
             for (x, y) in self.mut_iter().zip(source.iter()) {
                 x.clone_from(y);
-            }
-        }
-    }
-}
-
-impl<A: DeepClone> DeepClone for ~[A] {
-    #[inline]
-    fn deep_clone(&self) -> ~[A] {
-        self.iter().map(|item| item.deep_clone()).collect()
-    }
-
-    fn deep_clone_from(&mut self, source: &~[A]) {
-        if self.len() < source.len() {
-            *self = source.deep_clone()
-        } else {
-            self.truncate(source.len());
-            for (x, y) in self.mut_iter().zip(source.iter()) {
-                x.deep_clone_from(y);
             }
         }
     }

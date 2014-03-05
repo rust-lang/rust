@@ -24,7 +24,7 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 */
 
 use cast::transmute;
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::{Eq, Ord};
 use kinds::marker;
 use ops::{Deref, Drop};
@@ -118,13 +118,6 @@ impl<T> Clone for Rc<T> {
     }
 }
 
-impl<T: DeepClone> DeepClone for Rc<T> {
-    #[inline]
-    fn deep_clone(&self) -> Rc<T> {
-        Rc::new(self.borrow().deep_clone())
-    }
-}
-
 impl<T: Eq> Eq for Rc<T> {
     #[inline(always)]
     fn eq(&self, other: &Rc<T>) -> bool { *self.borrow() == *other.borrow() }
@@ -208,16 +201,6 @@ mod tests {
             *inner = 20;
         });
         assert_eq!(y.borrow().with(|v| *v), 20);
-    }
-
-    #[test]
-    fn test_deep_clone() {
-        let x = Rc::new(RefCell::new(5));
-        let y = x.deep_clone();
-        x.borrow().with_mut(|inner| {
-            *inner = 20;
-        });
-        assert_eq!(y.borrow().with(|v| *v), 5);
     }
 
     #[test]

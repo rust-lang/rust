@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 struct S {
     _int: int,
     _i8: i8,
