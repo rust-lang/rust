@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct trie_node {
-    content: ~[~str],
-    children: ~[trie_node],
+    content: Vec<~str> ,
+    children: Vec<trie_node> ,
 }
 
-fn print_str_vector(vector: ~[~str]) {
+fn print_str_vector(vector: Vec<~str> ) {
     for string in vector.iter() {
         println!("{}", *string);
     }
@@ -21,11 +21,11 @@ fn print_str_vector(vector: ~[~str]) {
 
 pub fn main() {
     let mut node: trie_node = trie_node {
-        content: ~[],
-        children: ~[]
+        content: Vec::new(),
+        children: Vec::new()
     };
-    let v = ~[~"123", ~"abc"];
-    node.content = ~[~"123", ~"abc"];
+    let v = vec!(~"123", ~"abc");
+    node.content = vec!(~"123", ~"abc");
     print_str_vector(v);
     print_str_vector(node.content.clone());
 

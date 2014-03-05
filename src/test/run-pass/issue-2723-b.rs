@@ -16,6 +16,6 @@ use issue_2723_a::f;
 
 pub fn main() {
     unsafe {
-        f(~[2]);
+        f(vec!(2));
     }
 }

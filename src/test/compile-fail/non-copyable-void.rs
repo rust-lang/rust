@@ -11,7 +11,7 @@
 use std::libc;
 
 fn main() {
-    let x : *~[int] = &~[1,2,3];
+    let x : *Vec<int> = &vec!(1,2,3);
     let y : *libc::c_void = x as *libc::c_void;
     unsafe {
         let _z = (*y).clone();

@@ -14,7 +14,7 @@ fn test_int() {
 }
 
 fn test_vec() {
-    fn f() -> ~[int] { ~[10, 11] }
+    fn f() -> Vec<int> { vec!(10, 11) }
     assert_eq!(f()[1], 11);
 }
 

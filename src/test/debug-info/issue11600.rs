@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let args : ~[~str] = ::std::os::args();
+    let args : Vec<~str> = ::std::os::args();
     ::std::io::println(args[0]);
 }
 

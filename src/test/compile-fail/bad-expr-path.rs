@@ -12,4 +12,4 @@
 
 mod m1 {}
 
-fn main(args: ~[str]) { log(debug, m1::a); }
+fn main(args: vec!(str)) { log(debug, m1::a); }

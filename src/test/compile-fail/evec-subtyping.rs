@@ -10,10 +10,10 @@
 
 #[feature(managed_boxes)];
 
-fn wants_uniq(x: ~[uint]) { }
+fn wants_uniq(x: Vec<uint> ) { }
 fn wants_three(x: [uint, ..3]) { }
 
-fn has_uniq(x: ~[uint]) {
+fn has_uniq(x: Vec<uint> ) {
    wants_uniq(x);
    wants_three(x); //~ ERROR [] storage differs: expected `3` but found `~`
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x: ~[(int, int)] = ~[];
+    let x: Vec<(int, int)> = Vec::new();
     let x: &[(int, int)] = x;
     match x {
         [a, (2, 3), _] => (),
@@ -17,7 +17,7 @@ fn main() {
         _ => ()
     }
 
-    let x: ~[~str] = ~[~"foo", ~"bar", ~"baz"];
+    let x: Vec<~str> = vec!(~"foo", ~"bar", ~"baz");
     let x: &[~str] = x;
     match x {
         [a, _, _, ..] => { println!("{}", a); }
@@ -25,7 +25,7 @@ fn main() {
         _ => { }
     }
 
-    let x: ~[char] = ~['a', 'b', 'c'];
+    let x: Vec<char> = vec!('a', 'b', 'c');
     let x: &[char] = x;
     match x {
         ['a', 'b', 'c', .._tail] => {}

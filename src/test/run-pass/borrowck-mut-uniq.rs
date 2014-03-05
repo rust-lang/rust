@@ -10,11 +10,11 @@
 
 use std::mem::swap;
 
-struct Ints {sum: ~int, values: ~[int]}
+struct Ints {sum: ~int, values: Vec<int> }
 
 fn add_int(x: &mut Ints, v: int) {
     *x.sum += v;
-    let mut values = ~[];
+    let mut values = Vec::new();
     swap(&mut values, &mut x.values);
     values.push(v);
     swap(&mut values, &mut x.values);
@@ -26,7 +26,7 @@ fn iter_ints(x: &Ints, f: |x: &int| -> bool) -> bool {
 }
 
 pub fn main() {
-    let mut ints = ~Ints {sum: ~0, values: ~[]};
+    let mut ints = ~Ints {sum: ~0, values: Vec::new()};
     add_int(ints, 22);
     add_int(ints, 44);
 

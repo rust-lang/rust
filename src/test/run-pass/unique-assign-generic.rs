@@ -18,6 +18,6 @@ fn f<T>(t: T) -> T {
 pub fn main() {
     let t = f(~100);
     assert_eq!(t, ~100);
-    let t = f(~@~[100]);
-    assert_eq!(t, ~@~[100]);
+    let t = f(~@vec!(100));
+    assert_eq!(t, ~@vec!(100));
 }

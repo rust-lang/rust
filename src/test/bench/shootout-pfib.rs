@@ -51,8 +51,8 @@ struct Config {
     stress: bool
 }
 
-fn parse_opts(argv: ~[~str]) -> Config {
-    let opts = ~[getopts::optflag("", "stress", "")];
+fn parse_opts(argv: Vec<~str> ) -> Config {
+    let opts = vec!(getopts::optflag("", "stress", ""));
 
     let opt_args = argv.slice(1, argv.len());
 
@@ -75,7 +75,7 @@ fn stress_task(id: int) {
 }
 
 fn stress(num_tasks: int) {
-    let mut results = ~[];
+    let mut results = Vec::new();
     for i in range(0, num_tasks) {
         let mut builder = task::task();
         results.push(builder.future_result());
@@ -91,9 +91,9 @@ fn stress(num_tasks: int) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"20"]
+        vec!(~"", ~"20")
     } else if args.len() <= 1u {
-        ~[~"", ~"8"]
+        vec!(~"", ~"8")
     } else {
         args
     };

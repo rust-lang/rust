@@ -38,8 +38,8 @@ fn main() {
     {
         let mut res = foo(x);
 
-        let mut v = ~[];
-        v = ~[(res)] + v; //~ failed to find an implementation of trait
+        let mut v = Vec::new();
+        v = vec!((res)) + v; //~ failed to find an implementation of trait
         assert_eq!(v.len(), 2);
     }
 

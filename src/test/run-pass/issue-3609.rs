@@ -13,7 +13,7 @@ extern crate extra;
 use std::comm::Chan;
 use std::task;
 
-type RingBuffer = ~[f64];
+type RingBuffer = Vec<f64> ;
 type SamplesFn = proc(samples: &RingBuffer);
 
 enum Msg

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn double<T:Clone>(a: T) -> ~[T] { return ~[a.clone()] + ~[a]; }
+fn double<T:Clone>(a: T) -> Vec<T> { return vec!(a.clone()) + vec!(a); }
 
-fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
+fn double_int(a: int) -> Vec<int> { return vec!(a) + vec!(a); }
 
 pub fn main() {
     let mut d = double(1);

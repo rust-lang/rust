@@ -10,12 +10,12 @@
 
 extern crate extra;
 
-fn grow(v: &mut ~[int]) {
+fn grow(v: &mut Vec<int> ) {
     v.push(1);
 }
 
 pub fn main() {
-    let mut v: ~[int] = ~[];
+    let mut v: Vec<int> = Vec::new();
     grow(&mut v);
     grow(&mut v);
     grow(&mut v);

@@ -12,7 +12,7 @@
 // issue #367
 
 fn f() {
-    let v = ~[1i];
+    let v = vec!(1i);
     info!("{}", v.some_field_name); //type error
 }
 

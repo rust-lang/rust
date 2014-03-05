@@ -50,7 +50,7 @@ impl Code {
     // FIXME: Inefficient.
     fn unpack(&self, frame: i32) -> ~str {
         let mut key = self.hash();
-        let mut result = ~[];
+        let mut result = Vec::new();
         for _ in range(0, frame) {
             result.push(unpack_symbol((key as u8) & 3));
             key >>= 2;
@@ -92,8 +92,7 @@ struct Entry {
 
 struct Table {
     count: i32,
-    items: ~[Option<~Entry>]
-}
+    items: Vec<Option<~Entry>> }
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
@@ -237,7 +236,7 @@ fn generate_frequencies(frequencies: &mut Table,
 }
 
 fn print_frequencies(frequencies: &Table, frame: i32) {
-    let mut vector = ~[];
+    let mut vector = Vec::new();
     for entry in frequencies.iter() {
         vector.push((entry.code, entry.count));
     }

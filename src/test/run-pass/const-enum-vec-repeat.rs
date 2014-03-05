@@ -11,5 +11,5 @@
 enum State { ST_NULL, ST_WHITESPACE = 1 }
 
 pub fn main() {
-    ~[ST_NULL, ..(ST_WHITESPACE as uint)];
+    vec!(ST_NULL, ..(ST_WHITESPACE as uint));
 }

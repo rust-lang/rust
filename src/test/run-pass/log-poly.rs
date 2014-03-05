@@ -16,5 +16,5 @@ pub fn main() {
     info!("{}", 1);
     info!("{}", 2.0);
     warn!("{:?}", Three);
-    error!("{:?}", ~[4]);
+    error!("{:?}", vec!(4));
 }

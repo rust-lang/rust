@@ -50,7 +50,7 @@ struct State {
     managed: @nillist,
     unique: ~nillist,
     tuple: (@nillist, ~nillist),
-    vec: ~[@nillist],
+    vec: vec!(@nillist),
     res: r
 }
 
@@ -82,7 +82,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 managed: @Nil,
                 unique: ~Nil,
                 tuple: (@Nil, ~Nil),
-                vec: ~[@Nil],
+                vec: vec!(@Nil),
                 res: r(@Nil)
             }
           }

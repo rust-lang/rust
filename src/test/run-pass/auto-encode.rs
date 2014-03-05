@@ -119,7 +119,7 @@ struct Spanned<T> {
 }
 
 #[deriving(Decodable, Encodable)]
-struct SomeStruct { v: ~[uint] }
+struct SomeStruct { v: Vec<uint> }
 
 #[deriving(Decodable, Encodable)]
 struct Point {x: uint, y: uint}

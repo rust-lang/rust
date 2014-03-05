@@ -77,7 +77,7 @@ pub fn main() {
     check_type!(~18: ~int);
     check_type!(@19: @int);
     check_type!(~"foo": ~str);
-    check_type!(~[20, 22]: ~[int]);
+    check_type!(vec!(20, 22): Vec<int> );
     let mint: uint = unsafe { cast::transmute(main) };
     check_type!(main: fn(), |pthing| {
         assert!(mint == unsafe { cast::transmute(*pthing) })

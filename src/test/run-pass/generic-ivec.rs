@@ -11,4 +11,4 @@
 #[feature(managed_boxes)];
 
 fn f<T>(_v: @T) { }
-pub fn main() { f(@~[1, 2, 3, 4, 5]); }
+pub fn main() { f(@vec!(1, 2, 3, 4, 5)); }

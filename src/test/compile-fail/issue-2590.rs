@@ -9,15 +9,15 @@
 // except according to those terms.
 
 struct parser {
-    tokens: ~[int],
+    tokens: Vec<int> ,
 }
 
 trait parse {
-    fn parse(&self) -> ~[int];
+    fn parse(&self) -> Vec<int> ;
 }
 
 impl parse for parser {
-    fn parse(&self) -> ~[int] {
+    fn parse(&self) -> Vec<int> {
         self.tokens //~ ERROR cannot move out of dereference of `&`-pointer
     }
 }

@@ -10,4 +10,4 @@
 
 #[feature(managed_boxes)];
 
-pub fn main() { let _quux: @~[uint] = @~[]; }
+pub fn main() { let _quux: @Vec<uint> = @Vec::new(); }

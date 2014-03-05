@@ -26,7 +26,7 @@ fn test_rec() {
 
 fn test_vec() {
     let (po, ch) = Chan::new();
-    let v0: ~[int] = ~[0, 1, 2];
+    let v0: Vec<int> = vec!(0, 1, 2);
     ch.send(v0);
     let v1 = po.recv();
     assert_eq!(v1[0], 0);

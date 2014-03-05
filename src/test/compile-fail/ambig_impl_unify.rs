@@ -12,15 +12,15 @@ trait foo {
     fn foo(&self) -> int;
 }
 
-impl foo for ~[uint] {
+impl foo for Vec<uint> {
     fn foo(&self) -> int {1} //~ NOTE candidate #1 is `~[uint].foo::foo`
 }
 
-impl foo for ~[int] {
+impl foo for Vec<int> {
     fn foo(&self) -> int {2} //~ NOTE candidate #2 is `~[int].foo::foo`
 }
 
 fn main() {
-    let x = ~[];
+    let x = Vec::new();
     x.foo(); //~ ERROR multiple applicable methods in scope
 }

@@ -43,19 +43,19 @@ fn f64_cmp(x: f64, y: f64) -> Ordering {
 }
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
+fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
    fn pct(xx: uint, yy: uint) -> f64 {
       return (xx as f64) * 100.0 / (yy as f64);
    }
 
    // sort by key, then by value
-   fn sortKV(mut orig: ~[(~[u8],f64)]) -> ~[(~[u8],f64)] {
+   fn sortKV(mut orig: Vec<(Vec<u8> ,f64)> ) -> Vec<(Vec<u8> ,f64)> {
         orig.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
         orig.sort_by(|&(_, a), &(_, b)| f64_cmp(b, a));
         orig
    }
 
-   let mut pairs = ~[];
+   let mut pairs = Vec::new();
 
    // map -> [(k,%)]
    for (key, &val) in mm.iter() {
@@ -77,7 +77,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
+fn find(mm: &HashMap<Vec<u8> , uint>, key: ~str) -> uint {
    let key = key.into_ascii().to_lower().into_str();
    match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
@@ -86,7 +86,7 @@ fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
+fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
     let key = key.to_owned();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
@@ -98,7 +98,7 @@ fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
 // given a ~[u8], for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> ~[u8] {
+fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
    let mut ii = 0u;
 
    let len = bb.len();
@@ -111,18 +111,18 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> ~[u8] {
 }
 
 fn make_sequence_processor(sz: uint,
-                           from_parent: &Port<~[u8]>,
+                           from_parent: &Port<Vec<u8> >,
                            to_parent: &Chan<~str>) {
-   let mut freqs: HashMap<~[u8], uint> = HashMap::new();
-   let mut carry: ~[u8] = ~[];
+   let mut freqs: HashMap<Vec<u8> , uint> = HashMap::new();
+   let mut carry: Vec<u8> = Vec::new();
    let mut total: uint = 0u;
 
-   let mut line: ~[u8];
+   let mut line: Vec<u8> ;
 
    loop {
 
       line = from_parent.recv();
-      if line == ~[] { break; }
+      if line == Vec::new() { break; }
 
        carry = windows_with_carry(carry + line, sz, |window| {
          update_freq(&mut freqs, window);
@@ -157,9 +157,9 @@ fn main() {
     let mut rdr = BufferedReader::new(rdr);
 
     // initialize each sequence sorter
-    let sizes = ~[1u,2,3,4,6,12,18];
+    let sizes = vec!(1u,2,3,4,6,12,18);
     let mut streams = vec::from_fn(sizes.len(), |_| Some(Chan::<~str>::new()));
-    let mut from_child = ~[];
+    let mut from_child = Vec::new();
     let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = replace(stream_ref, None);
@@ -174,7 +174,7 @@ fn main() {
         });
 
         to_child
-    }).collect::<~[Chan<~[u8]>]>();
+    }).collect::<Vec<Chan<Vec<u8> >> >();
 
 
    // latch stores true after we've started
@@ -216,7 +216,7 @@ fn main() {
 
    // finish...
    for (ii, _sz) in sizes.iter().enumerate() {
-       to_child[ii].send(~[]);
+       to_child[ii].send(Vec::new());
    }
 
    // now fetch and print result messages
