@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
-use driver::session;
 use driver::session::NoDebugInfo;
+use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
@@ -39,7 +39,6 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 
 pub struct CrateContext {
-    sess: session::Session,
     llmod: ModuleRef,
     llcx: ContextRef,
     metadata_llmod: ModuleRef,
@@ -115,12 +114,10 @@ pub struct CrateContext {
     // is not emitted by LLVM's GC pass when no functions use GC.
     uses_gc: bool,
     dbg_cx: Option<debuginfo::CrateDebugContext>,
-    do_not_commit_warning_issued: Cell<bool>,
 }
 
 impl CrateContext {
-    pub fn new(sess: session::Session,
-               name: &str,
+    pub fn new(name: &str,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
                maps: astencode::Maps,
@@ -137,8 +134,8 @@ impl CrateContext {
             let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
-            let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
-            let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
+            let data_layout: &str = tcx.sess.targ_cfg.target_strs.data_layout;
+            let targ_triple: &str = tcx.sess.targ_cfg.target_strs.target_triple;
             data_layout.with_c_str(|buf| {
                 llvm::LLVMSetDataLayout(llmod, buf);
                 llvm::LLVMSetDataLayout(metadata_llmod, buf);
@@ -147,13 +144,13 @@ impl CrateContext {
                 llvm::LLVMRustSetNormalizedTarget(llmod, buf);
                 llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });
-            let targ_cfg = sess.targ_cfg;
+            let targ_cfg = tcx.sess.targ_cfg;
 
-            let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
+            let td = mk_target_data(tcx.sess.targ_cfg.target_strs.data_layout);
             let tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
-            if sess.opts.debuginfo != NoDebugInfo {
+            if tcx.sess.opts.debuginfo != NoDebugInfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
             let int_type = Type::int(targ_cfg.arch);
@@ -166,19 +163,18 @@ impl CrateContext {
             tn.associate_type("tydesc", &tydesc_type);
             tn.associate_type("str_slice", &str_slice_ty);
 
-            let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta.clone(), llmod);
-            let dbg_cx = if sess.opts.debuginfo != NoDebugInfo {
+            let (crate_map_name, crate_map) = decl_crate_map(&tcx.sess, link_meta.clone(), llmod);
+            let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
                 None
             };
 
-            if sess.count_llvm_insns() {
+            if tcx.sess.count_llvm_insns() {
                 base::init_insn_ctxt()
             }
 
             CrateContext {
-                 sess: sess,
                  llmod: llmod,
                  llcx: llcx,
                  metadata_llmod: metadata_llmod,
@@ -235,9 +231,12 @@ impl CrateContext {
                  crate_map_name: crate_map_name,
                  uses_gc: false,
                  dbg_cx: dbg_cx,
-                 do_not_commit_warning_issued: Cell::new(false),
             }
         }
+    }
+
+    pub fn sess<'a>(&'a self) -> &'a Session {
+        &self.tcx.sess
     }
 
     pub fn builder<'a>(&'a self) -> Builder<'a> {

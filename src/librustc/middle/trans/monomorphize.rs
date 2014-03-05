@@ -95,7 +95,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let mut is_static_provided = None;
 
     let map_node = session::expect(
-        ccx.sess,
+        ccx.sess(),
         ccx.tcx.map.find(fn_id.node),
         || format!("while monomorphizing {:?}, couldn't find it in the \
                     item map (may have attempted to monomorphize an item \
@@ -172,8 +172,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
-        if depth > ccx.sess.recursion_limit.get() {
-            ccx.sess.span_fatal(ccx.tcx.map.span(fn_id.node),
+        if depth > ccx.sess().recursion_limit.get() {
+            ccx.sess().span_fatal(ccx.tcx.map.span(fn_id.node),
                 "reached the recursion limit during monomorphization");
         }
 
@@ -207,7 +207,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                   d
               }
               _ => {
-                ccx.tcx.sess.bug("Can't monomorphize this kind of item")
+                ccx.sess().bug("Can't monomorphize this kind of item")
               }
             }
         }
@@ -239,7 +239,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                                        d);
                 }
                 ast::StructVariantKind(_) =>
-                    ccx.tcx.sess.bug("can't monomorphize struct variants"),
+                    ccx.sess().bug("can't monomorphize struct variants"),
             }
             d
         }
@@ -258,8 +258,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                     d
                 }
                 _ => {
-                    ccx.tcx.sess.bug(format!("can't monomorphize a {:?}",
-                                             map_node))
+                    ccx.sess().bug(format!("can't monomorphize a {:?}",
+                                           map_node))
                 }
             }
         }
@@ -281,7 +281,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         ast_map::NodeArg(..) |
         ast_map::NodeBlock(..) |
         ast_map::NodeLocal(..) => {
-            ccx.tcx.sess.bug(format!("can't monomorphize a {:?}", map_node))
+            ccx.sess().bug(format!("can't monomorphize a {:?}", map_node))
         }
     };
 

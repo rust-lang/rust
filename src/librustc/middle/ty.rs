@@ -11,7 +11,7 @@
 #[allow(non_camel_case_types)];
 
 use back::svh::Svh;
-use driver::session;
+use driver::session::Session;
 use metadata::csearch;
 use metadata;
 use middle::const_eval;
@@ -262,7 +262,7 @@ pub struct ctxt_ {
     interner: RefCell<FnvHashMap<intern_key, ~t_box_>>,
     next_id: Cell<uint>,
     cstore: @metadata::cstore::CStore,
-    sess: session::Session,
+    sess: Session,
     def_map: resolve::DefMap,
 
     named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
@@ -1081,7 +1081,7 @@ pub type type_cache = RefCell<DefIdMap<ty_param_bounds_and_ty>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 
-pub fn mk_ctxt(s: session::Session,
+pub fn mk_ctxt(s: Session,
                dm: resolve::DefMap,
                named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
                map: ast_map::Map,

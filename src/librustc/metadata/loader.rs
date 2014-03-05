@@ -46,7 +46,7 @@ pub enum Os {
 }
 
 pub struct Context<'a> {
-    sess: Session,
+    sess: &'a Session,
     span: Span,
     ident: &'a str,
     crate_id: &'a CrateId,

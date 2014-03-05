@@ -58,17 +58,14 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
                                       parsesess.cm,
                                       span_diagnostic_handler);
 
-    let cfg = driver::build_configuration(sess);
-    let krate = driver::phase_1_parse_input(sess, cfg, &input);
-    let loader = &mut Loader::new(sess);
-    let id = from_str("rustdoc-test").unwrap();
-    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate,
-                                                          &id);
+    let cfg = driver::build_configuration(&sess);
+    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+    let (krate, _) = driver::phase_2_configure_and_expand(sess, &mut Loader::new(sess), krate,
+                                                          &from_str("rustdoc-test").unwrap());
 
     let ctx = @core::DocContext {
         krate: krate,
-        tycx: None,
-        sess: sess,
+        maybe_typed: core::NotTyped(sess),
     };
     local_data::set(super::ctxtkey, ctx);
 
@@ -140,7 +137,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
     let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());
-    let cfg = driver::build_configuration(sess);
+    let cfg = driver::build_configuration(&sess);
     driver::compile_input(sess, cfg, &input, &out, &None);
 
     if no_run { return }

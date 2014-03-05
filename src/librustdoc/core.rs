@@ -27,10 +27,23 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 
+pub enum MaybeTyped {
+    Typed(middle::ty::ctxt),
+    NotTyped(driver::session::Session)
+}
+
 pub struct DocContext {
     krate: ast::Crate,
-    tycx: Option<middle::ty::ctxt>,
-    sess: driver::session::Session
+    maybe_typed: MaybeTyped
+}
+
+impl DocContext {
+    pub fn sess<'a>(&'a self) -> &'a driver::session::Session {
+        match self.maybe_typed {
+            Typed(ref tcx) => &tcx.sess,
+            NotTyped(ref sess) => sess
+        }
+    }
 }
 
 pub struct CrateAnalysis {
@@ -67,27 +80,27 @@ fn get_ast_and_resolve(cpath: &Path,
                                               parsesess.cm,
                                               span_diagnostic_handler);
 
-    let mut cfg = build_configuration(sess);
+    let mut cfg = build_configuration(&sess);
     for cfg_ in cfgs.move_iter() {
         let cfg_ = token::intern_and_get_ident(cfg_);
         cfg.push(@dummy_spanned(ast::MetaWord(cfg_)));
     }
 
-    let krate = phase_1_parse_input(sess, cfg, &input);
-    let loader = &mut Loader::new(sess);
-    let id = from_str("rustdoc").unwrap();
-    let (krate, ast_map) = phase_2_configure_and_expand(sess, loader,
-                                                        krate, &id);
+    let krate = phase_1_parse_input(&sess, cfg, &input);
+    let (krate, ast_map) = phase_2_configure_and_expand(&sess, &mut Loader::new(sess),
+                                                        krate, &from_str("rustdoc").unwrap());
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = phase_3_run_analysis_passes(sess, &krate, ast_map);
 
     debug!("crate: {:?}", krate);
-    return (DocContext { krate: krate, tycx: Some(ty_cx), sess: sess },
-            CrateAnalysis {
-                exported_items: exported_items,
-                public_items: public_items,
-            });
+    (DocContext {
+        krate: krate,
+        maybe_typed: Typed(ty_cx)
+    }, CrateAnalysis {
+        exported_items: exported_items,
+        public_items: public_items,
+    })
 }
 
 pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Crate, CrateAnalysis) {

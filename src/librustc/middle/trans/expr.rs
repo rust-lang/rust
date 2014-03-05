@@ -581,7 +581,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     unsafe {
                         let llty = type_of::type_of(bcx.ccx(), const_ty);
                         let symbol = csearch::get_symbol(
-                            bcx.ccx().sess.cstore,
+                            bcx.ccx().sess().cstore,
                             did);
                         let llval = symbol.with_c_str(|buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
@@ -1618,16 +1618,16 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
                                           val_ty(lldiscrim_a),
                                           lldiscrim_a, true),
                 cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                _ => ccx.sess.bug(format!("translating unsupported cast: \
-                                          {} ({:?}) -> {} ({:?})",
-                                          t_in.repr(ccx.tcx), k_in,
-                                          t_out.repr(ccx.tcx), k_out))
+                _ => ccx.sess().bug(format!("translating unsupported cast: \
+                                            {} ({:?}) -> {} ({:?})",
+                                            t_in.repr(ccx.tcx), k_in,
+                                            t_out.repr(ccx.tcx), k_out))
             }
         }
-        _ => ccx.sess.bug(format!("translating unsupported cast: \
-                                  {} ({:?}) -> {} ({:?})",
-                                  t_in.repr(ccx.tcx), k_in,
-                                  t_out.repr(ccx.tcx), k_out))
+        _ => ccx.sess().bug(format!("translating unsupported cast: \
+                                    {} ({:?}) -> {} ({:?})",
+                                    t_in.repr(ccx.tcx), k_in,
+                                    t_out.repr(ccx.tcx), k_out))
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }
@@ -1664,7 +1664,6 @@ fn trans_assign_op<'a>(
                                dst_ty, dst, rhs_ty, rhs));
     return result_datum.store_to(bcx, dst_datum.val);
 }
-
 
 fn auto_ref<'a>(bcx: &'a Block<'a>,
                 datum: Datum<Expr>,

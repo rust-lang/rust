@@ -213,10 +213,10 @@ impl FunctionDebugContext {
         match *self {
             FunctionDebugContext(~ref data) => data,
             DebugInfoDisabled => {
-                cx.sess.span_bug(span, FunctionDebugContext::debuginfo_disabled_message());
+                cx.sess().span_bug(span, FunctionDebugContext::debuginfo_disabled_message());
             }
             FunctionWithoutDebugInfo => {
-                cx.sess.span_bug(span, FunctionDebugContext::should_be_ignored_message());
+                cx.sess().span_bug(span, FunctionDebugContext::should_be_ignored_message());
             }
         }
     }
@@ -268,7 +268,7 @@ pub fn finalize(cx: @CrateContext) {
         // instruct LLVM to emit an older version of dwarf, however,
         // for OS X to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
-        if cx.sess.targ_cfg.os == abi::OsMacos {
+        if cx.sess().targ_cfg.os == abi::OsMacos {
             "Dwarf Version".with_c_str(
                 |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
         }
@@ -299,7 +299,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
             match lllocals.get().find_copy(&node_id) {
                 Some(datum) => datum,
                 None => {
-                    bcx.tcx().sess.span_bug(span,
+                    bcx.sess().span_bug(span,
                         format!("no entry in lllocals table for {:?}",
                                 node_id));
                 }
@@ -338,7 +338,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
 
     let variable_ident = match ast_item {
         None => {
-            cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
+            cx.sess().span_bug(span, "debuginfo::create_captured_var_metadata: node not found");
         }
         Some(ast_map::NodeLocal(pat)) | Some(ast_map::NodeArg(pat)) => {
             match pat.node {
@@ -346,7 +346,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
                     ast_util::path_to_ident(path)
                 }
                 _ => {
-                    cx.sess
+                    cx.sess()
                       .span_bug(span,
                                 format!(
                                 "debuginfo::create_captured_var_metadata() - \
@@ -357,7 +357,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
             }
         }
         _ => {
-            cx.sess.span_bug(span, format!("debuginfo::create_captured_var_metadata() - \
+            cx.sess().span_bug(span, format!("debuginfo::create_captured_var_metadata() - \
                 Captured var-id refers to unexpected ast_map variant: {:?}", ast_item));
         }
     };
@@ -441,7 +441,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
             match llargs.get().find_copy(&node_id) {
                 Some(v) => v,
                 None => {
-                    bcx.tcx().sess.span_bug(span,
+                    bcx.sess().span_bug(span,
                         format!("no entry in llargs table for {:?}",
                                 node_id));
                 }
@@ -449,7 +449,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
         };
 
         if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::null() {
-            cx.sess.span_bug(span, "debuginfo::create_argument_metadata() - \
+            cx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
                                     Referenced variable location is not an alloca!");
         }
 
@@ -485,7 +485,7 @@ pub fn set_source_location(fcx: &FunctionContext,
 
     let cx = fcx.ccx;
 
-    debug!("set_source_location: {}", cx.sess.codemap.span_to_str(span));
+    debug!("set_source_location: {}", cx.sess().codemap.span_to_str(span));
 
     if fcx.debug_context.get_ref(cx, span).source_locations_enabled.get() {
         let loc = span_start(cx, span);
@@ -532,7 +532,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                      fn_ast_id: ast::NodeId,
                                      param_substs: Option<@param_substs>,
                                      llfn: ValueRef) -> FunctionDebugContext {
-    if cx.sess.opts.debuginfo == NoDebugInfo {
+    if cx.sess().opts.debuginfo == NoDebugInfo {
         return DebugInfoDisabled;
     }
 
@@ -551,7 +551,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
-                    cx.sess.span_bug(item.span,
+                    cx.sess().span_bug(item.span,
                         "create_function_debug_context: item bound to non-function");
                 }
             }
@@ -579,7 +579,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                         // Don't try to lookup the item path:
                         false)
                 }
-                _ => cx.sess.span_bug(expr.span,
+                _ => cx.sess().span_bug(expr.span,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
@@ -594,7 +594,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                      true)
                 }
                 _ => {
-                    cx.sess
+                    cx.sess()
                       .bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {:?}",
                                     fnitem))
@@ -606,8 +606,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeStructCtor(..) => {
             return FunctionWithoutDebugInfo;
         }
-        _ => cx.sess.bug(format!("create_function_debug_context: \
-                                  unexpected sort of node: {:?}", fnitem))
+        _ => cx.sess().bug(format!("create_function_debug_context: \
+                                    unexpected sort of node: {:?}", fnitem))
     };
 
     // This can be the case for functions inlined from another crate
@@ -672,7 +672,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     true,
                     scope_line as c_uint,
                     FlagPrototyped as c_uint,
-                    cx.sess.opts.optimize != session::No,
+                    cx.sess().opts.optimize != session::No,
                     llfn,
                     template_parameters,
                     ptr::null())
@@ -708,7 +708,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               fn_decl: &ast::FnDecl,
                               param_substs: Option<@param_substs>,
                               error_span: Span) -> DIArray {
-        if cx.sess.opts.debuginfo == LimitedDebugInfo {
+        if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
         }
 
@@ -793,7 +793,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             }
 
             // Only create type information if full debuginfo is enabled
-            if cx.sess.opts.debuginfo == FullDebugInfo {
+            if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_self_type_metadata = type_metadata(cx,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
@@ -837,7 +837,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             }
 
             // Again, only create type information if full debuginfo is enabled
-            if cx.sess.opts.debuginfo == FullDebugInfo {
+            if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let param_metadata = token::get_ident(ident).get()
                                                             .with_c_str(|name| {
@@ -873,12 +873,12 @@ fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 }
 
 fn compile_unit_metadata(cx: &CrateContext) {
-    let work_dir = &cx.sess.working_dir;
-    let compile_unit_name = match cx.sess.local_crate_source_file {
+    let work_dir = &cx.sess().working_dir;
+    let compile_unit_name = match cx.sess().local_crate_source_file {
         None => fallback_path(cx),
         Some(ref abs_path) => {
             if abs_path.is_relative() {
-                cx.sess.warn("debuginfo: Invalid path to crate's local root source file!");
+                cx.sess().warn("debuginfo: Invalid path to crate's local root source file!");
                 fallback_path(cx)
             } else {
                 match abs_path.path_relative_from(work_dir) {
@@ -917,7 +917,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                                 compile_unit_name,
                                 work_dir,
                                 producer,
-                                cx.sess.opts.optimize != session::No,
+                                cx.sess().opts.optimize != session::No,
                                 flags,
                                 0,
                                 split_name);
@@ -968,7 +968,7 @@ fn declare_local(bcx: &Block,
                         file_metadata,
                         loc.line as c_uint,
                         type_metadata,
-                        cx.sess.opts.optimize != session::No,
+                        cx.sess().opts.optimize != session::No,
                         0,
                         argument_index)
                 }
@@ -1028,7 +1028,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     debug!("file_metadata: {}", full_path);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let work_dir = cx.sess.working_dir.as_str().unwrap();
+    let work_dir = cx.sess().working_dir.as_str().unwrap();
     let file_name =
         if full_path.starts_with(work_dir) {
             full_path.slice(work_dir.len() + 1u, full_path.len())
@@ -1063,7 +1063,7 @@ fn scope_metadata(fcx: &FunctionContext,
         None => {
             let node = fcx.ccx.tcx.map.get(node_id);
 
-            fcx.ccx.sess.span_bug(span,
+            fcx.ccx.sess().span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}", node));
         }
     }
@@ -1096,7 +1096,7 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
             ast::TyF32 => (~"f32", DW_ATE_float),
             ast::TyF64 => (~"f64", DW_ATE_float)
         },
-        _ => cx.sess.bug("debuginfo::basic_type_metadata - t is invalid type")
+        _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
 
     let llvm_type = type_of::type_of(cx, t);
@@ -1329,7 +1329,7 @@ impl GeneralMemberDescriptionFactory {
         // Capture type_rep, so we don't have to copy the struct_defs array
         let struct_defs = match *self.type_rep {
             adt::General(_, ref struct_defs) => struct_defs,
-            _ => cx.sess.bug("unreachable")
+            _ => cx.sess().bug("unreachable")
         };
 
         struct_defs
@@ -1653,9 +1653,9 @@ fn set_members_of_composite_type(cx: &CrateContext,
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
         if composite_types_completed.get().contains(&composite_type_metadata) {
-            cx.sess.span_bug(definition_span, "debuginfo::set_members_of_composite_type() - \
-                                               Already completed forward declaration \
-                                               re-encountered.");
+            cx.sess().span_bug(definition_span, "debuginfo::set_members_of_composite_type() - \
+                                                 Already completed forward declaration \
+                                                 re-encountered.");
         } else {
             composite_types_completed.get().insert(composite_type_metadata);
         }
@@ -1856,7 +1856,7 @@ fn vec_metadata(cx: &CrateContext,
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
-    let vec_llvm_type = Type::vec(cx.sess.targ_cfg.arch, &element_llvm_type);
+    let vec_llvm_type = Type::vec(cx.sess().targ_cfg.arch, &element_llvm_type);
     let vec_type_name: &str = format!("[{}]", ppaux::ty_to_str(cx.tcx, element_type));
 
     let member_llvm_types = vec_llvm_type.field_types();
@@ -2144,7 +2144,7 @@ fn type_metadata(cx: &CrateContext,
                                    elements.as_slice(),
                                    usage_site_span).finalize(cx)
         }
-        _ => cx.sess.bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
+        _ => cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
     };
 
     let mut created_types = debug_context(cx).created_types.borrow_mut();
@@ -2218,7 +2218,7 @@ fn generate_unique_type_id(prefix: &'static str) -> ~str {
 
 /// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
-    cx.sess.codemap.lookup_char_pos(span.lo)
+    cx.sess().codemap.lookup_char_pos(span.lo)
 }
 
 fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u64) {
@@ -2250,7 +2250,7 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
 fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
     let node_types = cx.tcx.node_types.borrow();
     if !node_types.get().contains_key(&(node_id as uint)) {
-        cx.sess.span_bug(error_span, "debuginfo: Could not find type for node id!");
+        cx.sess().span_bug(error_span, "debuginfo: Could not find type for node id!");
     }
 }
 
@@ -2315,7 +2315,7 @@ fn populate_scope_map(cx: &CrateContext,
                                    &mut Vec<ScopeStackEntry> ,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
-        let loc = cx.sess.codemap.lookup_char_pos(scope_span.lo);
+        let loc = cx.sess().codemap.lookup_char_pos(scope_span.lo);
         let file_metadata = file_metadata(cx, loc.file.name);
         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
@@ -2338,7 +2338,7 @@ fn populate_scope_map(cx: &CrateContext,
         }
 
         if scope_stack.last().unwrap().scope_metadata != scope_metadata {
-            cx.sess.span_bug(scope_span, "debuginfo: Inconsistency in scope management.");
+            cx.sess().span_bug(scope_span, "debuginfo: Inconsistency in scope management.");
         }
 
         scope_stack.pop();
@@ -2432,7 +2432,7 @@ fn populate_scope_map(cx: &CrateContext,
 
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
-                        let loc = cx.sess.codemap.lookup_char_pos(pat.span.lo);
+                        let loc = cx.sess().codemap.lookup_char_pos(pat.span.lo);
                         let file_metadata = file_metadata(cx, loc.file.name);
                         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
@@ -2614,13 +2614,13 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::ExprForLoop(_, _, _, _) => {
-                cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
-                                            Found unexpanded for-loop.");
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded for-loop.");
             }
 
             ast::ExprMac(_) => {
-                cx.sess.span_bug(exp.span, "debuginfo::populate_scope_map() - \
-                                            Found unexpanded macro.");
+                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                                              Found unexpanded macro.");
             }
 
             ast::ExprLoop(block, _) |
@@ -2827,7 +2827,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
         match parent_node {
             Some(node) => node,
             None => {
-                cx.sess.bug(format!("debuginfo::namespace_for_item(): \
+                cx.sess().bug(format!("debuginfo::namespace_for_item(): \
                     path too short for {:?}", def_id));
             }
         }

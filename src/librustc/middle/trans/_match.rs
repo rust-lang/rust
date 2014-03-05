@@ -373,7 +373,7 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            ccx.sess.bug("non-variant or struct in variant_opt()");
+            ccx.sess().bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -1324,8 +1324,7 @@ fn compare_values<'a>(
             }
         }
         _ => {
-            cx.tcx().sess.bug("only scalars and strings supported in \
-                                compare_values");
+            cx.sess().bug("only scalars and strings supported in compare_values");
         }
     }
 }
@@ -1585,7 +1584,7 @@ fn compile_submatch_continue<'r,
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(ref elts) => elts.len(),
-          _ => ccx.sess.bug("non-tuple type in tuple pattern")
+          _ => ccx.sess().bug("non-tuple type in tuple pattern")
         };
         let tup_vals = Vec::from_fn(n_tup_elts, |i| {
             adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
@@ -1612,7 +1611,7 @@ fn compile_submatch_continue<'r,
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
-                ccx.sess.bug("non-struct type in tuple struct pattern");
+                ccx.sess().bug("non-struct type in tuple struct pattern");
             }
         }
 
@@ -2093,7 +2092,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
             // like `x: T`
             let arg_ty = node_id_type(bcx, pat.id);
             if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && bcx.ccx().sess.opts.debuginfo != FullDebugInfo {
+                && bcx.sess().opts.debuginfo != FullDebugInfo {
                 // Don't copy an indirect argument to an alloca, the caller
                 // already put it in a temporary alloca and gave it up, unless
                 // we emit extra-debug-info, which requires local allocas :(.
@@ -2297,8 +2296,7 @@ fn bind_irrefutable_pat<'a>(
             bcx = bind_irrefutable_pat(bcx, inner, loaded_val, binding_mode, cleanup_scope);
         }
         ast::PatVec(..) => {
-            bcx.tcx().sess.span_bug(
-                pat.span,
+            bcx.sess().span_bug(pat.span,
                 format!("vector patterns are never irrefutable!"));
         }
         ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()

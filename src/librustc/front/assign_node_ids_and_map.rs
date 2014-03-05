@@ -13,17 +13,17 @@ use driver::session::Session;
 use syntax::ast;
 use syntax::ast_map;
 
-struct NodeIdAssigner {
-    sess: Session
+struct NodeIdAssigner<'a> {
+    sess: &'a Session
 }
 
-impl ast_map::FoldOps for NodeIdAssigner {
+impl<'a> ast_map::FoldOps for NodeIdAssigner<'a> {
     fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
         assert_eq!(old_id, ast::DUMMY_NODE_ID);
         self.sess.next_node_id()
     }
 }
 
-pub fn assign_node_ids_and_map(sess: Session, krate: ast::Crate) -> (ast::Crate, ast_map::Map) {
+pub fn assign_node_ids_and_map(sess: &Session, krate: ast::Crate) -> (ast::Crate, ast_map::Map) {
     ast_map::map_crate(krate, NodeIdAssigner { sess: sess })
 }

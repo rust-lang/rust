@@ -173,7 +173,7 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-pub struct Session_ {
+pub struct Session {
     targ_cfg: @Config,
     opts: @Options,
     cstore: @metadata::cstore::CStore,
@@ -201,9 +201,7 @@ pub struct Session_ {
     recursion_limit: Cell<uint>,
 }
 
-pub type Session = @Session_;
-
-impl Session_ {
+impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
@@ -451,7 +449,7 @@ cgoptions!(
 )
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
+pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

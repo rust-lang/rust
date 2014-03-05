@@ -173,7 +173,7 @@ pub fn call_visit_glue(bcx: &Block, v: ValueRef, tydesc: ValueRef,
     let ccx = bcx.ccx();
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
-    if bcx.unreachable.get() && !ccx.sess.no_landing_pads() { return; }
+    if bcx.unreachable.get() && !ccx.sess().no_landing_pads() { return; }
 
     let static_glue_fn = match static_ti {
         None => None,
@@ -403,7 +403,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 
     let llty = type_of(ccx, t);
 
-    if ccx.sess.count_type_sizes() {
+    if ccx.sess().count_type_sizes() {
         println!("{}\t{}", llsize_of_real(ccx, llty),
                  ppaux::ty_to_str(ccx.tcx, t));
     }

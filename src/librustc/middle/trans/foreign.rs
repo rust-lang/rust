@@ -75,23 +75,23 @@ struct LlvmSignature {
 
 pub fn llvm_calling_convention(ccx: &CrateContext,
                                abis: AbiSet) -> Option<CallConv> {
-    let os = ccx.sess.targ_cfg.os;
-    let arch = ccx.sess.targ_cfg.arch;
+    let os = ccx.sess().targ_cfg.os;
+    let arch = ccx.sess().targ_cfg.arch;
     abis.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
-                ccx.sess.bug(format!("asked to register intrinsic fn"));
+                ccx.sess().bug(format!("asked to register intrinsic fn"));
             }
 
             Rust => {
                 // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-                ccx.sess.unimpl(
+                ccx.sess().unimpl(
                     format!("foreign functions with Rust ABI"));
             }
 
             // It's the ABI's job to select this, not us.
-            System => ccx.sess.bug("system abi should be selected elsewhere"),
+            System => ccx.sess().bug("system abi should be selected elsewhere"),
 
             Stdcall => lib::llvm::X86StdcallCallConv,
             Fastcall => lib::llvm::X86FastcallCallConv,
@@ -222,7 +222,7 @@ pub fn register_foreign_item_fn(ccx: @CrateContext, abis: AbiSet,
     let cc = match llvm_calling_convention(ccx, abis) {
         Some(cc) => cc,
         None => {
-            ccx.sess.span_fatal(foreign_item.span,
+            ccx.sess().span_fatal(foreign_item.span,
                 format!("ABI `{}` has no suitable calling convention \
                       for target architecture",
                       abis.user_string(ccx.tcx)));
@@ -294,7 +294,7 @@ pub fn trans_native_call<'a>(
 
     let (fn_abis, fn_sig) = match ty::get(callee_ty).sty {
         ty::ty_bare_fn(ref fn_ty) => (fn_ty.abis, fn_ty.sig.clone()),
-        _ => ccx.sess.bug("trans_native_call called on non-function type")
+        _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys.as_slice());
     let ret_def = !return_type_is_void(bcx.ccx(), fn_sig.output);
@@ -383,7 +383,7 @@ pub fn trans_native_call<'a>(
         Some(cc) => cc,
         None => {
             // FIXME(#8357) We really ought to report a span here
-            ccx.sess.fatal(
+            ccx.sess().fatal(
                 format!("ABI string `{}` has no suitable ABI \
                         for target architecture",
                         fn_abis.user_string(ccx.tcx)));
@@ -563,10 +563,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
                 f
             }
             _ => {
-                ccx.sess.bug(format!("build_rust_fn: extern fn {} has ty {}, \
-                                  expected a bare fn ty",
-                                  ccx.tcx.map.path_to_str(id),
-                                  t.repr(tcx)));
+                ccx.sess().bug(format!("build_rust_fn: extern fn {} has ty {}, \
+                                       expected a bare fn ty",
+                                       ccx.tcx.map.path_to_str(id),
+                                       t.repr(tcx)));
             }
         };
 
@@ -860,7 +860,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
                            ty: ty::t) -> ForeignTypes {
     let fn_sig = match ty::get(ty).sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
-        _ => ccx.sess.bug("foreign_types_for_fn_ty called on non-function type")
+        _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.as_slice());
     let ret_def = !return_type_is_void(ccx, fn_sig.output);

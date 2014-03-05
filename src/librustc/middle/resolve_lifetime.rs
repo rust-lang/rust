@@ -17,7 +17,7 @@
  * way. Therefore we break lifetime name resolution into a separate pass.
  */
 
-use driver::session;
+use driver::session::Session;
 use std::cell::RefCell;
 use std::vec_ng::Vec;
 use util::nodemap::NodeMap;
@@ -40,8 +40,8 @@ fn lifetime_show(lt_name: &ast::Name) -> token::InternedString {
     token::get_name(*lt_name)
 }
 
-struct LifetimeContext {
-    sess: session::Session,
+struct LifetimeContext<'a> {
+    sess: &'a Session,
     named_region_map: @RefCell<NamedRegionMap>,
 }
 
@@ -60,8 +60,7 @@ enum ScopeChain<'a> {
 
 type Scope<'a> = &'a ScopeChain<'a>;
 
-pub fn krate(sess: session::Session, krate: &ast::Crate)
-             -> @RefCell<NamedRegionMap> {
+pub fn krate(sess: &Session, krate: &ast::Crate) -> @RefCell<NamedRegionMap> {
     let mut ctxt = LifetimeContext {
         sess: sess,
         named_region_map: @RefCell::new(NodeMap::new())
@@ -71,7 +70,7 @@ pub fn krate(sess: session::Session, krate: &ast::Crate)
     ctxt.named_region_map
 }
 
-impl<'a> Visitor<Scope<'a>> for LifetimeContext {
+impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
     fn visit_item(&mut self,
                   item: &ast::Item,
                   _: Scope<'a>) {
@@ -181,7 +180,7 @@ impl<'a> ScopeChain<'a> {
     }
 }
 
-impl LifetimeContext {
+impl<'a> LifetimeContext<'a> {
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
     fn visit_fn_decl(&mut self,
                      n: ast::NodeId,

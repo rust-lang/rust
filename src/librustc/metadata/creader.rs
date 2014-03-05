@@ -39,7 +39,7 @@ use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
-pub fn read_crates(sess: Session,
+pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
                    os: loader::Os,
                    intr: @IdentInterner) {
@@ -51,12 +51,7 @@ pub fn read_crates(sess: Session,
         intr: intr
     };
     visit_crate(&e, krate);
-    {
-        let mut v = ReadCrateVisitor {
-            e: &mut e
-        };
-        visit::walk_crate(&mut v, krate, ());
-    }
+    visit::walk_crate(&mut e, krate, ());
     let crate_cache = e.crate_cache.borrow();
     dump_crates(crate_cache.get().as_slice());
     warn_if_multiple_versions(&mut e,
@@ -64,17 +59,13 @@ pub fn read_crates(sess: Session,
                               crate_cache.get().as_slice());
 }
 
-struct ReadCrateVisitor<'a> {
-    e: &'a mut Env,
-}
-
-impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
+impl<'a> visit::Visitor<()> for Env<'a> {
     fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
-        visit_view_item(self.e, a);
+        visit_view_item(self, a);
         visit::walk_view_item(self, a, ());
     }
     fn visit_item(&mut self, a: &ast::Item, _: ()) {
-        visit_item(self.e, a);
+        visit_item(self, a);
         visit::walk_item(self, a, ());
     }
 }
@@ -120,8 +111,8 @@ fn warn_if_multiple_versions(e: &mut Env,
     }
 }
 
-struct Env {
-    sess: Session,
+struct Env<'a> {
+    sess: &'a Session,
     os: loader::Os,
     crate_cache: @RefCell<Vec<cache_entry>>,
     next_crate_num: ast::CrateNum,
@@ -391,12 +382,12 @@ fn resolve_crate_deps(e: &mut Env,
     return @RefCell::new(cnum_map);
 }
 
-pub struct Loader {
-    priv env: Env,
+pub struct Loader<'a> {
+    priv env: Env<'a>,
 }
 
-impl Loader {
-    pub fn new(sess: Session) -> Loader {
+impl<'a> Loader<'a> {
+    pub fn new(sess: &'a Session) -> Loader<'a> {
         let os = driver::get_os(driver::host_triple()).unwrap();
         let os = session::sess_os_to_meta_os(os);
         Loader {
@@ -411,7 +402,7 @@ impl Loader {
     }
 }
 
-impl CrateLoader for Loader {
+impl<'a> CrateLoader for Loader<'a> {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let cnum = resolve_crate(&mut self.env, None, info.ident,

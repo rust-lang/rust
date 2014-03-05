@@ -53,7 +53,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                 ty::ty_uint(t) => {
                     C_integral(Type::uint_from_ty(cx, t), i as u64, false)
                 }
-                _ => cx.sess.span_bug(lit.span,
+                _ => cx.sess().span_bug(lit.span,
                         format!("integer literal has type {} (expected int or uint)",
                                 ty_to_str(cx.tcx, lit_int_ty)))
             }
@@ -68,7 +68,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
                     C_floating(fs.get(), Type::float_from_ty(t))
                 }
                 _ => {
-                    cx.sess.span_bug(lit.span,
+                    cx.sess().span_bug(lit.span,
                         "floating point literal doesn't have the right type");
                 }
             }
@@ -147,15 +147,15 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
                     const_deref_newtype(cx, v, t)
                 }
                 _ => {
-                    cx.sess.bug(format!("unexpected dereferenceable type {}",
-                                     ty_to_str(cx.tcx, t)))
+                    cx.sess().bug(format!("unexpected dereferenceable type {}",
+                                          ty_to_str(cx.tcx, t)))
                 }
             };
             (dv, mt.ty)
         }
         None => {
-            cx.sess.bug(format!("can't dereference const of type {}",
-                             ty_to_str(cx.tcx, t)))
+            cx.sess().bug(format!("can't dereference const of type {}",
+                                  ty_to_str(cx.tcx, t)))
         }
     }
 }
@@ -210,7 +210,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                     llconst = C_struct([wrapper, C_null(Type::i8p())], false)
                 }
                 ty::AutoAddEnv(ref r, ref s) => {
-                    cx.sess
+                    cx.sess()
                       .span_bug(e.span,
                                 format!("unexpected static function: region \
                                          {:?} sigil {:?}",
@@ -218,7 +218,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                         *s))
                 }
                 ty::AutoObject(..) => {
-                    cx.sess
+                    cx.sess()
                       .span_unimpl(e.span,
                                    "unimplemented const coercion to trait \
                                     object");
@@ -266,11 +266,11 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                     }
                                 }
                                 _ => {
-                                    cx.sess.span_bug(e.span,
-                                                     format!("unimplemented \
-                                                              const autoref \
-                                                              {:?}",
-                                                             autoref))
+                                    cx.sess().span_bug(e.span,
+                                                       format!("unimplemented \
+                                                                const autoref \
+                                                                {:?}",
+                                                               autoref))
                                 }
                             }
                         }
@@ -289,7 +289,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
             llvm::LLVMDumpValue(llconst);
             llvm::LLVMDumpValue(C_undef(llty));
         }
-        cx.sess.bug(format!("const {} of type {} has size {} instead of {}",
+        cx.sess().bug(format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx), ty_to_str(cx.tcx, ety),
                          csize, tsize));
     }
@@ -440,8 +440,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {
                   const_eval::const_int(i) => i as u64,
                   const_eval::const_uint(u) => u,
-                  _ => cx.sess.span_bug(index.span,
-                                        "index is not an integer-constant expression")
+                  _ => cx.sess().span_bug(index.span,
+                                          "index is not an integer-constant expression")
               };
               let (arr, len) = match ty::get(bt).sty {
                   ty::ty_vec(_, vstore) | ty::ty_str(vstore) =>
@@ -453,11 +453,11 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                           let e1 = const_get_elt(cx, bv, [0]);
                           (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
                       },
-                      _ => cx.sess.span_bug(base.span,
-                                            "index-expr base must be fixed-size or slice")
+                      _ => cx.sess().span_bug(base.span,
+                                              "index-expr base must be fixed-size or slice")
                   },
-                  _ =>  cx.sess.span_bug(base.span,
-                                         "index-expr base must be a vector or string type")
+                  _ =>  cx.sess().span_bug(base.span,
+                                           "index-expr base must be a vector or string type")
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
@@ -468,8 +468,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               if iv >= len {
                   // FIXME #3170: report this earlier on in the const-eval
                   // pass. Reporting here is a bit late.
-                  cx.sess.span_err(e.span,
-                                   "const index-expr is out of bounds");
+                  cx.sess().span_err(e.span,
+                                     "const index-expr is out of bounds");
               }
               (const_get_elt(cx, arr, [iv as c_uint]), inlineable)
           }
@@ -511,8 +511,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                         llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                     }
                     expr::cast_float => llvm::LLVMConstUIToFP(iv, llty.to_ref()),
-                    _ => cx.sess.bug("enum cast destination is not \
-                                      integral or float")
+                    _ => cx.sess().bug("enum cast destination is not \
+                                        integral or float")
                 }
               }
               (expr::cast_pointer, expr::cast_pointer) => {
@@ -522,8 +522,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 llvm::LLVMConstIntToPtr(v, llty.to_ref())
               }
               _ => {
-                cx.sess.impossible_case(e.span,
-                                        "bad combination of types for cast")
+                cx.sess().impossible_case(e.span,
+                                          "bad combination of types for cast")
               }
             }, inlineable)
           }
@@ -558,7 +558,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                                     (adt::const_get_field(cx, repr, bv, discr, ix),
                                      inlineable)
                                 }
-                                None => cx.tcx.sess.span_bug(e.span, "missing struct field")
+                                None => cx.sess().span_bug(e.span, "missing struct field")
                               }
                           }
                       }
@@ -580,7 +580,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               ast::ExprLit(ref lit) => {
                 match lit.node {
                     ast::LitStr(..) => { const_expr(cx, sub, is_local) }
-                    _ => { cx.sess.span_bug(e.span, "bad const-slice lit") }
+                    _ => { cx.sess().span_bug(e.span, "bad const-slice lit") }
                 }
               }
               ast::ExprVec(ref es, ast::MutImmutable) => {
@@ -598,7 +598,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                 let p = const_ptrcast(cx, gv, llunitty);
                 (C_struct([p, C_uint(cx, es.len())], false), false)
               }
-              _ => cx.sess.span_bug(e.span, "bad const-slice expr")
+              _ => cx.sess().span_bug(e.span, "bad const-slice expr")
             }
           }
           ast::ExprRepeat(elem, count, _) => {
@@ -608,7 +608,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
             let n = match const_eval::eval_const_expr(cx.tcx, count) {
                 const_eval::const_int(i)  => i as uint,
                 const_eval::const_uint(i) => i as uint,
-                _ => cx.sess.span_bug(count.span, "count must be integral const expression.")
+                _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
             let vs = vec::from_elem(n, const_expr(cx, elem, is_local).val0());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
@@ -654,7 +654,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                     (C_null(llty), true)
                 }
                 _ => {
-                    cx.sess.span_bug(e.span, "expected a const, fn, struct, or variant def")
+                    cx.sess().span_bug(e.span, "expected a const, fn, struct, or variant def")
                 }
             }
           }
@@ -684,11 +684,11 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                                         vinfo.disr_val,
                                         arg_vals.as_slice()), inlineable)
                   }
-                  _ => cx.sess.span_bug(e.span, "expected a struct or variant def")
+                  _ => cx.sess().span_bug(e.span, "expected a struct or variant def")
               }
           }
           ast::ExprParen(e) => { const_expr(cx, e, is_local) }
-          _ => cx.sess.span_bug(e.span,
+          _ => cx.sess().span_bug(e.span,
                   "bad constant expression type in consts::const_expr")
         };
     }

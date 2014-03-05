@@ -86,7 +86,7 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
             }
         }
         _ => {
-            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
+            cx.sess().bug("type_of_fn_from_ty given non-closure, non-bare-fn")
         }
     }
 }
@@ -142,7 +142,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_unboxed_vec(mt) => {
             let sz_ty = sizing_type_of(cx, mt.ty);
-            Type::vec(cx.sess.targ_cfg.arch, &sz_ty)
+            Type::vec(cx.sess().targ_cfg.arch, &sz_ty)
         }
 
         ty::ty_tup(..) | ty::ty_enum(..) => {
@@ -162,7 +162,8 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
 
         ty::ty_self(_) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
-            cx.tcx.sess.bug(format!("fictitious type {:?} in sizing_type_of()", ty::get(t).sty))
+            cx.sess().bug(format!("fictitious type {:?} in sizing_type_of()",
+                                  ty::get(t).sty))
         }
     };
 
@@ -212,7 +213,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(t),
       ty::ty_str(ty::vstore_uniq) => {
-        Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
+        Type::vec(cx.sess().targ_cfg.arch, &Type::i8()).ptr_to()
       }
       ty::ty_enum(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We
@@ -231,11 +232,11 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_vec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
-          Type::vec(cx.sess.targ_cfg.arch, &ty).ptr_to()
+          Type::vec(cx.sess().targ_cfg.arch, &ty).ptr_to()
       }
       ty::ty_unboxed_vec(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          Type::vec(cx.sess.targ_cfg.arch, &ty)
+          Type::vec(cx.sess().targ_cfg.arch, &ty)
       }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
@@ -288,10 +289,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               adt::incomplete_type_of(cx, repr, name)
           }
       }
-      ty::ty_self(..) => cx.tcx.sess.unimpl("type_of: ty_self"),
-      ty::ty_infer(..) => cx.tcx.sess.bug("type_of with ty_infer"),
-      ty::ty_param(..) => cx.tcx.sess.bug("type_of with ty_param"),
-      ty::ty_err(..) => cx.tcx.sess.bug("type_of with ty_err")
+      ty::ty_self(..) => cx.sess().unimpl("type_of: ty_self"),
+      ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
+      ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
+      ty::ty_err(..) => cx.sess().bug("type_of with ty_err")
     };
 
     debug!("--> mapped t={} {:?} to llty={}",
