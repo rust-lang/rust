@@ -62,7 +62,7 @@ use syntax::visit;
 use syntax::opt_vec::OptVec;
 
 struct CollectItemTypesVisitor<'a> {
-    ccx: @CrateCtxt<'a>
+    ccx: &'a CrateCtxt<'a>
 }
 
 impl<'a> visit::Visitor<()> for CollectItemTypesVisitor<'a> {
@@ -76,7 +76,7 @@ impl<'a> visit::Visitor<()> for CollectItemTypesVisitor<'a> {
     }
 }
 
-pub fn collect_item_types(ccx: @CrateCtxt, krate: &ast::Crate) {
+pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, .. } =

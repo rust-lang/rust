@@ -120,7 +120,7 @@ pub enum AutoderefReceiverFlag {
 }
 
 pub fn lookup<'a>(
-        fcx: @FnCtxt,
+        fcx: &'a FnCtxt<'a>,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: &ast::Expr,                   // The expression `a.b(...)`.
@@ -165,7 +165,7 @@ pub fn lookup<'a>(
 }
 
 pub fn lookup_in_trait<'a>(
-        fcx: @FnCtxt,
+        fcx: &'a FnCtxt<'a>,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         span: Span,                         // The expression `a.b(...)`'s span.
@@ -199,7 +199,7 @@ pub fn lookup_in_trait<'a>(
 }
 
 struct LookupContext<'a> {
-    fcx: @FnCtxt<'a>,
+    fcx: &'a FnCtxt<'a>,
     span: Span,
 
     // The receiver to the method call. Only `None` in the case of
@@ -1351,7 +1351,7 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        fn rcvr_matches_ty(fcx: @FnCtxt,
+        fn rcvr_matches_ty(fcx: &FnCtxt,
                            rcvr_ty: ty::t,
                            candidate: &Candidate) -> bool {
             match candidate.rcvr_match_condition {

@@ -462,7 +462,7 @@ pub fn check_crate(tcx: &ty::ctxt,
                    krate: &ast::Crate)
                 -> (MethodMap, vtable_map) {
     let time_passes = tcx.sess.time_passes();
-    let ccx = @CrateCtxt {
+    let ccx = CrateCtxt {
         trait_map: trait_map,
         method_map: @RefCell::new(FnvHashMap::new()),
         vtable_map: @RefCell::new(NodeMap::new()),
@@ -470,7 +470,7 @@ pub fn check_crate(tcx: &ty::ctxt,
     };
 
     time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(ccx, krate));
+        collect::collect_item_types(&ccx, krate));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
@@ -480,12 +480,12 @@ pub fn check_crate(tcx: &ty::ctxt,
          variance::infer_variance(tcx, krate));
 
     time(time_passes, "coherence checking", (), |_|
-        coherence::check_coherence(ccx, krate));
+        coherence::check_coherence(&ccx, krate));
 
     time(time_passes, "type checking", (), |_|
-        check::check_item_types(ccx, krate));
+        check::check_item_types(&ccx, krate));
 
-    check_for_entry_fn(ccx);
+    check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }

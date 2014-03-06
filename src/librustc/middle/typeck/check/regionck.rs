@@ -293,7 +293,7 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
     }
 }
 
-pub fn regionck_expr(fcx: @FnCtxt, e: &ast::Expr) {
+pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: e.id };
     let rcx = &mut rcx;
@@ -304,7 +304,7 @@ pub fn regionck_expr(fcx: @FnCtxt, e: &ast::Expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @FnCtxt, blk: &ast::Block) {
+pub fn regionck_fn(fcx: &FnCtxt, blk: &ast::Block) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: blk.id };
     let rcx = &mut rcx;

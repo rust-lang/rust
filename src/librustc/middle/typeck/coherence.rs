@@ -145,7 +145,7 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
 }
 
 struct CoherenceChecker<'a> {
-    crate_context: @CrateCtxt<'a>,
+    crate_context: &'a CrateCtxt<'a>,
     inference_context: InferCtxt<'a>,
 }
 
@@ -227,13 +227,6 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
 }
 
 impl<'a> CoherenceChecker<'a> {
-    fn new(crate_context: @CrateCtxt<'a>) -> CoherenceChecker<'a> {
-        CoherenceChecker {
-            crate_context: crate_context,
-            inference_context: new_infer_ctxt(crate_context.tcx),
-        }
-    }
-
     fn check(&self, krate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
@@ -838,6 +831,9 @@ fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @CrateCtxt, krate: &Crate) {
-    CoherenceChecker::new(crate_context).check(krate);
+pub fn check_coherence(crate_context: &CrateCtxt, krate: &Crate) {
+    CoherenceChecker {
+        crate_context: crate_context,
+        inference_context: new_infer_ctxt(crate_context.tcx),
+    }.check(krate);
 }
