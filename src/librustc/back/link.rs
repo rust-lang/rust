@@ -26,7 +26,7 @@ use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
 
-use std::c_str::ToCStr;
+use std::c_str::{ToCStr, CString};
 use std::char;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
@@ -61,7 +61,9 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
         if cstr == ptr::null() {
             sess.fatal(msg);
         } else {
-            sess.fatal(msg + ": " + str::raw::from_c_str(cstr));
+            let err = CString::new(cstr, false);
+            let err = str::from_utf8_lossy(err.as_bytes());
+            sess.fatal(msg + ": " + err.as_slice());
         }
     }
 }
