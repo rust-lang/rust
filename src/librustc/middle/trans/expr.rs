@@ -940,7 +940,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
     }
 }
 
-pub fn with_field_tys<R>(tcx: ty::ctxt,
+pub fn with_field_tys<R>(tcx: &ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::NodeId>,
                          op: |ty::Disr, (&[ty::field])| -> R)

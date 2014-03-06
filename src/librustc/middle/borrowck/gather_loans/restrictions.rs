@@ -46,7 +46,7 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 // Private
 
 struct RestrictionsContext<'a> {
-    bccx: &'a BorrowckCtxt,
+    bccx: &'a BorrowckCtxt<'a>,
     span: Span,
     cmt_original: mc::cmt,
     loan_region: ty::Region,

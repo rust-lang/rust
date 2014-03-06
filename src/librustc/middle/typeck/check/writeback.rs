@@ -254,8 +254,8 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     }
 }
 
-struct WbCtxt {
-    fcx: @FnCtxt,
+struct WbCtxt<'a> {
+    fcx: @FnCtxt<'a>,
 
     // As soon as we hit an error we have to stop resolving
     // the entire function.
@@ -338,7 +338,7 @@ fn visit_item(_item: &ast::Item, _wbcx: &mut WbCtxt) {
     // Ignore items
 }
 
-impl Visitor<()> for WbCtxt {
+impl<'a> Visitor<()> for WbCtxt<'a> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(i, self); }
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:&ast::Expr, _: ()) { visit_expr(ex, self); }

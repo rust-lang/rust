@@ -32,9 +32,9 @@ use syntax::visit;
 use util::ppaux::Repr;
 
 struct CheckLoanCtxt<'a> {
-    bccx: &'a BorrowckCtxt,
-    dfcx_loans: &'a LoanDataFlow,
-    move_data: move_data::FlowedMoveData,
+    bccx: &'a BorrowckCtxt<'a>,
+    dfcx_loans: &'a LoanDataFlow<'a>,
+    move_data: move_data::FlowedMoveData<'a>,
     all_loans: &'a [Loan],
 }
 
@@ -87,7 +87,7 @@ enum MoveError {
 }
 
 impl<'a> CheckLoanCtxt<'a> {
-    pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
+    pub fn tcx(&self) -> &'a ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)
                             -> bool {

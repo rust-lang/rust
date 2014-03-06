@@ -534,7 +534,7 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &mut Sha256,
+fn symbol_hash(tcx: &ty::ctxt, symbol_hasher: &mut Sha256,
                t: ty::t, link_meta: &LinkMeta) -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.

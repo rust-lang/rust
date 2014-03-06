@@ -21,13 +21,13 @@ use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-pub struct CheckCrateVisitor {
+pub struct CheckCrateVisitor<'a> {
     def_map: resolve::DefMap,
     method_map: typeck::MethodMap,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
 }
 
-impl Visitor<bool> for CheckCrateVisitor {
+impl<'a> Visitor<bool> for CheckCrateVisitor<'a> {
     fn visit_item(&mut self, i: &Item, env: bool) {
         check_item(self, i, env);
     }
@@ -42,7 +42,7 @@ impl Visitor<bool> for CheckCrateVisitor {
 pub fn check_crate(krate: &Crate,
                    def_map: resolve::DefMap,
                    method_map: typeck::MethodMap,
-                   tcx: ty::ctxt) {
+                   tcx: &ty::ctxt) {
     let mut v = CheckCrateVisitor {
         def_map: def_map,
         method_map: method_map,

@@ -205,7 +205,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
 
-pub fn infer_variance(tcx: ty::ctxt,
+pub fn infer_variance(tcx: &ty::ctxt,
                       krate: &ast::Crate) {
     let mut arena = arena::Arena::new();
     let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, krate);
@@ -251,7 +251,7 @@ impl<'a> fmt::Show for VarianceTerm<'a> {
  */
 
 struct TermsContext<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     arena: &'a Arena,
 
     empty_variances: @ty::ItemVariances,
@@ -274,7 +274,7 @@ struct InferredInfo<'a> {
     term: VarianceTermPtr<'a>,
 }
 
-fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
+fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
                                            arena: &'a mut Arena,
                                            krate: &ast::Crate)
                                            -> TermsContext<'a> {
@@ -522,7 +522,7 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
 }
 
 impl<'a> ConstraintContext<'a> {
-    fn tcx(&self) -> ty::ctxt {
+    fn tcx(&self) -> &'a ty::ctxt {
         self.terms_cx.tcx
     }
 

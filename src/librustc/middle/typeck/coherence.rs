@@ -144,13 +144,13 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
     }
 }
 
-struct CoherenceChecker {
-    crate_context: @CrateCtxt,
-    inference_context: InferCtxt,
+struct CoherenceChecker<'a> {
+    crate_context: @CrateCtxt<'a>,
+    inference_context: InferCtxt<'a>,
 }
 
 struct CoherenceCheckVisitor<'a> {
-    cc: &'a CoherenceChecker
+    cc: &'a CoherenceChecker<'a>
 }
 
 impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
@@ -176,7 +176,7 @@ impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     }
 }
 
-struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker }
+struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker<'a> }
 
 impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
@@ -226,8 +226,8 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     }
 }
 
-impl CoherenceChecker {
-    fn new(crate_context: @CrateCtxt) -> CoherenceChecker {
+impl<'a> CoherenceChecker<'a> {
+    fn new(crate_context: @CrateCtxt<'a>) -> CoherenceChecker<'a> {
         CoherenceChecker {
             crate_context: crate_context,
             inference_context: new_infer_ctxt(crate_context.tcx),
@@ -762,7 +762,7 @@ impl CoherenceChecker {
     }
 }
 
-pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
+pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
                                       impl_id: ast::DefId,
                                       trait_ref: &ty::TraitRef,
                                       method: &ty::Method)
@@ -810,7 +810,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
     };
 }
 
-fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
+fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
                                      impl_id: ast::DefId,
                                      trait_ref: &ty::TraitRef,
                                      new_def_id: ast::DefId,

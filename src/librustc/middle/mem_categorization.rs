@@ -216,7 +216,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     }
 }
 
-pub fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
+pub fn deref_kind(tcx: &ty::ctxt, t: ty::t) -> deref_kind {
     match opt_deref_kind(t) {
       Some(k) => k,
       None => {
@@ -267,9 +267,9 @@ pub type McResult<T> = Result<T, ()>;
  * can be sure that only `Ok` results will occur.
  */
 pub trait Typer {
-    fn tcx(&self) -> ty::ctxt;
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt;
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
-    fn node_method_ty(&mut self, method_call: typeck::MethodCall) -> Option<ty::t>;
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
     fn adjustment(&mut self, node_id: ast::NodeId) -> Option<@ty::AutoAdjustment>;
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
@@ -351,7 +351,7 @@ macro_rules! if_ok(
 )
 
 impl<TYPER:Typer> MemCategorizationContext<TYPER> {
-    fn tcx(&self) -> ty::ctxt {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
         self.typer.tcx()
     }
 
@@ -886,7 +886,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         let cmt_slice = self.cat_index(slice_pat, vec_cmt, 0);
         return Ok((cmt_slice, slice_mutbl, slice_r));
 
-        fn vec_slice_info(tcx: ty::ctxt,
+        fn vec_slice_info(tcx: &ty::ctxt,
                           pat: @ast::Pat,
                           slice_ty: ty::t)
                           -> (ast::Mutability, ty::Region) {
@@ -996,10 +996,9 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         // step out of sync again. So you'll see below that we always
         // get the type of the *subpattern* and use that.
 
-        let tcx = self.tcx();
         debug!("cat_pattern: id={} pat={} cmt={}",
                pat.id, pprust::pat_to_str(pat),
-               cmt.repr(tcx));
+               cmt.repr(self.tcx()));
 
         op(self, cmt, pat);
 
@@ -1187,7 +1186,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
 /// The node_id here is the node of the expression that references the field.
 /// This function looks it up in the def map in case the type happens to be
 /// an enum to determine which variant is in use.
-pub fn field_mutbl(tcx: ty::ctxt,
+pub fn field_mutbl(tcx: &ty::ctxt,
                    base_ty: ty::t,
                    // FIXME #6993: change type to Name
                    f_name: ast::Ident,
@@ -1312,7 +1311,7 @@ impl cmt_ {
 }
 
 impl Repr for cmt_ {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         format!("\\{{} id:{} m:{:?} ty:{}\\}",
              self.cat.repr(tcx),
              self.id,
@@ -1322,7 +1321,7 @@ impl Repr for cmt_ {
 }
 
 impl Repr for categorization {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match *self {
             cat_static_item |
             cat_rvalue(..) |
@@ -1365,7 +1364,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
 }
 
 impl Repr for InteriorKind {
-    fn repr(&self, _tcx: ty::ctxt) -> ~str {
+    fn repr(&self, _tcx: &ty::ctxt) -> ~str {
         match *self {
             InteriorField(NamedField(fld)) => {
                 token::get_name(fld).get().to_str()

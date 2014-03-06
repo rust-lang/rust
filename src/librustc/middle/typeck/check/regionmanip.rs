@@ -22,7 +22,7 @@ use util::ppaux;
 // Helper functions related to manipulating region types.
 
 pub fn replace_late_bound_regions_in_fn_sig(
-        tcx: ty::ctxt,
+        tcx: &ty::ctxt,
         fn_sig: &ty::FnSig,
         mapf: |ty::BoundRegion| -> ty::Region)
         -> (HashMap<ty::BoundRegion,ty::Region>, ty::FnSig) {
@@ -45,7 +45,7 @@ pub fn replace_late_bound_regions_in_fn_sig(
     (map, fn_sig)
 }
 
-pub fn relate_nested_regions(tcx: ty::ctxt,
+pub fn relate_nested_regions(tcx: &ty::ctxt,
                              opt_region: Option<ty::Region>,
                              ty: ty::t,
                              relate_op: |ty::Region, ty::Region|) {
@@ -85,8 +85,8 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
     rr.fold_ty(ty);
 
     struct RegionRelator<'a> {
-        tcx: ty::ctxt,
-        stack: Vec<ty::Region> ,
+        tcx: &'a ty::ctxt,
+        stack: Vec<ty::Region>,
         relate_op: 'a |ty::Region, ty::Region|,
     }
 
@@ -95,7 +95,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
     // well.
 
     impl<'a> TypeFolder for RegionRelator<'a> {
-        fn tcx(&self) -> ty::ctxt {
+        fn tcx<'a>(&'a self) -> &'a ty::ctxt {
             self.tcx
         }
 
@@ -134,7 +134,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
     }
 }
 
-pub fn relate_free_regions(tcx: ty::ctxt, fn_sig: &ty::FnSig) {
+pub fn relate_free_regions(tcx: &ty::ctxt, fn_sig: &ty::FnSig) {
     /*!
      * This function populates the region map's `free_region_map`.
      * It walks over the transformed self type and argument types

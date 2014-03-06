@@ -69,7 +69,7 @@ pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,
 
 pub struct EncodeParams<'a> {
     diag: @SpanHandler,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<NodeMap<~str>>,
     non_inlineable_statics: &'a RefCell<NodeSet>,
@@ -96,7 +96,7 @@ pub struct Stats {
 
 pub struct EncodeContext<'a> {
     diag: @SpanHandler,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<NodeMap<~str>>,
@@ -1899,7 +1899,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
+pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> ~str {
     let cx = @tyencode::ctxt {
         diag: tcx.diag,
         ds: def_to_str,

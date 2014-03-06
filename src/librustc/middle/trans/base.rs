@@ -135,15 +135,15 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     _InsnCtxt { _x: () }
 }
 
-pub struct StatRecorder {
-    ccx: @CrateContext,
+pub struct StatRecorder<'a> {
+    ccx: @CrateContext<'a>,
     name: Option<~str>,
     start: u64,
     istart: uint,
 }
 
-impl StatRecorder {
-    pub fn new(ccx: @CrateContext, name: ~str) -> StatRecorder {
+impl<'a> StatRecorder<'a> {
+    pub fn new(ccx: @CrateContext<'a>, name: ~str) -> StatRecorder<'a> {
         let start = if ccx.sess().trans_stats() {
             time::precise_time_ns()
         } else {
@@ -160,7 +160,7 @@ impl StatRecorder {
 }
 
 #[unsafe_destructor]
-impl Drop for StatRecorder {
+impl<'a> Drop for StatRecorder<'a> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
             let end = time::precise_time_ns();
@@ -1225,7 +1225,7 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
 //
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
-pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
+pub fn new_fn_ctxt<'a>(ccx: @CrateContext<'a>,
                        llfndecl: ValueRef,
                        id: ast::NodeId,
                        has_env: bool,
@@ -1670,11 +1670,11 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
     }
 }
 
-pub struct TransItemVisitor {
-    ccx: @CrateContext,
+pub struct TransItemVisitor<'a> {
+    ccx: @CrateContext<'a>,
 }
 
-impl Visitor<()> for TransItemVisitor {
+impl<'a> Visitor<()> for TransItemVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item, _:()) {
         trans_item(self.ccx, i);
     }
@@ -2552,7 +2552,7 @@ pub fn trans_crate(krate: ast::Crate,
     let llmod_id = link_meta.crateid.name + ".rs";
 
     let ccx = @CrateContext::new(llmod_id,
-                                 analysis.ty_cx,
+                                 &analysis.ty_cx,
                                  analysis.exp_map2,
                                  analysis.maps,
                                  Sha256::new(),

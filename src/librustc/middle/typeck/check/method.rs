@@ -199,7 +199,7 @@ pub fn lookup_in_trait<'a>(
 }
 
 struct LookupContext<'a> {
-    fcx: @FnCtxt,
+    fcx: @FnCtxt<'a>,
     span: Span,
 
     // The receiver to the method call. Only `None` in the case of
@@ -1422,11 +1422,11 @@ impl<'a> LookupContext<'a> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&'a self) -> &'a infer::InferCtxt {
+    fn infcx(&'a self) -> &'a infer::InferCtxt<'a> {
         &self.fcx.inh.infcx
     }
 
-    fn tcx(&self) -> ty::ctxt {
+    fn tcx(&'a self) -> &'a ty::ctxt {
         self.fcx.tcx()
     }
 
@@ -1445,7 +1445,7 @@ impl<'a> LookupContext<'a> {
 }
 
 impl Repr for Candidate {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         format!("Candidate(rcvr_ty={}, rcvr_substs={}, origin={:?})",
                 self.rcvr_match_condition.repr(tcx),
                 self.rcvr_substs.repr(tcx),
@@ -1454,7 +1454,7 @@ impl Repr for Candidate {
 }
 
 impl Repr for RcvrMatchCondition {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match *self {
             RcvrMatchesIfObject(d) => {
                 format!("RcvrMatchesIfObject({})", d.repr(tcx))
