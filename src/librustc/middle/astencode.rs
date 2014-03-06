@@ -63,17 +63,17 @@ struct DecodeContext<'a> {
 }
 
 struct ExtendedDecodeContext<'a> {
-    dcx: @DecodeContext<'a>,
+    dcx: &'a DecodeContext<'a>,
     from_id_range: ast_util::IdRange,
     to_id_range: ast_util::IdRange
 }
 
 trait tr {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> Self;
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> Self;
 }
 
 trait tr_intern {
-    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::DefId;
+    fn tr_intern(&self, xcx: &ExtendedDecodeContext) -> ast::DefId;
 }
 
 // ______________________________________________________________________
@@ -116,10 +116,10 @@ pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: &ty::ctxt,
                            maps: Maps,
-                           path: Vec<ast_map::PathElem> ,
+                           path: Vec<ast_map::PathElem>,
                            par_doc: ebml::Doc)
-                           -> Result<ast::InlinedItem, Vec<ast_map::PathElem> > {
-    let dcx = @DecodeContext {
+                           -> Result<ast::InlinedItem, Vec<ast_map::PathElem>> {
+    let dcx = &DecodeContext {
         cdata: cdata,
         tcx: tcx,
         maps: maps
@@ -138,7 +138,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
         let mut ast_dsr = reader::Decoder(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr);
         let to_id_range = reserve_id_range(&dcx.tcx.sess, from_id_range);
-        let xcx = @ExtendedDecodeContext {
+        let xcx = &ExtendedDecodeContext {
             dcx: dcx,
             from_id_range: from_id_range,
             to_id_range: to_id_range
@@ -245,25 +245,25 @@ impl<'a> ExtendedDecodeContext<'a> {
 }
 
 impl tr_intern for ast::DefId {
-    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::DefId {
+    fn tr_intern(&self, xcx: &ExtendedDecodeContext) -> ast::DefId {
         xcx.tr_intern_def_id(*self)
     }
 }
 
 impl tr for ast::DefId {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::DefId {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ast::DefId {
         xcx.tr_def_id(*self)
     }
 }
 
 impl tr for Option<ast::DefId> {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> Option<ast::DefId> {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> Option<ast::DefId> {
         self.map(|d| xcx.tr_def_id(d))
     }
 }
 
 impl tr for Span {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> Span {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> Span {
         xcx.tr_span(*self)
     }
 }
@@ -279,13 +279,13 @@ impl<S:serialize::Encoder> def_id_encoder_helpers for S {
 }
 
 trait def_id_decoder_helpers {
-    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::DefId;
+    fn read_def_id(&mut self, xcx: &ExtendedDecodeContext) -> ast::DefId;
     fn read_def_id_noxcx(&mut self,
                          cdata: @cstore::crate_metadata) -> ast::DefId;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D {
-    fn read_def_id(&mut self, xcx: @ExtendedDecodeContext) -> ast::DefId {
+    fn read_def_id(&mut self, xcx: &ExtendedDecodeContext) -> ast::DefId {
         let did: ast::DefId = Decodable::decode(self);
         did.tr(xcx)
     }
@@ -376,7 +376,7 @@ fn decode_ast(par_doc: ebml::Doc) -> ast::InlinedItem {
 }
 
 struct AstRenumberer<'a> {
-    xcx: @ExtendedDecodeContext<'a>,
+    xcx: &'a ExtendedDecodeContext<'a>,
 }
 
 impl<'a> ast_map::FoldOps for AstRenumberer<'a> {
@@ -393,7 +393,7 @@ impl<'a> ast_map::FoldOps for AstRenumberer<'a> {
     }
 }
 
-fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
+fn renumber_and_map_ast(xcx: &ExtendedDecodeContext,
                         map: &ast_map::Map,
                         path: Vec<ast_map::PathElem> ,
                         ii: ast::InlinedItem) -> ast::InlinedItem {
@@ -416,14 +416,14 @@ fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
+fn decode_def(xcx: &ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
     let mut dsr = reader::Decoder(doc);
     let def: ast::Def = Decodable::decode(&mut dsr);
     def.tr(xcx)
 }
 
 impl tr for ast::Def {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::Def {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ast::Def {
         match *self {
           ast::DefFn(did, p) => ast::DefFn(did.tr(xcx), p),
           ast::DefStaticMethod(did, wrapped_did2, p) => {
@@ -476,7 +476,7 @@ impl tr for ast::Def {
 // Encoding and decoding of adjustment information
 
 impl tr for ty::AutoDerefRef {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoDerefRef {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::AutoDerefRef {
         ty::AutoDerefRef {
             autoderefs: self.autoderefs,
             autoref: match self.autoref {
@@ -488,13 +488,13 @@ impl tr for ty::AutoDerefRef {
 }
 
 impl tr for ty::AutoRef {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoRef {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::AutoRef {
         self.map_region(|r| r.tr(xcx))
     }
 }
 
 impl tr for ty::Region {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::Region {
         match *self {
             ty::ReLateBound(id, br) => ty::ReLateBound(xcx.tr_id(id),
                                                        br.tr(xcx)),
@@ -512,7 +512,7 @@ impl tr for ty::Region {
 }
 
 impl tr for ty::BoundRegion {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::BoundRegion {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::BoundRegion {
         match *self {
             ty::BrAnon(_) |
             ty::BrFresh(_) => *self,
@@ -530,12 +530,12 @@ fn encode_freevar_entry(ebml_w: &mut writer::Encoder, fv: @freevar_entry) {
 }
 
 trait ebml_decoder_helper {
-    fn read_freevar_entry(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_freevar_entry(&mut self, xcx: &ExtendedDecodeContext)
                           -> freevar_entry;
 }
 
 impl<'a> ebml_decoder_helper for reader::Decoder<'a> {
-    fn read_freevar_entry(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_freevar_entry(&mut self, xcx: &ExtendedDecodeContext)
                           -> freevar_entry {
         let fv: freevar_entry = Decodable::decode(self);
         fv.tr(xcx)
@@ -543,7 +543,7 @@ impl<'a> ebml_decoder_helper for reader::Decoder<'a> {
 }
 
 impl tr for freevar_entry {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> freevar_entry {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> freevar_entry {
         freevar_entry {
             def: self.def.tr(xcx),
             span: self.span.tr(xcx),
@@ -555,12 +555,12 @@ impl tr for freevar_entry {
 // Encoding and decoding of CaptureVar information
 
 trait capture_var_helper {
-    fn read_capture_var(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_capture_var(&mut self, xcx: &ExtendedDecodeContext)
                         -> moves::CaptureVar;
 }
 
 impl<'a> capture_var_helper for reader::Decoder<'a> {
-    fn read_capture_var(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_capture_var(&mut self, xcx: &ExtendedDecodeContext)
                         -> moves::CaptureVar {
         let cvar: moves::CaptureVar = Decodable::decode(self);
         cvar.tr(xcx)
@@ -568,7 +568,7 @@ impl<'a> capture_var_helper for reader::Decoder<'a> {
 }
 
 impl tr for moves::CaptureVar {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> moves::CaptureVar {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> moves::CaptureVar {
         moves::CaptureVar {
             def: self.def.tr(xcx),
             span: self.span.tr(xcx),
@@ -581,7 +581,7 @@ impl tr for moves::CaptureVar {
 // Encoding and decoding of MethodCallee
 
 trait read_method_callee_helper {
-    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee;
+    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> MethodCallee;
 }
 
 fn encode_method_callee(ecx: &e::EncodeContext,
@@ -601,7 +601,7 @@ fn encode_method_callee(ecx: &e::EncodeContext,
 }
 
 impl<'a> read_method_callee_helper for reader::Decoder<'a> {
-    fn read_method_callee(&mut self, xcx: @ExtendedDecodeContext) -> MethodCallee {
+    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> MethodCallee {
         self.read_struct("MethodCallee", 3, |this| {
             MethodCallee {
                 origin: this.read_struct_field("origin", 0, |this| {
@@ -621,7 +621,7 @@ impl<'a> read_method_callee_helper for reader::Decoder<'a> {
 }
 
 impl tr for MethodOrigin {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> MethodOrigin {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> MethodOrigin {
         match *self {
             typeck::MethodStatic(did) => typeck::MethodStatic(did.tr(xcx)),
             typeck::MethodParam(ref mp) => {
@@ -775,12 +775,12 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
 // Encoding and decoding the side tables
 
 trait get_ty_str_ctxt {
-    fn ty_str_ctxt<'a>(&'a self) -> @tyencode::ctxt<'a>;
+    fn ty_str_ctxt<'a>(&'a self) -> tyencode::ctxt<'a>;
 }
 
 impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
-    fn ty_str_ctxt<'a>(&'a self) -> @tyencode::ctxt<'a> {
-        @tyencode::ctxt {
+    fn ty_str_ctxt<'a>(&'a self) -> tyencode::ctxt<'a> {
+        tyencode::ctxt {
             diag: self.tcx.sess.diagnostic(),
             ds: e::def_to_str,
             tcx: self.tcx,
@@ -821,7 +821,7 @@ impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
                            type_param_def: &ty::TypeParameterDef) {
         self.emit_opaque(|this| {
             tyencode::enc_type_param_def(this.writer,
-                                         ecx.ty_str_ctxt(),
+                                         &ecx.ty_str_ctxt(),
                                          type_param_def)
         })
     }
@@ -850,7 +850,7 @@ impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
     }
 
     fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs) {
-        self.emit_opaque(|this| tyencode::enc_substs(this.writer, ecx.ty_str_ctxt(), substs))
+        self.emit_opaque(|this| tyencode::enc_substs(this.writer, &ecx.ty_str_ctxt(), substs))
     }
 
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment) {
@@ -1105,16 +1105,16 @@ impl<'a> doc_decoder_helpers for ebml::Doc<'a> {
 }
 
 trait ebml_decoder_decoder_helpers {
-    fn read_ty(&mut self, xcx: @ExtendedDecodeContext) -> ty::t;
-    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> Vec<ty::t> ;
-    fn read_type_param_def(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_ty(&mut self, xcx: &ExtendedDecodeContext) -> ty::t;
+    fn read_tys(&mut self, xcx: &ExtendedDecodeContext) -> Vec<ty::t>;
+    fn read_type_param_def(&mut self, xcx: &ExtendedDecodeContext)
                            -> ty::TypeParameterDef;
-    fn read_ty_param_bounds_and_ty(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
-    fn read_substs(&mut self, xcx: @ExtendedDecodeContext) -> ty::substs;
-    fn read_auto_adjustment(&mut self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment;
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs;
+    fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn convert_def_id(&mut self,
-                      xcx: @ExtendedDecodeContext,
+                      xcx: &ExtendedDecodeContext,
                       source: DefIdSource,
                       did: ast::DefId)
                       -> ast::DefId;
@@ -1149,7 +1149,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
             .collect()
     }
 
-    fn read_ty(&mut self, xcx: @ExtendedDecodeContext) -> ty::t {
+    fn read_ty(&mut self, xcx: &ExtendedDecodeContext) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
@@ -1177,11 +1177,11 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }
     }
 
-    fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> Vec<ty::t> {
+    fn read_tys(&mut self, xcx: &ExtendedDecodeContext) -> Vec<ty::t> {
         self.read_to_vec(|this| this.read_ty(xcx)).move_iter().collect()
     }
 
-    fn read_type_param_def(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_type_param_def(&mut self, xcx: &ExtendedDecodeContext)
                            -> ty::TypeParameterDef {
         self.read_opaque(|this, doc| {
             tydecode::parse_type_param_def_data(
@@ -1193,7 +1193,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         })
     }
 
-    fn read_ty_param_bounds_and_ty(&mut self, xcx: @ExtendedDecodeContext)
+    fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
                                    -> ty::ty_param_bounds_and_ty {
         self.read_struct("ty_param_bounds_and_ty", 2, |this| {
             ty::ty_param_bounds_and_ty {
@@ -1225,7 +1225,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         })
     }
 
-    fn read_substs(&mut self, xcx: @ExtendedDecodeContext) -> ty::substs {
+    fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> ty::substs {
         self.read_opaque(|this, doc| {
             tydecode::parse_substs_data(doc.data,
                                         xcx.dcx.cdata.cnum,
@@ -1235,7 +1235,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         })
     }
 
-    fn read_auto_adjustment(&mut self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
+    fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AutoAddEnv", "AutoDerefRef", "AutoObject"];
             this.read_enum_variant(variants, |this, i| {
@@ -1281,7 +1281,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn convert_def_id(&mut self,
-                      xcx: @ExtendedDecodeContext,
+                      xcx: &ExtendedDecodeContext,
                       source: tydecode::DefIdSource,
                       did: ast::DefId)
                       -> ast::DefId {
@@ -1322,7 +1322,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 }
 
-fn decode_side_tables(xcx: @ExtendedDecodeContext,
+fn decode_side_tables(xcx: &ExtendedDecodeContext,
                       ast_doc: ebml::Doc) {
     let dcx = xcx.dcx;
     let tbl_doc = ast_doc.get(c::tag_table as uint);
