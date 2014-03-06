@@ -322,7 +322,7 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(foreach dep,$$(HOST_CRATES),$$(HLIB$(1)_H_$(3))/stamp.$$(dep))
 
 ifeq ($(1),0)
-# Don't run the the stage0 compiler under valgrind - that ship has sailed
+# Don't run the stage0 compiler under valgrind - that ship has sailed
 CFG_VALGRIND_COMPILE$(1) =
 else
 CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)

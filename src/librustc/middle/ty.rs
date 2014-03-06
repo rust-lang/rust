@@ -600,7 +600,7 @@ pub enum BorrowKind {
  *   be a sublifetime of `'x...'z`.
  * - The closure creator knows which upvars were borrowed by the closure
  *   and thus `x...z` will be reserved for `'x...'z` respectively.
- * - Through mutation, the borrowed upvars can actually escape the
+ * - Through mutation, the borrowed upvars can actually escape
  *   the closure, so sometimes it is necessary for them to be larger
  *   than the closure lifetime itself.
  */
@@ -3377,8 +3377,8 @@ pub fn expr_kind(tcx: ctxt,
                     // the AST type in cast node---but (at the time of this
                     // writing) it's not easy to distinguish casts to traits
                     // from other casts based on the AST.  This should be
-                    // easier in the future, when casts to traits would like
-                    // like @Foo, ~Foo, or &Foo.
+                    // easier in the future, when casts to traits
+                    // would like @Foo, ~Foo, or &Foo.
                     RvalueDatumExpr
                 }
             }
@@ -4240,7 +4240,7 @@ pub fn lookup_simd(tcx: ctxt, did: DefId) -> bool {
     has_attr(tcx, did, "simd")
 }
 
-// Obtain the the representation annotation for a definition.
+// Obtain the representation annotation for a definition.
 pub fn lookup_repr_hint(tcx: ctxt, did: DefId) -> attr::ReprAttr {
     let mut acc = attr::ReprAny;
     ty::each_attr(tcx, did, |meta| {
