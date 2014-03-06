@@ -40,7 +40,7 @@ up expressions into:
 ## The Datum module
 
 A `Datum` encapsulates the result of evaluating a Rust expression.  It
-contains a `ValueRef` indicating the result, a `ty::t` describing the
+contains a `ValueRef` indicating the result, a `ty::t` describing
 the Rust type, but also a *kind*. The kind indicates whether the datum
 has cleanup scheduled (lvalue) or not (rvalue) and -- in the case of
 rvalues -- whether or not the value is "by ref" or "by value".

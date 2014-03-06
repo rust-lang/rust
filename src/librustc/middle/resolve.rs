@@ -4294,7 +4294,7 @@ impl Resolver {
 
             TyPath(ref path, ref bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
-                // scopes looking for it.
+                // looking for it.
                 let mut result_def = None;
 
                 // First, check to see whether the name is a primitive type.

@@ -149,7 +149,7 @@ In this example, there is a region for the fn body block as a whole,
 and then a subregion for the declaration of the local variable.
 Within that, there are sublifetimes for the assignment pattern and
 also the expression `x + y`. The expression itself has sublifetimes
-for evaluating `x` and and `y`.
+for evaluating `x` and `y`.
 
 ## Function calls
 

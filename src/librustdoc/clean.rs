@@ -766,7 +766,7 @@ impl Clean<Item> for doctree::Struct {
     }
 }
 
-/// This is a more limited form of the standard Struct, different in that it
+/// This is a more limited form of the standard Struct, different in that
 /// it lacks the things most items have (name, id, parameterization). Found
 /// only as a variant in an enum.
 #[deriving(Clone, Encodable, Decodable)]

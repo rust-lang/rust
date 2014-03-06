@@ -50,7 +50,7 @@ pub struct BufferedReader<R> {
 }
 
 impl<R: Reader> BufferedReader<R> {
-    /// Creates a new `BufferedReader` with with the specified buffer capacity
+    /// Creates a new `BufferedReader` with the specified buffer capacity
     pub fn with_capacity(cap: uint, inner: R) -> BufferedReader<R> {
         // It's *much* faster to create an uninitialized buffer than it is to
         // fill everything in with 0. This buffer is entirely an implementation
@@ -137,7 +137,7 @@ pub struct BufferedWriter<W> {
 }
 
 impl<W: Writer> BufferedWriter<W> {
-    /// Creates a new `BufferedWriter` with with the specified buffer capacity
+    /// Creates a new `BufferedWriter` with the specified buffer capacity
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
         // See comments in BufferedReader for why this uses unsafe code.
         let mut buf = vec::with_capacity(cap);
