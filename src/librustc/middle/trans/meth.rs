@@ -45,7 +45,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @CrateContext,
+pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
                   methods: &[@ast::Method],
                   generics: &ast::Generics,
@@ -84,7 +84,7 @@ pub fn trans_impl(ccx: @CrateContext,
 ///   type parameters and so forth, else None
 /// * `llfn`: the LLVM ValueRef for the method
 ///
-pub fn trans_method(ccx: @CrateContext, method: &ast::Method,
+pub fn trans_method(ccx: &CrateContext, method: &ast::Method,
                     param_substs: Option<@param_substs>,
                     llfn: ValueRef) -> ValueRef {
     trans_fn(ccx, method.decl, method.body,
@@ -445,7 +445,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
     };
 }
 
-pub fn vtable_id(ccx: @CrateContext,
+pub fn vtable_id(ccx: &CrateContext,
                  origin: &typeck::vtable_origin)
               -> mono_id {
     match origin {

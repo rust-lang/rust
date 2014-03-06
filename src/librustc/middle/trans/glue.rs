@@ -126,7 +126,7 @@ pub fn drop_ty_immediate<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     drop_ty(bcx, vp, t)
 }
 
-pub fn get_drop_glue(ccx: @CrateContext, t: ty::t) -> ValueRef {
+pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     let t = get_drop_glue_type(ccx, t);
     {
         let drop_glues = ccx.drop_glues.borrow();
@@ -149,7 +149,7 @@ pub fn get_drop_glue(ccx: @CrateContext, t: ty::t) -> ValueRef {
     glue
 }
 
-pub fn lazily_emit_visit_glue(ccx: @CrateContext, ti: @tydesc_info) {
+pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: @tydesc_info) {
     let _icx = push_ctxt("lazily_emit_visit_glue");
 
     let llfnty = Type::glue_fn(type_of(ccx, ti.ty).ptr_to());
@@ -444,7 +444,7 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
     return llfn;
 }
 
-fn make_generic_glue(ccx: @CrateContext,
+fn make_generic_glue(ccx: &CrateContext,
                      t: ty::t,
                      llfn: ValueRef,
                      helper: <'a> |&'a Block<'a>, ValueRef, ty::t|
@@ -478,7 +478,7 @@ fn make_generic_glue(ccx: @CrateContext,
     llfn
 }
 
-pub fn emit_tydescs(ccx: @CrateContext) {
+pub fn emit_tydescs(ccx: &CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs.set(true);

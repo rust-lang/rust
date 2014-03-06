@@ -286,7 +286,7 @@ pub struct FunctionContext<'a> {
     block_arena: &'a TypedArena<Block<'a>>,
 
     // This function's enclosing crate context.
-    ccx: @CrateContext<'a>,
+    ccx: &'a CrateContext<'a>,
 
     // Used and maintained by the debuginfo module.
     debug_context: debuginfo::FunctionDebugContext,
@@ -435,7 +435,7 @@ impl<'a> Block<'a> {
         })
     }
 
-    pub fn ccx(&self) -> @CrateContext<'a> { self.fcx.ccx }
+    pub fn ccx(&self) -> &'a CrateContext<'a> { self.fcx.ccx }
     pub fn tcx(&self) -> &'a ty::ctxt {
         self.fcx.ccx.tcx
     }

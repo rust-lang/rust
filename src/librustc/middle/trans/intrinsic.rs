@@ -31,7 +31,7 @@ use syntax::ast_map;
 use syntax::parse::token;
 use util::ppaux::ty_to_str;
 
-pub fn get_simple_intrinsic(ccx: @CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
+pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match token::get_ident(item.ident).get() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -83,7 +83,7 @@ pub fn get_simple_intrinsic(ccx: @CrateContext, item: &ast::ForeignItem) -> Opti
     Some(ccx.intrinsics.get_copy(&name))
 }
 
-pub fn trans_intrinsic(ccx: @CrateContext,
+pub fn trans_intrinsic(ccx: &CrateContext,
                        decl: ValueRef,
                        item: &ast::ForeignItem,
                        substs: @param_substs,

@@ -709,7 +709,7 @@ impl<'a> DatumBlock<'a, Expr> {
         self.datum.shallow_copy(self.bcx, dst)
     }
 
-    pub fn ccx(&self) -> @CrateContext<'a> {
+    pub fn ccx(&self) -> &'a CrateContext<'a> {
         self.bcx.ccx()
     }
 

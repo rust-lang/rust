@@ -89,7 +89,7 @@ pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     }
 }
 
-fn const_vec(cx: @CrateContext, e: &ast::Expr,
+fn const_vec(cx: &CrateContext, e: &ast::Expr,
              es: &[@ast::Expr], is_local: bool) -> (ValueRef, Type, bool) {
     let vec_ty = ty::expr_ty(cx.tcx, e);
     let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
@@ -160,7 +160,7 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     }
 }
 
-pub fn get_const_val(cx: @CrateContext,
+pub fn get_const_val(cx: &CrateContext,
                      mut def_id: ast::DefId) -> (ValueRef, bool) {
     let contains_key = {
         let const_values = cx.const_values.borrow();
@@ -185,7 +185,7 @@ pub fn get_const_val(cx: @CrateContext,
      !non_inlineable_statics.get().contains(&def_id.node))
 }
 
-pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool) {
+pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e, is_local);
     let mut llconst = llconst;
     let mut inlineable = inlineable;
@@ -298,7 +298,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
 
 // the bool returned is whether this expression can be inlined into other crates
 // if it's assigned to a static.
-fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
+fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                          is_local: bool) -> (ValueRef, bool) {
     let map_list = |exprs: &[@ast::Expr]| {
         exprs.iter().map(|&e| const_expr(cx, e, is_local))
@@ -694,7 +694,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
     }
 }
 
-pub fn trans_const(ccx: @CrateContext, m: ast::Mutability, id: ast::NodeId) {
+pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
