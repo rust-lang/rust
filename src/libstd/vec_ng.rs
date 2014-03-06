@@ -12,8 +12,9 @@
 #[doc(hidden)];
 
 use cast::{forget, transmute};
+use cast;
 use clone::Clone;
-use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
+use cmp::{Eq, Equiv, Ord, Ordering, TotalEq, TotalOrd};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
@@ -30,7 +31,7 @@ use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use vec::{RevItems};
+use vec::{RevItems, Vector};
 
 pub struct Vec<T> {
     priv len: uint,
@@ -184,6 +185,13 @@ impl<T: TotalOrd> TotalOrd for Vec<T> {
     }
 }
 
+impl<'a,T:Eq,V:Vector<T>> Equiv<V> for Vec<T> {
+    #[inline]
+    fn equiv(&self, other: &V) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+}
+
 impl<T> Container for Vec<T> {
     #[inline]
     fn len(&self) -> uint {
@@ -278,12 +286,6 @@ impl<T> Vec<T> {
             }
         }
         self.len = len;
-    }
-
-    #[inline]
-    pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        let slice = Slice { data: self.ptr as *T, len: self.len };
-        unsafe { transmute(slice) }
     }
 
     #[inline]
@@ -454,6 +456,59 @@ impl<T> Mutable for Vec<T> {
     #[inline]
     fn clear(&mut self) {
         self.truncate(0)
+    }
+
+    #[inline]
+    pub fn shift(&mut self) -> Option<T> {
+        self.remove(0)
+    }
+
+    #[inline]
+    pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+        let mut lefts = Vec::new();
+        let mut rights = Vec::new();
+
+        for elt in self.move_iter() {
+            if f(&elt) {
+                lefts.push(elt);
+            } else {
+                rights.push(elt);
+            }
+        }
+
+        (lefts, rights)
+    }
+
+    pub fn remove(&mut self, i: uint) -> Option<T> {
+        let len = self.len();
+        if i < len {
+            unsafe { // infallible
+                // the place we are taking from.
+                let ptr = self.as_mut_slice().as_mut_ptr().offset(i as int);
+                // copy it out, unsafely having a copy of the value on
+                // the stack and in the vector at the same time.
+                let ret = Some(ptr::read(ptr as *T));
+
+                // Shift everything down to fill in that spot.
+                ptr::copy_memory(ptr, &*ptr.offset(1), len - i - 1);
+                self.set_len(len - 1);
+
+                ret
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl<T> Vector<T> for Vec<T> {
+    /// Work with `self` as a slice.
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        let slice = Slice { data: self.ptr as *T, len: self.len };
+        unsafe {
+            cast::transmute(slice)
+        }
     }
 }
 

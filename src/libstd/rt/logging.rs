@@ -16,7 +16,7 @@ use option::{Some, None, Option};
 use os;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::{Str, StrSlice};
-use vec::{ImmutableVector, MutableTotalOrdVector, OwnedVector};
+use vec::{ImmutableVector, MutableTotalOrdVector, OwnedVector, Vector};
 use vec_ng::Vec;
 
 struct LogDirective<'a> {
