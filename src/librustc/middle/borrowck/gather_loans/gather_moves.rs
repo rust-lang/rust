@@ -94,7 +94,22 @@ pub fn gather_assignment(bccx: &BorrowckCtxt,
                              assignee_loan_path,
                              assignment_id,
                              assignment_span,
-                             assignee_id);
+                             assignee_id,
+                             false);
+}
+
+pub fn gather_move_and_assignment(bccx: &BorrowckCtxt,
+                                  move_data: &MoveData,
+                                  assignment_id: ast::NodeId,
+                                  assignment_span: Span,
+                                  assignee_loan_path: @LoanPath,
+                                  assignee_id: ast::NodeId) {
+    move_data.add_assignment(bccx.tcx,
+                             assignee_loan_path,
+                             assignment_id,
+                             assignment_span,
+                             assignee_id,
+                             true);
 }
 
 fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,

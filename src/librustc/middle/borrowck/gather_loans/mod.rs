@@ -214,20 +214,19 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         visit::walk_expr(this, ex, ());
       }
 
-      ast::ExprAssign(l, _) | ast::ExprAssignOp(_, l, _) => {
-          let l_cmt = this.bccx.cat_expr(l);
-          match opt_loan_path(l_cmt) {
-              Some(l_lp) => {
-                  gather_moves::gather_assignment(this.bccx, &this.move_data,
-                                                  ex.id, ex.span,
-                                                  l_lp, l.id);
-              }
-              None => {
-                  // This can occur with e.g. `*foo() = 5`.  In such
-                  // cases, there is no need to check for conflicts
-                  // with moves etc, just ignore.
-              }
-          }
+      ast::ExprAssign(l, _) => {
+          with_assignee_loan_path(
+              this.bccx, l,
+              |lp| gather_moves::gather_assignment(this.bccx, &this.move_data,
+                                                   ex.id, ex.span, lp, l.id));
+          visit::walk_expr(this, ex, ());
+      }
+
+      ast::ExprAssignOp(_, l, _) => {
+          with_assignee_loan_path(
+              this.bccx, l,
+              |lp| gather_moves::gather_move_and_assignment(this.bccx, &this.move_data,
+                                                            ex.id, ex.span, lp, l.id));
           visit::walk_expr(this, ex, ());
       }
 
@@ -288,17 +287,10 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {
-              let out_cmt = this.bccx.cat_expr(out);
-              match opt_loan_path(out_cmt) {
-                  Some(out_lp) => {
-                      gather_moves::gather_assignment(this.bccx, &this.move_data,
-                                                      ex.id, ex.span,
-                                                      out_lp, out.id);
-                  }
-                  None => {
-                      // See the comment for ExprAssign.
-                  }
-              }
+              with_assignee_loan_path(
+                  this.bccx, out,
+                  |lp| gather_moves::gather_assignment(this.bccx, &this.move_data,
+                                                       ex.id, ex.span, lp, out.id));
           }
           visit::walk_expr(this, ex, ());
       }
@@ -306,6 +298,18 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
       _ => {
           visit::walk_expr(this, ex, ());
       }
+    }
+}
+
+fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |@LoanPath|) {
+    let cmt = bccx.cat_expr(expr);
+    match opt_loan_path(cmt) {
+        Some(lp) => op(lp),
+        None => {
+            // This can occur with e.g. `*foo() = 5`.  In such
+            // cases, there is no need to check for conflicts
+            // with moves etc, just ignore.
+        }
     }
 }
 
