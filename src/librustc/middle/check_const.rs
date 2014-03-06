@@ -29,15 +29,14 @@ pub struct CheckCrateVisitor {
 
 impl Visitor<bool> for CheckCrateVisitor {
     fn visit_item(&mut self, i: &Item, env: bool) {
-        check_item(self, self.sess, self.def_map, self.method_map,
-                   self.tcx, i, env)
+        check_item(self, self.sess, self.def_map, i, env);
     }
     fn visit_pat(&mut self, p: &Pat, env: bool) {
         check_pat(self, p, env);
     }
     fn visit_expr(&mut self, ex: &Expr, env: bool) {
         check_expr(self, self.sess, self.def_map, self.method_map,
-                   self.tcx, ex, env, false);
+                   self.tcx, ex, env);
     }
 }
 
@@ -59,13 +58,11 @@ pub fn check_crate(sess: Session,
 pub fn check_item(v: &mut CheckCrateVisitor,
                   sess: Session,
                   def_map: resolve::DefMap,
-                  method_map: typeck::method_map,
-                  tcx: ty::ctxt,
                   it: &Item,
                   _is_const: bool) {
     match it.node {
-        ItemStatic(_, mut_, ex) => {
-            check_expr(v, sess, def_map, method_map, tcx, ex, true, mut_ == MutMutable);
+        ItemStatic(_, _, ex) => {
+            v.visit_expr(ex, true);
             check_item_recursion(sess, &v.tcx.map, def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
@@ -108,8 +105,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                   method_map: typeck::MethodMap,
                   tcx: ty::ctxt,
                   e: &Expr,
-                  is_const: bool,
-                  is_static_mut: bool) {
+                  is_const: bool) {
     if is_const {
         match e.node {
           ExprUnary(UnDeref, _) => { }
@@ -177,6 +173,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                 }
             }
           }
+          ExprVstore(_, ExprVstoreMutSlice) |
           ExprVstore(_, ExprVstoreSlice) |
           ExprVec(_, MutImmutable) |
           ExprAddrOf(MutImmutable, _) |
@@ -191,11 +188,6 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     e.span,
                     "references in constants may only refer to \
                      immutable values");
-          }
-          ExprVstore(_, ExprVstoreMutSlice) => {
-              if !is_static_mut {
-                  sess.span_err(e.span, "mutable slice is not allowed in immutable constants")
-              }
           },
           ExprVstore(_, ExprVstoreUniq) => {
               sess.span_err(e.span, "cannot allocate vectors in constant expressions")
