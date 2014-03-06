@@ -197,7 +197,7 @@ impl Repr for vtable_origin {
 pub type vtable_map = @RefCell<HashMap<ast::NodeId, vtable_res>>;
 
 
-// Information about the vtable resolutions for for a trait impl.
+// Information about the vtable resolutions for a trait impl.
 // Mostly the information is important for implementing default
 // methods.
 #[deriving(Clone)]
