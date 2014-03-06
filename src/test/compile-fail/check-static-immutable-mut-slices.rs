@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static TEST: &'static mut [int] = &mut []; //~ ERROR mutable slice is not allowed
+// Checks that immutable static items can't have mutable slices
 
-fn main() { }
+static TEST: &'static mut [int] = &mut [];
+//~^ ERROR static items are not allowed to have mutable slices
+
+pub fn main() { }

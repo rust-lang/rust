@@ -574,7 +574,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
             (v, inlineable)
           }
           ast::ExprVstore(sub, store @ ast::ExprVstoreSlice) |
-              ast::ExprVstore(sub, store @ ast::ExprVstoreMutSlice) => {
+          ast::ExprVstore(sub, store @ ast::ExprVstoreMutSlice) => {
             match sub.node {
               ast::ExprLit(ref lit) => {
                 match lit.node {
