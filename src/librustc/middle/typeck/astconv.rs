@@ -20,7 +20,7 @@
  * `AstConv` instance; in this phase, the `get_item_ty()` function
  * triggers a recursive call to `ty_of_item()`  (note that
  * `ast_ty_to_ty()` will detect recursive types and report an error).
- * In the check phase, when the @FnCtxt is used as the `AstConv`,
+ * In the check phase, when the FnCtxt is used as the `AstConv`,
  * `get_item_ty()` just looks up the item type in `tcx.tcache`.
  *
  * The `RegionScope` trait controls what happens when the user does
