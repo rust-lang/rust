@@ -3167,7 +3167,7 @@ Now compile and run like this (adjust to your platform if necessary):
 Notice that the library produced contains the version in the file name
 as well as an inscrutable string of alphanumerics. As explained in the previous paragraph,
 these are both part of Rust's library versioning scheme. The alphanumerics are
-a hash representing the crates id.
+a hash representing the crate's id.
 
 ## The standard library and the prelude
 
