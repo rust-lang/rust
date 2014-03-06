@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-// compile-flags:-g
+// compile-flags:-g1
 // debugger:run
 
 // Nothing to do here really, just make sure it compiles. See issue #8513.
