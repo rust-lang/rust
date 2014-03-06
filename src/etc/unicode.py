@@ -309,20 +309,28 @@ def emit_decomp_module(f, canon, compat, combine):
         ix += 1
     f.write("\n    ];\n")
 
-    f.write("    pub fn canonical(c: char, i: |char|) "
-        + "{ d(c, i, false); }\n\n")
-    f.write("    pub fn compatibility(c: char, i: |char|) "
-            +"{ d(c, i, true); }\n\n")
-    f.write("    pub fn canonical_combining_class(c: char) -> u8 {\n"
-        + "        bsearch_range_value_table(c, combining_class_table)\n"
-        + "    }\n\n")
-    f.write("    fn d(c: char, i: |char|, k: bool) {\n")
-    f.write("        use iter::Iterator;\n");
-
-    f.write("        if c <= '\\x7f' { i(c); return; }\n")
-
-    # First check the canonical decompositions
     f.write("""
+    pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
+
+    pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
+
+    pub fn canonical_combining_class(c: char) -> u8 {
+        bsearch_range_value_table(c, combining_class_table)
+    }
+
+    fn d(c: char, i: |char|, k: bool) {
+        use iter::Iterator;
+
+        // 7-bit ASCII never decomposes
+        if c <= '\\x7f' { i(c); return; }
+
+        // Perform decomposition for Hangul
+        if (c as u32) >= S_BASE && (c as u32) < (S_BASE + S_COUNT) {
+            decompose_hangul(c, i);
+            return;
+        }
+
+        // First check the canonical decompositions
         match bsearch_table(c, canonical_table) {
             Some(canon) => {
                 for x in canon.iter() {
@@ -331,13 +339,12 @@ def emit_decomp_module(f, canon, compat, combine):
                 return;
             }
             None => ()
-        }\n\n""")
+        }
 
-    # Bottom out if we're not doing compat.
-    f.write("        if !k { i(c); return; }\n")
+        // Bottom out if we're not doing compat.
+        if !k { i(c); return; }
 
-    # Then check the compatibility decompositions
-    f.write("""
+        // Then check the compatibility decompositions
         match bsearch_table(c, compatibility_table) {
             Some(compat) => {
                 for x in compat.iter() {
@@ -346,12 +353,45 @@ def emit_decomp_module(f, canon, compat, combine):
                 return;
             }
             None => ()
-        }\n\n""")
+        }
 
-    # Finally bottom out.
-    f.write("        i(c);\n")
-    f.write("    }\n")
-    f.write("}\n\n")
+        // Finally bottom out.
+        i(c);
+    }
+
+    // Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
+    static S_BASE: u32 = 0xAC00;
+    static L_BASE: u32 = 0x1100;
+    static V_BASE: u32 = 0x1161;
+    static T_BASE: u32 = 0x11A7;
+    static L_COUNT: u32 = 19;
+    static V_COUNT: u32 = 21;
+    static T_COUNT: u32 = 28;
+    static N_COUNT: u32 = (V_COUNT * T_COUNT);
+    static S_COUNT: u32 = (L_COUNT * N_COUNT);
+
+    // Decompose a precomposed Hangul syllable
+    fn decompose_hangul(s: char, f: |char|) {
+        use cast::transmute;
+
+        let si = s as u32 - S_BASE;
+
+        let li = si / N_COUNT;
+        unsafe {
+            f(transmute(L_BASE + li));
+
+            let vi = (si % N_COUNT) / T_COUNT;
+            f(transmute(V_BASE + vi));
+
+            let ti = si % T_COUNT;
+            if ti > 0 {
+                f(transmute(T_BASE + ti));
+            }
+        }
+    }
+}
+
+""")
 
 r = "unicode.rs"
 for i in [r]:

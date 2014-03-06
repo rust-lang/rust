@@ -3624,9 +3624,10 @@ pub mod decompose {
         ('\U0001d185', '\U0001d189', 230), ('\U0001d18a', '\U0001d18b', 220),
         ('\U0001d1aa', '\U0001d1ad', 230), ('\U0001d242', '\U0001d244', 230)
     ];
-    pub fn canonical(c: char, i: |char|) { d(c, i, false); }
 
-    pub fn compatibility(c: char, i: |char|) { d(c, i, true); }
+    pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
+
+    pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
 
     pub fn canonical_combining_class(c: char) -> u8 {
         bsearch_range_value_table(c, combining_class_table)
@@ -3634,8 +3635,17 @@ pub mod decompose {
 
     fn d(c: char, i: |char|, k: bool) {
         use iter::Iterator;
+
+        // 7-bit ASCII never decomposes
         if c <= '\x7f' { i(c); return; }
 
+        // Perform decomposition for Hangul
+        if (c as u32) >= S_BASE && (c as u32) < (S_BASE + S_COUNT) {
+            decompose_hangul(c, i);
+            return;
+        }
+
+        // First check the canonical decompositions
         match bsearch_table(c, canonical_table) {
             Some(canon) => {
                 for x in canon.iter() {
@@ -3646,8 +3656,10 @@ pub mod decompose {
             None => ()
         }
 
+        // Bottom out if we're not doing compat.
         if !k { i(c); return; }
 
+        // Then check the compatibility decompositions
         match bsearch_table(c, compatibility_table) {
             Some(compat) => {
                 for x in compat.iter() {
@@ -3658,7 +3670,39 @@ pub mod decompose {
             None => ()
         }
 
+        // Finally bottom out.
         i(c);
+    }
+
+    // Constants from Unicode 6.2.0 Section 3.12 Conjoining Jamo Behavior
+    static S_BASE: u32 = 0xAC00;
+    static L_BASE: u32 = 0x1100;
+    static V_BASE: u32 = 0x1161;
+    static T_BASE: u32 = 0x11A7;
+    static L_COUNT: u32 = 19;
+    static V_COUNT: u32 = 21;
+    static T_COUNT: u32 = 28;
+    static N_COUNT: u32 = (V_COUNT * T_COUNT);
+    static S_COUNT: u32 = (L_COUNT * N_COUNT);
+
+    // Decompose a precomposed Hangul syllable
+    fn decompose_hangul(s: char, f: |char|) {
+        use cast::transmute;
+
+        let si = s as u32 - S_BASE;
+
+        let li = si / N_COUNT;
+        unsafe {
+            f(transmute(L_BASE + li));
+
+            let vi = (si % N_COUNT) / T_COUNT;
+            f(transmute(V_BASE + vi));
+
+            let ti = si % T_COUNT;
+            if ti > 0 {
+                f(transmute(T_BASE + ti));
+            }
+        }
     }
 }
 
