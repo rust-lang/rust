@@ -67,7 +67,6 @@ impl ParserAttr for Parser {
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
-        let mut inner_attr_bang = false;
         let mut warned = false;
         let (span, value) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
@@ -79,10 +78,7 @@ impl ParserAttr for Parser {
                 let lo = self.span.lo;
                 self.bump();
 
-                // #![lang(foo)]
-                //  ^
                 if self.eat(&token::NOT) {
-                    inner_attr_bang = true;
                     if !permit_inner {
                         self.fatal("an inner attribute was not permitted in this context.");
                     }
@@ -93,14 +89,8 @@ impl ParserAttr for Parser {
                     //    Use `#![lang(foo)]` instead.");
                 }
 
-                // #![lang(foo)]
-                //   ^
                 self.expect(&token::LBRACKET);
-
                 let meta_item = self.parse_meta_item();
-
-                // #![lang(foo)]
-                //             ^
                 self.expect(&token::RBRACKET);
 
                 let hi = self.span.hi;
@@ -112,22 +102,23 @@ impl ParserAttr for Parser {
                                    token_str));
             }
         };
-        let style = if inner_attr_bang {
-            // The new attribute syntax doesn't require a `;`, so we don't
-            // need to bump the token.
-            ast::AttrInner
-        } else if permit_inner && self.token == token::SEMI {
-            // Only warn the user once if the syntax is the old one.
-            if !warned {
-                // NOTE: uncomment this after a stage0 snap
-                //self.warn("This uses the old attribute syntax. Semicolons
-                //  are not longer required.");
+
+        let style = if permit_inner {
+
+            if self.eat(&token::SEMI) {
+                // Only warn the user once if the syntax is the old one.
+                if !warned {
+                    // NOTE: uncomment this after a stage0 snap
+                    //self.warn("This uses the old attribute syntax. Semicolons
+                    //  are not longer required.");
+                }
             }
-            self.bump();
+
             ast::AttrInner
         } else {
             ast::AttrOuter
         };
+
         return Spanned {
             span: span,
             node: ast::Attribute_ {

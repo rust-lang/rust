@@ -270,9 +270,21 @@ pub fn bump(rdr: &StringReader) {
         rdr.curr.set(None);
     }
 }
+
+// EFFECT: Peek 'n' characters ahead.
+pub fn peek(rdr: &StringReader, n: uint) -> Option<char> {
+    let offset = byte_offset(rdr, rdr.pos.get()).to_uint() + (n - 1);
+    if offset < (rdr.filemap.src).len() {
+        Some(rdr.filemap.src.char_at(offset))
+    } else {
+        None
+    }
+}
+
 pub fn is_eof(rdr: &StringReader) -> bool {
     rdr.curr.get().is_none()
 }
+
 pub fn nextch(rdr: &StringReader) -> Option<char> {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if offset < (rdr.filemap.src).len() {
@@ -369,6 +381,12 @@ fn consume_any_line_comment(rdr: &StringReader)
         }
     } else if rdr.curr_is('#') {
         if nextch_is(rdr, '!') {
+
+            // Parse an inner attribute.
+            if peek(rdr, 2).unwrap() == '[' {
+                return None;
+            }
+
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
             let cmap = @CodeMap::new();

@@ -12,7 +12,7 @@ use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, with_str_from, Reader};
-use parse::lexer::{StringReader, bump, is_eof, nextch_is, TokenAndSpan};
+use parse::lexer::{StringReader, bump, peek, is_eof, nextch_is, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
@@ -332,7 +332,11 @@ fn consume_comment(rdr: &StringReader,
     } else if rdr.curr_is('/') && nextch_is(rdr, '*') {
         read_block_comment(rdr, code_to_the_left, comments);
     } else if rdr.curr_is('#') && nextch_is(rdr, '!') {
-        read_shebang_comment(rdr, code_to_the_left, comments);
+        // Make sure the following token is **not** the beginning
+        // of an inner attribute, which starts with the same syntax.
+        if peek(rdr, 2).unwrap() != '[' {
+            read_shebang_comment(rdr, code_to_the_left, comments);
+        }
     } else { fail!(); }
     debug!("<<< consume comment");
 }

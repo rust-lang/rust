@@ -1,3 +1,4 @@
-#[main]
+#![allow(unknown_features)]
+#![feature(bogus)]
+fn main() { }
 // ignore-license
-fn foo() {}
