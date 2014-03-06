@@ -866,6 +866,18 @@ mod tests {
     use num;
 
     #[test]
+    fn test_min_nan() {
+        assert_eq!(NAN.min(2.0), 2.0);
+        assert_eq!(2.0f64.min(NAN), 2.0);
+    }
+
+    #[test]
+    fn test_max_nan() {
+        assert_eq!(NAN.max(2.0), 2.0);
+        assert_eq!(2.0f64.max(NAN), 2.0);
+    }
+
+    #[test]
     fn test_num() {
         num::test_num(10f64, 2f64);
     }
