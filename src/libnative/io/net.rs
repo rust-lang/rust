@@ -16,7 +16,7 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
-use std::unstable::intrinsics;
+use std::intrinsics;
 
 use super::{IoResult, retry, keep_going};
 
@@ -642,12 +642,12 @@ pub struct RawSocket {
 
 fn protocol_to_libc<'ni>(protocol: &raw::Protocol<'ni>)
     -> (libc::c_int, libc::c_int, libc::c_int, Option<&'ni raw::NetworkInterface>) {
-    let ETH_P_ALL: u16 = htons(0x0003);
+    let eth_p_all: u16 = htons(0x0003);
     match protocol {
         &raw::DataLinkProtocol(raw::EthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_RAW, ETH_P_ALL as libc::c_int, Some(iface)),
+            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int, Some(iface)),
         &raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_DGRAM, ETH_P_ALL as libc::c_int, Some(iface)),
+            => (libc::AF_PACKET, libc::SOCK_DGRAM, eth_p_all as libc::c_int, Some(iface)),
         &raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
             => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
         &raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
@@ -695,7 +695,9 @@ impl rtio::RtioRawSocket for RawSocket {
             return Err(super::last_error());
         }
 
-        return Ok((len as uint, sockaddr_to_network_addr(&caddr)));
+        return Ok((len as uint, raw::sockaddr_to_network_addr(
+            (&caddr as *libc::sockaddr_storage) as *libc::sockaddr)
+        ));
         //return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
         //    Ok((len as uint, Some(raw::IpAddress(addr.ip))))
         //});
@@ -706,7 +708,7 @@ impl rtio::RtioRawSocket for RawSocket {
     {
         //let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
         //let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst_ip.unwrap(), port: 0 });
-        let (sockaddr, slen) = network_addr_to_sockaddr(dst.unwrap());
+        let (sockaddr, slen) = raw::network_addr_to_sockaddr(dst.unwrap());
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
                     retry( || libc::sendto(self.fd,

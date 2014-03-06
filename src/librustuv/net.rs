@@ -21,7 +21,7 @@ use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
-use std::unstable::intrinsics;
+use std::intrinsics;
 
 use access::Access;
 use homing::{HomingIO, HomeHandle};
@@ -777,12 +777,12 @@ fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
 
 fn protocol_to_libc<'ni>(protocol: &raw::Protocol<'ni>)
     -> (c_int, c_int, c_int, Option<&'ni raw::NetworkInterface>) {
-    let ETH_P_ALL: u16 = htons(0x0003);
+    let eth_p_all: u16 = htons(0x0003);
     match protocol {
         &raw::DataLinkProtocol(raw::EthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_RAW, ETH_P_ALL as c_int, Some(iface)),
+            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as c_int, Some(iface)),
         &raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_DGRAM, ETH_P_ALL as c_int, Some(iface)),
+            => (libc::AF_PACKET, libc::SOCK_DGRAM, eth_p_all as c_int, Some(iface)),
         &raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
             => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
         &raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
@@ -912,7 +912,9 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 return;
             }
             //let addr = Some(raw::IpAddress(sockaddr_to_addr(&caddr, caddrlen as uint).ip));
-            let addr = raw::sockaddr_to_network_addr(&caddr);
+            let addr = raw::sockaddr_to_network_addr(
+                (&caddr as *libc::sockaddr_storage) as *libc::sockaddr
+            );
             cx.result = Some((len as ssize_t, addr));
 
             wakeup(&mut cx.task);
@@ -927,7 +929,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             buf: &'b [u8],
             result: Option<int>,
             socket: Option<uvll::uv_os_socket_t>,
-            addr: ip::NetworkAddress,
+            addr: raw::NetworkAddress,
         }
         let _m = self.fire_homing_missile();
 

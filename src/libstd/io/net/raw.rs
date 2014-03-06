@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME
+#[allow(missing_doc)];
+#[allow(unused_imports)];
+
 use cast;
-use hashmap::HashMap;
 use std::io::net::ip;
 use std::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
@@ -19,10 +22,10 @@ use mem;
 use option::{Option, None, Some};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
 use clone::Clone;
-use vec::ImmutableVector;
+use vec::{OwnedVector, ImmutableVector};
 
 #[test]
-use vec::MutableVector;
+use vec::{Vector, MutableVector};
 
 pub struct RawSocket {
     priv obj: ~RtioRawSocket
@@ -174,14 +177,15 @@ fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
     }
 }
 
-pub fn get_network_interfaces<'ni>() -> ~HashMap<~str, ~NetworkInterface> {
+pub fn get_network_interfaces() -> ~[NetworkInterface] {
     use ptr;
     use str::raw;
-    let mut map = HashMap::<~str, ~NetworkInterface>::new();
+
+    let mut ifaces: ~[NetworkInterface] = ~[];
     unsafe {
         let mut addrs: *libc::ifaddrs = mem::init();
         if libc::getifaddrs(&mut addrs) != 0 {
-            return ~map;
+            return ifaces;
         }
         let mut addr = addrs;
         while addr != ptr::null() {
@@ -195,16 +199,25 @@ pub fn get_network_interfaces<'ni>() -> ~HashMap<~str, ~NetworkInterface> {
                 flags: (*addr).ifa_flags
             };
             println!("name: {:?}; mac: {:?}; ipv4: {:?}; ipv6: {:?};", name, mac, ipv4, ipv6);
-            map.insert_or_update_with(ni.name.clone(), ~ni.clone(), |_, v| merge(v, ~ni.clone()));
+            let mut found: bool = false;
+            for iface in ifaces.mut_iter() {
+                if name == iface.name {
+                    merge(iface, &ni);
+                    found = true;
+                }
+            }
+            if !found {
+                ifaces.push(ni);
+            }
 
             addr = (*addr).ifa_next;
         }
         libc::freeifaddrs(addrs);
 
-        return ~map;
+        return ifaces;
     }
 
-    fn merge(old: &mut ~NetworkInterface, new: &NetworkInterface) {
+    fn merge(old: &mut NetworkInterface, new: &NetworkInterface) {
         old.mac = match new.mac {
             None => old.mac,
             _ => new.mac
@@ -219,6 +232,7 @@ pub fn get_network_interfaces<'ni>() -> ~HashMap<~str, ~NetworkInterface> {
         };
         old.flags = old.flags | new.flags;
     }
+
 }
 
 #[deriving(Clone)]
@@ -507,7 +521,7 @@ fn ipv4_header_test() {
                      0xb6, 0x4e,     /* checksum */
                      0xc0, 0xa8, 0x00, 0x01, /* source ip */
                      0xc0, 0xa8, 0x00, 0xc7  /* dest ip */];
-    assert_eq!(refPacket, packet);
+    assert_eq!(refPacket.as_slice(), packet.as_slice());
 }
 
 pub struct Ipv6Header<'p> {
@@ -550,7 +564,7 @@ impl<'p> Ipv6Header<'p> {
 
     pub fn get_flow_label(&self) -> u32 {
         let fl1 = (self.packet[self.offset + 1] as u32 & 0xF) << 16;
-        let fl2 = (self.packet[self.offset + 2] as u32 << 8);
+        let fl2 =  self.packet[self.offset + 2] as u32 << 8;
         let fl3 =  self.packet[self.offset + 3] as u32;
         fl1 | fl2 | fl3
     }
@@ -711,7 +725,7 @@ fn ipv6_header_test() {
                      0x10, 0x01,
                      0x01, 0x10,
                      0x10, 0x01];
-    assert_eq!(refPacket, packet);
+    assert_eq!(refPacket.as_slice(), packet.as_slice());
 }
 
 
@@ -774,13 +788,13 @@ impl<'p> UdpHeader<'p> {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum NetworkAddress {
     IpAddress(IpAddr),
     MacAddress(MacAddr)
 }
 
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, Show)]
 pub enum MacAddr {
     MacAddr(u8, u8, u8, u8, u8, u8)
 }
@@ -1093,13 +1107,15 @@ pub mod test {
     pub fn get_test_interface() -> NetworkInterface {
         use clone::Clone;
 
-        (**get_network_interfaces()
-            .values()
-            //.iter()
-            .filter(|&x| x.is_loopback())
-            .next()
-            .unwrap())
-            .clone()
+        get_network_interfaces()[0]
+
+        //(**get_network_interfaces()
+        //    .values()
+        //    //.iter()
+        //    .filter(|&x| x.is_loopback())
+        //    .next()
+        //    .unwrap())
+        //    .clone()
     }
 
     iotest!(fn layer3_ipv4_test() {
