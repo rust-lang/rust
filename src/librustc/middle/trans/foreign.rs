@@ -132,8 +132,8 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     }
 }
 
-pub fn register_static(ccx: @CrateContext,
-                       foreign_item: @ast::ForeignItem) -> ValueRef {
+pub fn register_static(ccx: &CrateContext,
+                       foreign_item: &ast::ForeignItem) -> ValueRef {
     let ty = ty::node_id_to_type(ccx.tcx, foreign_item.id);
     let llty = type_of::type_of(ccx, ty);
 
@@ -145,7 +145,7 @@ pub fn register_static(ccx: @CrateContext,
     // library then we've already declared the crate map
     // so use that instead.
     if attr::contains_name(foreign_item.attrs.as_slice(), "crate_map") {
-        return if ccx.sess.building_library.get() {
+        return if ccx.sess().building_library.get() {
             let s = "_rust_crate_map_toplevel";
             let g = unsafe {
                 s.with_c_str(|buf| {
@@ -171,15 +171,15 @@ pub fn register_static(ccx: @CrateContext,
             let linkage = match llvm_linkage_by_name(name.get()) {
                 Some(linkage) => linkage,
                 None => {
-                    ccx.sess.span_fatal(foreign_item.span,
-                                        "invalid linkage specified");
+                    ccx.sess().span_fatal(foreign_item.span,
+                                          "invalid linkage specified");
                 }
             };
             let llty2 = match ty::get(ty).sty {
                 ty::ty_ptr(ref mt) => type_of::type_of(ccx, mt.ty),
                 _ => {
-                    ccx.sess.span_fatal(foreign_item.span,
-                                        "must have type `*T` or `*mut T`");
+                    ccx.sess().span_fatal(foreign_item.span,
+                                          "must have type `*T` or `*mut T`");
                 }
             };
             unsafe {
@@ -205,8 +205,8 @@ pub fn register_static(ccx: @CrateContext,
     }
 }
 
-pub fn register_foreign_item_fn(ccx: @CrateContext, abis: AbiSet,
-                                foreign_item: @ast::ForeignItem) -> ValueRef {
+pub fn register_foreign_item_fn(ccx: &CrateContext, abis: AbiSet,
+                                foreign_item: &ast::ForeignItem) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
      * Just adds a LLVM global.
@@ -455,7 +455,7 @@ pub fn trans_native_call<'a>(
     return bcx;
 }
 
-pub fn trans_foreign_mod(ccx: @CrateContext, foreign_mod: &ast::ForeignMod) {
+pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
@@ -499,7 +499,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext, foreign_mod: &ast::ForeignMod) {
 // inline the one into the other. Of course we could just generate the
 // correct code in the first place, but this is much simpler.
 
-pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
+pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          sp: Span,
                                          sym: ~str,
                                          node_id: ast::NodeId)
@@ -523,7 +523,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
     llfn
 }
 
-pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
+pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                       decl: &ast::FnDecl,
                                       body: &ast::Block,
                                       attrs: &[ast::Attribute],
@@ -540,7 +540,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
         return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys);
     }
 
-    fn build_rust_fn(ccx: @CrateContext,
+    fn build_rust_fn(ccx: &CrateContext,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
                      attrs: &[ast::Attribute],
@@ -584,7 +584,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
         llfn
     }
 
-    unsafe fn build_wrap_fn(ccx: @CrateContext,
+    unsafe fn build_wrap_fn(ccx: &CrateContext,
                             llrustfn: ValueRef,
                             llwrapfn: ValueRef,
                             tys: &ForeignTypes) {
@@ -824,7 +824,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
 // This code is kind of a confused mess and needs to be reworked given
 // the massive simplifications that have occurred.
 
-pub fn link_name(i: @ast::ForeignItem) -> InternedString {
+pub fn link_name(i: &ast::ForeignItem) -> InternedString {
      match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
                                               "link_name") {
         None => token::get_ident(i.ident),

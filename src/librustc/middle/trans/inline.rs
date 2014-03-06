@@ -19,7 +19,7 @@ use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr;
 
-pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
+pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> ast::DefId {
     let _icx = push_ctxt("maybe_instantiate_inline");
     {

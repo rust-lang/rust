@@ -548,7 +548,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
         ast::DefStatic(did, _) => {
             let const_ty = expr_ty(bcx, ref_expr);
 
-            fn get_did(ccx: @CrateContext, did: ast::DefId)
+            fn get_did(ccx: &CrateContext, did: ast::DefId)
                        -> ast::DefId {
                 if did.krate != ast::LOCAL_CRATE {
                     inline::maybe_instantiate_inline(ccx, did)

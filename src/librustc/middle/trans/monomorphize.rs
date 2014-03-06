@@ -28,7 +28,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 
-pub fn monomorphic_fn(ccx: @CrateContext,
+pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
@@ -294,7 +294,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     (lldecl, must_cast)
 }
 
-pub fn make_mono_id(ccx: @CrateContext,
+pub fn make_mono_id(ccx: &CrateContext,
                     item: ast::DefId,
                     substs: &param_substs) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get

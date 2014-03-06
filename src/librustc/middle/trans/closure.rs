@@ -409,7 +409,7 @@ pub fn trans_expr_fn<'a>(
     bcx
 }
 
-pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
+pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                                closure_ty: ty::t,
                                def: ast::Def,
                                fn_ptr: ValueRef,

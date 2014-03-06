@@ -15,7 +15,6 @@ use middle::astencode;
 
 use middle::ty;
 use middle::typeck::astconv;
-use middle;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use syntax::ast::*;
@@ -335,7 +334,6 @@ pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
 
 pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
                             -> Result<const_val, ~str> {
-    use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
       ExprUnary(UnNeg, inner) => {

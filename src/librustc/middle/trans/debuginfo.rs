@@ -253,7 +253,7 @@ enum VariableKind {
 }
 
 /// Create any deferred debug metadata nodes
-pub fn finalize(cx: @CrateContext) {
+pub fn finalize(cx: &CrateContext) {
     if cx.dbg_cx.is_none() {
         return;
     }
