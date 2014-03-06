@@ -21,10 +21,10 @@
 //! time.
 
 use std::cast;
+use std::rt::bookkeeping;
 use std::rt;
 use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-use bookkeeping;
 use io::timer::{Req, Shutdown};
 use task;
 
@@ -35,6 +35,8 @@ use task;
 // are safe to use concurrently.
 static mut HELPER_CHAN: *mut Chan<Req> = 0 as *mut Chan<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
+
+static mut TIMER_HELPER_EXIT: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
 pub fn boot(helper: fn(imp::signal, Port<Req>)) {
     static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -53,6 +55,7 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
             task::spawn(proc() {
                 bookkeeping::decrement();
                 helper(receive, msgp);
+                TIMER_HELPER_EXIT.lock().signal()
             });
 
             rt::at_exit(proc() { shutdown() });
@@ -70,17 +73,15 @@ pub fn send(req: Req) {
 }
 
 fn shutdown() {
-    // We want to wait for the entire helper task to exit, and in doing so it
-    // will attempt to decrement the global task count. When the helper was
-    // created, it decremented the count so it wouldn't count towards preventing
-    // the program to exit, so here we pair that manual decrement with a manual
-    // increment. We will then wait for the helper thread to exit by calling
-    // wait_for_other_tasks.
-    bookkeeping::increment();
-
     // Request a shutdown, and then wait for the task to exit
-    send(Shutdown);
-    bookkeeping::wait_for_other_tasks();
+    unsafe {
+        let mut guard = TIMER_HELPER_EXIT.lock();
+        send(Shutdown);
+        guard.wait();
+        drop(guard);
+        TIMER_HELPER_EXIT.destroy();
+    }
+
 
     // Clean up after ther helper thread
     unsafe {

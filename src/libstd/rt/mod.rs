@@ -128,6 +128,9 @@ pub mod args;
 // Support for running procedures when a program has exited.
 mod at_exit_imp;
 
+// Bookkeeping for task counts
+pub mod bookkeeping;
+
 // Stack overflow protection
 pub mod stack;
 
@@ -207,6 +210,7 @@ pub fn at_exit(f: proc()) {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
+    bookkeeping::wait_for_other_tasks();
     at_exit_imp::run();
     args::cleanup();
     local_ptr::cleanup();
