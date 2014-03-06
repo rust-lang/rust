@@ -16,19 +16,19 @@
 
 use std::any::Any;
 use std::cast;
+use std::rt::bookkeeping;
 use std::rt::env;
 use std::rt::local::Local;
 use std::rt::rtio;
+use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::rt::stack;
 
 use io;
 use task;
-use bookkeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new(stack_bounds: (uint, uint)) -> ~Task {

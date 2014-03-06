@@ -23,8 +23,8 @@
 //! why).
 //!
 //! As with timer_other, timers just using sleep() do not use the timerfd at
-//! all. They remove the timerfd from the worker thread and then invoke usleep()
-//! to block the calling thread.
+//! all. They remove the timerfd from the worker thread and then invoke
+//! nanosleep() to block the calling thread.
 //!
 //! As with timer_other, all units in this file are in units of millseconds.
 
@@ -183,8 +183,15 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        // FIXME: this can fail because of EINTR, what do do?
-        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
+        let mut to_sleep = libc::timespec {
+            tv_sec: (ms / 1000) as libc::time_t,
+            tv_nsec: ((ms % 1000) * 1000000) as libc::c_long,
+        };
+        while unsafe { libc::nanosleep(&to_sleep, &mut to_sleep) } != 0 {
+            if os::errno() as int != libc::EINTR as int {
+                fail!("failed to sleep, but not because of EINTR?");
+            }
+        }
     }
 
     fn remove(&mut self) {
