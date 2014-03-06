@@ -319,3 +319,10 @@ pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999f; }
 pre.rust .string { color: #718C00; }
 pre.rust .lifetime { color: #C13928; }
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+
+h1 a.anchor,
+h2 a.anchor,
+h3 a.anchor { display: none; }
+h1:hover a.anchor,
+h2:hover a.anchor,
+h3:hover a.anchor { display: inline-block; }

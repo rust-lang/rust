@@ -28,14 +28,17 @@
 
 use std::cast;
 use std::fmt;
+use std::intrinsics;
 use std::io;
 use std::libc;
+use std::local_data;
 use std::mem;
 use std::str;
-use std::intrinsics;
 use std::vec;
+use collections::HashMap;
 
 use html::highlight;
+use html::escape::Escape;
 
 /// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -52,8 +55,11 @@ static MKDEXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 type sd_markdown = libc::c_void;  // this is opaque to us
 
 struct sd_callbacks {
-    blockcode: extern "C" fn(*buf, *buf, *buf, *libc::c_void),
-    other: [libc::size_t, ..25],
+    blockcode: Option<extern "C" fn(*buf, *buf, *buf, *libc::c_void)>,
+    blockquote: Option<extern "C" fn(*buf, *buf, *libc::c_void)>,
+    blockhtml: Option<extern "C" fn(*buf, *buf, *libc::c_void)>,
+    header: Option<extern "C" fn(*buf, *buf, libc::c_int, *libc::c_void)>,
+    other: [libc::size_t, ..22],
 }
 
 struct html_toc_data {
@@ -115,6 +121,8 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
+local_data_key!(used_header_map: HashMap<~str, uint>)
+
 pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
     extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
@@ -155,6 +163,45 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
         }
     }
 
+    extern fn header(ob: *buf, text: *buf, level: libc::c_int,
+                     _opaque: *libc::c_void) {
+        // sundown does this, we may as well too
+        "\n".with_c_str(|p| unsafe { bufputs(ob, p) });
+
+        // Extract the text provided
+        let s = if text.is_null() {
+            ~""
+        } else {
+            unsafe {
+                str::raw::from_buf_len((*text).data, (*text).size as uint)
+            }
+        };
+
+        // Transform the contents of the header into a hyphenated string
+        let id = s.words().map(|s| {
+            match s.to_ascii_opt() {
+                Some(s) => s.to_lower().into_str(),
+                None => s.to_owned()
+            }
+        }).to_owned_vec().connect("-");
+
+        // Make sure our hyphenated ID is unique for this page
+        let id = local_data::get_mut(used_header_map, |map| {
+            let map = map.unwrap();
+            match map.find_mut(&id) {
+                None => {}
+                Some(a) => { *a += 1; return format!("{}-{}", id, *a - 1) }
+            }
+            map.insert(id.clone(), 1);
+            id.clone()
+        });
+
+        // Render the HTML
+        let text = format!(r#"<h{lvl} id="{id}">{}</h{lvl}>"#,
+                           Escape(s.as_slice()), lvl = level, id = id);
+        text.with_c_str(|p| unsafe { bufputs(ob, p) });
+    }
+
     // This code is all lifted from examples/sundown.c in the sundown repo
     unsafe {
         let ob = bufnew(OUTPUT_UNIT);
@@ -175,9 +222,10 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
         sdhtml_renderer(&callbacks, &options, 0);
         let opaque = my_opaque {
             opt: options,
-            dfltblk: callbacks.blockcode,
+            dfltblk: callbacks.blockcode.unwrap(),
         };
-        callbacks.blockcode = block;
+        callbacks.blockcode = Some(block);
+        callbacks.header = Some(header);
         let markdown = sd_markdown_new(extensions, 16, &callbacks,
                                        &opaque as *my_opaque as *libc::c_void);
 
@@ -225,7 +273,10 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                          MKDEXT_FENCED_CODE | MKDEXT_AUTOLINK |
                          MKDEXT_STRIKETHROUGH;
         let callbacks = sd_callbacks {
-            blockcode: block,
+            blockcode: Some(block),
+            blockquote: None,
+            blockhtml: None,
+            header: None,
             other: mem::init()
         };
 
@@ -237,6 +288,18 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
         sd_markdown_free(markdown);
         bufrelease(ob);
     }
+}
+
+/// By default this markdown renderer generates anchors for each header in the
+/// rendered document. The anchor name is the contents of the header spearated
+/// by hyphens, and a task-local map is used to disambiguate among duplicate
+/// headers (numbers are appended).
+///
+/// This method will reset the local table for these headers. This is typically
+/// used at the beginning of rendering an entire HTML page to reset from the
+/// previous state (if any).
+pub fn reset_headers() {
+    local_data::set(used_header_map, HashMap::new())
 }
 
 impl<'a> fmt::Show for Markdown<'a> {
