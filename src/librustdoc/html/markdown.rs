@@ -38,7 +38,6 @@ use std::vec;
 use collections::HashMap;
 
 use html::highlight;
-use html::escape::Escape;
 
 /// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -198,7 +197,7 @@ pub fn render(w: &mut io::Writer, s: &str) -> fmt::Result {
 
         // Render the HTML
         let text = format!(r#"<h{lvl} id="{id}">{}</h{lvl}>"#,
-                           Escape(s.as_slice()), lvl = level, id = id);
+                           s, lvl = level, id = id);
         text.with_c_str(|p| unsafe { bufputs(ob, p) });
     }
 
