@@ -16,9 +16,11 @@ use std::io;
 use syntax::ast;
 
 #[cfg(not(stage0))]
-pub type NodeMap<T> = HashMap<ast::NodeId, T, FnvHasher>;
-#[cfg(not(stage0))]
-pub type DefIdMap<T> = HashMap<ast::DefId, T, FnvHasher>;
+pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
+
+pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
+pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
+
 #[cfg(not(stage0))]
 pub type NodeSet = HashSet<ast::NodeId, FnvHasher>;
 #[cfg(not(stage0))]
@@ -26,10 +28,21 @@ pub type DefIdSet = HashSet<ast::DefId, FnvHasher>;
 
 // Hacks to get good names
 #[cfg(not(stage0))]
-pub mod NodeMap {
+pub mod FnvHashMap {
+    use std::hash::Hash;
     use collections::HashMap;
-    pub fn new<T>() -> super::NodeMap<T> {
+    pub fn new<K: Hash<super::FnvState> + Eq, V>() -> super::FnvHashMap<K, V> {
         HashMap::with_hasher(super::FnvHasher)
+    }
+}
+pub mod NodeMap {
+    pub fn new<T>() -> super::NodeMap<T> {
+        super::FnvHashMap::new()
+    }
+}
+pub mod DefIdMap {
+    pub fn new<T>() -> super::DefIdMap<T> {
+        super::FnvHashMap::new()
     }
 }
 #[cfg(not(stage0))]
@@ -37,13 +50,6 @@ pub mod NodeSet {
     use collections::HashSet;
     pub fn new() -> super::NodeSet {
         HashSet::with_hasher(super::FnvHasher)
-    }
-}
-#[cfg(not(stage0))]
-pub mod DefIdMap {
-    use collections::HashMap;
-    pub fn new<T>() -> super::DefIdMap<T> {
-        HashMap::with_hasher(super::FnvHasher)
     }
 }
 #[cfg(not(stage0))]
@@ -55,9 +61,8 @@ pub mod DefIdSet {
 }
 
 #[cfg(stage0)]
-pub type NodeMap<T> = HashMap<ast::NodeId, T>;
-#[cfg(stage0)]
-pub type DefIdMap<T> = HashMap<ast::DefId, T>;
+pub type FnvHashMap<K, V> = HashMap<K, V>;
+
 #[cfg(stage0)]
 pub type NodeSet = HashSet<ast::NodeId>;
 #[cfg(stage0)]
@@ -65,9 +70,10 @@ pub type DefIdSet = HashSet<ast::DefId>;
 
 // Hacks to get good names
 #[cfg(stage0)]
-pub mod NodeMap {
+pub mod FnvHashMap {
+    use std::hash::Hash;
     use collections::HashMap;
-    pub fn new<T>() -> super::NodeMap<T> {
+    pub fn new<K: Hash + Eq, V>() -> super::FnvHashMap<K, V> {
         HashMap::new()
     }
 }
@@ -76,13 +82,6 @@ pub mod NodeSet {
     use collections::HashSet;
     pub fn new() -> super::NodeSet {
         HashSet::new()
-    }
-}
-#[cfg(stage0)]
-pub mod DefIdMap {
-    use collections::HashMap;
-    pub fn new<T>() -> super::DefIdMap<T> {
-        HashMap::new()
     }
 }
 #[cfg(stage0)]

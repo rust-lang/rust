@@ -523,7 +523,7 @@ impl CFGBuilder {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_map = self.method_map.borrow();
-        method_map.get().contains_key(&expr.id)
+        let method_call = typeck::MethodCall::expr(expr.id);
+        self.method_map.borrow().get().contains_key(&method_call)
     }
 }

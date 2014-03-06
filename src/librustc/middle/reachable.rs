@@ -149,24 +149,17 @@ impl Visitor<()> for MarkSymbolVisitor {
                 }
             }
             ast::ExprMethodCall(..) => {
-                match self.method_map.borrow().get().get(&expr.id).origin {
+                let method_call = typeck::MethodCall::expr(expr.id);
+                match self.method_map.borrow().get().get(&method_call).origin {
                     typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if ReachableContext::
                                 def_id_represents_local_inlined_item(
                                     self.tcx,
                                     def_id) {
-                                {
-                                    let mut worklist = self.worklist
-                                                           .borrow_mut();
-                                    worklist.get().push(def_id.node)
-                                }
+                                self.worklist.borrow_mut().get().push(def_id.node)
                             }
-                            {
-                                let mut reachable_symbols =
-                                    self.reachable_symbols.borrow_mut();
-                                reachable_symbols.get().insert(def_id.node);
-                            }
+                            self.reachable_symbols.borrow_mut().get().insert(def_id.node);
                         }
                     }
                     _ => {}
