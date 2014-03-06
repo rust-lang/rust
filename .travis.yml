@@ -5,21 +5,28 @@ language: c
 
 # Before we start doing anything, install a stock LLVM
 install:
-  - sudo apt-get install llvm-3.3 llvm-3.3-dev clang-3.3 lldb-3.3
+  - sudo sh -c "echo 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise-3.4 main' >> /etc/apt/sources.list"
+  - sudo sh -c "echo 'deb http://llvm.org/apt/precise/ llvm-toolchain-precise main' >> /etc/apt/sources.list"
+  - sudo sh -c "echo 'deb http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu precise main' >> /etc/apt/sources.list"
+  - wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq --force-yes -y llvm-$LLVM_VERSION
+    llvm-${LLVM_VERSION}-dev clang-$LLVM_VERSION lldb-$LLVM_VERSION
 
-# All of the llvm tools are suffixed with "-3.3" which we don't want, so symlink
-# them all into a local directory and just use that
+
+# All of the llvm tools are suffixed with "-$VERS" which we don't want, so
+# symlink them all into a local directory and just use that
 #
 # FIXME: this shouldn't update the src/llvm sub-repo, that takes about a minute
 #        it's gotta download so much stuff.
 before_script:
   - mkdir -p local-llvm/bin
-  - ln -nsf /usr/bin/llvm-config-3.3 local-llvm/bin/llvm-config
-  - ln -nsf /usr/bin/llvm-mc-3.3 local-llvm/bin/llvm-mc
-  - ln -nsf /usr/bin/llvm-as-3.3 local-llvm/bin/llvm-as
-  - ln -nsf /usr/bin/llvm-dis-3.3 local-llvm/bin/llvm-dis
-  - ln -nsf /usr/bin/llc-3.3 local-llvm/bin/llc
-  - ln -nsf /usr/include/llvm-3.3 local-llvm/include
+  - ln -nsf /usr/bin/llvm-config-$LLVM_VERSION local-llvm/bin/llvm-config
+  - ln -nsf /usr/bin/llvm-mc-$LLVM_VERSION local-llvm/bin/llvm-mc
+  - ln -nsf /usr/bin/llvm-as-$LLVM_VERSION local-llvm/bin/llvm-as
+  - ln -nsf /usr/bin/llvm-dis-$LLVM_VERSION local-llvm/bin/llvm-dis
+  - ln -nsf /usr/bin/llc-$LLVM_VERSION local-llvm/bin/llc
+  - ln -nsf /usr/include/llvm-$LLVM_VERSION local-llvm/include
   - ./configure --disable-optimize-tests --llvm-root=`pwd`/local-llvm --enable-fast-make --enable-clang
 
 # Tidy everything up first, then build a few things, and then run a few tests.
@@ -29,14 +36,28 @@ before_script:
 # As a result of https://github.com/travis-ci/travis-ci/issues/1066, we run
 # everything in one large command instead of multiple commands.
 script: |
+  if [[ $TRAVIS_PULL_REQUEST != 'false' ]]; then
+    if [[ $LLVM_VERSION != '3.4' ]]; then exit 0; fi
+  fi &&
   make tidy &&
   make -j4 rustc-stage1 &&
   make check-stage1-std check-stage1-rpass check-stage1-cfail check-stage1-rfail
 
 env:
-  - NO_BENCH=1
+  global:
+    - NO_BENCH=1
+  matrix:
+    - LLVM_VERSION=3.3
+    - LLVM_VERSION=3.4
 
 # We track this ourselves, and in theory we don't have to update the LLVM repo
 # (but sadly we do right now anyway).
 git:
   submodules: false
+
+notifications:
+  email: false
+
+branches:
+  only:
+    - master
