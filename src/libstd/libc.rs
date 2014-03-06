@@ -3658,13 +3658,16 @@ pub mod funcs {
             pub unsafe fn opendir(dirname: *c_char) -> *DIR {
                 rust_opendir(dirname)
             }
-            pub unsafe fn readdir(dirp: *DIR) -> *dirent_t {
-                rust_readdir(dirp)
+            pub unsafe fn readdir_r(dirp: *DIR,
+                                    entry: *mut dirent_t,
+                                    result: *mut *mut dirent_t) -> c_int {
+                rust_readdir_r(dirp, entry, result)
             }
 
             extern {
                 fn rust_opendir(dirname: *c_char) -> *DIR;
-                fn rust_readdir(dirp: *DIR) -> *dirent_t;
+                fn rust_readdir_r(dirp: *DIR, entry: *mut dirent_t,
+                                  result: *mut *mut dirent_t) -> c_int;
             }
 
             extern {
@@ -3680,6 +3683,7 @@ pub mod funcs {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
             use libc::types::os::arch::c95::{size_t};
+            use libc::types::os::common::posix01::timespec;
             use libc::types::os::arch::posix01::utimbuf;
             use libc::types::os::arch::posix88::{gid_t, off_t, pid_t};
             use libc::types::os::arch::posix88::{ssize_t, uid_t};
@@ -3729,6 +3733,7 @@ pub mod funcs {
                 pub fn setuid(uid: uid_t) -> c_int;
                 pub fn sleep(secs: c_uint) -> c_uint;
                 pub fn usleep(secs: c_uint) -> c_int;
+                pub fn nanosleep(rqtp: *timespec, rmtp: *mut timespec) -> c_int;
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
                 pub fn ttyname(fd: c_int) -> *c_char;
