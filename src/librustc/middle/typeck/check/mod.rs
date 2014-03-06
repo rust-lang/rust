@@ -1241,7 +1241,7 @@ pub enum LvaluePreference {
     NoPreference
 }
 
-pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, t: ty::t,
+pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, base_ty: ty::t,
                     expr_id: Option<ast::NodeId>,
                     mut lvalue_pref: LvaluePreference,
                     should_stop: |ty::t, uint| -> Option<T>)
@@ -1253,23 +1253,9 @@ pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, t: ty::t,
      * responsible for inserting an AutoAdjustment record into `tcx.adjustments`
      * so that trans/borrowck/etc know about this autoderef. */
 
-    let mut t = t;
-    let mut autoderefs = 0;
-    loop {
+    let mut t = base_ty;
+    for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
-
-        // Some extra checks to detect weird cycles and so forth:
-        match ty::get(resolved_t).sty {
-            ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(_, _) => {
-                match ty::get(t).sty {
-                    ty::ty_infer(ty::TyVar(v1)) => {
-                        ty::occurs_check(fcx.ccx.tcx, sp, v1, resolved_t);
-                    }
-                    _ => {}
-                }
-            }
-            _ => { /*ok*/ }
-        }
 
         match should_stop(resolved_t, autoderefs) {
             Some(x) => return (resolved_t, autoderefs, Some(x)),
@@ -1291,11 +1277,16 @@ pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, t: ty::t,
                 if mt.mutbl == ast::MutImmutable {
                     lvalue_pref = NoPreference;
                 }
-                autoderefs += 1;
             }
             None => return (resolved_t, autoderefs, None)
         }
     }
+
+    // We've reached the recursion limit, error gracefully.
+    fcx.tcx().sess.span_err(sp,
+        format!("reached the recursion limit while auto-dereferencing {}",
+                base_ty.repr(fcx.tcx())));
+    (ty::mk_err(), 0, None)
 }
 
 fn try_overloaded_deref(fcx: @FnCtxt,

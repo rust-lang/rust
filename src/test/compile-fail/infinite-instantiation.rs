@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: overly deep expansion
+// error-pattern: reached the recursion limit during monomorphization
 // issue 2258
 
 trait to_opt {
