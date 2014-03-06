@@ -3467,37 +3467,6 @@ pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
     rslt
 }
 
-pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
-    // Returns a vec of all the type variables occurring in `ty`. It may
-    // contain duplicates.  (Integral type vars aren't counted.)
-    fn vars_in_type(ty: t) -> Vec<TyVid> {
-        let mut rslt = Vec::new();
-        walk_ty(ty, |ty| {
-            match get(ty).sty {
-              ty_infer(TyVar(v)) => rslt.push(v),
-              _ => ()
-            }
-        });
-        rslt
-    }
-
-    // Fast path
-    if !type_needs_infer(rt) { return; }
-
-    // Occurs check!
-    if vars_in_type(rt).contains(&vid) {
-            // Maybe this should be span_err -- however, there's an
-            // assertion later on that the type doesn't contain
-            // variables, so in this case we have to be sure to die.
-            tcx.sess.span_fatal
-                (sp, ~"type inference failed because I \
-                     could not find a type\n that's both of the form "
-                 + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
-                 " and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
-                 " - such a type would have to be infinitely large.");
-    }
-}
-
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |

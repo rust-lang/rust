@@ -8,21 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: reached the recursion limit while auto-dereferencing
 
-// Verify the compiler fails with an error on infinite function
-// recursions.
+use std::ops::Deref;
 
-struct Data(~Option<Data>);
+struct Foo;
 
-fn generic<T>( _ : ~[(Data,T)] ) {
-    //~^ ERROR reached the recursion limit during monomorphization
-    let rec : ~[(Data,(bool,T))] = ~[];
-    generic( rec );
+impl Deref<Foo> for Foo {
+    fn deref<'a>(&'a self) -> &'a Foo {
+        self
+    }
 }
 
+pub fn main() {
+    let mut x;
+    loop {
+        x = ~x;
+        x.foo;
+        x.bar();
+    }
 
-fn main () {
-    // Use generic<T> at least once to trigger instantiation.
-    let input : ~[(Data,())] = ~[];
-    generic(input);
+    Foo.foo;
+    Foo.bar();
 }
