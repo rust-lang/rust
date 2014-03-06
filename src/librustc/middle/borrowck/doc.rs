@@ -212,7 +212,7 @@ borrow checker works, let's look a bit more closely now at the precise
 conditions that it uses. For simplicity I will ignore const loans.
 
 I will present the rules in a modified form of standard inference
-rules, which looks as as follows:
+rules, which looks as follows:
 
 ```notrust
 PREDICATE(X, Y, Z)                  // Rule-Name

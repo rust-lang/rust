@@ -377,7 +377,7 @@ pub trait Reader {
     ///
     /// # Error
     ///
-    /// Fails with the same conditions as `read`. Additionally returns error on
+    /// Fails with the same conditions as `read`. Additionally returns error
     /// on EOF. Note that if an error is returned, then some number of bytes may
     /// have already been consumed from the underlying reader, and they are lost
     /// (not returned as part of the error). If this is unacceptable, then it is

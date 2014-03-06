@@ -103,7 +103,7 @@ pub trait Stats {
     fn median_abs_dev_pct(self) -> f64;
 
     /// Percentile: the value below which `pct` percent of the values in `self` fall. For example,
-    /// percentile(95.0) will return the value `v` such that that 95% of the samples `s` in `self`
+    /// percentile(95.0) will return the value `v` such that 95% of the samples `s` in `self`
     /// satisfy `s <= v`.
     ///
     /// Calculated by linear interpolation between closest ranks.
