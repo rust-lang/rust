@@ -101,7 +101,7 @@ impl<T: Clone + Float> Cmplx<T> {
     /// Convert a polar representation into a complex number.
     #[inline]
     pub fn from_polar(r: &T, theta: &T) -> Cmplx<T> {
-        Cmplx::new(r * theta.cos(), r * theta.sin())
+        Cmplx::new(*r * theta.cos(), *r * theta.sin())
     }
 }
 

@@ -63,6 +63,7 @@
 #[allow(non_camel_case_types)];
 
 use middle::ty;
+use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 
 use std::vec_ng::Vec;
@@ -268,7 +269,7 @@ pub type McResult<T> = Result<T, ()>;
 pub trait Typer {
     fn tcx(&self) -> ty::ctxt;
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
-    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t>;
+    fn node_method_ty(&mut self, method_call: typeck::MethodCall) -> Option<ty::t>;
     fn adjustment(&mut self, node_id: ast::NodeId) -> Option<@ty::AutoAdjustment>;
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
@@ -365,7 +366,8 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
     fn expr_ty_adjusted(&mut self, expr: &ast::Expr) -> McResult<ty::t> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
         let adjustment = self.adjustment(expr.id);
-        Ok(ty::adjust_ty(self.tcx(), expr.span, unadjusted_ty, adjustment))
+        Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty, adjustment,
+                         |method_call| self.typer.node_method_ty(method_call)))
     }
 
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t> {
@@ -435,21 +437,11 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         let expr_ty = if_ok!(self.expr_ty(expr));
         match expr.node {
           ast::ExprUnary(ast::UnDeref, e_base) => {
-            let base_cmt = match self.typer.node_method_ty(expr.id) {
-                Some(method_ty) => {
-                    let ref_ty = ty::ty_fn_ret(method_ty);
-                    self.cat_rvalue_node(expr.id(), expr.span(), ref_ty)
-                }
-                None => if_ok!(self.cat_expr(e_base))
-            };
+            let base_cmt = if_ok!(self.cat_expr(e_base));
             Ok(self.cat_deref(expr, base_cmt, 0))
           }
 
           ast::ExprField(base, f_name, _) => {
-            // Method calls are now a special syntactic form,
-            // so `a.b` should always be a field.
-            assert!(!self.typer.is_method_call(expr.id));
-
             let base_cmt = if_ok!(self.cat_expr(base));
             Ok(self.cat_field(expr, base_cmt, f_name, expr_ty))
           }
@@ -725,59 +717,64 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         // `()` (the empty tuple).
 
         let opaque_ty = ty::mk_tup(self.tcx(), Vec::new());
-        return self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty);
+        self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty)
     }
 
-    pub fn cat_deref<N:ast_node>(&mut self,
-                                 node: &N,
-                                 base_cmt: cmt,
-                                 deref_cnt: uint)
-                                 -> cmt {
-        let mt = match ty::deref(base_cmt.ty, true) {
-            Some(mt) => mt,
+    fn cat_deref<N:ast_node>(&mut self,
+                             node: &N,
+                             base_cmt: cmt,
+                             deref_cnt: uint)
+                             -> cmt {
+        let method_call = typeck::MethodCall {
+            expr_id: node.id(),
+            autoderef: deref_cnt as u32
+        };
+        let method_ty = self.typer.node_method_ty(method_call);
+
+        debug!("cat_deref: method_call={:?} method_ty={}",
+            method_call, method_ty.map(|ty| ty.repr(self.tcx())));
+
+        let base_cmt = match method_ty {
+            Some(method_ty) => {
+                let ref_ty = ty::ty_fn_ret(method_ty);
+                self.cat_rvalue_node(node.id(), node.span(), ref_ty)
+            }
+            None => base_cmt
+        };
+        match ty::deref(base_cmt.ty, true) {
+            Some(mt) => self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty),
             None => {
                 self.tcx().sess.span_bug(
                     node.span(),
                     format!("Explicit deref of non-derefable type: {}",
                             base_cmt.ty.repr(self.tcx())));
             }
-        };
-
-        return self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty);
+        }
     }
 
-    pub fn cat_deref_common<N:ast_node>(&mut self,
-                                        node: &N,
-                                        base_cmt: cmt,
-                                        deref_cnt: uint,
-                                        deref_ty: ty::t)
-                                        -> cmt {
-        match deref_kind(self.tcx(), base_cmt.ty) {
+    fn cat_deref_common<N:ast_node>(&mut self,
+                                    node: &N,
+                                    base_cmt: cmt,
+                                    deref_cnt: uint,
+                                    deref_ty: ty::t)
+                                    -> cmt {
+        let (m, cat) = match deref_kind(self.tcx(), base_cmt.ty) {
             deref_ptr(ptr) => {
                 // for unique ptrs, we inherit mutability from the
                 // owning reference.
-                let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl,
-                                                              ptr);
-
-                @cmt_ {
-                    id:node.id(),
-                    span:node.span(),
-                    cat:cat_deref(base_cmt, deref_cnt, ptr),
-                    mutbl:m,
-                    ty:deref_ty
-                }
+                (MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
+                 cat_deref(base_cmt, deref_cnt, ptr))
             }
-
             deref_interior(interior) => {
-                let m = base_cmt.mutbl.inherit();
-                @cmt_ {
-                    id:node.id(),
-                    span:node.span(),
-                    cat:cat_interior(base_cmt, interior),
-                    mutbl:m,
-                    ty:deref_ty
-                }
+                (base_cmt.mutbl.inherit(), cat_interior(base_cmt, interior))
             }
+        };
+        @cmt_ {
+            id: node.id(),
+            span: node.span(),
+            cat: cat,
+            mutbl: m,
+            ty: deref_ty
         }
     }
 

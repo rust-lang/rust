@@ -129,6 +129,7 @@ use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
+use middle::typeck::MethodCall;
 use middle::pat_util;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
@@ -221,9 +222,15 @@ impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_node_type(&mut self, id: ast::NodeId) -> ty::t {
+    fn resolve_node_type(&mut self, id: ast::NodeId) -> ty::t {
         let t = self.fcx.node_ty(id);
         self.resolve_type(t)
+    }
+
+    fn resolve_method_type(&mut self, method_call: MethodCall) -> Option<ty::t> {
+        let method_ty = self.fcx.inh.method_map.borrow().get()
+                            .find(&method_call).map(|method| method.ty);
+        method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
 
     /// Try to resolve the type for the given node.
@@ -233,11 +240,9 @@ impl Rcx {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
-            let adjustment = {
-                let adjustments = self.fcx.inh.adjustments.borrow();
-                adjustments.get().find_copy(&expr.id)
-            };
-            ty::adjust_ty(tcx, expr.span, ty_unadjusted, adjustment)
+            let adjustment = self.fcx.inh.adjustments.borrow().get().find_copy(&expr.id);
+            ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted, adjustment,
+                          |method_call| self.resolve_method_type(method_call))
         }
     }
 }
@@ -252,10 +257,8 @@ impl<'a> mc::Typer for &'a mut Rcx {
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
 
-    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
-        self.fcx.inh.method_map.borrow().get().find(&id).map(|method| {
-            self.resolve_type(method.ty)
-        })
+    fn node_method_ty(&mut self, method_call: MethodCall) -> Option<ty::t> {
+        self.resolve_method_type(method_call)
     }
 
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
@@ -264,7 +267,7 @@ impl<'a> mc::Typer for &'a mut Rcx {
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        self.fcx.inh.method_map.borrow().get().contains_key(&id)
+        self.fcx.inh.method_map.borrow().get().contains_key(&MethodCall::expr(id))
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -383,53 +386,48 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     debug!("regionck::visit_expr(e={}, repeating_scope={:?})",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
-    let has_method_map = rcx.fcx.inh.method_map.get().contains_key(&expr.id);
+    let method_call = MethodCall::expr(expr.id);
+    let has_method_map = rcx.fcx.inh.method_map.get().contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    {
-        let adjustments = rcx.fcx.inh.adjustments.borrow();
-        let r = adjustments.get().find(&expr.id);
-        for &adjustment in r.iter() {
-            debug!("adjustment={:?}", adjustment);
-            match **adjustment {
-                ty::AutoDerefRef(
-                    ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
-                {
-                    let expr_ty = rcx.resolve_node_type(expr.id);
-                    constrain_derefs(rcx, expr, autoderefs, expr_ty);
-                    for autoref in opt_autoref.iter() {
-                        link_autoref(rcx, expr, autoderefs, autoref);
+    for &adjustment in rcx.fcx.inh.adjustments.borrow().get().find(&expr.id).iter() {
+        debug!("adjustment={:?}", adjustment);
+        match **adjustment {
+            ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: opt_autoref}) => {
+                let expr_ty = rcx.resolve_node_type(expr.id);
+                constrain_derefs(rcx, expr, autoderefs, expr_ty);
+                for autoref in opt_autoref.iter() {
+                    link_autoref(rcx, expr, autoderefs, autoref);
 
-                        // Require that the resulting region encompasses
-                        // the current node.
-                        //
-                        // FIXME(#6268) remove to support nested method calls
-                        constrain_regions_in_type_of_node(
-                            rcx, expr.id, ty::ReScope(expr.id),
-                            infer::AutoBorrow(expr.span));
-                    }
-                }
-                ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
-                    // Determine if we are casting `expr` to an trait
-                    // instance.  If so, we have to be sure that the type of
-                    // the source obeys the trait's region bound.
+                    // Require that the resulting region encompasses
+                    // the current node.
                     //
-                    // Note: there is a subtle point here concerning type
-                    // parameters.  It is possible that the type of `source`
-                    // contains type parameters, which in turn may contain
-                    // regions that are not visible to us (only the caller
-                    // knows about them).  The kind checker is ultimately
-                    // responsible for guaranteeing region safety in that
-                    // particular case.  There is an extensive comment on the
-                    // function check_cast_for_escaping_regions() in kind.rs
-                    // explaining how it goes about doing that.
-
-                    let source_ty = rcx.fcx.expr_ty(expr);
-                    constrain_regions_in_type(rcx, trait_region,
-                                              infer::RelateObjectBound(expr.span), source_ty);
+                    // FIXME(#6268) remove to support nested method calls
+                    constrain_regions_in_type_of_node(
+                        rcx, expr.id, ty::ReScope(expr.id),
+                        infer::AutoBorrow(expr.span));
                 }
-                _ => {}
             }
+            ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
+                // Determine if we are casting `expr` to an trait
+                // instance.  If so, we have to be sure that the type of
+                // the source obeys the trait's region bound.
+                //
+                // Note: there is a subtle point here concerning type
+                // parameters.  It is possible that the type of `source`
+                // contains type parameters, which in turn may contain
+                // regions that are not visible to us (only the caller
+                // knows about them).  The kind checker is ultimately
+                // responsible for guaranteeing region safety in that
+                // particular case.  There is an extensive comment on the
+                // function check_cast_for_escaping_regions() in kind.rs
+                // explaining how it goes about doing that.
+
+                let source_ty = rcx.fcx.expr_ty(expr);
+                constrain_regions_in_type(rcx, trait_region,
+                                            infer::RelateObjectBound(expr.span), source_ty);
+            }
+            _ => {}
         }
     }
 
@@ -488,7 +486,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprUnary(ast::UnDeref, base) => {
             // For *a, the lifetime of a must enclose the deref
-            let base_ty = match rcx.fcx.inh.method_map.get().find(&expr.id) {
+            let method_call = MethodCall::expr(expr.id);
+            let base_ty = match rcx.fcx.inh.method_map.get().find(&method_call) {
                 Some(method) => {
                     constrain_call(rcx, None, expr, Some(base), [], true);
                     ty::ty_fn_ret(method.ty)
@@ -769,7 +768,8 @@ fn constrain_call(rcx: &mut Rcx,
             implicitly_ref_args);
     let callee_ty = match fn_expr_id {
         Some(id) => rcx.resolve_node_type(id),
-        None => rcx.resolve_type(rcx.fcx.method_ty(call_expr.id))
+        None => rcx.resolve_method_type(MethodCall::expr(call_expr.id))
+                   .expect("call should have been to a method")
     };
     if ty::type_is_error(callee_ty) {
         // Bail, as function type is unknown
@@ -904,11 +904,9 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = {
-        let adjustments = rcx.fcx.inh.adjustments.borrow();
-        adjustments.get().find_copy(&id)
-    };
-    let ty = ty::adjust_ty(tcx, origin.span(), ty0, adjustment);
+    let adjustment = rcx.fcx.inh.adjustments.borrow().get().find_copy(&id);
+    let ty = ty::adjust_ty(tcx, origin.span(), id, ty0, adjustment,
+                           |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?}, adjustment={:?})",
            ty_to_str(tcx, ty), ty_to_str(tcx, ty0),

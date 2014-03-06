@@ -23,6 +23,7 @@ use middle::moves;
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
+use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
@@ -242,7 +243,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprIndex(_, arg) |
       ast::ExprBinary(_, _, arg)
-      if method_map.get().contains_key(&ex.id) => {
+      if method_map.get().contains_key(&MethodCall::expr(ex.id)) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
