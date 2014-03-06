@@ -28,7 +28,7 @@ use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use slice::{MutableTotalOrdVector};
+use slice::{MutableTotalOrdVector, Vector};
 
 /// An owned, growable vector.
 ///
@@ -532,22 +532,6 @@ impl<T> Vec<T> {
             }
         }
         self.len = len;
-    }
-
-    /// Work with `self` as a slice.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// fn foo(slice: &[int]) {}
-    ///
-    /// let vec = vec!(1, 2);
-    /// foo(vec.as_slice());
-    /// ```
-    #[inline]
-    pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        let slice = Slice { data: self.ptr as *T, len: self.len };
-        unsafe { transmute(slice) }
     }
 
     /// Work with `self` as a mutable slice.
@@ -1169,6 +1153,24 @@ impl<T:Eq> Vec<T> {
 
             self.truncate(w);
         }
+    }
+}
+
+impl<T> Vector<T> for Vec<T> {
+    /// Work with `self` as a slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn foo(slice: &[int]) {}
+    ///
+    /// let vec = vec!(1, 2);
+    /// foo(vec.as_slice());
+    /// ```
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a [T] {
+        let slice = Slice { data: self.ptr as *T, len: self.len };
+        unsafe { transmute(slice) }
     }
 }
 
