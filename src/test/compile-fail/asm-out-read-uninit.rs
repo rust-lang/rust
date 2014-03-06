@@ -19,7 +19,7 @@ fn foo(x: int) { info!("{}", x); }
 pub fn main() {
     let x: int;
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "r"(x)); //~ ERROR use of possibly uninitialized value: `x`
+        asm!("mov $1, $0" : "=r"(x) : "r"(x)); //~ ERROR use of possibly uninitialized variable: `x`
     }
     foo(x);
 }
