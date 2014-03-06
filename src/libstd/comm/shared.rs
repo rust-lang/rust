@@ -302,7 +302,7 @@ impl<T: Send> Packet<T> {
             }
         };
         match ret {
-            // See the discussion in the stream implementation for why we we
+            // See the discussion in the stream implementation for why we
             // might decrement steals.
             Some(data) => {
                 if self.steals > MAX_STEALS {

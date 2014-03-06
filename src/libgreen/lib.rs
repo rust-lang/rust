@@ -284,7 +284,7 @@ pub struct PoolConfig {
 }
 
 impl PoolConfig {
-    /// Returns the default configuration, as determined the the environment
+    /// Returns the default configuration, as determined the environment
     /// variables of this process.
     pub fn new() -> PoolConfig {
         PoolConfig {

@@ -277,7 +277,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
         let _indent = indenter();
 
         // First, relate the lower/upper bounds of A and B.
-        // Note that these relations *must* hold for us to
+        // Note that these relations *must* hold for us
         // to be able to merge A and B at all, and relating
         // them explicitly gives the type inferencer more
         // information and helps to produce tighter bounds
