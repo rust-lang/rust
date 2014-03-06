@@ -129,7 +129,7 @@ fn encode_trait_ref(ebml_w: &mut writer::Encoder,
                     ecx: &EncodeContext,
                     trait_ref: &ty::TraitRef,
                     tag: uint) {
-    let ty_str_ctxt = @tyencode::ctxt {
+    let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
@@ -165,7 +165,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
                              ecx: &EncodeContext,
                              params: &[ty::TypeParameterDef],
                              tag: uint) {
-    let ty_str_ctxt = @tyencode::ctxt {
+    let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
@@ -222,7 +222,7 @@ fn encode_variant_id(ebml_w: &mut writer::Encoder, vid: DefId) {
 pub fn write_type(ecx: &EncodeContext,
                   ebml_w: &mut writer::Encoder,
                   typ: ty::t) {
-    let ty_str_ctxt = @tyencode::ctxt {
+    let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
@@ -234,7 +234,7 @@ pub fn write_type(ecx: &EncodeContext,
 pub fn write_vstore(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     vstore: ty::vstore) {
-    let ty_str_ctxt = @tyencode::ctxt {
+    let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
@@ -256,7 +256,7 @@ fn encode_method_fty(ecx: &EncodeContext,
                      typ: &ty::BareFnTy) {
     ebml_w.start_tag(tag_item_method_fty);
 
-    let ty_str_ctxt = @tyencode::ctxt {
+    let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
@@ -1900,7 +1900,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
 // Get the encoded string for a type
 pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> ~str {
-    let cx = @tyencode::ctxt {
+    let cx = &tyencode::ctxt {
         diag: tcx.diag,
         ds: def_to_str,
         tcx: tcx,
