@@ -22,6 +22,7 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -143,11 +144,11 @@ impl<'a> CheckLoanCtxt<'a> {
         })
     }
 
-    pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> ~[uint] {
+    pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> Vec<uint> {
         //! Returns a vector of the loans that are generated as
         //! we encounter `scope_id`.
 
-        let mut result = ~[];
+        let mut result = Vec::new();
         self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
             result.push(loan_index);
             true

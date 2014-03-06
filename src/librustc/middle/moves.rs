@@ -138,6 +138,7 @@ use util::ppaux::UserString;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use collections::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
@@ -159,7 +160,7 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @RefCell<HashMap<NodeId, Rc<~[CaptureVar]>>>;
+pub type CaptureMap = @RefCell<HashMap<NodeId, Rc<Vec<CaptureVar> >>>;
 
 pub type MovesMap = @RefCell<HashSet<NodeId>>;
 
@@ -680,7 +681,7 @@ impl VisitContext {
         self.consume_expr(arg_expr)
     }
 
-    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> Rc<~[CaptureVar]> {
+    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> Rc<Vec<CaptureVar> > {
         debug!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
         let _indenter = indenter();
 

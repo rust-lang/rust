@@ -20,6 +20,7 @@ use middle::ty;
 
 use std::str;
 use std::uint;
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;
@@ -177,7 +178,7 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
     assert_eq!(next(st), '[');
-    let mut params: ~[ty::t] = ~[];
+    let mut params: Vec<ty::t> = Vec::new();
     while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
     st.pos = st.pos + 1u;
 
@@ -362,7 +363,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'T' => {
         assert_eq!(next(st), '[');
-        let mut params = ~[];
+        let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
         st.pos = st.pos + 1u;
         return ty::mk_tup(st.tcx, params);
@@ -520,7 +521,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     assert_eq!(next(st), '[');
     let id = parse_uint(st) as ast::NodeId;
     assert_eq!(next(st), '|');
-    let mut inputs = ~[];
+    let mut inputs = Vec::new();
     while peek(st) != ']' {
         inputs.push(parse_ty(st, |x,y| conv(x,y)));
     }
@@ -583,7 +584,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let mut param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
-        trait_bounds: ~[]
+        trait_bounds: Vec::new()
     };
     loop {
         match next(st) {

@@ -31,6 +31,7 @@ use syntax::parse::token;
 use driver::session::Session;
 
 use std::cell::Cell;
+use std::vec_ng::Vec;
 
 /// This is a list of all known features since the beginning of time. This list
 /// can never shrink, it may only be expanded (in order to prevent old programs
@@ -85,7 +86,7 @@ impl Features {
 }
 
 struct Context {
-    features: ~[&'static str],
+    features: Vec<&'static str> ,
     sess: Session,
 }
 
@@ -280,7 +281,7 @@ impl Visitor<()> for Context {
 
 pub fn check_crate(sess: Session, krate: &ast::Crate) {
     let mut cx = Context {
-        features: ~[],
+        features: Vec::new(),
         sess: sess,
     };
 

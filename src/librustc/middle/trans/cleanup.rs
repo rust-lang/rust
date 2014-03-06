@@ -349,7 +349,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         assert!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
-        let scope = &mut scopes.get()[custom_scope.index];
+        let scope = scopes.get().get_mut(custom_scope.index);
         scope.cleanups.push(cleanup);
         scope.clear_cached_exits();
     }
@@ -433,7 +433,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         let scopes = self.scopes.borrow();
         custom_scope.index < scopes.get().len() &&
-            scopes.get()[custom_scope.index].kind.is_temp()
+            scopes.get().get(custom_scope.index).kind.is_temp()
     }
 
     fn trans_scope_cleanups(&self, // cannot borrow self, will recurse

@@ -44,7 +44,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let sessopts = @session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
-        crate_types: ~[session::CrateTypeDylib],
+        crate_types: vec!(session::CrateTypeDylib),
         .. (*session::basic_options()).clone()
     };
 
@@ -106,8 +106,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     let sessopts = @session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
-        crate_types: ~[session::CrateTypeExecutable],
-        output_types: ~[link::OutputTypeExe],
+        crate_types: vec!(session::CrateTypeExecutable),
+        output_types: vec!(link::OutputTypeExe),
         cg: session::CodegenOptions {
             prefer_dynamic: true,
             .. session::basic_codegen_options()

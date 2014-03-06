@@ -46,15 +46,16 @@ use syntax::opt_vec;
 use syntax::parse::token;
 use syntax::visit;
 
-use std::cell::RefCell;
 use collections::HashSet;
+use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 struct UniversalQuantificationResult {
     monotype: t,
-    type_variables: ~[ty::t],
-    type_param_defs: Rc<~[ty::TypeParameterDef]>
+    type_variables: Vec<ty::t> ,
+    type_param_defs: Rc<Vec<ty::TypeParameterDef> >
 }
 
 fn get_base_type(inference_context: &InferCtxt,
@@ -323,7 +324,7 @@ impl CoherenceChecker {
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
     fn instantiate_default_methods(&self, impl_id: ast::DefId,
                                    trait_ref: &ty::TraitRef,
-                                   all_methods: &mut ~[@Method]) {
+                                   all_methods: &mut Vec<@Method> ) {
         let tcx = self.crate_context.tcx;
         debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
@@ -354,8 +355,9 @@ impl CoherenceChecker {
             // construct the polytype for the method based on the method_ty
             let new_generics = ty::Generics {
                 type_param_defs:
-                    Rc::new(vec::append(
-                        impl_poly_type.generics.type_param_defs().to_owned(),
+                    Rc::new(vec_ng::append(
+                        Vec::from_slice(impl_poly_type.generics
+                                                      .type_param_defs()),
                             new_method_ty.generics.type_param_defs())),
                 region_param_defs:
                     impl_poly_type.generics.region_param_defs.clone()
@@ -390,7 +392,7 @@ impl CoherenceChecker {
         let mut inherent_impls = tcx.inherent_impls.borrow_mut();
         match inherent_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @RefCell::new(~[]);
+                implementation_list = @RefCell::new(Vec::new());
                 inherent_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -409,7 +411,7 @@ impl CoherenceChecker {
         let mut trait_impls = tcx.trait_impls.borrow_mut();
         match trait_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @RefCell::new(~[]);
+                implementation_list = @RefCell::new(Vec::new());
                 trait_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -611,7 +613,7 @@ impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         match item.node {
             ItemImpl(_, ref trait_refs, _, ref ast_methods) => {
-                let mut methods = ~[];
+                let mut methods = Vec::new();
                 for ast_method in ast_methods.iter() {
                     methods.push(ty::method(tcx, local_def(ast_method.id)));
                 }
@@ -722,7 +724,7 @@ impl CoherenceChecker {
                 // We'll error out later. For now, just don't ICE.
                 continue;
             }
-            let method_def_id = impl_info.methods[0].def_id;
+            let method_def_id = impl_info.methods.get(0).def_id;
 
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
@@ -789,10 +791,10 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
         num_trait_type_parameters + method.generics.type_param_defs().len();
 
     // the new method type will have the type parameters from the impl + method
-    let combined_tps = vec::from_fn(num_method_type_parameters, |i| {
+    let combined_tps = Vec::from_fn(num_method_type_parameters, |i| {
         if i < num_trait_type_parameters {
             // replace type parameters that come from trait with new value
-            trait_ref.substs.tps[i]
+            *trait_ref.substs.tps.get(i)
         } else {
             // replace type parameters that belong to method with another
             // type parameter, this time with the index adjusted

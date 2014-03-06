@@ -14,8 +14,8 @@
 
 use std::iter::range_step;
 use std::num::Zero;
-use std::vec;
 use std::vec::bytes::{MutableByteVector, copy_memory};
+use std::vec_ng::Vec;
 use serialize::hex::ToHex;
 
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
@@ -253,16 +253,16 @@ pub trait Digest {
 
     /// Convenience function that retrieves the result of a digest as a
     /// newly allocated vec of bytes.
-    fn result_bytes(&mut self) -> ~[u8] {
-        let mut buf = vec::from_elem((self.output_bits()+7)/8, 0u8);
-        self.result(buf);
+    fn result_bytes(&mut self) -> Vec<u8> {
+        let mut buf = Vec::from_elem((self.output_bits()+7)/8, 0u8);
+        self.result(buf.as_mut_slice());
         buf
     }
 
     /// Convenience function that retrieves the result of a digest as a
     /// ~str in hexadecimal format.
     fn result_str(&mut self) -> ~str {
-        self.result_bytes().to_hex()
+        self.result_bytes().as_slice().to_hex()
     }
 }
 
@@ -527,6 +527,7 @@ mod tests {
     use super::{Digest, Sha256, FixedBuffer};
     use std::num::Bounded;
     use std::vec;
+    use std::vec_ng::Vec;
     use std::rand::isaac::IsaacRng;
     use std::rand::Rng;
     use serialize::hex::FromHex;
@@ -576,7 +577,7 @@ mod tests {
     #[test]
     fn test_sha256() {
         // Examples from wikipedia
-        let wikipedia_tests = ~[
+        let wikipedia_tests = vec!(
             Test {
                 input: ~"",
                 output_str: ~"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -588,14 +589,13 @@ mod tests {
             Test {
                 input: ~"The quick brown fox jumps over the lazy dog.",
                 output_str: ~"ef537f25c895bfa782526529a9b63d97aa631564d5d789c2b765448c8635fb6c"
-            },
-        ];
+            });
 
         let tests = wikipedia_tests;
 
         let mut sh = ~Sha256::new();
 
-        test_hash(sh, tests);
+        test_hash(sh, tests.as_slice());
     }
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
@@ -620,7 +620,12 @@ mod tests {
         let result_bytes = digest.result_bytes();
 
         assert_eq!(expected, result_str.as_slice());
-        assert_eq!(expected.from_hex().unwrap(), result_bytes);
+
+        let expected_vec: Vec<u8> = expected.from_hex()
+                                            .unwrap()
+                                            .move_iter()
+                                            .collect();
+        assert_eq!(expected_vec, result_bytes);
     }
 
     #[test]

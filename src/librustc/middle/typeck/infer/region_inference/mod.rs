@@ -27,6 +27,7 @@ use util::ppaux::{Repr};
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::vec;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::opt_vec;
@@ -88,7 +89,7 @@ pub type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
-    var_origins: RefCell<~[RegionVariableOrigin]>,
+    var_origins: RefCell<Vec<RegionVariableOrigin> >,
     constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
     lubs: RefCell<CombineMap>,
     glbs: RefCell<CombineMap>,
@@ -103,24 +104,24 @@ pub struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    undo_log: RefCell<~[UndoLogEntry]>,
+    undo_log: RefCell<Vec<UndoLogEntry> >,
 
     // This contains the results of inference.  It begins as an empty
     // option and only acquires a value after inference is complete.
-    values: RefCell<Option<~[VarValue]>>,
+    values: RefCell<Option<Vec<VarValue> >>,
 }
 
 pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
-        var_origins: RefCell::new(~[]),
+        var_origins: RefCell::new(Vec::new()),
         values: RefCell::new(None),
         constraints: RefCell::new(HashMap::new()),
         lubs: RefCell::new(HashMap::new()),
         glbs: RefCell::new(HashMap::new()),
         skolemization_count: Cell::new(0),
         bound_count: Cell::new(0),
-        undo_log: RefCell::new(~[])
+        undo_log: RefCell::new(Vec::new())
     }
 }
 
@@ -354,11 +355,11 @@ impl RegionVarBindings {
             None => {
                 let var_origins = self.var_origins.borrow();
                 self.tcx.sess.span_bug(
-                    var_origins.get()[rid.to_uint()].span(),
+                    var_origins.get().get(rid.to_uint()).span(),
                     format!("attempt to resolve region variable before \
                              values have been computed!"))
             }
-            Some(ref values) => values[rid.to_uint()]
+            Some(ref values) => *values.get(rid.to_uint())
         };
 
         debug!("RegionVarBindings: resolve_var({:?}={})={:?}",
@@ -423,7 +424,7 @@ impl RegionVarBindings {
     }
 
     pub fn vars_created_since_snapshot(&self, snapshot: uint)
-                                       -> ~[RegionVid] {
+                                       -> Vec<RegionVid> {
         let undo_log = self.undo_log.borrow();
         undo_log.get().slice_from(snapshot).iter()
             .filter_map(|&elt| match elt {
@@ -433,7 +434,7 @@ impl RegionVarBindings {
             .collect()
     }
 
-    pub fn tainted(&self, snapshot: uint, r0: Region) -> ~[Region] {
+    pub fn tainted(&self, snapshot: uint, r0: Region) -> Vec<Region> {
         /*!
          * Computes all regions that have been related to `r0` in any
          * way since the snapshot `snapshot` was taken---`r0` itself
@@ -453,11 +454,11 @@ impl RegionVarBindings {
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
-        let mut result_set = ~[r0];
+        let mut result_set = vec!(r0);
         let mut result_index = 0;
         while result_index < result_set.len() {
             // nb: can't use uint::range() here because result_set grows
-            let r = result_set[result_index];
+            let r = *result_set.get(result_index);
 
             debug!("result_index={}, r={:?}", result_index, r);
 
@@ -466,18 +467,18 @@ impl RegionVarBindings {
                 // nb: can't use uint::range() here as we move result_set
                 let regs = {
                     let undo_log = self.undo_log.borrow();
-                    match undo_log.get()[undo_index] {
-                        AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
+                    match undo_log.get().get(undo_index) {
+                        &AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
                             Some((ReInfer(ReVar(*a)),
                                   ReInfer(ReVar(*b))))
                         }
-                        AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
+                        &AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
                             Some((*a, ReInfer(ReVar(*b))))
                         }
-                        AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
+                        &AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
                             Some((ReInfer(ReVar(*a)), *b))
                         }
-                        AddConstraint(ConstrainRegSubReg(a, b)) => {
+                        &AddConstraint(ConstrainRegSubReg(a, b)) => {
                             Some((a, b))
                         }
                         _ => {
@@ -504,11 +505,10 @@ impl RegionVarBindings {
 
         return result_set;
 
-        fn consider_adding_edge(result_set: ~[Region],
+        fn consider_adding_edge(result_set: Vec<Region> ,
                                 r: Region,
                                 r1: Region,
-                                r2: Region) -> ~[Region]
-        {
+                                r2: Region) -> Vec<Region> {
             let mut result_set = result_set;
             if r == r1 { // Clearly, this is potentially inefficient.
                 if !result_set.iter().any(|x| *x == r2) {
@@ -564,7 +564,7 @@ impl RegionVarBindings {
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
             let var_origins = self.var_origins.borrow();
             self.tcx.sess.span_bug(
-                var_origins.get()[v_id.to_uint()].span(),
+                var_origins.get().get(v_id.to_uint()).span(),
                 format!("lub_concrete_regions invoked with \
                       non-concrete regions: {:?}, {:?}", a, b));
           }
@@ -669,7 +669,7 @@ impl RegionVarBindings {
             (_, ReInfer(ReVar(v_id))) => {
                 let var_origins = self.var_origins.borrow();
                 self.tcx.sess.span_bug(
-                    var_origins.get()[v_id.to_uint()].span(),
+                    var_origins.get().get(v_id.to_uint()).span(),
                     format!("glb_concrete_regions invoked with \
                           non-concrete regions: {:?}, {:?}", a, b));
             }
@@ -781,16 +781,16 @@ type RegionGraph = graph::Graph<(), Constraint>;
 impl RegionVarBindings {
     fn infer_variable_values(&self,
                              errors: &mut OptVec<RegionResolutionError>)
-                             -> ~[VarValue] {
+                             -> Vec<VarValue> {
         let mut var_data = self.construct_var_data();
-        self.expansion(var_data);
-        self.contraction(var_data);
-        self.collect_concrete_region_errors(errors);
-        self.extract_values_and_collect_conflicts(var_data, errors)
+        self.expansion(var_data.as_mut_slice());
+        self.contraction(var_data.as_mut_slice());
+        self.collect_concrete_region_errors(&mut *errors);
+        self.extract_values_and_collect_conflicts(var_data.as_slice(), errors)
     }
 
-    fn construct_var_data(&self) -> ~[VarData] {
-        vec::from_fn(self.num_vars(), |_| {
+    fn construct_var_data(&self) -> Vec<VarData> {
+        Vec::from_fn(self.num_vars(), |_| {
             VarData {
                 // All nodes are initially classified as contracting; during
                 // the expansion phase, we will shift the classification for
@@ -999,8 +999,7 @@ impl RegionVarBindings {
         &self,
         var_data: &[VarData],
         errors: &mut OptVec<RegionResolutionError>)
-        -> ~[VarValue]
-    {
+        -> Vec<VarValue> {
         debug!("extract_values_and_collect_conflicts()");
 
         // This is the best way that I have found to suppress
@@ -1073,7 +1072,7 @@ impl RegionVarBindings {
             }
         }
 
-        vec::from_fn(self.num_vars(), |idx| var_data[idx].value)
+        Vec::from_fn(self.num_vars(), |idx| var_data[idx].value)
     }
 
     fn construct_graph(&self) -> RegionGraph {
@@ -1145,7 +1144,7 @@ impl RegionVarBindings {
                     {
                         let var_origins = self.var_origins.borrow();
                         errors.push(SubSupConflict(
-                            var_origins.get()[node_idx.to_uint()],
+                            *var_origins.get().get(node_idx.to_uint()),
                             lower_bound.origin,
                             lower_bound.region,
                             upper_bound.origin,
@@ -1158,7 +1157,7 @@ impl RegionVarBindings {
 
         let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            var_origins.get()[node_idx.to_uint()].span(),
+            var_origins.get().get(node_idx.to_uint()).span(),
             format!("collect_error_for_expanding_node() could not find error \
                   for var {:?}, lower_bounds={}, upper_bounds={}",
                  node_idx,
@@ -1192,7 +1191,7 @@ impl RegionVarBindings {
                   Err(_) => {
                     let var_origins = self.var_origins.borrow();
                     errors.push(SupSupConflict(
-                        var_origins.get()[node_idx.to_uint()],
+                        *var_origins.get().get(node_idx.to_uint()),
                         upper_bound_1.origin,
                         upper_bound_1.region,
                         upper_bound_2.origin,
@@ -1205,7 +1204,7 @@ impl RegionVarBindings {
 
         let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            var_origins.get()[node_idx.to_uint()].span(),
+            var_origins.get().get(node_idx.to_uint()).span(),
             format!("collect_error_for_contracting_node() could not find error \
                   for var {:?}, upper_bounds={}",
                  node_idx,
@@ -1218,17 +1217,17 @@ impl RegionVarBindings {
                                 orig_node_idx: RegionVid,
                                 dir: Direction,
                                 dup_vec: &mut [uint])
-                                -> (~[RegionAndOrigin], bool) {
+                                -> (Vec<RegionAndOrigin> , bool) {
         struct WalkState {
             set: HashSet<RegionVid>,
-            stack: ~[RegionVid],
-            result: ~[RegionAndOrigin],
+            stack: Vec<RegionVid> ,
+            result: Vec<RegionAndOrigin> ,
             dup_found: bool
         }
         let mut state = WalkState {
             set: HashSet::new(),
-            stack: ~[orig_node_idx],
-            result: ~[],
+            stack: vec!(orig_node_idx),
+            result: Vec::new(),
             dup_found: false
         };
         state.set.insert(orig_node_idx);

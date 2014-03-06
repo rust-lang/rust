@@ -19,6 +19,7 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::opt_vec;
 
@@ -41,7 +42,7 @@ pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
 
 pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
                        inputs: &[ty::t], output: ty::t) -> Type {
-    let mut atys: ~[Type] = ~[];
+    let mut atys: Vec<Type> = Vec::new();
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
@@ -62,9 +63,9 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
 
     // Use the output as the actual return value if it's immediate.
     if use_out_pointer || return_type_is_void(cx, output) {
-        Type::func(atys, &Type::void())
+        Type::func(atys.as_slice(), &Type::void())
     } else {
-        Type::func(atys, &lloutputtype)
+        Type::func(atys.as_slice(), &lloutputtype)
     }
 }
 
@@ -72,11 +73,14 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
 pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
     match ty::get(fty).sty {
         ty::ty_closure(ref f) => {
-            type_of_rust_fn(cx, true, f.sig.inputs, f.sig.output)
+            type_of_rust_fn(cx, true, f.sig.inputs.as_slice(), f.sig.output)
         }
         ty::ty_bare_fn(ref f) => {
             if f.abis.is_rust() || f.abis.is_intrinsic() {
-                type_of_rust_fn(cx, false, f.sig.inputs, f.sig.output)
+                type_of_rust_fn(cx,
+                                false,
+                                f.sig.inputs.as_slice(),
+                                f.sig.output)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }
@@ -216,7 +220,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
         let repr = adt::represent_type(cx, t);
-        let name = llvm_type_name(cx, an_enum, did, substs.tps);
+        let name = llvm_type_name(cx, an_enum, did, substs.tps.as_slice());
         adt::incomplete_type_of(cx, repr, name)
       }
       ty::ty_box(typ) => {
@@ -277,7 +281,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               // in *after* placing it into the type cache. This prevents
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
-              let name = llvm_type_name(cx, a_struct, did, substs.tps);
+              let name = llvm_type_name(cx,
+                                        a_struct,
+                                        did,
+                                        substs.tps.as_slice());
               adt::incomplete_type_of(cx, repr, name)
           }
       }

@@ -26,6 +26,7 @@ use middle::ty::{FreeRegion};
 use middle::ty;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
@@ -76,7 +77,7 @@ The region maps encode information about region relationships.
 pub struct RegionMaps {
     priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv var_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
+    priv free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
     priv rvalue_scopes: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
@@ -112,7 +113,7 @@ impl RegionMaps {
 
         debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
 
-        free_region_map.get().insert(sub, ~[sup]);
+        free_region_map.get().insert(sub, vec!(sup));
     }
 
     pub fn record_encl_scope(&self, sub: ast::NodeId, sup: ast::NodeId) {
@@ -282,11 +283,11 @@ impl RegionMaps {
         // doubles as a way to detect if we've seen a particular FR
         // before.  Note that we expect this graph to be an *extremely
         // shallow* tree.
-        let mut queue = ~[sub];
+        let mut queue = vec!(sub);
         let mut i = 0;
         while i < queue.len() {
             let free_region_map = self.free_region_map.borrow();
-            match free_region_map.get().find(&queue[i]) {
+            match free_region_map.get().find(queue.get(i)) {
                 Some(parents) => {
                     for parent in parents.iter() {
                         if *parent == sup {
@@ -368,7 +369,7 @@ impl RegionMaps {
         // where they diverge.  If one vector is a suffix of the other,
         // then the corresponding scope is a superscope of the other.
 
-        if a_ancestors[a_index] != b_ancestors[b_index] {
+        if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
             return None;
         }
 
@@ -379,16 +380,15 @@ impl RegionMaps {
             if b_index == 0u { return Some(scope_b); }
             a_index -= 1u;
             b_index -= 1u;
-            if a_ancestors[a_index] != b_ancestors[b_index] {
-                return Some(a_ancestors[a_index + 1u]);
+            if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
+                return Some(*a_ancestors.get(a_index + 1u));
             }
         }
 
         fn ancestors_of(this: &RegionMaps, scope: ast::NodeId)
-            -> ~[ast::NodeId]
-        {
+            -> Vec<ast::NodeId> {
             // debug!("ancestors_of(scope={})", scope);
-            let mut result = ~[scope];
+            let mut result = vec!(scope);
             let mut scope = scope;
             loop {
                 let scope_map = this.scope_map.borrow();
