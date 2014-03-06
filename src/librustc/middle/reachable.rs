@@ -59,7 +59,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
     }
 }
 
-fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
+fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
     if attributes_specify_inlining(method.attrs.as_slice()) ||
         generics_require_inlining(&method.generics) {
@@ -83,9 +83,9 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
 }
 
 // Information needed while computing reachability.
-struct ReachableContext {
+struct ReachableContext<'a> {
     // The type context.
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     // The method map, which links node IDs of method call expressions to the
     // methods they've been resolved to.
     method_map: typeck::MethodMap,
@@ -96,14 +96,14 @@ struct ReachableContext {
     worklist: @RefCell<Vec<ast::NodeId> >,
 }
 
-struct MarkSymbolVisitor {
-    worklist: @RefCell<Vec<ast::NodeId> >,
+struct MarkSymbolVisitor<'a> {
+    worklist: @RefCell<Vec<ast::NodeId>>,
     method_map: typeck::MethodMap,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     reachable_symbols: @RefCell<NodeSet>,
 }
 
-impl Visitor<()> for MarkSymbolVisitor {
+impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
 
@@ -177,9 +177,9 @@ impl Visitor<()> for MarkSymbolVisitor {
     }
 }
 
-impl ReachableContext {
+impl<'a> ReachableContext<'a> {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::MethodMap) -> ReachableContext {
+    fn new(tcx: &'a ty::ctxt, method_map: typeck::MethodMap) -> ReachableContext<'a> {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
@@ -190,7 +190,7 @@ impl ReachableContext {
 
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
-    fn def_id_represents_local_inlined_item(tcx: ty::ctxt, def_id: ast::DefId)
+    fn def_id_represents_local_inlined_item(tcx: &ty::ctxt, def_id: ast::DefId)
                                             -> bool {
         if def_id.krate != ast::LOCAL_CRATE {
             return false
@@ -233,7 +233,7 @@ impl ReachableContext {
     }
 
     // Helper function to set up a visitor for `propagate()` below.
-    fn init_visitor(&self) -> MarkSymbolVisitor {
+    fn init_visitor(&self) -> MarkSymbolVisitor<'a> {
         let (worklist, method_map) = (self.worklist, self.method_map);
         let (tcx, reachable_symbols) = (self.tcx, self.reachable_symbols);
 
@@ -387,7 +387,7 @@ impl ReachableContext {
     }
 }
 
-pub fn find_reachable(tcx: ty::ctxt,
+pub fn find_reachable(tcx: &ty::ctxt,
                       method_map: typeck::MethodMap,
                       exported_items: &privacy::ExportedItems)
                       -> @RefCell<NodeSet> {

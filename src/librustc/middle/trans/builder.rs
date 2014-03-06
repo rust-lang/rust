@@ -25,7 +25,7 @@ use syntax::codemap::Span;
 
 pub struct Builder<'a> {
     llbuilder: BuilderRef,
-    ccx: &'a CrateContext,
+    ccx: &'a CrateContext<'a>,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a

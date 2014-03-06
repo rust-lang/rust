@@ -56,14 +56,14 @@ pub struct Maps {
     capture_map: middle::moves::CaptureMap,
 }
 
-struct DecodeContext {
+struct DecodeContext<'a> {
     cdata: @cstore::crate_metadata,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     maps: Maps
 }
 
-struct ExtendedDecodeContext {
-    dcx: @DecodeContext,
+struct ExtendedDecodeContext<'a> {
+    dcx: @DecodeContext<'a>,
     from_id_range: ast_util::IdRange,
     to_id_range: ast_util::IdRange
 }
@@ -114,7 +114,7 @@ pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
 }
 
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
-                           tcx: ty::ctxt,
+                           tcx: &ty::ctxt,
                            maps: Maps,
                            path: Vec<ast_map::PathElem> ,
                            par_doc: ebml::Doc)
@@ -188,7 +188,7 @@ fn reserve_id_range(sess: &Session,
     ast_util::IdRange { min: to_id_min, max: to_id_max }
 }
 
-impl ExtendedDecodeContext {
+impl<'a> ExtendedDecodeContext<'a> {
     pub fn tr_id(&self, id: ast::NodeId) -> ast::NodeId {
         /*!
          * Translates an internal id, meaning a node id that is known
@@ -375,11 +375,11 @@ fn decode_ast(par_doc: ebml::Doc) -> ast::InlinedItem {
     Decodable::decode(&mut d)
 }
 
-struct AstRenumberer {
-    xcx: @ExtendedDecodeContext,
+struct AstRenumberer<'a> {
+    xcx: @ExtendedDecodeContext<'a>,
 }
 
-impl ast_map::FoldOps for AstRenumberer {
+impl<'a> ast_map::FoldOps for AstRenumberer<'a> {
     fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
         if id == ast::DUMMY_NODE_ID {
             // Used by ast_map to map the NodeInlinedParent.
@@ -702,19 +702,19 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
 
 pub trait vtable_decoder_helpers {
     fn read_vtable_res(&mut self,
-                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                       tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res;
     fn read_vtable_param_res(&mut self,
-                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                       tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_param_res;
     fn read_vtable_origin(&mut self,
-                          tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                          tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                           -> typeck::vtable_origin;
 }
 
 impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     fn read_vtable_res(&mut self,
-                       tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                       tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res {
         @self.read_to_vec(|this|
                           this.read_vtable_param_res(tcx, cdata))
@@ -723,7 +723,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_vtable_param_res(&mut self,
-                             tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                             tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_param_res {
         @self.read_to_vec(|this|
                           this.read_vtable_origin(tcx, cdata))
@@ -732,7 +732,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_vtable_origin(&mut self,
-                          tcx: ty::ctxt, cdata: @cstore::crate_metadata)
+                          tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
         -> typeck::vtable_origin {
         self.read_enum("vtable_origin", |this| {
             this.read_enum_variant(["vtable_static",
@@ -775,11 +775,11 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
 // Encoding and decoding the side tables
 
 trait get_ty_str_ctxt {
-    fn ty_str_ctxt(&self) -> @tyencode::ctxt;
+    fn ty_str_ctxt<'a>(&'a self) -> @tyencode::ctxt<'a>;
 }
 
 impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
-    fn ty_str_ctxt(&self) -> @tyencode::ctxt {
+    fn ty_str_ctxt<'a>(&'a self) -> @tyencode::ctxt<'a> {
         @tyencode::ctxt {
             diag: self.tcx.sess.diagnostic(),
             ds: e::def_to_str,
@@ -1122,15 +1122,15 @@ trait ebml_decoder_decoder_helpers {
     // Versions of the type reading functions that don't need the full
     // ExtendedDecodeContext.
     fn read_ty_noxcx(&mut self,
-                     tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t;
+                     tcx: &ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t;
     fn read_tys_noxcx(&mut self,
-                      tcx: ty::ctxt,
-                      cdata: @cstore::crate_metadata) -> Vec<ty::t> ;
+                      tcx: &ty::ctxt,
+                      cdata: @cstore::crate_metadata) -> Vec<ty::t>;
 }
 
 impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_ty_noxcx(&mut self,
-                     tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
+                     tcx: &ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
         self.read_opaque(|_, doc| {
             tydecode::parse_ty_data(
                 doc.data,
@@ -1142,7 +1142,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_tys_noxcx(&mut self,
-                      tcx: ty::ctxt,
+                      tcx: &ty::ctxt,
                       cdata: @cstore::crate_metadata) -> Vec<ty::t> {
         self.read_to_vec(|this| this.read_ty_noxcx(tcx, cdata) )
             .move_iter()

@@ -200,7 +200,7 @@ pub enum vtable_origin {
 }
 
 impl Repr for vtable_origin {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
                 format!("vtable_static({:?}:{}, {}, {})",
@@ -232,7 +232,7 @@ pub struct impl_res {
 }
 
 impl Repr for impl_res {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         format!("impl_res \\{trait_vtables={}, self_vtables={}\\}",
              self.trait_vtables.repr(tcx),
              self.self_vtables.repr(tcx))
@@ -241,22 +241,22 @@ impl Repr for impl_res {
 
 pub type impl_vtable_map = RefCell<DefIdMap<impl_res>>;
 
-pub struct CrateCtxt {
+pub struct CrateCtxt<'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
     method_map: MethodMap,
     vtable_map: vtable_map,
-    tcx: ty::ctxt
+    tcx: &'a ty::ctxt
 }
 
 // Functions that write types into the node type table
-pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
+pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
     let mut node_types = tcx.node_types.borrow_mut();
     node_types.get().insert(node_id as uint, ty);
 }
-pub fn write_substs_to_tcx(tcx: ty::ctxt,
+pub fn write_substs_to_tcx(tcx: &ty::ctxt,
                            node_id: ast::NodeId,
                            substs: Vec<ty::t> ) {
     if substs.len() > 0u {
@@ -268,7 +268,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
         node_type_substs.get().insert(node_id, substs);
     }
 }
-pub fn write_tpt_to_tcx(tcx: ty::ctxt,
+pub fn write_tpt_to_tcx(tcx: &ty::ctxt,
                         node_id: ast::NodeId,
                         tpt: &ty::ty_param_substs_and_ty) {
     write_ty_to_tcx(tcx, node_id, tpt.ty);
@@ -277,7 +277,7 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
+pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
     let def_map = tcx.def_map.borrow();
     match def_map.get().find(&id) {
         Some(&x) => x,
@@ -300,7 +300,7 @@ pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     }
 }
 
-pub fn require_same_types(tcx: ty::ctxt,
+pub fn require_same_types(tcx: &ty::ctxt,
                           maybe_infcx: Option<&infer::InferCtxt>,
                           t1_is_expected: bool,
                           span: Span,
@@ -457,7 +457,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    trait_map: resolve::TraitMap,
                    krate: &ast::Crate)
                 -> (MethodMap, vtable_map) {

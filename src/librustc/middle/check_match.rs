@@ -30,47 +30,41 @@ use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 
-struct MatchCheckCtxt {
-    tcx: ty::ctxt,
+struct MatchCheckCtxt<'a> {
+    tcx: &'a ty::ctxt,
     method_map: MethodMap,
     moves_map: moves::MovesMap
 }
 
-struct CheckMatchVisitor {
-    cx: @MatchCheckCtxt
-}
-
-impl Visitor<()> for CheckMatchVisitor {
+impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
-        check_expr(self, self.cx, ex, ());
+        check_expr(self, ex);
     }
     fn visit_local(&mut self, l: &Local, _: ()) {
-        check_local(self, self.cx, l, ());
+        check_local(self, l);
     }
     fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
-        check_fn(self, self.cx, fk, fd, b, s, n, ());
+        check_fn(self, fk, fd, b, s, n);
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: MethodMap,
                    moves_map: moves::MovesMap,
                    krate: &Crate) {
-    let cx = @MatchCheckCtxt {tcx: tcx,
-                              method_map: method_map,
-                              moves_map: moves_map};
-    let mut v = CheckMatchVisitor { cx: cx };
+    let mut cx = MatchCheckCtxt {
+        tcx: tcx,
+        method_map: method_map,
+        moves_map: moves_map
+    };
 
-    visit::walk_crate(&mut v, krate, ());
+    visit::walk_crate(&mut cx, krate, ());
 
     tcx.sess.abort_if_errors();
 }
 
-fn check_expr(v: &mut CheckMatchVisitor,
-                  cx: @MatchCheckCtxt,
-                  ex: &Expr,
-                  s: ()) {
-    visit::walk_expr(v, ex, s);
+fn check_expr(cx: &mut MatchCheckCtxt, ex: &Expr) {
+    visit::walk_expr(cx, ex, ());
     match ex.node {
       ExprMatch(scrut, ref arms) => {
         // First, check legality of move bindings.
@@ -871,11 +865,8 @@ fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
     }
 }
 
-fn check_local(v: &mut CheckMatchVisitor,
-                   cx: &MatchCheckCtxt,
-                   loc: &Local,
-                   s: ()) {
-    visit::walk_local(v, loc, s);
+fn check_local(cx: &mut MatchCheckCtxt, loc: &Local) {
+    visit::walk_local(cx, loc, ());
     if is_refutable(cx, loc.pat) {
         cx.tcx.sess.span_err(loc.pat.span,
                              "refutable pattern in local binding");
@@ -885,15 +876,13 @@ fn check_local(v: &mut CheckMatchVisitor,
     check_legality_of_move_bindings(cx, false, [ loc.pat ]);
 }
 
-fn check_fn(v: &mut CheckMatchVisitor,
-                cx: &MatchCheckCtxt,
-                kind: &FnKind,
-                decl: &FnDecl,
-                body: &Block,
-                sp: Span,
-                id: NodeId,
-                s: ()) {
-    visit::walk_fn(v, kind, decl, body, sp, id, s);
+fn check_fn(cx: &mut MatchCheckCtxt,
+            kind: &FnKind,
+            decl: &FnDecl,
+            body: &Block,
+            sp: Span,
+            id: NodeId) {
+    visit::walk_fn(cx, kind, decl, body, sp, id, ());
     for input in decl.inputs.iter() {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,

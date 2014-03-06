@@ -181,8 +181,8 @@ pub struct MoveMaps {
 }
 
 #[deriving(Clone)]
-struct VisitContext {
-    tcx: ty::ctxt,
+struct VisitContext<'a> {
+    tcx: &'a ty::ctxt,
     method_map: MethodMap,
     move_maps: MoveMaps
 }
@@ -193,7 +193,7 @@ enum UseMode {
     Read         // Read no matter what the type.
 }
 
-impl visit::Visitor<()> for VisitContext {
+impl<'a> visit::Visitor<()> for VisitContext<'a> {
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         compute_modes_for_fn(self, fk, fd, b, s, n);
@@ -208,7 +208,7 @@ impl visit::Visitor<()> for VisitContext {
     fn visit_ty(&mut self, _t: &Ty, _: ()) {}
 }
 
-pub fn compute_moves(tcx: ty::ctxt,
+pub fn compute_moves(tcx: &ty::ctxt,
                      method_map: MethodMap,
                      krate: &Crate) -> MoveMaps
 {
@@ -265,7 +265,7 @@ fn compute_modes_for_expr(cx: &mut VisitContext,
     cx.consume_expr(expr);
 }
 
-impl VisitContext {
+impl<'a> VisitContext<'a> {
     pub fn consume_exprs(&mut self, exprs: &[@Expr]) {
         for expr in exprs.iter() {
             self.consume_expr(*expr);
@@ -444,7 +444,7 @@ impl VisitContext {
                             ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
-                    fn has_dtor(tcx: ty::ctxt, ty: ty::t) -> bool {
+                    fn has_dtor(tcx: &ty::ctxt, ty: ty::t) -> bool {
                         use middle::ty::{get,ty_struct,ty_enum};
                         match get(ty).sty {
                             ty_struct(did, _) | ty_enum(did, _) => ty::has_dtor(tcx, did),

@@ -62,7 +62,7 @@ pub struct PState<'a> {
     data: &'a [u8],
     krate: ast::CrateNum,
     pos: uint,
-    tcx: ty::ctxt
+    tcx: &'a ty::ctxt
 }
 
 fn peek(st: &PState) -> char {
@@ -105,7 +105,7 @@ fn parse_ident_(st: &mut PState, is_last: |char| -> bool) -> ast::Ident {
 }
 
 pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
-                             pos: uint, tcx: ty::ctxt) -> PState<'a> {
+                             pos: uint, tcx: &'a ty::ctxt) -> PState<'a> {
     PState {
         data: data,
         krate: crate_num,
@@ -114,25 +114,25 @@ pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: ast::CrateNum,
     }
 }
 
-pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: ty::ctxt,
+pub fn parse_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                      conv: conv_did) -> ty::t {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(&mut st, conv)
 }
 
-pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: ty::ctxt,
+pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                              conv: conv_did) -> ty::BareFnTy {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_bare_fn_ty(&mut st, conv)
 }
 
-pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: ty::ctxt,
+pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                             conv: conv_did) -> ty::TraitRef {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
 }
 
-pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: ty::ctxt,
+pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: &ty::ctxt,
                          conv: conv_did) -> ty::substs {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
@@ -565,7 +565,7 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
 }
 
 pub fn parse_type_param_def_data(data: &[u8], start: uint,
-                                 crate_num: ast::CrateNum, tcx: ty::ctxt,
+                                 crate_num: ast::CrateNum, tcx: &ty::ctxt,
                                  conv: conv_did) -> ty::TypeParameterDef
 {
     let mut st = parse_state_from_data(data, crate_num, start, tcx);

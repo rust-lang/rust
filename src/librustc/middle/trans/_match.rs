@@ -257,7 +257,7 @@ enum Opt {
     vec_len(/* length */ uint, VecLenOpt, /*range of matches*/(uint, uint))
 }
 
-fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
+fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
         (&lit(a), &lit(b)) => {
             match (a, b) {
@@ -427,7 +427,7 @@ struct Match<'a,'b> {
     bound_ptrs: Vec<(Ident, ValueRef)> }
 
 impl<'a,'b> Repr for Match<'a,'b> {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)
@@ -931,7 +931,7 @@ fn enter_region<'r,
 // on a set of enum variants or a literal.
 fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
     let ccx = bcx.ccx();
-    fn add_to_set(tcx: ty::ctxt, set: &mut Vec<Opt> , val: Opt) {
+    fn add_to_set(tcx: &ty::ctxt, set: &mut Vec<Opt>, val: Opt) {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }

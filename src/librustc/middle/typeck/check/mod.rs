@@ -155,8 +155,8 @@ pub mod method;
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited {
-    infcx: infer::InferCtxt,
+pub struct Inherited<'a> {
+    infcx: infer::InferCtxt<'a>,
     locals: @RefCell<NodeMap<ty::t>>,
     param_env: ty::ParameterEnvironment,
 
@@ -221,7 +221,7 @@ enum IsBinopAssignment{
 }
 
 #[deriving(Clone)]
-pub struct FnCtxt {
+pub struct FnCtxt<'a> {
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
     // have been reported, we will skip regionck and other work that
@@ -251,15 +251,15 @@ pub struct FnCtxt {
     // function return type.
     fn_kind: FnKind,
 
-    inh: @Inherited,
+    inh: @Inherited<'a>,
 
-    ccx: @CrateCtxt,
+    ccx: @CrateCtxt<'a>,
 }
 
-impl Inherited {
-    fn new(tcx: ty::ctxt,
+impl<'a> Inherited<'a> {
+    fn new(tcx: &'a ty::ctxt,
            param_env: ty::ParameterEnvironment)
-           -> Inherited {
+           -> Inherited<'a> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
             locals: @RefCell::new(NodeMap::new()),
@@ -275,10 +275,10 @@ impl Inherited {
 }
 
 // Used by check_const and check_enum_variants
-pub fn blank_fn_ctxt(ccx: @CrateCtxt,
-                     rty: ty::t,
-                     region_bnd: ast::NodeId)
-                     -> @FnCtxt {
+pub fn blank_fn_ctxt<'a>(ccx: @CrateCtxt<'a>,
+                         rty: ty::t,
+                         region_bnd: ast::NodeId)
+                         -> @FnCtxt<'a> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
     let param_env = ty::ParameterEnvironment { free_substs: substs::empty(),
@@ -295,19 +295,19 @@ pub fn blank_fn_ctxt(ccx: @CrateCtxt,
     }
 }
 
-impl ExprTyProvider for FnCtxt {
+impl<'a> ExprTyProvider for FnCtxt<'a> {
     fn expr_ty(&self, ex: &ast::Expr) -> ty::t {
         self.expr_ty(ex)
     }
 
-    fn ty_ctxt(&self) -> ty::ctxt {
+    fn ty_ctxt<'a>(&'a self) -> &'a ty::ctxt {
         self.ccx.tcx
     }
 }
 
-struct CheckItemTypesVisitor { ccx: @CrateCtxt }
+struct CheckItemTypesVisitor<'a> { ccx: @CrateCtxt<'a> }
 
-impl Visitor<()> for CheckItemTypesVisitor {
+impl<'a> Visitor<()> for CheckItemTypesVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) {
         check_item(self.ccx, i);
         visit::walk_item(self, i, ());
@@ -340,12 +340,11 @@ fn check_bare_fn(ccx: @CrateCtxt,
     }
 }
 
-struct GatherLocalsVisitor {
-                     fcx: @FnCtxt,
-                     tcx: ty::ctxt,
+struct GatherLocalsVisitor<'a> {
+    fcx: @FnCtxt<'a>
 }
 
-impl GatherLocalsVisitor {
+impl<'a> GatherLocalsVisitor<'a> {
     fn assign(&mut self, nid: ast::NodeId, ty_opt: Option<ty::t>) {
             match ty_opt {
                 None => {
@@ -364,7 +363,7 @@ impl GatherLocalsVisitor {
     }
 }
 
-impl Visitor<()> for GatherLocalsVisitor {
+impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
         // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &ast::Local, _: ()) {
             let o_ty = match local.ty.node {
@@ -416,14 +415,14 @@ impl Visitor<()> for GatherLocalsVisitor {
 
 }
 
-fn check_fn(ccx: @CrateCtxt,
-            purity: ast::Purity,
-            fn_sig: &ty::FnSig,
-            decl: &ast::FnDecl,
-            id: ast::NodeId,
-            body: &ast::Block,
-            fn_kind: FnKind,
-            inherited: @Inherited) -> @FnCtxt
+fn check_fn<'a>(ccx: @CrateCtxt<'a>,
+                purity: ast::Purity,
+                fn_sig: &ty::FnSig,
+                decl: &ast::FnDecl,
+                id: ast::NodeId,
+                body: &ast::Block,
+                fn_kind: FnKind,
+                inherited: @Inherited<'a>) -> @FnCtxt<'a>
 {
     /*!
      * Helper used by check_bare_fn and check_expr_fn.  Does the
@@ -467,7 +466,7 @@ fn check_fn(ccx: @CrateCtxt,
 
     {
 
-        let mut visit = GatherLocalsVisitor { fcx: fcx, tcx: tcx, };
+        let mut visit = GatherLocalsVisitor { fcx: fcx, };
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
@@ -512,8 +511,8 @@ fn check_fn(ccx: @CrateCtxt,
     fcx
 }
 
-pub fn check_no_duplicate_fields(tcx: ty::ctxt,
-                                 fields: Vec<(ast::Ident, Span)> ) {
+pub fn check_no_duplicate_fields(tcx: &ty::ctxt,
+                                 fields: Vec<(ast::Ident, Span)>) {
     let mut field_names = HashMap::new();
 
     for p in fields.iter() {
@@ -769,7 +768,7 @@ fn check_impl_methods_against_trait(ccx: @CrateCtxt,
  * - trait_m: the method in the trait
  * - trait_substs: the substitutions used on the type of the trait
  */
-fn compare_impl_method(tcx: ty::ctxt,
+fn compare_impl_method(tcx: &ty::ctxt,
                        impl_generics: &ty::Generics,
                        impl_m: @ty::Method,
                        impl_m_span: Span,
@@ -956,8 +955,8 @@ fn compare_impl_method(tcx: ty::ctxt,
     }
 }
 
-impl AstConv for FnCtxt {
-    fn tcx(&self) -> ty::ctxt { self.ccx.tcx }
+impl<'a> AstConv for FnCtxt<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.ccx.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx(), id)
@@ -972,8 +971,8 @@ impl AstConv for FnCtxt {
     }
 }
 
-impl FnCtxt {
-    pub fn infcx<'a>(&'a self) -> &'a infer::InferCtxt {
+impl<'a> FnCtxt<'a> {
+    pub fn infcx<'b>(&'b self) -> &'b infer::InferCtxt<'a> {
         &self.inh.infcx
     }
 
@@ -989,7 +988,7 @@ impl FnCtxt {
     }
 }
 
-impl RegionScope for infer::InferCtxt {
+impl<'a> RegionScope for infer::InferCtxt<'a> {
     fn anon_regions(&self, span: Span, count: uint)
                     -> Result<Vec<ty::Region> , ()> {
         Ok(Vec::from_fn(count, |_| {
@@ -998,7 +997,7 @@ impl RegionScope for infer::InferCtxt {
     }
 }
 
-impl FnCtxt {
+impl<'a> FnCtxt<'a> {
     pub fn tag(&self) -> ~str {
         format!("{}", self as *FnCtxt)
     }
@@ -1444,7 +1443,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
 // Only for fields! Returns <none> for methods>
 // Indifferent to privacy flags
-pub fn lookup_field_ty(tcx: ty::ctxt,
+pub fn lookup_field_ty(tcx: &ty::ctxt,
                        class_id: ast::DefId,
                        items: &[ty::field_ty],
                        fieldname: ast::Name,
@@ -1463,7 +1462,7 @@ pub enum DerefArgs {
 
 // Given the provenance of a static method, returns the generics of the static
 // method's container.
-fn generics_of_static_method_container(type_context: ty::ctxt,
+fn generics_of_static_method_container(type_context: &ty::ctxt,
                                        provenance: ast::MethodProvenance)
                                        -> ty::Generics {
     match provenance {
@@ -3413,7 +3412,7 @@ pub fn check_const_with_ty(fcx: @FnCtxt,
 /// pointer, which would mean their size is unbounded. This is different from
 /// the question of whether a type can be instantiated. See the definition of
 /// `check_instantiable`.
-pub fn check_representable(tcx: ty::ctxt,
+pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
                            designation: &str) {
@@ -3446,7 +3445,7 @@ pub fn check_representable(tcx: ty::ctxt,
 ///     enum foo { Some(@foo) }
 ///
 /// is representable, but not instantiable.
-pub fn check_instantiable(tcx: ty::ctxt,
+pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
                           item_id: ast::NodeId) {
     let item_ty = ty::node_id_to_type(tcx, item_id);
@@ -3458,7 +3457,7 @@ pub fn check_instantiable(tcx: ty::ctxt,
     }
 }
 
-pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
+pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = ty::node_id_to_type(tcx, id);
     if ty::type_needs_subst(t) {
         tcx.sess.span_err(sp, "SIMD vector cannot be generic");
@@ -3550,7 +3549,7 @@ pub fn check_enum_variants(ccx: @CrateCtxt,
                     // that the expression is in an form that eval_const_expr can
                     // handle, so we may still get an internal compiler error
 
-                    match const_eval::eval_const_expr_partial(&ccx.tcx, e) {
+                    match const_eval::eval_const_expr_partial(ccx.tcx, e) {
                         Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
                         Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
                         Ok(_) => {
@@ -3939,7 +3938,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool {
+pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {

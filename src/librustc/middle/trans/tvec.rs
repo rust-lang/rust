@@ -38,7 +38,7 @@ use syntax::parse::token::InternedString;
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
 // this point.
-pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+pub fn expand_boxed_vec_ty(tcx: &ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
@@ -441,7 +441,7 @@ pub fn write_content<'a>(
                     return expr::trans_into(bcx, element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    let count = ty::eval_repeat_count(&bcx.tcx(), count_expr);
+                    let count = ty::eval_repeat_count(bcx.tcx(), count_expr);
                     if count == 0 {
                         return bcx;
                     }
@@ -505,7 +505,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
         },
         ast::ExprVec(ref es, _) => es.len(),
         ast::ExprRepeat(_, count_expr, _) => {
-            ty::eval_repeat_count(&bcx.tcx(), count_expr)
+            ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

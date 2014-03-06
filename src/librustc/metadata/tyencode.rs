@@ -35,12 +35,12 @@ macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
     format_args!(|a| { mywrite($wr, a) }, $($arg)*)
 ) )
 
-pub struct ctxt {
+pub struct ctxt<'a> {
     diag: @SpanHandler,
     // Def -> str Callback:
     ds: extern "Rust" fn(DefId) -> ~str,
     // The type context.
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     abbrevs: abbrev_ctxt
 }
 

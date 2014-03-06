@@ -207,14 +207,14 @@ impl param_substs {
     }
 }
 
-fn param_substs_to_str(this: &param_substs, tcx: ty::ctxt) -> ~str {
+fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> ~str {
     format!("param_substs \\{tys:{}, vtables:{}\\}",
          this.tys.repr(tcx),
          this.vtables.repr(tcx))
 }
 
 impl Repr for param_substs {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         param_substs_to_str(self, tcx)
     }
 }
@@ -286,7 +286,7 @@ pub struct FunctionContext<'a> {
     block_arena: &'a TypedArena<Block<'a>>,
 
     // This function's enclosing crate context.
-    ccx: @CrateContext,
+    ccx: @CrateContext<'a>,
 
     // Used and maintained by the debuginfo module.
     debug_context: debuginfo::FunctionDebugContext,
@@ -435,8 +435,8 @@ impl<'a> Block<'a> {
         })
     }
 
-    pub fn ccx(&self) -> @CrateContext { self.fcx.ccx }
-    pub fn tcx(&self) -> ty::ctxt {
+    pub fn ccx(&self) -> @CrateContext<'a> { self.fcx.ccx }
+    pub fn tcx(&self) -> &'a ty::ctxt {
         self.fcx.ccx.tcx
     }
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
@@ -858,7 +858,7 @@ pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res
                                        vts)
 }
 
-pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
+pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
                                           param_substs: Option<@param_substs>,
                                           vts: typeck::vtable_res)
     -> typeck::vtable_res {
@@ -870,7 +870,7 @@ pub fn resolve_vtables_under_param_substs(tcx: ty::ctxt,
 }
 
 pub fn resolve_param_vtables_under_param_substs(
-    tcx: ty::ctxt,
+    tcx: &ty::ctxt,
     param_substs: Option<@param_substs>,
     ds: typeck::vtable_param_res)
     -> typeck::vtable_param_res {
@@ -883,7 +883,7 @@ pub fn resolve_param_vtables_under_param_substs(
 
 
 
-pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
+pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
                                          param_substs: Option<@param_substs>,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
@@ -919,7 +919,7 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
     }
 }
 
-pub fn find_vtable(tcx: ty::ctxt,
+pub fn find_vtable(tcx: &ty::ctxt,
                    ps: &param_substs,
                    n_param: typeck::param_index,
                    n_bound: uint)

@@ -61,7 +61,7 @@ pub trait UnifyInferCtxtMethods {
              -> (V, uint);
 }
 
-impl UnifyInferCtxtMethods for InferCtxt {
+impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
     fn get<T:Clone,
            V:Clone + Eq + Vid + UnifyVid<T>>(
            &self,
@@ -80,7 +80,7 @@ impl UnifyInferCtxtMethods for InferCtxt {
         return helper(tcx, vb.get(), vid);
 
         fn helper<T:Clone, V:Clone+Eq+Vid>(
-            tcx: ty::ctxt,
+            tcx: &ty::ctxt,
             vb: &mut ValsAndBindings<V,T>,
             vid: V) -> Node<V, T>
         {
@@ -200,7 +200,7 @@ pub trait InferCtxtMethods {
                     -> ures;
 }
 
-impl InferCtxtMethods for InferCtxt {
+impl<'a> InferCtxtMethods for InferCtxt<'a> {
     fn simple_vars<T:Clone + Eq + InferStr + SimplyUnifiable,
                    V:Clone + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
                    &self,

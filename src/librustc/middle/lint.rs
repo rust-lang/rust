@@ -427,7 +427,7 @@ struct Context<'a> {
     // Current levels of each lint warning
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     // maps from an expression id that corresponds to a method call to the
     // details of the method to be invoked
     method_map: typeck::MethodMap,
@@ -670,7 +670,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
     }
 }
 impl<'a> AstConv for Context<'a>{
-    fn tcx(&self) -> ty::ctxt { self.tcx }
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx, id)
@@ -795,7 +795,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
         }
     }
 
-    fn check_limits(tcx: ty::ctxt, binop: ast::BinOp,
+    fn check_limits(tcx: &ty::ctxt, binop: ast::BinOp,
                     l: &ast::Expr, r: &ast::Expr) -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
             (&ast::ExprLit(_), _) => (l, r, true),
@@ -1749,7 +1749,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    krate: &ast::Crate) {

@@ -152,7 +152,7 @@ pub enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
+fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> ~str {
     let cm = cx.sess.codemap;
     match lnk {
         FreeVarNode(s) => format!("Free var node [{}]", cm.span_to_str(s)),
@@ -164,7 +164,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 
 struct LivenessVisitor;
 
-impl Visitor<@IrMaps> for LivenessVisitor {
+impl<'a> Visitor<@IrMaps<'a>> for LivenessVisitor {
     fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, e: @IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
@@ -173,7 +173,7 @@ impl Visitor<@IrMaps> for LivenessVisitor {
     fn visit_arm(&mut self, a: &Arm, e: @IrMaps) { visit_arm(self, a, e); }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
                    capture_map: moves::CaptureMap,
                    krate: &Crate) {
@@ -251,8 +251,8 @@ pub enum VarKind {
     ImplicitRet
 }
 
-pub struct IrMaps {
-    tcx: ty::ctxt,
+pub struct IrMaps<'a> {
+    tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
     capture_map: moves::CaptureMap,
 
@@ -265,10 +265,10 @@ pub struct IrMaps {
     lnks: RefCell<Vec<LiveNodeKind> >,
 }
 
-fn IrMaps(tcx: ty::ctxt,
-          method_map: typeck::MethodMap,
-          capture_map: moves::CaptureMap)
-       -> IrMaps {
+fn IrMaps<'a>(tcx: &'a ty::ctxt,
+              method_map: typeck::MethodMap,
+              capture_map: moves::CaptureMap)
+              -> IrMaps<'a> {
     IrMaps {
         tcx: tcx,
         method_map: method_map,
@@ -283,7 +283,7 @@ fn IrMaps(tcx: ty::ctxt,
     }
 }
 
-impl IrMaps {
+impl<'a> IrMaps<'a> {
     pub fn add_live_node(&self, lnk: LiveNodeKind) -> LiveNode {
         let num_live_nodes = self.num_live_nodes.get();
         let ln = LiveNode(num_live_nodes);
@@ -368,7 +368,7 @@ impl IrMaps {
     }
 }
 
-impl Visitor<()> for Liveness {
+impl<'a> Visitor<()> for Liveness<'a> {
     fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, fk, fd, b, s, n);
     }
@@ -586,9 +586,9 @@ static ACC_USE: uint = 4u;
 
 pub type LiveNodeMap = @RefCell<NodeMap<LiveNode>>;
 
-pub struct Liveness {
-    tcx: ty::ctxt,
-    ir: @IrMaps,
+pub struct Liveness<'a> {
+    tcx: &'a ty::ctxt,
+    ir: @IrMaps<'a>,
     s: Specials,
     successors: @RefCell<Vec<LiveNode> >,
     users: @RefCell<Vec<Users> >,
@@ -602,7 +602,7 @@ pub struct Liveness {
     cont_ln: LiveNodeMap
 }
 
-fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
+fn Liveness<'a>(ir: @IrMaps<'a>, specials: Specials) -> Liveness<'a> {
     Liveness {
         ir: ir,
         tcx: ir.tcx,
@@ -618,7 +618,7 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
     }
 }
 
-impl Liveness {
+impl<'a> Liveness<'a> {
     pub fn live_node(&self, node_id: NodeId, span: Span) -> LiveNode {
         let ir: &IrMaps = self.ir;
         let live_node_map = ir.live_node_map.borrow();
@@ -1549,7 +1549,7 @@ pub enum ReadKind {
     PartiallyMovedValue
 }
 
-impl Liveness {
+impl<'a> Liveness<'a> {
     pub fn check_ret(&self,
                      id: NodeId,
                      sp: Span,

@@ -846,7 +846,7 @@ impl Cleanup for FreeValue {
     }
 }
 
-pub fn temporary_scope(tcx: ty::ctxt,
+pub fn temporary_scope(tcx: &ty::ctxt,
                        id: ast::NodeId)
                        -> ScopeId {
     match tcx.region_maps.temporary_scope(id) {
@@ -861,7 +861,7 @@ pub fn temporary_scope(tcx: ty::ctxt,
     }
 }
 
-pub fn var_scope(tcx: ty::ctxt,
+pub fn var_scope(tcx: &ty::ctxt,
                  id: ast::NodeId)
                  -> ScopeId {
     let r = AstScope(tcx.region_maps.var_scope(id));

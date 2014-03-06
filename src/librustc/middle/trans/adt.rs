@@ -236,7 +236,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 
 /// Determine, without doing translation, whether an ADT must be FFI-safe.
 /// For use in lint or similar, where being sound but slightly incomplete is acceptable.
-pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
+pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
     match ty::get(ty::lookup_item_type(tcx, def_id).ty).sty {
         ty::ty_enum(def_id, _) => {
             let variants = ty::enum_variants(tcx, def_id);
@@ -274,7 +274,7 @@ impl Case {
     }
 }
 
-fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> Vec<Case> {
+fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> Vec<Case> {
     ty::enum_variants(tcx, def_id).map(|vi| {
         let arg_tys = vi.args.map(|&raw_ty| {
             ty::subst(tcx, substs, raw_ty)
