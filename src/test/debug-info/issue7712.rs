@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-g
+// compile-flags:-g1
 
 pub trait TraitWithDefaultMethod {
     fn method(self) {

@@ -11,7 +11,8 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive, CrateTypeExecutable};
+use driver::session::{Aggressive, CrateTypeExecutable, FullDebugInfo, LimitedDebugInfo,
+                      NoDebugInfo};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -38,7 +39,9 @@ use std::vec;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use collections::{HashMap, HashSet};
-use getopts::{optopt, optmulti, optflag, optflagopt};
+use getopts::{optopt, optmulti, optflag, optflagopt, opt};
+use MaybeHasArg = getopts::Maybe;
+use OccurOptional = getopts::Optional;
 use getopts;
 use syntax::ast;
 use syntax::abi;
@@ -865,7 +868,18 @@ pub fn build_session_options(matches: &getopts::Matches)
         } else { No }
     };
     let gc = debugging_opts & session::GC != 0;
-    let debuginfo = matches.opt_present("g") || matches.opt_present("debuginfo");
+
+    let debuginfo = match matches.opt_default("debuginfo", "2") {
+        Some(level) => {
+            match level {
+                ~"0" => NoDebugInfo,
+                ~"1" => LimitedDebugInfo,
+                ~"2" => FullDebugInfo,
+                _    => early_error("debug info level needs to be between 0-2")
+            }
+        }
+        None => NoDebugInfo
+    };
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
         Path::new(s.as_slice())
@@ -1012,61 +1026,47 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
   optflag("h", "help", "Display this message"),
   optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
   optmulti("L", "",   "Add a directory to the library search path", "PATH"),
-  optmulti("", "crate-type", "Comma separated list of types of crates for the \
-                              compiler to emit",
+  optmulti("", "crate-type", "Comma separated list of types of crates for the compiler to emit",
            "[bin|lib|rlib|dylib|staticlib]"),
-  optmulti("", "emit", "Comma separated list of types of output for the compiler
-                        to emit",
+  optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
            "[asm|bc|ir|obj|link]"),
   optflag("", "crate-id", "Output the crate id and exit"),
   optflag("", "crate-name", "Output the crate name and exit"),
   optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
           continued and exit"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
-  optflag("g",  "debuginfo",  "Emit DWARF debug info to the objects created"),
-  optflag("", "no-trans",
-                        "Run all passes except translation; no output"),
-  optflag("", "no-analysis",
-                        "Parse and expand the output, but run no analysis or produce \
-                        output"),
-  optflag("O", "",    "Equivalent to --opt-level=2"),
-  optopt("o", "",     "Write output to <filename>", "FILENAME"),
-  optopt("", "opt-level",
-                        "Optimize with possible levels 0-3", "LEVEL"),
-  optopt( "",  "out-dir",
-                        "Write output to compiler-chosen filename
-                          in <dir>", "DIR"),
-  optflag("", "parse-only",
-                        "Parse only; do not compile, assemble, or link"),
+  opt("g",  "debuginfo",  "Emit DWARF debug info to the objects created:
+       0 = no debug info,
+       1 = line-tables only (for stacktraces),
+       2 = full debug info with variable, argument and type information",
+      "LEVEL", MaybeHasArg, OccurOptional),
+  optflag("", "no-trans", "Run all passes except translation; no output"),
+  optflag("", "no-analysis", "Parse and expand the output, but run no analysis or produce output"),
+  optflag("O", "", "Equivalent to --opt-level=2"),
+  optopt("o", "", "Write output to <filename>", "FILENAME"),
+  optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
+  optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
+  optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
   optflagopt("", "pretty",
-                        "Pretty-print the input instead of compiling;
-                          valid types are: normal (un-annotated source),
-                          expanded (crates expanded),
-                          typed (crates expanded, with type annotations),
-                          or identified (fully parenthesized,
-                          AST nodes and blocks with IDs)", "TYPE"),
-  optflagopt("", "dep-info",
-                        "Output dependency info to <filename> after compiling", "FILENAME"),
-  optopt("", "sysroot",
-                        "Override the system root", "PATH"),
+             "Pretty-print the input instead of compiling;
+              valid types are: normal (un-annotated source),
+              expanded (crates expanded),
+              typed (crates expanded, with type annotations),
+              or identified (fully parenthesized,
+              AST nodes and blocks with IDs)", "TYPE"),
+  optflagopt("", "dep-info", "Output dependency info to <filename> after compiling", "FILENAME"),
+  optopt("", "sysroot", "Override the system root", "PATH"),
   optflag("", "test", "Build a test harness"),
-  optopt("", "target",
-                        "Target triple cpu-manufacturer-kernel[-os]
-                          to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                          for details)", "TRIPLE"),
-  optmulti("W", "warn",
-                        "Set lint warnings", "OPT"),
-  optmulti("A", "allow",
-                        "Set lint allowed", "OPT"),
-  optmulti("D", "deny",
-                        "Set lint denied", "OPT"),
-  optmulti("F", "forbid",
-                        "Set lint forbidden", "OPT"),
-  optmulti("C", "codegen",
-                        "Set a codegen option", "OPT[=VALUE]"),
-  optmulti("Z", "",   "Set internal debugging options", "FLAG"),
-  optflag( "v", "version",
-                        "Print version info and exit"),
+  optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]
+                        to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
+                        for details)", "TRIPLE"),
+  optmulti("W", "warn", "Set lint warnings", "OPT"),
+  optmulti("A", "allow", "Set lint allowed", "OPT"),
+  optmulti("D", "deny", "Set lint denied", "OPT"),
+  optmulti("F", "forbid", "Set lint forbidden", "OPT"),
+  optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+  optmulti("Z", "", "Set internal debugging options", "FLAG"),
+  optflag( "v", "version", "Print version info and exit"),
  ]
 }
 

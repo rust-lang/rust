@@ -126,6 +126,7 @@ is still disabled, so there is no need to do anything special with source locati
 
 
 use driver::session;
+use driver::session::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
@@ -530,7 +531,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                      fn_ast_id: ast::NodeId,
                                      param_substs: Option<@param_substs>,
                                      llfn: ValueRef) -> FunctionDebugContext {
-    if !cx.sess.opts.debuginfo {
+    if cx.sess.opts.debuginfo == NoDebugInfo {
         return DebugInfoDisabled;
     }
 
@@ -706,7 +707,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                               fn_decl: &ast::FnDecl,
                               param_substs: Option<@param_substs>,
                               error_span: Span) -> DIArray {
-        if !cx.sess.opts.debuginfo {
+        if cx.sess.opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
         }
 
@@ -783,8 +784,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Only create type information if debuginfo is enabled
-            if cx.sess.opts.debuginfo {
+            // Only create type information if full debuginfo is enabled
+            if cx.sess.opts.debuginfo == FullDebugInfo {
                 let actual_self_type_metadata = type_metadata(cx,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
@@ -827,8 +828,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            // Again, only create type information if debuginfo is enabled
-            if cx.sess.opts.debuginfo {
+            // Again, only create type information if full debuginfo is enabled
+            if cx.sess.opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let param_metadata = token::get_ident(ident).get()
                                                             .with_c_str(|name| {
