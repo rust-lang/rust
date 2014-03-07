@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test<T: Freeze>() {}
+fn test<T: Share>() {}
 
 fn main() {
-    test::<Sender<int>>();        //~ ERROR: does not fulfill `Freeze`
-    test::<Receiver<int>>();        //~ ERROR: does not fulfill `Freeze`
-    test::<Sender<int>>();  //~ ERROR: does not fulfill `Freeze`
+    test::<Sender<int>>();        //~ ERROR: does not fulfill `Share`
+    test::<Receiver<int>>();        //~ ERROR: does not fulfill `Share`
+    test::<Sender<int>>();  //~ ERROR: does not fulfill `Share`
 }

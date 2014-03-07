@@ -10,13 +10,13 @@
 
 use std::kinds::marker;
 
-enum Foo { A(marker::NoFreeze) }
+enum Foo { A(marker::NoShare) }
 
-fn bar<T: Freeze>(_: T) {}
+fn bar<T: Share>(_: T) {}
 
 fn main() {
-    let x = A(marker::NoFreeze);
+    let x = A(marker::NoShare);
     bar(x);
     //~^ ERROR instantiating a type parameter with an incompatible type `Foo`,
-    //         which does not fulfill `Freeze`
+    //         which does not fulfill `Share`
 }
