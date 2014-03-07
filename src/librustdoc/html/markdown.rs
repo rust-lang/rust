@@ -209,7 +209,8 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         // Render the HTML
-        let text = format!(r#"<h{lvl} id="{id}">{sec_len,plural,=0{}other{{sec} }}{}</h{lvl}>"#,
+        let text = format!(r#"<h{lvl} id="{id}"><a
+                           href="\#{id}">{sec_len,plural,=0{}other{{sec} }}{}</a></h{lvl}>"#,
                            s, lvl = level, id = id,
                            sec_len = sec.len(), sec = sec);
 
