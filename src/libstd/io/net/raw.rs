@@ -177,11 +177,11 @@ fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
     }
 }
 
-pub fn get_network_interfaces() -> ~[NetworkInterface] {
+pub fn get_network_interfaces() -> ~[~NetworkInterface] {
     use ptr;
     use str::raw;
 
-    let mut ifaces: ~[NetworkInterface] = ~[];
+    let mut ifaces: ~[~NetworkInterface] = ~[];
     unsafe {
         let mut addrs: *libc::ifaddrs = mem::init();
         if libc::getifaddrs(&mut addrs) != 0 {
@@ -191,7 +191,7 @@ pub fn get_network_interfaces() -> ~[NetworkInterface] {
         while addr != ptr::null() {
             let name = raw::from_c_str((*addr).ifa_name);
             let (mac, ipv4, ipv6) = sockaddr_to_network_addrs((*addr).ifa_addr);
-            let mut ni = NetworkInterface {
+            let mut ni = ~NetworkInterface {
                 name: name.clone(),
                 mac: mac,
                 ipv4: ipv4,
@@ -217,7 +217,7 @@ pub fn get_network_interfaces() -> ~[NetworkInterface] {
         return ifaces;
     }
 
-    fn merge(old: &mut NetworkInterface, new: &NetworkInterface) {
+    fn merge(old: &mut ~NetworkInterface, new: &~NetworkInterface) {
         old.mac = match new.mac {
             None => old.mac,
             _ => new.mac
@@ -1107,7 +1107,12 @@ pub mod test {
     pub fn get_test_interface() -> NetworkInterface {
         use clone::Clone;
 
-        get_network_interfaces()[0]
+        (**get_network_interfaces()
+            .iter()
+            .filter(|x| x.is_loopback())
+            .next()
+            .unwrap())
+            .clone()
 
         //(**get_network_interfaces()
         //    .values()
