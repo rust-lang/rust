@@ -19,7 +19,7 @@
 
 use driver::session;
 use std::cell::RefCell;
-use collections::HashMap;
+use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
@@ -31,7 +31,7 @@ use syntax::visit::Visitor;
 
 // maps the id of each lifetime reference to the lifetime decl
 // that it corresponds to
-pub type NamedRegionMap = HashMap<ast::NodeId, ast::DefRegion>;
+pub type NamedRegionMap = NodeMap<ast::DefRegion>;
 
 struct LifetimeContext {
     sess: session::Session,
@@ -49,7 +49,7 @@ pub fn krate(sess: session::Session, krate: &ast::Crate)
              -> @RefCell<NamedRegionMap> {
     let mut ctxt = LifetimeContext {
         sess: sess,
-        named_region_map: @RefCell::new(HashMap::new())
+        named_region_map: @RefCell::new(NodeMap::new())
     };
     visit::walk_crate(&mut ctxt, krate, &RootScope);
     sess.abort_if_errors();

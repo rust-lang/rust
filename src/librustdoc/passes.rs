@@ -13,6 +13,7 @@ use collections::HashSet;
 use std::local_data;
 use std::uint;
 use syntax::ast;
+use rustc::util::nodemap::NodeSet;
 
 use clean;
 use clean::Item;
@@ -110,7 +111,7 @@ pub fn strip_private(krate: clean::Crate) -> plugins::PluginResult {
 
 struct Stripper<'a> {
     retained: &'a mut HashSet<ast::NodeId>,
-    exported_items: &'a HashSet<ast::NodeId>,
+    exported_items: &'a NodeSet,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {

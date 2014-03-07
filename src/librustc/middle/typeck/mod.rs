@@ -68,9 +68,9 @@ use middle::ty;
 use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
+use util::nodemap::{DefIdMap, NodeMap};
 
 use std::cell::RefCell;
-use collections::HashMap;
 use std::rc::Rc;
 use collections::List;
 use syntax::codemap::Span;
@@ -150,7 +150,7 @@ pub struct MethodCallee {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap = @RefCell<HashMap<ast::NodeId, MethodCallee>>;
+pub type MethodMap = @RefCell<NodeMap<MethodCallee>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -194,7 +194,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @RefCell<HashMap<ast::NodeId, vtable_res>>;
+pub type vtable_map = @RefCell<NodeMap<vtable_res>>;
 
 
 // Information about the vtable resolutions for a trait impl.
@@ -216,7 +216,7 @@ impl Repr for impl_res {
     }
 }
 
-pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
+pub type impl_vtable_map = RefCell<DefIdMap<impl_res>>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -441,8 +441,8 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,
-        method_map: @RefCell::new(HashMap::new()),
-        vtable_map: @RefCell::new(HashMap::new()),
+        method_map: @RefCell::new(NodeMap::new()),
+        vtable_map: @RefCell::new(NodeMap::new()),
         tcx: tcx
     };
 

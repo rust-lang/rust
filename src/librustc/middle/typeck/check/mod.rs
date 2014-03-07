@@ -111,6 +111,7 @@ use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
+use util::nodemap::NodeMap;
 
 use std::cell::{Cell, RefCell};
 use collections::HashMap;
@@ -153,13 +154,13 @@ pub mod method;
 /// share the inherited fields.
 pub struct Inherited {
     infcx: infer::InferCtxt,
-    locals: @RefCell<HashMap<ast::NodeId, ty::t>>,
+    locals: @RefCell<NodeMap<ty::t>>,
     param_env: ty::ParameterEnvironment,
 
     // Temporary tables:
-    node_types: RefCell<HashMap<ast::NodeId, ty::t>>,
-    node_type_substs: RefCell<HashMap<ast::NodeId, ty::substs>>,
-    adjustments: RefCell<HashMap<ast::NodeId, @ty::AutoAdjustment>>,
+    node_types: RefCell<NodeMap<ty::t>>,
+    node_type_substs: RefCell<NodeMap<ty::substs>>,
+    adjustments: RefCell<NodeMap<@ty::AutoAdjustment>>,
     method_map: MethodMap,
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
@@ -258,13 +259,13 @@ impl Inherited {
            -> Inherited {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
-            locals: @RefCell::new(HashMap::new()),
+            locals: @RefCell::new(NodeMap::new()),
             param_env: param_env,
-            node_types: RefCell::new(HashMap::new()),
-            node_type_substs: RefCell::new(HashMap::new()),
-            adjustments: RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(HashMap::new()),
-            vtable_map: @RefCell::new(HashMap::new()),
+            node_types: RefCell::new(NodeMap::new()),
+            node_type_substs: RefCell::new(NodeMap::new()),
+            adjustments: RefCell::new(NodeMap::new()),
+            method_map: @RefCell::new(NodeMap::new()),
+            vtable_map: @RefCell::new(NodeMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
         }
     }

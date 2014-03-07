@@ -46,6 +46,7 @@ use serialize::json::ToJson;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token::InternedString;
+use rustc::util::nodemap::NodeSet;
 
 use clean;
 use doctree;
@@ -158,7 +159,7 @@ pub struct Cache {
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
     priv privmod: bool,
-    priv public_items: HashSet<ast::NodeId>,
+    priv public_items: NodeSet,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -235,7 +236,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     // Crawl the crate to build various caches used for the output
     let mut cache = local_data::get(::analysiskey, |analysis| {
         let public_items = analysis.map(|a| a.public_items.clone());
-        let public_items = public_items.unwrap_or(HashSet::new());
+        let public_items = public_items.unwrap_or(NodeSet::new());
         Cache {
             impls: HashMap::new(),
             typarams: HashMap::new(),

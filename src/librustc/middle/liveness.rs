@@ -108,6 +108,7 @@ use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
+use util::nodemap::NodeMap;
 
 use std::cast::transmute;
 use std::cell::{Cell, RefCell};
@@ -116,7 +117,6 @@ use std::io;
 use std::str;
 use std::uint;
 use std::vec;
-use collections::HashMap;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
@@ -258,9 +258,9 @@ pub struct IrMaps {
 
     num_live_nodes: Cell<uint>,
     num_vars: Cell<uint>,
-    live_node_map: RefCell<HashMap<NodeId, LiveNode>>,
-    variable_map: RefCell<HashMap<NodeId, Variable>>,
-    capture_info_map: RefCell<HashMap<NodeId, @~[CaptureInfo]>>,
+    live_node_map: RefCell<NodeMap<LiveNode>>,
+    variable_map: RefCell<NodeMap<Variable>>,
+    capture_info_map: RefCell<NodeMap<@~[CaptureInfo]>>,
     var_kinds: RefCell<~[VarKind]>,
     lnks: RefCell<~[LiveNodeKind]>,
 }
@@ -275,9 +275,9 @@ fn IrMaps(tcx: ty::ctxt,
         capture_map: capture_map,
         num_live_nodes: Cell::new(0),
         num_vars: Cell::new(0),
-        live_node_map: RefCell::new(HashMap::new()),
-        variable_map: RefCell::new(HashMap::new()),
-        capture_info_map: RefCell::new(HashMap::new()),
+        live_node_map: RefCell::new(NodeMap::new()),
+        variable_map: RefCell::new(NodeMap::new()),
+        capture_info_map: RefCell::new(NodeMap::new()),
         var_kinds: RefCell::new(~[]),
         lnks: RefCell::new(~[]),
     }
@@ -584,7 +584,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-pub type LiveNodeMap = @RefCell<HashMap<NodeId, LiveNode>>;
+pub type LiveNodeMap = @RefCell<NodeMap<LiveNode>>;
 
 pub struct Liveness {
     tcx: ty::ctxt,
@@ -613,8 +613,8 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
                                             ir.num_vars.get(),
                                             invalid_users())),
         loop_scope: @RefCell::new(~[]),
-        break_ln: @RefCell::new(HashMap::new()),
-        cont_ln: @RefCell::new(HashMap::new()),
+        break_ln: @RefCell::new(NodeMap::new()),
+        cont_ln: @RefCell::new(NodeMap::new()),
     }
 }
 
