@@ -1066,19 +1066,19 @@ impl Clean<Item> for ast::ViewItem {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
-    ExternMod(~str, Option<~str>, ast::NodeId),
+    ExternCrate(~str, Option<~str>, ast::NodeId),
     Import(~[ViewPath])
 }
 
 impl Clean<ViewItemInner> for ast::ViewItem_ {
     fn clean(&self) -> ViewItemInner {
         match self {
-            &ast::ViewItemExternMod(ref i, ref p, ref id) => {
+            &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
                 let string = match *p {
                     None => None,
                     Some((ref x, _)) => Some(x.get().to_owned()),
                 };
-                ExternMod(i.clean(), string, *id)
+                ExternCrate(i.clean(), string, *id)
             }
             &ast::ViewItemUse(ref vp) => {
                 Import(vp.clean().move_iter().collect())

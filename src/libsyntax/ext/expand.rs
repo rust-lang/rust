@@ -424,7 +424,7 @@ pub fn expand_view_item(vi: &ast::ViewItem,
                         fld: &mut MacroExpander)
                         -> ast::ViewItem {
     match vi.node {
-        ast::ViewItemExternMod(..) => {
+        ast::ViewItemExternCrate(..) => {
             let should_load = vi.attrs.iter().any(|attr| {
                 attr.name().get() == "phase" &&
                     attr.meta_item_list().map_or(false, |phases| {
@@ -446,7 +446,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     let MacroCrate { lib, cnum } = fld.cx.ecfg.loader.load_crate(krate);
 
     let crate_name = match krate.node {
-        ast::ViewItemExternMod(name, _, _) => name,
+        ast::ViewItemExternCrate(name, _, _) => name,
         _ => unreachable!()
     };
     let name = format!("<{} macros>", token::get_ident(crate_name));
