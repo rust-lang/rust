@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn foo(s: &~str) -> bool {
-    match s {
-        &~"kitty" => true,
+    match s.as_slice() {
+        "kitty" => true,
         _ => false
     }
 }

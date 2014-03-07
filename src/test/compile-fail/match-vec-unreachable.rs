@@ -21,7 +21,7 @@ fn main() {
     let x: &[~str] = x;
     match x {
         [a, _, _, ..] => { println!("{}", a); }
-        [~"foo", ~"bar", ~"baz", ~"foo", ~"bar"] => { } //~ ERROR unreachable pattern
+        [_, _, _, _, _] => { } //~ ERROR unreachable pattern
         _ => { }
     }
 

@@ -38,9 +38,9 @@ use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
 
-    match config.target {
+    match config.target.as_slice() {
 
-        ~"arm-linux-androideabi" => {
+        "arm-linux-androideabi" => {
             if !config.adb_device_status {
                 fail!("android device not available");
             }
@@ -277,8 +277,8 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let exe_file = make_exe_name(config, testfile);
 
     let mut proc_args;
-    match config.target {
-        ~"arm-linux-androideabi" => {
+    match config.target.as_slice() {
+        "arm-linux-androideabi" => {
 
             cmds = cmds.replace("run","continue");
 
@@ -682,9 +682,9 @@ fn exec_compiled_test(config: &config, props: &TestProps,
 
     let env = props.exec_env.clone();
 
-    match config.target {
+    match config.target.as_slice() {
 
-        ~"arm-linux-androideabi" => {
+        "arm-linux-androideabi" => {
             _arm_exec_compiled_test(config, props, testfile, env)
         }
 
@@ -735,9 +735,9 @@ fn compose_and_run_compiler(
                 &auxres);
         }
 
-        match config.target {
+        match config.target.as_slice() {
 
-            ~"arm-linux-androideabi" => {
+            "arm-linux-androideabi" => {
                 _arm_push_aux_shared_library(config, testfile);
             }
 

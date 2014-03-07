@@ -225,13 +225,13 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         Some(attrs) => {
             for attr in attrs.iter() {
                 match *attr {
-                    clean::NameValue(~"html_favicon_url", ref s) => {
+                    clean::NameValue(ref x, ref s) if "html_favicon_url" == *x => {
                         cx.layout.favicon = s.to_owned();
                     }
-                    clean::NameValue(~"html_logo_url", ref s) => {
+                    clean::NameValue(ref x, ref s) if "html_logo_url" == *x => {
                         cx.layout.logo = s.to_owned();
                     }
-                    clean::Word(~"html_no_source") => {
+                    clean::Word(ref x) if "html_no_source" == *x => {
                         cx.include_sources = false;
                     }
                     _ => {}
@@ -396,10 +396,10 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     // external crate
     for attr in e.attrs.iter() {
         match *attr {
-            clean::List(~"doc", ref list) => {
+            clean::List(ref x, ref list) if "doc" == *x => {
                 for attr in list.iter() {
                     match *attr {
-                        clean::NameValue(~"html_root_url", ref s) => {
+                        clean::NameValue(ref x, ref s) if "html_root_url" == *x => {
                             if s.ends_with("/") {
                                 return Remote(s.to_owned());
                             }
@@ -666,7 +666,7 @@ impl DocFolder for Cache {
                                 // extract relevant documentation for this impl
                                 match attrs.move_iter().find(|a| {
                                     match *a {
-                                        clean::NameValue(~"doc", _) => true,
+                                        clean::NameValue(ref x, _) if "doc" == *x => true,
                                         _ => false
                                     }
                                 }) {
