@@ -540,7 +540,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         return FunctionWithoutDebugInfo;
     }
 
-    let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
+    let empty_generics = ast::Generics { lifetimes: Vec::new(), ty_params: opt_vec::Empty };
 
     let fnitem = cx.tcx.map.get(fn_ast_id);
 

@@ -19,10 +19,10 @@
 
 use driver::session;
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str};
@@ -39,8 +39,8 @@ struct LifetimeContext {
 }
 
 enum ScopeChain<'a> {
-    ItemScope(&'a OptVec<ast::Lifetime>),
-    FnScope(ast::NodeId, &'a OptVec<ast::Lifetime>, Scope<'a>),
+    ItemScope(&'a Vec<ast::Lifetime>),
+    FnScope(ast::NodeId, &'a Vec<ast::Lifetime>, Scope<'a>),
     BlockScope(ast::NodeId, Scope<'a>),
     RootScope
 }
@@ -267,7 +267,7 @@ impl LifetimeContext {
                     token::get_name(lifetime_ref.name)));
     }
 
-    fn check_lifetime_names(&self, lifetimes: &OptVec<ast::Lifetime>) {
+    fn check_lifetime_names(&self, lifetimes: &Vec<ast::Lifetime>) {
         for i in range(0, lifetimes.len()) {
             let lifetime_i = lifetimes.get(i);
 
@@ -313,7 +313,7 @@ impl LifetimeContext {
     }
 }
 
-fn search_lifetimes(lifetimes: &OptVec<ast::Lifetime>,
+fn search_lifetimes(lifetimes: &Vec<ast::Lifetime>,
                     lifetime_ref: &ast::Lifetime)
                     -> Option<(uint, ast::NodeId)> {
     for (i, lifetime_decl) in lifetimes.iter().enumerate() {

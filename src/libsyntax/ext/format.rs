@@ -14,7 +14,6 @@ use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use opt_vec;
 use parse::token::InternedString;
 use parse::token;
 use rsparse = parse;
@@ -509,7 +508,7 @@ impl<'a> Context<'a> {
                 sp,
                 true,
                 self.rtpath("Method"),
-                opt_vec::with(life),
+                vec!(life),
                 Vec::new()
                     ), None);
         let st = ast::ItemStatic(ty, ast::MutImmutable, method);
@@ -632,8 +631,8 @@ impl<'a> Context<'a> {
                     self.ecx.ident_of("fmt"),
                     self.ecx.ident_of("rt"),
                     self.ecx.ident_of("Piece")),
-                opt_vec::with(
-                    self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static").name)),
+                vec!(self.ecx.lifetime(self.fmtsp,
+                                       self.ecx.ident_of("static").name)),
                 Vec::new()
             ), None);
         let ty = ast::TyFixedLengthVec(

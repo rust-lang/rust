@@ -186,9 +186,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => opt_vec::from(v.move_iter().collect()),
-            Err(()) => opt_vec::from(Vec::from_fn(expected_num_region_params,
-                                                  |_| ty::ReStatic)) // hokey
+            Ok(v) => v.move_iter().collect(),
+            Err(()) => Vec::from_fn(expected_num_region_params,
+                                    |_| ty::ReStatic) // hokey
         }
     };
 
@@ -231,7 +231,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .collect();
 
     let mut substs = substs {
-        regions: ty::NonerasedRegions(regions),
+        regions: ty::NonerasedRegions(opt_vec::from(regions)),
         self_ty: self_ty,
         tps: tps
     };
