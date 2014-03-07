@@ -181,3 +181,28 @@ rustdoc will implicitly add `extern crate <crate>;` where `<crate>` is the name 
 the crate being tested to the top of each code example. This means that rustdoc
 must be able to find a compiled version of the library crate being tested. Extra
 search paths may be added via the `-L` flag to `rustdoc`.
+
+# Standalone Markdown files
+
+As well as Rust crates, rustdoc supports rendering pure Markdown files
+into HTML and testing the code snippets from them. A Markdown file is
+detected by a `.md` or `.markdown` extension.
+
+There are 4 options to modify the output that Rustdoc creates.
+- `--markdown-css PATH`: adds a `<link rel="stylesheet">` tag pointing to `PATH`.
+- `--markdown-in-header FILE`: includes the contents of `FILE` at the
+  end of the `<head>...</head>` section.
+- `--markdown-before-content FILE`: includes the contents of `FILE`
+  directly after `<body>`, before the rendered content (including the
+  title).
+- `--markdown-after-content FILE`: includes the contents of `FILE`
+  directly before `</body>`, after all the rendered content.
+
+All of these can be specified multiple times, and they are output in
+the order in which they are specified. The first line of the file must
+be the title, prefixed with `%` (e.g. this page has `% Rust
+Documentation` on the first line).
+
+Like with a Rust crate, the `--test` argument will run the code
+examples to check they compile, and obeys any `--test-args` flags. The
+tests are named after the last `#` heading.
