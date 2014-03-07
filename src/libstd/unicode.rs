@@ -1445,7 +1445,7 @@ pub mod general_category {
     }
 
 }
-pub mod decompose {
+pub mod normalization {
     use option::Option;
     use option::{Some, None};
     use vec::ImmutableVector;

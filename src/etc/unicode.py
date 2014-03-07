@@ -225,7 +225,7 @@ def emit_decomp_module(f, canon, compat, combine):
 
     compat_keys = compat.keys()
     compat_keys.sort()
-    f.write("pub mod decompose {\n");
+    f.write("pub mod normalization {\n");
     f.write("    use option::Option;\n");
     f.write("    use option::{Some, None};\n");
     f.write("    use vec::ImmutableVector;\n");
