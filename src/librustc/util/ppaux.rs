@@ -161,8 +161,8 @@ pub fn bound_region_to_str(cx: ctxt,
     }
 
     match br {
-        BrNamed(_, ident)   => format!("{}'{}{}", prefix,
-                                       token::get_name(ident), space_str),
+        BrNamed(_, name)   => format!("{}'{}{}", prefix,
+                                      token::get_name(name), space_str),
         BrAnon(_)           => prefix.to_str(),
         BrFresh(_)          => prefix.to_str(),
     }
@@ -224,7 +224,7 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         ty::ReScope(_) => prefix.to_str(),
-        ty::ReEarlyBound(_, _, ident) => token::get_name(ident).get().to_str(),
+        ty::ReEarlyBound(_, _, name) => token::get_name(name).get().to_str(),
         ty::ReLateBound(_, br) => bound_region_to_str(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
         ty::ReInfer(ReSkolemized(_, br)) => {
@@ -720,9 +720,9 @@ impl Repr for ty::BoundRegion {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             ty::BrAnon(id) => format!("BrAnon({})", id),
-            ty::BrNamed(id, ident) => format!("BrNamed({}, {})",
-                                               id.repr(tcx),
-                                               token::get_name(ident)),
+            ty::BrNamed(id, name) => format!("BrNamed({}, {})",
+                                             id.repr(tcx),
+                                             token::get_name(name)),
             ty::BrFresh(id) => format!("BrFresh({})", id),
         }
     }
@@ -731,9 +731,9 @@ impl Repr for ty::BoundRegion {
 impl Repr for ty::Region {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
-            ty::ReEarlyBound(id, index, ident) => {
+            ty::ReEarlyBound(id, index, name) => {
                 format!("ReEarlyBound({}, {}, {})",
-                        id, index, token::get_name(ident))
+                        id, index, token::get_name(name))
             }
 
             ty::ReLateBound(binder_id, ref bound_region) => {

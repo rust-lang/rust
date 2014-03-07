@@ -92,18 +92,18 @@ pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
 
         Some(&ast::DefLateBoundRegion(binder_id, _, id)) => {
             ty::ReLateBound(binder_id, ty::BrNamed(ast_util::local_def(id),
-                                                   lifetime.ident))
+                                                   lifetime.name))
         }
 
         Some(&ast::DefEarlyBoundRegion(index, id)) => {
-            ty::ReEarlyBound(id, index, lifetime.ident)
+            ty::ReEarlyBound(id, index, lifetime.name)
         }
 
         Some(&ast::DefFreeRegion(scope_id, id)) => {
             ty::ReFree(ty::FreeRegion {
                     scope_id: scope_id,
                     bound_region: ty::BrNamed(ast_util::local_def(id),
-                                              lifetime.ident)
+                                              lifetime.name)
                 })
         }
     };

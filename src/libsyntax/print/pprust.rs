@@ -1956,7 +1956,7 @@ pub fn print_bounds(s: &mut State, bounds: &OptVec<ast::TyParamBound>,
 pub fn print_lifetime(s: &mut State,
                       lifetime: &ast::Lifetime) -> io::IoResult<()> {
     try!(word(&mut s.s, "'"));
-    print_name(s, lifetime.ident)
+    print_name(s, lifetime.name)
 }
 
 pub fn print_generics(s: &mut State,

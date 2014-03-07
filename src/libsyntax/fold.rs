@@ -435,7 +435,7 @@ pub fn fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
         span: fld.new_span(l.span),
-        ident: l.ident
+        name: l.name
     }
 }
 

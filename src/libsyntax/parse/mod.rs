@@ -323,7 +323,7 @@ mod test {
                         segments: vec!(
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetimes: opt_vec::Empty,
+                                lifetimes: Vec::new(),
                                 types: opt_vec::Empty,
                             }
                         ),
@@ -342,12 +342,12 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 }
                             )
