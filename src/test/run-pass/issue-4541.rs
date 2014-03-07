@@ -13,10 +13,10 @@ fn parse_args() -> ~str {
     let mut n = 0;
 
     while n < args.len() {
-        match args[n].clone() {
-            ~"-v" => (),
+        match args[n].as_slice() {
+            "-v" => (),
             s => {
-                return s;
+                return s.into_owned();
             }
         }
         n += 1;
