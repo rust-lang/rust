@@ -126,10 +126,10 @@ impl<'f> Combine for Lub<'f> {
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, a);
         let (b_with_fresh, _) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, b);
 
         // Collect constraints.
