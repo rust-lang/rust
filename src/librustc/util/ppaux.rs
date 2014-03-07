@@ -841,6 +841,12 @@ impl Repr for ty::Method {
     }
 }
 
+impl Repr for ast::Name {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        token::get_name(*self).get().to_str()
+    }
+}
+
 impl Repr for ast::Ident {
     fn repr(&self, _tcx: ctxt) -> ~str {
         token::get_ident(*self).get().to_str()
@@ -1007,6 +1013,12 @@ impl UserString for ty::TraitRef {
 impl UserString for ty::t {
     fn user_string(&self, tcx: ctxt) -> ~str {
         ty_to_str(tcx, *self)
+    }
+}
+
+impl UserString for ast::Ident {
+    fn user_string(&self, _tcx: ctxt) -> ~str {
+        token::get_name(self.name).get().to_owned()
     }
 }
 
