@@ -28,7 +28,7 @@
 use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
-use driver::session::Session;
+use driver::session::{Session, NoDebugInfo, FullDebugInfo};
 use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
@@ -70,6 +70,7 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use std::c_str::ToCStr;
@@ -1245,9 +1246,9 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
           llreturn: Cell::new(None),
           personality: Cell::new(None),
           caller_expects_out_pointer: uses_outptr,
-          llargs: RefCell::new(HashMap::new()),
-          lllocals: RefCell::new(HashMap::new()),
-          llupvars: RefCell::new(HashMap::new()),
+          llargs: RefCell::new(NodeMap::new()),
+          lllocals: RefCell::new(NodeMap::new()),
+          llupvars: RefCell::new(NodeMap::new()),
           id: id,
           param_substs: param_substs,
           span: sp,
@@ -1367,7 +1368,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
         bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
 
-        if fcx.ccx.sess.opts.debuginfo {
+        if fcx.ccx.sess.opts.debuginfo == FullDebugInfo {
             debuginfo::create_argument_metadata(bcx, &args[i]);
         }
     }
@@ -2286,8 +2287,6 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
 
     ifn!(intrinsics, "llvm.fabs.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.fabs.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.copysign.f32", [Type::f32(), Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.copysign.f64", [Type::f64(), Type::f64()], Type::f64());
 
     ifn!(intrinsics, "llvm.floor.f32",[Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.floor.f64",[Type::f64()], Type::f64());
@@ -2300,8 +2299,6 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     ifn!(intrinsics, "llvm.rint.f64", [Type::f64()], Type::f64());
     ifn!(intrinsics, "llvm.nearbyint.f32", [Type::f32()], Type::f32());
     ifn!(intrinsics, "llvm.nearbyint.f64", [Type::f64()], Type::f64());
-    ifn!(intrinsics, "llvm.round.f32", [Type::f32()], Type::f32());
-    ifn!(intrinsics, "llvm.round.f64", [Type::f64()], Type::f64());
 
     ifn!(intrinsics, "llvm.ctpop.i8", [Type::i8()], Type::i8());
     ifn!(intrinsics, "llvm.ctpop.i16",[Type::i16()], Type::i16());
@@ -2377,6 +2374,32 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
         [Type::i64(), Type::i64()], Type::struct_([Type::i64(), Type::i1()], false));
 
     ifn!(intrinsics, "llvm.expect.i1", [Type::i1(), Type::i1()], Type::i1());
+
+    // Some intrinsics were introduced in later versions of LLVM, but they have
+    // fallbacks in libc or libm and such. Currently, all of these intrinsics
+    // were introduced in LLVM 3.4, so we case on that.
+    macro_rules! compatible_ifn (
+        ($intrinsics:ident, $name:expr, $cname:expr, $args:expr, $ret:expr) => ({
+            let name = $name;
+            if unsafe { llvm::LLVMVersionMinor() >= 4 } {
+                ifn!($intrinsics, $name, $args, $ret);
+            } else {
+                let f = decl_cdecl_fn(llmod, $cname,
+                                      Type::func($args, &$ret),
+                                      ty::mk_nil());
+                $intrinsics.insert(name, f);
+            }
+        })
+    )
+
+    compatible_ifn!(intrinsics, "llvm.copysign.f32", "copysignf",
+                    [Type::f32(), Type::f32()], Type::f32());
+    compatible_ifn!(intrinsics, "llvm.copysign.f64", "copysign",
+                    [Type::f64(), Type::f64()], Type::f64());
+    compatible_ifn!(intrinsics, "llvm.round.f32", "roundf",
+                    [Type::f32()], Type::f32());
+    compatible_ifn!(intrinsics, "llvm.round.f64", "round",
+                    [Type::f64()], Type::f64());
 
     return intrinsics;
 }
@@ -2678,7 +2701,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     glue::emit_tydescs(ccx);
-    if ccx.sess.opts.debuginfo {
+    if ccx.sess.opts.debuginfo != NoDebugInfo {
         debuginfo::finalize(ccx);
     }
 

@@ -192,7 +192,7 @@ impl<
     fn decode(d: &mut D) -> HashMap<K, V, H> {
         d.read_map(|d, len| {
             let hasher = Default::default();
-            let mut map = HashMap::with_capacity_and_hasher(hasher, len);
+            let mut map = HashMap::with_capacity_and_hasher(len, hasher);
             for i in range(0u, len) {
                 let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
                 let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
@@ -228,7 +228,7 @@ impl<
 > Decodable<D> for HashSet<T, H> {
     fn decode(d: &mut D) -> HashSet<T, H> {
         d.read_seq(|d, len| {
-            let mut set = HashSet::with_capacity_and_hasher(Default::default(), len);
+            let mut set = HashSet::with_capacity_and_hasher(len, Default::default());
             for i in range(0u, len) {
                 set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
             }

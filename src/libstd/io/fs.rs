@@ -103,7 +103,7 @@ impl File {
     /// `FileMode` and `FileAccess` provide information about the permissions
     /// context in which a given stream is created. More information about them
     /// can be found in `std::io`'s docs. If a file is opened with `Write`
-    /// or `ReadWrite` access, then it will be created it it does not already
+    /// or `ReadWrite` access, then it will be created it does not already
     /// exist.
     ///
     /// Note that, with this function, a `File` is returned regardless of the

@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
+use syntax::ext::expand::ExpansionConfig;
 use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
@@ -165,7 +166,11 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
     let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(),
+                             ExpansionConfig {
+                                 loader: loader,
+                                 deriving_hash_type_parameter: false,
+                             }),
         path: RefCell::new(~[]),
         testfns: RefCell::new(~[]),
         is_test_crate: is_test_crate(&krate),
@@ -301,7 +306,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
                                              path_node(~[id_test]),
                                              ast::DUMMY_NODE_ID))))
     } else {
-        ast::ViewItemExternMod(id_test,
+        ast::ViewItemExternCrate(id_test,
                                with_version("test"),
                                ast::DUMMY_NODE_ID)
     };

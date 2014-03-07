@@ -29,7 +29,7 @@ This API is completely unstable and subject to change.
 
 #[allow(deprecated)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[feature(quote)];
+#[feature(quote, default_type_params)];
 
 extern crate extra;
 extern crate flate;
@@ -125,6 +125,7 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod sha2;
+    pub mod nodemap;
 }
 
 pub mod lib {

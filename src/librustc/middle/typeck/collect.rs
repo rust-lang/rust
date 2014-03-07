@@ -1040,12 +1040,23 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              ast_generics: &ast::Generics,
                              abis: AbiSet)
                           -> ty::ty_param_bounds_and_ty {
+
+    for i in decl.inputs.iter() {
+        match (*i).pat.node {
+            ast::PatIdent(_, _, _) => (),
+            ast::PatWild => (),
+            _ => ccx.tcx.sess.span_err((*i).pat.span,
+                    "patterns aren't allowed in foreign function declarations")
+        }
+    }
+
     let ty_generics = ty_generics(ccx, ast_generics, 0);
     let rb = BindingRscope::new(def_id.node);
     let input_tys = decl.inputs
                         .iter()
                         .map(|a| ty_of_arg(ccx, &rb, a, None))
                         .collect();
+
     let output_ty = ast_ty_to_ty(ccx, &rb, decl.output);
 
     let t_fn = ty::mk_bare_fn(

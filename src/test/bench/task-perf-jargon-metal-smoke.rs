@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test performance of a task "spawn ladder", in which children task have many
+// Test performance of a task "spawn ladder", in which children task have
 // many ancestor taskgroups, but with only a few such groups alive at a time.
 // Each child task has to enlist as a descendant in each of its ancestor
 // groups, but that shouldn't have to happen for already-dead groups.

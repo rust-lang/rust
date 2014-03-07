@@ -749,14 +749,15 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             let contents = build_const_struct(ccx, st, vals);
             C_struct(contents, st.packed)
         }
-        NullablePointer{ nonnull: ref nonnull, nndiscr, ptrfield, .. } => {
+        NullablePointer{ nonnull: ref nonnull, nndiscr, .. } => {
             if discr == nndiscr {
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             } else {
-                let vals = nonnull.fields.iter().enumerate().map(|(i, &ty)| {
-                    let llty = type_of::sizing_type_of(ccx, ty);
-                    if i == ptrfield { C_null(llty) } else { C_undef(llty) }
-                }).collect::<~[ValueRef]>();
+                let vals = nonnull.fields.map(|&ty| {
+                    // Always use null even if it's not the `ptrfield`th
+                    // field; see #8506.
+                    C_null(type_of::sizing_type_of(ccx, ty))
+                });
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             }
         }
@@ -791,14 +792,8 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
             cfields.push(padding(target_offset - offset));
             offset = target_offset;
         }
-        let val = if is_undef(vals[i]) {
-            let wrapped = C_struct([vals[i]], false);
-            assert!(!is_undef(wrapped));
-            wrapped
-        } else {
-            vals[i]
-        };
-        cfields.push(val);
+        assert!(!is_undef(vals[i]));
+        cfields.push(vals[i]);
         offset += machine::llsize_of_alloc(ccx, llty) as u64
     }
 

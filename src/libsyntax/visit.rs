@@ -148,7 +148,7 @@ pub fn walk_mod<E: Clone, V: Visitor<E>>(visitor: &mut V, module: &Mod, env: E) 
 
 pub fn walk_view_item<E: Clone, V: Visitor<E>>(visitor: &mut V, vi: &ViewItem, env: E) {
     match vi.node {
-        ViewItemExternMod(name, _, _) => {
+        ViewItemExternCrate(name, _, _) => {
             visitor.visit_ident(vi.span, name, env)
         }
         ViewItemUse(ref paths) => {

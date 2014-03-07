@@ -55,7 +55,7 @@ use ast::{TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyPath, TyPtr, TyRptr};
 use ast::{TyTup, TyU32, TyUniq, TyVec, UnUniq};
 use ast::{UnnamedField, UnsafeBlock, UnsafeFn, ViewItem};
-use ast::{ViewItem_, ViewItemExternMod, ViewItemUse};
+use ast::{ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
 use ast;
@@ -4361,7 +4361,7 @@ impl Parser {
         };
 
         IoviViewItem(ast::ViewItem {
-                node: ViewItemExternMod(ident, maybe_path, ast::DUMMY_NODE_ID),
+                node: ViewItemExternCrate(ident, maybe_path, ast::DUMMY_NODE_ID),
                 attrs: attrs,
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
@@ -5017,11 +5017,11 @@ impl Parser {
                             // `extern crate` must precede `use`.
                             extern_mod_allowed = false;
                         }
-                        ViewItemExternMod(..) if !extern_mod_allowed => {
+                        ViewItemExternCrate(..) if !extern_mod_allowed => {
                             self.span_err(view_item.span,
                                           "\"extern crate\" declarations are not allowed here");
                         }
-                        ViewItemExternMod(..) => {}
+                        ViewItemExternCrate(..) => {}
                     }
                     view_items.push(view_item);
                 }

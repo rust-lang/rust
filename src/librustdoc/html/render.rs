@@ -46,12 +46,14 @@ use serialize::json::ToJson;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token::InternedString;
+use rustc::util::nodemap::NodeSet;
 
 use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, PuritySpace};
 use html::layout;
+use html::markdown;
 use html::markdown::Markdown;
 use html::highlight;
 
@@ -157,7 +159,7 @@ pub struct Cache {
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
     priv privmod: bool,
-    priv public_items: HashSet<ast::NodeId>,
+    priv public_items: NodeSet,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -234,7 +236,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     // Crawl the crate to build various caches used for the output
     let mut cache = local_data::get(::analysiskey, |analysis| {
         let public_items = analysis.map(|a| a.public_items.clone());
-        let public_items = public_items.unwrap_or(HashSet::new());
+        let public_items = public_items.unwrap_or(NodeSet::new());
         Cache {
             impls: HashMap::new(),
             typarams: HashMap::new(),
@@ -749,6 +751,8 @@ impl Context {
                 title: title,
             };
 
+            markdown::reset_headers();
+
             // We have a huge number of calls to write, so try to alleviate some
             // of the pain by using a buffered writer instead of invoking the
             // write sycall all the time.
@@ -956,8 +960,8 @@ fn item_module(w: &mut Writer, cx: &Context,
         match (&i1.inner, &i2.inner) {
             (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
                 match (&a.inner, &b.inner) {
-                    (&clean::ExternMod(..), _) => Less,
-                    (_, &clean::ExternMod(..)) => Greater,
+                    (&clean::ExternCrate(..), _) => Less,
+                    (_, &clean::ExternCrate(..)) => Greater,
                     _ => idx1.cmp(&idx2),
                 }
             }
@@ -1001,24 +1005,25 @@ fn item_module(w: &mut Writer, cx: &Context,
                 try!(write!(w, "</table>"));
             }
             curty = myty;
-            try!(write!(w, "<h2>{}</h2>\n<table>", match myitem.inner {
-                clean::ModuleItem(..)          => "Modules",
-                clean::StructItem(..)          => "Structs",
-                clean::EnumItem(..)            => "Enums",
-                clean::FunctionItem(..)        => "Functions",
-                clean::TypedefItem(..)         => "Type Definitions",
-                clean::StaticItem(..)          => "Statics",
-                clean::TraitItem(..)           => "Traits",
-                clean::ImplItem(..)            => "Implementations",
-                clean::ViewItemItem(..)        => "Reexports",
-                clean::TyMethodItem(..)        => "Type Methods",
-                clean::MethodItem(..)          => "Methods",
-                clean::StructFieldItem(..)     => "Struct Fields",
-                clean::VariantItem(..)         => "Variants",
-                clean::ForeignFunctionItem(..) => "Foreign Functions",
-                clean::ForeignStaticItem(..)   => "Foreign Statics",
-                clean::MacroItem(..)           => "Macros",
-            }));
+            let (short, name) = match myitem.inner {
+                clean::ModuleItem(..)          => ("modules", "Modules"),
+                clean::StructItem(..)          => ("structs", "Structs"),
+                clean::EnumItem(..)            => ("enums", "Enums"),
+                clean::FunctionItem(..)        => ("functions", "Functions"),
+                clean::TypedefItem(..)         => ("types", "Type Definitions"),
+                clean::StaticItem(..)          => ("statics", "Statics"),
+                clean::TraitItem(..)           => ("traits", "Traits"),
+                clean::ImplItem(..)            => ("impls", "Implementations"),
+                clean::ViewItemItem(..)        => ("reexports", "Reexports"),
+                clean::TyMethodItem(..)        => ("tymethods", "Type Methods"),
+                clean::MethodItem(..)          => ("methods", "Methods"),
+                clean::StructFieldItem(..)     => ("fields", "Struct Fields"),
+                clean::VariantItem(..)         => ("variants", "Variants"),
+                clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
+                clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
+                clean::MacroItem(..)           => ("macros", "Macros"),
+            };
+            try!(write!(w, "<h2 id='{}'>{}</h2>\n<table>", short, name));
         }
 
         match myitem.inner {
@@ -1051,7 +1056,7 @@ fn item_module(w: &mut Writer, cx: &Context,
 
             clean::ViewItemItem(ref item) => {
                 match item.inner {
-                    clean::ExternMod(ref name, ref src, _) => {
+                    clean::ExternCrate(ref name, ref src, _) => {
                         try!(write!(w, "<tr><td><code>extern crate {}",
                                       name.as_slice()));
                         match *src {

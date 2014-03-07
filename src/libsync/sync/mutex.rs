@@ -53,7 +53,7 @@
 // leading to fairly decent performance for both native threads and green
 // threads on various workloads (uncontended and contended).
 //
-// The crux of this implementation is an atomic work which is CAS'd on many many
+// The crux of this implementation is an atomic work which is CAS'd on many
 // times in order to manage a few flags about who's blocking where and whether
 // it's locked or not.
 

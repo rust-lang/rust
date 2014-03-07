@@ -20,7 +20,6 @@
 use std::io;
 use std::uint;
 use std::vec;
-use collections::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;
@@ -28,6 +27,7 @@ use syntax::print::{pp, pprust};
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
+use util::nodemap::NodeMap;
 
 #[deriving(Clone)]
 pub struct DataFlowContext<O> {
@@ -45,7 +45,7 @@ pub struct DataFlowContext<O> {
     priv words_per_id: uint,
 
     // mapping from node to bitset index.
-    priv nodeid_to_bitset: HashMap<ast::NodeId,uint>,
+    priv nodeid_to_bitset: NodeMap<uint>,
 
     // Bit sets per id.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
@@ -139,7 +139,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             tcx: tcx,
             method_map: method_map,
             words_per_id: words_per_id,
-            nodeid_to_bitset: HashMap::new(),
+            nodeid_to_bitset: NodeMap::new(),
             bits_per_id: bits_per_id,
             oper: oper,
             gens: gens,

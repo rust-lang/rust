@@ -8,16 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! 1:1 Task bookkeeping
+//! Task bookkeeping
 //!
-//! This module keeps track of the number of running 1:1 tasks so that entry
-//! points with libnative know when it's possible to exit the program (once all
-//! tasks have exited).
+//! This module keeps track of the number of running tasks so that entry points
+//! with libnative know when it's possible to exit the program (once all tasks
+//! have exited).
 //!
-//! The green counterpart for this is bookkeeping on sched pools.
+//! The green counterpart for this is bookkeeping on sched pools, and it's up to
+//! each respective runtime to make sure that they call increment() and
+//! decrement() manually.
 
-use std::sync::atomics;
-use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+#[experimental]; // this is a massive code smell
+#[doc(hidden)];
+
+use sync::atomics;
+use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -39,12 +44,9 @@ pub fn decrement() {
 /// the entry points of native programs
 pub fn wait_for_other_tasks() {
     unsafe {
-        {
-            let mut guard = TASK_LOCK.lock();
-            while TASK_COUNT.load(atomics::SeqCst) > 0 {
-                guard.wait();
-            }
+        let mut guard = TASK_LOCK.lock();
+        while TASK_COUNT.load(atomics::SeqCst) > 0 {
+            guard.wait();
         }
-        TASK_LOCK.destroy();
     }
 }

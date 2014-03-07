@@ -146,9 +146,9 @@ pub enum SyntaxExtension {
 
 pub struct BlockInfo {
     // should macros escape from this scope?
-    macros_escape : bool,
+    macros_escape: bool,
     // what are the pending renames?
-    pending_renames : RenameList,
+    pending_renames: RenameList,
 }
 
 impl BlockInfo {
@@ -161,7 +161,7 @@ impl BlockInfo {
 }
 
 // a list of ident->name renamings
-pub type RenameList = Vec<(ast::Ident,Name)> ;
+pub type RenameList = Vec<(ast::Ident, Name)>;
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
@@ -283,7 +283,7 @@ pub struct ExtCtxt<'a> {
     parse_sess: @parse::ParseSess,
     cfg: ast::CrateConfig,
     backtrace: Option<@ExpnInfo>,
-    loader: &'a mut CrateLoader,
+    ecfg: expand::ExpansionConfig<'a>,
 
     mod_path: Vec<ast::Ident> ,
     trace_mac: bool
@@ -291,13 +291,13 @@ pub struct ExtCtxt<'a> {
 
 impl<'a> ExtCtxt<'a> {
     pub fn new<'a>(parse_sess: @parse::ParseSess, cfg: ast::CrateConfig,
-               loader: &'a mut CrateLoader) -> ExtCtxt<'a> {
+                   ecfg: expand::ExpansionConfig<'a>) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
             backtrace: None,
-            loader: loader,
             mod_path: Vec::new(),
+            ecfg: ecfg,
             trace_mac: false
         }
     }

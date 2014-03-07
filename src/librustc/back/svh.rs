@@ -19,7 +19,7 @@
 //! ends up yielding confusing error messages about metadata mismatches and
 //! such.
 //!
-//! The core of this problem is when when an upstream dependency changes and
+//! The core of this problem is when an upstream dependency changes and
 //! downstream dependants are not recompiled. This causes compile errors because
 //! the upstream crate's metadata has changed but the downstream crates are
 //! still referencing the older crate's metadata.

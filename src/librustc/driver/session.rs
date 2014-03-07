@@ -114,6 +114,13 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
+#[deriving(Clone, Eq)]
+pub enum DebugInfoLevel {
+    NoDebugInfo,
+    LimitedDebugInfo,
+    FullDebugInfo,
+}
+
 #[deriving(Clone)]
 pub struct Options {
     // The crate config requested for the session, which may be combined
@@ -122,7 +129,7 @@ pub struct Options {
 
     gc: bool,
     optimize: OptLevel,
-    debuginfo: bool,
+    debuginfo: DebugInfoLevel,
     lint_opts: ~[(lint::Lint, lint::level)],
     output_types: ~[back::link::OutputType],
     // This was mutable for rustpkg, which updates search paths based on the
@@ -314,7 +321,7 @@ pub fn basic_options() -> @Options {
         crate_types: ~[],
         gc: false,
         optimize: No,
-        debuginfo: false,
+        debuginfo: NoDebugInfo,
         lint_opts: ~[],
         output_types: ~[],
         addl_lib_search_paths: @RefCell::new(HashSet::new()),

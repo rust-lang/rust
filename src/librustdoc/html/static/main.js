@@ -599,4 +599,11 @@
     }
 
     initSearch(searchIndex);
+
+    $.each($('h1, h2, h3'), function(idx, element) {
+        if ($(element).attr('id') != undefined) {
+            $(element).append('<a href="#' + $(element).attr('id') + '" ' +
+                              'class="anchor"> § </a>');
+        }
+    });
 }());

@@ -19,6 +19,7 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::vec;
+use std::vec_ng::Vec;
 
 use io::{IoResult, retry, keep_going};
 
@@ -341,7 +342,7 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
 
 pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     use std::libc::{dirent_t};
-    use std::libc::{opendir, readdir, closedir};
+    use std::libc::{opendir, readdir_r, closedir};
 
     fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
@@ -353,8 +354,13 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     }
 
     extern {
-        fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
+        fn rust_dirent_t_size() -> libc::c_int;
+        fn rust_list_dir_val(ptr: *mut dirent_t) -> *libc::c_char;
     }
+
+    let size = unsafe { rust_dirent_t_size() };
+    let mut buf = Vec::<u8>::with_capacity(size as uint);
+    let ptr = buf.as_mut_slice().as_mut_ptr() as *mut dirent_t;
 
     debug!("os::list_dir -- BEFORE OPENDIR");
 
@@ -363,13 +369,13 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     if dir_ptr as uint != 0 {
         let mut paths = ~[];
         debug!("os::list_dir -- opendir() SUCCESS");
-        let mut entry_ptr = unsafe { readdir(dir_ptr) };
-        while entry_ptr as uint != 0 {
+        let mut entry_ptr = 0 as *mut dirent_t;
+        while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
+            if entry_ptr.is_null() { break }
             let cstr = unsafe {
                 CString::new(rust_list_dir_val(entry_ptr), false)
             };
             paths.push(Path::new(cstr));
-            entry_ptr = unsafe { readdir(dir_ptr) };
         }
         assert_eq!(unsafe { closedir(dir_ptr) }, 0);
         Ok(prune(p, paths))

@@ -12,7 +12,7 @@ use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
 use back::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames};
-use driver::session::Session;
+use driver::session::{NoDebugInfo, Session};
 use driver::session;
 use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
@@ -26,7 +26,7 @@ use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
 
-use std::c_str::ToCStr;
+use std::c_str::{ToCStr, CString};
 use std::char;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
@@ -61,7 +61,9 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
         if cstr == ptr::null() {
             sess.fatal(msg);
         } else {
-            sess.fatal(msg + ": " + str::raw::from_c_str(cstr));
+            let err = CString::new(cstr, false);
+            let err = str::from_utf8_lossy(err.as_bytes());
+            sess.fatal(msg + ": " + err.as_slice());
         }
     }
 }
@@ -92,7 +94,7 @@ pub mod write {
     use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
     use back::link::{OutputTypeObject};
     use driver::driver::{CrateTranslation, OutputFilenames};
-    use driver::session::Session;
+    use driver::session::{NoDebugInfo, Session};
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
@@ -148,7 +150,7 @@ pub mod write {
 
             // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
             // FIXME: #11954: mac64 unwinding may not work with fp elim
-            let no_fp_elim = sess.opts.debuginfo ||
+            let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
@@ -1052,7 +1054,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
+    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
         // FIXME (#9639): This needs to handle non-utf8 paths
         match Process::status("dsymutil",
                                   [out_filename.as_str().unwrap().to_owned()]) {
