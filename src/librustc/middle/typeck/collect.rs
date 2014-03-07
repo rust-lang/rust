@@ -966,7 +966,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                    base_index: uint) -> ty::Generics {
     return ty::Generics {
         region_param_defs: Rc::new(generics.lifetimes.iter().map(|l| {
-                ty::RegionParameterDef { name: l.ident,
+                ty::RegionParameterDef { name: l.name,
                                          def_id: local_def(l.id) }
             }).collect()),
         type_param_defs: Rc::new(generics.ty_params.mapi_to_vec(|offset, param| {

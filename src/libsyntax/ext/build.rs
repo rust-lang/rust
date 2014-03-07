@@ -413,8 +413,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         ast::TraitTyParamBound(self.trait_ref(path))
     }
 
-    fn lifetime(&self, span: Span, ident: ast::Name) -> ast::Lifetime {
-        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, ident: ident }
+    fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {
+        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, name: name }
     }
 
     fn stmt_expr(&self, expr: @ast::Expr) -> @ast::Stmt {
