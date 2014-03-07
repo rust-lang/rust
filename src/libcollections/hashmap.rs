@@ -358,13 +358,13 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     pub fn with_capacity(capacity: uint) -> HashMap<K, V> {
         let mut r = rand::task_rng();
         let hasher = SipHasher::new_with_keys(r.gen(), r.gen());
-        HashMap::with_capacity_and_hasher(hasher, capacity)
+        HashMap::with_capacity_and_hasher(capacity, hasher)
     }
 }
 
 impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
-        HashMap::with_capacity_and_hasher(hasher, INITIAL_CAPACITY)
+        HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
 
     /// Create an empty HashMap with space for at least `capacity`
@@ -374,7 +374,7 @@ impl<K: Hash<S> + Eq, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
-    pub fn with_capacity_and_hasher(hasher: H, capacity: uint) -> HashMap<K, V, H> {
+    pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashMap<K, V, H> {
         let cap = max(INITIAL_CAPACITY, capacity);
         HashMap {
             hasher: hasher,
@@ -587,7 +587,8 @@ impl<K: Hash<S> + Eq, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
 
 impl<K: Hash<S> + Eq + Clone, V:Clone, S, H: Hasher<S> + Clone> Clone for HashMap<K, V, H> {
     fn clone(&self) -> HashMap<K, V, H> {
-        let mut new_map = HashMap::with_capacity_and_hasher(self.hasher.clone(), self.len());
+        let mut new_map = HashMap::with_capacity_and_hasher(self.len(),
+                                                            self.hasher.clone());
         for (key, value) in self.iter() {
             new_map.insert((*key).clone(), (*value).clone());
         }
@@ -714,7 +715,7 @@ impl<K> Iterator<K> for SetMoveItems<K> {
 impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
     fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
-        let mut map = HashMap::with_capacity_and_hasher(Default::default(), lower);
+        let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
         map
     }
@@ -730,7 +731,7 @@ impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashM
 
 impl<K: Hash<S> + Eq, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
     fn default() -> HashMap<K, V, H> {
-        HashMap::with_capacity_and_hasher(Default::default(), INITIAL_CAPACITY)
+        HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, Default::default())
     }
 }
 
@@ -802,7 +803,7 @@ impl<T: Hash<SipState> + Eq> HashSet<T, SipHasher> {
 
 impl<T: Hash<S> + Eq, S, H: Hasher<S>> HashSet<T, H> {
     pub fn with_hasher(hasher: H) -> HashSet<T, H> {
-        HashSet::with_capacity_and_hasher(hasher, INITIAL_CAPACITY)
+        HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
 
     /// Create an empty HashSet with space for at least `capacity`
@@ -812,9 +813,9 @@ impl<T: Hash<S> + Eq, S, H: Hasher<S>> HashSet<T, H> {
     /// are designed to allow HashSets to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting them
     /// manually using this function can expose a DoS attack vector.
-    pub fn with_capacity_and_hasher(hasher: H, capacity: uint) -> HashSet<T, H> {
+    pub fn with_capacity_and_hasher(capacity: uint, hasher: H) -> HashSet<T, H> {
         HashSet {
-            map: HashMap::with_capacity_and_hasher(hasher, capacity)
+            map: HashMap::with_capacity_and_hasher(capacity, hasher)
         }
     }
 
@@ -902,7 +903,7 @@ impl<T: fmt::Show + Hash<S> + Eq, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 impl<T: Hash<S> + Eq, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
     fn from_iterator<Iter: Iterator<T>>(iter: &mut Iter) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
-        let mut set = HashSet::with_capacity_and_hasher(Default::default(), lower);
+        let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
         set
     }
