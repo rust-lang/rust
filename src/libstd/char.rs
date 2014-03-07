@@ -94,9 +94,19 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Returns whether the specified `char` is considered a Unicode alphabetic
 /// code point
 pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
-#[allow(missing_doc)]
+
+/// Returns whether the specified `char` satisfies the 'XID_Start' Unicode property
+///
+/// 'XID_Start' is a Unicode Derived Property specified in
+/// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+/// mostly similar to ID_Start but modified for closure under NFKx.
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
-#[allow(missing_doc)]
+
+/// Returns whether the specified `char` satisfies the 'XID_Continue' Unicode property
+///
+/// 'XID_Continue' is a Unicode Derived Property specified in
+/// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+/// mostly similar to 'ID_Continue' but modified for closure under NFKx.
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
