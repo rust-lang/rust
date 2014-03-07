@@ -1516,7 +1516,7 @@ impl Resolver {
                 }
             }
 
-            ViewItemExternMod(name, _, node_id) => {
+            ViewItemExternCrate(name, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
                     Some(crate_id) => {
@@ -5415,7 +5415,7 @@ impl Resolver {
         if vi.span == DUMMY_SP { return }
 
         match vi.node {
-            ViewItemExternMod(..) => {} // ignore
+            ViewItemExternCrate(..) => {} // ignore
             ViewItemUse(ref path) => {
                 for p in path.iter() {
                     match p.node {

@@ -134,7 +134,7 @@ impl Visitor<()> for Context {
                     }
                 }
             }
-            ast::ViewItemExternMod(..) => {
+            ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
                     if attr.name().get() == "phase"{
                         self.gate_feature("phase", attr.span,

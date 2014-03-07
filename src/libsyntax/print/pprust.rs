@@ -2065,7 +2065,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) -> io::IoResult<()> 
     try!(print_outer_attributes(s, item.attrs.as_slice()));
     try!(print_visibility(s, item.vis));
     match item.node {
-        ast::ViewItemExternMod(id, ref optional_path, _) => {
+        ast::ViewItemExternCrate(id, ref optional_path, _) => {
             try!(head(s, "extern crate"));
             try!(print_ident(s, id));
             for &(ref p, style) in optional_path.iter() {
