@@ -44,6 +44,7 @@ pub mod html {
     pub mod layout;
     pub mod markdown;
     pub mod render;
+    pub mod toc;
 }
 pub mod markdown;
 pub mod passes;
