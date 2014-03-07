@@ -18,7 +18,7 @@ use getopts;
 use testing;
 
 use html::escape::Escape;
-use html::markdown::{Markdown, find_testable_code, reset_headers};
+use html::markdown::{MarkdownWithToc, find_testable_code, reset_headers};
 use test::Collector;
 
 fn load_string(input: &Path) -> io::IoResult<Option<~str>> {
@@ -145,7 +145,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
         css = css,
         in_header = in_header,
         before_content = before_content,
-        text = Markdown(text),
+        text = MarkdownWithToc(text),
         after_content = after_content);
 
     match err {
