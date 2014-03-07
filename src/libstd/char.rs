@@ -8,7 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode characters manipulation (`char` type)
+//! Character manipulation (`char` type, Unicode Scalar Value)
+//!
+//! This module  provides the `Char` trait, as well as its implementation
+//! for the primitive `char` type, in order to allow basic character manipulation.
+//!
+//! A `char` actually represents a
+//! *[Unicode Scalar Value](http://www.unicode.org/glossary/#unicode_scalar_value)*,
+//! as it can contain any Unicode code point except high-surrogate and
+//! low-surrogate code points.
+//!
+//! As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
+//! (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
+//! however the converse is not always true due to the above range limits
+//! and, as such, should be performed via the `from_u32` function..
+
 
 use cast::transmute;
 use option::{None, Option, Some};
@@ -66,7 +80,7 @@ static TAG_FOUR_B: uint = 240u;
 /// The highest valid code point
 pub static MAX: char = '\U0010ffff';
 
-/// Convert from `u32` to a character.
+/// Convert from `u32` to a `char`.
 #[inline]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
@@ -77,8 +91,8 @@ pub fn from_u32(i: u32) -> Option<char> {
     }
 }
 
-/// Returns whether the specified character is considered a unicode alphabetic
-/// character
+/// Returns whether the specified `char` is considered a unicode alphabetic
+/// scalar value
 pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
 #[allow(missing_doc)]
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
@@ -86,21 +100,21 @@ pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
-/// Indicates whether a character is in lower case, defined
+/// Indicates whether a `char` is in lower case, defined
 /// in terms of the Unicode Derived Core Property 'Lowercase'.
 ///
 #[inline]
 pub fn is_lowercase(c: char) -> bool { derived_property::Lowercase(c) }
 
 ///
-/// Indicates whether a character is in upper case, defined
+/// Indicates whether a `char` is in upper case, defined
 /// in terms of the Unicode Derived Core Property 'Uppercase'.
 ///
 #[inline]
 pub fn is_uppercase(c: char) -> bool { derived_property::Uppercase(c) }
 
 ///
-/// Indicates whether a character is whitespace. Whitespace is defined in
+/// Indicates whether a `char` is whitespace. Whitespace is defined in
 /// terms of the Unicode Property 'White_Space'.
 ///
 #[inline]
@@ -112,7 +126,7 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 ///
-/// Indicates whether a character is alphanumeric. Alphanumericness is
+/// Indicates whether a `char` is alphanumeric. Alphanumericness is
 /// defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
 /// and the Derived Core Property 'Alphabetic'.
 ///
@@ -125,14 +139,14 @@ pub fn is_alphanumeric(c: char) -> bool {
 }
 
 ///
-/// Indicates whether a character is a control character. Control
-/// characters are defined in terms of the Unicode General Category
+/// Indicates whether a `char` is a control code point. Control
+/// code points are defined in terms of the Unicode General Category
 /// 'Cc'.
 ///
 #[inline]
 pub fn is_control(c: char) -> bool { general_category::Cc(c) }
 
-/// Indicates whether the character is numeric (Nd, Nl, or No)
+/// Indicates whether the `char` is numeric (Nd, Nl, or No)
 #[inline]
 pub fn is_digit(c: char) -> bool {
     general_category::Nd(c)
@@ -141,7 +155,7 @@ pub fn is_digit(c: char) -> bool {
 }
 
 ///
-/// Checks if a character parses as a numeric digit in the given radix.
+/// Checks if a `char` parses as a numeric digit in the given radix.
 /// Compared to `is_digit()`, this function only recognizes the
 /// characters `0-9`, `a-z` and `A-Z`.
 ///
@@ -167,13 +181,13 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 }
 
 ///
-/// Convert a char to the corresponding digit.
+/// Convert a `char` to the corresponding digit.
 ///
 /// # Return value
 ///
 /// If `c` is between '0' and '9', the corresponding value
 /// between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
-/// 'b' or 'B', 11, etc. Returns none if the char does not
+/// 'b' or 'B', 11, etc. Returns none if the `char` does not
 /// refer to a digit in the given radix.
 ///
 /// # Failure
@@ -273,7 +287,7 @@ pub fn decompose_compatible(c: char, f: |char|) {
 }
 
 ///
-/// Return the hexadecimal unicode escape of a char.
+/// Return the hexadecimal unicode escape of a `char`.
 ///
 /// The rules are as follows:
 ///
@@ -301,7 +315,7 @@ pub fn escape_unicode(c: char, f: |char|) {
 }
 
 ///
-/// Return a 'default' ASCII and C++11-like char-literal escape of a char.
+/// Return a 'default' ASCII and C++11-like literal escape of a `char`.
 ///
 /// The default is chosen with a bias toward producing literals that are
 /// legal in a variety of languages, including C++11 and similar C-family
@@ -325,7 +339,7 @@ pub fn escape_default(c: char, f: |char|) {
     }
 }
 
-/// Returns the amount of bytes this character would need if encoded in utf8
+/// Returns the amount of bytes this `char` would need if encoded in UTF-8
 pub fn len_utf8_bytes(c: char) -> uint {
     static MAX_ONE_B:   uint = 128u;
     static MAX_TWO_B:   uint = 2048u;
@@ -360,7 +374,7 @@ pub trait Char {
     fn escape_default(&self, f: |char|);
     fn len_utf8_bytes(&self) -> uint;
 
-    /// Encodes this character as utf-8 into the provided byte-buffer. The
+    /// Encodes this `char` as utf-8 into the provided byte-buffer. The
     /// buffer must be at least 4 bytes long or a runtime failure will occur.
     ///
     /// This will then return the number of characters written to the slice.
