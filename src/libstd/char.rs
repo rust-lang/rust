@@ -80,7 +80,7 @@ static TAG_FOUR_B: uint = 240u;
 /// The highest valid code point
 pub static MAX: char = '\U0010ffff';
 
-/// Convert from `u32` to a `char`.
+/// Converts from `u32` to a `char`
 #[inline]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
@@ -91,8 +91,8 @@ pub fn from_u32(i: u32) -> Option<char> {
     }
 }
 
-/// Returns whether the specified `char` is considered a unicode alphabetic
-/// scalar value
+/// Returns whether the specified `char` is considered a Unicode alphabetic
+/// code point
 pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
 #[allow(missing_doc)]
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
@@ -100,22 +100,25 @@ pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
 ///
-/// Indicates whether a `char` is in lower case, defined
-/// in terms of the Unicode Derived Core Property 'Lowercase'.
+/// Indicates whether a `char` is in lower case
+///
+/// This is defined according to the terms of the Unicode Derived Core Property 'Lowercase'.
 ///
 #[inline]
 pub fn is_lowercase(c: char) -> bool { derived_property::Lowercase(c) }
 
 ///
-/// Indicates whether a `char` is in upper case, defined
-/// in terms of the Unicode Derived Core Property 'Uppercase'.
+/// Indicates whether a `char` is in upper case
+///
+/// This is defined according to the terms of the Unicode Derived Core Property 'Uppercase'.
 ///
 #[inline]
 pub fn is_uppercase(c: char) -> bool { derived_property::Uppercase(c) }
 
 ///
-/// Indicates whether a `char` is whitespace. Whitespace is defined in
-/// terms of the Unicode Property 'White_Space'.
+/// Indicates whether a `char` is whitespace
+///
+/// Whitespace is defined in terms of the Unicode Property 'White_Space'.
 ///
 #[inline]
 pub fn is_whitespace(c: char) -> bool {
@@ -126,9 +129,10 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 ///
-/// Indicates whether a `char` is alphanumeric. Alphanumericness is
-/// defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
-/// and the Derived Core Property 'Alphabetic'.
+/// Indicates whether a `char` is alphanumeric
+///
+/// Alphanumericness is defined in terms of the Unicode General Categories
+/// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
 ///
 #[inline]
 pub fn is_alphanumeric(c: char) -> bool {
@@ -139,8 +143,9 @@ pub fn is_alphanumeric(c: char) -> bool {
 }
 
 ///
-/// Indicates whether a `char` is a control code point. Control
-/// code points are defined in terms of the Unicode General Category
+/// Indicates whether a `char` is a control code point
+///
+/// Control code points are defined in terms of the Unicode General Category
 /// 'Cc'.
 ///
 #[inline]
@@ -155,7 +160,8 @@ pub fn is_digit(c: char) -> bool {
 }
 
 ///
-/// Checks if a `char` parses as a numeric digit in the given radix.
+/// Checks if a `char` parses as a numeric digit in the given radix
+///
 /// Compared to `is_digit()`, this function only recognizes the
 /// characters `0-9`, `a-z` and `A-Z`.
 ///
@@ -181,7 +187,7 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
 }
 
 ///
-/// Convert a `char` to the corresponding digit.
+/// Converts a `char` to the corresponding digit
 ///
 /// # Return value
 ///
@@ -210,7 +216,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 }
 
 ///
-/// Converts a number to the character representing it.
+/// Converts a number to the character representing it
 ///
 /// # Return value
 ///
@@ -268,7 +274,7 @@ fn decompose_hangul(s: char, f: |char|) {
     }
 }
 
-/// Returns the canonical decomposition of a character.
+/// Returns the canonical decomposition of a character
 pub fn decompose_canonical(c: char, f: |char|) {
     if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
         decompose::canonical(c, f);
@@ -277,7 +283,7 @@ pub fn decompose_canonical(c: char, f: |char|) {
     }
 }
 
-/// Returns the compatibility decomposition of a character.
+/// Returns the compatibility decomposition of a character
 pub fn decompose_compatible(c: char, f: |char|) {
     if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
         decompose::compatibility(c, f);
@@ -287,7 +293,7 @@ pub fn decompose_compatible(c: char, f: |char|) {
 }
 
 ///
-/// Return the hexadecimal unicode escape of a `char`.
+/// Returns the hexadecimal Unicode escape of a `char`
 ///
 /// The rules are as follows:
 ///
@@ -315,7 +321,7 @@ pub fn escape_unicode(c: char, f: |char|) {
 }
 
 ///
-/// Return a 'default' ASCII and C++11-like literal escape of a `char`.
+/// Returns a 'default' ASCII and C++11-like literal escape of a `char`
 ///
 /// The default is chosen with a bias toward producing literals that are
 /// legal in a variety of languages, including C++11 and similar C-family
@@ -374,8 +380,9 @@ pub trait Char {
     fn escape_default(&self, f: |char|);
     fn len_utf8_bytes(&self) -> uint;
 
-    /// Encodes this `char` as utf-8 into the provided byte-buffer. The
-    /// buffer must be at least 4 bytes long or a runtime failure will occur.
+    /// Encodes this `char` as utf-8 into the provided byte-buffer
+    ///
+    /// The buffer must be at least 4 bytes long or a runtime failure will occur.
     ///
     /// This will then return the number of characters written to the slice.
     fn encode_utf8(&self, dst: &mut [u8]) -> uint;
