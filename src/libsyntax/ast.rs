@@ -1159,12 +1159,12 @@ mod test {
 
     use std::vec_ng::Vec;
 
-    fn is_freeze<T: Freeze>() {}
+    fn is_share<T: Share>() {}
 
-    // Assert that the AST remains Freeze (#10693).
+    // Assert that the AST remains sharable.
     #[test]
-    fn ast_is_freeze() {
-        is_freeze::<Item>();
+    fn ast_is_share() {
+        is_share::<Item>();
     }
 
     // are ASTs encodable?

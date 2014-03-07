@@ -10,9 +10,9 @@
 
 use std::cell::RefCell;
 
-fn f<T: Freeze>(_: T) {}
+fn f<T: Share>(_: T) {}
 
 fn main() {
     let x = RefCell::new(0);
-    f(x); //~ ERROR: which does not fulfill `Freeze`
+    f(x); //~ ERROR: which does not fulfill `Share`
 }

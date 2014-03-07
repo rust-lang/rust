@@ -23,13 +23,16 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::vec_ng::Vec;
 
+#[cfg(stage0)]
+use std::kinds::Share;
+
 pub struct Interner<T> {
     priv map: RefCell<HashMap<T, Name>>,
     priv vect: RefCell<Vec<T> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
-impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
+impl<T: Eq + Hash + Share + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: RefCell::new(HashMap::new()),

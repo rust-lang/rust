@@ -14,6 +14,6 @@ struct X<T>(T);
 
 impl <T> Send for X<T> { } //~ ERROR cannot provide an explicit implementation for a builtin kind
 impl <T> Sized for X<T> { } //~ ERROR cannot provide an explicit implementation for a builtin kind
-impl <T> Freeze for X<T> { } //~ ERROR cannot provide an explicit implementation for a builtin kind
+impl <T> Share for X<T> { } //~ ERROR cannot provide an explicit implementation for a builtin kind
 
 fn main() { }
