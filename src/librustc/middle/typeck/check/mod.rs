@@ -1453,8 +1453,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
     let substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::from(rps.move_iter()
-                                                       .collect())),
+        regions: ty::NonerasedRegions(opt_vec::from(rps.move_iter().collect())),
         self_ty: None,
         tps: tps,
     };
@@ -3741,11 +3740,11 @@ pub fn instantiate_path(fcx: @FnCtxt,
                         nsupplied = num_supplied_regions));
         }
 
-        opt_vec::from(fcx.infcx().next_region_vars(
+        fcx.infcx().next_region_vars(
                 infer::BoundRegionInTypeOrImpl(span),
-                num_expected_regions).move_iter().collect())
+                num_expected_regions).move_iter().collect()
     };
-    let regions = ty::NonerasedRegions(regions);
+    let regions = ty::NonerasedRegions(opt_vec::from(regions));
 
     // Special case: If there is a self parameter, omit it from the list of
     // type parameters.
