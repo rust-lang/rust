@@ -24,6 +24,7 @@ Most of the documentation on regions can be found in
 use driver::session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
+use util::nodemap::NodeMap;
 
 use std::cell::RefCell;
 use collections::{HashMap, HashSet};
@@ -74,10 +75,10 @@ The region maps encode information about region relationships.
   for dynamic checks and/or arbitrary amounts of stack space.
 */
 pub struct RegionMaps {
-    priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv var_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
+    priv scope_map: RefCell<NodeMap<ast::NodeId>>,
+    priv var_map: RefCell<NodeMap<ast::NodeId>>,
     priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
-    priv rvalue_scopes: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
+    priv rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
     priv terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
 
@@ -910,10 +911,10 @@ impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
 
 pub fn resolve_crate(sess: Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
-        scope_map: RefCell::new(HashMap::new()),
-        var_map: RefCell::new(HashMap::new()),
+        scope_map: RefCell::new(NodeMap::new()),
+        var_map: RefCell::new(NodeMap::new()),
         free_region_map: RefCell::new(HashMap::new()),
-        rvalue_scopes: RefCell::new(HashMap::new()),
+        rvalue_scopes: RefCell::new(NodeMap::new()),
         terminating_scopes: RefCell::new(HashSet::new()),
     };
     {

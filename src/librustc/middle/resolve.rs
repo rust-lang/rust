@@ -16,6 +16,7 @@ use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
+use util::nodemap::{NodeMap, DefIdSet};
 
 use syntax::ast::*;
 use syntax::ast;
@@ -36,7 +37,7 @@ use std::mem::replace;
 use collections::{HashMap, HashSet};
 
 // Definition mapping
-pub type DefMap = @RefCell<HashMap<NodeId,Def>>;
+pub type DefMap = @RefCell<NodeMap<Def>>;
 
 struct binding_info {
     span: Span,
@@ -47,11 +48,11 @@ struct binding_info {
 type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<NodeId, ~[DefId]>;
+pub type TraitMap = NodeMap<~[DefId]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @RefCell<HashMap<NodeId, ~[Export2]>>;
+pub type ExportMap2 = @RefCell<NodeMap<~[Export2]>>;
 
 pub struct Export2 {
     name: ~str,        // The name of the target.
@@ -60,10 +61,10 @@ pub struct Export2 {
 
 // This set contains all exported definitions from external crates. The set does
 // not contain any entries from local crates.
-pub type ExternalExports = HashSet<DefId>;
+pub type ExternalExports = DefIdSet;
 
 // FIXME: dox
-pub type LastPrivateMap = HashMap<NodeId, LastPrivate>;
+pub type LastPrivateMap = NodeMap<LastPrivate>;
 
 pub enum LastPrivate {
     LastMod(PrivateDep),
@@ -457,7 +458,7 @@ struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: RefCell<HashMap<NodeId,@Module>>,
+    anonymous_children: RefCell<NodeMap<@Module>>,
 
     // The status of resolving each import in this module.
     import_resolutions: RefCell<HashMap<Name, @ImportResolution>>,
@@ -489,7 +490,7 @@ impl Module {
             children: RefCell::new(HashMap::new()),
             imports: RefCell::new(~[]),
             external_module_children: RefCell::new(HashMap::new()),
-            anonymous_children: RefCell::new(HashMap::new()),
+            anonymous_children: RefCell::new(NodeMap::new()),
             import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
@@ -827,12 +828,12 @@ fn Resolver(session: Session,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
-        def_map: @RefCell::new(HashMap::new()),
-        export_map2: @RefCell::new(HashMap::new()),
-        trait_map: HashMap::new(),
+        def_map: @RefCell::new(NodeMap::new()),
+        export_map2: @RefCell::new(NodeMap::new()),
+        trait_map: NodeMap::new(),
         used_imports: HashSet::new(),
-        external_exports: HashSet::new(),
-        last_private: HashMap::new(),
+        external_exports: DefIdSet::new(),
+        last_private: NodeMap::new(),
 
         emit_errors: true,
     };

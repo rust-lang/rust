@@ -27,6 +27,7 @@ use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
+use util::nodemap::NodeSet;
 
 use serialize::{json, Encodable};
 
@@ -38,7 +39,7 @@ use std::os;
 use std::vec;
 use std::vec_ng::Vec;
 use std::vec_ng;
-use collections::{HashMap, HashSet};
+use collections::HashMap;
 use getopts::{optopt, optmulti, optflag, optflagopt, opt};
 use MaybeHasArg = getopts::Maybe;
 use OccurOptional = getopts::Optional;
@@ -223,8 +224,12 @@ pub fn phase_2_configure_and_expand(sess: Session,
                  front::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "expansion", krate, |krate| {
+        let cfg = syntax::ext::expand::ExpansionConfig {
+            loader: loader,
+            deriving_hash_type_parameter: sess.features.default_type_params.get()
+        };
         syntax::ext::expand::expand_crate(sess.parse_sess,
-                                          loader,
+                                          cfg,
                                           krate)
     });
     // dump the syntax-time crates
@@ -258,7 +263,7 @@ pub struct CrateAnalysis {
     public_items: middle::privacy::PublicItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @RefCell<HashSet<ast::NodeId>>
+    reachable: @RefCell<NodeSet>,
 }
 
 /// Run the resolution, typechecking, region checking and other

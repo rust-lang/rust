@@ -12,15 +12,15 @@ use middle::cfg::*;
 use middle::graph;
 use middle::typeck;
 use middle::ty;
-use collections::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;
+use util::nodemap::NodeMap;
 
 struct CFGBuilder {
     tcx: ty::ctxt,
     method_map: typeck::MethodMap,
-    exit_map: HashMap<ast::NodeId, CFGIndex>,
+    exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
     loop_scopes: ~[LoopScope],
 }
@@ -35,7 +35,7 @@ pub fn construct(tcx: ty::ctxt,
                  method_map: typeck::MethodMap,
                  blk: &ast::Block) -> CFG {
     let mut cfg_builder = CFGBuilder {
-        exit_map: HashMap::new(),
+        exit_map: NodeMap::new(),
         graph: graph::Graph::new(),
         tcx: tcx,
         method_map: method_map,

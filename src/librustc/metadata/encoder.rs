@@ -23,6 +23,7 @@ use middle::astencode;
 use middle::ty;
 use middle::typeck;
 use middle;
+use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cast;
@@ -31,7 +32,7 @@ use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
-use collections::{HashMap, HashSet};
+use collections::HashMap;
 use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
@@ -69,8 +70,8 @@ pub struct EncodeParams<'a> {
     diag: @SpanHandler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
-    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
+    item_symbols: &'a RefCell<NodeMap<~str>>,
+    non_inlineable_statics: &'a RefCell<NodeSet>,
     link_meta: &'a LinkMeta,
     cstore: @cstore::CStore,
     encode_inlined_item: EncodeInlinedItem<'a>,
@@ -97,8 +98,8 @@ pub struct EncodeContext<'a> {
     tcx: ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
-    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
+    item_symbols: &'a RefCell<NodeMap<~str>>,
+    non_inlineable_statics: &'a RefCell<NodeSet>,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
     encode_inlined_item: EncodeInlinedItem<'a>,
