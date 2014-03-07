@@ -30,6 +30,7 @@ use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
+use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 
 use std::cast;
 use std::cell::{Cell, RefCell};
@@ -178,11 +179,16 @@ impl cmp::Eq for intern_key {
     }
 }
 
+#[cfg(stage0)]
 impl Hash for intern_key {
     fn hash(&self, s: &mut sip::SipState) {
-        unsafe {
-            (*self.sty).hash(s)
-        }
+        unsafe { (*self.sty).hash(s) }
+    }
+}
+#[cfg(not(stage0))]
+impl<W:Writer> Hash<W> for intern_key {
+    fn hash(&self, s: &mut W) {
+        unsafe { (*self.sty).hash(s) }
     }
 }
 
@@ -250,7 +256,12 @@ pub type ctxt = @ctxt_;
 /// later on.
 pub struct ctxt_ {
     diag: @syntax::diagnostic::SpanHandler,
+    // Specifically use a speedy hash algorithm for this hash map, it's used
+    // quite often.
+    #[cfg(stage0)]
     interner: RefCell<HashMap<intern_key, ~t_box_>>,
+    #[cfg(not(stage0))]
+    interner: RefCell<HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher>>,
     next_id: Cell<uint>,
     cstore: @metadata::cstore::CStore,
     sess: session::Session,
@@ -269,94 +280,94 @@ pub struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: RefCell<HashMap<NodeId, ~[t]>>,
+    node_type_substs: RefCell<NodeMap<~[t]>>,
 
     // Maps from a method to the method "descriptor"
-    methods: RefCell<HashMap<DefId, @Method>>,
+    methods: RefCell<DefIdMap<@Method>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
-    trait_method_def_ids: RefCell<HashMap<DefId, @~[DefId]>>,
+    trait_method_def_ids: RefCell<DefIdMap<@~[DefId]>>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: RefCell<HashMap<DefId, @~[@Method]>>,
+    trait_methods_cache: RefCell<DefIdMap<@~[@Method]>>,
 
-    impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
+    impl_trait_cache: RefCell<DefIdMap<Option<@ty::TraitRef>>>,
 
-    trait_refs: RefCell<HashMap<NodeId, @TraitRef>>,
-    trait_defs: RefCell<HashMap<DefId, @TraitDef>>,
+    trait_refs: RefCell<NodeMap<@TraitRef>>,
+    trait_defs: RefCell<DefIdMap<@TraitDef>>,
 
     map: ast_map::Map,
-    intrinsic_defs: RefCell<HashMap<ast::DefId, t>>,
+    intrinsic_defs: RefCell<DefIdMap<t>>,
     freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
     rcache: creader_cache,
     short_names_cache: RefCell<HashMap<t, ~str>>,
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
-    ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
-    enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
-    ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
-    adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
+    ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry>>,
+    enum_var_cache: RefCell<DefIdMap<@~[@VariantInfo]>>,
+    ty_param_defs: RefCell<NodeMap<TypeParameterDef>>,
+    adjustments: RefCell<NodeMap<@AutoAdjustment>>,
     normalized_cache: RefCell<HashMap<t, t>>,
     lang_items: @middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
-    provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
-    supertraits: RefCell<HashMap<ast::DefId, @~[@TraitRef]>>,
+    provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
+    supertraits: RefCell<DefIdMap<@~[@TraitRef]>>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
-    item_variance_map: RefCell<HashMap<ast::DefId, @ItemVariances>>,
+    item_variance_map: RefCell<DefIdMap<@ItemVariances>>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
     // present in this map, it does not have a destructor. This map is
     // populated during the coherence phase of typechecking.
-    destructor_for_type: RefCell<HashMap<ast::DefId, ast::DefId>>,
+    destructor_for_type: RefCell<DefIdMap<ast::DefId>>,
 
     // A method will be in this list if and only if it is a destructor.
-    destructors: RefCell<HashSet<ast::DefId>>,
+    destructors: RefCell<DefIdSet>,
 
     // Maps a trait onto a list of impls of that trait.
-    trait_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
+    trait_impls: RefCell<DefIdMap<@RefCell<~[@Impl]>>>,
 
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
+    inherent_impls: RefCell<DefIdMap<@RefCell<~[@Impl]>>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
     // including ones in other crates. It's not clear that this is the best
     // way to do it.
-    impls: RefCell<HashMap<ast::DefId, @Impl>>,
+    impls: RefCell<DefIdMap<@Impl>>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
-    used_unsafe: RefCell<HashSet<ast::NodeId>>,
+    used_unsafe: RefCell<NodeSet>,
 
     // Set of nodes which mark locals as mutable which end up getting used at
     // some point. Local variable definitions not in this set can be warned
     // about.
-    used_mut_nodes: RefCell<HashSet<ast::NodeId>>,
+    used_mut_nodes: RefCell<NodeSet>,
 
     // vtable resolution information for impl declarations
     impl_vtables: typeck::impl_vtable_map,
 
     // The set of external nominal types whose implementations have been read.
     // This is used for lazy resolution of methods.
-    populated_external_types: RefCell<HashSet<ast::DefId>>,
+    populated_external_types: RefCell<DefIdSet>,
 
     // The set of external traits whose implementations have been read. This
     // is used for lazy resolution of traits.
-    populated_external_traits: RefCell<HashSet<ast::DefId>>,
+    populated_external_traits: RefCell<DefIdSet>,
 
     // Borrows
     upvar_borrow_map: RefCell<UpvarBorrowMap>,
 
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
-    extern_const_statics: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
-    extern_const_variants: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
+    extern_const_statics: RefCell<DefIdMap<Option<@ast::Expr>>>,
+    extern_const_variants: RefCell<DefIdMap<Option<@ast::Expr>>>,
 }
 
 pub enum tbox_flag {
@@ -1068,7 +1079,7 @@ pub struct ty_param_substs_and_ty {
     ty: ty::t
 }
 
-pub type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
+pub type type_cache = RefCell<DefIdMap<ty_param_bounds_and_ty>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
 
@@ -1080,54 +1091,61 @@ pub fn mk_ctxt(s: session::Session,
                region_maps: middle::region::RegionMaps,
                lang_items: @middle::lang_items::LanguageItems)
             -> ctxt {
-
+    #[cfg(stage0)]
+    fn hasher() -> HashMap<intern_key, ~t_box_> {
+        HashMap::new()
+    }
+    #[cfg(not(stage0))]
+    fn hasher() -> HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher> {
+        HashMap::with_hasher(::util::nodemap::FnvHasher)
+    }
     @ctxt_ {
         named_region_map: named_region_map,
-        item_variance_map: RefCell::new(HashMap::new()),
+        item_variance_map: RefCell::new(DefIdMap::new()),
         diag: s.diagnostic(),
-        interner: RefCell::new(HashMap::new()),
+        interner: RefCell::new(hasher()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         cstore: s.cstore,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
         node_types: RefCell::new(HashMap::new()),
-        node_type_substs: RefCell::new(HashMap::new()),
-        trait_refs: RefCell::new(HashMap::new()),
-        trait_defs: RefCell::new(HashMap::new()),
+        node_type_substs: RefCell::new(NodeMap::new()),
+        trait_refs: RefCell::new(NodeMap::new()),
+        trait_defs: RefCell::new(DefIdMap::new()),
         map: map,
-        intrinsic_defs: RefCell::new(HashMap::new()),
+        intrinsic_defs: RefCell::new(DefIdMap::new()),
         freevars: RefCell::new(freevars),
-        tcache: RefCell::new(HashMap::new()),
+        tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(HashMap::new()),
         short_names_cache: RefCell::new(HashMap::new()),
         needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
         tc_cache: RefCell::new(HashMap::new()),
-        ast_ty_to_ty_cache: RefCell::new(HashMap::new()),
-        enum_var_cache: RefCell::new(HashMap::new()),
-        methods: RefCell::new(HashMap::new()),
-        trait_method_def_ids: RefCell::new(HashMap::new()),
-        trait_methods_cache: RefCell::new(HashMap::new()),
-        impl_trait_cache: RefCell::new(HashMap::new()),
-        ty_param_defs: RefCell::new(HashMap::new()),
-        adjustments: RefCell::new(HashMap::new()),
+        ast_ty_to_ty_cache: RefCell::new(NodeMap::new()),
+        enum_var_cache: RefCell::new(DefIdMap::new()),
+        methods: RefCell::new(DefIdMap::new()),
+        trait_method_def_ids: RefCell::new(DefIdMap::new()),
+        trait_methods_cache: RefCell::new(DefIdMap::new()),
+        impl_trait_cache: RefCell::new(DefIdMap::new()),
+        ty_param_defs: RefCell::new(NodeMap::new()),
+        adjustments: RefCell::new(NodeMap::new()),
         normalized_cache: RefCell::new(HashMap::new()),
         lang_items: lang_items,
-        provided_method_sources: RefCell::new(HashMap::new()),
-        supertraits: RefCell::new(HashMap::new()),
-        destructor_for_type: RefCell::new(HashMap::new()),
-        destructors: RefCell::new(HashSet::new()),
-        trait_impls: RefCell::new(HashMap::new()),
-        inherent_impls: RefCell::new(HashMap::new()),
-        impls: RefCell::new(HashMap::new()),
-        used_unsafe: RefCell::new(HashSet::new()),
-        used_mut_nodes: RefCell::new(HashSet::new()),
-        impl_vtables: RefCell::new(HashMap::new()),
-        populated_external_types: RefCell::new(HashSet::new()),
-        populated_external_traits: RefCell::new(HashSet::new()),
+        provided_method_sources: RefCell::new(DefIdMap::new()),
+        supertraits: RefCell::new(DefIdMap::new()),
+        destructor_for_type: RefCell::new(DefIdMap::new()),
+        destructors: RefCell::new(DefIdSet::new()),
+        trait_impls: RefCell::new(DefIdMap::new()),
+        inherent_impls: RefCell::new(DefIdMap::new()),
+        impls: RefCell::new(DefIdMap::new()),
+        used_unsafe: RefCell::new(NodeSet::new()),
+        used_mut_nodes: RefCell::new(NodeSet::new()),
+        impl_vtables: RefCell::new(DefIdMap::new()),
+        populated_external_types: RefCell::new(DefIdSet::new()),
+        populated_external_traits: RefCell::new(DefIdSet::new()),
         upvar_borrow_map: RefCell::new(HashMap::new()),
-        extern_const_statics: RefCell::new(HashMap::new()),
-        extern_const_variants: RefCell::new(HashMap::new()),
+        extern_const_statics: RefCell::new(DefIdMap::new()),
+        extern_const_variants: RefCell::new(DefIdMap::new()),
     }
 }
 
@@ -3787,7 +3805,7 @@ pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef]
 fn lookup_locally_or_in_crate_store<V:Clone>(
                                     descr: &str,
                                     def_id: ast::DefId,
-                                    map: &mut HashMap<ast::DefId, V>,
+                                    map: &mut DefIdMap<V>,
                                     load_external: || -> V) -> V {
     /*!
      * Helper for looking things up in the various maps

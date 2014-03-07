@@ -135,10 +135,10 @@ use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 use util::ppaux::UserString;
+use util::nodemap::{NodeMap, NodeSet};
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use collections::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
@@ -159,9 +159,9 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @RefCell<HashMap<NodeId, Rc<~[CaptureVar]>>>;
+pub type CaptureMap = @RefCell<NodeMap<Rc<~[CaptureVar]>>>;
 
-pub type MovesMap = @RefCell<HashSet<NodeId>>;
+pub type MovesMap = @RefCell<NodeSet>;
 
 /**
  * Set of variable node-ids that are moved.
@@ -169,7 +169,7 @@ pub type MovesMap = @RefCell<HashSet<NodeId>>;
  * Note: The `VariableMovesMap` stores expression ids that
  * are moves, whereas this set stores the ids of the variables
  * that are moved at some point */
-pub type MovedVariablesSet = @RefCell<HashSet<NodeId>>;
+pub type MovedVariablesSet = @RefCell<NodeSet>;
 
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
@@ -215,9 +215,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @RefCell::new(HashSet::new()),
-            capture_map: @RefCell::new(HashMap::new()),
-            moved_variables_set: @RefCell::new(HashSet::new())
+            moves_map: @RefCell::new(NodeSet::new()),
+            capture_map: @RefCell::new(NodeMap::new()),
+            moved_variables_set: @RefCell::new(NodeSet::new())
         }
     };
     let visit_cx = &mut visit_cx;
