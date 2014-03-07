@@ -118,8 +118,8 @@ impl Writer for FnvState {
     fn write(&mut self, bytes: &[u8]) -> io::IoResult<()> {
         let FnvState(mut hash) = *self;
         for byte in bytes.iter() {
-            hash = hash * 0x100000001b3;
             hash = hash ^ (*byte as u64);
+            hash = hash * 0x100000001b3;
         }
         *self = FnvState(hash);
         Ok(())
