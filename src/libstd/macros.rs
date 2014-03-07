@@ -366,12 +366,14 @@ macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
 
+/// Create a `std::vec_ng::Vec` containing the arguments.
 #[macro_export]
 macro_rules! vec(
     ($($e:expr),*) => ({
-        let mut temp = ::std::vec_ng::Vec::new();
-        $(temp.push($e);)*
-        temp
+        // leading _ to allow empty construction without a warning.
+        let mut _temp = ::std::vec_ng::Vec::new();
+        $(_temp.push($e);)*
+        _temp
     })
 )
 
