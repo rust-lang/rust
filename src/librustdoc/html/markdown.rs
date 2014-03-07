@@ -28,7 +28,6 @@
 
 use std::cast;
 use std::fmt;
-use std::intrinsics;
 use std::io;
 use std::libc;
 use std::local_data;
@@ -258,12 +257,25 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             };
             if ignore { return }
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                let tests: &mut ::test::Collector = intrinsics::transmute(opaque);
+                let tests = &mut *(opaque as *mut ::test::Collector);
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
                 let text = lines.to_owned_vec().connect("\n");
                 tests.add_test(text, should_fail, no_run);
             })
+        }
+    }
+    extern fn header(_ob: *buf, text: *buf, level: libc::c_int, opaque: *libc::c_void) {
+        unsafe {
+            let tests = &mut *(opaque as *mut ::test::Collector);
+            if text.is_null() {
+                tests.register_header("", level as u32);
+            } else {
+                vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+                    let text = str::from_utf8(text).unwrap();
+                    tests.register_header(text, level as u32);
+                })
+            }
         }
     }
 
@@ -276,7 +288,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             blockcode: Some(block),
             blockquote: None,
             blockhtml: None,
-            header: None,
+            header: Some(header),
             other: mem::init()
         };
 
