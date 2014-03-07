@@ -74,7 +74,7 @@ pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
 impl fold::Folder for StandardLibraryInjector {
     fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         let mut vis = vec!(ast::ViewItem {
-            node: ast::ViewItemExternMod(token::str_to_ident("std"),
+            node: ast::ViewItemExternCrate(token::str_to_ident("std"),
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: vec!(
@@ -90,7 +90,7 @@ impl fold::Folder for StandardLibraryInjector {
 
         if use_uv(&krate) && !self.sess.building_library.get() {
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternMod(token::str_to_ident("green"),
+                node: ast::ViewItemExternCrate(token::str_to_ident("green"),
                                              with_version("green"),
                                              ast::DUMMY_NODE_ID),
                 attrs: Vec::new(),
@@ -98,7 +98,7 @@ impl fold::Folder for StandardLibraryInjector {
                 span: DUMMY_SP
             });
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternMod(token::str_to_ident("rustuv"),
+                node: ast::ViewItemExternCrate(token::str_to_ident("rustuv"),
                                              with_version("rustuv"),
                                              ast::DUMMY_NODE_ID),
                 attrs: Vec::new(),

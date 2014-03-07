@@ -845,7 +845,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
 
     fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
         match a.node {
-            ast::ViewItemExternMod(..) => {}
+            ast::ViewItemExternCrate(..) => {}
             ast::ViewItemUse(ref uses) => {
                 for vpath in uses.iter() {
                     match vpath.node {
@@ -976,7 +976,7 @@ impl Visitor<()> for SanePrivacyVisitor {
                                                     reachable");
                 } else {
                     match i.node {
-                        ast::ViewItemExternMod(..) => {
+                        ast::ViewItemExternCrate(..) => {
                             self.tcx.sess.span_err(i.span, "`pub` visibility \
                                                             is not allowed");
                         }
