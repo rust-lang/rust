@@ -960,8 +960,8 @@ fn item_module(w: &mut Writer, cx: &Context,
         match (&i1.inner, &i2.inner) {
             (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
                 match (&a.inner, &b.inner) {
-                    (&clean::ExternMod(..), _) => Less,
-                    (_, &clean::ExternMod(..)) => Greater,
+                    (&clean::ExternCrate(..), _) => Less,
+                    (_, &clean::ExternCrate(..)) => Greater,
                     _ => idx1.cmp(&idx2),
                 }
             }
@@ -1056,7 +1056,7 @@ fn item_module(w: &mut Writer, cx: &Context,
 
             clean::ViewItemItem(ref item) => {
                 match item.inner {
-                    clean::ExternMod(ref name, ref src, _) => {
+                    clean::ExternCrate(ref name, ref src, _) => {
                         try!(write!(w, "<tr><td><code>extern crate {}",
                                       name.as_slice()));
                         match *src {

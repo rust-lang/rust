@@ -306,7 +306,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
                                              path_node(~[id_test]),
                                              ast::DUMMY_NODE_ID))))
     } else {
-        ast::ViewItemExternMod(id_test,
+        ast::ViewItemExternCrate(id_test,
                                with_version("test"),
                                ast::DUMMY_NODE_ID)
     };

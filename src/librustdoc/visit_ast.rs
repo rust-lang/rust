@@ -147,7 +147,7 @@ impl<'a> RustdocVisitor<'a> {
                     }
                 }
             }
-            ast::ViewItemExternMod(..) => item.clone()
+            ast::ViewItemExternCrate(..) => item.clone()
         };
         om.view_items.push(item);
     }

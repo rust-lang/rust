@@ -167,7 +167,7 @@ struct CrateInfo {
 
 fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
-        ast::ViewItemExternMod(ident, ref path_opt, id) => {
+        ast::ViewItemExternCrate(ident, ref path_opt, id) => {
             let ident = token::get_ident(ident);
             debug!("resolving extern crate stmt. ident: {:?} path_opt: {:?}",
                    ident, path_opt);
