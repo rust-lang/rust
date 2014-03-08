@@ -185,6 +185,7 @@ amount.
 For example:
 
 ~~~
+# #[allow(unused_imports)];
 extern crate test;
 
 use std::vec;
@@ -201,6 +202,8 @@ fn initialise_a_vector(b: &mut BenchHarness) {
     b.iter(|| {vec::from_elem(1024, 0u64);} );
     b.bytes = 1024 * 8;
 }
+
+# fn main() {}
 ~~~
 
 The benchmark runner will calibrate measurement of the benchmark
@@ -244,6 +247,7 @@ recognize that some calculation has no external effects and remove
 it entirely.
 
 ~~~
+# #[allow(unused_imports)];
 extern crate test;
 use test::BenchHarness;
 
@@ -253,6 +257,8 @@ fn bench_xor_1000_ints(bh: &mut BenchHarness) {
             range(0, 1000).fold(0, |old, new| old ^ new);
         });
 }
+
+# fn main() {}
 ~~~
 
 gives the following results
@@ -271,6 +277,7 @@ cannot remove the computation entirely. This could be done for the
 example above by adjusting the `bh.iter` call to
 
 ~~~
+# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let bh = X;
 bh.iter(|| range(0, 1000).fold(0, |old, new| old ^ new))
 ~~~
 
@@ -281,9 +288,12 @@ forces it to consider any argument as used.
 ~~~
 extern crate test;
 
+# fn main() {
+# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let bh = X;
 bh.iter(|| {
         test::black_box(range(0, 1000).fold(0, |old, new| old ^ new));
     });
+# }
 ~~~
 
 Neither of these read or modify the value, and are very cheap for

@@ -60,7 +60,7 @@ dialect of EBNF supported by common automated LL(k) parsing tools such as
 `llgen`, rather than the dialect given in ISO 14977. The dialect can be
 defined self-referentially as follows:
 
-~~~~ {.ebnf .notation}
+~~~~ {.notrust .ebnf .notation}
 grammar : rule + ;
 rule    : nonterminal ':' productionrule ';' ;
 productionrule : production [ '|' production ] * ;
@@ -150,7 +150,7 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 ## Comments
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 comment : block_comment | line_comment ;
 block_comment : "/*" block_comment_body * '*' + '/' ;
 block_comment_body : (block_comment | character) * ;
@@ -171,7 +171,7 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 whitespace_char : '\x20' | '\x09' | '\x0a' | '\x0d' ;
 whitespace : [ whitespace_char | comment ] + ;
 ~~~~
@@ -188,7 +188,7 @@ with any other legal whitespace element, such as a single space character.
 
 ## Tokens
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 simple_token : keyword | unop | binop ;
 token : simple_token | ident | literal | symbol | whitespace token ;
 ~~~~
@@ -202,7 +202,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 The keywords are the following strings:
 
-~~~~ {.keyword}
+~~~~ {.notrust .keyword}
 as
 break
 do
@@ -230,13 +230,13 @@ evaluates to, rather than referring to it by name or some other evaluation
 rule. A literal is a form of constant expression, so is evaluated (primarily)
 at compile time.
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 literal : string_lit | char_lit | num_lit ;
 ~~~~
 
 #### Character and string literals
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 char_lit : '\x27' char_body '\x27' ;
 string_lit : '"' string_body * '"' | 'r' raw_string ;
 
@@ -318,7 +318,7 @@ r##"foo #"# bar"##;                // foo #"# bar
 
 #### Number literals
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
         | '0' [       [ dec_digit | '_' ] * num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
@@ -416,7 +416,7 @@ The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 symbol : "::" "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
@@ -431,7 +431,7 @@ operators](#binary-operator-expressions), or [keywords](#keywords).
 
 ## Paths
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 expr_path : ident [ "::" expr_path_tail ] + ;
 expr_path_tail : '<' type_expr [ ',' type_expr ] + '>'
                | expr_path ;
@@ -495,7 +495,7 @@ All of the above extensions are expressions with values.
 
 ## Macros
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
 matcher : '(' matcher * ')' | '[' matcher * ']'
@@ -635,7 +635,7 @@ each of which may have some number of [attributes](#attributes) attached to it.
 
 ## Items
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 item : mod_item | fn_item | type_item | struct_item | enum_item
      | static_item | trait_item | impl_item | extern_block ;
 ~~~~
@@ -683,7 +683,7 @@ That is, Rust has no notion of type abstraction: there are no first-class "foral
 
 ### Modules
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 mod_item : "mod" ident ( ';' | '{' mod '}' );
 mod : [ view_item | item ] * ;
 ~~~~
@@ -703,15 +703,15 @@ An example of a module:
 mod math {
     type Complex = (f64, f64);
     fn sin(f: f64) -> f64 {
-        ...
+        /* ... */
 # fail!();
     }
     fn cos(f: f64) -> f64 {
-        ...
+        /* ... */
 # fail!();
     }
     fn tan(f: f64) -> f64 {
-        ...
+        /* ... */
 # fail!();
     }
 }
@@ -751,7 +751,7 @@ mod task {
 
 #### View items
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 view_item : extern_crate_decl | use_decl ;
 ~~~~
 
@@ -764,7 +764,7 @@ There are several kinds of view item:
 
 ##### Extern crate declarations
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 extern_crate_decl : "extern" "crate" ident [ '(' link_attrs ')' ] ? [ '=' string_lit ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
@@ -796,7 +796,7 @@ extern crate foo = "some/where/rust-foo#foo:1.0"; // a full package ID for exter
 
 ##### Use declarations
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 use_decl : "pub" ? "use" ident [ '=' path
                           | "::" path_glob ] ;
 
@@ -1205,7 +1205,7 @@ whereas `Dog` is simply called an enum variant.
 
 ### Static items
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 static_item : "static" ident ':' type '=' expr ';' ;
 ~~~~
 
@@ -1447,7 +1447,7 @@ Implementation parameters are written after the `impl` keyword.
 # trait Seq<T> { }
 
 impl<T> Seq<T> for ~[T] {
-   ...
+   /* ... */
 }
 impl Seq<bool> for u32 {
    /* Treat the integer as a sequence of bits */
@@ -1456,7 +1456,7 @@ impl Seq<bool> for u32 {
 
 ### External blocks
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 extern_block_item : "extern" '{' extern_block '} ;
 extern_block : [ foreign_fn ] * ;
 ~~~~
@@ -1682,7 +1682,7 @@ import public items from their destination, not private items.
 
 ## Attributes
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 attribute : '#' '[' attr_list ']' ;
 attr_list : attr [ ',' attr_list ]*
 attr : ident [ '=' literal
@@ -2226,7 +2226,7 @@ declaring a function-local item.
 
 #### Slot declarations
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
 init : [ '=' ] expr ;
 ~~~~
@@ -2326,7 +2326,7 @@ values.
 
 ### Structure expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 struct_expr : expr_path '{' ident ':' expr
                       [ ',' ident ':' expr ] *
                       [ ".." expr ] '}' |
@@ -2380,7 +2380,7 @@ Point3d {y: 0, z: 10, .. base};
 
 ### Block expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 block_expr : '{' [ view_item ] *
                  [ stmt ';' | item ] *
                  [ expr ] '}'
@@ -2398,7 +2398,7 @@ of the block are that of the expression itself.
 
 ### Method-call expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 method_call_expr : expr '.' ident paren_expr_list ;
 ~~~~
 
@@ -2409,7 +2409,7 @@ or dynamically dispatching if the left-hand-side expression is an indirect [obje
 
 ### Field expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 field_expr : expr '.' ident
 ~~~~
 
@@ -2417,9 +2417,10 @@ A _field expression_ consists of an expression followed by a single dot and an i
 when not immediately followed by a parenthesized expression-list (the latter is a [method call expression](#method-call-expressions)).
 A field expression denotes a field of a [structure](#structure-types).
 
-~~~~ {.field}
+~~~~ {.ignore .field}
 myrecord.myfield;
-{a: 10, b: 20}.a;
+foo().x;
+(Struct {a: 10, b: 20}).a;
 ~~~~
 
 A field access on a record is an [lvalue](#lvalues-rvalues-and-temporaries) referring to the value of that field.
@@ -2430,7 +2431,7 @@ it is automatically dereferenced to make the field access possible.
 
 ### Vector expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 vec_expr : '[' "mut" ? vec_elems? ']'
 
 vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
@@ -2452,7 +2453,7 @@ as a [literal](#literals) or a [static item](#static-items).
 
 ### Index expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 idx_expr : expr '[' expr ']'
 ~~~~
 
@@ -2504,7 +2505,7 @@ before the expression they apply to.
 
 ### Binary operator expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 binop_expr : expr binop expr ;
 ~~~~
 
@@ -2645,7 +2646,7 @@ Any such expression always has the [`unit`](#primitive-types) type.
 The precedence of Rust binary operators is ordered as follows, going
 from strong to weak:
 
-~~~~ {.precedence}
+~~~~ {.notrust .precedence}
 * / %
 as
 + -
@@ -2669,7 +2670,7 @@ An expression enclosed in parentheses evaluates to the result of the enclosed
 expression.  Parentheses can be used to explicitly specify evaluation order
 within an expression.
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 paren_expr : '(' expr ')' ;
 ~~~~
 
@@ -2682,7 +2683,7 @@ let x = (2 + 3) * 4;
 
 ### Call expressions
 
-~~~~ {.abnf .gram}
+~~~~ {.notrust .ebnf .gram}
 expr_list : [ expr [ ',' expr ]* ] ? ;
 paren_expr_list : '(' expr_list ')' ;
 call_expr : expr paren_expr_list ;
@@ -2705,7 +2706,7 @@ let pi: Option<f32> = FromStr::from_str("3.14");
 
 ### Lambda expressions
 
-~~~~ {.abnf .gram}
+~~~~ {.notrust .ebnf .gram}
 ident_list : [ ident [ ',' ident ]* ] ? ;
 lambda_expr : '|' ident_list '|' expr ;
 ~~~~
@@ -2748,7 +2749,7 @@ ten_times(|j| println!("hello, {}", j));
 
 ### While loops
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 while_expr : "while" expr '{' block '}' ;
 ~~~~
 
@@ -2774,7 +2775,7 @@ The keyword `loop` in Rust appears both in _loop expressions_ and in _continue e
 A loop expression denotes an infinite loop;
 see [Continue expressions](#continue-expressions) for continue expressions.
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 loop_expr : [ lifetime ':' ] "loop" '{' block '}';
 ~~~~
 
@@ -2785,7 +2786,7 @@ See [Break expressions](#break-expressions).
 
 ### Break expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 break_expr : "break" [ lifetime ];
 ~~~~
 
@@ -2798,7 +2799,7 @@ but must enclose it.
 
 ### Continue expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 continue_expr : "loop" [ lifetime ];
 ~~~~
 
@@ -2817,7 +2818,7 @@ A `loop` expression is only permitted in the body of a loop.
 
 ### For expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 for_expr : "for" pat "in" expr '{' block '}' ;
 ~~~~
 
@@ -2851,7 +2852,7 @@ for i in range(0u, 256) {
 
 ### If expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 if_expr : "if" expr '{' block '}'
           else_tail ? ;
 
@@ -2872,7 +2873,7 @@ then any `else` block is executed.
 
 ### Match expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
 match_arm : match_pat '=>' [ expr "," | '{' block '}' ] ;
@@ -3063,7 +3064,7 @@ let message = match maybe_digit {
 
 ### Return expressions
 
-~~~~ {.ebnf .gram}
+~~~~ {.notrust .ebnf .gram}
 return_expr : "return" expr ? ;
 ~~~~
 
@@ -3895,7 +3896,7 @@ fn main() {
 
 These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
-```bash
+``` {.bash .notrust}
 $ RUST_LOG=rust=3 ./rust
 This is an error log
 This is a warn log

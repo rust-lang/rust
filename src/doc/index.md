@@ -25,6 +25,8 @@ li {list-style-type: none; }
 
 * [The standard library, `std`](std/index.html)
 
+<!-- force the two lists to be separate -->
+
 * [The `arena` allocation library](arena/index.html)
 * [The `collections` library](collections/index.html)
 * [The `extra` library of extra stuff](extra/index.html)
