@@ -1,4 +1,4 @@
-// Copyright 2012-2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test arcs no longer unwrap
-
 extern crate sync;
 
 use std::from_str::FromStr;
@@ -17,7 +15,6 @@ use std::iter::count;
 use std::cmp::min;
 use std::os;
 use std::vec::from_elem;
-use sync::Arc;
 use sync::RWArc;
 
 fn A(i: uint, j: uint) -> f64 {
@@ -33,12 +30,18 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
 }
 
 fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
-    let wait = Arc::new(());
+    // We lanch in different tasks the work to be done.  To finish
+    // this fuction, we need to wait for the completion of every
+    // tasks.  To do that, we give to each tasks a wait_chan that we
+    // drop at the end of the work.  At the end of this function, we
+    // wait until the channel hang up.
+    let (wait_port, wait_chan) = Chan::new();
+
     let len = out.read(|out| out.len());
     let chunk = len / 100 + 1;
     for chk in count(0, chunk) {
         if chk >= len {break;}
-        let w = wait.clone();
+        let w = wait_chan.clone();
         let v = v.clone();
         let out = out.clone();
         spawn(proc() {
@@ -46,10 +49,13 @@ fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
                 let val = v.read(|v| f(v, i));
                 out.write(|out| out[i] = val);
             }
-            let _ = w;
+            drop(w)
         });
     }
-    let _ = wait.unwrap();
+
+    // wait until the channel hang up (every task finished)
+    drop(wait_chan);
+    for () in wait_port.iter() {}
 }
 
 fn mult_Av_impl(v: &~[f64], i: uint) -> f64 {
@@ -97,7 +103,8 @@ fn main() {
         mult_AtAv(u.clone(), v.clone(), tmp.clone());
         mult_AtAv(v.clone(), u.clone(), tmp.clone());
     }
-    let u = u.unwrap();
-    let v = v.unwrap();
-    println!("{:.9f}", (dot(u,v) / dot(v,v)).sqrt());
+
+    u.read(|u| v.read(|v| {
+        println!("{:.9f}", (dot(*u, *v) / dot(*v, *v)).sqrt());
+    }))
 }
