@@ -17,8 +17,8 @@ use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
 use result::{Ok, Err};
-use vec::{OwnedVector, ImmutableVector, MutableVector};
-use vec;
+use slice::{OwnedVector, ImmutableVector, MutableVector};
+use slice;
 
 /// Wraps a Reader and buffers input from it
 ///
@@ -58,7 +58,7 @@ impl<R: Reader> BufferedReader<R> {
         // everything up-front. This allows creation of BufferedReader instances
         // to be very cheap (large mallocs are not nearly as expensive as large
         // callocs).
-        let mut buf = vec::with_capacity(cap);
+        let mut buf = slice::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedReader {
             inner: inner,
@@ -106,7 +106,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
         let nread = {
             let available = try!(self.fill());
             let nread = cmp::min(available.len(), buf.len());
-            vec::bytes::copy_memory(buf, available.slice_to(nread));
+            slice::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };
         self.pos += nread;
@@ -140,7 +140,7 @@ impl<W: Writer> BufferedWriter<W> {
     /// Creates a new `BufferedWriter` with the specified buffer capacity
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
         // See comments in BufferedReader for why this uses unsafe code.
-        let mut buf = vec::with_capacity(cap);
+        let mut buf = slice::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedWriter {
             inner: Some(inner),
@@ -190,7 +190,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
             self.inner.get_mut_ref().write(buf)
         } else {
             let dst = self.buf.mut_slice_from(self.pos);
-            vec::bytes::copy_memory(dst, buf);
+            slice::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
             Ok(())
         }

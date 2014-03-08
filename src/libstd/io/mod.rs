@@ -223,8 +223,8 @@ use str::{StrSlice, OwnedStr};
 use str;
 use uint;
 use unstable::finally::try_finally;
-use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
-use vec;
+use slice::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
+use slice;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -406,7 +406,7 @@ pub trait Reader {
     /// (not returned as part of the error). If this is unacceptable, then it is
     /// recommended to use the `push_bytes` or `read` methods.
     fn read_bytes(&mut self, len: uint) -> IoResult<~[u8]> {
-        let mut buf = vec::with_capacity(len);
+        let mut buf = slice::with_capacity(len);
         match self.push_bytes(&mut buf, len) {
             Ok(()) => Ok(buf),
             Err(e) => Err(e),
@@ -422,7 +422,7 @@ pub trait Reader {
     ///
     /// When EOF is encountered, all bytes read up to that point are returned.
     fn read_to_end(&mut self) -> IoResult<~[u8]> {
-        let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
+        let mut buf = slice::with_capacity(DEFAULT_BUF_SIZE);
         loop {
             match self.push_bytes(&mut buf, DEFAULT_BUF_SIZE) {
                 Ok(()) => {}

@@ -16,7 +16,7 @@ use io;
 use option::{None, Option, Some};
 use result::{Ok, Err};
 use super::{Reader, Writer, IoResult};
-use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
+use slice::{bytes, CloneableVector, MutableVector, ImmutableVector};
 
 /// Allows reading from a rx.
 ///

@@ -99,8 +99,8 @@ use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
 use from_str::FromStr;
-use vec;
-use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
+use slice;
+use slice::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use vec_ng::Vec;
 use default::Default;
 use raw::Repr;
@@ -360,7 +360,7 @@ pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 pub type Bytes<'a> =
-    Map<'a, &'a u8, u8, vec::Items<'a, u8>>;
+    Map<'a, &'a u8, u8, slice::Items<'a, u8>>;
 
 /// External iterator for a string's bytes in reverse order.
 /// Use with the `std::iter` module.
@@ -738,7 +738,7 @@ Section: Misc
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
 #[inline(always)]
-fn run_utf8_validation_iterator(iter: &mut vec::Items<u8>) -> bool {
+fn run_utf8_validation_iterator(iter: &mut slice::Items<u8>) -> bool {
     loop {
         // save the current thing we're pointing at.
         let old = *iter;
@@ -855,7 +855,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// of `u16`s.
 #[deriving(Clone)]
 pub struct UTF16Items<'a> {
-    priv iter: vec::Items<'a, u16>
+    priv iter: slice::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
 #[deriving(Eq, TotalEq, Clone, Show)]
@@ -1025,7 +1025,7 @@ pub fn from_utf16_lossy(v: &[u16]) -> ~str {
 #[inline]
 pub fn with_capacity(capacity: uint) -> ~str {
     unsafe {
-        cast::transmute(vec::with_capacity::<~[u8]>(capacity))
+        cast::transmute(slice::with_capacity::<~[u8]>(capacity))
     }
 }
 
@@ -1360,13 +1360,13 @@ pub mod raw {
     use ptr::RawPtr;
     use option::{Option, Some, None};
     use str::{is_utf8, OwnedStr, StrSlice};
-    use vec;
-    use vec::{MutableVector, ImmutableVector, OwnedVector};
+    use slice;
+    use slice::{MutableVector, ImmutableVector, OwnedVector};
     use raw::Slice;
 
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
-        let mut v: ~[u8] = vec::with_capacity(len);
+        let mut v: ~[u8] = slice::with_capacity(len);
         ptr::copy_memory(v.as_mut_ptr(), buf, len);
         v.set_len(len);
 
@@ -1463,7 +1463,7 @@ pub mod raw {
     /// The caller must preserve the valid UTF-8 property.
     #[inline]
     pub unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
-        vec::bytes::push_bytes(as_owned_vec(s), bytes);
+        slice::bytes::push_bytes(as_owned_vec(s), bytes);
     }
 
     /// Removes the last byte from a string and returns it.
@@ -2603,7 +2603,7 @@ impl<'a> StrSlice<'a> for &'a str {
     fn to_owned(&self) -> ~str {
         let len = self.len();
         unsafe {
-            let mut v = vec::with_capacity(len);
+            let mut v = slice::with_capacity(len);
 
             ptr::copy_memory(v.as_mut_ptr(), self.as_ptr(), len);
             v.set_len(len);
@@ -2766,7 +2766,7 @@ impl<'a> StrSlice<'a> for &'a str {
         if slen == 0 { return tlen; }
         if tlen == 0 { return slen; }
 
-        let mut dcol = vec::from_fn(tlen + 1, |x| x);
+        let mut dcol = slice::from_fn(tlen + 1, |x| x);
 
         for (i, sc) in self.chars().enumerate() {
 
@@ -2921,7 +2921,7 @@ impl OwnedStr for ~str {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
             let write_ptr = v.as_mut_ptr().offset(cur_len as int);
-            let used = vec::raw::mut_buf_as_slice(write_ptr, 4, |slc| c.encode_utf8(slc));
+            let used = slice::raw::mut_buf_as_slice(write_ptr, 4, |slc| c.encode_utf8(slc));
 
             v.set_len(cur_len + used);
         }
@@ -4667,7 +4667,7 @@ mod bench {
 
     #[bench]
     fn from_utf8_lossy_100_invalid(bh: &mut BenchHarness) {
-        let s = ::vec::from_elem(100, 0xF5u8);
+        let s = ::slice::from_elem(100, 0xF5u8);
         bh.iter(|| {
             let _ = from_utf8_lossy(s);
         });

@@ -38,7 +38,7 @@ use std::local_data;
 use std::io;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::str;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 
@@ -1026,7 +1026,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
     debug!("{:?}", items);
-    let mut indices = vec::from_fn(items.len(), |i| i);
+    let mut indices = slice::from_fn(items.len(), |i| i);
 
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
         if shortty(i1) == shortty(i2) {

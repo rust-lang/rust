@@ -32,7 +32,7 @@ use syntax::visit;
 
 use collections::HashMap;
 use std::iter::Enumerate;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 // The actual lang items defined come at the end of this file in one handy table.
@@ -60,7 +60,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<vec::Items<'a, Option<ast::DefId>>> {
+    pub fn items<'a>(&'a self) -> Enumerate<slice::Items<'a, Option<ast::DefId>>> {
         self.items.iter().enumerate()
     }
 

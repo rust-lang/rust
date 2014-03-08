@@ -16,7 +16,7 @@
  * closure.
  */
 
-use std::vec;
+use std::slice;
 
 use back::abi;
 use driver::session;
@@ -230,7 +230,7 @@ fn resolve_default_method_vtables(bcx: &Block,
                 vtables.len() - num_method_vtables;
             vtables.tailn(num_impl_type_parameters).to_owned()
         },
-        None => vec::from_elem(num_method_vtables, @Vec::new())
+        None => slice::from_elem(num_method_vtables, @Vec::new())
     };
 
     let param_vtables = @(vec_ng::append((*trait_vtables_fixed).clone(),

@@ -30,7 +30,7 @@ use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics;
 use unstable::mutex::NativeMutex;
-use vec::OwnedVector;
+use slice::OwnedVector;
 
 use mpsc = sync::mpsc_queue;
 

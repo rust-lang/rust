@@ -18,7 +18,7 @@ use mem;
 use option::{Some, None};
 use ptr::RawPtr;
 use unstable::sync::Exclusive;
-use vec::OwnedVector;
+use slice::OwnedVector;
 
 type Queue = Exclusive<~[proc()]>;
 

@@ -20,7 +20,7 @@
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
 use std::str;
-use std::vec;
+use std::slice;
 use std::fmt;
 
 // Represents a position on a canvas.
@@ -62,8 +62,8 @@ impl Drop for AsciiArt {
 fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
-    let lines = vec::build(Some(height), |push| {
-        for _ in range(0, height) { push(vec::from_elem(width, '.')); }
+    let lines = slice::build(Some(height), |push| {
+        for _ in range(0, height) { push(slice::from_elem(width, '.')); }
     });
 
     // Rust code often returns values by omitting the trailing semi-colon

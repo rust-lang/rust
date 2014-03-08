@@ -11,7 +11,7 @@
 // ignore-pretty
 
 use std::str;
-use std::vec;
+use std::slice;
 
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;
@@ -97,14 +97,14 @@ struct Table {
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
-    items: vec::Items<'a, Option<~Entry>>,
+    items: slice::Items<'a, Option<~Entry>>,
 }
 
 impl Table {
     fn new() -> Table {
         Table {
             count: 0,
-            items: vec::from_fn(TABLE_SIZE, |_| None),
+            items: slice::from_fn(TABLE_SIZE, |_| None),
         }
     }
 

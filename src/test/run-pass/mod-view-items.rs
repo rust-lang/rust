@@ -17,8 +17,8 @@
 // begin failing.
 
 mod m {
-    use std::vec;
-    pub fn f() -> ~[int] { vec::from_elem(1u, 0) }
+    use std::slice;
+    pub fn f() -> ~[int] { slice::from_elem(1u, 0) }
 }
 
 pub fn main() { let _x = m::f(); }

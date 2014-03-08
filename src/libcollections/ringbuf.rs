@@ -14,7 +14,7 @@
 //! extra::container::Deque`.
 
 use std::cmp;
-use std::vec;
+use std::slice;
 use std::iter::{Rev, RandomAccessIterator};
 
 use deque::Deque;
@@ -118,7 +118,7 @@ impl<T> RingBuf<T> {
     /// Create an empty RingBuf with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         RingBuf{nelts: 0, lo: 0,
-              elts: vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
+              elts: slice::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Retrieve an element in the RingBuf by index
