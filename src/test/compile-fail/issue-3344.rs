@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving(Eq)]
 struct thing(uint);
 impl Ord for thing { //~ ERROR not all trait methods implemented, missing: `lt`
     fn le(&self, other: &thing) -> bool { true }

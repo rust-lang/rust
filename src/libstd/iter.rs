@@ -2033,7 +2033,7 @@ pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One + ToPrimitive>(start: A,
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Eq + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
@@ -2244,7 +2244,7 @@ pub mod order {
     }
 
     /// Return `a` < `b` lexicographically (Using partial order, `Ord`)
-    pub fn lt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn lt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2256,7 +2256,7 @@ pub mod order {
     }
 
     /// Return `a` <= `b` lexicographically (Using partial order, `Ord`)
-    pub fn le<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn le<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2268,7 +2268,7 @@ pub mod order {
     }
 
     /// Return `a` > `b` lexicographically (Using partial order, `Ord`)
-    pub fn gt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn gt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2280,7 +2280,7 @@ pub mod order {
     }
 
     /// Return `a` >= `b` lexicographically (Using partial order, `Ord`)
-    pub fn ge<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn ge<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2975,6 +2975,12 @@ mod tests {
         impl Add<Foo, Foo> for Foo {
             fn add(&self, _: &Foo) -> Foo {
                 Foo
+            }
+        }
+
+        impl Eq for Foo {
+            fn eq(&self, _: &Foo) -> bool {
+                true
             }
         }
 

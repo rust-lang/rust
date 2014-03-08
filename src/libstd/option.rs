@@ -40,7 +40,7 @@
 use any::Any;
 use clone::Clone;
 use clone::DeepClone;
-use cmp::{Eq, TotalEq, TotalOrd};
+use cmp::{Eq, TotalOrd};
 use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
