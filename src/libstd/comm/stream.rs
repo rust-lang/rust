@@ -30,7 +30,7 @@ use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use spsc = sync::spsc_queue;
 use sync::atomics;
-use vec::OwnedVector;
+use slice::OwnedVector;
 
 static DISCONNECTED: int = int::MIN;
 #[cfg(test)]

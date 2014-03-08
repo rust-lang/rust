@@ -20,7 +20,7 @@ use os;
 use result::Ok;
 use str::StrSlice;
 use unstable::running_on_valgrind;
-use vec::ImmutableVector;
+use slice::ImmutableVector;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 // FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.

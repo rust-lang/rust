@@ -21,11 +21,11 @@
  * extern crate sync;
  * extern crate rand;
  *
- * use std::vec;
+ * use std::slice;
  * use sync::Arc;
  *
  * fn main() {
- *     let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
+ *     let numbers = slice::from_fn(100, |i| (i as f32) * rand::random());
  *     let shared_numbers = Arc::new(numbers);
  *
  *     for _ in range(0, 10) {

@@ -16,8 +16,8 @@ use option::None;
 use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use vec;
-use vec::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
+use slice;
+use slice::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
 
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
@@ -64,7 +64,7 @@ impl MemWriter {
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
     pub fn with_capacity(n: uint) -> MemWriter {
-        MemWriter { buf: vec::with_capacity(n), pos: 0 }
+        MemWriter { buf: slice::with_capacity(n), pos: 0 }
     }
 
     /// Acquires an immutable reference to the underlying buffer of this
@@ -98,7 +98,7 @@ impl Writer for MemWriter {
 
         // Do the necessary writes
         if left.len() > 0 {
-            vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
+            slice::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
         }
         if right.len() > 0 {
             self.buf.push_all(right);
@@ -171,7 +171,7 @@ impl Reader for MemReader {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
             assert_eq!(input.len(), output.len());
-            vec::bytes::copy_memory(output, input);
+            slice::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
@@ -246,7 +246,7 @@ impl<'a> Writer for BufWriter<'a> {
             })
         }
 
-        vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), buf);
+        slice::bytes::copy_memory(self.buf.mut_slice_from(self.pos), buf);
         self.pos += buf.len();
         Ok(())
     }
@@ -303,7 +303,7 @@ impl<'a> Reader for BufReader<'a> {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
             assert_eq!(input.len(), output.len());
-            vec::bytes::copy_memory(output, input);
+            slice::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());

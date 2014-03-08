@@ -42,7 +42,7 @@ use std::rc::Rc;
 use std::rt::global_heap;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
-use std::vec;
+use std::slice;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -111,7 +111,7 @@ impl Arena {
 
 fn chunk(size: uint, is_pod: bool) -> Chunk {
     Chunk {
-        data: Rc::new(RefCell::new(vec::with_capacity(size))),
+        data: Rc::new(RefCell::new(slice::with_capacity(size))),
         fill: Cell::new(0u),
         is_pod: Cell::new(is_pod),
     }

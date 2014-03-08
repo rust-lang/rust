@@ -148,7 +148,7 @@ use collections::HashSet;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::sync::atomics;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map, opt_vec};
@@ -709,7 +709,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             return create_DIArray(DIB(cx), []);
         }
 
-        let mut signature = vec::with_capacity(fn_decl.inputs.len() + 1);
+        let mut signature = slice::with_capacity(fn_decl.inputs.len() + 1);
 
         // Return type -- llvm::DIBuilder wants this at index 0
         match fn_decl.output.node {

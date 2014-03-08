@@ -14,7 +14,7 @@
 
 use std::clone::Clone;
 use std::mem::{move_val_init, init, replace, swap};
-use std::vec;
+use std::slice;
 
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
@@ -181,7 +181,7 @@ impl<T:Ord> PriorityQueue<T> {
 
 /// PriorityQueue iterator
 pub struct Items <'a, T> {
-    priv iter: vec::Items<'a, T>,
+    priv iter: slice::Items<'a, T>,
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {

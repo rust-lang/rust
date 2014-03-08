@@ -2293,7 +2293,7 @@ pub mod order {
 
     #[test]
     fn test_lt() {
-        use vec::ImmutableVector;
+        use slice::ImmutableVector;
 
         let empty: [int, ..0] = [];
         let xs = [1,2,3];

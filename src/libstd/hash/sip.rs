@@ -30,7 +30,7 @@ use default::Default;
 use io::{IoResult, Writer};
 use iter::Iterator;
 use result::Ok;
-use vec::ImmutableVector;
+use slice::ImmutableVector;
 
 use super::{Hash, Hasher};
 
@@ -292,7 +292,7 @@ mod tests {
     use num::ToStrRadix;
     use option::{Some, None};
     use str::{Str, OwnedStr};
-    use vec::{Vector, ImmutableVector, OwnedVector};
+    use slice::{Vector, ImmutableVector, OwnedVector};
     use self::test::BenchHarness;
 
     use super::super::Hash;

@@ -20,7 +20,7 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 
 use std::c_str::ToCStr;
 use std::cast;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 use std::libc::{c_uint};
@@ -263,7 +263,7 @@ impl Type {
     pub fn get_field(&self, idx: uint) -> Type {
         unsafe {
             let num_fields = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
-            let mut elems = vec::from_elem(num_fields, 0 as TypeRef);
+            let mut elems = slice::from_elem(num_fields, 0 as TypeRef);
 
             llvm::LLVMGetStructElementTypes(self.to_ref(), elems.as_mut_ptr());
 

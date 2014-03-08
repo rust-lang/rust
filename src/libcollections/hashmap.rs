@@ -27,7 +27,7 @@ use std::option::{Option, Some, None};
 use rand;
 use rand::Rng;
 use std::result::{Ok, Err};
-use std::vec::{ImmutableVector};
+use std::slice::ImmutableVector;
 
 mod table {
     use std::clone::Clone;
@@ -1958,7 +1958,7 @@ mod test_map {
 mod test_set {
     use super::HashSet;
     use std::container::Container;
-    use std::vec::ImmutableEqVector;
+    use std::slice::ImmutableEqVector;
 
     #[test]
     fn test_disjoint() {

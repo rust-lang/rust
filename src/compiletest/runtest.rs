@@ -32,7 +32,7 @@ use std::io;
 use std::os;
 use std::str;
 use std::task;
-use std::vec;
+use std::slice;
 
 use test::MetricMap;
 
@@ -500,7 +500,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
                          proc_res: &ProcRes) {
 
     // true if we found the error in question
-    let mut found_flags = vec::from_elem(
+    let mut found_flags = slice::from_elem(
         expected_errors.len(), false);
 
     if proc_res.status.success() {

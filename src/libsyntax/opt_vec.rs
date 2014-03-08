@@ -16,7 +16,7 @@
  */
 
 use std::default::Default;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 #[deriving(Clone, Encodable, Decodable, Hash)]
@@ -176,7 +176,7 @@ impl<T> Default for OptVec<T> {
 }
 
 pub struct Items<'a, T> {
-    priv iter: Option<vec::Items<'a, T>>
+    priv iter: Option<slice::Items<'a, T>>
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {

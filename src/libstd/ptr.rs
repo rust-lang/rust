@@ -388,7 +388,7 @@ pub mod ptr_tests {
     use cast;
     use libc;
     use str;
-    use vec::{ImmutableVector, MutableVector};
+    use slice::{ImmutableVector, MutableVector};
 
     #[test]
     fn test() {

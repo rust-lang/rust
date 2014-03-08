@@ -33,7 +33,7 @@ use util::ppaux::{Repr, ty_to_str};
 
 use std::c_str::ToCStr;
 use std::libc::c_uint;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use syntax::{ast, ast_util};
@@ -95,7 +95,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     let vec_ty = ty::expr_ty(cx.tcx(), e);
     let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
-    let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e, is_local)));
+    let (vs, inlineable) = slice::unzip(es.iter().map(|e| const_expr(cx, *e, is_local)));
     // If the vector contains enums, an LLVM array won't work.
     let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
         C_struct(cx, vs, false)
@@ -563,7 +563,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                           }
                       }
                   }).to_owned_vec();
-                  let (cs, inlineable) = vec::unzip(cs.move_iter());
+                  let (cs, inlineable) = slice::unzip(cs.move_iter());
                   (adt::trans_const(cx, repr, discr, cs),
                    inlineable.iter().fold(true, |a, &b| a && b))
               })
@@ -612,7 +612,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = vec::from_elem(n, const_expr(cx, elem, is_local).val0());
+            let vs = slice::from_elem(n, const_expr(cx, elem, is_local).val0());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
                 C_struct(cx, vs, false)
             } else {

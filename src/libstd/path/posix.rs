@@ -20,9 +20,9 @@ use iter::{AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str;
 use str::Str;
-use vec;
-use vec::{CloneableVector, RevSplits, Splits, Vector, VectorVector,
-          ImmutableEqVector, OwnedVector, ImmutableVector, OwnedCloneableVector};
+use slice;
+use slice::{CloneableVector, RevSplits, Splits, Vector, VectorVector,
+            ImmutableEqVector, OwnedVector, ImmutableVector, OwnedCloneableVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
@@ -125,7 +125,7 @@ impl GenericPathUnsafe for Path {
         let filename = filename.container_as_bytes();
         match self.sepidx {
             None if bytes!("..") == self.repr => {
-                let mut v = vec::with_capacity(3 + filename.len());
+                let mut v = slice::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
                 v.push(SEP_BYTE);
                 v.push_all(filename);
@@ -135,14 +135,14 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(filename);
             }
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
-                let mut v = vec::with_capacity(self.repr.len() + 1 + filename.len());
+                let mut v = slice::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr);
                 v.push(SEP_BYTE);
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
             }
             Some(idx) => {
-                let mut v = vec::with_capacity(idx + 1 + filename.len());
+                let mut v = slice::with_capacity(idx + 1 + filename.len());
                 v.push_all(self.repr.slice_to(idx+1));
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
@@ -157,7 +157,7 @@ impl GenericPathUnsafe for Path {
             if path[0] == SEP_BYTE {
                 self.repr = Path::normalize(path);
             }  else {
-                let mut v = vec::with_capacity(self.repr.len() + path.len() + 1);
+                let mut v = slice::with_capacity(self.repr.len() + path.len() + 1);
                 v.push_all(self.repr);
                 v.push(SEP_BYTE);
                 v.push_all(path);
@@ -346,7 +346,7 @@ impl Path {
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
-                        let mut v = vec::with_capacity(n);
+                        let mut v = slice::with_capacity(n);
                         let mut it = comps.move_iter();
                         if !is_abs {
                             match it.next() {
