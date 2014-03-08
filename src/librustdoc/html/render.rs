@@ -39,6 +39,7 @@ use std::io;
 use std::io::{fs, File, BufferedWriter};
 use std::str;
 use std::vec;
+use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 
 use sync::Arc;
@@ -160,6 +161,13 @@ pub struct Cache {
     priv search_index: ~[IndexItem],
     priv privmod: bool,
     priv public_items: NodeSet,
+
+    // In rare case where a structure is defined in one module but implemented
+    // in another, if the implementing module is parsed before defining module,
+    // then the fully qualified name of the structure isn't presented in `paths`
+    // yet when its implementation methods are being indexed. Caches such methods
+    // and their parent id here and indexes them at the end of crate parsing.
+    priv orphan_methods: Vec<(ast::NodeId, clean::Item)>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -249,10 +257,31 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             extern_locations: HashMap::new(),
             privmod: false,
             public_items: public_items,
+            orphan_methods: Vec::new(),
         }
     });
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
+    {
+        // Attach all orphan methods to the type's definition if the type
+        // has since been learned.
+        let Cache { search_index: ref mut index,
+                    orphan_methods: ref meths, paths: ref paths, ..} = cache;
+        for &(ref pid, ref item) in meths.iter() {
+            match paths.find(pid) {
+                Some(&(ref fqp, _)) => {
+                    index.push(IndexItem {
+                        ty: shortty(item),
+                        name: item.name.clone().unwrap(),
+                        path: fqp.slice_to(fqp.len() - 1).connect("::"),
+                        desc: shorter(item.doc_value()).to_owned(),
+                        parent: Some(*pid),
+                    });
+                },
+                None => {}
+            }
+        };
+    }
 
     // Add all the static files
     let mut dst = cx.dst.join(krate.name.as_slice());
@@ -527,26 +556,33 @@ impl DocFolder for Cache {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        Some((Some(*self.parent_stack.last().unwrap()),
-                              self.stack.slice_to(self.stack.len() - 1)))
+                        (Some(*self.parent_stack.last().unwrap()),
+                         Some(self.stack.slice_to(self.stack.len() - 1)))
 
                     }
                     clean::MethodItem(..) => {
                         if self.parent_stack.len() == 0 {
-                            None
+                            (None, None)
                         } else {
                             let last = self.parent_stack.last().unwrap();
-                            let amt = match self.paths.find(last) {
-                                Some(&(_, "trait")) => self.stack.len() - 1,
-                                Some(..) | None => self.stack.len(),
+                            let path = match self.paths.find(last) {
+                                Some(&(_, "trait")) =>
+                                    Some(self.stack.slice_to(self.stack.len() - 1)),
+                                // The current stack not necessarily has correlation for
+                                // where the type was defined. On the other hand,
+                                // `paths` always has the right information if present.
+                                Some(&(ref fqp, "struct")) | Some(&(ref fqp, "enum")) =>
+                                    Some(fqp.slice_to(fqp.len() - 1)),
+                                Some(..) => Some(self.stack.as_slice()),
+                                None => None
                             };
-                            Some((Some(*last), self.stack.slice_to(amt)))
+                            (Some(*last), path)
                         }
                     }
-                    _ => Some((None, self.stack.as_slice()))
+                    _ => (None, Some(self.stack.as_slice()))
                 };
                 match parent {
-                    Some((parent, path)) if !self.privmod => {
+                    (parent, Some(path)) if !self.privmod => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
                             name: s.to_owned(),
@@ -555,7 +591,12 @@ impl DocFolder for Cache {
                             parent: parent,
                         });
                     }
-                    Some(..) | None => {}
+                    (Some(parent), None) if !self.privmod => {
+                        // We have a parent, but we don't know where they're
+                        // defined yet. Wait for later to index this item.
+                        self.orphan_methods.push((parent, item.clone()))
+                    }
+                    _ => {}
                 }
             }
             None => {}
