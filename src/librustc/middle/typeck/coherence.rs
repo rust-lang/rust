@@ -189,12 +189,31 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
             }
             ItemImpl(_, None, ast_ty, _) => {
                 if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
-                    // This is an error.
-                    let session = self.cc.crate_context.tcx.sess;
-                    session.span_err(item.span,
-                                     "cannot associate methods with a type outside the \
-                                     crate the type is defined in; define and implement \
-                                     a trait or new type instead");
+                    let crate_ctx = self.cc.crate_context;
+
+                    let self_type = ty::lookup_item_type(crate_ctx.tcx,
+                                                         local_def(item.id));
+
+                    match get_base_type_def_id(&self.cc.inference_context,
+                                                item.span,
+                                                self_type.ty) {
+                        None => {
+                            // self_type.ty is a typedef, but this error has
+                            // already been reported from CoherenceChecker's
+                            // check_implementation
+                        },
+
+                        // Error not already reported, so report here
+                        _    => {
+                            let session = crate_ctx.tcx.sess;
+                            session.span_err(item.span,
+                                             "cannot associate methods with a \
+                                              type outside the crate the type \
+                                              is defined in; define and \
+                                              implement a trait or new type \
+                                              instead");
+                        },
+                    }
                 }
             }
             ItemImpl(_, Some(ref trait_ref), _, _) => {
@@ -277,8 +296,7 @@ impl CoherenceChecker {
                 None => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
-                                     "no base type found for inherent implementation; \
-                                      implement a trait or new type instead");
+                                     "cannot provide impl for typedefs");
                 }
                 Some(_) => {
                     // Nothing to do.
