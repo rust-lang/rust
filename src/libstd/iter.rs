@@ -68,7 +68,7 @@ use cmp;
 use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalOrd};
 use clone::Clone;
 use uint;
 use mem;
@@ -626,7 +626,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn max_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -650,7 +650,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn min_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
@@ -917,7 +917,7 @@ pub trait OrdIterator<A> {
     fn min_max(&mut self) -> MinMaxResult<A>;
 }
 
-impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
+impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
     #[inline]
     fn max(&mut self) -> Option<A> {
         self.fold(None, |max, x| {
