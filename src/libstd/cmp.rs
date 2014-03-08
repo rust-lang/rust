@@ -184,12 +184,12 @@ pub trait Equiv<T> {
 }
 
 #[inline]
-pub fn min<T:Ord>(v1: T, v2: T) -> T {
+pub fn min<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 #[inline]
-pub fn max<T:Ord>(v1: T, v2: T) -> T {
+pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 
