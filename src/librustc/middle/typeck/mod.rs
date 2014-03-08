@@ -72,6 +72,7 @@ use util::nodemap::{DefIdMap, NodeMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use collections::List;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
@@ -152,9 +153,9 @@ pub struct MethodCallee {
 // of the method to be invoked
 pub type MethodMap = @RefCell<NodeMap<MethodCallee>>;
 
-pub type vtable_param_res = @~[vtable_origin];
+pub type vtable_param_res = @Vec<vtable_origin> ;
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @~[vtable_param_res];
+pub type vtable_res = @Vec<vtable_param_res> ;
 
 #[deriving(Clone)]
 pub enum vtable_origin {
@@ -163,7 +164,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::DefId, ~[ty::t], vtable_res),
+    vtable_static(ast::DefId, Vec<ty::t> , vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -235,7 +236,7 @@ pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::NodeId,
-                           substs: ~[ty::t]) {
+                           substs: Vec<ty::t> ) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx({}, {:?})", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
@@ -271,8 +272,8 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: Rc::new(~[]),
-                                region_param_defs: Rc::new(~[])},
+        generics: ty::Generics {type_param_defs: Rc::new(Vec::new()),
+                                region_param_defs: Rc::new(Vec::new())},
         ty: t
     }
 }
@@ -352,7 +353,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: main_id,
-                    inputs: ~[],
+                    inputs: Vec::new(),
                     output: ty::mk_nil(),
                     variadic: false
                 }
@@ -398,10 +399,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: start_id,
-                    inputs: ~[
+                    inputs: vec!(
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
-                    ],
+                    ),
                     output: ty::mk_int(),
                     variadic: false
                 }

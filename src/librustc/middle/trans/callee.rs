@@ -48,6 +48,8 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
@@ -174,7 +176,12 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId,
     debug!("trans_fn_ref(def_id={}, ref_id={:?}, type_params={}, vtables={})",
            def_id.repr(bcx.tcx()), ref_id, type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
-    trans_fn_ref_with_vtables(bcx, def_id, ref_id, is_method, type_params, vtables)
+    trans_fn_ref_with_vtables(bcx,
+                              def_id,
+                              ref_id,
+                              is_method,
+                              type_params.as_slice(),
+                              vtables)
 }
 
 fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
@@ -218,10 +225,11 @@ fn resolve_default_method_vtables(bcx: &Block,
                 vtables.len() - num_method_vtables;
             vtables.tailn(num_impl_type_parameters).to_owned()
         },
-        None => vec::from_elem(num_method_vtables, @~[])
+        None => vec::from_elem(num_method_vtables, @Vec::new())
     };
 
-    let param_vtables = @(*trait_vtables_fixed + method_vtables);
+    let param_vtables = @(vec_ng::append((*trait_vtables_fixed).clone(),
+                                          method_vtables));
 
     let self_vtables = resolve_param_vtables_under_param_substs(
         bcx.tcx(), param_substs, impl_res.self_vtables);
@@ -272,7 +280,7 @@ pub fn trans_fn_ref_with_vtables(
 
     let substs = ty::substs { regions: ty::ErasedRegions,
                               self_ty: None,
-                              tps: /*bad*/ type_params.to_owned() };
+                              tps: /*bad*/ Vec::from_slice(type_params) };
 
     // Load the info for the appropriate trait if necessary.
     match ty::trait_of_method(tcx, def_id) {
@@ -640,7 +648,7 @@ pub fn trans_call_inner<'a>(
     // written in opt_llretslot (if it is Some) or `llresult` will be
     // set appropriately (otherwise).
     if is_rust_fn {
-        let mut llargs = ~[];
+        let mut llargs = Vec::new();
 
         // Push the out-pointer if we use an out-pointer for this
         // return type, otherwise push "undef".
@@ -666,7 +674,7 @@ pub fn trans_call_inner<'a>(
         // available, so we have to apply any attributes with ABI
         // implications directly to the call instruction. Right now,
         // the only attribute we need to worry about is `sret`.
-        let mut attrs = ~[];
+        let mut attrs = Vec::new();
         if type_of::return_uses_outptr(ccx, ret_ty) {
             attrs.push((1, StructRetAttribute));
         }
@@ -683,7 +691,11 @@ pub fn trans_call_inner<'a>(
         }
 
         // Invoke the actual rust fn and update bcx/llresult.
-        let (llret, b) = base::invoke(bcx, llfn, llargs, attrs, call_info);
+        let (llret, b) = base::invoke(bcx,
+                                      llfn,
+                                      llargs,
+                                      attrs.as_slice(),
+                                      call_info);
         bcx = b;
         llresult = llret;
 
@@ -704,7 +716,7 @@ pub fn trans_call_inner<'a>(
         // they are always Rust fns.
         assert!(dest.is_some());
 
-        let mut llargs = ~[];
+        let mut llargs = Vec::new();
         bcx = trans_args(bcx, args, callee_ty, &mut llargs,
                          cleanup::CustomScope(arg_cleanup_scope), false);
         fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
@@ -712,8 +724,12 @@ pub fn trans_call_inner<'a>(
             ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, *x)).collect(),
             _ => fail!("expected arg exprs.")
         };
-        bcx = foreign::trans_native_call(bcx, callee_ty,
-                                         llfn, opt_llretslot.unwrap(), llargs, arg_tys);
+        bcx = foreign::trans_native_call(bcx,
+                                         callee_ty,
+                                         llfn,
+                                         opt_llretslot.unwrap(),
+                                         llargs.as_slice(),
+                                         arg_tys);
     }
 
     // If the caller doesn't care about the result of this fn call,
@@ -746,7 +762,7 @@ pub enum CallArgs<'a> {
 fn trans_args<'a>(cx: &'a Block<'a>,
                   args: CallArgs,
                   fn_ty: ty::t,
-                  llargs: &mut ~[ValueRef],
+                  llargs: &mut Vec<ValueRef> ,
                   arg_cleanup_scope: cleanup::ScopeId,
                   ignore_self: bool)
                   -> &'a Block<'a> {
@@ -770,7 +786,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
                     assert!(variadic);
                     expr_ty_adjusted(cx, *arg_expr)
                 } else {
-                    arg_tys[i]
+                    *arg_tys.get(i)
                 };
                 llargs.push(unpack_result!(bcx, {
                     trans_arg_expr(bcx, arg_ty, *arg_expr,
@@ -783,7 +799,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
             assert!(!variadic);
 
             llargs.push(unpack_result!(bcx, {
-                trans_arg_expr(bcx, arg_tys[0], arg_expr,
+                trans_arg_expr(bcx, *arg_tys.get(0), arg_expr,
                                arg_cleanup_scope,
                                DontAutorefArg)
             }));
@@ -793,7 +809,7 @@ fn trans_args<'a>(cx: &'a Block<'a>,
                     assert_eq!(arg_tys.len(), 2);
 
                     llargs.push(unpack_result!(bcx, {
-                        trans_arg_expr(bcx, arg_tys[1], arg2_expr,
+                        trans_arg_expr(bcx, *arg_tys.get(1), arg2_expr,
                                        arg_cleanup_scope,
                                        DoAutorefArg)
                     }));

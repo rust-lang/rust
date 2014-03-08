@@ -15,12 +15,13 @@ use super::cabi::*;
 use super::common::*;
 use super::machine::*;
 use middle::trans::type_::Type;
+use std::vec_ng::Vec;
 
 pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    let mut arg_tys = ~[];
+    let mut arg_tys = Vec::new();
 
     let ret_ty;
     if !ret_def {

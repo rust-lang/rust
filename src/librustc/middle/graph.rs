@@ -35,11 +35,11 @@ be indexed by the direction (see the type `Direction`).
 */
 
 use std::uint;
-use std::vec;
+use std::vec_ng::Vec;
 
 pub struct Graph<N,E> {
-    priv nodes: ~[Node<N>],
-    priv edges: ~[Edge<E>],
+    priv nodes: Vec<Node<N>> ,
+    priv edges: Vec<Edge<E>> ,
 }
 
 pub struct Node<N> {
@@ -77,13 +77,18 @@ impl EdgeIndex {
 
 impl<N,E> Graph<N,E> {
     pub fn new() -> Graph<N,E> {
-        Graph {nodes: ~[], edges: ~[]}
+        Graph {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }
     }
 
     pub fn with_capacity(num_nodes: uint,
                          num_edges: uint) -> Graph<N,E> {
-        Graph {nodes: vec::with_capacity(num_nodes),
-               edges: vec::with_capacity(num_edges)}
+        Graph {
+            nodes: Vec::with_capacity(num_nodes),
+            edges: Vec::with_capacity(num_edges),
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -91,13 +96,13 @@ impl<N,E> Graph<N,E> {
 
     #[inline]
     pub fn all_nodes<'a>(&'a self) -> &'a [Node<N>] {
-        let nodes: &'a [Node<N>] = self.nodes;
+        let nodes: &'a [Node<N>] = self.nodes.as_slice();
         nodes
     }
 
     #[inline]
     pub fn all_edges<'a>(&'a self) -> &'a [Edge<E>] {
-        let edges: &'a [Edge<E>] = self.edges;
+        let edges: &'a [Edge<E>] = self.edges.as_slice();
         edges
     }
 
@@ -118,15 +123,15 @@ impl<N,E> Graph<N,E> {
     }
 
     pub fn mut_node_data<'a>(&'a mut self, idx: NodeIndex) -> &'a mut N {
-        &mut self.nodes[idx.get()].data
+        &mut self.nodes.get_mut(idx.get()).data
     }
 
     pub fn node_data<'a>(&'a self, idx: NodeIndex) -> &'a N {
-        &self.nodes[idx.get()].data
+        &self.nodes.get(idx.get()).data
     }
 
     pub fn node<'a>(&'a self, idx: NodeIndex) -> &'a Node<N> {
-        &self.nodes[idx.get()]
+        self.nodes.get(idx.get())
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -143,8 +148,10 @@ impl<N,E> Graph<N,E> {
         let idx = self.next_edge_index();
 
         // read current first of the list of edges from each node
-        let source_first = self.nodes[source.get()].first_edge[Outgoing.repr];
-        let target_first = self.nodes[target.get()].first_edge[Incoming.repr];
+        let source_first = self.nodes.get(source.get())
+                                     .first_edge[Outgoing.repr];
+        let target_first = self.nodes.get(target.get())
+                                     .first_edge[Incoming.repr];
 
         // create the new edge, with the previous firsts from each node
         // as the next pointers
@@ -156,22 +163,22 @@ impl<N,E> Graph<N,E> {
         });
 
         // adjust the firsts for each node target be the next object.
-        self.nodes[source.get()].first_edge[Outgoing.repr] = idx;
-        self.nodes[target.get()].first_edge[Incoming.repr] = idx;
+        self.nodes.get_mut(source.get()).first_edge[Outgoing.repr] = idx;
+        self.nodes.get_mut(target.get()).first_edge[Incoming.repr] = idx;
 
         return idx;
     }
 
     pub fn mut_edge_data<'a>(&'a mut self, idx: EdgeIndex) -> &'a mut E {
-        &mut self.edges[idx.get()].data
+        &mut self.edges.get_mut(idx.get()).data
     }
 
     pub fn edge_data<'a>(&'a self, idx: EdgeIndex) -> &'a E {
-        &self.edges[idx.get()].data
+        &self.edges.get(idx.get()).data
     }
 
     pub fn edge<'a>(&'a self, idx: EdgeIndex) -> &'a Edge<E> {
-        &self.edges[idx.get()]
+        self.edges.get(idx.get())
     }
 
     pub fn first_adjacent(&self, node: NodeIndex, dir: Direction) -> EdgeIndex {
@@ -179,7 +186,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.nodes[node.get()].first_edge[dir.repr]
+        self.nodes.get(node.get()).first_edge[dir.repr]
     }
 
     pub fn next_adjacent(&self, edge: EdgeIndex, dir: Direction) -> EdgeIndex {
@@ -187,7 +194,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.edges[edge.get()].next_edge[dir.repr]
+        self.edges.get(edge.get()).next_edge[dir.repr]
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -231,7 +238,7 @@ impl<N,E> Graph<N,E> {
 
         let mut edge_idx = self.first_adjacent(node, dir);
         while edge_idx != InvalidEdgeIndex {
-            let edge = &self.edges[edge_idx.get()];
+            let edge = self.edges.get(edge_idx.get());
             if !f(edge_idx, edge) {
                 return false;
             }

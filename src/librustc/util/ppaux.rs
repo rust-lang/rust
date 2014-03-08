@@ -22,6 +22,8 @@ use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_self, ty_tup};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
+
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
@@ -476,12 +478,17 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_self(..) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let base = ty::item_path_str(cx, did);
-        parameterized(cx, base, &substs.regions, substs.tps, did, false)
+        parameterized(cx,
+                      base,
+                      &substs.regions,
+                      substs.tps.as_slice(),
+                      did,
+                      false)
       }
       ty_trait(did, ref substs, s, mutbl, ref bounds) => {
         let base = ty::item_path_str(cx, did);
         let ty = parameterized(cx, base, &substs.regions,
-                               substs.tps, did, true);
+                               substs.tps.as_slice(), did, true);
         let bound_sep = if bounds.is_empty() { "" } else { ":" };
         let bound_str = bounds.repr(cx);
         format!("{}{}{}{}{}", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
@@ -501,7 +508,7 @@ pub fn parameterized(cx: ctxt,
                      did: ast::DefId,
                      is_trait: bool) -> ~str {
 
-    let mut strs = ~[];
+    let mut strs = Vec::new();
     match *regions {
         ty::ErasedRegions => { }
         ty::NonerasedRegions(ref regions) => {
@@ -521,7 +528,7 @@ pub fn parameterized(cx: ctxt,
     let num_defaults = if has_defaults {
         // We should have a borrowed version of substs instead of cloning.
         let mut substs = ty::substs {
-            tps: tps.to_owned(),
+            tps: Vec::from_slice(tps),
             regions: regions.clone(),
             self_ty: None
         };
@@ -610,9 +617,9 @@ impl<T:Repr> Repr for OptVec<T> {
 
 // This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
-impl<T:Repr> Repr for ~[T] {
+impl<T:Repr> Repr for Vec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
-        repr_vec(tcx, *self)
+        repr_vec(tcx, self.as_slice())
     }
 }
 
@@ -658,7 +665,7 @@ impl Repr for ty::RegionSubsts {
 
 impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
-        let mut res = ~[];
+        let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
@@ -973,7 +980,7 @@ impl<A:UserString> UserString for @A {
 impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: ctxt) -> ~str {
         if self.is_empty() { ~"<no-bounds>" } else {
-            let mut result = ~[];
+            let mut result = Vec::new();
             for bb in self.iter() {
                 result.push(bb.user_string(tcx));
             }
@@ -989,10 +996,10 @@ impl UserString for ty::TraitRef {
             let mut all_tps = self.substs.tps.clone();
             for &t in self.substs.self_ty.iter() { all_tps.push(t); }
             parameterized(tcx, base, &self.substs.regions,
-                          all_tps, self.def_id, true)
+                          all_tps.as_slice(), self.def_id, true)
         } else {
             parameterized(tcx, base, &self.substs.regions,
-                          self.substs.tps, self.def_id, true)
+                          self.substs.tps.as_slice(), self.def_id, true)
         }
     }
 }

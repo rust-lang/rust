@@ -63,6 +63,7 @@ use util::common::indent;
 use util::ppaux::Repr;
 
 use std::result;
+use std::vec_ng::Vec;
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
 use syntax::opt_vec;
@@ -82,7 +83,7 @@ pub trait Combine {
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
 
-    fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+    fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<Vec<ty::t> > {
 
         // Note: type parameters are always treated as *invariant*
         // (otherwise the type system would be unsound).  In the
@@ -92,7 +93,7 @@ pub trait Combine {
         if as_.len() == bs.len() {
             result::fold_(as_.iter().zip(bs.iter())
                           .map(|(a, b)| eq_tys(self, *a, *b)))
-                .then(|| Ok(as_.to_owned()))
+                .then(|| Ok(Vec::from_slice(as_)))
         } else {
             Err(ty::terr_ty_param_size(expected_found(self,
                                                       as_.len(),
@@ -180,7 +181,7 @@ pub trait Combine {
             }
         }
 
-        let tps = if_ok!(self.tps(as_.tps, bs.tps));
+        let tps = if_ok!(self.tps(as_.tps.as_slice(), bs.tps.as_slice()));
         let self_ty = if_ok!(self.self_tys(as_.self_ty, bs.self_ty));
         let regions = if_ok!(relate_region_params(self,
                                                   item_def_id,
@@ -396,7 +397,7 @@ pub fn eq_opt_regions<C:Combine>(
 
 pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
 
-    fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<~[ty::t]> {
+    fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<Vec<ty::t> > {
         if a_args.len() == b_args.len() {
             result::collect(a_args.iter().zip(b_args.iter())
                             .map(|(a, b)| this.args(*a, *b)))
@@ -409,7 +410,9 @@ pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<
         return Err(ty::terr_variadic_mismatch(expected_found(this, a.variadic, b.variadic)));
     }
 
-    let inputs = if_ok!(argvecs(this, a.inputs, b.inputs));
+    let inputs = if_ok!(argvecs(this,
+                                a.inputs.as_slice(),
+                                b.inputs.as_slice()));
     let output = if_ok!(this.tys(a.output, b.output));
     Ok(FnSig {binder_id: a.binder_id,
               inputs: inputs,

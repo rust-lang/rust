@@ -14,12 +14,13 @@
 use cast::{forget, transmute};
 use clone::Clone;
 use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
-use container::Container;
+use container::{Container, Mutable};
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, Rev};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
+use mem;
 use num;
 use num::{CheckedMul, CheckedAdd};
 use ops::Drop;
@@ -66,6 +67,10 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
+    pub fn from_slice(values: &[T]) -> Vec<T> {
+        values.iter().map(|x| x.clone()).collect()
+    }
+
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -283,6 +288,11 @@ impl<T> Vec<T> {
     }
 
     #[inline]
+    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
+        self.move_iter().rev()
+    }
+
+    #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
@@ -320,6 +330,11 @@ impl<T> Vec<T> {
     #[inline]
     pub fn tail<'a>(&'a self) -> &'a [T] {
         self.as_slice().tail()
+    }
+
+    #[inline]
+    pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
+        self.as_slice().tailn(n)
     }
 
     #[inline]
@@ -387,13 +402,43 @@ impl<T> Vec<T> {
         }
     }
 
+    #[inline]
+    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+                     -> &'a mut [T] {
+        self.as_mut_slice().mut_slice(start, end)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        self.as_mut_slice().reverse()
+    }
+
+    #[inline]
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
         self.as_slice().slice_from(start)
     }
 
     #[inline]
+    pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
+        self.as_slice().slice_to(end)
+    }
+
+    #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
         self.slice(0, self.len() - 1)
+    }
+
+    #[inline]
+    pub fn as_ptr(&self) -> *T {
+        self.as_slice().as_ptr()
+    }
+}
+
+impl<T> Mutable for Vec<T> {
+    /// Clear the vector, removing all values.
+    #[inline]
+    fn clear(&mut self) {
+        self.truncate(0)
     }
 }
 
@@ -401,6 +446,90 @@ impl<T:Eq> Vec<T> {
     /// Return true if a vector contains an element with the given value
     pub fn contains(&self, x: &T) -> bool {
         self.as_slice().contains(x)
+    }
+
+    pub fn dedup(&mut self) {
+        unsafe {
+            // Although we have a mutable reference to `self`, we cannot make
+            // *arbitrary* changes. The `Eq` comparisons could fail, so we
+            // must ensure that the vector is in a valid state at all time.
+            //
+            // The way that we handle this is by using swaps; we iterate
+            // over all the elements, swapping as we go so that at the end
+            // the elements we wish to keep are in the front, and those we
+            // wish to reject are at the back. We can then truncate the
+            // vector. This operation is still O(n).
+            //
+            // Example: We start in this state, where `r` represents "next
+            // read" and `w` represents "next_write`.
+            //
+            //           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //           w
+            //
+            // Comparing self[r] against self[w-1], tis is not a duplicate, so
+            // we swap self[r] and self[w] (no effect as r==w) and then increment both
+            // r and w, leaving us with:
+            //
+            //               r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this value is a duplicate,
+            // so we increment `r` but leave everything else unchanged:
+            //
+            //                   r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate,
+            // so swap self[r] and self[w] and advance r and w:
+            //
+            //                       r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 1 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //                   w
+            //
+            // Not a duplicate, repeat:
+            //
+            //                           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 3 | 1 | 3 |
+            //     +---+---+---+---+---+---+
+            //                       w
+            //
+            // Duplicate, advance r. End of vec. Truncate to w.
+
+            let ln = self.len();
+            if ln < 1 { return; }
+
+            // Avoid bounds checks by using unsafe pointers.
+            let p = self.as_mut_slice().as_mut_ptr();
+            let mut r = 1;
+            let mut w = 1;
+
+            while r < ln {
+                let p_r = p.offset(r as int);
+                let p_wm1 = p.offset((w - 1) as int);
+                if *p_r != *p_wm1 {
+                    if r != w {
+                        let p_w = p_wm1.offset(1);
+                        mem::swap(&mut *p_r, &mut *p_w);
+                    }
+                    w += 1;
+                }
+                r += 1;
+            }
+
+            self.truncate(w);
+        }
     }
 }
 

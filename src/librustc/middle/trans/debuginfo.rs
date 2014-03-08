@@ -149,6 +149,7 @@ use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::sync::atomics;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token;
@@ -177,7 +178,7 @@ pub struct CrateDebugContext {
     priv current_debug_location: Cell<DebugLocation>,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: RefCell<HashMap<~[ast::Name], @NamespaceTreeNode>>,
+    priv namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     priv composite_types_completed: RefCell<HashSet<DIType>>,
@@ -725,7 +726,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 let return_type = match param_substs {
                     None => return_type,
                     Some(substs) => {
-                        ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, return_type)
+                        ty::subst_tps(cx.tcx,
+                                      substs.tys.as_slice(),
+                                      substs.self_ty,
+                                      return_type)
                     }
                 };
 
@@ -740,7 +744,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
             let arg_type = match param_substs {
                 None => arg_type,
                 Some(substs) => {
-                    ty::subst_tps(cx.tcx, substs.tys, substs.self_ty, arg_type)
+                    ty::subst_tps(cx.tcx,
+                                  substs.tys.as_slice(),
+                                  substs.self_ty,
+                                  arg_type)
                 }
             };
 
@@ -771,7 +778,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
         name_to_append_suffix_to.push_char('<');
 
         // The list to be filled with template parameters:
-        let mut template_params: ~[DIDescriptor] = vec::with_capacity(generics.ty_params.len() + 1);
+        let mut template_params: Vec<DIDescriptor> =
+            Vec::with_capacity(generics.ty_params.len() + 1);
 
         // Handle self type
         if has_self_type {
@@ -814,12 +822,12 @@ pub fn create_function_debug_context(cx: &CrateContext,
         let actual_types = match param_substs {
             Some(param_substs) => &param_substs.tys,
             None => {
-                return create_DIArray(DIB(cx), template_params);
+                return create_DIArray(DIB(cx), template_params.as_slice());
             }
         };
 
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
-            let actual_type = actual_types[index];
+            let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
             let actual_type_name = ppaux::ty_to_str(cx.tcx, actual_type);
             name_to_append_suffix_to.push_str(actual_type_name);
@@ -850,7 +858,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
         name_to_append_suffix_to.push_char('>');
 
-        return create_DIArray(DIB(cx), template_params);
+        return create_DIArray(DIB(cx), template_params.as_slice());
     }
 }
 
@@ -1136,7 +1144,7 @@ enum MemberDescriptionFactory {
 
 impl MemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         match *self {
             StructMD(ref this) => {
                 this.create_member_descriptions(cx)
@@ -1155,13 +1163,13 @@ impl MemberDescriptionFactory {
 }
 
 struct StructMemberDescriptionFactory {
-    fields: ~[ty::field],
+    fields: Vec<ty::field> ,
     span: Span,
 }
 
 impl StructMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.fields.map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
                 ~""
@@ -1250,7 +1258,7 @@ impl RecursiveTypeDescription {
                 set_members_of_composite_type(cx,
                                               metadata_stub,
                                               llvm_type,
-                                              member_descriptions,
+                                              member_descriptions.as_slice(),
                                               file_metadata,
                                               codemap::DUMMY_SP);
                 return metadata_stub;
@@ -1260,13 +1268,13 @@ impl RecursiveTypeDescription {
 }
 
 struct TupleMemberDescriptionFactory {
-    component_types: ~[ty::t],
+    component_types: Vec<ty::t> ,
     span: Span,
 }
 
 impl TupleMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.component_types.map(|&component_type| {
             MemberDescription {
                 name: ~"",
@@ -1300,7 +1308,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
         llvm_type: tuple_llvm_type,
         file_metadata: file_metadata,
         member_description_factory: TupleMD(TupleMemberDescriptionFactory {
-            component_types: component_types.to_owned(),
+            component_types: Vec::from_slice(component_types),
             span: span,
         })
     }
@@ -1308,7 +1316,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 
 struct GeneralMemberDescriptionFactory {
     type_rep: @adt::Repr,
-    variants: @~[@ty::VariantInfo],
+    variants: @Vec<@ty::VariantInfo> ,
     discriminant_type_metadata: ValueRef,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1317,7 +1325,7 @@ struct GeneralMemberDescriptionFactory {
 
 impl GeneralMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         // Capture type_rep, so we don't have to copy the struct_defs array
         let struct_defs = match *self.type_rep {
             adt::General(_, ref struct_defs) => struct_defs,
@@ -1331,7 +1339,7 @@ impl GeneralMemberDescriptionFactory {
                 let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          self.variants[i],
+                                          *self.variants.get(i),
                                           Some(self.discriminant_type_metadata),
                                           self.containing_scope,
                                           self.file_metadata,
@@ -1343,7 +1351,7 @@ impl GeneralMemberDescriptionFactory {
                 set_members_of_composite_type(cx,
                                               variant_type_metadata,
                                               variant_llvm_type,
-                                              member_descriptions,
+                                              member_descriptions.as_slice(),
                                               self.file_metadata,
                                               codemap::DUMMY_SP);
                 MemberDescription {
@@ -1357,14 +1365,14 @@ impl GeneralMemberDescriptionFactory {
 }
 
 struct EnumVariantMemberDescriptionFactory {
-    args: ~[(~str, ty::t)],
+    args: Vec<(~str, ty::t)> ,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
 
 impl EnumVariantMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
-                                  -> ~[MemberDescription] {
+                                  -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
                 name: name.to_str(),
@@ -1387,8 +1395,11 @@ fn describe_enum_variant(cx: &CrateContext,
                          file_metadata: DIFile,
                          span: Span)
                       -> (DICompositeType, Type, MemberDescriptionFactory) {
-    let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
-                                          struct_def.packed);
+    let variant_llvm_type =
+        Type::struct_(struct_def.fields
+                                .map(|&t| type_of::type_of(cx, t))
+                                .as_slice(),
+                      struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
 
     // Find the source code location of the variant's definition
@@ -1420,7 +1431,7 @@ fn describe_enum_variant(cx: &CrateContext,
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: ~[(~str, ty::t)] = arg_names.iter()
+    let args: Vec<(~str, ty::t)> = arg_names.iter()
         .zip(struct_def.fields.iter())
         .map(|(s, &t)| (s.to_str(), t))
         .collect();
@@ -1462,7 +1473,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     let variants = ty::enum_variants(cx.tcx, enum_def_id);
 
-    let enumerators_metadata: ~[DIDescriptor] = variants
+    let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
             token::get_ident(v.name).get().with_c_str(|name| {
@@ -1491,7 +1502,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                     loc.line as c_uint,
                     bytes_to_bits(discriminant_size),
                     bytes_to_bits(discriminant_align),
-                    create_DIArray(DIB(cx), enumerators_metadata),
+                    create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
                     discriminant_base_type_metadata)
             }
         })
@@ -1507,13 +1518,14 @@ fn prepare_enum_metadata(cx: &CrateContext,
             assert!(variants.len() == 1);
             let (metadata_stub,
                  variant_llvm_type,
-                 member_description_factory) = describe_enum_variant(cx,
-                                                                     struct_def,
-                                                                     variants[0],
-                                                                     None,
-                                                                     containing_scope,
-                                                                     file_metadata,
-                                                                     span);
+                 member_description_factory) =
+                    describe_enum_variant(cx,
+                                          struct_def,
+                                          *variants.get(0),
+                                          None,
+                                          containing_scope,
+                                          file_metadata,
+                                          span);
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
                 metadata_stub: metadata_stub,
@@ -1565,13 +1577,14 @@ fn prepare_enum_metadata(cx: &CrateContext,
         adt::NullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
             let (metadata_stub,
                  variant_llvm_type,
-                 member_description_factory) = describe_enum_variant(cx,
-                                                                     struct_def,
-                                                                     variants[nndiscr],
-                                                                     None,
-                                                                     containing_scope,
-                                                                     file_metadata,
-                                                                     span);
+                 member_description_factory) =
+                    describe_enum_variant(cx,
+                                          struct_def,
+                                          *variants.get(nndiscr as uint),
+                                          None,
+                                          containing_scope,
+                                          file_metadata,
+                                          span);
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
                 metadata_stub: metadata_stub,
@@ -1650,7 +1663,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
 
     let loc = span_start(cx, definition_span);
 
-    let member_metadata: ~[DIDescriptor] = member_descriptions
+    let member_metadata: Vec<DIDescriptor> = member_descriptions
         .iter()
         .enumerate()
         .map(|(i, member_description)| {
@@ -1679,7 +1692,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
         .collect();
 
     unsafe {
-        let type_array = create_DIArray(DIB(cx), member_metadata);
+        let type_array = create_DIArray(DIB(cx), member_metadata.as_slice());
         llvm::LLVMDICompositeTypeSetTypeArray(composite_type_metadata, type_array);
     }
 }
@@ -1739,7 +1752,9 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let box_llvm_type = Type::at_box(cx, content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
-    assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
+    assert!(box_layout_is_correct(cx,
+                                  member_llvm_types.as_slice(),
+                                  content_llvm_type));
 
     let int_type = ty::mk_int();
     let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
@@ -1748,31 +1763,31 @@ fn boxed_type_metadata(cx: &CrateContext,
     let member_descriptions = [
         MemberDescription {
             name: ~"refcnt",
-            llvm_type: member_llvm_types[0],
+            llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"drop_glue",
-            llvm_type: member_llvm_types[1],
+            llvm_type: *member_llvm_types.get(1),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"prev",
-            llvm_type: member_llvm_types[2],
+            llvm_type: *member_llvm_types.get(2),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"next",
-            llvm_type: member_llvm_types[3],
+            llvm_type: *member_llvm_types.get(3),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"val",
-            llvm_type: member_llvm_types[4],
+            llvm_type: *member_llvm_types.get(4),
             type_metadata: content_type_metadata,
             offset: ComputedMemberOffset,
         }
@@ -1859,19 +1874,19 @@ fn vec_metadata(cx: &CrateContext,
     let member_descriptions = [
         MemberDescription {
             name: ~"fill",
-            llvm_type: member_llvm_types[0],
+            llvm_type: *member_llvm_types.get(0),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"alloc",
-            llvm_type: member_llvm_types[1],
+            llvm_type: *member_llvm_types.get(1),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"elements",
-            llvm_type: member_llvm_types[2],
+            llvm_type: *member_llvm_types.get(2),
             type_metadata: array_type_metadata,
             offset: ComputedMemberOffset,
         }
@@ -1904,20 +1919,22 @@ fn vec_slice_metadata(cx: &CrateContext,
     let slice_type_name = ppaux::ty_to_str(cx.tcx, vec_type);
 
     let member_llvm_types = slice_llvm_type.field_types();
-    assert!(slice_layout_is_correct(cx, member_llvm_types, element_type));
+    assert!(slice_layout_is_correct(cx,
+                                    member_llvm_types.as_slice(),
+                                    element_type));
 
     let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::MutImmutable });
 
     let member_descriptions = [
         MemberDescription {
             name: ~"data_ptr",
-            llvm_type: member_llvm_types[0],
+            llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, data_ptr_type, span),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
             name: ~"length",
-            llvm_type: member_llvm_types[1],
+            llvm_type: *member_llvm_types.get(1),
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,
         },
@@ -1954,7 +1971,8 @@ fn subroutine_type_metadata(cx: &CrateContext,
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, loc.file.name);
 
-    let mut signature_metadata: ~[DIType] = vec::with_capacity(signature.inputs.len() + 1);
+    let mut signature_metadata: Vec<DIType> =
+        Vec::with_capacity(signature.inputs.len() + 1);
 
     // return type
     signature_metadata.push(match ty::get(signature.output).sty {
@@ -1971,7 +1989,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
         llvm::LLVMDIBuilderCreateSubroutineType(
             DIB(cx),
             file_metadata,
-            create_DIArray(DIB(cx), signature_metadata))
+            create_DIArray(DIB(cx), signature_metadata.as_slice()))
     };
 }
 
@@ -1993,7 +2011,7 @@ fn trait_metadata(cx: &CrateContext,
                ident_string.get();
     // Add type and region parameters
     let name = ppaux::parameterized(cx.tcx, name, &substs.regions,
-                                    substs.tps, def_id, true);
+                                    substs.tps.as_slice(), def_id, true);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
@@ -2121,7 +2139,10 @@ fn type_metadata(cx: &CrateContext,
             }
         },
         ty::ty_tup(ref elements) => {
-            prepare_tuple_metadata(cx, t, *elements, usage_site_span).finalize(cx)
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   elements.as_slice(),
+                                   usage_site_span).finalize(cx)
         }
         _ => cx.sess.bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
     };
@@ -2265,7 +2286,7 @@ fn populate_scope_map(cx: &CrateContext,
         ident: Option<ast::Ident>
     }
 
-    let mut scope_stack = ~[ScopeStackEntry { scope_metadata: fn_metadata, ident: None }];
+    let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata, ident: None });
 
     // Push argument identifiers onto the stack so arguments integrate nicely with variable
     // shadowing.
@@ -2288,10 +2309,10 @@ fn populate_scope_map(cx: &CrateContext,
     // local helper functions for walking the AST.
     fn with_new_scope(cx: &CrateContext,
                       scope_span: Span,
-                      scope_stack: &mut ~[ScopeStackEntry],
+                      scope_stack: &mut Vec<ScopeStackEntry> ,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>,
                       inner_walk: |&CrateContext,
-                                   &mut ~[ScopeStackEntry],
+                                   &mut Vec<ScopeStackEntry> ,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess.codemap.lookup_char_pos(scope_span.lo);
@@ -2325,7 +2346,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_block(cx: &CrateContext,
                   block: &ast::Block,
-                  scope_stack: &mut ~[ScopeStackEntry],
+                  scope_stack: &mut Vec<ScopeStackEntry> ,
                   scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         scope_map.insert(block.id, scope_stack.last().unwrap().scope_metadata);
 
@@ -2349,7 +2370,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_decl(cx: &CrateContext,
                  decl: &ast::Decl,
-                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_stack: &mut Vec<ScopeStackEntry> ,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
         match *decl {
             codemap::Spanned { node: ast::DeclLocal(local), .. } => {
@@ -2367,7 +2388,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_pattern(cx: &CrateContext,
                     pat: @ast::Pat,
-                    scope_stack: &mut ~[ScopeStackEntry],
+                    scope_stack: &mut Vec<ScopeStackEntry> ,
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
         let def_map = cx.tcx.def_map;
@@ -2512,7 +2533,7 @@ fn populate_scope_map(cx: &CrateContext,
 
     fn walk_expr(cx: &CrateContext,
                  exp: &ast::Expr,
-                 scope_stack: &mut ~[ScopeStackEntry],
+                 scope_stack: &mut Vec<ScopeStackEntry> ,
                  scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
         scope_map.insert(exp.id, scope_stack.last().unwrap().scope_metadata);
@@ -2741,7 +2762,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
         };
         let mut path = krate.move_iter().chain(path).peekable();
 
-        let mut current_key = ~[];
+        let mut current_key = Vec::new();
         let mut parent_node: Option<@NamespaceTreeNode> = None;
 
         // Create/Lookup namespace for each element of the path.

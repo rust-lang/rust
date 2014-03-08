@@ -13,6 +13,8 @@
 use middle::ty;
 use util::ppaux::Repr;
 
+use std::vec_ng::Vec;
+
 pub trait TypeFolder {
     fn tcx(&self) -> ty::ctxt;
 
@@ -84,10 +86,8 @@ pub fn fold_opt_ty<T:TypeFolder>(this: &mut T,
     t.map(|t| this.fold_ty(t))
 }
 
-pub fn fold_ty_vec<T:TypeFolder>(this: &mut T,
-                                 tys: &[ty::t])
-                                 -> ~[ty::t] {
-    tys.map(|t| this.fold_ty(*t))
+pub fn fold_ty_vec<T:TypeFolder>(this: &mut T, tys: &[ty::t]) -> Vec<ty::t> {
+    tys.iter().map(|t| this.fold_ty(*t)).collect()
 }
 
 pub fn super_fold_ty<T:TypeFolder>(this: &mut T,
@@ -110,14 +110,14 @@ pub fn super_fold_substs<T:TypeFolder>(this: &mut T,
 
     ty::substs { regions: regions,
                  self_ty: fold_opt_ty(this, substs.self_ty),
-                 tps: fold_ty_vec(this, substs.tps), }
+                 tps: fold_ty_vec(this, substs.tps.as_slice()), }
 }
 
 pub fn super_fold_sig<T:TypeFolder>(this: &mut T,
                                     sig: &ty::FnSig)
                                     -> ty::FnSig {
     ty::FnSig { binder_id: sig.binder_id,
-                inputs: fold_ty_vec(this, sig.inputs),
+                inputs: fold_ty_vec(this, sig.inputs.as_slice()),
                 output: this.fold_ty(sig.output),
                 variadic: sig.variadic }
 }
@@ -166,7 +166,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
                      bounds)
         }
         ty::ty_tup(ref ts) => {
-            ty::ty_tup(fold_ty_vec(this, *ts))
+            ty::ty_tup(fold_ty_vec(this, ts.as_slice()))
         }
         ty::ty_bare_fn(ref f) => {
             ty::ty_bare_fn(this.fold_bare_fn_ty(f))

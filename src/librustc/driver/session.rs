@@ -74,8 +74,8 @@ debugging_opts!(
     0
 )
 
-pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
-    ~[("verbose", "in general, enable more debug printouts", VERBOSE),
+pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
+    vec!(("verbose", "in general, enable more debug printouts", VERBOSE),
      ("time-passes", "measure time of each rustc pass", TIME_PASSES),
      ("count-llvm-insns", "count where LLVM \
                            instrs originate", COUNT_LLVM_INSNS),
@@ -102,8 +102,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
       PRINT_LLVM_PASSES),
      ("lto", "Perform LLVM link-time optimizations", LTO),
      ("ast-json", "Print the AST as JSON and halt", AST_JSON),
-     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
-    ]
+     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND))
 }
 
 #[deriving(Clone, Eq)]
@@ -125,13 +124,13 @@ pub enum DebugInfoLevel {
 pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    crate_types: ~[CrateType],
+    crate_types: Vec<CrateType> ,
 
     gc: bool,
     optimize: OptLevel,
     debuginfo: DebugInfoLevel,
-    lint_opts: ~[(lint::Lint, lint::level)],
-    output_types: ~[back::link::OutputType],
+    lint_opts: Vec<(lint::Lint, lint::level)> ,
+    output_types: Vec<back::link::OutputType> ,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
@@ -192,9 +191,9 @@ pub struct Session_ {
     local_crate_source_file: Option<Path>,
     working_dir: Path,
     lints: RefCell<HashMap<ast::NodeId,
-                           ~[(lint::Lint, codemap::Span, ~str)]>>,
+                           Vec<(lint::Lint, codemap::Span, ~str)> >>,
     node_id: Cell<ast::NodeId>,
-    crate_types: @RefCell<~[CrateType]>,
+    crate_types: @RefCell<Vec<CrateType> >,
     features: front::feature_gate::Features
 }
 
@@ -259,7 +258,7 @@ impl Session_ {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
             None => {}
         }
-        lints.get().insert(id, ~[(lint, sp, msg)]);
+        lints.get().insert(id, vec!((lint, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)
@@ -318,12 +317,12 @@ impl Session_ {
 /// Some reasonable defaults
 pub fn basic_options() -> @Options {
     @Options {
-        crate_types: ~[],
+        crate_types: Vec::new(),
         gc: false,
         optimize: No,
         debuginfo: NoDebugInfo,
-        lint_opts: ~[],
-        output_types: ~[],
+        lint_opts: Vec::new(),
+        output_types: Vec::new(),
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
@@ -394,7 +393,8 @@ macro_rules! cgoptions(
             }
         }
 
-        fn parse_list(slot: &mut ~[~str], v: Option<&str>) -> bool {
+        fn parse_list(slot: &mut ::std::vec_ng::Vec<~str>, v: Option<&str>)
+                      -> bool {
             match v {
                 Some(s) => {
                     for s in s.words() {
@@ -414,15 +414,15 @@ cgoptions!(
         "tool to assemble archives with"),
     linker: Option<~str> = (None, parse_opt_string,
         "system linker to link outputs with"),
-    link_args: ~[~str] = (~[], parse_list,
+    link_args: Vec<~str> = (Vec::new(), parse_list,
         "extra arguments to pass to the linker (space separated)"),
     target_cpu: ~str = (~"generic", parse_string,
         "select target processor (llc -mcpu=help for details)"),
     target_feature: ~str = (~"", parse_string,
         "target specific attributes (llc -mattr=help for details)"),
-    passes: ~[~str] = (~[], parse_list,
+    passes: Vec<~str> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
-    llvm_args: ~[~str] = (~[], parse_list,
+    llvm_args: Vec<~str> = (Vec::new(), parse_list,
         "a list of arguments to pass to llvm (space separated)"),
     save_temps: bool = (false, parse_bool,
         "save all temporary output files during compilation"),
@@ -476,11 +476,11 @@ pub fn default_lib_output() -> CrateType {
 }
 
 pub fn collect_crate_types(session: &Session,
-                           attrs: &[ast::Attribute]) -> ~[CrateType] {
+                           attrs: &[ast::Attribute]) -> Vec<CrateType> {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return ~[CrateTypeExecutable];
+        return vec!(CrateTypeExecutable)
     }
     let mut base = session.opts.crate_types.clone();
     let mut iter = attrs.iter().filter_map(|a| {
@@ -516,7 +516,7 @@ pub fn collect_crate_types(session: &Session,
     if base.len() == 0 {
         base.push(CrateTypeExecutable);
     }
-    base.sort();
+    base.as_mut_slice().sort();
     base.dedup();
     return base;
 }

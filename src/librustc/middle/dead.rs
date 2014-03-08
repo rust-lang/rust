@@ -19,6 +19,7 @@ use middle::typeck;
 use util::nodemap::NodeSet;
 
 use collections::HashSet;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, def_id_of_def, is_local};
@@ -49,7 +50,7 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 }
 
 struct MarkSymbolVisitor {
-    worklist: ~[ast::NodeId],
+    worklist: Vec<ast::NodeId> ,
     method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
@@ -58,7 +59,7 @@ struct MarkSymbolVisitor {
 impl MarkSymbolVisitor {
     fn new(tcx: ty::ctxt,
            method_map: typeck::MethodMap,
-           worklist: ~[ast::NodeId]) -> MarkSymbolVisitor {
+           worklist: Vec<ast::NodeId> ) -> MarkSymbolVisitor {
         MarkSymbolVisitor {
             worklist: worklist,
             method_map: method_map,
@@ -216,7 +217,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
 struct LifeSeeder {
-    worklist: ~[ast::NodeId],
+    worklist: Vec<ast::NodeId> ,
 }
 
 impl Visitor<()> for LifeSeeder {
@@ -254,8 +255,8 @@ impl Visitor<()> for LifeSeeder {
 fn create_and_seed_worklist(tcx: ty::ctxt,
                             exported_items: &privacy::ExportedItems,
                             reachable_symbols: &NodeSet,
-                            krate: &ast::Crate) -> ~[ast::NodeId] {
-    let mut worklist = ~[];
+                            krate: &ast::Crate) -> Vec<ast::NodeId> {
+    let mut worklist = Vec::new();
 
     // Preferably, we would only need to seed the worklist with reachable
     // symbols. However, since the set of reachable symbols differs
