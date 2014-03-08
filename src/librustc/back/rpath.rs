@@ -15,6 +15,7 @@ use metadata::filesearch;
 
 use collections::HashSet;
 use std::{os, vec};
+use std::vec_ng::Vec;
 use syntax::abi;
 
 fn not_win32(os: abi::Os) -> bool {
@@ -49,7 +50,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> Vec<~str>
 
     let rpaths = get_rpaths(os, sysroot, output, libs,
                             sess.opts.target_triple);
-    flags.push_all(rpaths_to_flags(rpaths));
+    flags.push_all(rpaths_to_flags(rpaths.as_slice()).as_slice());
     flags
 }
 
@@ -100,16 +101,16 @@ fn get_rpaths(os: abi::Os,
         }
     }
 
-    log_rpaths("relative", rel_rpaths);
-    log_rpaths("absolute", abs_rpaths);
-    log_rpaths("fallback", fallback_rpaths);
+    log_rpaths("relative", rel_rpaths.as_slice());
+    log_rpaths("absolute", abs_rpaths.as_slice());
+    log_rpaths("fallback", fallback_rpaths.as_slice());
 
     let mut rpaths = rel_rpaths;
-    rpaths.push_all(abs_rpaths);
-    rpaths.push_all(fallback_rpaths);
+    rpaths.push_all(abs_rpaths.as_slice());
+    rpaths.push_all(fallback_rpaths.as_slice());
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(rpaths);
+    let rpaths = minimize_rpaths(rpaths.as_slice());
     return rpaths;
 }
 

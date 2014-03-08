@@ -71,6 +71,7 @@ use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::codemap;
@@ -743,7 +744,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
             let numbered_fields: Vec<(uint, @ast::Expr)> =
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
-            trans_adt(bcx, repr, 0, numbered_fields, None, dest)
+            trans_adt(bcx, repr, 0, numbered_fields.as_slice(), None, dest)
         }
         ast::ExprLit(lit) => {
             match lit.node {
@@ -973,7 +974,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
 
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
-            op(0, struct_fields(tcx, did, substs))
+            op(0, struct_fields(tcx, did, substs).as_slice())
         }
 
         ty::ty_enum(_, ref substs) => {
@@ -995,7 +996,9 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
                             op(variant_info.disr_val,
-                               struct_fields(tcx, variant_id, substs))
+                               struct_fields(tcx,
+                                             variant_id,
+                                             substs).as_slice())
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \

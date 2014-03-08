@@ -43,8 +43,10 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::unify::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use collections::HashMap;
 use util::common::indenter;
+
+use collections::HashMap;
+use std::vec_ng::Vec;
 
 pub trait LatticeValue {
     fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;

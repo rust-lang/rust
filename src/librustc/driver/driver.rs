@@ -11,8 +11,8 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive, CrateTypeExecutable, FullDebugInfo, LimitedDebugInfo,
-                      NoDebugInfo};
+use driver::session::{Aggressive, CrateTypeExecutable, CrateType,
+                      FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -36,7 +36,6 @@ use std::io;
 use std::io::fs;
 use std::io::MemReader;
 use std::os;
-use std::vec;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use collections::HashMap;
@@ -434,7 +433,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
                                     trans,
-                                    sess.opts.output_types,
+                                    sess.opts.output_types.as_slice(),
                                     outputs));
     }
 }
@@ -767,18 +766,21 @@ pub fn host_triple() -> ~str {
 
 pub fn build_session_options(matches: &getopts::Matches)
                              -> @session::Options {
-    let crate_types = matches.opt_strs("crate-type").flat_map(|s| {
-        s.split(',').map(|part| {
-            match part {
+    let mut crate_types: Vec<CrateType> = Vec::new();
+    let unparsed_crate_types = matches.opt_strs("crate-type");
+    for unparsed_crate_type in unparsed_crate_types.iter() {
+        for part in unparsed_crate_type.split(',') {
+            let new_part = match part {
                 "lib"       => session::default_lib_output(),
                 "rlib"      => session::CrateTypeRlib,
                 "staticlib" => session::CrateTypeStaticlib,
                 "dylib"     => session::CrateTypeDylib,
                 "bin"       => session::CrateTypeExecutable,
                 _ => early_error(format!("unknown crate type: `{}`", part))
-            }
-        }).collect()
-    });
+            };
+            crate_types.push(new_part)
+        }
+    }
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
@@ -793,8 +795,10 @@ pub fn build_session_options(matches: &getopts::Matches)
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec_ng::append(matches.opt_strs(level_short),
-                                matches.opt_strs(level_name));
+        let flags = vec_ng::append(matches.opt_strs(level_short)
+                                          .move_iter()
+                                          .collect(),
+                                   matches.opt_strs(level_name));
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {
@@ -828,23 +832,24 @@ pub fn build_session_options(matches: &getopts::Matches)
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
-    let mut output_types = if parse_only || no_trans {
-        Vec::new()
-    } else {
-        matches.opt_strs("emit").flat_map(|s| {
-            s.split(',').map(|part| {
-                match part.as_slice() {
+    let mut output_types = Vec::new();
+    if !parse_only && !no_trans {
+        let unparsed_output_types = matches.opt_strs("emit");
+        for unparsed_output_type in unparsed_output_types.iter() {
+            for part in unparsed_output_type.split(',') {
+                let output_type = match part.as_slice() {
                     "asm"  => link::OutputTypeAssembly,
                     "ir"   => link::OutputTypeLlvmAssembly,
                     "bc"   => link::OutputTypeBitcode,
                     "obj"  => link::OutputTypeObject,
                     "link" => link::OutputTypeExe,
                     _ => early_error(format!("unknown emission type: `{}`", part))
-                }
-            }).collect()
-        })
+                };
+                output_types.push(output_type)
+            }
+        }
     };
-    output_types.sort();
+    output_types.as_mut_slice().sort();
     output_types.dedup();
     if output_types.len() == 0 {
         output_types.push(link::OutputTypeExe);
@@ -890,7 +895,7 @@ pub fn build_session_options(matches: &getopts::Matches)
         Path::new(s.as_slice())
     }).move_iter().collect();
 
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg").move_iter().collect());
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
                                  matches.opt_str("dep-info").map(|p| Path::new(p)));
@@ -1187,7 +1192,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts([~"--test"], optgroups()) {
+            &match getopts([~"--test"], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
@@ -1202,7 +1207,8 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts([~"--test", ~"--cfg=test"], optgroups()) {
+            &match getopts([~"--test", ~"--cfg=test"],
+                           optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
                 fail!("test_switch_implies_cfg_test_unless_cfg_test: {}",

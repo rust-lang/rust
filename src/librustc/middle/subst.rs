@@ -16,6 +16,7 @@ use middle::ty_fold::TypeFolder;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 
@@ -88,7 +89,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
         match ty::get(t).sty {
             ty::ty_param(p) => {
                 if p.idx < self.substs.tps.len() {
-                    self.substs.tps[p.idx]
+                    *self.substs.tps.get(p.idx)
                 } else {
                     let root_msg = match self.root_ty {
                         Some(root) => format!(" in the substitution of `{}`",

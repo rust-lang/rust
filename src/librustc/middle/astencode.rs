@@ -654,7 +654,7 @@ pub fn encode_vtable_res(ecx: &e::EncodeContext,
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    ebml_w.emit_from_vec(*dr, |ebml_w, param_tables| {
+    ebml_w.emit_from_vec(dr.as_slice(), |ebml_w, param_tables| {
         encode_vtable_param_res(ecx, ebml_w, *param_tables);
     })
 }
@@ -662,7 +662,7 @@ pub fn encode_vtable_res(ecx: &e::EncodeContext,
 pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      param_tables: typeck::vtable_param_res) {
-    ebml_w.emit_from_vec(*param_tables, |ebml_w, vtable_origin| {
+    ebml_w.emit_from_vec(param_tables.as_slice(), |ebml_w, vtable_origin| {
         encode_vtable_origin(ecx, ebml_w, vtable_origin)
     })
 }
@@ -679,7 +679,7 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                     ebml_w.emit_def_id(def_id)
                 });
                 ebml_w.emit_enum_variant_arg(1u, |ebml_w| {
-                    ebml_w.emit_tys(ecx, *tys);
+                    ebml_w.emit_tys(ecx, tys.as_slice());
                 });
                 ebml_w.emit_enum_variant_arg(2u, |ebml_w| {
                     encode_vtable_res(ecx, ebml_w, vtable_res);
@@ -718,6 +718,8 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                       -> typeck::vtable_res {
         @self.read_to_vec(|this|
                           this.read_vtable_param_res(tcx, cdata))
+             .move_iter()
+             .collect()
     }
 
     fn read_vtable_param_res(&mut self,
@@ -725,6 +727,8 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                       -> typeck::vtable_param_res {
         @self.read_to_vec(|this|
                           this.read_vtable_origin(tcx, cdata))
+             .move_iter()
+             .collect()
     }
 
     fn read_vtable_origin(&mut self,
@@ -985,7 +989,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_tys(ecx, **tys)
+                    ebml_w.emit_tys(ecx, tys.as_slice())
                 })
             })
         }
@@ -998,7 +1002,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_freevars, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(**fv, |ebml_w, fv_entry| {
+                    ebml_w.emit_from_vec(fv.as_slice(), |ebml_w, fv_entry| {
                         encode_freevar_entry(ebml_w, *fv_entry)
                     })
                 })
@@ -1077,7 +1081,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(*cap_vars.borrow(), |ebml_w, cap_var| {
+                    ebml_w.emit_from_vec(cap_vars.borrow().as_slice(),
+                                         |ebml_w, cap_var| {
                         cap_var.encode(ebml_w);
                     })
                 })
@@ -1139,6 +1144,8 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                       tcx: ty::ctxt,
                       cdata: @cstore::crate_metadata) -> Vec<ty::t> {
         self.read_to_vec(|this| this.read_ty_noxcx(tcx, cdata) )
+            .move_iter()
+            .collect()
     }
 
     fn read_ty(&mut self, xcx: @ExtendedDecodeContext) -> ty::t {
@@ -1170,7 +1177,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     }
 
     fn read_tys(&mut self, xcx: @ExtendedDecodeContext) -> Vec<ty::t> {
-        self.read_to_vec(|this| this.read_ty(xcx) )
+        self.read_to_vec(|this| this.read_ty(xcx)).move_iter().collect()
     }
 
     fn read_type_param_def(&mut self, xcx: @ExtendedDecodeContext)
@@ -1197,7 +1204,9 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                                                        0,
                                                        |this| {
                                     Rc::new(this.read_to_vec(|this|
-                                                             this.read_type_param_def(xcx)))
+                                                             this.read_type_param_def(xcx))
+                                                .move_iter()
+                                                .collect())
                             }),
                             region_param_defs:
                                 this.read_struct_field("region_param_defs",
@@ -1357,7 +1366,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     c::tag_table_freevars => {
                         let fv_info = @val_dsr.read_to_vec(|val_dsr| {
                             @val_dsr.read_freevar_entry(xcx)
-                        });
+                        }).move_iter().collect();
                         let mut freevars = dcx.tcx.freevars.borrow_mut();
                         freevars.get().insert(id, fv_info);
                     }
@@ -1394,7 +1403,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_capture_map => {
                         let cvars =
-                                val_dsr.read_to_vec(|val_dsr| val_dsr.read_capture_var(xcx));
+                                val_dsr.read_to_vec(|val_dsr| val_dsr.read_capture_var(xcx))
+                                       .move_iter()
+                                       .collect();
                         let mut capture_map = dcx.maps
                                                  .capture_map
                                                  .borrow_mut();

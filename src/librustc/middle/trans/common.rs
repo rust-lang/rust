@@ -32,10 +32,11 @@ use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;
+use collections::HashMap;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
+use std::vec_ng::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};
@@ -50,8 +51,9 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx, def_id, substs);
             fields.len() == 1 &&
-                fields[0].ident.name == token::special_idents::unnamed_field.name &&
-                type_is_immediate(ccx, fields[0].mt.ty)
+                fields.get(0).ident.name ==
+                    token::special_idents::unnamed_field.name &&
+                type_is_immediate(ccx, fields.get(0).mt.ty)
         }
         _ => false
     }
@@ -781,7 +783,7 @@ pub fn align_to(cx: &Block, off: ValueRef, align: ValueRef) -> ValueRef {
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
-            ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
+            ty::subst_tps(bcx.tcx(), substs.tys.as_slice(), substs.self_ty, t)
         }
         _ => {
             assert!(!ty::type_has_params(t));
@@ -824,7 +826,7 @@ pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> Vec
     match bcx.fcx.param_substs {
       Some(substs) => {
         params.iter().map(|t| {
-            ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+            ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
         }).collect()
       }
       _ => params
@@ -881,10 +883,13 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
             let tys = match param_substs {
                 Some(substs) => {
                     tys.iter().map(|t| {
-                        ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+                        ty::subst_tps(tcx,
+                                      substs.tys.as_slice(),
+                                      substs.self_ty,
+                                      *t)
                     }).collect()
                 }
-                _ => tys.to_owned()
+                _ => Vec::from_slice(tys.as_slice())
             };
             typeck::vtable_static(
                 trait_id, tys,
@@ -918,10 +923,10 @@ pub fn find_vtable(tcx: ty::ctxt,
         typeck::param_numbered(n) => {
             let tables = ps.vtables
                 .expect("vtables missing where they are needed");
-            tables[n]
+            *tables.get(n)
         }
     };
-    param_bounds[n_bound].clone()
+    param_bounds.get(n_bound).clone()
 }
 
 pub fn dummy_substs(tps: Vec<ty::t> ) -> ty::substs {

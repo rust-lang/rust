@@ -46,6 +46,8 @@ use util::ppaux::Repr;
 
 use std::rc::Rc;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
@@ -324,7 +326,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let substs = substs {
             regions: ty::NonerasedRegions(rps_from_trait),
             self_ty: Some(self_param),
-            tps: non_shifted_trait_tps + shifted_method_tps
+            tps: vec_ng::append(Vec::from_slice(non_shifted_trait_tps),
+                                shifted_method_tps)
         };
 
         // create the type of `foo`, applying the substitution above
@@ -339,7 +342,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let mut new_type_param_defs = Vec::new();
         let substd_type_param_defs =
             trait_ty_generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs.borrow());
+        new_type_param_defs.push_all(substd_type_param_defs.borrow()
+                                                           .as_slice());
 
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
@@ -356,7 +360,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
 
         // add in the type parameters from the method
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs.borrow());
+        new_type_param_defs.push_all(substd_type_param_defs.borrow()
+                                                           .as_slice());
 
         debug!("static method {} type_param_defs={} ty={}, substs={}",
                m.def_id.repr(tcx),
@@ -495,7 +500,8 @@ fn convert_methods(ccx: &CrateCtxt,
                 ty_param_bounds_and_ty {
                     generics: ty::Generics {
                         type_param_defs: Rc::new(vec_ng::append(
-                            rcvr_ty_generics.type_param_defs().to_owned(),
+                            Vec::from_slice(
+                                rcvr_ty_generics.type_param_defs()),
                             m_ty_generics.type_param_defs())),
                         region_param_defs: rcvr_ty_generics.region_param_defs.clone(),
                     },

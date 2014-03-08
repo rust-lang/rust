@@ -20,8 +20,9 @@ use syntax::ast;
 use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
 
 use std::c_str::ToCStr;
-use std::vec;
 use std::cast;
+use std::vec;
+use std::vec_ng::Vec;
 
 use std::libc::{c_uint};
 
@@ -301,8 +302,8 @@ impl Type {
             if n_elts == 0 {
                 return Vec::new();
             }
-            let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            llvm::LLVMGetStructElementTypes(self.to_ref(), &mut elts[0]);
+            let mut elts = Vec::from_elem(n_elts, 0 as TypeRef);
+            llvm::LLVMGetStructElementTypes(self.to_ref(), elts.get_mut(0));
             cast::transmute(elts)
         }
     }
@@ -314,7 +315,7 @@ impl Type {
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
-            let args = vec::from_elem(n_args, 0 as TypeRef);
+            let args = Vec::from_elem(n_args, 0 as TypeRef);
             llvm::LLVMGetParamTypes(self.to_ref(), args.as_ptr());
             cast::transmute(args)
         }

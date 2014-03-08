@@ -31,6 +31,7 @@ use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::vec;
+use std::vec_ng::Vec;
 
 use collections::{HashMap, HashSet};
 use flate;
@@ -205,7 +206,7 @@ impl<'a> Context<'a> {
         // libraries or not.
         match libraries.len() {
             0 => None,
-            1 => Some(libraries[0]),
+            1 => Some(libraries.move_iter().next().unwrap()),
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",

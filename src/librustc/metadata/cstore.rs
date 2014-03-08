@@ -18,6 +18,7 @@ use metadata::decoder;
 use metadata::loader;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashMap;
 use extra::c_vec::CVec;
 use syntax::ast;
