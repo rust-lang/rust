@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test #5744 fails on 32 bit
-
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 struct TwoU8s {
     one: u8, two: u8
 }
