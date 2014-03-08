@@ -84,6 +84,11 @@ impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
             None => None,
         }
     }
+
+    pub fn clear(&self) {
+        *self.map.borrow_mut().get() = HashMap::new();
+        *self.vect.borrow_mut().get() = Vec::new();
+    }
 }
 
 #[deriving(Clone, Eq, Hash, Ord)]
@@ -221,6 +226,11 @@ impl StrInterner {
             Some(v) => Some(*v),
             None => None,
         }
+    }
+
+    pub fn clear(&self) {
+        *self.map.borrow_mut().get() = HashMap::new();
+        *self.vect.borrow_mut().get() = Vec::new();
     }
 }
 
