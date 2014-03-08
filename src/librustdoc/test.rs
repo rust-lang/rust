@@ -77,7 +77,7 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
     let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
 
-    let mut collector = Collector::new(krate.name.to_owned(), libs, false);
+    let mut collector = Collector::new(krate.name.to_owned(), libs, false, false);
     collector.fold_crate(krate);
 
     test_args.unshift(~"rustdoctest");
@@ -88,8 +88,8 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
 }
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
-           no_run: bool) {
-    let test = maketest(test, cratename);
+           no_run: bool, loose_feature_gating: bool) {
+    let test = maketest(test, cratename, loose_feature_gating);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
@@ -162,11 +162,18 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-fn maketest(s: &str, cratename: &str) -> ~str {
+fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
 ";
+
+    if loose_feature_gating {
+        // FIXME #12773: avoid inserting these when the tutorial & manual
+        // etc. have been updated to not use them so prolifically.
+        prog.push_str("#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n");
+    }
+
     if !s.contains("extern crate") {
         if s.contains("extra") {
             prog.push_str("extern crate extra;\n");
@@ -194,10 +201,13 @@ pub struct Collector {
     priv use_headers: bool,
     priv current_header: Option<~str>,
     priv cratename: ~str,
+
+    priv loose_feature_gating: bool
 }
 
 impl Collector {
-    pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>, use_headers: bool) -> Collector {
+    pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>,
+               use_headers: bool, loose_feature_gating: bool) -> Collector {
         Collector {
             tests: ~[],
             names: ~[],
@@ -205,7 +215,9 @@ impl Collector {
             cnt: 0,
             use_headers: use_headers,
             current_header: None,
-            cratename: cratename
+            cratename: cratename,
+
+            loose_feature_gating: loose_feature_gating
         }
     }
 
@@ -220,6 +232,7 @@ impl Collector {
         let libs = self.libs.borrow();
         let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
+        let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -228,7 +241,7 @@ impl Collector {
                 should_fail: false, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(proc() {
-                runtest(test, cratename, libs, should_fail, no_run);
+                runtest(test, cratename, libs, should_fail, no_run, loose_feature_gating);
             }),
         });
     }

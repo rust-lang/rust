@@ -163,7 +163,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 pub fn test(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_owned(), libs, true);
+    let mut collector = Collector::new(input.to_owned(), libs, true, true);
     find_testable_code(input_str, &mut collector);
     test_args.unshift(~"rustdoctest");
     testing::test_main(test_args, collector.tests);
