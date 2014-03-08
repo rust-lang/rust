@@ -745,8 +745,8 @@ Version 0.2  (March 2012)
       * Merged per-platform std::{os*, fs*} to core::{libc, os}
       * Extensive cleanup, regularization in libstd, libcore
 
-Version 0.1  (January 2012)
----------------------------
+Version 0.1  (January 20, 2012)
+-------------------------------
 
    * Most language features work, including:
       * Unique pointers, unique closures, move semantics
