@@ -53,8 +53,8 @@ use std::io;
 use std::os;
 use std::str;
 use std::task;
-use std::vec;
 use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
@@ -149,7 +149,7 @@ Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              getopts::usage(message, d::optgroups()));
+              getopts::usage(message, d::optgroups().as_slice()));
 }
 
 pub fn describe_warnings() {
@@ -164,8 +164,8 @@ Available lint options:
     let lint_dict = lint::get_lint_dict();
     let mut lint_dict = lint_dict.move_iter()
                                  .map(|(k, v)| (v, k))
-                                 .collect::<~[(lint::LintSpec, &'static str)]>();
-    lint_dict.sort();
+                                 .collect::<Vec<(lint::LintSpec, &'static str)> >();
+    lint_dict.as_mut_slice().sort();
 
     let mut max_key = 0;
     for &(_, name) in lint_dict.iter() {
@@ -224,7 +224,7 @@ pub fn run_compiler(args: &[~str]) {
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        &match getopts::getopts(args, d::optgroups()) {
+        &match getopts::getopts(args, d::optgroups().as_slice()) {
           Ok(m) => m,
           Err(f) => {
             d::early_error(f.to_err_msg());
@@ -236,8 +236,10 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
-    let lint_flags = vec::append(matches.opt_strs("W"),
-                                 matches.opt_strs("warn"));
+    let lint_flags = vec_ng::append(matches.opt_strs("W")
+                                           .move_iter()
+                                           .collect(),
+                                    matches.opt_strs("warn"));
     if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
         return;
@@ -312,8 +314,8 @@ pub fn run_compiler(args: &[~str]) {
     if crate_id || crate_name || crate_file_name {
         let attrs = parse_crate_attrs(sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
-                                                  attrs, sess);
-        let id = link::find_crate_id(attrs, &t_outputs);
+                                                  attrs.as_slice(), sess);
+        let id = link::find_crate_id(attrs.as_slice(), &t_outputs);
 
         if crate_id {
             println!("{}", id.to_str());
@@ -322,7 +324,8 @@ pub fn run_compiler(args: &[~str]) {
             println!("{}", id.name);
         }
         if crate_file_name {
-            let crate_types = session::collect_crate_types(&sess, attrs);
+            let crate_types = session::collect_crate_types(&sess,
+                                                           attrs.as_slice());
             for &style in crate_types.iter() {
                 let fname = link::filename_for_input(&sess, style, &id,
                                                      &t_outputs.with_extension(""));
@@ -337,7 +340,7 @@ pub fn run_compiler(args: &[~str]) {
 }
 
 fn parse_crate_attrs(sess: session::Session, input: &d::Input) ->
-                     ~[ast::Attribute] {
+                     Vec<ast::Attribute> {
     let result = match *input {
         d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile,

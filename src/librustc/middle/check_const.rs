@@ -15,6 +15,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
@@ -207,8 +208,7 @@ struct CheckItemRecursionVisitor<'a> {
     sess: Session,
     ast_map: &'a ast_map::Map,
     def_map: resolve::DefMap,
-    idstack: ~[NodeId]
-}
+    idstack: Vec<NodeId> }
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
@@ -222,7 +222,7 @@ pub fn check_item_recursion<'a>(sess: Session,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: ~[]
+        idstack: Vec::new()
     };
     visitor.visit_item(it, ());
 }

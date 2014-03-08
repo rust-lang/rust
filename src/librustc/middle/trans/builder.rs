@@ -17,8 +17,10 @@ use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
-use std::libc::{c_uint, c_ulonglong, c_char};
+
 use collections::HashMap;
+use std::libc::{c_uint, c_ulonglong, c_char};
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
 
 pub struct Builder<'a> {
@@ -540,9 +542,9 @@ impl<'a> Builder<'a> {
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<~[ValueRef]>();
+            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<Vec<ValueRef> >();
             self.count_insn("gepi");
-            self.inbounds_gep(base, v)
+            self.inbounds_gep(base, v.as_slice())
         }
     }
 

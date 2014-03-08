@@ -341,9 +341,12 @@ pub fn trans_fail<'a>(
     let v_line = loc.line as int;
     let v_str = PointerCast(bcx, v_fail_str, Type::i8p());
     let v_filename = PointerCast(bcx, v_filename, Type::i8p());
-    let args = ~[v_str, v_filename, C_int(ccx, v_line)];
+    let args = vec!(v_str, v_filename, C_int(ccx, v_line));
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
-    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
+    let bcx = callee::trans_lang_call(bcx,
+                                      did,
+                                      args.as_slice(),
+                                      Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -356,9 +359,12 @@ pub fn trans_fail_bounds_check<'a>(
                                -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
-    let args = ~[filename, line, index, len];
+    let args = vec!(filename, line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
-    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
+    let bcx = callee::trans_lang_call(bcx,
+                                      did,
+                                      args.as_slice(),
+                                      Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

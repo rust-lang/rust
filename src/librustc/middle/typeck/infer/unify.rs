@@ -17,6 +17,7 @@ use middle::typeck::infer::{Bounds, uok, ures};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::to_str::InferStr;
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use syntax::ast;
 
 #[deriving(Clone)]
@@ -27,7 +28,7 @@ pub enum VarValue<V, T> {
 
 pub struct ValsAndBindings<V, T> {
     vals: SmallIntMap<VarValue<V, T>>,
-    bindings: ~[(V, VarValue<V, T>)],
+    bindings: Vec<(V, VarValue<V, T>)> ,
 }
 
 pub struct Node<V, T> {

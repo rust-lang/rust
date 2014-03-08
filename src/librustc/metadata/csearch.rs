@@ -18,9 +18,10 @@ use metadata::decoder;
 use middle::ty;
 use middle::typeck;
 
-use std::vec;
 use reader = serialize::ebml::reader;
 use std::rc::Rc;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
@@ -86,14 +87,15 @@ pub fn each_top_level_item_of_crate(cstore: @cstore::CStore,
                                           callback)
 }
 
-pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> ~[ast_map::PathElem] {
+pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     let path = decoder::get_item_path(cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::PathMod(token::intern(cdata.name))], path)
+    vec_ng::append(vec!(ast_map::PathMod(token::intern(cdata.name))),
+                   path.as_slice())
 }
 
 pub enum found_ast {
@@ -114,7 +116,7 @@ pub fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::DefId,
 }
 
 pub fn get_enum_variants(tcx: ty::ctxt, def: ast::DefId)
-                      -> ~[@ty::VariantInfo] {
+                      -> Vec<@ty::VariantInfo> {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
@@ -141,7 +143,7 @@ pub fn get_method_name_and_explicit_self(cstore: @cstore::CStore,
 }
 
 pub fn get_trait_method_def_ids(cstore: @cstore::CStore,
-                                def: ast::DefId) -> ~[ast::DefId] {
+                                def: ast::DefId) -> Vec<ast::DefId> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_trait_method_def_ids(cdata, def.node)
 }
@@ -154,13 +156,13 @@ pub fn get_item_variances(cstore: @cstore::CStore,
 
 pub fn get_provided_trait_methods(tcx: ty::ctxt,
                                   def: ast::DefId)
-                               -> ~[@ty::Method] {
+                               -> Vec<@ty::Method> {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
-pub fn get_supertraits(tcx: ty::ctxt, def: ast::DefId) -> ~[@ty::TraitRef] {
+pub fn get_supertraits(tcx: ty::ctxt, def: ast::DefId) -> Vec<@ty::TraitRef> {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_supertraits(cdata, def.node, tcx)
@@ -174,21 +176,21 @@ pub fn get_type_name_if_impl(cstore: @cstore::CStore, def: ast::DefId)
 
 pub fn get_static_methods_if_impl(cstore: @cstore::CStore,
                                   def: ast::DefId)
-                               -> Option<~[StaticMethodInfo]> {
+                               -> Option<Vec<StaticMethodInfo> > {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_static_methods_if_impl(cstore.intr, cdata, def.node)
 }
 
 pub fn get_item_attrs(cstore: @cstore::CStore,
                       def_id: ast::DefId,
-                      f: |~[@ast::MetaItem]|) {
+                      f: |Vec<@ast::MetaItem> |) {
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(cdata, def_id.node, f)
 }
 
 pub fn get_struct_fields(cstore: @cstore::CStore,
                          def: ast::DefId)
-                      -> ~[ty::field_ty] {
+                      -> Vec<ty::field_ty> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_fields(cstore.intr, cdata, def.node)
 }
@@ -222,8 +224,8 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
                  class_id, def) );
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: Rc::new(~[]),
-                                region_param_defs: Rc::new(~[])},
+        generics: ty::Generics {type_param_defs: Rc::new(Vec::new()),
+                                region_param_defs: Rc::new(Vec::new())},
         ty: ty
     }
 }
@@ -262,7 +264,7 @@ pub fn get_item_visibility(cstore: @cstore::CStore,
 
 pub fn get_native_libraries(cstore: @cstore::CStore,
                             crate_num: ast::CrateNum)
-                                -> ~[(cstore::NativeLibaryKind, ~str)] {
+                                -> Vec<(cstore::NativeLibaryKind, ~str)> {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_native_libraries(cdata)
 }
@@ -308,7 +310,7 @@ pub fn get_macro_registrar_fn(cstore: @cstore::CStore,
 
 pub fn get_exported_macros(cstore: @cstore::CStore,
                            crate_num: ast::CrateNum)
-                           -> ~[~str] {
+                           -> Vec<~str> {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_exported_macros(cdata)
 }

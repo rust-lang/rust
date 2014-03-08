@@ -43,8 +43,10 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::unify::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use collections::HashMap;
 use util::common::indenter;
+
+use collections::HashMap;
+use std::vec_ng::Vec;
 
 pub trait LatticeValue {
     fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;
@@ -522,7 +524,7 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 
 pub fn var_ids<T:Combine>(this: &T,
                           map: &HashMap<ty::BoundRegion, ty::Region>)
-                          -> ~[RegionVid] {
+                          -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }
             r => {

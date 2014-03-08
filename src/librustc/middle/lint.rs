@@ -45,7 +45,6 @@ use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
 use middle::typeck;
-use std::to_str::ToStr;
 use util::ppaux::{ty_to_str};
 
 use std::cmp;
@@ -54,10 +53,12 @@ use std::i16;
 use std::i32;
 use std::i64;
 use std::i8;
+use std::to_str::ToStr;
 use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::vec_ng::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -432,7 +433,7 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(Lint, level, LintSource)],
+    lint_stack: Vec<(Lint, level, LintSource)> ,
 
     // id of the last visited negated expression
     negated_expr_id: ast::NodeId
@@ -1091,7 +1092,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                 }
             } else {
                 csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
-                    if attr::contains_name(attrs, "must_use") {
+                    if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
                         warned = true;
@@ -1738,7 +1739,7 @@ pub fn check_crate(tcx: ty::ctxt,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
-        lint_stack: ~[],
+        lint_stack: Vec::new(),
         negated_expr_id: -1
     };
 

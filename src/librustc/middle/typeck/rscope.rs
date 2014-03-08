@@ -12,7 +12,7 @@
 use middle::ty;
 
 use std::cell::Cell;
-use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
@@ -31,7 +31,7 @@ pub trait RegionScope {
     fn anon_regions(&self,
                     span: Span,
                     count: uint)
-                    -> Result<~[ty::Region], ()>;
+                    -> Result<Vec<ty::Region> , ()>;
 }
 
 // A scope in which all regions must be explicitly named
@@ -41,7 +41,7 @@ impl RegionScope for ExplicitRscope {
     fn anon_regions(&self,
                     _span: Span,
                     _count: uint)
-                    -> Result<~[ty::Region], ()> {
+                    -> Result<Vec<ty::Region> , ()> {
         Err(())
     }
 }
@@ -66,10 +66,10 @@ impl RegionScope for BindingRscope {
     fn anon_regions(&self,
                     _: Span,
                     count: uint)
-                    -> Result<~[ty::Region], ()> {
+                    -> Result<Vec<ty::Region> , ()> {
         let idx = self.anon_bindings.get();
         self.anon_bindings.set(idx + count);
-        Ok(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
+        Ok(Vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
                                                    ty::BrAnon(idx + i))))
     }
 }

@@ -73,11 +73,12 @@ use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;
+use collections::HashMap;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
 use std::libc::c_uint;
 use std::local_data;
+use std::vec_ng::Vec;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::ast_map::PathName;
 use syntax::ast_util::{local_def, is_local};
@@ -94,19 +95,19 @@ use time;
 
 pub use middle::trans::context::task_llcx;
 
-local_data_key!(task_local_insn_key: ~[&'static str])
+local_data_key!(task_local_insn_key: Vec<&'static str> )
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
     local_data::get(task_local_insn_key, |c| {
         match c {
-            Some(ctx) => blk(*ctx),
+            Some(ctx) => blk(ctx.as_slice()),
             None => ()
         }
     })
 }
 
 pub fn init_insn_ctxt() {
-    local_data::set(task_local_insn_key, ~[]);
+    local_data::set(task_local_insn_key, Vec::new());
 }
 
 pub struct _InsnCtxt { _x: () }
@@ -543,7 +544,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
         let tsubsts = ty::substs {
             regions: ty::ErasedRegions,
             self_ty: None,
-            tps: substs.to_owned()
+            tps: Vec::from_slice(substs),
         };
 
         let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx, did.node, &tsubsts);
@@ -752,8 +753,8 @@ pub fn iter_structural_ty<'r,
 
           match adt::trans_switch(cx, repr, av) {
               (_match::single, None) => {
-                  cx = iter_variant(cx, repr, av, variants[0],
-                                    substs.tps, f);
+                  cx = iter_variant(cx, repr, av, *variants.get(0),
+                                    substs.tps.as_slice(), f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, ty::mk_int());
@@ -775,8 +776,12 @@ pub fn iter_structural_ty<'r,
                                                 in iter_structural_ty")
                       }
                       let variant_cx =
-                          iter_variant(variant_cx, repr, av, *variant,
-                                       substs.tps, |x,y,z| f(x,y,z));
+                          iter_variant(variant_cx,
+                                       repr,
+                                       av,
+                                       *variant,
+                                       substs.tps.as_slice(),
+                                       |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -876,7 +881,11 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             match fn_ty.abis.for_target(ccx.sess.targ_cfg.os,
                                         ccx.sess.targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
-                    get_extern_rust_fn(ccx, fn_ty.sig.inputs, fn_ty.sig.output, name, did)
+                    get_extern_rust_fn(ccx,
+                                       fn_ty.sig.inputs.as_slice(),
+                                       fn_ty.sig.output,
+                                       name,
+                                       did)
                 }
                 Some(..) | None => {
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
@@ -889,7 +898,11 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             }
         }
         ty::ty_closure(ref f) => {
-            get_extern_rust_fn(ccx, f.sig.inputs, f.sig.output, name, did)
+            get_extern_rust_fn(ccx,
+                               f.sig.inputs.as_slice(),
+                               f.sig.output,
+                               name,
+                               did)
         }
         _ => {
             let llty = type_of(ccx, t);
@@ -902,7 +915,7 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
 pub fn invoke<'a>(
               bcx: &'a Block<'a>,
               llfn: ValueRef,
-              llargs: ~[ValueRef],
+              llargs: Vec<ValueRef> ,
               attributes: &[(uint, lib::llvm::Attribute)],
               call_info: Option<NodeInfo>)
               -> (ValueRef, &'a Block<'a>) {
@@ -935,7 +948,7 @@ pub fn invoke<'a>(
 
         let llresult = Invoke(bcx,
                               llfn,
-                              llargs,
+                              llargs.as_slice(),
                               normal_bcx.llbb,
                               landing_pad,
                               attributes);
@@ -951,7 +964,7 @@ pub fn invoke<'a>(
             None => debuginfo::clear_source_location(bcx.fcx)
         };
 
-        let llresult = Call(bcx, llfn, llargs, attributes);
+        let llresult = Call(bcx, llfn, llargs.as_slice(), attributes);
         return (llresult, bcx);
     }
 }
@@ -1231,7 +1244,10 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
     let substd_output_type = match param_substs {
         None => output_type,
         Some(substs) => {
-            ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
+            ty::subst_tps(ccx.tcx,
+                          substs.tys.as_slice(),
+                          substs.self_ty,
+                          output_type)
         }
     };
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
@@ -1255,7 +1271,7 @@ pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
           block_arena: block_arena,
           ccx: ccx,
           debug_context: debug_context,
-          scopes: RefCell::new(~[])
+          scopes: RefCell::new(Vec::new())
     };
 
     if has_env {
@@ -1289,7 +1305,7 @@ pub fn init_function<'a>(
         None => output_type,
         Some(substs) => {
             ty::subst_tps(fcx.ccx.tcx,
-                          substs.tys,
+                          substs.tys.as_slice(),
                           substs.self_ty,
                           output_type)
         }
@@ -1331,7 +1347,7 @@ pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 // appropriate lvalue datums.
 pub fn create_datums_for_fn_args(fcx: &FunctionContext,
                                  arg_tys: &[ty::t])
-                                 -> ~[RvalueDatum] {
+                                 -> Vec<RvalueDatum> {
     let _icx = push_ctxt("create_datums_for_fn_args");
 
     // Return an array wrapping the ValueRefs that we get from
@@ -1348,7 +1364,7 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
                             arg_scope: cleanup::CustomScopeIndex,
                             bcx: &'a Block<'a>,
                             args: &[ast::Arg],
-                            arg_datums: ~[RvalueDatum])
+                            arg_datums: Vec<RvalueDatum> )
                             -> &'a Block<'a> {
     debug!("copy_args_to_allocas");
 
@@ -1472,7 +1488,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
 
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys);
+    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
 
     bcx = copy_args_to_allocas(&fcx,
                                arg_scope,
@@ -1583,7 +1599,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
     let no_substs: &[ty::t] = [];
     let ty_param_substs = match param_substs {
         Some(ref substs) => {
-            let v: &[ty::t] = substs.tys;
+            let v: &[ty::t] = substs.tys.as_slice();
             v
         }
         None => {
@@ -1612,7 +1628,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
-    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys);
+    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
 
     let bcx = fcx.entry_bcx.get().unwrap();
 
@@ -1633,10 +1649,10 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
 }
 
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
-                      id: ast::NodeId, vi: @~[@ty::VariantInfo],
+                      id: ast::NodeId, vi: @Vec<@ty::VariantInfo> ,
                       i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
-        let disr_val = vi[*i].disr_val;
+        let disr_val = vi.get(*i).disr_val;
         *i += 1;
 
         match variant.node.kind {
@@ -1801,7 +1817,11 @@ fn register_fn(ccx: @CrateContext,
         _ => fail!("expected bare rust fn or an intrinsic")
     };
 
-    let llfn = decl_rust_fn(ccx, false, f.sig.inputs, f.sig.output, sym);
+    let llfn = decl_rust_fn(ccx,
+                            false,
+                            f.sig.inputs.as_slice(),
+                            f.sig.output,
+                            sym);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -1876,25 +1896,27 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                         llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
                     });
 
-                    ~[
+                    vec!(
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
                         llvm::LLVMGetParam(llfn, 1)
-                     ]
+                     )
                 };
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
-                let args = ~[
+                let args = vec!(
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint)
-                ];
+                );
 
                 (rust_main, args)
             };
 
-            let result = llvm::LLVMBuildCall(bld, start_fn,
-                                             args.as_ptr(), args.len() as c_uint,
+            let result = llvm::LLVMBuildCall(bld,
+                                             start_fn,
+                                             args.as_ptr(),
+                                             args.len() as c_uint,
                                              noname());
 
             llvm::LLVMBuildRet(bld, result);
@@ -2450,13 +2472,13 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
         }
     });
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    let mut elts: ~[ValueRef] = ~[];
+    let mut elts: Vec<ValueRef> = Vec::new();
 
     // This is not ideal, but the borrow checker doesn't
     // like the multiple borrows. At least, it doesn't
     // like them on the current snapshot. (2013-06-14)
     let keys = {
-        let mut keys = ~[];
+        let mut keys = Vec::new();
         let module_data = ccx.module_data.borrow();
         for (k, _) in module_data.get().iter() {
             keys.push(k.clone());
@@ -2476,7 +2498,7 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
         elts.push(elt);
     }
     unsafe {
-        llvm::LLVMSetInitializer(map, C_array(elttype, elts));
+        llvm::LLVMSetInitializer(map, C_array(elttype, elts.as_slice()));
     }
     return (map, keys.len())
 }
@@ -2526,7 +2548,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
 }
 
 pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
-    let mut subcrates: ~[ValueRef] = ~[];
+    let mut subcrates: Vec<ValueRef> = Vec::new();
     let mut i = 1;
     let cstore = ccx.sess.cstore;
     while cstore.have_crate_data(i) {
@@ -2564,7 +2586,8 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
         });
         lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
 
-        llvm::LLVMSetInitializer(vec_elements, C_array(ccx.int_type, subcrates));
+        llvm::LLVMSetInitializer(vec_elements,
+                                 C_array(ccx.int_type, subcrates.as_slice()));
         let (mod_map, mod_count) = create_module_map(ccx);
 
         llvm::LLVMSetInitializer(map, C_struct(
@@ -2600,11 +2623,11 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
+pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
     if !cx.sess.building_library.get() {
-        return ~[]
+        return Vec::new()
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
@@ -2613,7 +2636,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> ~[u8] {
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let compressed = encoder::metadata_encoding_version +
-                        flate::deflate_bytes(metadata).as_slice();
+                        flate::deflate_bytes(metadata.as_slice()).as_slice();
     let llmeta = C_bytes(compressed);
     let llconst = C_struct([llmeta], false);
     let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,
@@ -2744,12 +2767,12 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
 
-    let mut reachable = {
+    let mut reachable: Vec<~str> = {
         let reachable_map = ccx.reachable.borrow();
         reachable_map.get().iter().filter_map(|id| {
             let item_symbols = ccx.item_symbols.borrow();
             item_symbols.get().find(id).map(|s| s.to_owned())
-        }).to_owned_vec()
+        }).collect()
     };
 
     // Make sure that some other crucial symbols are not eliminated from the

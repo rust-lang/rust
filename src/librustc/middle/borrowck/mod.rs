@@ -24,6 +24,7 @@ use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -146,7 +147,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             *all_loans.get(), body);
+                             all_loans.get().as_slice(), body);
 
     visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
@@ -209,7 +210,7 @@ pub struct Loan {
     loan_path: @LoanPath,
     cmt: mc::cmt,
     kind: ty::BorrowKind,
-    restrictions: ~[Restriction],
+    restrictions: Vec<Restriction> ,
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,

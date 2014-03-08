@@ -16,6 +16,7 @@ use metadata::filesearch;
 use lib::llvm::{ArchiveRef, llvm};
 
 use std::cast;
+use std::vec_ng::Vec;
 use std::io::fs;
 use std::io;
 use std::libc;
@@ -41,7 +42,7 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         paths: &[&Path]) -> ProcessOutput {
     let ar = get_ar_prog(sess);
 
-    let mut args = ~[args.to_owned()];
+    let mut args = vec!(args.to_owned());
     let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
     args.extend(&mut paths);
     debug!("{} {}", ar, args.connect(" "));
@@ -89,7 +90,7 @@ impl Archive {
     }
 
     /// Read a file in the archive
-    pub fn read(&self, file: &str) -> ~[u8] {
+    pub fn read(&self, file: &str) -> Vec<u8> {
         // Apparently if "ar p" is used on windows, it generates a corrupt file
         // which has bad headers and LLVM will immediately choke on it
         if cfg!(windows) && cfg!(windows) { // FIXME(#10734) double-and
@@ -97,9 +98,17 @@ impl Archive {
             let archive = os::make_absolute(&self.dst);
             run_ar(self.sess, "x", Some(loc.path()), [&archive,
                                                       &Path::new(file)]);
-            fs::File::open(&loc.path().join(file)).read_to_end().unwrap()
+            let result: Vec<u8> =
+                fs::File::open(&loc.path().join(file)).read_to_end()
+                                                      .unwrap()
+                                                      .move_iter()
+                                                      .collect();
+            result
         } else {
-            run_ar(self.sess, "p", None, [&self.dst, &Path::new(file)]).output
+            run_ar(self.sess,
+                   "p",
+                   None,
+                   [&self.dst, &Path::new(file)]).output.move_iter().collect()
         }
     }
 
@@ -119,11 +128,11 @@ impl Archive {
                     lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
         let bytecode = format!("{}.bc", name);
-        let mut ignore = ~[METADATA_FILENAME, bytecode.as_slice()];
+        let mut ignore = vec!(METADATA_FILENAME, bytecode.as_slice());
         if lto {
             ignore.push(object.as_slice());
         }
-        self.add_archive(rlib, name, ignore)
+        self.add_archive(rlib, name, ignore.as_slice())
     }
 
     /// Adds an arbitrary file to this archive
@@ -143,7 +152,7 @@ impl Archive {
     }
 
     /// Lists all files in an archive
-    pub fn files(&self) -> ~[~str] {
+    pub fn files(&self) -> Vec<~str> {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
         let output = str::from_utf8(output.output).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
@@ -168,7 +177,7 @@ impl Archive {
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
         let files = try!(fs::readdir(loc.path()));
-        let mut inputs = ~[];
+        let mut inputs = Vec::new();
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
             if skip.iter().any(|s| *s == filename) { continue }
@@ -182,7 +191,7 @@ impl Archive {
         if inputs.len() == 0 { return Ok(()) }
 
         // Finally, add all the renamed files to this archive
-        let mut args = ~[&self.dst];
+        let mut args = vec!(&self.dst);
         args.extend(&mut inputs.iter());
         run_ar(self.sess, "r", None, args.as_slice());
         Ok(())

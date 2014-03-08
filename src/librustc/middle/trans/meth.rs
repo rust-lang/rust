@@ -25,16 +25,16 @@ use middle::trans::expr::{SaveIn, Ignore};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::monomorphize;
+use middle::trans::type_::Type;
 use middle::trans::type_of::*;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
 
-use middle::trans::type_::Type;
-
 use std::c_str::ToCStr;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
 
@@ -202,18 +202,21 @@ pub fn trans_static_method_callee(bcx: &Block,
     let vtbls = ccx.maps.vtable_map.borrow().get().get_copy(&expr_id);
     let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
-    match vtbls[bound_index][0] {
-        typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
+    match vtbls.get(bound_index).get(0) {
+        &typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
                     bcx, mth_id, expr_id, false,
-                    *rcvr_substs, rcvr_origins);
+                    rcvr_substs.as_slice(), rcvr_origins);
 
-            let llfn = trans_fn_ref_with_vtables(bcx, mth_id, expr_id,
-                                                 false, callee_substs,
+            let llfn = trans_fn_ref_with_vtables(bcx,
+                                                 mth_id,
+                                                 expr_id,
+                                                 false,
+                                                 callee_substs.as_slice(),
                                                  Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, expr_id);
@@ -268,14 +271,14 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
           let (callee_substs, callee_origins) =
               combine_impl_and_methods_tps(
                   bcx, mth_id, expr_id, true,
-                  *rcvr_substs, rcvr_origins);
+                  rcvr_substs.as_slice(), rcvr_origins);
 
           // translate the function
           let llfn = trans_fn_ref_with_vtables(bcx,
                                                mth_id,
                                                expr_id,
                                                true,
-                                               callee_substs,
+                                               callee_substs.as_slice(),
                                                Some(callee_origins));
 
           Callee { bcx: bcx, data: Fn(llfn) }
@@ -292,7 +295,7 @@ fn combine_impl_and_methods_tps(bcx: &Block,
                                 is_method: bool,
                                 rcvr_substs: &[ty::t],
                                 rcvr_origins: typeck::vtable_res)
-                                -> (~[ty::t], typeck::vtable_res) {
+                                -> (Vec<ty::t> , typeck::vtable_res) {
     /*!
     *
     * Creates a concatenated set of substitutions which includes
@@ -316,8 +319,8 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     let node_substs = node_id_type_params(bcx, expr_id, is_method);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx));
     let ty_substs
-        = vec::append(rcvr_substs.to_owned(),
-                      node_substs.tailn(node_substs.len() - n_m_tps));
+        = vec_ng::append(Vec::from_slice(rcvr_substs),
+                         node_substs.tailn(node_substs.len() - n_m_tps));
     debug!("n_m_tps={:?}", n_m_tps);
     debug!("node_substs={:?}", node_substs.repr(ccx.tcx));
     debug!("ty_substs={:?}", ty_substs.repr(ccx.tcx));
@@ -327,11 +330,11 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     // exist, in which case we need to make them.
     let r_m_origins = match node_vtables(bcx, expr_id) {
         Some(vt) => vt,
-        None => @vec::from_elem(node_substs.len(), @~[])
+        None => @Vec::from_elem(node_substs.len(), @Vec::new())
     };
     let vtables
-        = @vec::append(rcvr_origins.to_owned(),
-                       r_m_origins.tailn(r_m_origins.len() - n_m_tps));
+        = @vec_ng::append(Vec::from_slice(rcvr_origins.as_slice()),
+                          r_m_origins.tailn(r_m_origins.len() - n_m_tps));
 
     (ty_substs, vtables)
 }
@@ -460,7 +463,7 @@ pub fn get_vtable(bcx: &Block,
     let _icx = push_ctxt("meth::get_vtable");
 
     // Check the cache.
-    let hash_id = (self_ty, vtable_id(ccx, &origins[0]));
+    let hash_id = (self_ty, vtable_id(ccx, origins.get(0)));
     {
         let vtables = ccx.vtables.borrow();
         match vtables.get().find(&hash_id) {
@@ -470,18 +473,25 @@ pub fn get_vtable(bcx: &Block,
     }
 
     // Not in the cache. Actually build it.
-    let methods = origins.flat_map(|origin| {
+    let mut methods = Vec::new();
+    for origin in origins.iter() {
         match *origin {
             typeck::vtable_static(id, ref substs, sub_vtables) => {
-                emit_vtable_methods(bcx, id, *substs, sub_vtables)
+                let vtable_methods = emit_vtable_methods(bcx,
+                                                         id,
+                                                         substs.as_slice(),
+                                                         sub_vtables);
+                for vtable_method in vtable_methods.move_iter() {
+                    methods.push(vtable_method)
+                }
             }
             _ => ccx.sess.bug("get_vtable: expected a static origin"),
         }
-    });
+    }
 
     // Generate a destructor for the vtable.
     let drop_glue = glue::get_drop_glue(ccx, self_ty);
-    let vtable = make_vtable(ccx, drop_glue, methods);
+    let vtable = make_vtable(ccx, drop_glue, methods.as_slice());
 
     let mut vtables = ccx.vtables.borrow_mut();
     vtables.get().insert(hash_id, vtable);
@@ -496,12 +506,12 @@ pub fn make_vtable(ccx: &CrateContext,
     unsafe {
         let _icx = push_ctxt("meth::make_vtable");
 
-        let mut components = ~[drop_glue];
+        let mut components = vec!(drop_glue);
         for &ptr in ptrs.iter() {
             components.push(ptr)
         }
 
-        let tbl = C_struct(components, false);
+        let tbl = C_struct(components.as_slice(), false);
         let sym = token::gensym("vtable");
         let vt_gvar = format!("vtable{}", sym).with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
@@ -517,7 +527,7 @@ fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
                        substs: &[ty::t],
                        vtables: typeck::vtable_res)
-                       -> ~[ValueRef] {
+                       -> Vec<ValueRef> {
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
@@ -589,7 +599,7 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
             *vtable_map.get().get(&id)
         };
         let res = resolve_vtables_in_fn_ctxt(bcx.fcx, res);
-        res[0]
+        *res.get(0)
     };
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);

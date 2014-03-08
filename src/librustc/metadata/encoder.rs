@@ -32,6 +32,7 @@ use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
+use std::vec_ng::Vec;
 use collections::HashMap;
 use syntax::abi::AbiSet;
 use syntax::ast::*;
@@ -324,7 +325,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
                             id: NodeId,
                             variants: &[P<Variant>],
-                            index: @RefCell<~[entry<i64>]>,
+                            index: @RefCell<Vec<entry<i64>> >,
                             generics: &ast::Generics) {
     debug!("encode_enum_variant_info(id={:?})", id);
 
@@ -367,9 +368,9 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                 encode_index(ebml_w, bkts, write_i64);
             }
         }
-        if vi[i].disr_val != disr_val {
-            encode_disr_val(ecx, ebml_w, vi[i].disr_val);
-            disr_val = vi[i].disr_val;
+        if vi.get(i).disr_val != disr_val {
+            encode_disr_val(ecx, ebml_w, vi.get(i).disr_val);
+            disr_val = vi.get(i).disr_val;
         }
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx, def_id));
@@ -687,11 +688,11 @@ fn encode_provided_source(ebml_w: &mut writer::Encoder,
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           fields: &[StructField],
-                          global_index: @RefCell<~[entry<i64>]>)
-                          -> ~[entry<i64>] {
+                          global_index: @RefCell<Vec<entry<i64>> >)
+                          -> Vec<entry<i64>> {
     /* Each class has its own index, since different classes
        may have fields with the same name */
-    let mut index = ~[];
+    let mut index = Vec::new();
     let tcx = ecx.tcx;
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
@@ -726,7 +727,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ebml_w: &mut writer::Encoder,
                                name: ast::Ident,
                                ctor_id: NodeId,
-                               index: @RefCell<~[entry<i64>]>,
+                               index: @RefCell<Vec<entry<i64>> >,
                                struct_id: NodeId) {
     {
         let mut index = index.borrow_mut();
@@ -888,13 +889,13 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: &Item,
-                        index: @RefCell<~[entry<i64>]>,
+                        index: @RefCell<Vec<entry<i64>> >,
                         path: PathElems,
                         vis: ast::Visibility) {
     let tcx = ecx.tcx;
 
     fn add_to_index(item: &Item, ebml_w: &writer::Encoder,
-                     index: @RefCell<~[entry<i64>]>) {
+                     index: @RefCell<Vec<entry<i64>> >) {
         let mut index = index.borrow_mut();
         index.get().push(entry {
             val: item.id as i64,
@@ -1239,7 +1240,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: &ForeignItem,
-                                index: @RefCell<~[entry<i64>]>,
+                                index: @RefCell<Vec<entry<i64>> >,
                                 path: PathElems,
                                 abi: AbiSet) {
     {
@@ -1284,7 +1285,7 @@ fn my_visit_expr(_e: &Expr) { }
 fn my_visit_item(i: &Item,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
-                 index: @RefCell<~[entry<i64>]>) {
+                 index: @RefCell<Vec<entry<i64>> >) {
     let mut ebml_w = unsafe { ebml_w.unsafe_clone() };
     // See above
     let ecx: &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
@@ -1296,7 +1297,7 @@ fn my_visit_item(i: &Item,
 fn my_visit_foreign_item(ni: &ForeignItem,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
-                         index: @RefCell<~[entry<i64>]>) {
+                         index: @RefCell<Vec<entry<i64>> >) {
     // See above
     let ecx: &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
     debug!("writing foreign item {}::{}",
@@ -1317,7 +1318,7 @@ fn my_visit_foreign_item(ni: &ForeignItem,
 struct EncodeVisitor<'a,'b> {
     ebml_w_for_visit_item: &'a mut writer::Encoder<'b>,
     ecx_ptr:*int,
-    index: @RefCell<~[entry<i64>]>,
+    index: @RefCell<Vec<entry<i64>> >,
 }
 
 impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
@@ -1344,8 +1345,8 @@ impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
 fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
                          krate: &Crate)
-                         -> ~[entry<i64>] {
-    let index = @RefCell::new(~[]);
+                         -> Vec<entry<i64>> {
+    let index = @RefCell::new(Vec::new());
     ebml_w.start_tag(tag_items_data);
     {
         let mut index = index.borrow_mut();
@@ -1382,19 +1383,19 @@ fn encode_info_for_items(ecx: &EncodeContext,
 // Path and definition ID indexing
 
 fn create_index<T:Clone + Hash + 'static>(
-                index: ~[entry<T>])
-                -> ~[@~[entry<T>]] {
-    let mut buckets: ~[@RefCell<~[entry<T>]>] = ~[];
+                index: Vec<entry<T>> )
+                -> Vec<@Vec<entry<T>> > {
+    let mut buckets: Vec<@RefCell<Vec<entry<T>> >> = Vec::new();
     for _ in range(0u, 256u) {
-        buckets.push(@RefCell::new(~[]));
+        buckets.push(@RefCell::new(Vec::new()));
     }
     for elt in index.iter() {
         let h = hash::hash(&elt.val) as uint;
-        let mut bucket = buckets[h % 256].borrow_mut();
+        let mut bucket = buckets.get_mut(h % 256).borrow_mut();
         bucket.get().push((*elt).clone());
     }
 
-    let mut buckets_frozen = ~[];
+    let mut buckets_frozen = Vec::new();
     for bucket in buckets.iter() {
         buckets_frozen.push(@/*bad*/(**bucket).get());
     }
@@ -1403,10 +1404,10 @@ fn create_index<T:Clone + Hash + 'static>(
 
 fn encode_index<T:'static>(
                 ebml_w: &mut writer::Encoder,
-                buckets: ~[@~[entry<T>]],
+                buckets: Vec<@Vec<entry<T>> > ,
                 write_fn: |&mut MemWriter, &T|) {
     ebml_w.start_tag(tag_index);
-    let mut bucket_locs = ~[];
+    let mut bucket_locs = Vec::new();
     ebml_w.start_tag(tag_index_buckets);
     for bucket in buckets.iter() {
         bucket_locs.push(ebml_w.writer.tell().unwrap());
@@ -1491,7 +1492,7 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
 // metadata that Rust cares about for linking crates. If the user didn't
 // provide it we will throw it in anyway with a default value.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
-                          krate: &Crate) -> ~[Attribute] {
+                          krate: &Crate) -> Vec<Attribute> {
 
     fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
         assert!(!ecx.link_meta.crateid.name.is_empty());
@@ -1502,7 +1503,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
                 token::intern_and_get_ident(ecx.link_meta.crateid.to_str())))
     }
 
-    let mut attrs = ~[];
+    let mut attrs = Vec::new();
     for attr in krate.attrs.iter() {
         if !attr.name().equiv(&("crate_id")) {
             attrs.push(*attr);
@@ -1514,9 +1515,9 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 }
 
 fn encode_crate_deps(ebml_w: &mut writer::Encoder, cstore: &cstore::CStore) {
-    fn get_ordered_deps(cstore: &cstore::CStore) -> ~[decoder::CrateDep] {
+    fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
-        let mut deps = ~[];
+        let mut deps = Vec::new();
         cstore.iter_crate_data(|key, val| {
             let dep = decoder::CrateDep {
                 cnum: key,
@@ -1767,10 +1768,10 @@ pub static metadata_encoding_version : &'static [u8] =
       0x74, //'t' as u8,
       0, 0, 0, 1 ];
 
-pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> ~[u8] {
+pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
     let mut wr = MemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
-    wr.unwrap()
+    wr.unwrap().move_iter().collect()
 }
 
 fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate) {
@@ -1822,7 +1823,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);
-    encode_attributes(&mut ebml_w, crate_attrs);
+    encode_attributes(&mut ebml_w, crate_attrs.as_slice());
     ecx.stats.attr_bytes.set(ebml_w.writer.tell().unwrap() - i);
 
     i = ebml_w.writer.tell().unwrap();

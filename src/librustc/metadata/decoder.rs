@@ -33,7 +33,7 @@ use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::rc::Rc;
-use std::vec;
+use std::vec_ng::Vec;
 use serialize::ebml::reader;
 use serialize::ebml;
 use serialize::Decodable;
@@ -250,8 +250,8 @@ fn item_ty_param_defs(item: ebml::Doc,
                       tcx: ty::ctxt,
                       cdata: Cmd,
                       tag: uint)
-                      -> Rc<~[ty::TypeParameterDef]> {
-    let mut bounds = ~[];
+                      -> Rc<Vec<ty::TypeParameterDef> > {
+    let mut bounds = Vec::new();
     reader::tagged_docs(item, tag, |p| {
         let bd = parse_type_param_def_data(
             p.data, p.start, cdata.cnum, tcx,
@@ -263,8 +263,8 @@ fn item_ty_param_defs(item: ebml::Doc,
 }
 
 fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
-                          -> Rc<~[ty::RegionParameterDef]> {
-    let mut v = ~[];
+                          -> Rc<Vec<ty::RegionParameterDef> > {
+    let mut v = Vec::new();
     reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
             let ident_str_doc = reader::get_doc(rp_doc,
                                                 tag_region_param_def_ident);
@@ -287,8 +287,8 @@ fn item_ty_param_count(item: ebml::Doc) -> uint {
     n
 }
 
-fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> ~[ast::DefId] {
-    let mut ids: ~[ast::DefId] = ~[];
+fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> Vec<ast::DefId> {
+    let mut ids: Vec<ast::DefId> = Vec::new();
     let v = tag_items_data_item_variant;
     reader::tagged_docs(item, v, |p| {
         let ext = reader::with_doc_data(p, parse_def_id);
@@ -298,13 +298,13 @@ fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> ~[ast::DefId] {
     return ids;
 }
 
-fn item_path(item_doc: ebml::Doc) -> ~[ast_map::PathElem] {
+fn item_path(item_doc: ebml::Doc) -> Vec<ast_map::PathElem> {
     let path_doc = reader::get_doc(item_doc, tag_path);
 
     let len_doc = reader::get_doc(path_doc, tag_path_len);
     let len = reader::doc_as_u32(len_doc) as uint;
 
-    let mut result = vec::with_capacity(len);
+    let mut result = Vec::with_capacity(len);
     reader::docs(path_doc, |tag, elt_doc| {
         if tag == tag_path_elem_mod {
             let s = elt_doc.as_str_slice();
@@ -667,22 +667,22 @@ pub fn each_top_level_item_of_crate(intr: @IdentInterner,
                                 callback)
 }
 
-pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> ~[ast_map::PathElem] {
+pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
 pub type DecodeInlinedItem<'a> = 'a |cdata: @cstore::crate_metadata,
                                      tcx: ty::ctxt,
-                                     path: ~[ast_map::PathElem],
+                                     path: Vec<ast_map::PathElem> ,
                                      par_doc: ebml::Doc|
-                                     -> Result<ast::InlinedItem, ~[ast_map::PathElem]>;
+                                     -> Result<ast::InlinedItem, Vec<ast_map::PathElem> >;
 
 pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
                           decode_inlined_item: DecodeInlinedItem)
                           -> csearch::found_ast {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
-    let path = item_path(item_doc).init().to_owned();
+    let path = Vec::from_slice(item_path(item_doc).init());
     match decode_inlined_item(cdata, tcx, path, item_doc) {
         Ok(ref ii) => csearch::found(*ii),
         Err(path) => {
@@ -702,11 +702,11 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
 }
 
 pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
-                     tcx: ty::ctxt) -> ~[@ty::VariantInfo] {
+                     tcx: ty::ctxt) -> Vec<@ty::VariantInfo> {
     let data = cdata.data();
     let items = reader::get_doc(reader::Doc(data), tag_items);
     let item = find_item(id, items);
-    let mut infos: ~[@ty::VariantInfo] = ~[];
+    let mut infos: Vec<@ty::VariantInfo> = Vec::new();
     let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
     for did in variant_ids.iter() {
@@ -716,7 +716,7 @@ pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
           ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
-          _ => ~[], // Nullary enum variant.
+          _ => Vec::new(), // Nullary enum variant.
         };
         match variant_disr_val(item) {
           Some(val) => { disr_val = val; }
@@ -761,8 +761,8 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
 }
 
 fn item_impl_methods(intr: @IdentInterner, cdata: Cmd, item: ebml::Doc,
-                     tcx: ty::ctxt) -> ~[@ty::Method] {
-    let mut rslt = ~[];
+                     tcx: ty::ctxt) -> Vec<@ty::Method> {
+    let mut rslt = Vec::new();
     reader::tagged_docs(item, tag_item_impl_method, |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
         rslt.push(@get_method(intr, cdata, m_did.node, tcx));
@@ -838,10 +838,10 @@ pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
 }
 
 pub fn get_trait_method_def_ids(cdata: Cmd,
-                                id: ast::NodeId) -> ~[ast::DefId] {
+                                id: ast::NodeId) -> Vec<ast::DefId> {
     let data = cdata.data();
     let item = lookup_item(id, data);
-    let mut result = ~[];
+    let mut result = Vec::new();
     reader::tagged_docs(item, tag_item_trait_method, |mth| {
         result.push(item_def_id(mth, cdata));
         true
@@ -859,10 +859,10 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
 
 pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
                                   id: ast::NodeId, tcx: ty::ctxt) ->
-        ~[@ty::Method] {
+        Vec<@ty::Method> {
     let data = cdata.data();
     let item = lookup_item(id, data);
-    let mut result = ~[];
+    let mut result = Vec::new();
 
     reader::tagged_docs(item, tag_item_trait_method, |mth_id| {
         let did = item_def_id(mth_id, cdata);
@@ -879,8 +879,8 @@ pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
 
 /// Returns the supertraits of the given trait.
 pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
-                    -> ~[@ty::TraitRef] {
-    let mut results = ~[];
+                    -> Vec<@ty::TraitRef> {
+    let mut results = Vec::new();
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc, tag_item_super_trait_ref, |trait_doc| {
         // NB. Only reads the ones that *aren't* builtin-bounds. See also
@@ -914,7 +914,7 @@ pub fn get_type_name_if_impl(cdata: Cmd,
 pub fn get_static_methods_if_impl(intr: @IdentInterner,
                                   cdata: Cmd,
                                   node_id: ast::NodeId)
-                               -> Option<~[StaticMethodInfo]> {
+                               -> Option<Vec<StaticMethodInfo> > {
     let item = lookup_item(node_id, cdata.data());
     if item_family(item) != Impl {
         return None;
@@ -927,13 +927,13 @@ pub fn get_static_methods_if_impl(intr: @IdentInterner,
 
     if !ret { return None }
 
-    let mut impl_method_ids = ~[];
+    let mut impl_method_ids = Vec::new();
     reader::tagged_docs(item, tag_item_impl_method, |impl_method_doc| {
         impl_method_ids.push(reader::with_doc_data(impl_method_doc, parse_def_id));
         true
     });
 
-    let mut static_impl_methods = ~[];
+    let mut static_impl_methods = Vec::new();
     for impl_method_id in impl_method_ids.iter() {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data());
         let family = item_family(impl_method_doc);
@@ -975,7 +975,7 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
 
 pub fn get_item_attrs(cdata: Cmd,
                       node_id: ast::NodeId,
-                      f: |~[@ast::MetaItem]|) {
+                      f: |Vec<@ast::MetaItem> |) {
     // The attributes for a tuple struct are attached to the definition, not the ctor;
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
@@ -1000,10 +1000,10 @@ fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
 }
 
 pub fn get_struct_fields(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId)
-    -> ~[ty::field_ty] {
+    -> Vec<ty::field_ty> {
     let data = cdata.data();
     let item = lookup_item(id, data);
-    let mut result = ~[];
+    let mut result = Vec::new();
     reader::tagged_docs(item, tag_item_field, |an_item| {
         let f = item_family(an_item);
         if f == PublicField || f == PrivateField || f == InheritedField {
@@ -1035,8 +1035,8 @@ pub fn get_item_visibility(cdata: Cmd, id: ast::NodeId)
     item_visibility(lookup_item(id, cdata.data()))
 }
 
-fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
-    let mut items: ~[@ast::MetaItem] = ~[];
+fn get_meta_items(md: ebml::Doc) -> Vec<@ast::MetaItem> {
+    let mut items: Vec<@ast::MetaItem> = Vec::new();
     reader::tagged_docs(md, tag_meta_item_word, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
@@ -1063,8 +1063,8 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
     return items;
 }
 
-fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
-    let mut attrs: ~[ast::Attribute] = ~[];
+fn get_attributes(md: ebml::Doc) -> Vec<ast::Attribute> {
+    let mut attrs: Vec<ast::Attribute> = Vec::new();
     match reader::maybe_get_doc(md, tag_attributes) {
       option::Some(attrs_d) => {
         reader::tagged_docs(attrs_d, tag_attribute, |attr_doc| {
@@ -1072,7 +1072,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
             // Currently it's only possible to have a single meta item on
             // an attribute
             assert_eq!(meta_items.len(), 1u);
-            let meta_item = meta_items[0];
+            let meta_item = *meta_items.get(0);
             attrs.push(
                 codemap::Spanned {
                     node: ast::Attribute_ {
@@ -1102,7 +1102,7 @@ fn list_crate_attributes(md: ebml::Doc, hash: &Svh,
     write!(out, "\n\n")
 }
 
-pub fn get_crate_attributes(data: &[u8]) -> ~[ast::Attribute] {
+pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
     return get_attributes(reader::Doc(data));
 }
 
@@ -1113,8 +1113,8 @@ pub struct CrateDep {
     hash: Svh,
 }
 
-pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
-    let mut deps: ~[CrateDep] = ~[];
+pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
+    let mut deps: Vec<CrateDep> = Vec::new();
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
@@ -1255,10 +1255,10 @@ pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
 }
 
 
-pub fn get_native_libraries(cdata: Cmd) -> ~[(cstore::NativeLibaryKind, ~str)] {
+pub fn get_native_libraries(cdata: Cmd) -> Vec<(cstore::NativeLibaryKind, ~str)> {
     let libraries = reader::get_doc(reader::Doc(cdata.data()),
                                     tag_native_libraries);
-    let mut result = ~[];
+    let mut result = Vec::new();
     reader::tagged_docs(libraries, tag_native_libraries_lib, |lib_doc| {
         let kind_doc = reader::get_doc(lib_doc, tag_native_libraries_kind);
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
@@ -1276,10 +1276,10 @@ pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::DefId> {
         .map(|doc| item_def_id(doc, cdata))
 }
 
-pub fn get_exported_macros(cdata: Cmd) -> ~[~str] {
+pub fn get_exported_macros(cdata: Cmd) -> Vec<~str> {
     let macros = reader::get_doc(reader::Doc(cdata.data()),
                                  tag_exported_macros);
-    let mut result = ~[];
+    let mut result = Vec::new();
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
         result.push(macro_doc.as_str());
         true

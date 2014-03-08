@@ -25,15 +25,16 @@ use middle::trans::consts;
 use middle::trans::expr;
 use middle::trans::inline;
 use middle::trans::machine;
+use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::{Repr, ty_to_str};
 
-use middle::trans::type_::Type;
-
 use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::{ast, ast_util};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
@@ -302,8 +303,9 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                          is_local: bool) -> (ValueRef, bool) {
     let map_list = |exprs: &[@ast::Expr]| {
         exprs.iter().map(|&e| const_expr(cx, e, is_local))
-             .fold((~[], true), |(l, all_inlineable), (val, inlineable)| {
-                (vec::append_one(l, val), all_inlineable && inlineable)
+             .fold((Vec::new(), true),
+                   |(l, all_inlineable), (val, inlineable)| {
+                (vec_ng::append_one(l, val), all_inlineable && inlineable)
              })
     };
     unsafe {
@@ -532,7 +534,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               let (vals, inlineable) = map_list(es.as_slice());
-              (adt::trans_const(cx, repr, 0, vals), inlineable)
+              (adt::trans_const(cx, repr, 0, vals.as_slice()), inlineable)
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx, e);
@@ -666,7 +668,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
-                      (adt::trans_const(cx, repr, 0, arg_vals), inlineable)
+                      (adt::trans_const(cx, repr, 0, arg_vals.as_slice()),
+                       inlineable)
                   }
                   Some(ast::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
@@ -675,8 +678,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                                                            enum_did,
                                                            variant_did);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
-                      (adt::trans_const(cx, repr, vinfo.disr_val, arg_vals),
-                       inlineable)
+                      (adt::trans_const(cx,
+                                        repr,
+                                        vinfo.disr_val,
+                                        arg_vals.as_slice()), inlineable)
                   }
                   _ => cx.sess.span_bug(e.span, "expected a struct or variant def")
               }

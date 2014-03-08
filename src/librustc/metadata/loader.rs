@@ -31,6 +31,7 @@ use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::vec;
+use std::vec_ng::Vec;
 
 use collections::{HashMap, HashSet};
 use flate;
@@ -183,7 +184,7 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // serach is being performed for.
-        let mut libraries = ~[];
+        let mut libraries = Vec::new();
         for (_hash, (rlibs, dylibs)) in candidates.move_iter() {
             let mut metadata = None;
             let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
@@ -205,7 +206,7 @@ impl<'a> Context<'a> {
         // libraries or not.
         match libraries.len() {
             0 => None,
-            1 => Some(libraries[0]),
+            1 => Some(libraries.move_iter().next().unwrap()),
             _ => {
                 self.sess.span_err(self.span,
                     format!("multiple matching crates for `{}`",
