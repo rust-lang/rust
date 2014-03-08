@@ -16,8 +16,6 @@ pub mod addrinfo;
 pub mod tcp;
 pub mod udp;
 pub mod ip;
-// Windows does not support Raw sockets
-#[cfg(unix)]
 pub mod raw;
 // FIXME(#12093) - this should not be called unix
 pub mod unix;

@@ -799,13 +799,14 @@ impl RawSocketWatcher {
         -> Result<RawSocketWatcher, IoError>
     {
         let (domain, typ, proto, _) = protocol_to_libc(protocol);
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_POLL) };
         let socket = unsafe { libc::socket(domain, typ, proto) };
         if socket == -1 {
             return Err(last_error());
         }
 
         let raw = RawSocketWatcher {
-            handle: unsafe { uvll::malloc_handle(uvll::UV_POLL) },
+            handle: handle,
             home: io.make_handle(),
             socket: socket
         };
@@ -867,7 +868,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
-                        Err(last_error()),
+                        Err(translate_error(n, true)),
                     (n, addr) => Ok((n as uint, Some(addr.unwrap())))
                 }
             }
@@ -883,6 +884,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
 
             if status < 0 {
                 cx.result = Some((status as ssize_t, None));
+                wakeup(&mut cx.task);
                 return;
             }
 
@@ -895,19 +897,19 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                                    intrinsics::size_of::<libc::sockaddr_storage>()
                                } as libc::socklen_t;
             let len = match cx.socket {
-                        Some(sock) => unsafe {
-                            let addr = &mut caddr as *mut libc::sockaddr_storage;
-                            libc::recvfrom(sock,
-                                           cx.buf.as_ptr() as *mut c_void,
-                                           cx.buf.len() as u64,
-                                           0,
-                                           addr as *mut libc::sockaddr,
-                                           &mut caddrlen)
-                        },
-                         _         => -1
-                      };
+                Some(sock) => unsafe {
+                    let addr = &mut caddr as *mut libc::sockaddr_storage;
+                    libc::recvfrom(sock,
+                                   cx.buf.as_ptr() as *mut c_void,
+                                   cx.buf.len() as u64,
+                                   0,
+                                   addr as *mut libc::sockaddr,
+                                   &mut caddrlen)
+                },
+                _   => -1
+            };
             if len == -1 {
-                cx.result = Some((errno() as ssize_t, None));
+                cx.result = Some((-errno() as ssize_t, None));
                 wakeup(&mut cx.task);
                 return;
             }
@@ -949,7 +951,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     n if n < 0 =>
-                        Err(last_error()),
+                        Err(translate_error(n, true)),
                     n => Ok(n)
                 }
             }
@@ -973,25 +975,25 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             }
 
             let len = match cx.socket {
-                        Some(sock) => {
-                            //let (addr, len) = addr_to_sockaddr(
-                            //                    ip::SocketAddr{ ip: cx.addr, port: 0 }
-                            //                  );
-                            let (addr, len) = raw::network_addr_to_sockaddr(cx.addr);
-                            unsafe {
-                                libc::sendto(sock,
-                                    cx.buf.as_ptr() as *c_void,
-                                    cx.buf.len() as u64,
-                                    0,
-                                    (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
-                                    len as libc::socklen_t)
-                            }
-                        },
-                        _       => -1
-                      };
+                Some(sock) => {
+                    //let (addr, len) = addr_to_sockaddr(
+                    //                    ip::SocketAddr{ ip: cx.addr, port: 0 }
+                    //                  );
+                    let (addr, len) = raw::network_addr_to_sockaddr(cx.addr);
+                    unsafe {
+                        libc::sendto(sock,
+                            cx.buf.as_ptr() as *c_void,
+                            cx.buf.len() as u64,
+                            0,
+                            (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
+                            len as libc::socklen_t)
+                    }
+                },
+                _   => -1
+            };
 
             cx.result = if len < 0 {
-                            Some(errno() as int)
+                            Some(-errno() as int)
                         } else {
                             Some(len as int)
                         };
