@@ -15,7 +15,7 @@ static MAX_LEN: uint = 20;
 static mut drop_counts: [uint, .. MAX_LEN] = [0, .. MAX_LEN];
 static mut clone_count: uint = 0;
 
-#[deriving(Rand, Ord, TotalEq, TotalOrd)]
+#[deriving(Rand, Eq, Ord, TotalEq, TotalOrd)]
 struct DropCounter { x: uint, clone_num: uint }
 
 impl Clone for DropCounter {
