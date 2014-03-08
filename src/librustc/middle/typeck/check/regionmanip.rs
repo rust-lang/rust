@@ -13,7 +13,9 @@
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
+
 use collections::HashMap;
+use std::vec_ng::Vec;
 use util::ppaux::Repr;
 use util::ppaux;
 
@@ -74,7 +76,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
      */
 
     let mut rr = RegionRelator { tcx: tcx,
-                                 stack: ~[],
+                                 stack: Vec::new(),
                                  relate_op: relate_op };
     match opt_region {
         Some(o_r) => { rr.stack.push(o_r); }
@@ -84,7 +86,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
 
     struct RegionRelator<'a> {
         tcx: ty::ctxt,
-        stack: ~[ty::Region],
+        stack: Vec<ty::Region> ,
         relate_op: 'a |ty::Region, ty::Region|,
     }
 
@@ -147,7 +149,7 @@ pub fn relate_free_regions(tcx: ty::ctxt, fn_sig: &ty::FnSig) {
 
     debug!("relate_free_regions >>");
 
-    let mut all_tys = ~[];
+    let mut all_tys = Vec::new();
     for arg in fn_sig.inputs.iter() {
         all_tys.push(*arg);
     }

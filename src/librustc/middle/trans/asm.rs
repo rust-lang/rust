@@ -12,8 +12,6 @@
 # Translation of inline assembly.
 */
 
-use std::c_str::ToCStr;
-
 use lib;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -22,9 +20,10 @@ use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
 use middle::trans::type_of;
-
 use middle::trans::type_::Type;
 
+use std::c_str::ToCStr;
+use std::vec_ng::Vec;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -32,8 +31,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                         -> &'a Block<'a> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let mut constraints = ~[];
-    let mut output_types = ~[];
+    let mut constraints = Vec::new();
+    let mut output_types = Vec::new();
 
     let temp_scope = fcx.push_custom_cleanup_scope();
 
@@ -88,9 +87,9 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let output_type = if num_outputs == 0 {
         Type::void()
     } else if num_outputs == 1 {
-        output_types[0]
+        *output_types.get(0)
     } else {
-        Type::struct_(output_types, false)
+        Type::struct_(output_types.as_slice(), false)
     };
 
     let dialect = match ia.dialect {

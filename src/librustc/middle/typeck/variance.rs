@@ -196,8 +196,8 @@ use collections::HashMap;
 use arena;
 use arena::Arena;
 use middle::ty;
-use std::vec;
 use std::fmt;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;
@@ -261,7 +261,7 @@ struct TermsContext<'a> {
     inferred_map: HashMap<ast::NodeId, InferredIndex>,
 
     // Maps from an InferredIndex to the info for that variable.
-    inferred_infos: ~[InferredInfo<'a>],
+    inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
 enum ParamKind { TypeParam, RegionParam, SelfParam }
@@ -282,7 +282,7 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
         tcx: tcx,
         arena: arena,
         inferred_map: HashMap::new(),
-        inferred_infos: ~[],
+        inferred_infos: Vec::new(),
 
         // cache and share the variance struct used for items with
         // no type/region parameters
@@ -410,7 +410,7 @@ struct ConstraintContext<'a> {
     invariant: VarianceTermPtr<'a>,
     bivariant: VarianceTermPtr<'a>,
 
-    constraints: ~[Constraint<'a>],
+    constraints: Vec<Constraint<'a>> ,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
@@ -457,7 +457,7 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
         contravariant: contravariant,
         invariant: invariant,
         bivariant: bivariant,
-        constraints: ~[],
+        constraints: Vec::new(),
     };
     visit::walk_crate(&mut constraint_cx, krate, ());
     constraint_cx
@@ -561,7 +561,7 @@ impl<'a> ConstraintContext<'a> {
             // variance not yet inferred, so return a symbolic
             // variance.
             let InferredIndex(index) = self.inferred_index(param_def_id.node);
-            self.terms_cx.inferred_infos[index].term
+            self.terms_cx.inferred_infos.get(index).term
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
@@ -749,7 +749,7 @@ impl<'a> ConstraintContext<'a> {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam, i);
             let variance_i = self.xform(variance, variance_decl);
-            self.add_constraints_from_ty(substs.tps[i], variance_i);
+            self.add_constraints_from_ty(*substs.tps.get(i), variance_i);
         }
 
         match substs.regions {
@@ -835,15 +835,14 @@ impl<'a> ConstraintContext<'a> {
 
 struct SolveContext<'a> {
     terms_cx: TermsContext<'a>,
-    constraints: ~[Constraint<'a>],
+    constraints: Vec<Constraint<'a>> ,
 
     // Maps from an InferredIndex to the inferred value for that variable.
-    solutions: ~[ty::Variance]
-}
+    solutions: Vec<ty::Variance> }
 
 fn solve_constraints(constraints_cx: ConstraintContext) {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
-    let solutions = vec::from_elem(terms_cx.num_inferred(), ty::Bivariant);
+    let solutions = Vec::from_elem(terms_cx.num_inferred(), ty::Bivariant);
     let mut solutions_cx = SolveContext {
         terms_cx: terms_cx,
         constraints: constraints,
@@ -868,18 +867,21 @@ impl<'a> SolveContext<'a> {
                 let Constraint { inferred, variance: term } = *constraint;
                 let InferredIndex(inferred) = inferred;
                 let variance = self.evaluate(term);
-                let old_value = self.solutions[inferred];
+                let old_value = *self.solutions.get(inferred);
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
                     debug!("Updating inferred {} (node {}) \
                             from {:?} to {:?} due to {}",
                             inferred,
-                            self.terms_cx.inferred_infos[inferred].param_id,
+                            self.terms_cx
+                                .inferred_infos
+                                .get(inferred)
+                                .param_id,
                             old_value,
                             new_value,
                             term.to_str());
 
-                    self.solutions[inferred] = new_value;
+                    *self.solutions.get_mut(inferred) = new_value;
                     changed = true;
                 }
             }
@@ -902,25 +904,28 @@ impl<'a> SolveContext<'a> {
         let mut index = 0;
         let num_inferred = self.terms_cx.num_inferred();
         while index < num_inferred {
-            let item_id = inferred_infos[index].item_id;
+            let item_id = inferred_infos.get(index).item_id;
             let mut item_variances = ty::ItemVariances {
                 self_param: None,
                 type_params: opt_vec::Empty,
                 region_params: opt_vec::Empty
             };
             while index < num_inferred &&
-                  inferred_infos[index].item_id == item_id {
-                let info = &inferred_infos[index];
+                  inferred_infos.get(index).item_id == item_id {
+                let info = inferred_infos.get(index);
                 match info.kind {
                     SelfParam => {
                         assert!(item_variances.self_param.is_none());
-                        item_variances.self_param = Some(solutions[index]);
+                        item_variances.self_param =
+                            Some(*solutions.get(index));
                     }
                     TypeParam => {
-                        item_variances.type_params.push(solutions[index]);
+                        item_variances.type_params
+                                      .push(*solutions.get(index));
                     }
                     RegionParam => {
-                        item_variances.region_params.push(solutions[index]);
+                        item_variances.region_params
+                                      .push(*solutions.get(index));
                     }
                 }
                 index += 1;
@@ -959,7 +964,7 @@ impl<'a> SolveContext<'a> {
             }
 
             InferredTerm(InferredIndex(index)) => {
-                self.solutions[index]
+                *self.solutions.get(index)
             }
         }
     }

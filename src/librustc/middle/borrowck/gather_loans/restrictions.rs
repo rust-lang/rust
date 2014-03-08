@@ -12,7 +12,8 @@
  * Computes the restrictions that result from a borrow.
  */
 
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -21,7 +22,7 @@ use util::ppaux::Repr;
 
 pub enum RestrictionResult {
     Safe,
-    SafeIf(@LoanPath, ~[Restriction])
+    SafeIf(@LoanPath, Vec<Restriction> )
 }
 
 pub fn compute_restrictions(bccx: &BorrowckCtxt,
@@ -75,8 +76,8 @@ impl<'a> RestrictionsContext<'a> {
             mc::cat_upvar(ty::UpvarId {var_id: local_id, ..}, _) => {
                 // R-Variable
                 let lp = @LpVar(local_id);
-                SafeIf(lp, ~[Restriction {loan_path: lp,
-                                          set: restrictions}])
+                SafeIf(lp, vec!(Restriction {loan_path: lp,
+                                          set: restrictions}))
             }
 
             mc::cat_downcast(cmt_base) => {
@@ -173,9 +174,11 @@ impl<'a> RestrictionsContext<'a> {
             Safe => Safe,
             SafeIf(base_lp, base_vec) => {
                 let lp = @LpExtend(base_lp, mc, elem);
-                SafeIf(lp, vec::append_one(base_vec,
-                                           Restriction {loan_path: lp,
-                                                        set: restrictions}))
+                SafeIf(lp, vec_ng::append_one(base_vec,
+                                              Restriction {
+                                                  loan_path: lp,
+                                                  set: restrictions
+                                              }))
             }
         }
     }

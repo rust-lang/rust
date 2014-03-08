@@ -136,7 +136,7 @@ fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
                 }
 
                 Ok(rs) => {
-                    rs[0]
+                    *rs.get(0)
                 }
             }
         }
@@ -791,7 +791,11 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
         let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
             // no guarantee that the correct number of expected args
             // were supplied
-            if i < e.inputs.len() {Some(e.inputs[i])} else {None}
+            if i < e.inputs.len() {
+                Some(*e.inputs.get(i))
+            } else {
+                None
+            }
         });
         ty_of_arg(this, &rb, a, expected_arg_ty)
     }).collect();

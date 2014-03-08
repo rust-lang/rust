@@ -155,10 +155,16 @@ impl<'f> Combine for Glb<'f> {
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
-                |r| generalize_region(self, snapshot,
-                                      new_vars, sig0.binder_id,
-                                      &a_map, a_vars, b_vars,
-                                      r));
+                |r| {
+                generalize_region(self,
+                                  snapshot,
+                                  new_vars.as_slice(),
+                                  sig0.binder_id,
+                                  &a_map,
+                                  a_vars.as_slice(),
+                                  b_vars.as_slice(),
+                                  r)
+            });
         debug!("sig1 = {}", sig1.inf_str(self.get_ref().infcx));
         return Ok(sig1);
 

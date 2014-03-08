@@ -27,6 +27,7 @@ use syntax::{ast, ast_map, ast_util};
 use std::cell::RefCell;
 use collections::HashMap;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -321,7 +322,7 @@ pub enum const_val {
     const_int(i64),
     const_uint(u64),
     const_str(InternedString),
-    const_binary(Rc<~[u8]>),
+    const_binary(Rc<Vec<u8> >),
     const_bool(bool)
 }
 

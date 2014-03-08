@@ -28,6 +28,7 @@ use middle::typeck::write_ty_to_tcx;
 use util::ppaux;
 use util::ppaux::Repr;
 
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust::pat_to_str;
@@ -53,13 +54,13 @@ fn resolve_type_vars_in_type(fcx: @FnCtxt, sp: Span, typ: ty::t)
 }
 
 fn resolve_type_vars_in_types(fcx: @FnCtxt, sp: Span, tys: &[ty::t])
-                          -> ~[ty::t] {
-    tys.map(|t| {
+                          -> Vec<ty::t> {
+    tys.iter().map(|t| {
         match resolve_type_vars_in_type(fcx, sp, *t) {
             Some(t1) => t1,
             None => ty::mk_err()
         }
-    })
+    }).collect()
 }
 
 fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
@@ -78,7 +79,7 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
                     return;
                 }
             };
-            let mut new_tps = ~[];
+            let mut new_tps = Vec::new();
             for &subst in method.substs.tps.iter() {
                 match resolve_type_vars_in_type(fcx, sp, subst) {
                     Some(t) => new_tps.push(t),
@@ -122,7 +123,9 @@ fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
                       origin: &vtable_origin) -> vtable_origin {
         match origin {
             &vtable_static(def_id, ref tys, origins) => {
-                let r_tys = resolve_type_vars_in_types(fcx, sp, *tys);
+                let r_tys = resolve_type_vars_in_types(fcx,
+                                                       sp,
+                                                       tys.as_slice());
                 let r_origins = resolve_origins(fcx, sp, origins);
                 vtable_static(def_id, r_tys, r_origins)
             }
@@ -242,7 +245,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
         write_ty_to_tcx(tcx, id, t);
         let mut ret = Some(t);
         fcx.opt_node_ty_substs(id, |substs| {
-          let mut new_tps = ~[];
+          let mut new_tps = Vec::new();
           for subst in substs.tps.iter() {
               match resolve_type_vars_in_type(fcx, sp, *subst) {
                 Some(t) => new_tps.push(t),
