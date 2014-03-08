@@ -22,6 +22,14 @@ impl Eq for Fool {
 
 struct Int(int);
 
+impl Eq for Int {
+    fn eq(&self, other: &Int) -> bool {
+        let Int(this) = *self;
+        let Int(other) = *other;
+        this == other
+    }
+}
+
 impl Ord for Int {
     fn lt(&self, other: &Int) -> bool {
         let Int(this) = *self;
@@ -31,6 +39,14 @@ impl Ord for Int {
 }
 
 struct RevInt(int);
+
+impl Eq for RevInt {
+    fn eq(&self, other: &RevInt) -> bool {
+        let RevInt(this) = *self;
+        let RevInt(other) = *other;
+        this == other
+    }
+}
 
 impl Ord for RevInt {
     fn lt(&self, other: &RevInt) -> bool {

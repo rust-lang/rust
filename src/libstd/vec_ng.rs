@@ -13,7 +13,7 @@
 
 use cast::{forget, transmute};
 use clone::Clone;
-use cmp::{Eq, Ordering, TotalEq, TotalOrd};
+use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
 use container::Container;
 use default::Default;
 use fmt;
@@ -136,21 +136,28 @@ impl<T> Extendable<T> for Vec<T> {
     }
 }
 
-impl<T:Eq> Eq for Vec<T> {
+impl<T: Eq> Eq for Vec<T> {
     #[inline]
     fn eq(&self, other: &Vec<T>) -> bool {
         self.as_slice() == other.as_slice()
     }
 }
 
-impl<T:TotalEq> TotalEq for Vec<T> {
+impl<T: Ord> Ord for Vec<T> {
+    #[inline]
+    fn lt(&self, other: &Vec<T>) -> bool {
+        self.as_slice() < other.as_slice()
+    }
+}
+
+impl<T: TotalEq> TotalEq for Vec<T> {
     #[inline]
     fn equals(&self, other: &Vec<T>) -> bool {
         self.as_slice().equals(&other.as_slice())
     }
 }
 
-impl<T:TotalOrd> TotalOrd for Vec<T> {
+impl<T: TotalOrd> TotalOrd for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
         self.as_slice().cmp(&other.as_slice())
