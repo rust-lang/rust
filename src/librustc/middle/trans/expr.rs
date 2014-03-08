@@ -1160,9 +1160,13 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     let _icx = push_ctxt("trans_unary_datum");
 
     let method_call = MethodCall::expr(expr.id);
-    let overloaded = bcx.ccx().maps.method_map.borrow().get().contains_key(&method_call);
-    // if overloaded, would be RvalueDpsExpr
-    assert!(!overloaded || op == ast::UnDeref);
+
+    // The only overloaded operator that is translated to a datum
+    // is an overloaded deref, since it is always yields a `&T`.
+    // Otherwise, we should be in the RvalueDpsExpr path.
+    assert!(
+        op == ast::UnDeref ||
+        !bcx.ccx().maps.method_map.borrow().get().contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1779,6 +1783,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     let mut bcx = bcx;
 
+    // Check for overloaded deref.
     let method_call = MethodCall {
         expr_id: expr.id,
         autoderef: derefs as u32
@@ -1787,6 +1792,11 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                        .find(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {
+            // Overloaded. Evaluate `trans_overloaded_op`, which will
+            // invoke the user's deref() method, which basically
+            // converts from the `Shaht<T>` pointer that we have into
+            // a `&T` pointer.  We can then proceed down the normal
+            // path (below) to dereference that `&T`.
             let datum = if derefs == 0 {
                 datum
             } else {
@@ -1798,7 +1808,10 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
             Datum(val, ref_ty, RvalueExpr(Rvalue(ByValue)))
         }
-        None => datum
+        None => {
+            // Not overloaded. We already have a pointer we know how to deref.
+            datum
+        }
     };
 
     let r = match ty::get(datum.ty).sty {

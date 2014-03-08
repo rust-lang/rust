@@ -809,9 +809,13 @@ pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     monomorphize_type(bcx, t)
 }
 
+// Key used to lookup values supplied for type parameters in an expr.
 #[deriving(Eq)]
 pub enum ExprOrMethodCall {
+    // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),
+
+    // Type parameters for a method call like `a.foo::<int>()`
     MethodCall(typeck::MethodCall)
 }
 

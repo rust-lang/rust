@@ -201,7 +201,13 @@ pub fn lookup_in_trait<'a>(
 struct LookupContext<'a> {
     fcx: @FnCtxt,
     span: Span,
+
+    // The receiver to the method call. Only `None` in the case of
+    // an overloaded autoderef, where the receiver may be an intermediate
+    // state like "the expression `x` when it has been autoderef'd
+    // twice already".
     self_expr: Option<&'a ast::Expr>,
+
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
     impl_dups: @RefCell<HashSet<DefId>>,
@@ -243,49 +249,67 @@ impl<'a> LookupContext<'a> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         let self_expr_id = self.self_expr.map(|e| e.id);
         let (self_ty, autoderefs, result) =
-            check::autoderef(self.fcx, span, self_ty, self_expr_id,
-                             PreferMutLvalue, |self_ty, autoderefs| {
-
-            debug!("loop: self_ty={} autoderefs={}",
-                   self.ty_to_str(self_ty), autoderefs);
-
-            match self.deref_args {
-                check::DontDerefArgs => {
-                    match self.search_for_autoderefd_method(self_ty, autoderefs) {
-                        Some(result) => return Some(Some(result)),
-                        None => {}
-                    }
-
-                    match self.search_for_autoptrd_method(self_ty, autoderefs) {
-                        Some(result) => return Some(Some(result)),
-                        None => {}
-                    }
-                }
-                check::DoDerefArgs => {
-                    match self.search_for_autoptrd_method(self_ty, autoderefs) {
-                        Some(result) => return Some(Some(result)),
-                        None => {}
-                    }
-
-                    match self.search_for_autoderefd_method(self_ty, autoderefs) {
-                        Some(result) => return Some(Some(result)),
-                        None => {}
-                    }
-                }
-            }
-
-            // Don't autoderef if we aren't supposed to.
-            if self.autoderef_receiver == DontAutoderefReceiver {
-                Some(None)
-            } else {
-                None
-            }
-        });
+            check::autoderef(
+                self.fcx, span, self_ty, self_expr_id, PreferMutLvalue,
+                |self_ty, autoderefs| self.search_step(self_ty, autoderefs));
 
         match result {
             Some(Some(result)) => Some(result),
-            _ => self.search_for_autosliced_method(self_ty, autoderefs)
+            _ => {
+                if self.is_overloaded_deref() {
+                    // If we are searching for an overloaded deref, no
+                    // need to try coercing a `~[T]` to an `&[T]` and
+                    // searching for an overloaded deref on *that*.
+                    None
+                } else {
+                    self.search_for_autosliced_method(self_ty, autoderefs)
+                }
+            }
         }
+    }
+
+    fn search_step(&self,
+                   self_ty: ty::t,
+                   autoderefs: uint)
+                   -> Option<Option<MethodCallee>> {
+        debug!("search_step: self_ty={} autoderefs={}",
+               self.ty_to_str(self_ty), autoderefs);
+
+        match self.deref_args {
+            check::DontDerefArgs => {
+                match self.search_for_autoderefd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+
+                match self.search_for_autoptrd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+            }
+            check::DoDerefArgs => {
+                match self.search_for_autoptrd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+
+                match self.search_for_autoderefd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+            }
+        }
+
+        // Don't autoderef if we aren't supposed to.
+        if self.autoderef_receiver == DontAutoderefReceiver {
+            Some(None)
+        } else {
+            None
+        }
+    }
+
+    fn is_overloaded_deref(&self) -> bool {
+        self.self_expr.is_none()
     }
 
     // ______________________________________________________________________
@@ -625,17 +649,13 @@ impl<'a> LookupContext<'a> {
         let (self_ty, auto_deref_ref) =
             self.consider_reborrow(self_ty, autoderefs);
 
-        // HACK(eddyb) only overloaded auto-deref calls should be missing
-        // adjustments, because we imply an AutoPtr adjustment for them.
-        let adjustment = match auto_deref_ref {
-            ty::AutoDerefRef {
-                autoderefs: 0,
-                autoref: Some(ty::AutoPtr(..))
-            } => None,
-            _ => match self.self_expr {
-                Some(expr) => Some((expr.id, @ty::AutoDerefRef(auto_deref_ref))),
-                None => return None
-            }
+        // Hacky. For overloaded derefs, there may be an adjustment
+        // added to the expression from the outside context, so we do not store
+        // an explicit adjustment, but rather we hardwire the single deref
+        // that occurs in trans and mem_categorization.
+        let adjustment = match self.self_expr {
+            Some(expr) => Some((expr.id, @ty::AutoDerefRef(auto_deref_ref))),
+            None => return None
         };
 
         match self.search_for_method(self_ty) {
@@ -733,9 +753,9 @@ impl<'a> LookupContext<'a> {
                                     autoderefs: uint)
                                     -> Option<MethodCallee> {
         /*!
-         *
          * Searches for a candidate by converting things like
-         * `~[]` to `&[]`. */
+         * `~[]` to `&[]`.
+         */
 
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
@@ -843,15 +863,20 @@ impl<'a> LookupContext<'a> {
             mutbls: &[ast::Mutability],
             mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
             -> Option<MethodCallee> {
-        // HACK(eddyb) only overloaded auto-deref calls should be missing
-        // adjustments, because we imply an AutoPtr adjustment for them.
+        // Hacky. For overloaded derefs, there may be an adjustment
+        // added to the expression from the outside context, so we do not store
+        // an explicit adjustment, but rather we hardwire the single deref
+        // that occurs in trans and mem_categorization.
         let self_expr_id = match self.self_expr {
             Some(expr) => Some(expr.id),
-            None => match kind(ty::ReEmpty, ast::MutImmutable) {
-                ty::AutoPtr(..) if autoderefs == 0 => None,
-                _ => return None
+            None => {
+                assert_eq!(autoderefs, 0);
+                assert_eq!(kind(ty::ReEmpty, ast::MutImmutable),
+                           ty::AutoPtr(ty::ReEmpty, ast::MutImmutable));
+                None
             }
         };
+
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region =
@@ -1119,7 +1144,8 @@ impl<'a> LookupContext<'a> {
         &self,
         trait_def_id: ast::DefId,
         rcvr_substs: &ty::substs,
-        method_ty: &ty::Method) -> ty::t {
+        method_ty: &ty::Method)
+        -> ty::t {
         /*!
          * This is a bit tricky. We have a match against a trait method
          * being invoked on an object, and we want to generate the

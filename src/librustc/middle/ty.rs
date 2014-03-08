@@ -229,7 +229,7 @@ pub struct AutoDerefRef {
     autoref: Option<AutoRef>
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Eq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
@@ -3271,11 +3271,15 @@ pub fn expr_kind(tcx: ctxt,
                  expr: &ast::Expr) -> ExprKind {
     if method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
-        // generated via DPS.  However, assign_op (e.g., `x += y`) is an
-        // exception, as its result is always unit.
+        // generated via DPS, but there are two exceptions:
         return match expr.node {
+            // `a += b` has a unit result.
             ast::ExprAssignOp(..) => RvalueStmtExpr,
+
+            // the deref method invoked for `*a` always yields an `&T`
             ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
+
+            // in the general case, result could be any type, use DPS
             _ => RvalueDpsExpr
         };
     }
