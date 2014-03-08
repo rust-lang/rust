@@ -173,10 +173,13 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> 
     let type_params = node_id_type_params(bcx, node);
     let vtables = match node {
         ExprId(id) => node_vtables(bcx, id),
-        MethodCall(method_call) if method_call.autoderef == 0 => {
-            node_vtables(bcx, method_call.expr_id)
+        MethodCall(ref method_call) => {
+            if method_call.autoderef == 0 {
+                node_vtables(bcx, method_call.expr_id)
+            } else {
+                None
+            }
         }
-        _ => None
     };
     debug!("trans_fn_ref(def_id={}, node={:?}, type_params={}, vtables={})",
            def_id.repr(bcx.tcx()), node, type_params.repr(bcx.tcx()),
@@ -381,15 +384,15 @@ pub fn trans_fn_ref_with_vtables(
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
-        let ref_id = match node {
-            ExprId(id) if id != 0 => Some(id),
-            _ => None
+        let opt_ref_id = match node {
+            ExprId(id) => if id != 0 { Some(id) } else { None },
+            MethodCall(_) => None,
         };
 
         let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs,
                                          vtables, self_vtables,
-                                         ref_id);
+                                         opt_ref_id);
         let mut val = val;
         if must_cast && node != ExprId(0) {
             // Monotype of the REFERENCE to the function (type params
@@ -758,9 +761,19 @@ pub fn trans_call_inner<'a>(
 }
 
 pub enum CallArgs<'a> {
+    // Supply value of arguments as a list of expressions that must be
+    // translated. This is used in the common case of `foo(bar, qux)`.
     ArgExprs(&'a [@ast::Expr]),
+
+    // Supply value of arguments as a list of LLVM value refs; frequently
+    // used with lang items and so forth, when the argument is an internal
+    // value.
+    ArgVals(&'a [ValueRef]),
+
+    // For overloaded operators: `(lhs, Option(rhs, rhs_id))`. `lhs`
+    // is the left-hand-side and `rhs/rhs_id` is the datum/expr-id of
+    // the right-hand-side (if any).
     ArgOverloadedOp(Datum<Expr>, Option<(Datum<Expr>, ast::NodeId)>),
-    ArgVals(&'a [ValueRef])
 }
 
 fn trans_args<'a>(cx: &'a Block<'a>,

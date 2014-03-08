@@ -1247,11 +1247,14 @@ pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, base_ty: ty::t,
                     should_stop: |ty::t, uint| -> Option<T>)
                     -> (ty::t, uint, Option<T>) {
     /*!
+     * Executes an autoderef loop for the type `t`. At each step, invokes
+     * `should_stop` to decide whether to terminate the loop. Returns
+     * the final type and number of derefs that it performed.
      *
-     * Autoderefs the type `t` as many times as possible, returning a new type
-     * and an autoderef count. If the count is not zero, the receiver is
-     * responsible for inserting an AutoAdjustment record into `tcx.adjustments`
-     * so that trans/borrowck/etc know about this autoderef. */
+     * Note: this method does not modify the adjustments table. The caller is
+     * responsible for inserting an AutoAdjustment record into the `fcx`
+     * using one of the suitable methods.
+     */
 
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
@@ -2282,15 +2285,15 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
-            match ty::get(base_t).sty {
-                ty::ty_struct(base_id, ref substs) => {
-                    debug!("struct named {}", ppaux::ty_to_str(tcx, base_t));
-                    let fields = ty::lookup_struct_fields(tcx, base_id);
-                    lookup_field_ty(tcx, base_id, fields.as_slice(), field, &(*substs))
+                match ty::get(base_t).sty {
+                    ty::ty_struct(base_id, ref substs) => {
+                        debug!("struct named {}", ppaux::ty_to_str(tcx, base_t));
+                        let fields = ty::lookup_struct_fields(tcx, base_id);
+                        lookup_field_ty(tcx, base_id, fields.as_slice(), field, &(*substs))
+                    }
+                    _ => None
                 }
-                _ => None
-            }
-        });
+            });
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(expr.id, field_ty);

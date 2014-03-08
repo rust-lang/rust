@@ -335,10 +335,13 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     // exist, in which case we need to make them.
     let vtables = match node {
         ExprId(id) => node_vtables(bcx, id),
-        MethodCall(method_call) if method_call.autoderef == 0 => {
-            node_vtables(bcx, method_call.expr_id)
+        MethodCall(method_call) => {
+            if method_call.autoderef == 0 {
+                node_vtables(bcx, method_call.expr_id)
+            } else {
+                None
+            }
         }
-        _ => None
     };
     let r_m_origins = match vtables {
         Some(vt) => vt,
