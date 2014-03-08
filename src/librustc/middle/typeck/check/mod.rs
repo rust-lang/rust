@@ -4029,31 +4029,25 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
 
         //We only care about the operation here
         match split[1] {
-            "cxchg" => (1, ~[ty::mk_mut_rptr(tcx,
-                                             ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                             param(ccx, 0)),
+            "cxchg" => (1, ~[ty::mk_mut_ptr(tcx, param(ccx, 0)),
                         param(ccx, 0),
                         param(ccx, 0),
                         ], param(ccx, 0)),
             "load" => (1,
                ~[
-                  ty::mk_imm_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                  param(ccx, 0))
+                  ty::mk_imm_ptr(tcx, param(ccx, 0))
                ],
               param(ccx, 0)),
             "store" => (1,
                ~[
-                  ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                  param(ccx, 0)),
+                  ty::mk_mut_ptr(tcx, param(ccx, 0)),
                   param(ccx, 0)
                ],
                ty::mk_nil()),
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
-                (1, ~[ty::mk_mut_rptr(tcx,
-                                      ty::ReLateBound(it.id, ty::BrAnon(0)),
-                                      param(ccx, 0)), param(ccx, 0) ],
+                (1, ~[ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0) ],
                  param(ccx, 0))
             }
             "fence" => {
