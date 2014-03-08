@@ -320,19 +320,9 @@ pub fn basic_options() -> @Options {
         crate_types: Vec::new(),
         gc: false,
         optimize: No,
-<<<<<<< HEAD
         debuginfo: NoDebugInfo,
-        lint_opts: ~[],
-        output_types: ~[],
-||||||| merged common ancestors
-        debuginfo: false,
-        lint_opts: ~[],
-        output_types: ~[],
-=======
-        debuginfo: false,
         lint_opts: Vec::new(),
         output_types: Vec::new(),
->>>>>>> librustc: Automatically change uses of `~[T]` to `Vec<T>` in rustc.
         addl_lib_search_paths: @RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
@@ -403,7 +393,8 @@ macro_rules! cgoptions(
             }
         }
 
-        fn parse_list(slot: &mut Vec<~str> , v: Option<&str>) -> bool {
+        fn parse_list(slot: &mut ::std::vec_ng::Vec<~str>, v: Option<&str>)
+                      -> bool {
             match v {
                 Some(s) => {
                     for s in s.words() {
@@ -489,7 +480,7 @@ pub fn collect_crate_types(session: &Session,
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return Vec<CrateTypeExecutable> ;
+        return vec!(CrateTypeExecutable)
     }
     let mut base = session.opts.crate_types.clone();
     let mut iter = attrs.iter().filter_map(|a| {
@@ -525,7 +516,7 @@ pub fn collect_crate_types(session: &Session,
     if base.len() == 0 {
         base.push(CrateTypeExecutable);
     }
-    base.sort();
+    base.as_mut_slice().sort();
     base.dedup();
     return base;
 }

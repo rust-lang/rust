@@ -20,6 +20,7 @@
 use std::io;
 use std::uint;
 use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;
@@ -79,7 +80,8 @@ struct PropagationContext<'a, O> {
 
 struct LoopScope<'a> {
     loop_id: ast::NodeId,
-    break_bits: Vec<uint> }
+    break_bits: Vec<uint>
+}
 
 impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
     fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
@@ -467,12 +469,12 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 let mut body_bits = in_out.to_owned();
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    break_bits: in_out.to_owned()
+                    break_bits: Vec::from_slice(in_out)
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
                 let new_loop_scope = loop_scopes.pop().unwrap();
-                copy_bits(new_loop_scope.break_bits, in_out);
+                copy_bits(new_loop_scope.break_bits.as_slice(), in_out);
             }
 
             ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
@@ -491,14 +493,14 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.reset(in_out);
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
-                    break_bits: in_out.to_owned()
+                    break_bits: Vec::from_slice(in_out)
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
 
                 let new_loop_scope = loop_scopes.pop().unwrap();
                 assert_eq!(new_loop_scope.loop_id, expr.id);
-                copy_bits(new_loop_scope.break_bits, in_out);
+                copy_bits(new_loop_scope.break_bits.as_slice(), in_out);
             }
 
             ast::ExprMatch(discr, ref arms) => {
@@ -689,7 +691,9 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                      in_out: &mut [uint]) {
         self.pop_scopes(from_expr, to_scope, in_out);
         self.dfcx.apply_kill(from_expr.id, in_out);
-        join_bits(&self.dfcx.oper, in_out, to_scope.break_bits);
+        join_bits(&self.dfcx.oper,
+                  in_out,
+                  to_scope.break_bits.as_mut_slice());
         debug!("break_from_to(from_expr={}, to_scope={}) final break_bits={}",
                from_expr.repr(self.tcx()),
                to_scope.loop_id,
@@ -767,10 +771,12 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
         }
     }
 
-    fn find_scope<'a>(&self,
-                      expr: &ast::Expr,
-                      label: Option<ast::Ident>,
-                      loop_scopes: &'a mut Vec<LoopScope> ) -> &'a mut LoopScope {
+    fn find_scope<'a,'b>(
+                  &self,
+                  expr: &ast::Expr,
+                  label: Option<ast::Ident>,
+                  loop_scopes: &'a mut Vec<LoopScope<'b>>)
+                  -> &'a mut LoopScope<'b> {
         let index = match label {
             None => {
                 let len = loop_scopes.len();
@@ -800,7 +806,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
         };
 
-        &mut loop_scopes[index]
+        loop_scopes.get_mut(index)
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {

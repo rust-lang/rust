@@ -98,9 +98,17 @@ impl Archive {
             let archive = os::make_absolute(&self.dst);
             run_ar(self.sess, "x", Some(loc.path()), [&archive,
                                                       &Path::new(file)]);
-            fs::File::open(&loc.path().join(file)).read_to_end().unwrap()
+            let result: Vec<u8> =
+                fs::File::open(&loc.path().join(file)).read_to_end()
+                                                      .unwrap()
+                                                      .move_iter()
+                                                      .collect();
+            result
         } else {
-            run_ar(self.sess, "p", None, [&self.dst, &Path::new(file)]).output
+            run_ar(self.sess,
+                   "p",
+                   None,
+                   [&self.dst, &Path::new(file)]).output.move_iter().collect()
         }
     }
 
@@ -124,7 +132,7 @@ impl Archive {
         if lto {
             ignore.push(object.as_slice());
         }
-        self.add_archive(rlib, name, ignore)
+        self.add_archive(rlib, name, ignore.as_slice())
     }
 
     /// Adds an arbitrary file to this archive

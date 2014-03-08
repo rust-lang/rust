@@ -21,7 +21,8 @@ use util::ppaux::ty_to_str;
 
 use std::cmp;
 use std::iter;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -152,7 +153,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
             });
 
             let v = vec!(*pat);
-            match is_useful(cx, &seen, v) {
+            match is_useful(cx, &seen, v.as_slice()) {
               not_useful => {
                 cx.tcx.sess.span_err(pat.span, "unreachable pattern");
               }
@@ -250,10 +251,14 @@ enum ctor {
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
 fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
-    if m.len() == 0u { return useful_; }
-    if m[0].len() == 0u { return not_useful; }
-    let real_pat = match m.iter().find(|r| r[0].id != 0) {
-      Some(r) => r[0], None => v[0]
+    if m.len() == 0u {
+        return useful_;
+    }
+    if m.get(0).len() == 0u {
+        return not_useful
+    }
+    let real_pat = match m.iter().find(|r| r.get(0).id != 0) {
+      Some(r) => *r.get(0), None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil() }
                   else { ty::node_id_to_type(cx.tcx, real_pat.id) };
@@ -290,7 +295,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
               }
               ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                 let max_len = m.rev_iter().fold(0, |max_len, r| {
-                  match r[0].node {
+                  match r.get(0).node {
                     PatVec(ref before, _, ref after) => {
                       cmp::max(before.len() + after.len(), max_len)
                     }
@@ -313,7 +318,9 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
           }
           Some(ref ctor) => {
             match is_useful(cx,
-                            &m.iter().filter_map(|r| default(cx, *r)).collect::<matrix>(),
+                            &m.iter().filter_map(|r| {
+                                default(cx, r.as_slice())
+                            }).collect::<matrix>(),
                             v.tail()) {
               useful_ => useful(left_ty, (*ctor).clone()),
               ref u => (*u).clone(),
@@ -334,10 +341,12 @@ fn is_useful_specialized(cx: &MatchCheckCtxt,
                              ctor: ctor,
                              arity: uint,
                              lty: ty::t)
-                          -> useful {
-    let ms = m.iter().filter_map(|r| specialize(cx, *r, &ctor, arity, lty)).collect::<matrix>();
+                             -> useful {
+    let ms = m.iter().filter_map(|r| {
+        specialize(cx, r.as_slice(), &ctor, arity, lty)
+    }).collect::<matrix>();
     let could_be_useful = is_useful(
-        cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap());
+        cx, &ms, specialize(cx, v, &ctor, arity, lty).unwrap().as_slice());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       ref u => (*u).clone(),
@@ -408,14 +417,14 @@ fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(..) | ty::ty_tup(_) |
       ty::ty_struct(..) => {
         for r in m.iter() {
-            if !is_wild(cx, r[0]) { return None; }
+            if !is_wild(cx, *r.get(0)) { return None; }
         }
         return Some(single);
       }
       ty::ty_enum(eid, _) => {
         let mut found = Vec::new();
         for r in m.iter() {
-            let r = pat_ctor_id(cx, r[0]);
+            let r = pat_ctor_id(cx, *r.get(0));
             for id in r.iter() {
                 if !found.contains(id) {
                     found.push((*id).clone());
@@ -437,7 +446,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         let mut true_found = false;
         let mut false_found = false;
         for r in m.iter() {
-            match pat_ctor_id(cx, r[0]) {
+            match pat_ctor_id(cx, *r.get(0)) {
               None => (),
               Some(val(const_bool(true))) => true_found = true,
               Some(val(const_bool(false))) => false_found = true,
@@ -452,7 +461,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         let mut missing = true;
         let mut wrong = false;
         for r in m.iter() {
-          match r[0].node {
+          match r.get(0).node {
             PatVec(ref before, ref slice, ref after) => {
               let count = before.len() + after.len();
               if (count < n && slice.is_none()) || count > n {
@@ -475,7 +484,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
 
         // Find the lengths and slices of all vector patterns.
         let mut vec_pat_lens = m.iter().filter_map(|r| {
-            match r[0].node {
+            match r.get(0).node {
                 PatVec(ref before, ref slice, ref after) => {
                     Some((before.len() + after.len(), slice.is_some()))
                 }
@@ -566,10 +575,11 @@ fn specialize(cx: &MatchCheckCtxt,
         Pat{id: pat_id, node: n, span: pat_span} =>
             match n {
             PatWild => {
-                Some(vec_ng::append(vec::from_elem(arity, wild()), r.tail()))
+                Some(vec_ng::append(Vec::from_elem(arity, wild()), r.tail()))
             }
             PatWildMulti => {
-                Some(vec_ng::append(vec::from_elem(arity, wild_multi()), r.tail()))
+                Some(vec_ng::append(Vec::from_elem(arity, wild_multi()),
+                                    r.tail()))
             }
             PatIdent(_, _, _) => {
                 let opt_def = {
@@ -579,7 +589,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 match opt_def {
                     Some(DefVariant(_, id, _)) => {
                         if variant(id) == *ctor_id {
-                            Some(r.tail().to_owned())
+                            Some(Vec::from_slice(r.tail()))
                         } else {
                             None
                         }
@@ -617,7 +627,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(r.tail().to_owned())
+                            Some(Vec::from_slice(r.tail()))
                         } else {
                             None
                         }
@@ -625,7 +635,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     _ => {
                         Some(
                             vec_ng::append(
-                                vec::from_elem(arity, wild()),
+                                Vec::from_elem(arity, wild()),
                                 r.tail()
                             )
                         )
@@ -668,7 +678,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(r.tail().to_owned())
+                            Some(Vec::from_slice(r.tail()))
                         } else {
                             None
                         }
@@ -676,7 +686,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     DefVariant(_, id, _) if variant(id) == *ctor_id => {
                         let args = match args {
                             Some(args) => args.iter().map(|x| *x).collect(),
-                            None => vec::from_elem(arity, wild())
+                            None => Vec::from_elem(arity, wild())
                         };
                         Some(vec_ng::append(args, r.tail()))
                     }
@@ -689,7 +699,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             Some(args) => {
                                 new_args = args.iter().map(|x| *x).collect()
                             }
-                            None => new_args = vec::from_elem(arity, wild())
+                            None => new_args = Vec::from_elem(arity, wild())
                         }
                         Some(vec_ng::append(new_args, r.tail()))
                     }
@@ -781,13 +791,17 @@ fn specialize(cx: &MatchCheckCtxt,
                     single => true,
                     _ => fail!("type error")
                 };
-                if match_ { Some(r.tail().to_owned()) } else { None }
+                if match_ {
+                    Some(Vec::from_slice(r.tail()))
+                } else {
+                    None
+                }
             }
             PatRange(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((*v).clone(), (*v).clone()),
                     range(ref lo, ref hi) => ((*lo).clone(), (*hi).clone()),
-                    single => return Some(r.tail().to_owned()),
+                    single => return Some(Vec::from_slice(r.tail())),
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
@@ -797,7 +811,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 let m2 = compare_const_vals(&c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
-                        Some(r.tail().to_owned())
+                        Some(Vec::from_slice(r.tail()))
                     },
                     (Some(_), Some(_)) => None,
                     _ => {
@@ -850,8 +864,11 @@ fn specialize(cx: &MatchCheckCtxt,
 }
 
 fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<Vec<@Pat> > {
-    if is_wild(cx, r[0]) { Some(r.tail().to_owned()) }
-    else { None }
+    if is_wild(cx, r[0]) {
+        Some(Vec::from_slice(r.tail()))
+    } else {
+        None
+    }
 }
 
 fn check_local(v: &mut CheckMatchVisitor,

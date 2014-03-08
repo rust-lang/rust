@@ -15,6 +15,7 @@ use super::cabi::*;
 use super::common::*;
 use super::machine::*;
 use middle::trans::type_::Type;
+use std::vec_ng::Vec;
 
 pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],

@@ -22,6 +22,7 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;

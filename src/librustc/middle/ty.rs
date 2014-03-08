@@ -40,7 +40,8 @@ use std::fmt;
 use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use collections::{HashMap, HashSet};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
@@ -279,7 +280,7 @@ pub struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: RefCell<NodeMap<vec!(t)>>,
+    node_type_substs: RefCell<NodeMap<Vec<t>>>,
 
     // Maps from a method to the method "descriptor"
     methods: RefCell<DefIdMap<@Method>>,
@@ -460,7 +461,7 @@ pub struct ClosureTy {
 #[deriving(Clone, Eq, Hash)]
 pub struct FnSig {
     binder_id: ast::NodeId,
-    inputs: vec!(t),
+    inputs: Vec<t>,
     output: t,
     variadic: bool
 }
@@ -683,7 +684,7 @@ pub enum RegionSubsts {
 #[deriving(Clone, Eq, Hash)]
 pub struct substs {
     self_ty: Option<ty::t>,
-    tps: vec!(t),
+    tps: Vec<t>,
     regions: RegionSubsts,
 }
 
@@ -755,7 +756,7 @@ pub enum sty {
     ty_closure(ClosureTy),
     ty_trait(DefId, substs, TraitStore, ast::Mutability, BuiltinBounds),
     ty_struct(DefId, substs),
-    ty_tup(vec!(t)),
+    ty_tup(Vec<t>),
 
     ty_param(param_ty), // type parameter
     ty_self(DefId), /* special, implicit `self` type parameter;
@@ -1410,7 +1411,7 @@ pub fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec(mt {ty: ty, mutbl: ast::MutImmutable}))
 }
 
-pub fn mk_tup(cx: ctxt, ts: vec!(t)) -> t { mk_t(cx, ty_tup(ts)) }
+pub fn mk_tup(cx: ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
 
 pub fn mk_closure(cx: ctxt, fty: ClosureTy) -> t {
     mk_t(cx, ty_closure(fty))
@@ -1431,7 +1432,7 @@ pub fn mk_ctor_fn(cx: ctxt,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
                     binder_id: binder_id,
-                    inputs: input_args,
+                    inputs: Vec::from_slice(input_args),
                     output: output,
                     variadic: false
                    }
@@ -1665,7 +1666,7 @@ pub fn simd_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
         ty_struct(did, ref substs) => {
             let fields = lookup_struct_fields(cx, did);
-            lookup_field_type(cx, did, fields[0].id, substs)
+            lookup_field_type(cx, did, fields.get(0).id, substs)
         }
         _ => fail!("simd_type called on invalid type")
     }
@@ -1683,7 +1684,7 @@ pub fn simd_size(cx: ctxt, ty: t) -> uint {
 
 pub fn get_element_type(ty: t, i: uint) -> t {
     match get(ty).sty {
-      ty_tup(ref ts) => return ts[i],
+      ty_tup(ref ts) => return *ts.get(i),
       _ => fail!("get_element_type called on invalid type")
     }
 }
@@ -2196,7 +2197,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
-                    TypeContents::union(flds, |f| tc_mt(cx, f.mt, cache));
+                    TypeContents::union(flds.as_slice(),
+                                        |f| tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
                     res = res | TC::OwnsDtor;
                 }
@@ -2204,14 +2206,16 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_tup(ref tys) => {
-                TypeContents::union(*tys, |ty| tc_ty(cx, *ty, cache))
+                TypeContents::union(tys.as_slice(),
+                                    |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let res =
-                    TypeContents::union(variants, |variant| {
-                        TypeContents::union(variant.args, |arg_ty| {
+                    TypeContents::union(variants.as_slice(), |variant| {
+                        TypeContents::union(variant.args.as_slice(),
+                                            |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
@@ -2231,7 +2235,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 let tp_def = ty_param_defs.get().get(&p.def_id.node);
                 kind_bounds_to_contents(cx,
                                         tp_def.bounds.builtin_bounds,
-                                        tp_def.bounds.trait_bounds)
+                                        tp_def.bounds.trait_bounds.as_slice())
             }
 
             ty_self(def_id) => {
@@ -2924,7 +2928,7 @@ pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
 
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
-    vec::append_one(sig.inputs.map(|a| *a), sig.output)
+    vec_ng::append_one(sig.inputs.map(|a| *a), sig.output)
 }
 
 // Type accessors for AST nodes
@@ -3211,7 +3215,7 @@ impl AutoRef {
 }
 
 pub struct ParamsTy {
-    params: vec!(t),
+    params: Vec<t>,
     ty: t
 }
 
@@ -3249,7 +3253,7 @@ pub fn method_call_type_param_defs(tcx: ctxt, origin: typeck::MethodOrigin)
             let trait_type_param_defs =
                 lookup_trait_def(tcx, trt_id).generics.type_param_defs();
             Rc::new(vec_ng::append(
-                trait_type_param_defs.to_owned(),
+                Vec::from_slice(trait_type_param_defs),
                 ty::trait_method(tcx,
                                  trt_id,
                                  n_mth).generics.type_param_defs()))
@@ -3430,9 +3434,11 @@ pub fn expr_kind(tcx: ctxt,
                 None => fail!("no def for place"),
             };
             let def_id = ast_util::def_id_of_def(definition);
-            match tcx.lang_items.items[ExchangeHeapLangItem as uint] {
-                Some(item_def_id) if def_id == item_def_id => RvalueDatumExpr,
-                Some(_) | None => RvalueDpsExpr,
+            match tcx.lang_items.items.get(ExchangeHeapLangItem as uint) {
+                &Some(item_def_id) if def_id == item_def_id => {
+                    RvalueDatumExpr
+                }
+                &Some(_) | &None => RvalueDpsExpr,
             }
         }
 
@@ -3829,7 +3835,7 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
 }
 
 pub fn trait_method(cx: ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
-    let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
+    let method_def_id = *ty::trait_method_def_ids(cx, trait_did).get(idx);
     ty::method(cx, method_def_id)
 }
 
@@ -3932,7 +3938,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
 // Enum information
 #[deriving(Clone)]
 pub struct VariantInfo {
-    args: vec!(t),
+    args: Vec<t>,
     arg_names: Option<Vec<ast::Ident> >,
     ctor_ty: t,
     name: ast::Ident,
@@ -3953,7 +3959,11 @@ impl VariantInfo {
 
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
-                let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { Vec::new() };
+                let arg_tys = if args.len() > 0 {
+                    ty_fn_args(ctor_ty).map(|a| *a)
+                } else {
+                    Vec::new()
+                };
 
                 return VariantInfo {
                     args: arg_tys,
@@ -3972,13 +3982,13 @@ impl VariantInfo {
                 assert!(fields.len() > 0);
 
                 let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
-                let arg_names = fields.map(|field| {
+                let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
                         NamedField(ident, _) => ident,
                         UnnamedField => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }
-                });
+                }).collect();
 
                 return VariantInfo {
                     args: arg_tys,
@@ -4168,8 +4178,10 @@ pub fn enum_variant_with_id(cx: ctxt,
     let variants = enum_variants(cx, enum_id);
     let mut i = 0;
     while i < variants.len() {
-        let variant = variants[i];
-        if variant.id == variant_id { return variant; }
+        let variant = *variants.get(i);
+        if variant.id == variant_id {
+            return variant
+        }
         i += 1;
     }
     cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
@@ -4341,7 +4353,7 @@ pub fn lookup_struct_field(cx: ctxt,
 }
 
 fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
-    fields.map(|field| {
+    fields.iter().map(|field| {
         match field.node.kind {
             NamedField(ident, visibility) => {
                 field_ty {
@@ -4358,7 +4370,7 @@ fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
                 }
             }
         }
-    })
+    }).collect()
 }
 
 // Returns a list of fields corresponding to the struct's items. trans uses
@@ -4450,7 +4462,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
 }
 
 pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> Vec<t> {
-    vec::from_fn(generics.ty_params.len(), |i| {
+    Vec::from_fn(generics.ty_params.len(), |i| {
         let id = generics.ty_params.get(i).id;
         ty::mk_param(tcx, i, ast_util::local_def(id))
     })
@@ -4502,7 +4514,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                        -> substs {
             substs { regions: ErasedRegions,
                      self_ty: ty_fold::fold_opt_ty(self, substs.self_ty),
-                     tps: ty_fold::fold_ty_vec(self, substs.tps) }
+                     tps: ty_fold::fold_ty_vec(self, substs.tps.as_slice()) }
         }
 
         fn fold_sig(&mut self,
@@ -4510,10 +4522,12 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
                     -> ty::FnSig {
             // The binder-id is only relevant to bound regions, which
             // are erased at trans time.
-            ty::FnSig { binder_id: ast::DUMMY_NODE_ID,
-                        inputs: ty_fold::fold_ty_vec(self, sig.inputs),
-                        output: self.fold_ty(sig.output),
-                        variadic: sig.variadic }
+            ty::FnSig {
+                binder_id: ast::DUMMY_NODE_ID,
+                inputs: ty_fold::fold_ty_vec(self, sig.inputs.as_slice()),
+                output: self.fold_ty(sig.output),
+                variadic: sig.variadic,
+            }
         }
     }
 }
@@ -4615,14 +4629,15 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
         // Add the given trait ty to the hash map
         while i < trait_refs.len() {
             debug!("each_bound_trait_and_supertraits(i={:?}, trait_ref={})",
-                   i, trait_refs[i].repr(tcx));
+                   i, trait_refs.get(i).repr(tcx));
 
-            if !f(trait_refs[i]) {
+            if !f(*trait_refs.get(i)) {
                 return false;
             }
 
             // Add supertraits to supertrait_set
-            let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
+            let supertrait_refs = trait_ref_supertraits(tcx,
+                                                        *trait_refs.get(i));
             for &supertrait_ref in supertrait_refs.iter() {
                 debug!("each_bound_trait_and_supertraits(supertrait_ref={})",
                        supertrait_ref.repr(tcx));
@@ -4646,7 +4661,7 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
     let mut total = 0;
     for type_param_def in type_param_defs.iter() {
         each_bound_trait_and_supertraits(
-            tcx, type_param_def.bounds.trait_bounds, |_| {
+            tcx, type_param_def.bounds.trait_bounds.as_slice(), |_| {
             total += 1;
             true
         });
@@ -5078,7 +5093,7 @@ pub fn construct_parameter_environment(
     let num_item_type_params = item_type_params.len();
     let num_method_type_params = method_type_params.len();
     let num_type_params = num_item_type_params + num_method_type_params;
-    let type_params = vec::from_fn(num_type_params, |i| {
+    let type_params = Vec::from_fn(num_type_params, |i| {
             let def_id = if i < num_item_type_params {
                 item_type_params[i].def_id
             } else {
@@ -5106,7 +5121,7 @@ pub fn construct_parameter_environment(
     //
 
     let self_bound_substd = self_bound.map(|b| b.subst(tcx, &free_substs));
-    let type_param_bounds_substd = vec::from_fn(num_type_params, |i| {
+    let type_param_bounds_substd = Vec::from_fn(num_type_params, |i| {
         if i < num_item_type_params {
             (*item_type_params[i].bounds).subst(tcx, &free_substs)
         } else {

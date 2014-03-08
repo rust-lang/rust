@@ -139,6 +139,7 @@ use util::nodemap::{NodeMap, NodeSet};
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;

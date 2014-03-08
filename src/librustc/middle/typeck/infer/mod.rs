@@ -21,6 +21,7 @@ pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
+use collections::HashMap;
 use collections::SmallIntMap;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
@@ -37,9 +38,8 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
 use std::result;
-use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap;
@@ -623,7 +623,7 @@ impl InferCtxt {
     }
 
     pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {
-        vec::from_fn(n, |_i| self.next_ty_var())
+        Vec::from_fn(n, |_i| self.next_ty_var())
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -660,7 +660,7 @@ impl InferCtxt {
                             origin: RegionVariableOrigin,
                             count: uint)
                             -> Vec<ty::Region> {
-        vec::from_fn(count, |_| self.next_region_var(origin))
+        Vec::from_fn(count, |_| self.next_region_var(origin))
     }
 
     pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {

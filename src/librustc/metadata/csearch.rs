@@ -18,9 +18,10 @@ use metadata::decoder;
 use middle::ty;
 use middle::typeck;
 
-use std::vec;
 use reader = serialize::ebml::reader;
 use std::rc::Rc;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
@@ -93,7 +94,8 @@ pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> {
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec_ng::append(vec!(ast_map::PathMod(token::intern(cdata.name))), path)
+    vec_ng::append(vec!(ast_map::PathMod(token::intern(cdata.name))),
+                   path.as_slice())
 }
 
 pub enum found_ast {

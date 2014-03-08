@@ -17,8 +17,9 @@ use lib::llvm::StructRetAttribute;
 use middle::trans::context::CrateContext;
 use middle::trans::context::task_llcx;
 use middle::trans::cabi::*;
-
 use middle::trans::type_::Type;
+
+use std::vec_ng::Vec;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -155,7 +156,7 @@ fn coerce_to_int(size: uint) -> Vec<Type> {
 fn struct_ty(ty: Type) -> Type {
     let size = ty_size(ty) * 8;
     let fields = coerce_to_int(size);
-    return Type::struct_(fields, false);
+    return Type::struct_(fields.as_slice(), false);
 }
 
 pub fn compute_abi_info(_ccx: &CrateContext,

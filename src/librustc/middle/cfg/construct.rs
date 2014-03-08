@@ -12,6 +12,7 @@ use middle::cfg::*;
 use middle::graph;
 use middle::typeck;
 use middle::ty;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;
@@ -328,7 +329,7 @@ impl CFGBuilder {
 
             ast::ExprRet(v) => {
                 let v_exit = self.opt_expr(v, pred);
-                let loop_scope = self.loop_scopes[0];
+                let loop_scope = *self.loop_scopes.get(0);
                 self.add_exiting_edge(expr, v_exit,
                                       loop_scope, loop_scope.break_index);
                 self.add_node(expr.id, [])
@@ -377,7 +378,7 @@ impl CFGBuilder {
                 let base_exit = self.opt_expr(base, pred);
                 let field_exprs: Vec<@ast::Expr> =
                     fields.iter().map(|f| f.expr).collect();
-                self.straightline(expr, base_exit, field_exprs)
+                self.straightline(expr, base_exit, field_exprs.as_slice())
             }
 
             ast::ExprRepeat(elem, count, _) => {

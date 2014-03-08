@@ -21,6 +21,7 @@ use middle::privacy;
 use util::nodemap::NodeSet;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;

@@ -45,7 +45,6 @@ use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
 use middle::typeck;
-use std::to_str::ToStr;
 use util::ppaux::{ty_to_str};
 
 use std::cmp;
@@ -54,10 +53,12 @@ use std::i16;
 use std::i32;
 use std::i64;
 use std::i8;
+use std::to_str::ToStr;
 use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::vec_ng::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -1091,7 +1092,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                 }
             } else {
                 csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
-                    if attr::contains_name(attrs, "must_use") {
+                    if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
                         warned = true;

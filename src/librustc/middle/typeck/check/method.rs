@@ -100,7 +100,8 @@ use util::ppaux::Repr;
 use std::cell::RefCell;
 use collections::HashSet;
 use std::result;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic};
 use syntax::ast::{MutMutable, MutImmutable};
@@ -450,7 +451,7 @@ impl<'a> LookupContext<'a> {
                 self.get_method_index(new_trait_ref, trait_ref, method_num);
             let mut m = (*m).clone();
             // We need to fix up the transformed self type.
-            m.fty.sig.inputs[0] =
+            *m.fty.sig.inputs.get_mut(0) =
                 self.construct_transformed_self_ty_for_object(
                     did, &rcvr_substs, &m);
 
@@ -476,7 +477,13 @@ impl<'a> LookupContext<'a> {
                param_ty);
         self.push_inherent_candidates_from_bounds(
             rcvr_ty,
-            self.fcx.inh.param_env.type_param_bounds[param_ty.idx].trait_bounds,
+            self.fcx
+                .inh
+                .param_env
+                .type_param_bounds
+                .get(param_ty.idx)
+                .trait_bounds
+                .as_slice(),
             restrict_to,
             param_numbered(param_ty.idx));
     }
@@ -541,10 +548,9 @@ impl<'a> LookupContext<'a> {
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             match trait_methods.iter().position(|m| {
                 m.explicit_self != ast::SelfStatic &&
-                m.ident.name == self.m_name })
-            {
+                m.ident.name == self.m_name }) {
                 Some(pos) => {
-                    let method = trait_methods[pos];
+                    let method = *trait_methods.get(pos);
 
                     match mk_cand(bound_trait_ref, method, pos, this_bound_idx) {
                         Some(cand) => {
@@ -599,13 +605,16 @@ impl<'a> LookupContext<'a> {
                impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
         let idx = {
-            match impl_info.methods.iter().position(|m| m.ident.name == self.m_name) {
+            match impl_info.methods
+                           .iter()
+                           .position(|m| m.ident.name == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
         };
 
-        let method = ty::method(self.tcx(), impl_info.methods[idx].def_id);
+        let method = ty::method(self.tcx(),
+                                impl_info.methods.get(idx).def_id);
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
@@ -899,7 +908,8 @@ impl<'a> LookupContext<'a> {
             candidates.iter().map(|c| (*c).clone()).
                 filter(|c| self.is_relevant(rcvr_ty, c)).collect();
 
-        let relevant_candidates = self.merge_candidates(relevant_candidates);
+        let relevant_candidates =
+            self.merge_candidates(relevant_candidates.as_slice());
 
         if relevant_candidates.len() == 0 {
             return None;
@@ -914,7 +924,7 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        Some(self.confirm_candidate(rcvr_ty, &relevant_candidates[0]))
+        Some(self.confirm_candidate(rcvr_ty, relevant_candidates.get(0)))
     }
 
     fn merge_candidates(&self, candidates: &[Candidate]) -> Vec<Candidate> {
@@ -1004,14 +1014,15 @@ impl<'a> LookupContext<'a> {
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else {
-                self.supplied_tps.to_owned()
+                Vec::from_slice(self.supplied_tps)
             }
         };
 
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
         let all_substs = substs {
-            tps: vec_ng::append(candidate.rcvr_substs.tps.clone(), m_substs),
+            tps: vec_ng::append(candidate.rcvr_substs.tps.clone(),
+                                m_substs.as_slice()),
             regions: candidate.rcvr_substs.regions.clone(),
             self_ty: candidate.rcvr_substs.self_ty,
         };
@@ -1031,7 +1042,7 @@ impl<'a> LookupContext<'a> {
                 let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
                     t.subst(tcx, &all_substs)
                 });
-                Some(fn_sig.inputs[0]).move_iter().chain(args).collect()
+                Some(*fn_sig.inputs.get(0)).move_iter().chain(args).collect()
             }
             _ => fn_sig.inputs.subst(tcx, &all_substs)
         };
@@ -1050,7 +1061,7 @@ impl<'a> LookupContext<'a> {
             self.fcx.infcx().next_region_var(
                 infer::BoundRegionInFnCall(self.expr.span, br))
         });
-        let transformed_self_ty = fn_sig.inputs[0];
+        let transformed_self_ty = *fn_sig.inputs.get(0);
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
             purity: bare_fn_ty.purity,
@@ -1118,7 +1129,7 @@ impl<'a> LookupContext<'a> {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
             ast::SelfRegion(..) | ast::SelfUniq => {
-                let transformed_self_ty = method_ty.fty.sig.inputs[0];
+                let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
                 match ty::get(transformed_self_ty).sty {
                     ty::ty_rptr(r, mt) => { // must be SelfRegion
                         ty::mk_trait(self.tcx(), trait_def_id,
