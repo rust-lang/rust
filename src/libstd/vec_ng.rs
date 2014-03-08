@@ -14,10 +14,10 @@
 use cast::{forget, transmute};
 use clone::Clone;
 use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
-use container::Container;
+use container::{Container, Mutable};
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, Rev};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
 use mem;
@@ -68,11 +68,7 @@ impl<T> Vec<T> {
 
 impl<T: Clone> Vec<T> {
     pub fn from_slice(values: &[T]) -> Vec<T> {
-        let mut vector = Vec::new();
-        for value in values.iter() {
-            vector.push((*value).clone())
-        }
-        vector
+        values.iter().map(|x| x.clone()).collect()
     }
 
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
@@ -292,9 +288,8 @@ impl<T> Vec<T> {
     }
 
     #[inline]
-    pub fn move_rev_iter(mut self) -> MoveItems<T> {
-        self.reverse();
-        self.move_iter()
+    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
+        self.move_iter().rev()
     }
 
     #[inline]
@@ -437,9 +432,12 @@ impl<T> Vec<T> {
     pub fn as_ptr(&self) -> *T {
         self.as_slice().as_ptr()
     }
+}
 
+impl<T> Mutable for Vec<T> {
+    /// Clear the vector, removing all values.
     #[inline]
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.truncate(0)
     }
 }
