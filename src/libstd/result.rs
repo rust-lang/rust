@@ -16,7 +16,7 @@ use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value
