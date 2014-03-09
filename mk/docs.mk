@@ -73,18 +73,20 @@ endif
 # Check for the various external utilities for the EPUB/PDF docs:
 
 ifeq ($(CFG_PDFLATEX),)
-  $(info cfg: no pdflatex found, omitting doc/rust.pdf)
-  NO_PDF_DOCS = 1
-else
-  ifeq ($(CFG_XETEX),)
-    $(info cfg: no xetex found, disabling doc/rust.pdf)
-    NO_PDF_DOCS = 1
+  $(info cfg: no pdflatex found, deferring to xelatex)
+  ifeq ($(CFG_XELATEX),)
+    $(info cfg: no xelatex found, deferring to lualatex)
+    ifeq ($(CFG_LUALATEX),)
+      $(info cfg: no lualatex found, disabling LaTeX docs)
+      NO_PDF_DOCS = 1
+	else
+      CFG_LATEX := $(CFG_LUALATEX)
+    endif
   else
-    ifeq ($(CFG_LUATEX),)
-       $(info cfg: lacking luatex, disabling pdflatex)
-       NO_PDF_DOCS = 1
-	endif
+    CFG_LATEX := $(CFG_XELATEX)
   endif
+else
+  CFG_LATEX := $(CFG_PDFLATEX)
 endif
 
 
@@ -175,8 +177,8 @@ ifneq ($(NO_PDF_DOCS),1)
 ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
 DOC_TARGETS += doc/$(1).pdf
 doc/$(1).pdf: doc/$(1).tex
-	@$$(call E, pdflatex: $$@)
-	$$(Q)$$(CFG_PDFLATEX) \
+	@$$(call E, latex compiler: $$@)
+	$$(Q)$$(CFG_LATEX) \
 	-interaction=batchmode \
 	-output-directory=doc \
 	$$<
