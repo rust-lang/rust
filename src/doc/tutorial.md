@@ -3143,12 +3143,13 @@ Now for something that you can actually compile yourself.
 
 We define two crates, and use one of them as a library in the other.
 
-~~~~{.ignore}
+~~~~
 // `world.rs`
 #[crate_id = "world#0.42"];
-# extern crate extra;
+
+# mod secret_module_to_make_this_test_run {
 pub fn explore() -> &'static str { "world" }
-# fn main() {}
+# }
 ~~~~
 
 ~~~~ {.ignore}
