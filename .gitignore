@@ -65,6 +65,7 @@ config.mk
 /mingw-build/
 src/.DS_Store
 /tmp/
+/dist/
 /stage0/
 /dl/
 /stage1/
