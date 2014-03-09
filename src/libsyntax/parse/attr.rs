@@ -28,7 +28,7 @@ pub trait ParserAttr {
     fn parse_optional_meta(&mut self) -> Vec<@ast::MetaItem> ;
 }
 
-impl ParserAttr for Parser {
+impl<'a> ParserAttr for Parser<'a> {
     // Parse attributes that appear before an item
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();

@@ -166,7 +166,7 @@ fn generate_test_harness(sess: &Session, krate: ast::Crate)
     let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(),
+        ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
                              ExpansionConfig {
                                  loader: loader,
                                  deriving_hash_type_parameter: false,

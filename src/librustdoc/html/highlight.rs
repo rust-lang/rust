@@ -30,10 +30,10 @@ pub fn highlight(src: &str, class: Option<&str>) -> ~str {
     let sess = parse::new_parse_sess();
     let handler = diagnostic::default_handler();
     let span_handler = diagnostic::mk_span_handler(handler, sess.cm);
-    let fm = parse::string_to_filemap(sess, src.to_owned(), ~"<stdin>");
+    let fm = parse::string_to_filemap(&sess, src.to_owned(), ~"<stdin>");
 
     let mut out = io::MemWriter::new();
-    doit(sess,
+    doit(&sess,
          lexer::new_string_reader(span_handler, fm),
          class,
          &mut out).unwrap();
@@ -47,7 +47,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> ~str {
 /// it's used. All source code emission is done as slices from the source map,
 /// not from the tokens themselves, in order to stay true to the original
 /// source.
-fn doit(sess: @parse::ParseSess, lexer: lexer::StringReader, class: Option<&str>,
+fn doit(sess: &parse::ParseSess, lexer: lexer::StringReader, class: Option<&str>,
         out: &mut Writer) -> io::IoResult<()> {
     use syntax::parse::lexer::Reader;
 

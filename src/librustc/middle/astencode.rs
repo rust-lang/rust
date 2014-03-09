@@ -1446,17 +1446,17 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::Item {
 #[cfg(test)]
 trait fake_ext_ctxt {
     fn cfg(&self) -> ast::CrateConfig;
-    fn parse_sess(&self) -> @parse::ParseSess;
+    fn parse_sess<'a>(&'a self) -> &'a parse::ParseSess;
     fn call_site(&self) -> Span;
     fn ident_of(&self, st: &str) -> ast::Ident;
 }
 
 #[cfg(test)]
-impl fake_ext_ctxt for @parse::ParseSess {
+impl fake_ext_ctxt for parse::ParseSess {
     fn cfg(&self) -> ast::CrateConfig {
         Vec::new()
     }
-    fn parse_sess(&self) -> @parse::ParseSess { *self }
+    fn parse_sess<'a>(&'a self) -> &'a parse::ParseSess { self }
     fn call_site(&self) -> Span {
         codemap::Span {
             lo: codemap::BytePos(0),
@@ -1470,7 +1470,7 @@ impl fake_ext_ctxt for @parse::ParseSess {
 }
 
 #[cfg(test)]
-fn mk_ctxt() -> @parse::ParseSess {
+fn mk_ctxt() -> parse::ParseSess {
     parse::new_parse_sess()
 }
 

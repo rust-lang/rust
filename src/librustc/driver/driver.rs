@@ -146,11 +146,10 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
 fn parse_cfgspecs(cfgspecs: Vec<~str> )
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        let sess = parse::new_parse_sess();
         parse::parse_meta_from_source_str("cfgspec".to_str(),
                                           s,
                                           Vec::new(),
-                                          sess)
+                                          &parse::new_parse_sess())
     }).collect::<ast::CrateConfig>()
 }
 
@@ -175,13 +174,13 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             FileInput(ref file) => {
-                parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
+                parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
             }
             StrInput(ref src) => {
                 parse::parse_crate_from_source_str(anon_src(),
                                                    (*src).clone(),
                                                    cfg.clone(),
-                                                   sess.parse_sess)
+                                                   &sess.parse_sess)
             }
         }
     });
@@ -241,7 +240,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             deriving_hash_type_parameter: sess.features.default_type_params.get(),
             crate_id: crate_id.clone(),
         };
-        syntax::ext::expand::expand_crate(sess.parse_sess,
+        syntax::ext::expand::expand_crate(&sess.parse_sess,
                                           cfg,
                                           krate)
     });

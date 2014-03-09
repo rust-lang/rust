@@ -30,11 +30,11 @@ use util::small_vector::SmallVector;
 use std::cell::RefCell;
 use std::vec_ng::Vec;
 
-struct ParserAnyMacro {
-    parser: RefCell<Parser>,
+struct ParserAnyMacro<'a> {
+    parser: RefCell<Parser<'a>>,
 }
 
-impl ParserAnyMacro {
+impl<'a> ParserAnyMacro<'a> {
     /// Make sure we don't have any tokens left to parse, so we don't
     /// silently drop anything. `allow_semi` is so that "optional"
     /// semilons at the end of normal expressions aren't complained
@@ -57,7 +57,7 @@ impl ParserAnyMacro {
     }
 }
 
-impl AnyMacro for ParserAnyMacro {
+impl<'a> AnyMacro for ParserAnyMacro<'a> {
     fn make_expr(&self) -> @ast::Expr {
         let ret = {
             let mut parser = self.parser.borrow_mut();
