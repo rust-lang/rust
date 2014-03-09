@@ -117,12 +117,21 @@ code block.
     // This is a testable code block (4-space indent)
 ~~~
 
-In addition to the `ignore` directive, you can specify that the test's execution
-should fail with the `should_fail` directive.
+You can specify that the test's execution should fail with the `should_fail`
+directive.
 
 ~~~
 ```should_fail
 // This code block is expected to generate a failure when run
+```
+~~~
+
+You can specify that the code block should be compiled but not run with the
+`no_run` directive.
+
+~~~
+```no_run
+// This code will be compiled but not executed
 ```
 ~~~
 

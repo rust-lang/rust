@@ -98,7 +98,8 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) {
+fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
+           no_run: bool) {
     let test = maketest(test, cratename);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
@@ -152,6 +153,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     let cfg = driver::build_configuration(sess);
     driver::compile_input(sess, cfg, &input, &out, &None);
 
+    if no_run { return }
+
     // Run the code!
     let exe = outdir.path().join("rust_out");
     let out = Process::output(exe.as_str().unwrap(), []);
@@ -203,7 +206,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn add_test(&mut self, test: &str, should_fail: bool) {
+    pub fn add_test(&mut self, test: &str, should_fail: bool, no_run: bool) {
         let test = test.to_owned();
         let name = format!("{}_{}", self.names.connect("::"), self.cnt);
         self.cnt += 1;
@@ -218,7 +221,7 @@ impl Collector {
                 should_fail: false, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(proc() {
-                runtest(test, cratename, libs, should_fail);
+                runtest(test, cratename, libs, should_fail, no_run);
             }),
         });
     }
