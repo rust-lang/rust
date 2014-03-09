@@ -201,4 +201,4 @@ prepare-maybe-clean:
 	$(if $(findstring true,$(PREPARE_CLEAN)),\
       @$(call E, cleaning destination $@),)
 	$(if $(findstring true,$(PREPARE_CLEAN)),\
-      $(Q)rm -r $(PREPARE_DEST_DIR),)
+      $(Q)rm -rf $(PREPARE_DEST_DIR),)
