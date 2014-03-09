@@ -19,12 +19,6 @@ TEST_DOC_CRATES = $(DOC_CRATES)
 TEST_HOST_CRATES = $(HOST_CRATES)
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
-# Markdown files under doc/ that should have their code extracted and run
-DOC_TEST_NAMES = tutorial guide-ffi guide-macros guide-lifetimes \
-                 guide-tasks guide-container guide-pointers \
-                 complement-cheatsheet guide-runtime \
-                 rust
-
 ######################################################################
 # Environment configuration
 ######################################################################
@@ -315,10 +309,10 @@ endif
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec: \
         $$(foreach crate,$$(TEST_DOC_CRATES), \
-           check-stage$(1)-T-$(2)-H-$(3)-doc-$$(crate)-exec)
+           check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$$(crate)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
-        $$(foreach docname,$$(DOC_TEST_NAMES), \
+        $$(foreach docname,$$(DOCS), \
            check-stage$(1)-T-$(2)-H-$(3)-doc-$$(docname)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
@@ -662,32 +656,56 @@ $(foreach host,$(CFG_HOST), \
    $(foreach pretty-name,$(PRETTY_NAMES), \
     $(eval $(call DEF_RUN_PRETTY_TEST,$(stage),$(target),$(host),$(pretty-name)))))))
 
-define DEF_RUN_DOC_TEST
 
-DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4) := \
-        $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
-        --src-base $(3)/test/doc-$(4)/	\
-        --build-base $(3)/test/doc-$(4)/	\
-        --mode run-pass
+######################################################################
+# Crate & freestanding documentation tests
+######################################################################
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
-
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
-                doc-$(4)-extract$(3)
-	@$$(call E, run doc-$(4) [$(2)]: $$<)
-	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
-                $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4)) \
-		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
-                && touch $$@
-
+define DEF_RUSTDOC
+RUSTDOC_EXE_$(1)_T_$(2)_H_$(3) := $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+RUSTDOC_$(1)_T_$(2)_H_$(3) := $$(RPATH_VAR$(1)_T_$(2)_H_$(3)) $$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
 endef
 
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
   $(foreach stage,$(STAGES), \
-   $(foreach docname,$(DOC_TEST_NAMES), \
-    $(eval $(call DEF_RUN_DOC_TEST,$(stage),$(target),$(host),$(docname)))))))
+   $(eval $(call DEF_RUSTDOC,$(stage),$(target),$(host))))))
+
+# Freestanding
+
+define DEF_DOC_TEST
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
+
+# If NO_REBUILD is set then break the dependencies on everything but
+# the source files so we can test documentation without rebuilding
+# rustdoc etc.
+ifeq ($(NO_REBUILD),)
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
+	$$(D)/$(4).md \
+	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
+	$$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
+else
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(D)/$(4).md
+endif
+
+ifeq ($(2),$$(CFG_BUILD))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
+	@$$(call E, run doc-$(4) [$(2)])
+	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test $$< --test-args "$$(TESTARGS)" && touch $$@
+else
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
+	touch $$@
+endif
+endef
+
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach docname,$(DOCS), \
+    $(eval $(call DEF_DOC_TEST,$(stage),$(target),$(host),$(docname)))))))
+
+# Crates
 
 define DEF_CRATE_DOC_TEST
 
@@ -695,24 +713,24 @@ define DEF_CRATE_DOC_TEST
 # the source files so we can test crate documentation without
 # rebuilding any of the parent crates.
 ifeq ($(NO_REBUILD),)
-DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
+CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
 	$$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
 	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
-	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+	$$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
 else
-DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
+CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
+check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$(4)-exec: \
+	$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4))
 
 ifeq ($(2),$$(CFG_BUILD))
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
-	@$$(call E, run doc-$(4) [$(2)])
-	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
-		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
+	@$$(call E, run doc-crate-$(4) [$(2)])
+	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test \
 	    	$$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)):
 	touch $$@
 endif
 
@@ -725,33 +743,13 @@ $(foreach host,$(CFG_HOST), \
     $(eval $(call DEF_CRATE_DOC_TEST,$(stage),$(target),$(host),$(crate)))))))
 
 ######################################################################
-# Extracting tests for docs
-######################################################################
-
-EXTRACT_TESTS := "$(CFG_PYTHON)" $(S)src/etc/extract-tests.py
-
-define DEF_DOC_TEST_HOST
-
-doc-$(2)-extract$(1):
-	@$$(call E, extract: $(2) tests)
-	$$(Q)rm -f $(1)/test/doc-$(2)/*.rs
-	$$(Q)$$(EXTRACT_TESTS) $$(D)/$(2).md $(1)/test/doc-$(2)
-
-endef
-
-$(foreach host,$(CFG_HOST), \
- $(foreach docname,$(DOC_TEST_NAMES), \
-  $(eval $(call DEF_DOC_TEST_HOST,$(host),$(docname)))))
-
-
-######################################################################
 # Shortcut rules
 ######################################################################
 
 TEST_GROUPS = \
 	crates \
 	$(foreach crate,$(TEST_CRATES),$(crate)) \
-	$(foreach crate,$(TEST_DOC_CRATES),doc-$(crate)) \
+	$(foreach crate,$(TEST_DOC_CRATES),doc-crate-$(crate)) \
 	rpass \
 	rpass-full \
 	rfail \
@@ -762,7 +760,7 @@ TEST_GROUPS = \
 	debuginfo \
 	codegen \
 	doc \
-	$(foreach docname,$(DOC_TEST_NAMES),doc-$(docname)) \
+	$(foreach docname,$(DOCS),doc-$(docname)) \
 	pretty \
 	pretty-rpass \
 	pretty-rpass-full \
@@ -830,10 +828,10 @@ $(foreach stage,$(STAGES), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
 
 define DEF_CHECK_DOC_FOR_STAGE
-check-stage$(1)-docs: $$(foreach docname,$$(DOC_TEST_NAMES),\
+check-stage$(1)-docs: $$(foreach docname,$$(DOCS),\
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
-                     $$(foreach crate,$$(DOC_CRATE_NAMES),\
-                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(crate))
+                     $$(foreach crate,$$(TEST_DOC_CRATES),\
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))
 endef
 
 $(foreach stage,$(STAGES), \

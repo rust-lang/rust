@@ -1058,10 +1058,12 @@ being destroyed along with the owner. Since the `list` variable above is
 immutable, the whole list is immutable. The memory allocation itself is the
 box, while the owner holds onto a pointer to it:
 
-              List box             List box           List box            List box
-            +--------------+    +--------------+    +--------------+    +--------------+
-    list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
-            +--------------+    +--------------+    +--------------+    +--------------+
+~~~ {.notrust}
+          List box             List box           List box            List box
+        +--------------+    +--------------+    +--------------+    +--------------+
+list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
+        +--------------+    +--------------+    +--------------+    +--------------+
+~~~
 
 > ***Note:*** the above diagram shows the logical contents of the enum. The actual
 > memory layout of the enum may vary. For example, for the `List` enum shown
@@ -1173,7 +1175,7 @@ ownership of a list to be passed in rather than just mutating it in-place.
 The obvious signature for a `List` equality comparison is the following:
 
 ~~~{.ignore}
-fn eq(xs: List, ys: List) -> bool { ... }
+fn eq(xs: List, ys: List) -> bool { /* ... */ }
 ~~~
 
 However, this will cause both lists to be moved into the function. Ownership
@@ -1181,7 +1183,7 @@ isn't required to compare the lists, so the function should take *references*
 (&T) instead.
 
 ~~~{.ignore}
-fn eq(xs: &List, ys: &List) -> bool { ... }
+fn eq(xs: &List, ys: &List) -> bool { /* ... */ }
 ~~~
 
 A reference is a *non-owning* view of a value. A reference can be obtained with the `&` (address-of)
@@ -1881,9 +1883,9 @@ A caller must in turn have a compatible pointer type to call the method.
 #     Rectangle(Point, Point)
 # }
 impl Shape {
-    fn draw_reference(&self) { ... }
-    fn draw_owned(~self) { ... }
-    fn draw_value(self) { ... }
+    fn draw_reference(&self) { /* ... */ }
+    fn draw_owned(~self) { /* ... */ }
+    fn draw_value(self) { /* ... */ }
 }
 
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
@@ -1906,9 +1908,9 @@ to a reference.
 #     Rectangle(Point, Point)
 # }
 # impl Shape {
-#    fn draw_reference(&self) { ... }
-#    fn draw_owned(~self) { ... }
-#    fn draw_value(self) { ... }
+#    fn draw_reference(&self) { /* ... */ }
+#    fn draw_owned(~self) { /* ... */ }
+#    fn draw_value(self) { /* ... */ }
 # }
 # let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 // As with typical function arguments, managed and owned pointers
@@ -1934,8 +1936,8 @@ These methods are the preferred way to define constructor functions.
 
 ~~~~ {.ignore}
 impl Circle {
-    fn area(&self) -> f64 { ... }
-    fn new(area: f64) -> Circle { ... }
+    fn area(&self) -> f64 { /* ... */ }
+    fn new(area: f64) -> Circle { /* ... */ }
 }
 ~~~~
 
@@ -2395,8 +2397,8 @@ to an object:
 # fn new_rectangle() -> Rectangle { true }
 # fn draw_all(shapes: &[~Drawable]) {}
 
-impl Drawable for Circle { fn draw(&self) { ... } }
-impl Drawable for Rectangle { fn draw(&self) { ... } }
+impl Drawable for Circle { fn draw(&self) { /* ... */ } }
+impl Drawable for Rectangle { fn draw(&self) { /* ... */ } }
 
 let c: ~Circle = ~new_circle();
 let r: ~Rectangle = ~new_rectangle();
@@ -2510,7 +2512,7 @@ use std::f64::consts::PI;
 # impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI).sqrt() } }
 # impl Shape for CircleStruct { fn area(&self) -> f64 { PI * square(self.radius) } }
 
-let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
+let concrete = @CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
 let mycircle: @Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
@@ -2667,8 +2669,8 @@ mod farm {
     }
 
     impl Farm {
-        fn feed_chickens(&self) { ... }
-        pub fn add_chicken(&self, c: Chicken) { ... }
+        fn feed_chickens(&self) { /* ... */ }
+        pub fn add_chicken(&self, c: Chicken) { /* ... */ }
     }
 
     pub fn feed_animals(farm: &Farm) {
@@ -3144,9 +3146,10 @@ We define two crates, and use one of them as a library in the other.
 ~~~~
 // `world.rs`
 #[crate_id = "world#0.42"];
-# extern crate extra;
+
+# mod secret_module_to_make_this_test_run {
 pub fn explore() -> &'static str { "world" }
-# fn main() {}
+# }
 ~~~~
 
 ~~~~ {.ignore}
