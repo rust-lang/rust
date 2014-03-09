@@ -299,9 +299,9 @@ impl<'a> Context<'a> {
 
         let lib = m.move_iter().next().unwrap();
         if slot.is_none() {
-            info!("{} reading meatadata from: {}", flavor, lib.display());
+            info!("{} reading metadata from: {}", flavor, lib.display());
             match get_metadata_section(self.os, &lib) {
-                Some(blob) => {
+                Ok(blob) => {
                     if self.crate_matches(blob.as_slice()) {
                         *slot = Some(blob);
                     } else {
@@ -309,7 +309,7 @@ impl<'a> Context<'a> {
                         return None;
                     }
                 }
-                None => {
+                Err(_) => {
                     info!("no metadata found");
                     return None
                 }
@@ -388,7 +388,7 @@ impl ArchiveMetadata {
 }
 
 // Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(os: Os, filename: &Path) -> Option<MetadataBlob> {
+fn get_metadata_section(os: Os, filename: &Path) -> Result<MetadataBlob, ~str> {
     let start = time::precise_time_ns();
     let ret = get_metadata_section_imp(os, filename);
     info!("reading {} => {}ms", filename.filename_display(),
@@ -396,7 +396,10 @@ fn get_metadata_section(os: Os, filename: &Path) -> Option<MetadataBlob> {
     return ret;
 }
 
-fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
+fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~str> {
+    if !filename.exists() {
+        return Err(format!("no such file: '{}'", filename.display()));
+    }
     if filename.filename_str().unwrap().ends_with(".rlib") {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
@@ -405,19 +408,26 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
             Some(ar) => ar,
             None => {
                 debug!("llvm didn't like `{}`", filename.display());
-                return None;
+                return Err(format!("failed to read rlib metadata: '{}'",
+                                   filename.display()));
             }
         };
-        return ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar));
+        return match ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar)) {
+            None => return Err(format!("failed to read rlib metadata: '{}'",
+                                       filename.display())),
+            Some(blob) => return Ok(blob)
+        }
     }
     unsafe {
         let mb = filename.with_c_str(|buf| {
             llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
         });
-        if mb as int == 0 { return None }
+        if mb as int == 0 {
+            return Err(format!("error reading library: '{}'",filename.display()))
+        }
         let of = match ObjectFile::new(mb) {
             Some(of) => of,
-            _ => return None
+            _ => return Err(format!("provided path not an object file: '{}'", filename.display()))
         };
         let si = mk_section_iter(of.llof);
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
@@ -427,7 +437,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
             if read_meta_section_name(os) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
-                let mut found = None;
+                let mut found = Err(format!("metadata not found: '{}'", filename.display()));
                 let cvbuf: *u8 = cast::transmute(cbuf);
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
@@ -435,22 +445,23 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
                 let minsz = cmp::min(vlen, csz);
                 let version_ok = vec::raw::buf_as_slice(cvbuf, minsz,
                     |buf0| buf0 == encoder::metadata_encoding_version);
-                if !version_ok { return None; }
+                if !version_ok { return Err(format!("incompatible metadata version found: '{}'",
+                                                    filename.display()));}
 
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
                 vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
-                    found = Some(MetadataVec(inflated));
+                    found = Ok(MetadataVec(inflated));
                 });
-                if found.is_some() {
+                if found.is_ok() {
                     return found;
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);
         }
-        return None;
+        return Err(format!("metadata not found: '{}'", filename.display()));
     }
 }
 
@@ -478,9 +489,9 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 pub fn list_file_metadata(os: Os, path: &Path,
                           out: &mut io::Writer) -> io::IoResult<()> {
     match get_metadata_section(os, path) {
-        Some(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
-        None => {
-            write!(out, "could not find metadata in {}.\n", path.display())
+        Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
+        Err(msg) => {
+            write!(out, "{}\n", msg)
         }
     }
 }
