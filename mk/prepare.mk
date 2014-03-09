@@ -41,7 +41,7 @@ prepare-everything: prepare-host prepare-targets
 DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
 DEFAULT_PREPARE_LIB_CMD = install -m644
-DEFAULT_PREPARE_MAN_CMD = install -m755
+DEFAULT_PREPARE_MAN_CMD = install -m644
 
 # On windows we install from stage3, but on unix only stage2
 # Because of the way these rules are organized, preparing from any
