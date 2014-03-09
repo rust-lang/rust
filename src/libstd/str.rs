@@ -3619,6 +3619,18 @@ mod tests {
     }
 
     #[test]
+    fn test_slice_shift_char() {
+        let data = "ประเทศไทย中";
+        assert_eq!(data.slice_shift_char(), (Some('ป'), "ระเทศไทย中"));
+    }
+
+    #[test]
+    fn test_slice_shift_char_2() {
+        let empty = "";
+        assert_eq!(empty.slice_shift_char(), (None, ""));
+    }
+
+    #[test]
     fn test_push_byte() {
         let mut s = ~"ABC";
         unsafe{raw::push_byte(&mut s, 'D' as u8)};
