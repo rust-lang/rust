@@ -44,7 +44,7 @@ fn main() {
     for _ in range(0, 10u) {
         task::spawn(proc() {
             let result = count(5u);
-            info!("result = %?", result);
+            println!("result = %?", result);
             fail!();
         });
     }

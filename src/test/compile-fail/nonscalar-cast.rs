@@ -15,5 +15,5 @@ struct foo {
 }
 
 fn main() {
-    info!("{:?}", foo{ x: 1 } as int);
+    println!("{:?}", foo{ x: 1 } as int);
 }

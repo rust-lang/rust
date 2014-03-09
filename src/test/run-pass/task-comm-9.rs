@@ -34,7 +34,7 @@ fn test00() {
     let mut i: int = 0;
     while i < number_of_messages {
         sum += rx.recv();
-        info!("{:?}", r);
+        println!("{:?}", r);
         i += 1;
     }
 

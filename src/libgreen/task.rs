@@ -178,14 +178,13 @@ impl GreenTask {
                      f: proc()) -> ~GreenTask {
         let TaskOpts {
             notify_chan, name, stack_size,
-            stderr, stdout, logger,
+            stderr, stdout,
         } = opts;
 
         let mut green = GreenTask::new(pool, stack_size, f);
         {
             let task = green.task.get_mut_ref();
             task.name = name;
-            task.logger = logger;
             task.stderr = stderr;
             task.stdout = stdout;
             match notify_chan {

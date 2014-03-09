@@ -339,7 +339,12 @@ impl<'a> ExtCtxt<'a> {
     pub fn backtrace(&self) -> Option<@ExpnInfo> { self.backtrace }
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
-    pub fn mod_path(&self) -> Vec<ast::Ident> { self.mod_path.clone() }
+    pub fn mod_path(&self) -> Vec<ast::Ident> {
+        let mut v = Vec::new();
+        v.push(token::str_to_ident(self.ecfg.crate_id.name));
+        v.extend(&mut self.mod_path.iter().map(|a| *a));
+        return v;
+    }
     pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {

@@ -15,9 +15,9 @@
 use std::comm;
 
 fn starve_main(alive: Receiver<int>) {
-    info!("signalling main");
+    println!("signalling main");
     alive.recv();
-    info!("starving main");
+    println!("starving main");
     let mut i: int = 0;
     loop { i += 1; }
 }
@@ -25,14 +25,14 @@ fn starve_main(alive: Receiver<int>) {
 pub fn main() {
     let (port, chan) = stream();
 
-    info!("main started");
+    println!("main started");
     spawn(proc() {
         starve_main(port);
     });
     let mut i: int = 0;
-    info!("main waiting for alive signal");
+    println!("main waiting for alive signal");
     chan.send(i);
-    info!("main got alive signal");
-    while i < 50 { info!("main iterated"); i += 1; }
-    info!("main completed");
+    println!("main got alive signal");
+    while i < 50 { println!("main iterated"); i += 1; }
+    println!("main completed");
 }

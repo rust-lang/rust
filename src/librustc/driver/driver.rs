@@ -46,6 +46,7 @@ use syntax::abi;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::codemap;
+use syntax::crateid::CrateId;
 use syntax::diagnostic;
 use syntax::diagnostic::Emitter;
 use syntax::ext::base::CrateLoader;
@@ -160,6 +161,15 @@ pub enum Input {
     StrInput(~str)
 }
 
+impl Input {
+    fn filestem(&self) -> ~str {
+        match *self {
+            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_str(),
+            StrInput(_) => ~"rust_out",
+        }
+    }
+}
+
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
     let krate = time(sess.time_passes(), "parsing", (), |_| {
@@ -182,6 +192,10 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
         krate.encode(&mut json);
     }
 
+    if sess.show_span() {
+        front::show_span::run(sess, &krate);
+    }
+
     krate
 }
 
@@ -194,7 +208,8 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: Session,
                                     loader: &mut CrateLoader,
-                                    mut krate: ast::Crate)
+                                    mut krate: ast::Crate,
+                                    crate_id: &CrateId)
                                     -> (ast::Crate, syntax::ast_map::Map) {
     let time_passes = sess.time_passes();
 
@@ -223,7 +238,8 @@ pub fn phase_2_configure_and_expand(sess: Session,
     krate = time(time_passes, "expansion", krate, |krate| {
         let cfg = syntax::ext::expand::ExpansionConfig {
             loader: loader,
-            deriving_hash_type_parameter: sess.features.default_type_params.get()
+            deriving_hash_type_parameter: sess.features.default_type_params.get(),
+            crate_id: crate_id.clone(),
         };
         syntax::ext::expand::expand_crate(sess.parse_sess,
                                           cfg,
@@ -461,6 +477,9 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
+    if sess.show_span() {
+        return true;
+    }
     return sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0;
 }
 
@@ -484,7 +503,7 @@ fn write_out_deps(sess: Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) -> io::IoResult<()> {
-    let id = link::find_crate_id(krate.attrs.as_slice(), outputs);
+    let id = link::find_crate_id(krate.attrs.as_slice(), outputs.out_filestem);
 
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.iter() {
@@ -547,22 +566,21 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans) = {
+    let outputs;
+    let trans = {
         let (expanded_crate, ast_map) = {
             let krate = phase_1_parse_input(sess, cfg, input);
-            if sess.show_span() {
-                front::show_span::run(sess, &krate);
-                return;
-            }
             if stop_after_phase_1(sess) { return; }
-            let loader = &mut Loader::new(sess);
-            phase_2_configure_and_expand(sess, loader, krate)
-        };
-        let outputs = build_output_filenames(input,
+            outputs = build_output_filenames(input,
                                              outdir,
                                              output,
-                                             expanded_crate.attrs.as_slice(),
+                                             krate.attrs.as_slice(),
                                              sess);
+            let loader = &mut Loader::new(sess);
+            let id = link::find_crate_id(krate.attrs.as_slice(),
+                                         outputs.out_filestem);
+            phase_2_configure_and_expand(sess, loader, krate, &id)
+        };
 
         write_out_deps(sess, input, &outputs, &expanded_crate).unwrap();
 
@@ -570,9 +588,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
         if stop_after_phase_3(sess) { return; }
-        let trans = phase_4_translate_to_llvm(sess, expanded_crate,
-                                              &analysis, &outputs);
-        (outputs, trans)
+        phase_4_translate_to_llvm(sess, expanded_crate, &analysis, &outputs)
     };
     phase_5_run_llvm_passes(sess, &trans, &outputs);
     if stop_after_phase_5(sess) { return; }
@@ -645,11 +661,13 @@ pub fn pretty_print_input(sess: Session,
                           input: &Input,
                           ppm: PpMode) {
     let krate = phase_1_parse_input(sess, cfg, input);
+    let id = link::find_crate_id(krate.attrs.as_slice(), input.filestem());
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
             let loader = &mut Loader::new(sess);
-            let (krate, ast_map) = phase_2_configure_and_expand(sess, loader, krate);
+            let (krate, ast_map) = phase_2_configure_and_expand(sess, loader,
+                                                                krate, &id);
             (krate, Some(ast_map), true)
         }
         _ => (krate, None, false)
@@ -1137,11 +1155,7 @@ pub fn build_output_filenames(input: &Input,
                 None => Path::new(".")
             };
 
-            let mut stem = match *input {
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                FileInput(ref ifile) => ifile.filestem_str().unwrap().to_str(),
-                StrInput(_) => ~"rust_out"
-            };
+            let mut stem = input.filestem();
 
             // If a crateid is present, we use it as the link name
             let crateid = attr::find_crateid(attrs);

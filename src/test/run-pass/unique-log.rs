@@ -10,5 +10,5 @@
 
 pub fn main() {
     let i = ~100;
-    error!("{:?}", i);
+    println!("{:?}", i);
 }

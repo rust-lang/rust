@@ -11,9 +11,11 @@
 #[crate_id="boot#0.1"];
 #[crate_type="dylib"];
 #[no_uv];
+#[feature(phase)];
 
 extern crate rustuv;
 extern crate green;
+#[phase(syntax, link)] extern crate log;
 
 use std::rt::crate_map::{CrateMap, rust_set_crate_map};
 
@@ -24,7 +26,7 @@ pub static set_crate_map: extern "C" fn(*CrateMap<'static>) = rust_set_crate_map
 #[no_mangle] // this needs to get called from C
 pub extern "C" fn foo(argc: int, argv: **u8) -> int {
     green::start(argc, argv, proc() {
-        if log_enabled!(std::logging::DEBUG) { return }
+        if log_enabled!(log::DEBUG) { return }
         fail!()
     })
 }

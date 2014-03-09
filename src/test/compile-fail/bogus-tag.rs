@@ -16,7 +16,7 @@ enum color { rgb(int, int, int), rgba(int, int, int, int), }
 fn main() {
     let red: color = rgb(255, 0, 0);
     match red {
-      rgb(r, g, b) => { info!("rgb"); }
-      hsl(h, s, l) => { info!("hsl"); }
+      rgb(r, g, b) => { println!("rgb"); }
+      hsl(h, s, l) => { println!("hsl"); }
     }
 }

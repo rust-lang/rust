@@ -20,9 +20,9 @@ macro_rules! spawn {
 
 pub fn main() {
     spawn! {
-        info!("stmt");
+        println!("stmt");
     };
     let _ = spawn! {
-        info!("expr");
+        println!("expr");
     };
 }

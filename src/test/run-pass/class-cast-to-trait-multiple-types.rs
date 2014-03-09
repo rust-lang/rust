@@ -22,7 +22,7 @@ struct dog {
 
 impl dog {
     fn bark(&mut self) -> int {
-      info!("Woof {} {}", self.barks, self.volume);
+      println!("Woof {} {}", self.barks, self.volume);
       self.barks += 1u;
       if self.barks % 3u == 0u {
           self.volume += 1;
@@ -30,7 +30,7 @@ impl dog {
       if self.barks % 10u == 0u {
           self.volume -= 2;
       }
-      info!("Grrr {} {}", self.barks, self.volume);
+      println!("Grrr {} {}", self.barks, self.volume);
       self.volume
     }
 }
@@ -70,7 +70,7 @@ impl cat {
 
 impl cat {
     fn meow(&mut self) -> uint {
-        info!("Meow");
+        println!("Meow");
         self.meows += 1u;
         if self.meows % 5u == 0u {
             self.how_hungry += 1;

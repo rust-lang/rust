@@ -26,5 +26,5 @@ fn main() {
     let x = foo(10);
     let _y = x.clone();
     //~^ ERROR does not implement any method in scope
-    error!("{:?}", x);
+    println!("{:?}", x);
 }

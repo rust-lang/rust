@@ -11,7 +11,7 @@
 // ignore-fast #[feature] doesn't work with check-fast
 #[feature(asm)];
 
-fn foo(x: int) { info!("{}", x); }
+fn foo(x: int) { println!("{}", x); }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]

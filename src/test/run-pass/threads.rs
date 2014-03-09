@@ -13,7 +13,7 @@ use std::task;
 pub fn main() {
     let mut i = 10;
     while i > 0 { task::spawn({let i = i; proc() child(i)}); i = i - 1; }
-    info!("main thread exiting");
+    println!("main thread exiting");
 }
 
-fn child(x: int) { info!("{}", x); }
+fn child(x: int) { println!("{}", x); }

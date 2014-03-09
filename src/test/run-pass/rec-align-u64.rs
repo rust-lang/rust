@@ -76,9 +76,9 @@ pub fn main() {
         // Send it through the shape code
         let y = format!("{:?}", x);
 
-        info!("align inner = {}", rusti::min_align_of::<Inner>());
-        info!("size outer = {}", mem::size_of::<Outer>());
-        info!("y = {}", y);
+        println!("align inner = {}", rusti::min_align_of::<Inner>());
+        println!("size outer = {}", mem::size_of::<Outer>());
+        println!("y = {}", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
         assert_eq!(rusti::min_align_of::<Inner>(), m::m::align());

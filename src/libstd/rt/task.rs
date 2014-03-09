@@ -21,7 +21,6 @@ use comm::Sender;
 use io::Writer;
 use iter::{Iterator, Take};
 use local_data;
-use logging::Logger;
 use ops::Drop;
 use option::{Option, Some, None};
 use prelude::drop;
@@ -51,7 +50,6 @@ pub struct Task {
     destroyed: bool,
     name: Option<SendStr>,
 
-    logger: Option<~Logger>,
     stdout: Option<~Writer>,
     stderr: Option<~Writer>,
 
@@ -95,7 +93,6 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             name: None,
-            logger: None,
             stdout: None,
             stderr: None,
             imp: None,
@@ -129,11 +126,9 @@ impl Task {
                 #[allow(unused_must_use)]
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);
-                    let logger = task.get().logger.take();
                     let stderr = task.get().stderr.take();
                     let stdout = task.get().stdout.take();
                     drop(task);
-                    drop(logger); // loggers are responsible for flushing
                     match stdout { Some(mut w) => { w.flush(); }, None => {} }
                     match stderr { Some(mut w) => { w.flush(); }, None => {} }
                 }
