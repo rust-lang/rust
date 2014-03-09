@@ -223,6 +223,19 @@ fi
 step_msg "validating $CFG_SELF args"
 validate_opt
 
+# Sanity check: can we can write to the destination?
+touch "${CFG_PREFIX}/lib/rust-install-probe" 2> /dev/null
+if [ $? -ne 0 ]
+then
+    err "can't write to destination. try again with 'sudo'."
+fi
+rm -r "${CFG_PREFIX}/lib/rust-install-probe"
+need_ok "failed to remove install probe"
+
+# Sanity check: can we run these binaries?
+"${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
+need_ok "can't run these binaries on this platform"
+
 # First, uninstall from the installation prefix
 # FIXME: Hardcoded 'rustlib' ignores CFG_RUSTLIBDIR
 if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
@@ -262,3 +275,9 @@ while read p; do
 
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/lib/rustlib/manifest"
+
+echo
+echo "    Rust is ready to roll."
+echo
+
+
