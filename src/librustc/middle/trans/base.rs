@@ -1785,16 +1785,10 @@ pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
 
 fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
                       llfn: ValueRef) {
-    {
-        let mut item_symbols = ccx.item_symbols.borrow_mut();
-        item_symbols.get().insert(node_id, sym);
-    }
+    ccx.item_symbols.borrow_mut().get().insert(node_id, sym);
 
-    {
-        let reachable = ccx.reachable.borrow();
-        if !reachable.get().contains(&node_id) {
-            lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
-        }
+    if !ccx.reachable.contains(&node_id) {
+        lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
     if is_entry_fn(ccx.sess(), node_id) && !ccx.sess().building_library.get() {
@@ -1995,27 +1989,17 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 });
 
-                                {
-                                    let reachable = ccx.reachable.borrow();
-                                    if !reachable.get().contains(&id) {
-                                        lib::llvm::SetLinkage(
-                                            g,
-                                            lib::llvm::InternalLinkage);
-                                    }
+                                if !ccx.reachable.contains(&id) {
+                                    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                                 }
 
                                 // Apply the `unnamed_addr` attribute if
                                 // requested
                                 if attr::contains_name(i.attrs.as_slice(),
-                                                       "address_insignificant"){
-                                    {
-                                        let reachable =
-                                            ccx.reachable.borrow();
-                                        if reachable.get().contains(&id) {
-                                            ccx.sess().span_bug(i.span,
-                                                "insignificant static is \
-                                                 reachable");
-                                        }
+                                                       "address_insignificant") {
+                                    if ccx.reachable.contains(&id) {
+                                        ccx.sess().span_bug(i.span,
+                                            "insignificant static is reachable");
                                     }
                                     lib::llvm::SetUnnamedAddr(g, true);
 
@@ -2180,11 +2164,8 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             // foreign items (extern fns and extern statics) don't have internal
             // linkage b/c that doesn't quite make sense. Otherwise items can
             // have internal linkage if they're not reachable.
-            {
-                let reachable = ccx.reachable.borrow();
-                if !foreign && !reachable.get().contains(&id) {
-                    lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
-                }
+            if !foreign && !ccx.reachable.contains(&id) {
+                lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
             }
 
             let mut item_vals = ccx.item_vals.borrow_mut();
@@ -2557,7 +2538,7 @@ pub fn trans_crate(krate: ast::Crate,
                                  analysis.maps,
                                  Sha256::new(),
                                  link_meta,
-                                 analysis.reachable);
+                                 &analysis.reachable);
     {
         let _icx = push_ctxt("text");
         trans_mod(ccx, &krate.module);
@@ -2627,13 +2608,9 @@ pub fn trans_crate(krate: ast::Crate,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
 
-    let mut reachable: Vec<~str> = {
-        let reachable_map = ccx.reachable.borrow();
-        reachable_map.get().iter().filter_map(|id| {
-            let item_symbols = ccx.item_symbols.borrow();
-            item_symbols.get().find(id).map(|s| s.to_owned())
-        }).collect()
-    };
+    let mut reachable: Vec<~str> = ccx.reachable.iter().filter_map(|id| {
+        ccx.item_symbols.borrow().get().find(id).map(|s| s.to_owned())
+    }).collect();
 
     // Make sure that some other crucial symbols are not eliminated from the
     // module. This includes the main function, the crate map (used for debug
@@ -2647,12 +2624,12 @@ pub fn trans_crate(krate: ast::Crate,
     reachable.push(~"rust_eh_personality"); // referenced from .eh_frame section on some platforms
     reachable.push(~"rust_eh_personality_catch"); // referenced from rt/rust_try.ll
 
-    return CrateTranslation {
+    CrateTranslation {
         context: llcx,
         module: llmod,
         link: link_meta,
         metadata_module: ccx.metadata_llmod,
         metadata: metadata,
         reachable: reachable,
-    };
+    }
 }

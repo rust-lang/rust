@@ -48,7 +48,7 @@ pub struct CrateContext<'a> {
     intrinsics: HashMap<&'static str, ValueRef>,
     item_vals: RefCell<NodeMap<ValueRef>>,
     exp_map2: resolve::ExportMap2,
-    reachable: @RefCell<NodeSet>,
+    reachable: &'a NodeSet,
     item_symbols: RefCell<NodeMap<~str>>,
     link_meta: LinkMeta,
     drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
@@ -123,7 +123,7 @@ impl<'a> CrateContext<'a> {
                maps: astencode::Maps,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
-               reachable: @RefCell<NodeSet>)
+               reachable: &'a NodeSet)
                -> CrateContext<'a> {
         unsafe {
             let llcx = llvm::LLVMContextCreate();

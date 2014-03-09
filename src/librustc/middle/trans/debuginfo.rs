@@ -652,10 +652,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     // (by being externally visible or by being inlined into something externally visible). It might
     // better to use the `exported_items` set from `driver::CrateAnalysis` in the future, but (atm)
     // this set is not available in the translation pass.
-    let is_local_to_unit = {
-        let reachable = cx.reachable.borrow();
-        !reachable.get().contains(&fn_ast_id)
-    };
+    let is_local_to_unit = !cx.reachable.contains(&fn_ast_id);
 
     let fn_metadata = function_name.with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
