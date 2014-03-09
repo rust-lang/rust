@@ -9,23 +9,95 @@
 # except according to those terms.
 
 ######################################################################
-# Doc variables and rules
+# The various pieces of standalone documentation: guides, tutorial,
+# manual etc.
+#
+# The DOCS variable is their names (with no file extension).
+#
+# PDF_DOCS lists the targets for which PDF documentation should be
+# build.
+#
+# RUSTDOC_FLAGS_xyz variables are extra arguments to pass to the
+# rustdoc invocation for xyz.
+#
+# RUSTDOC_DEPS_xyz are extra dependencies for the rustdoc invocation
+# on xyz.
+#
+# L10N_LANGS are the languages for which the docs have been
+# translated.
 ######################################################################
+DOCS := index tutorial guide-ffi guide-macros guide-lifetimes \
+	guide-tasks guide-container guide-pointers \
+	complement-cheatsheet guide-runtime \
+	rust rustdoc
 
-DOCS :=
-CDOCS :=
-DOCS_L10N :=
-HTML_DEPS := doc/
+PDF_DOCS := tutorial rust
 
-BASE_DOC_OPTS := --standalone --toc --number-sections
-HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
-    --include-before-body=doc/version_info.html \
-    --include-in-header=doc/favicon.inc --include-after-body=doc/footer.inc
-TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md \
-    --from=markdown --include-before-body=doc/footer.tex --to=latex
-EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
+RUSTDOC_DEPS_rust := doc/full-toc.inc
+RUSTDOC_FLAGS_rust := --markdown-in-header=doc/full-toc.inc
+
+L10N_LANGS := ja
+
+# Generally no need to edit below here.
+
+# The options are passed to the documentation generators.
+RUSTDOC_HTML_OPTS = --markdown-css rust.css \
+	--markdown-before-content=doc/version_info.html \
+	--markdown-in-header=doc/favicon.inc --markdown-after-content=doc/footer.inc
+
+PANDOC_BASE_OPTS := --standalone --toc --number-sections
+PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.md \
+	--from=markdown --include-before-body=doc/footer.tex --to=latex
+PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
+
+# The rustdoc executable...
+RUSTDOC_EXE = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
+# ...with rpath included in case --disable-rpath was provided to
+# ./configure
+RUSTDOC = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(RUSTDOC_EXE)
 
 D := $(S)src/doc
+
+DOC_TARGETS :=
+COMPILER_DOC_TARGETS :=
+DOC_L10N_TARGETS :=
+
+# If NO_REBUILD is set then break the dependencies on rustdoc so we
+# build the documentation without having to rebuild rustdoc.
+ifeq ($(NO_REBUILD),)
+HTML_DEPS := $(RUSTDOC_EXE)
+else
+HTML_DEPS :=
+endif
+
+# Check for the various external utilities for the EPUB/PDF docs:
+
+ifeq ($(CFG_PDFLATEX),)
+  $(info cfg: no pdflatex found, omitting doc/rust.pdf)
+  NO_PDF_DOCS = 1
+else
+  ifeq ($(CFG_XETEX),)
+    $(info cfg: no xetex found, disabling doc/rust.pdf)
+    NO_PDF_DOCS = 1
+  else
+    ifeq ($(CFG_LUATEX),)
+       $(info cfg: lacking luatex, disabling pdflatex)
+       NO_PDF_DOCS = 1
+	endif
+  endif
+endif
+
+
+ifeq ($(CFG_PANDOC),)
+$(info cfg: no pandoc found, omitting PDF and EPUB docs)
+ONLY_HTML_DOCS = 1
+endif
+
+ifeq ($(CFG_NODE),)
+$(info cfg: no node found, omitting PDF and EPUB docs)
+ONLY_HTML_DOCS = 1
+endif
+
 
 ######################################################################
 # Rust version
@@ -46,7 +118,7 @@ doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
 GENERATED += doc/version.md doc/version_info.html
 
 ######################################################################
-# Docs, from pandoc, rustdoc (which runs pandoc), and node
+# Docs, from rustdoc and sometimes pandoc & node
 ######################################################################
 
 doc/:
@@ -75,184 +147,85 @@ doc/footer.tex: $(D)/footer.tex | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-ifeq ($(CFG_PANDOC),)
-  $(info cfg: no pandoc found, omitting docs)
-  NO_DOCS = 1
-endif
+# The (english) documentation for each doc item.
 
-ifeq ($(CFG_NODE),)
-  $(info cfg: no node found, omitting docs)
-  NO_DOCS = 1
-endif
+define DEF_SHOULD_BUILD_PDF_DOC
+SHOULD_BUILD_PDF_DOC_$(1) = 1
+endef
+$(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))))
 
-ifneq ($(NO_DOCS),1)
+define DEF_DOC
 
-DOCS += doc/rust.html
-doc/rust.html: $(D)/rust.md doc/full-toc.inc $(HTML_DEPS) | doc/
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
+# HTML (rustdoc)
+DOC_TARGETS += doc/$(1).html
+doc/$(1).html: $$(D)/$(1).md $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(1)) | doc/
+	@$$(call E, rustdoc: $$@)
+	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) $$<
 
-DOCS += doc/rust.tex
-doc/rust.tex: $(D)/rust.md doc/footer.tex doc/version.md | doc/
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
-	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
+ifneq ($(ONLY_HTML_DOCS),1)
 
-DOCS += doc/rust.epub
-doc/rust.epub: $(D)/rust.md | doc/
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
+# EPUB (pandoc directly)
+DOC_TARGETS += doc/$(1).epub
+doc/$(1).epub: $$(D)/$(1).md | doc/
+	@$$(call E, pandoc: $$@)
+	$$(Q)$$(CFG_NODE) $$(D)/prep.js --highlight $$< | \
+	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) --output=$$@
 
-DOCS += doc/rustdoc.html
-doc/rustdoc.html: $(D)/rustdoc.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+# PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
+DOC_TARGETS += doc/$(1).tex
+doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.md | doc/
+	@$$(call E, pandoc: $$@)
+	$$(Q)$$(CFG_NODE) $$(D)/prep.js $$< | \
+	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) --output=$$@
 
-DOCS += doc/tutorial.html
-doc/tutorial.html: $(D)/tutorial.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+ifneq ($(NO_PDF_DOCS),1)
+ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
+DOC_TARGETS += doc/$(1).pdf
+doc/$(1).pdf: doc/$(1).tex
+	@$$(call E, pdflatex: $$@)
+	$$(Q)$$(CFG_PDFLATEX) \
+	-interaction=batchmode \
+	-output-directory=doc \
+	$$<
+endif # SHOULD_BUILD_PDF_DOCS_$(1)
+endif # NO_PDF_DOCS
 
-DOCS += doc/tutorial.tex
-doc/tutorial.tex: $(D)/tutorial.md doc/footer.tex doc/version.md
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
-	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
+endif # ONLY_HTML_DOCS
 
-DOCS += doc/tutorial.epub
-doc/tutorial.epub: $(D)/tutorial.md
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
+endef
+
+$(foreach docname,$(DOCS),$(eval $(call DEF_DOC,$(docname))))
 
 
-DOCS_L10N += doc/l10n/ja/tutorial.html
-doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rust.css
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight doc/l10n/ja/tutorial.md | \
-          $(CFG_PANDOC) --standalone --toc \
-           --section-divs --number-sections \
-           --from=markdown --to=html5 --css=../../rust.css \
-           --include-before-body=doc/version_info.html \
-           --output=$@
+# Localized documentation
 
-# Complementary documentation
+# FIXME: I (huonw) haven't actually been able to test properly, since
+# e.g. (by default) I'm doing an out-of-tree build (#12763), but even
+# adjusting for that, the files are too old(?) and are rejected by
+# po4a.
 #
-DOCS += doc/index.html
-doc/index.html: $(D)/index.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+# As such, I've attempted to get it working as much as possible (and
+# switching from pandoc to rustdoc), but preserving the old behaviour
+# (e.g. only running on the tutorial)
+.PHONY: l10n-mds
+l10n-mds: $(D)/po4a.conf \
+		$(foreach lang,$(L10N_LANG),$(D)/po/$(lang)/*.md.po)
+	$(warning WARNING: localized documentation is experimental)
+	po4a --copyright-holder="The Rust Project Developers" \
+		--package-name="Rust" \
+		--package-version="$(CFG_RELEASE)" \
+		-M UTF-8 -L UTF-8 \
+		$(D)/po4a.conf
 
-DOCS += doc/complement-lang-faq.html
-doc/complement-lang-faq.html: $(D)/complement-lang-faq.md doc/full-toc.inc $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
+define DEF_L10N_DOC
+DOC_L10N_TARGETS += doc/l10n/$(1)/$(2).html
+doc/l10n/$(1)/$(2).html: l10n-mds $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(2))
+	@$$(call E, rustdoc: $$@)
+	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) doc/l10n/$(1)/$(2).md
+endef
 
-DOCS += doc/complement-project-faq.html
-doc/complement-project-faq.html: $(D)/complement-project-faq.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+$(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang),tutorial)))
 
-DOCS += doc/complement-cheatsheet.html
-doc/complement-cheatsheet.html: $(D)/complement-cheatsheet.md doc/full-toc.inc $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
-
-DOCS += doc/complement-bugreport.html
-doc/complement-bugreport.html: $(D)/complement-bugreport.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-# Guides
-
-DOCS += doc/guide-macros.html
-doc/guide-macros.html: $(D)/guide-macros.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-container.html
-doc/guide-container.html: $(D)/guide-container.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-ffi.html
-doc/guide-ffi.html: $(D)/guide-ffi.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-testing.html
-doc/guide-testing.html: $(D)/guide-testing.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-lifetimes.html
-doc/guide-lifetimes.html: $(D)/guide-lifetimes.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-tasks.html
-doc/guide-tasks.html: $(D)/guide-tasks.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-pointers.html
-doc/guide-pointers.html: $(D)/guide-pointers.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-DOCS += doc/guide-runtime.html
-doc/guide-runtime.html: $(D)/guide-runtime.md $(HTML_DEPS)
-	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
-	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
-
-  ifeq ($(CFG_PDFLATEX),)
-    $(info cfg: no pdflatex found, omitting doc/rust.pdf)
-  else
-    ifeq ($(CFG_XETEX),)
-      $(info cfg: no xetex found, disabling doc/rust.pdf)
-    else
-      ifeq ($(CFG_LUATEX),)
-        $(info cfg: lacking luatex, disabling pdflatex)
-      else
-
-DOCS += doc/rust.pdf
-doc/rust.pdf: doc/rust.tex
-	@$(call E, pdflatex: $@)
-	$(Q)$(CFG_PDFLATEX) \
-        -interaction=batchmode \
-        -output-directory=doc \
-        $<
-
-DOCS += doc/tutorial.pdf
-doc/tutorial.pdf: doc/tutorial.tex
-	@$(call E, pdflatex: $@)
-	$(Q)$(CFG_PDFLATEX) \
-        -interaction=batchmode \
-        -output-directory=doc \
-        $<
-
-      endif
-    endif
-  endif
-
-endif # No pandoc / node
 
 ######################################################################
 # LLnextgen (grammar analysis from refman)
@@ -278,50 +251,44 @@ endif
 # Rustdoc (libstd/extra)
 ######################################################################
 
-# The rustdoc executable, rpath included in case --disable-rpath was provided to
-# ./configure
-RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
 #
 # $(1) - The crate name (std/extra)
 #
 # Passes --cfg stage2 to rustdoc because it uses the stage2 librustc.
-define libdoc
-doc/$(1)/index.html:							    \
-	    $$(CRATEFILE_$(1))						    \
-	    $$(RSINPUTS_$(1))						    \
-	    $$(RUSTDOC)							    \
-	    $$(foreach dep,$$(RUST_DEPS_$(1)),				    \
-		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep))
-	@$$(call E, rustdoc: $$@)
-	$$(Q)$$(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $$(RUSTDOC) \
-	    --cfg stage2 $$<
+define DEF_LIB_DOC
 
+# If NO_REBUILD is set then break the dependencies on rustdoc so we
+# build crate documentation without having to rebuild rustdoc.
+ifeq ($(NO_REBUILD),)
+LIB_DOC_DEP_$(1) = \
+	$$(CRATEFILE_$(1)) \
+	$$(RSINPUTS_$(1)) \
+	$$(RUSTDOC_EXE) \
+	$$(foreach dep,$$(RUST_DEPS_$(1)), \
+		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep))
+else
+LIB_DOC_DEP_$(1) = $$(CRATEFILE_$(1)) $$(RSINPUTS_$(1))
+endif
+
+$(2) += doc/$(1)/index.html
+doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1))
+	@$$(call E, rustdoc $$@)
+	$$(Q)$$(RUSTDOC) --cfg stage2 $$<
 endef
 
-$(foreach crate,$(CRATES),$(eval $(call libdoc,$(crate))))
-
-DOCS += $(DOC_CRATES:%=doc/%/index.html)
-
-CDOCS += doc/rustc/index.html
-CDOCS += doc/syntax/index.html
+$(foreach crate,$(DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),DOC_TARGETS)))
+$(foreach crate,$(COMPILER_DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),COMPILER_DOC_TARGETS)))
 
 ifdef CFG_DISABLE_DOCS
   $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
-  DOCS :=
+  DOC_TARGETS :=
 endif
 
-docs: $(DOCS)
-compiler-docs: $(CDOCS)
+docs: $(DOC_TARGETS)
+compiler-docs: $(COMPILER_DOC_TARGETS)
 
-docs-l10n: $(DOCS_L10N)
-
-doc/l10n/%.md: doc/po/%.md.po doc/po4a.conf
-	po4a --copyright-holder="The Rust Project Developers" \
-	     --package-name="Rust" \
-	     --package-version="$(CFG_RELEASE)" \
-	     -M UTF-8 -L UTF-8 \
-	     doc/po4a.conf
+docs-l10n: $(DOC_L10N_TARGETS)
 
 .PHONY: docs-l10n

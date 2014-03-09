@@ -263,6 +263,7 @@ to the C library and afterwards be invoked from there.
 A basic example is:
 
 Rust code:
+
 ~~~~ {.ignore}
 extern fn callback(a:i32) {
     println!("I'm called from C with value {0}", a);
@@ -283,7 +284,8 @@ fn main() {
 ~~~~
 
 C code:
-~~~~ {.ignore}
+
+~~~~ {.notrust}
 typedef void (*rust_callback)(int32_t);
 rust_callback cb;
 
@@ -314,6 +316,7 @@ the notification. This will allow the callback to unsafely access the
 referenced Rust object.
 
 Rust code:
+
 ~~~~ {.ignore}
 
 struct RustObject {
@@ -346,7 +349,8 @@ fn main() {
 ~~~~
 
 C code:
-~~~~ {.ignore}
+
+~~~~ {.notrust}
 typedef void (*rust_callback)(int32_t);
 void* cb_target;
 rust_callback cb;

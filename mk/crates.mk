@@ -92,6 +92,7 @@ TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 ################################################################################
 
 DOC_CRATES := $(filter-out rustc, $(filter-out syntax, $(CRATES)))
+COMPILER_DOC_CRATES := rustc syntax
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.

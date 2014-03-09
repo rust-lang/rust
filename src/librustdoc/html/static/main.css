@@ -320,9 +320,16 @@ pre.rust .string { color: #718C00; }
 pre.rust .lifetime { color: #C13928; }
 pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 
-h1 a.anchor,
-h2 a.anchor,
-h3 a.anchor { display: none; }
-h1:hover a.anchor,
-h2:hover a.anchor,
-h3:hover a.anchor { display: inline-block; }
+h1:hover a:after,
+h2:hover a:after,
+h3:hover a:after,
+h4:hover a:after,
+h5:hover a:after,
+h6:hover a:after {
+  content: ' § ';
+}
+
+h1.fqn:hover a:after,
+:hover a.fnname:after {
+  content: none;
+}

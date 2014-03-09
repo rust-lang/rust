@@ -142,25 +142,18 @@ pre code {
 }
 
 /* Code highlighting */
-.cm-s-default span.cm-keyword {color: #8959A8;}
-.cm-s-default span.cm-atom {color: #219;}
-.cm-s-default span.cm-number {color: #3E999F;}
-.cm-s-default span.cm-def {color: #4271AE;}
-/*.cm-s-default span.cm-variable {color: #C82829;}*/
-.cm-s-default span.cm-variable-2 {color: #6F906C;}
-.cm-s-default span.cm-variable-3 {color: #B76514;}
-.cm-s-default span.cm-property {color: black;}
-.cm-s-default span.cm-operator {color: black;}
-.cm-s-default span.cm-comment {color: #8E908C;}
-.cm-s-default span.cm-string {color: #718C00;}
-.cm-s-default span.cm-string-2 {color: #866544;}
-.cm-s-default span.cm-meta {color: #555;}
-/*.cm-s-default span.cm-error {color: #F00;}*/
-.cm-s-default span.cm-qualifier {color: #555;}
-.cm-s-default span.cm-builtin {color: #30A;}
-.cm-s-default span.cm-bracket {color: #CC7;}
-.cm-s-default span.cm-tag {color: #C82829;}
-.cm-s-default span.cm-attribute {color: #00C;}
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number { color: #718C00; }
+pre.rust .self { color: #C13928; }
+pre.rust .boolval { color: #C13928; }
+pre.rust .prelude-val { color: #C13928; }
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999f; }
+pre.rust .string { color: #718C00; }
+pre.rust .lifetime { color: #C13928; }
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 
 /* The rest
    ========================================================================== */
