@@ -1259,14 +1259,15 @@ impl Liveness {
           }
 
           ExprInlineAsm(ref ia) => {
-            let succ = ia.inputs.rev_iter().fold(succ, |succ, &(_, expr)| {
-                self.propagate_through_expr(expr, succ)
-            });
-            ia.outputs.rev_iter().fold(succ, |succ, &(_, expr)| {
+            let succ = ia.outputs.rev_iter().fold(succ, |succ, &(_, expr)| {
                 // see comment on lvalues in
                 // propagate_through_lvalue_components()
                 let succ = self.write_lvalue(expr, succ, ACC_WRITE);
                 self.propagate_through_lvalue_components(expr, succ)
+            });
+            // Inputs are executed first. Propagate last because of rev order
+            ia.inputs.rev_iter().fold(succ, |succ, &(_, expr)| {
+                self.propagate_through_expr(expr, succ)
             })
           }
 
