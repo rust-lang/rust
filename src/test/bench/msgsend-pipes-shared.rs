@@ -33,7 +33,7 @@ enum request {
     stop
 }
 
-fn server(requests: &Port<request>, responses: &Chan<uint>) {
+fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
@@ -52,8 +52,8 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = Chan::new();
-    let (from_parent, to_child) = Chan::new();
+    let (to_parent, from_child) = channel();
+    let (to_child, from_parent) = channel();
 
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();

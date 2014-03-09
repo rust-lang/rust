@@ -46,12 +46,12 @@ pub struct Timer {
 
 #[allow(visible_private_types)]
 pub enum Req {
-    NewTimer(libc::c_int, Chan<()>, bool, imp::itimerspec),
-    RemoveTimer(libc::c_int, Chan<()>),
+    NewTimer(libc::c_int, Sender<()>, bool, imp::itimerspec),
+    RemoveTimer(libc::c_int, Sender<()>),
     Shutdown,
 }
 
-fn helper(input: libc::c_int, messages: Port<Req>) {
+fn helper(input: libc::c_int, messages: Receiver<Req>) {
     let efd = unsafe { imp::epoll_create(10) };
     let _fd1 = FileDesc::new(input, true);
     let _fd2 = FileDesc::new(efd, true);
@@ -76,7 +76,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
     add(efd, input);
     let events: [imp::epoll_event, ..16] = unsafe { mem::init() };
-    let mut list: ~[(libc::c_int, Chan<()>, bool)] = ~[];
+    let mut list: ~[(libc::c_int, Sender<()>, bool)] = ~[];
     'outer: loop {
         let n = match unsafe {
             imp::epoll_wait(efd, events.as_ptr(),
@@ -197,9 +197,9 @@ impl Timer {
     fn remove(&mut self) {
         if !self.on_worker { return }
 
-        let (p, c) = Chan::new();
-        timer_helper::send(RemoveTimer(self.fd.fd(), c));
-        p.recv();
+        let (tx, rx) = channel();
+        timer_helper::send(RemoveTimer(self.fd.fd(), tx));
+        rx.recv();
         self.on_worker = false;
     }
 }
@@ -224,8 +224,8 @@ impl rtio::RtioTimer for Timer {
     // before returning to guarantee the invariant that when oneshot() and
     // period() return that the old port will never receive any more messages.
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
-        let (p, c) = Chan::new();
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         let new_value = imp::itimerspec {
             it_interval: imp::timespec { tv_sec: 0, tv_nsec: 0 },
@@ -234,26 +234,26 @@ impl rtio::RtioTimer for Timer {
                 tv_nsec: ((msecs % 1000) * 1000000) as libc::c_long,
             }
         };
-        timer_helper::send(NewTimer(self.fd.fd(), c, true, new_value));
-        p.recv();
+        timer_helper::send(NewTimer(self.fd.fd(), tx, true, new_value));
+        rx.recv();
         self.on_worker = true;
 
-        return p;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
-        let (p, c) = Chan::new();
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         let spec = imp::timespec {
             tv_sec: (msecs / 1000) as libc::time_t,
             tv_nsec: ((msecs % 1000) * 1000000) as libc::c_long,
         };
         let new_value = imp::itimerspec { it_interval: spec, it_value: spec, };
-        timer_helper::send(NewTimer(self.fd.fd(), c, false, new_value));
-        p.recv();
+        timer_helper::send(NewTimer(self.fd.fd(), tx, false, new_value));
+        rx.recv();
         self.on_worker = true;
 
-        return p;
+        return rx;
     }
 }
 

@@ -20,44 +20,45 @@ use std::comm;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {
-    priv chan: Chan<T>,
-    priv port: Port<U>,
+    priv tx: Sender<T>,
+    priv rx: Receiver<U>,
+}
+
+/// Creates a bidirectional stream.
+pub fn duplex<T: Send, U: Send>() -> (DuplexStream<T, U>, DuplexStream<U, T>) {
+    let (tx1, rx1) = channel();
+    let (tx2, rx2) = channel();
+    (DuplexStream { tx: tx1, rx: rx2 },
+     DuplexStream { tx: tx2, rx: rx1 })
 }
 
 // Allow these methods to be used without import:
 impl<T:Send,U:Send> DuplexStream<T, U> {
-    /// Creates a bidirectional stream.
-    pub fn new() -> (DuplexStream<T, U>, DuplexStream<U, T>) {
-        let (p1, c2) = Chan::new();
-        let (p2, c1) = Chan::new();
-        (DuplexStream { chan: c1, port: p1 },
-         DuplexStream { chan: c2, port: p2 })
-    }
     pub fn send(&self, x: T) {
-        self.chan.send(x)
+        self.tx.send(x)
     }
     pub fn try_send(&self, x: T) -> bool {
-        self.chan.try_send(x)
+        self.tx.try_send(x)
     }
     pub fn recv(&self) -> U {
-        self.port.recv()
+        self.rx.recv()
     }
     pub fn try_recv(&self) -> comm::TryRecvResult<U> {
-        self.port.try_recv()
+        self.rx.try_recv()
     }
     pub fn recv_opt(&self) -> Option<U> {
-        self.port.recv_opt()
+        self.rx.recv_opt()
     }
 }
 
 /// An extension of `pipes::stream` that provides synchronous message sending.
-pub struct SyncChan<T> { priv duplex_stream: DuplexStream<T, ()> }
+pub struct SyncSender<T> { priv duplex_stream: DuplexStream<T, ()> }
 /// An extension of `pipes::stream` that acknowledges each message received.
-pub struct SyncPort<T> { priv duplex_stream: DuplexStream<(), T> }
+pub struct SyncReceiver<T> { priv duplex_stream: DuplexStream<(), T> }
 
-impl<T: Send> SyncChan<T> {
+impl<T: Send> SyncSender<T> {
     pub fn send(&self, val: T) {
-        assert!(self.try_send(val), "SyncChan.send: receiving port closed");
+        assert!(self.try_send(val), "SyncSender.send: receiving port closed");
     }
 
     /// Sends a message, or report if the receiver has closed the connection
@@ -67,9 +68,9 @@ impl<T: Send> SyncChan<T> {
     }
 }
 
-impl<T: Send> SyncPort<T> {
+impl<T: Send> SyncReceiver<T> {
     pub fn recv(&self) -> T {
-        self.recv_opt().expect("SyncPort.recv: sending channel closed")
+        self.recv_opt().expect("SyncReceiver.recv: sending channel closed")
     }
 
     pub fn recv_opt(&self) -> Option<T> {
@@ -89,20 +90,20 @@ impl<T: Send> SyncPort<T> {
 
 /// Creates a stream whose channel, upon sending a message, blocks until the
 /// message is received.
-pub fn rendezvous<T: Send>() -> (SyncPort<T>, SyncChan<T>) {
-    let (chan_stream, port_stream) = DuplexStream::new();
-    (SyncPort { duplex_stream: port_stream },
-     SyncChan { duplex_stream: chan_stream })
+pub fn rendezvous<T: Send>() -> (SyncReceiver<T>, SyncSender<T>) {
+    let (chan_stream, port_stream) = duplex();
+    (SyncReceiver { duplex_stream: port_stream },
+     SyncSender { duplex_stream: chan_stream })
 }
 
 #[cfg(test)]
 mod test {
-    use comm::{DuplexStream, rendezvous};
+    use comm::{duplex, rendezvous};
 
 
     #[test]
     pub fn DuplexStream1() {
-        let (left, right) = DuplexStream::new();
+        let (left, right) = duplex();
 
         left.send(~"abc");
         right.send(123);

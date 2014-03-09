@@ -16,7 +16,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &Chan<int>, number_of_messages: int) {
+fn test00_start(c: &Sender<int>, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(i + 0); i += 1; }
 }
@@ -24,19 +24,18 @@ fn test00_start(c: &Chan<int>, number_of_messages: int) {
 fn test00() {
     let r: int = 0;
     let mut sum: int = 0;
-    let (p, ch) = Chan::new();
+    let (tx, rx) = channel();
     let number_of_messages: int = 10;
 
     let mut builder = task::task();
     let result = builder.future_result();
     builder.spawn(proc() {
-        let mut ch = ch;
-        test00_start(&mut ch, number_of_messages);
+        test00_start(&tx, number_of_messages);
     });
 
     let mut i: int = 0;
     while i < number_of_messages {
-        sum += p.recv();
+        sum += rx.recv();
         info!("{:?}", r);
         i += 1;
     }

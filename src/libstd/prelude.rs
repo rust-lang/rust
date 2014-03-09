@@ -61,7 +61,7 @@ pub use vec::{MutableVector, MutableTotalOrdVector};
 pub use vec::{Vector, VectorVector, CloneableVector, ImmutableVector};
 
 // Reexported runtime types
-pub use comm::{Port, Chan};
+pub use comm::{channel, Sender, Receiver};
 pub use task::spawn;
 
 // Reexported statics

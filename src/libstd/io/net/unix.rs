@@ -224,10 +224,13 @@ mod tests {
         let times = 10;
         let path1 = next_test_unix();
         let path2 = path1.clone();
-        let (port, chan) = Chan::new();
+
+        let mut acceptor = match UnixListener::bind(&path1).listen() {
+            Ok(a) => a,
+            Err(e) => fail!("failed listen: {}", e),
+        };
 
         spawn(proc() {
-            port.recv();
             for _ in range(0, times) {
                 let mut stream = UnixStream::connect(&path2);
                 match stream.write([100]) {
@@ -237,11 +240,6 @@ mod tests {
             }
         });
 
-        let mut acceptor = match UnixListener::bind(&path1).listen() {
-            Ok(a) => a,
-            Err(e) => fail!("failed listen: {}", e),
-        };
-        chan.send(());
         for _ in range(0, times) {
             let mut client = acceptor.accept();
             let mut buf = [0];
@@ -278,54 +276,54 @@ mod tests {
         let mut s1 = acceptor.accept().unwrap();
         let s2 = s1.clone();
 
-        let (p1, c1) = Chan::new();
-        let (p2, c2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
         spawn(proc() {
             let mut s2 = s2;
-            p1.recv();
+            rx1.recv();
             debug!("writer writing");
             s2.write([1]).unwrap();
             debug!("writer done");
-            c2.send(());
+            tx2.send(());
         });
-        c1.send(());
+        tx1.send(());
         let mut buf = [0, 0];
         debug!("reader reading");
         assert_eq!(s1.read(buf), Ok(1));
         debug!("reader done");
-        p2.recv();
+        rx2.recv();
     })
 
     iotest!(fn unix_clone_two_read() {
         let addr = next_test_unix();
         let mut acceptor = UnixListener::bind(&addr).listen();
-        let (p, c) = Chan::new();
-        let c2 = c.clone();
+        let (tx1, rx) = channel();
+        let tx2 = tx1.clone();
 
         spawn(proc() {
             let mut s = UnixStream::connect(&addr);
             s.write([1]).unwrap();
-            p.recv();
+            rx.recv();
             s.write([2]).unwrap();
-            p.recv();
+            rx.recv();
         });
 
         let mut s1 = acceptor.accept().unwrap();
         let s2 = s1.clone();
 
-        let (p, done) = Chan::new();
+        let (done, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
             let mut buf = [0, 0];
             s2.read(buf).unwrap();
-            c2.send(());
+            tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
         s1.read(buf).unwrap();
-        c.send(());
+        tx1.send(());
 
-        p.recv();
+        rx.recv();
     })
 
     iotest!(fn unix_clone_two_write() {
@@ -342,14 +340,14 @@ mod tests {
         let mut s1 = acceptor.accept().unwrap();
         let s2 = s1.clone();
 
-        let (p, done) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
             let mut s2 = s2;
             s2.write([1]).unwrap();
-            done.send(());
+            tx.send(());
         });
         s1.write([2]).unwrap();
 
-        p.recv();
+        rx.recv();
     })
 }

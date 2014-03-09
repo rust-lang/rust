@@ -99,9 +99,9 @@ fn transform(aa: color, bb: color) -> color {
 fn creature(
     name: uint,
     color: color,
-    from_rendezvous: Port<Option<CreatureInfo>>,
-    to_rendezvous: Chan<CreatureInfo>,
-    to_rendezvous_log: Chan<~str>
+    from_rendezvous: Receiver<Option<CreatureInfo>>,
+    to_rendezvous: Sender<CreatureInfo>,
+    to_rendezvous_log: Sender<~str>
 ) {
     let mut color = color;
     let mut creatures_met = 0;
@@ -137,13 +137,13 @@ fn creature(
 fn rendezvous(nn: uint, set: ~[color]) {
 
     // these ports will allow us to hear from the creatures
-    let (from_creatures, to_rendezvous) = Chan::<CreatureInfo>::new();
-    let (from_creatures_log, to_rendezvous_log) = Chan::<~str>::new();
+    let (to_rendezvous, from_creatures) = channel::<CreatureInfo>();
+    let (to_rendezvous_log, from_creatures_log) = channel::<~str>();
 
     // these channels will be passed to the creatures so they can talk to us
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[Chan<Option<CreatureInfo>>] =
+    let to_creature: ~[Sender<Option<CreatureInfo>>] =
         set.iter().enumerate().map(|(ii, col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
@@ -151,7 +151,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let col = *col;
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
-            let (from_rendezvous, to_creature) = Chan::new();
+            let (to_creature, from_rendezvous) = channel();
             task::spawn(proc() {
                 creature(ii,
                          col,

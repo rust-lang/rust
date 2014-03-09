@@ -25,14 +25,14 @@ fn test(f: int) -> test {
 }
 
 pub fn main() {
-    let (p, c) = Chan::new();
+    let (tx, rx) = channel();
 
     task::spawn(proc() {
-        let (pp, cc) = Chan::new();
-        c.send(cc);
+        let (tx2, rx2) = channel();
+        tx.send(tx2);
 
-        let _r = pp.recv();
+        let _r = rx2.recv();
     });
 
-    p.recv().send(test(42));
+    rx.recv().send(test(42));
 }

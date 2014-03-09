@@ -11,26 +11,25 @@
 /*!
  * Utilities for managing and scheduling tasks
  *
- * An executing Rust program consists of a tree of tasks, each with their own
- * stack, and sole ownership of their allocated heap data. Tasks communicate
- * with each other using ports and channels (see std::comm for more info
- * about how communication works).
+ * An executing Rust program consists of a collection of tasks, each with their
+ * own stack, and sole ownership of their allocated heap data. Tasks communicate
+ * with each other using channels (see `std::comm` for more info about how
+ * communication works).
  *
- * Failure in one task does not propagate to any others (not to parent, not to child).
- * Failure propagation is instead handled by using Chan.send() and Port.recv(), which
- * will fail if the other end has hung up already.
+ * Failure in one task does not propagate to any others (not to parent, not to
+ * child).  Failure propagation is instead handled by using the channel send()
+ * and recv() methods which will fail if the other end has hung up already.
  *
  * Task Scheduling:
  *
- * By default, every task is created in the same scheduler as its parent, where it
- * is scheduled cooperatively with all other tasks in that scheduler. Some specialized
- * applications may want more control over their scheduling, in which case they can be
- * spawned into a new scheduler with the specific properties required. See TaskBuilder's
- * documentation bellow for more information.
+ * By default, every task is created with the same "flavor" as the calling task.
+ * This flavor refers to the scheduling mode, with two possibilities currently
+ * being 1:1 and M:N modes. Green (M:N) tasks are cooperatively scheduled and
+ * native (1:1) tasks are scheduled by the OS kernel.
  *
  * # Example
  *
- * ```
+ * ```rust
  * spawn(proc() {
  *     println!("Hello, World!");
  * })
@@ -38,7 +37,7 @@
  */
 
 use any::Any;
-use comm::{Chan, Port};
+use comm::{Sender, Receiver, channel};
 use io::Writer;
 use kinds::{Send, marker};
 use logging::Logger;
@@ -62,7 +61,7 @@ pub type TaskResult = Result<(), ~Any>;
 /// Task configuration options
 pub struct TaskOpts {
     /// Enable lifecycle notifications on the given channel
-    notify_chan: Option<Chan<TaskResult>>,
+    notify_chan: Option<Sender<TaskResult>>,
     /// A name for the task-to-be, for identification in failure messages
     name: Option<SendStr>,
     /// The size of the stack for the spawned task
@@ -116,7 +115,7 @@ impl TaskBuilder {
     ///
     /// # Failure
     /// Fails if a future_result was already set for this task.
-    pub fn future_result(&mut self) -> Port<TaskResult> {
+    pub fn future_result(&mut self) -> Receiver<TaskResult> {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -127,12 +126,12 @@ impl TaskBuilder {
         }
 
         // Construct the future and give it to the caller.
-        let (notify_pipe_po, notify_pipe_ch) = Chan::new();
+        let (tx, rx) = channel();
 
         // Reconfigure self to use a notify channel.
-        self.opts.notify_chan = Some(notify_pipe_ch);
+        self.opts.notify_chan = Some(tx);
 
-        notify_pipe_po
+        rx
     }
 
     /// Name the task-to-be. Currently the name is used for identification
@@ -204,16 +203,16 @@ impl TaskBuilder {
      * Fails if a future_result was already set for this task.
      */
     pub fn try<T:Send>(mut self, f: proc() -> T) -> Result<T, ~Any> {
-        let (po, ch) = Chan::new();
+        let (tx, rx) = channel();
 
         let result = self.future_result();
 
         self.spawn(proc() {
-            ch.send(f());
+            tx.send(f());
         });
 
         match result.recv() {
-            Ok(())     => Ok(po.recv()),
+            Ok(())     => Ok(rx.recv()),
             Err(cause) => Err(cause)
         }
     }
@@ -340,25 +339,24 @@ fn test_send_named_task() {
 
 #[test]
 fn test_run_basic() {
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
     task().spawn(proc() {
-        ch.send(());
+        tx.send(());
     });
-    po.recv();
+    rx.recv();
 }
 
 #[test]
 fn test_with_wrapper() {
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
     task().with_wrapper(proc(body) {
-        let ch = ch;
         let result: proc() = proc() {
             body();
-            ch.send(());
+            tx.send(());
         };
         result
     }).spawn(proc() { });
-    po.recv();
+    rx.recv();
 }
 
 #[test]
@@ -407,50 +405,49 @@ fn test_try_fail() {
 fn test_spawn_sched() {
     use clone::Clone;
 
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
 
-    fn f(i: int, ch: Chan<()>) {
-        let ch = ch.clone();
+    fn f(i: int, tx: Sender<()>) {
+        let tx = tx.clone();
         spawn(proc() {
             if i == 0 {
-                ch.send(());
+                tx.send(());
             } else {
-                f(i - 1, ch);
+                f(i - 1, tx);
             }
         });
 
     }
-    f(10, ch);
-    po.recv();
+    f(10, tx);
+    rx.recv();
 }
 
 #[test]
 fn test_spawn_sched_childs_on_default_sched() {
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
 
     spawn(proc() {
-        let ch = ch;
         spawn(proc() {
-            ch.send(());
+            tx.send(());
         });
     });
 
-    po.recv();
+    rx.recv();
 }
 
 #[cfg(test)]
 fn avoid_copying_the_body(spawnfn: |v: proc()|) {
-    let (p, ch) = Chan::<uint>::new();
+    let (tx, rx) = channel::<uint>();
 
     let x = ~1;
     let x_in_parent = (&*x) as *int as uint;
 
     spawnfn(proc() {
         let x_in_child = (&*x) as *int as uint;
-        ch.send(x_in_child);
+        tx.send(x_in_child);
     });
 
-    let x_in_child = p.recv();
+    let x_in_child = rx.recv();
     assert_eq!(x_in_parent, x_in_child);
 }
 

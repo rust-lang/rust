@@ -388,10 +388,10 @@ mod tests {
     })
 
     iotest!(fn capture_stdout() {
-        use io::comm_adapters::{PortReader, ChanWriter};
+        use io::{ChanReader, ChanWriter};
 
-        let (p, c) = Chan::new();
-        let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
+        let (tx, rx) = channel();
+        let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
             set_stdout(~w as ~Writer);
             println!("hello!");
@@ -400,10 +400,10 @@ mod tests {
     })
 
     iotest!(fn capture_stderr() {
-        use io::comm_adapters::{PortReader, ChanWriter};
+        use io::{ChanReader, ChanWriter};
 
-        let (p, c) = Chan::new();
-        let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
+        let (tx, rx) = channel();
+        let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
             set_stderr(~w as ~Writer);
             fail!("my special message");

@@ -69,18 +69,18 @@ pub fn main() {
                          ~dogge1 as ~Pet:Freeze+Send,
                          ~fishe  as ~Pet:Freeze+Send,
                          ~dogge2 as ~Pet:Freeze+Send]);
-    let (p1,c1) = Chan::new();
+    let (tx1, rx1) = channel();
     let arc1 = arc.clone();
-    task::spawn(proc() { check_legs(arc1); c1.send(()); });
-    let (p2,c2) = Chan::new();
+    task::spawn(proc() { check_legs(arc1); tx1.send(()); });
+    let (tx2, rx2) = channel();
     let arc2 = arc.clone();
-    task::spawn(proc() { check_names(arc2); c2.send(()); });
-    let (p3,c3) = Chan::new();
+    task::spawn(proc() { check_names(arc2); tx2.send(()); });
+    let (tx3, rx3) = channel();
     let arc3 = arc.clone();
-    task::spawn(proc() { check_pedigree(arc3); c3.send(()); });
-    p1.recv();
-    p2.recv();
-    p3.recv();
+    task::spawn(proc() { check_pedigree(arc3); tx3.send(()); });
+    rx1.recv();
+    rx2.recv();
+    rx3.recv();
 }
 
 fn check_legs(arc: Arc<~[~Pet:Freeze+Send]>) {
