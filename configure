@@ -727,7 +727,7 @@ step_msg "making directories"
 
 for i in \
     doc doc/std doc/extra \
-    dl tmp
+    dl tmp dist
 do
     make_dir $i
 done
