@@ -75,6 +75,14 @@ p {
     margin: 0 0 10px;
 }
 
+strong {
+    font-weight: bold;
+}
+
+em {
+    font-style: italic;
+}
+
 footer {
     border-top: 1px solid #ddd;
     font-size: 12px;
@@ -107,6 +115,8 @@ a:hover, a:active {
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
 h3 a:link, h3 a:visited, h4 a:link, h4 a:visited,
 h5 a:link, h5 a:visited {color: black;}
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover,
+h5 a:hover {text-decoration: none;}
 
 /* Code
    ========================================================================== */
@@ -144,16 +154,14 @@ pre code {
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }
 pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number { color: #718C00; }
-pre.rust .self { color: #C13928; }
-pre.rust .boolval { color: #C13928; }
-pre.rust .prelude-val { color: #C13928; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999f; }
-pre.rust .string { color: #718C00; }
-pre.rust .lifetime { color: #C13928; }
-pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+
 
 /* The rest
    ========================================================================== */
@@ -162,7 +170,7 @@ pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
     margin: 0.5em;
     font-size: 1.1em;
 }
-@media (min-width: 768px) {
+@media only screen, handheld and (min-width: 768px) {
     #versioninfo {
         position: fixed;
         bottom: 0px;
@@ -262,8 +270,11 @@ table th {
     a, a:visited {
         text-decoration: underline;
     }
-    a[href]:after {
+    p a[href]:after {
         content: " (" attr(href) ")";
+    }
+    footer a[href]:after {
+        content: "";
     }
     a[href^="javascript:"]:after, a[href^="#"]:after {
         content: "";
@@ -274,6 +285,9 @@ table th {
     }
     @page {
         margin: 2cm .5cm;
+    }
+    h1:not(.title), h2, h3 {
+        border-bottom: 0px none;
     }
     p, h2, h3 {
         orphans: 3;
