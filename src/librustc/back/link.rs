@@ -501,10 +501,9 @@ pub mod write {
  *    system linkers understand.
  */
 
-pub fn find_crate_id(attrs: &[ast::Attribute],
-                     output: &OutputFilenames) -> CrateId {
+pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
     match attr::find_crateid(attrs) {
-        None => from_str(output.out_filestem).unwrap(),
+        None => from_str(out_filestem).unwrap(),
         Some(s) => s,
     }
 }
@@ -518,10 +517,9 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
     truncated_hash_result(&mut s).slice_to(8).to_owned()
 }
 
-pub fn build_link_meta(krate: &ast::Crate,
-                       output: &OutputFilenames) -> LinkMeta {
+pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
     let r = LinkMeta {
-        crateid: find_crate_id(krate.attrs.as_slice(), output),
+        crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
         crate_hash: Svh::calculate(krate),
     };
     info!("{}", r);

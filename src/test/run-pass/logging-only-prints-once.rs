@@ -29,7 +29,7 @@ pub fn main() {
     let (tx, rx) = channel();
     spawn(proc() {
         let mut f = Foo(Cell::new(0));
-        debug!("{}", f);
+        println!("{}", f);
         let Foo(ref mut f) = f;
         assert!(f.get() == 1);
         tx.send(());

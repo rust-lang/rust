@@ -28,7 +28,7 @@ pub fn main() {
         assert_eq!(&(*x) as *int, &(*b_x) as *int);
         x = @22;
 
-        info!("&*b_x = {:p}", &(*b_x));
+        println!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);
         assert!(&(*x) as *int != &(*b_x) as *int);
     })

@@ -26,8 +26,8 @@ fn general() {
     a ^= b;
     b ^= a;
     a = a ^ b;
-    info!("{}", a);
-    info!("{}", b);
+    println!("{}", a);
+    println!("{}", b);
     assert_eq!(b, 1);
     assert_eq!(a, 2);
     assert_eq!(!0xf0 & 0xff, 0xf);

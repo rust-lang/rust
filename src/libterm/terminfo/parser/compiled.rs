@@ -195,27 +195,15 @@ pub fn parse(file: &mut io::Reader,
 
     assert!(names_bytes          > 0);
 
-    debug!("names_bytes = {}", names_bytes);
-    debug!("bools_bytes = {}", bools_bytes);
-    debug!("numbers_count = {}", numbers_count);
-    debug!("string_offsets_count = {}", string_offsets_count);
-    debug!("string_table_bytes = {}", string_table_bytes);
-
     if (bools_bytes as uint) > boolnames.len() {
-        error!("expected bools_bytes to be less than {} but found {}", boolnames.len(),
-               bools_bytes);
         return Err(~"incompatible file: more booleans than expected");
     }
 
     if (numbers_count as uint) > numnames.len() {
-        error!("expected numbers_count to be less than {} but found {}", numnames.len(),
-               numbers_count);
         return Err(~"incompatible file: more numbers than expected");
     }
 
     if (string_offsets_count as uint) > stringnames.len() {
-        error!("expected string_offsets_count to be less than {} but found {}", stringnames.len(),
-               string_offsets_count);
         return Err(~"incompatible file: more string offsets than expected");
     }
 
@@ -229,26 +217,19 @@ pub fn parse(file: &mut io::Reader,
 
     try!(file.read_byte()); // consume NUL
 
-    debug!("term names: {:?}", term_names);
-
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
         for i in range(0, bools_bytes) {
             let b = try!(file.read_byte());
             if b < 0 {
-                error!("EOF reading bools after {} entries", i);
                 return Err(~"error: expected more bools but hit EOF");
             } else if b == 1 {
-                debug!("{} set", bnames[i]);
                 bools_map.insert(bnames[i].to_owned(), true);
             }
         }
     }
 
-    debug!("bools: {:?}", bools_map);
-
     if (bools_bytes + names_bytes) % 2 == 1 {
-        debug!("adjusting for padding between bools and numbers");
         try!(file.read_byte()); // compensate for padding
     }
 
@@ -257,13 +238,10 @@ pub fn parse(file: &mut io::Reader,
         for i in range(0, numbers_count) {
             let n = try!(file.read_le_u16());
             if n != 0xFFFF {
-                debug!("{}\\#{}", nnames[i], n);
                 numbers_map.insert(nnames[i].to_owned(), n);
             }
         }
     }
-
-    debug!("numbers: {:?}", numbers_map);
 
     let mut string_map = HashMap::new();
 
@@ -273,13 +251,9 @@ pub fn parse(file: &mut io::Reader,
             string_offsets.push(try!(file.read_le_u16()));
         }
 
-        debug!("offsets: {:?}", string_offsets);
-
         let string_table = try!(file.read_bytes(string_table_bytes as uint));
 
         if string_table.len() != string_table_bytes as uint {
-            error!("EOF reading string table after {} bytes, wanted {}", string_table.len(),
-                   string_table_bytes);
             return Err(~"error: hit EOF before end of string table");
         }
 

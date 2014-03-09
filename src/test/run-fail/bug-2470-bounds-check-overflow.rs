@@ -24,12 +24,12 @@ fn main() {
 
     let base = x.as_ptr() as uint;
     let idx = base / mem::size_of::<uint>();
-    error!("ov1 base = 0x{:x}", base);
-    error!("ov1 idx = 0x{:x}", idx);
-    error!("ov1 sizeof::<uint>() = 0x{:x}", mem::size_of::<uint>());
-    error!("ov1 idx * sizeof::<uint>() = 0x{:x}",
+    println!("ov1 base = 0x{:x}", base);
+    println!("ov1 idx = 0x{:x}", idx);
+    println!("ov1 sizeof::<uint>() = 0x{:x}", mem::size_of::<uint>());
+    println!("ov1 idx * sizeof::<uint>() = 0x{:x}",
            idx * mem::size_of::<uint>());
 
     // This should fail.
-    error!("ov1 0x{:x}",  x[idx]);
+    println!("ov1 0x{:x}",  x[idx]);
 }

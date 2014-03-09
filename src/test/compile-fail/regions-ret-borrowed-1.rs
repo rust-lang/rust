@@ -24,5 +24,5 @@ fn return_it<'a>() -> &'a int {
 
 fn main() {
     let x = return_it();
-    info!("foo={}", *x);
+    println!("foo={}", *x);
 }

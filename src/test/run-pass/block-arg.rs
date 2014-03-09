@@ -22,7 +22,7 @@ pub fn main() {
 
     // Statement form does not require parentheses:
     for i in v.iter() {
-        info!("{:?}", *i);
+        println!("{:?}", *i);
     }
 
 }

@@ -16,107 +16,6 @@
 
 #[macro_escape];
 
-/// The standard logging macro
-///
-/// This macro will generically log over a provided level (of type u32) with a
-/// format!-based argument list. See documentation in `std::fmt` for details on
-/// how to use the syntax, and documentation in `std::logging` for info about
-/// logging macros.
-///
-/// # Example
-///
-/// ```
-/// log!(::std::logging::DEBUG, "this is a debug message");
-/// log!(::std::logging::WARN, "this is a warning {}", "message");
-/// log!(6, "this is a custom logging level: {level}", level=6);
-/// ```
-#[macro_export]
-macro_rules! log(
-    ($lvl:expr, $($arg:tt)+) => ({
-        let lvl = $lvl;
-        if lvl <= __log_level() {
-            format_args!(|args| {
-                ::std::logging::log(lvl, args)
-            }, $($arg)+)
-        }
-    })
-)
-
-/// A convenience macro for logging at the error log level. See `std::logging`
-/// for more information. about logging.
-///
-/// # Example
-///
-/// ```
-/// # let error = 3;
-/// error!("the build has failed with error code: {}", error);
-/// ```
-#[macro_export]
-macro_rules! error(
-    ($($arg:tt)*) => (log!(1u32, $($arg)*))
-)
-
-/// A convenience macro for logging at the warning log level. See `std::logging`
-/// for more information. about logging.
-///
-/// # Example
-///
-/// ```
-/// # let code = 3;
-/// warn!("you may like to know that a process exited with: {}", code);
-/// ```
-#[macro_export]
-macro_rules! warn(
-    ($($arg:tt)*) => (log!(2u32, $($arg)*))
-)
-
-/// A convenience macro for logging at the info log level. See `std::logging`
-/// for more information. about logging.
-///
-/// # Example
-///
-/// ```
-/// # let ret = 3;
-/// info!("this function is about to return: {}", ret);
-/// ```
-#[macro_export]
-macro_rules! info(
-    ($($arg:tt)*) => (log!(3u32, $($arg)*))
-)
-
-/// A convenience macro for logging at the debug log level. See `std::logging`
-/// for more information. about logging.
-///
-/// # Example
-///
-/// ```
-/// debug!("x = {x}, y = {y}", x=10, y=20);
-/// ```
-#[macro_export]
-macro_rules! debug(
-    ($($arg:tt)*) => (if cfg!(not(ndebug)) { log!(4u32, $($arg)*) })
-)
-
-/// A macro to test whether a log level is enabled for the current module.
-///
-/// # Example
-///
-/// ```
-/// # struct Point { x: int, y: int }
-/// # fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }
-/// if log_enabled!(std::logging::DEBUG) {
-///     let x = some_expensive_computation();
-///     debug!("x.x = {}, x.y = {}", x.x, x.y);
-/// }
-/// ```
-#[macro_export]
-macro_rules! log_enabled(
-    ($lvl:expr) => ({
-        let lvl = $lvl;
-        lvl <= __log_level() && (lvl != 4 || cfg!(not(ndebug)))
-    })
-)
-
 /// The entry point for failure of rust tasks.
 ///
 /// This macro is used to inject failure into a rust task, causing the task to
@@ -421,3 +320,15 @@ macro_rules! select {
         { unreachable!() }
     })
 }
+
+// When testing the standard library, we link to the liblog crate to get the
+// logging macros. In doing so, the liblog crate was linked against the real
+// version of libstd, and uses a different std::fmt module than the test crate
+// uses. To get around this difference, we redefine the log!() macro here to be
+// just a dumb version of what it should be.
+#[cfg(test)]
+macro_rules! log (
+    ($lvl:expr, $($args:tt)*) => (
+        if log_enabled!($lvl) { println!($($args)*) }
+    )
+)

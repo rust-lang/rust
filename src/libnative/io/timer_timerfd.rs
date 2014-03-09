@@ -89,10 +89,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
         };
 
         let mut incoming = false;
-        debug!("{} events to process", n);
         for event in events.slice_to(n as uint).iter() {
             let fd = event.data as libc::c_int;
-            debug!("data on fd {} (input = {})", fd, input);
             if fd == input {
                 let mut buf = [0, ..1];
                 // drain the input file descriptor of its input

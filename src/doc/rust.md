@@ -1055,7 +1055,7 @@ output slot type would normally be. For example:
 
 ~~~~
 fn my_err(s: &str) -> ! {
-    info!("{}", s);
+    println!("{}", s);
     fail!();
 }
 ~~~~
@@ -3885,6 +3885,9 @@ Rust provides several macros to log information. Here's a simple Rust program
 that demonstrates all four of them:
 
 ~~~~
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
+
 fn main() {
     error!("This is an error log")
     warn!("This is a warn log")

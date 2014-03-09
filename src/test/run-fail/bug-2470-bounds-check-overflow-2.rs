@@ -22,8 +22,8 @@ fn main() {
     // wrap around to a small number.
 
     let idx = uint::MAX & !(uint::MAX >> 1u);
-    error!("ov2 idx = 0x%x", idx);
+    println!("ov2 idx = 0x%x", idx);
 
     // This should fail.
-    error!("ov2 0x%x",  x[idx]);
+    println!("ov2 0x%x",  x[idx]);
 }

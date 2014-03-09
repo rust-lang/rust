@@ -10,6 +10,6 @@
 
 #[allow(unreachable_code)];
 
-fn dont_call_me() { fail!(); info!("{}", 1); }
+fn dont_call_me() { fail!(); println!("{}", 1); }
 
 pub fn main() { }

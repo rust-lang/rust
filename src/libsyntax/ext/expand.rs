@@ -19,6 +19,7 @@ use attr;
 use attr::AttrMetaMethods;
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
+use crateid::CrateId;
 use ext::base::*;
 use fold::*;
 use parse;
@@ -871,6 +872,7 @@ impl<'a> Folder for MacroExpander<'a> {
 pub struct ExpansionConfig<'a> {
     loader: &'a mut CrateLoader,
     deriving_hash_type_parameter: bool,
+    crate_id: CrateId,
 }
 
 pub fn expand_crate(parse_sess: @parse::ParseSess,
@@ -1048,6 +1050,7 @@ mod test {
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             loader: &mut loader,
             deriving_hash_type_parameter: false,
+            crate_id: from_str("test").unwrap(),
         };
         expand_crate(sess,cfg,crate_ast);
     }
@@ -1067,6 +1070,7 @@ mod test {
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             loader: &mut loader,
             deriving_hash_type_parameter: false,
+            crate_id: from_str("test").unwrap(),
         };
         expand_crate(sess,cfg,crate_ast);
     }
@@ -1085,6 +1089,7 @@ mod test {
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             loader: &mut loader,
             deriving_hash_type_parameter: false,
+            crate_id: from_str("test").unwrap(),
         };
         expand_crate(sess, cfg, crate_ast);
     }
@@ -1127,6 +1132,7 @@ mod test {
         let cfg = ::syntax::ext::expand::ExpansionConfig {
             loader: &mut loader,
             deriving_hash_type_parameter: false,
+            crate_id: from_str("test").unwrap(),
         };
         expand_crate(ps,cfg,crate_ast)
     }

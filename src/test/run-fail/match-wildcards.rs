@@ -17,4 +17,4 @@ fn cmp() -> int {
     }
 }
 
-fn main() { error!("{}", cmp()); }
+fn main() { println!("{}", cmp()); }

@@ -19,5 +19,5 @@ fn range_(a: int, b: int, it: |int|) {
 pub fn main() {
     let mut sum: int = 0;
     range_(0, 100, |x| sum += x );
-    info!("{}", sum);
+    println!("{}", sum);
 }

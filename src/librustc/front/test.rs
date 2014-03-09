@@ -170,6 +170,7 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
                              ExpansionConfig {
                                  loader: loader,
                                  deriving_hash_type_parameter: false,
+                                 crate_id: from_str("test").unwrap(),
                              }),
         path: RefCell::new(Vec::new()),
         testfns: RefCell::new(Vec::new()),

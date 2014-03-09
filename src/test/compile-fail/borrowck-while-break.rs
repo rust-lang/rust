@@ -14,7 +14,7 @@ fn test(cond: bool) {
         v = 3;
         break;
     }
-    info!("{}", v); //~ ERROR use of possibly uninitialized variable: `v`
+    println!("{}", v); //~ ERROR use of possibly uninitialized variable: `v`
 }
 
 fn main() {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[crate_type = "bin"];
+#[feature(phase)];
 
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
@@ -16,6 +17,8 @@
 
 extern crate test;
 extern crate getopts;
+#[phase(link, syntax)]
+extern crate log;
 
 use std::os;
 use std::io;

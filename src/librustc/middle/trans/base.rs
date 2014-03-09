@@ -2642,7 +2642,7 @@ pub fn trans_crate(sess: session::Session,
         }
     }
 
-    let link_meta = link::build_link_meta(&krate, output);
+    let link_meta = link::build_link_meta(&krate, output.out_filestem);
 
     // Append ".rs" to crate name as LLVM module identifier.
     //

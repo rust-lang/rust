@@ -19,5 +19,5 @@ pub fn main() {
         Some(num) => num as u32
     };
     assert_eq!(f, 1234u32);
-    error!("{}", f)
+    println!("{}", f)
 }

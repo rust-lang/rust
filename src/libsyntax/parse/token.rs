@@ -462,41 +462,40 @@ declare_special_idents_and_keywords! {
         (20,                         Impl,       "impl");
         (21,                         In,         "in");
         (22,                         Let,        "let");
-        (23,                         __LogLevel, "__log_level");
-        (24,                         Loop,       "loop");
-        (25,                         Match,      "match");
-        (26,                         Mod,        "mod");
-        (27,                         Mut,        "mut");
-        (28,                         Once,       "once");
-        (29,                         Priv,       "priv");
-        (30,                         Pub,        "pub");
-        (31,                         Ref,        "ref");
-        (32,                         Return,     "return");
+        (23,                         Loop,       "loop");
+        (24,                         Match,      "match");
+        (25,                         Mod,        "mod");
+        (26,                         Mut,        "mut");
+        (27,                         Once,       "once");
+        (28,                         Priv,       "priv");
+        (29,                         Pub,        "pub");
+        (30,                         Ref,        "ref");
+        (31,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME, Static,     "static");
         (super::SELF_KEYWORD_NAME,   Self,       "self");
-        (33,                         Struct,     "struct");
-        (34,                         Super,      "super");
-        (35,                         True,       "true");
-        (36,                         Trait,      "trait");
-        (37,                         Type,       "type");
-        (38,                         Unsafe,     "unsafe");
-        (39,                         Use,        "use");
-        (40,                         While,      "while");
-        (41,                         Continue,   "continue");
-        (42,                         Proc,       "proc");
-        (43,                         Box,        "box");
+        (32,                         Struct,     "struct");
+        (33,                         Super,      "super");
+        (34,                         True,       "true");
+        (35,                         Trait,      "trait");
+        (36,                         Type,       "type");
+        (37,                         Unsafe,     "unsafe");
+        (38,                         Use,        "use");
+        (39,                         While,      "while");
+        (40,                         Continue,   "continue");
+        (41,                         Proc,       "proc");
+        (42,                         Box,        "box");
 
         'reserved:
-        (44,                         Alignof,    "alignof");
-        (45,                         Be,         "be");
-        (46,                         Offsetof,   "offsetof");
-        (47,                         Pure,       "pure");
-        (48,                         Sizeof,     "sizeof");
-        (49,                         Typeof,     "typeof");
-        (50,                         Unsized,    "unsized");
-        (51,                         Yield,      "yield");
-        (52,                         Do,         "do");
+        (43,                         Alignof,    "alignof");
+        (44,                         Be,         "be");
+        (45,                         Offsetof,   "offsetof");
+        (46,                         Pure,       "pure");
+        (47,                         Sizeof,     "sizeof");
+        (48,                         Typeof,     "typeof");
+        (49,                         Unsized,    "unsized");
+        (50,                         Yield,      "yield");
+        (51,                         Do,         "do");
     }
 }
 
