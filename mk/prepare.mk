@@ -55,14 +55,14 @@ endif
 # Create a directory
 # $(1) is the directory
 define PREPARE_DIR
-	@$(Q)$(call E, install: $(1))
+	@$(Q)$(call E, prepare: $(1))
 	$(Q)$(PREPARE_DIR_CMD) $(1)
 endef
 
 # Copy an executable
 # $(1) is the filename/libname-glob
 define PREPARE_BIN
-	@$(call E, install: $(PREPARE_DEST_BIN_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_DEST_BIN_DIR)/$(1))
 	$(Q)$(PREPARE_BIN_CMD) $(PREPARE_SOURCE_BIN_DIR)/$(1) $(PREPARE_DEST_BIN_DIR)/$(1)
 endef
 
@@ -75,7 +75,7 @@ endef
 # problem. I'm sorry, just don't remove the $(nop), alright?
 define PREPARE_LIB
 	$(nop)
-	@$(call E, install: $(PREPARE_WORKING_DEST_LIB_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_WORKING_DEST_LIB_DIR)/$(1))
 	$(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1))))"; \
 	MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)))),\
                         $(wildcard $(PREPARE_WORKING_DEST_LIB_DIR)/$(1)))"; \
@@ -91,7 +91,7 @@ endef
 # Copy a man page
 # $(1) - source dir
 define PREPARE_MAN
-	@$(call E, install: $(PREPARE_DEST_MAN_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_DEST_MAN_DIR)/$(1))
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
 
