@@ -111,6 +111,7 @@ pub use libc::funcs::posix01::stat_::*;
 pub use libc::funcs::posix01::unistd::*;
 pub use libc::funcs::posix01::glob::*;
 pub use libc::funcs::posix01::mman::*;
+pub use libc::funcs::posix01::net::*;
 pub use libc::funcs::posix08::unistd::*;
 
 pub use libc::funcs::bsd43::*;
@@ -3931,6 +3932,15 @@ pub mod funcs {
                                      -> c_int;
             }
         }
+
+        #[nolink]
+        pub mod net {
+            use libc::types::os::arch::c95::{c_char, c_uint};
+
+            extern {
+                pub fn if_nametoindex(ifname: *c_char) -> c_uint;
+            }
+        }
     }
 
     #[cfg(target_os = "win32")]
@@ -4073,6 +4083,7 @@ pub mod funcs {
 
         extern {
             pub fn getdtablesize() -> c_int;
+            pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
             pub fn madvise(addr: *c_void, len: size_t, advice: c_int)
                            -> c_int;
             pub fn mincore(addr: *c_void, len: size_t, vec: *c_uchar)

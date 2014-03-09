@@ -256,7 +256,7 @@ impl rtio::IoFactory for IoFactory {
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
         addrinfo::GetAddrInfoRequest::run(host, servname, hint)
     }
-    fn raw_socket_new(&mut self, protocol: &Protocol) -> IoResult<~rtio::RtioRawSocket> {
+    fn raw_socket_new(&mut self, protocol: Protocol) -> IoResult<~rtio::RtioRawSocket> {
         net::RawSocket::new(protocol).map(|r| ~r as ~RtioRawSocket)
     }
 

@@ -640,29 +640,29 @@ pub struct RawSocket {
     priv fd: sock_t,
 }
 
-fn protocol_to_libc<'ni>(protocol: &raw::Protocol<'ni>)
-    -> (libc::c_int, libc::c_int, libc::c_int, Option<&'ni raw::NetworkInterface>) {
+fn protocol_to_libc(protocol: raw::Protocol)
+    -> (libc::c_int, libc::c_int, libc::c_int) {
     let eth_p_all: u16 = htons(0x0003);
     match protocol {
-        &raw::DataLinkProtocol(raw::EthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int, Some(iface)),
-        &raw::DataLinkProtocol(raw::CookedEthernetProtocol(iface))
-            => (libc::AF_PACKET, libc::SOCK_DGRAM, eth_p_all as libc::c_int, Some(iface)),
-        &raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
-            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
-        &raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
-            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW, None),
-        &raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
-            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int, None),
-        &raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
-            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int, None)
+        raw::DataLinkProtocol(raw::EthernetProtocol)
+            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int),
+        raw::DataLinkProtocol(raw::CookedEthernetProtocol(proto))
+            => (libc::AF_PACKET, libc::SOCK_DGRAM, proto as libc::c_int),
+        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
+            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
+            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
+            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
+        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
+            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int)
     }
 }
 
 impl RawSocket {
-    pub fn new(protocol: &raw::Protocol) -> IoResult<RawSocket>
+    pub fn new(protocol: raw::Protocol) -> IoResult<RawSocket>
     {
-        let (domain, typ, proto, _) = protocol_to_libc(protocol);
+        let (domain, typ, proto) = protocol_to_libc(protocol);
         let sock = unsafe { libc::socket(domain, typ, proto) };
         if sock == -1 {
             return Err(super::last_error());
@@ -676,7 +676,7 @@ impl RawSocket {
 
 impl rtio::RtioRawSocket for RawSocket {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> IoResult<(uint, Option<raw::NetworkAddress>)>
+        -> IoResult<(uint, Option<~raw::NetworkAddress>)>
     {
         let mut caddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
         let mut caddrlen = unsafe {
@@ -696,14 +696,14 @@ impl rtio::RtioRawSocket for RawSocket {
         }
 
         return Ok((len as uint, raw::sockaddr_to_network_addr(
-            (&caddr as *libc::sockaddr_storage) as *libc::sockaddr)
+            (&caddr as *libc::sockaddr_storage) as *libc::sockaddr, true)
         ));
         //return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
         //    Ok((len as uint, Some(raw::IpAddress(addr.ip))))
         //});
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: Option<raw::NetworkAddress>)
+    fn sendto(&mut self, buf: &[u8], dst: Option<~raw::NetworkAddress>)
         -> IoResult<int>
     {
         //let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
