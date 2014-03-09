@@ -350,13 +350,13 @@ fn parse_crate_attrs(sess: &session::Session, input: &d::Input) ->
         d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile,
                                                Vec::new(),
-                                               sess.parse_sess)
+                                               &sess.parse_sess)
         }
         d::StrInput(ref src) => {
             parse::parse_crate_attrs_from_source_str(d::anon_src(),
                                                      (*src).clone(),
                                                      Vec::new(),
-                                                     sess.parse_sess)
+                                                     &sess.parse_sess)
         }
     };
     result.move_iter().collect()

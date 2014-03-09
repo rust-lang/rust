@@ -838,12 +838,12 @@ pub fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     }
 }
 
-pub struct MacroExpander<'a> {
+pub struct MacroExpander<'a, 'b> {
     extsbox: SyntaxEnv,
-    cx: &'a mut ExtCtxt<'a>,
+    cx: &'a mut ExtCtxt<'b>,
 }
 
-impl<'a> Folder for MacroExpander<'a> {
+impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(expr, self)
     }
@@ -875,7 +875,7 @@ pub struct ExpansionConfig<'a> {
     crate_id: CrateId,
 }
 
-pub fn expand_crate(parse_sess: @parse::ParseSess,
+pub fn expand_crate(parse_sess: &parse::ParseSess,
                     cfg: ExpansionConfig,
                     c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
@@ -974,7 +974,7 @@ mod test {
     use ext::mtwt;
     use parse;
     use parse::token;
-    use util::parser_testing::{string_to_crate_and_sess};
+    use util::parser_testing::{string_to_parser};
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
@@ -1126,7 +1126,8 @@ mod test {
     //}
 
     fn expand_crate_str(crate_str: ~str) -> ast::Crate {
-        let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
+        let ps = parse::new_parse_sess();
+        let crate_ast = string_to_parser(&ps, source_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
@@ -1134,7 +1135,7 @@ mod test {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(ps,cfg,crate_ast)
+        expand_crate(&ps,cfg,crate_ast)
     }
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
