@@ -1100,7 +1100,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                     _ => {}
                 }
             } else {
-                csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
+                csearch::get_item_attrs(&cx.tcx.sess.cstore, did, |attrs| {
                     if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
@@ -1562,7 +1562,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        csearch::get_item_attrs(cx.tcx.cstore, id, |meta_items| {
+        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |meta_items| {
             if s.is_none() {
                 s = attr::find_stability(meta_items.move_iter())
             }

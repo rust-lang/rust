@@ -581,7 +581,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     unsafe {
                         let llty = type_of::type_of(bcx.ccx(), const_ty);
                         let symbol = csearch::get_symbol(
-                            bcx.ccx().sess().cstore,
+                            &bcx.ccx().sess().cstore,
                             did);
                         let llval = symbol.with_c_str(|buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,

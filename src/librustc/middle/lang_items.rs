@@ -165,7 +165,7 @@ impl<'a> LanguageItemCollector<'a> {
     }
 
     pub fn collect_external_language_items(&mut self) {
-        let crate_store = self.session.cstore;
+        let crate_store = &self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
                 let def_id = ast::DefId { krate: crate_number, node: node_id };

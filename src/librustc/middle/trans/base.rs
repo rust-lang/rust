@@ -246,7 +246,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
     }
 
     let f = decl_rust_fn(ccx, false, inputs, output, name);
-    csearch::get_item_attrs(ccx.tcx.cstore, did, |meta_items| {
+    csearch::get_item_attrs(&ccx.sess().cstore, did, |meta_items| {
         set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
     });
 
@@ -555,7 +555,7 @@ pub fn get_res_dtor(ccx: &CrateContext,
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx;
-        let name = csearch::get_symbol(ccx.sess().cstore, did);
+        let name = csearch::get_symbol(&ccx.sess().cstore, did);
         let class_ty = ty::subst_tps(tcx,
                                      substs,
                                      None,
@@ -874,7 +874,7 @@ pub fn fail_if_zero<'a>(
 }
 
 pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
-    let name = csearch::get_symbol(ccx.sess().cstore, did);
+    let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             match fn_ty.abis.for_target(ccx.sess().targ_cfg.os,
@@ -1966,7 +1966,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                 match external_srcs.get().find(&i.id) {
                                     Some(&did) => {
                                         debug!("but found in other crate...");
-                                        (csearch::get_symbol(ccx.sess().cstore,
+                                        (csearch::get_symbol(&ccx.sess().cstore,
                                                              did), false)
                                     }
                                     None => (sym, true)
@@ -2394,7 +2394,7 @@ pub fn decl_crate_map(sess: &Session, mapmeta: LinkMeta,
     let targ_cfg = sess.targ_cfg;
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
-    let cstore = sess.cstore;
+    let cstore = &sess.cstore;
     while cstore.have_crate_data(n_subcrates) { n_subcrates += 1; }
     let is_top = !sess.building_library.get() || sess.opts.cg.gen_crate_map;
     let sym_name = if is_top {
@@ -2432,7 +2432,7 @@ pub fn fill_crate_map(ccx: &CrateContext, map: ValueRef) {
                 llvm::LLVMConstPointerCast(get_item_val(ccx, did.node),
                                            ccx.int_type.ptr_to().to_ref())
             } else {
-                let name = csearch::get_symbol(ccx.sess().cstore, did);
+                let name = csearch::get_symbol(&ccx.sess().cstore, did);
                 let global = name.with_c_str(|buf| {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
                 });
@@ -2462,7 +2462,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
             item_symbols: item_symbols,
             non_inlineable_statics: &cx.non_inlineable_statics,
             link_meta: link_meta,
-            cstore: cx.sess().cstore,
+            cstore: &cx.sess().cstore,
             encode_inlined_item: ie,
         }
 }

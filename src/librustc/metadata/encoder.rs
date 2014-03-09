@@ -74,7 +74,7 @@ pub struct EncodeParams<'a> {
     item_symbols: &'a RefCell<NodeMap<~str>>,
     non_inlineable_statics: &'a RefCell<NodeSet>,
     link_meta: &'a LinkMeta,
-    cstore: @cstore::CStore,
+    cstore: &'a cstore::CStore,
     encode_inlined_item: EncodeInlinedItem<'a>,
 }
 

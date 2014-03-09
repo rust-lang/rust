@@ -1690,11 +1690,11 @@ impl<'a> Resolver<'a> {
               // to the trait info.
 
               let method_def_ids =
-                csearch::get_trait_method_def_ids(self.session.cstore, def_id);
+                csearch::get_trait_method_def_ids(&self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
-                      csearch::get_method_name_and_explicit_self(self.session.cstore,
+                      csearch::get_method_name_and_explicit_self(&self.session.cstore,
                                                                  method_def_id);
 
                   debug!("(building reduced graph for \
@@ -1743,7 +1743,7 @@ impl<'a> Resolver<'a> {
                     crate) building type and value for {}",
                    final_ident);
             child_name_bindings.define_type(def, DUMMY_SP, is_public);
-            if csearch::get_struct_fields(self.session.cstore, def_id).len() == 0 {
+            if csearch::get_struct_fields(&self.session.cstore, def_id).len() == 0 {
                 child_name_bindings.define_value(def, DUMMY_SP, is_public);
             }
             self.structs.insert(def_id);
@@ -1775,7 +1775,7 @@ impl<'a> Resolver<'a> {
                     DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
-                        csearch::each_child_of_item(self.session.cstore,
+                        csearch::each_child_of_item(&self.session.cstore,
                                                     def_id,
                                                     |def_like,
                                                      child_ident,
@@ -1805,11 +1805,11 @@ impl<'a> Resolver<'a> {
             }
             DlImpl(def) => {
                 // We only process static methods of impls here.
-                match csearch::get_type_name_if_impl(self.session.cstore, def) {
+                match csearch::get_type_name_if_impl(&self.session.cstore, def) {
                     None => {}
                     Some(final_ident) => {
                         let static_methods_opt =
-                            csearch::get_static_methods_if_impl(self.session.cstore, def);
+                            csearch::get_static_methods_if_impl(&self.session.cstore, def);
                         match static_methods_opt {
                             Some(ref static_methods) if
                                 static_methods.len() >= 1 => {
@@ -1910,7 +1910,7 @@ impl<'a> Resolver<'a> {
             Some(def_id) => def_id,
         };
 
-        csearch::each_child_of_item(self.session.cstore,
+        csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
@@ -1936,7 +1936,7 @@ impl<'a> Resolver<'a> {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
                                               root: @Module) {
-        csearch::each_top_level_item_of_crate(self.session.cstore,
+        csearch::each_top_level_item_of_crate(&self.session.cstore,
                                               root.def_id
                                                   .get()
                                                   .unwrap()

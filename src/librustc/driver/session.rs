@@ -176,7 +176,7 @@ pub enum CrateType {
 pub struct Session {
     targ_cfg: @Config,
     opts: @Options,
-    cstore: @metadata::cstore::CStore,
+    cstore: metadata::cstore::CStore,
     parse_sess: @ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
