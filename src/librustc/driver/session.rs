@@ -134,8 +134,8 @@ pub struct Options {
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
-    addl_lib_search_paths: @RefCell<HashSet<Path>>,
-    maybe_sysroot: Option<@Path>,
+    addl_lib_search_paths: RefCell<HashSet<Path>>,
+    maybe_sysroot: Option<Path>,
     target_triple: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
@@ -184,7 +184,7 @@ pub struct Session {
     entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @diagnostic::SpanHandler,
     macro_registrar_fn: RefCell<Option<ast::DefId>>,
-    filesearch: @filesearch::FileSearch,
+    default_sysroot: Option<Path>,
     building_library: Cell<bool>,
     // The name of the root source file of the crate, in the local file system. The path is always
     // expected to be absolute. `None` means that there is no source file.
@@ -314,6 +314,17 @@ impl Session {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
     }
+    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        let sysroot = match self.opts.maybe_sysroot {
+            Some(ref sysroot) => sysroot,
+            None => self.default_sysroot.as_ref()
+                        .expect("missing sysroot and default_sysroot in Session")
+        };
+        filesearch::FileSearch::new(
+            sysroot,
+            self.opts.target_triple,
+            &self.opts.addl_lib_search_paths)
+    }
 }
 
 /// Some reasonable defaults
@@ -325,7 +336,7 @@ pub fn basic_options() -> @Options {
         debuginfo: NoDebugInfo,
         lint_opts: Vec::new(),
         output_types: Vec::new(),
-        addl_lib_search_paths: @RefCell::new(HashSet::new()),
+        addl_lib_search_paths: RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
         cfg: Vec::new(),
