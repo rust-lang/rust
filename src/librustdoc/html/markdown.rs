@@ -245,14 +245,15 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     extern fn block(_ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
             if text.is_null() { return }
-            let (shouldfail, ignore) = if lang.is_null() {
-                (false, false)
+            let (should_fail, no_run, ignore) = if lang.is_null() {
+                (false, false, false)
             } else {
                 vec::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
                     let s = str::from_utf8(lang).unwrap();
-                    (s.contains("should_fail"), s.contains("ignore") ||
-                                                s.contains("notrust"))
+                    (s.contains("should_fail"),
+                     s.contains("no_run"),
+                     s.contains("ignore") || s.contains("notrust"))
                 })
             };
             if ignore { return }
@@ -261,7 +262,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
                 let text = lines.to_owned_vec().connect("\n");
-                tests.add_test(text, shouldfail);
+                tests.add_test(text, should_fail, no_run);
             })
         }
     }
