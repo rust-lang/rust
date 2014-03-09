@@ -14,6 +14,9 @@
 #
 # The DOCS variable is their names (with no file extension).
 #
+# PDF_DOCS lists the targets for which PDF documentation should be
+# build.
+#
 # RUSTDOC_FLAGS_xyz variables are extra arguments to pass to the
 # rustdoc invocation for xyz.
 #
@@ -27,6 +30,8 @@ DOCS := index tutorial guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers \
 	complement-cheatsheet guide-runtime \
 	rust rustdoc
+
+PDF_DOCS := tutorial rust
 
 RUSTDOC_DEPS_rust := doc/full-toc.inc
 RUSTDOC_FLAGS_rust := --markdown-in-header=doc/full-toc.inc
@@ -44,8 +49,6 @@ PANDOC_BASE_OPTS := --standalone --toc --number-sections
 PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.md \
 	--from=markdown --include-before-body=doc/footer.tex --to=latex
 PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
-
-
 
 # The rustdoc executable...
 RUSTDOC_EXE = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
@@ -146,6 +149,11 @@ doc/footer.tex: $(D)/footer.tex | doc/
 
 # The (english) documentation for each doc item.
 
+define DEF_SHOULD_BUILD_PDF_DOC
+SHOULD_BUILD_PDF_DOC_$(1) = 1
+endef
+$(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))))
+
 define DEF_DOC
 
 # HTML (rustdoc)
@@ -171,6 +179,7 @@ doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.md | doc/
 	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) --output=$$@
 
 ifneq ($(NO_PDF_DOCS),1)
+ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
 DOC_TARGETS += doc/$(1).pdf
 doc/$(1).pdf: doc/$(1).tex
 	@$$(call E, pdflatex: $$@)
@@ -178,6 +187,7 @@ doc/$(1).pdf: doc/$(1).tex
 	-interaction=batchmode \
 	-output-directory=doc \
 	$$<
+endif # SHOULD_BUILD_PDF_DOCS_$(1)
 endif # NO_PDF_DOCS
 
 endif # ONLY_HTML_DOCS
