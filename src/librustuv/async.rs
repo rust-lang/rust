@@ -27,12 +27,12 @@ pub struct AsyncWatcher {
 }
 
 struct Payload {
-    callback: ~Callback,
+    callback: ~Callback:Send,
     exit_flag: Exclusive<bool>,
 }
 
 impl AsyncWatcher {
-    pub fn new(loop_: &mut Loop, cb: ~Callback) -> AsyncWatcher {
+    pub fn new(loop_: &mut Loop, cb: ~Callback:Send) -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         assert_eq!(unsafe {
             uvll::uv_async_init(loop_.handle, handle, async_cb)
@@ -149,8 +149,7 @@ mod test_remote {
 
         let (tx, rx) = channel();
         let cb = ~MyCallback(Some(tx));
-        let watcher = AsyncWatcher::new(&mut local_loop().loop_,
-                                        cb as ~Callback);
+        let watcher = AsyncWatcher::new(&mut local_loop().loop_, cb);
 
         let thread = Thread::start(proc() {
             let mut watcher = watcher;

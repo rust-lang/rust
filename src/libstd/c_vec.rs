@@ -35,17 +35,18 @@
 
 use cast;
 use container::Container;
-use ptr;
-use ptr::RawPtr;
-use raw;
-use option::{Option, Some, None};
+use kinds::Send;
 use ops::Drop;
+use option::{Option, Some, None};
+use ptr::RawPtr;
+use ptr;
+use raw;
 
 /// The type representing a foreign chunk of memory
 pub struct CVec<T> {
     priv base: *mut T,
     priv len: uint,
-    priv dtor: Option<proc()>,
+    priv dtor: Option<proc:Send()>,
 }
 
 #[unsafe_destructor]
@@ -89,7 +90,7 @@ impl<T> CVec<T> {
     /// * dtor - A proc to run when the value is destructed, useful
     ///          for freeing the buffer, etc.
     pub unsafe fn new_with_dtor(base: *mut T, len: uint,
-                                dtor: proc()) -> CVec<T> {
+                                dtor: proc:Send()) -> CVec<T> {
         assert!(base != ptr::mut_null());
         CVec {
             base: base,

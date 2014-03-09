@@ -18,7 +18,7 @@ fn test05_start(f: proc(int)) {
 
 fn test05() {
     let three = ~3;
-    let fn_to_send: proc(int) = proc(n) {
+    let fn_to_send: proc:Send(int) = proc(n) {
         println!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };

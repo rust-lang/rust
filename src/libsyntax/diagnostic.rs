@@ -79,7 +79,7 @@ impl SpanHandler {
 // others log errors for later reporting.
 pub struct Handler {
     err_count: Cell<uint>,
-    emit: RefCell<~Emitter>,
+    emit: RefCell<~Emitter:Send>,
 }
 
 impl Handler {
@@ -148,7 +148,7 @@ pub fn default_handler() -> Handler {
     mk_handler(~EmitterWriter::stderr())
 }
 
-pub fn mk_handler(e: ~Emitter) -> Handler {
+pub fn mk_handler(e: ~Emitter:Send) -> Handler {
     Handler {
         err_count: Cell::new(0),
         emit: RefCell::new(e),
@@ -221,7 +221,7 @@ pub struct EmitterWriter {
 
 enum Destination {
     Terminal(term::Terminal<io::stdio::StdWriter>),
-    Raw(~Writer),
+    Raw(~Writer:Send),
 }
 
 impl EmitterWriter {
@@ -238,7 +238,7 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: ~Writer) -> EmitterWriter {
+    pub fn new(dst: ~Writer:Send) -> EmitterWriter {
         EmitterWriter { dst: Raw(dst) }
     }
 }

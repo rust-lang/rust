@@ -2600,6 +2600,6 @@ mod tests {
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
-        let hm: HashMap<uint, bool> = Decodable::decode(&mut decoder);
+        let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder);
     }
 }

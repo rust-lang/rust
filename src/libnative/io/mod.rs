@@ -227,20 +227,20 @@ impl IoFactory {
 
 impl rtio::IoFactory for IoFactory {
     // networking
-    fn tcp_connect(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpStream> {
-        net::TcpStream::connect(addr).map(|s| ~s as ~RtioTcpStream)
+    fn tcp_connect(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpStream:Send> {
+        net::TcpStream::connect(addr).map(|s| ~s as ~RtioTcpStream:Send)
     }
-    fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener> {
-        net::TcpListener::bind(addr).map(|s| ~s as ~RtioTcpListener)
+    fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener:Send> {
+        net::TcpListener::bind(addr).map(|s| ~s as ~RtioTcpListener:Send)
     }
-    fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
-        net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
+    fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket:Send> {
+        net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket:Send)
     }
-    fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener> {
-        pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener)
+    fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener:Send> {
+        pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener:Send)
     }
-    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe> {
-        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe)
+    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe:Send> {
+        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe:Send)
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
@@ -249,16 +249,16 @@ impl rtio::IoFactory for IoFactory {
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int,
-                      close: CloseBehavior) -> ~RtioFileStream {
+                      close: CloseBehavior) -> ~RtioFileStream:Send {
         let close = match close {
             rtio::CloseSynchronously | rtio::CloseAsynchronously => true,
             rtio::DontClose => false
         };
-        ~file::FileDesc::new(fd, close) as ~RtioFileStream
+        ~file::FileDesc::new(fd, close) as ~RtioFileStream:Send
     }
     fn fs_open(&mut self, path: &CString, fm: io::FileMode, fa: io::FileAccess)
-        -> IoResult<~RtioFileStream> {
-        file::open(path, fm, fa).map(|fd| ~fd as ~RtioFileStream)
+        -> IoResult<~RtioFileStream:Send> {
+        file::open(path, fm, fa).map(|fd| ~fd as ~RtioFileStream:Send)
     }
     fn fs_unlink(&mut self, path: &CString) -> IoResult<()> {
         file::unlink(path)
@@ -304,25 +304,27 @@ impl rtio::IoFactory for IoFactory {
     }
 
     // misc
-    fn timer_init(&mut self) -> IoResult<~RtioTimer> {
-        timer::Timer::new().map(|t| ~t as ~RtioTimer)
+    fn timer_init(&mut self) -> IoResult<~RtioTimer:Send> {
+        timer::Timer::new().map(|t| ~t as ~RtioTimer:Send)
     }
     fn spawn(&mut self, config: ProcessConfig)
-            -> IoResult<(~RtioProcess, ~[Option<~RtioPipe>])> {
+            -> IoResult<(~RtioProcess:Send, ~[Option<~RtioPipe:Send>])> {
         process::Process::spawn(config).map(|(p, io)| {
-            (~p as ~RtioProcess,
-             io.move_iter().map(|p| p.map(|p| ~p as ~RtioPipe)).collect())
+            (~p as ~RtioProcess:Send,
+             io.move_iter().map(|p| p.map(|p| ~p as ~RtioPipe:Send)).collect())
         })
     }
     fn kill(&mut self, pid: libc::pid_t, signum: int) -> IoResult<()> {
         process::Process::kill(pid, signum)
     }
-    fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe> {
-        Ok(~file::FileDesc::new(fd, true) as ~RtioPipe)
+    fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe:Send> {
+        Ok(~file::FileDesc::new(fd, true) as ~RtioPipe:Send)
     }
-    fn tty_open(&mut self, fd: c_int, _readable: bool) -> IoResult<~RtioTTY> {
+    fn tty_open(&mut self, fd: c_int, _readable: bool)
+        -> IoResult<~RtioTTY:Send>
+    {
         if unsafe { libc::isatty(fd) } != 0 {
-            Ok(~file::FileDesc::new(fd, true) as ~RtioTTY)
+            Ok(~file::FileDesc::new(fd, true) as ~RtioTTY:Send)
         } else {
             Err(IoError {
                 kind: io::MismatchedFileTypeForOperation,
@@ -332,7 +334,7 @@ impl rtio::IoFactory for IoFactory {
         }
     }
     fn signal(&mut self, _signal: Signum, _channel: Sender<Signum>)
-        -> IoResult<~RtioSignal> {
+        -> IoResult<~RtioSignal:Send> {
         Err(unimpl())
     }
 }

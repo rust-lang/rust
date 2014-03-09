@@ -53,6 +53,7 @@ use c_str::ToCStr;
 use clone::Clone;
 use container::Container;
 use iter::Iterator;
+use kinds::Send;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
             FileMode, FileAccess, FileStat, IoResult, FilePermission};
@@ -77,7 +78,7 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    priv fd: ~RtioFileStream,
+    priv fd: ~RtioFileStream:Send,
     priv path: Path,
     priv last_nread: int,
 }
