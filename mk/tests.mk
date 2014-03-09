@@ -309,7 +309,7 @@ endif
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec: \
         $$(foreach crate,$$(TEST_DOC_CRATES), \
-           check-stage$(1)-T-$(2)-H-$(3)-doc-$$(crate)-exec)
+           check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$$(crate)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
         $$(foreach docname,$$(DOCS), \
@@ -721,15 +721,16 @@ else
 CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
+check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$(4)-exec: \
+	$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4))
 
 ifeq ($(2),$$(CFG_BUILD))
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
-	@$$(call E, run doc-$(4) [$(2)])
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
+	@$$(call E, run doc-crate-$(4) [$(2)])
 	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test \
 	    	$$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)):
 	touch $$@
 endif
 
@@ -748,7 +749,7 @@ $(foreach host,$(CFG_HOST), \
 TEST_GROUPS = \
 	crates \
 	$(foreach crate,$(TEST_CRATES),$(crate)) \
-	$(foreach crate,$(TEST_DOC_CRATES),doc-$(crate)) \
+	$(foreach crate,$(TEST_DOC_CRATES),doc-crate-$(crate)) \
 	rpass \
 	rpass-full \
 	rfail \
@@ -830,7 +831,7 @@ define DEF_CHECK_DOC_FOR_STAGE
 check-stage$(1)-docs: $$(foreach docname,$$(DOCS),\
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
                      $$(foreach crate,$$(TEST_DOC_CRATES),\
-                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(crate))
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))
 endef
 
 $(foreach stage,$(STAGES), \
