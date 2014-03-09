@@ -93,11 +93,6 @@ $(info cfg: no pandoc found, omitting PDF and EPUB docs)
 ONLY_HTML_DOCS = 1
 endif
 
-ifeq ($(CFG_NODE),)
-$(info cfg: no node found, omitting PDF and EPUB docs)
-ONLY_HTML_DOCS = 1
-endif
-
 
 ######################################################################
 # Rust version
@@ -118,7 +113,7 @@ doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
 GENERATED += doc/version.md doc/version_info.html
 
 ######################################################################
-# Docs, from rustdoc and sometimes pandoc & node
+# Docs, from rustdoc and sometimes pandoc
 ######################################################################
 
 doc/:
@@ -168,15 +163,13 @@ ifneq ($(ONLY_HTML_DOCS),1)
 DOC_TARGETS += doc/$(1).epub
 doc/$(1).epub: $$(D)/$(1).md | doc/
 	@$$(call E, pandoc: $$@)
-	$$(Q)$$(CFG_NODE) $$(D)/prep.js --highlight $$< | \
-	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) --output=$$@
+	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) $$< --output=$$@
 
 # PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
 DOC_TARGETS += doc/$(1).tex
 doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.md | doc/
 	@$$(call E, pandoc: $$@)
-	$$(Q)$$(CFG_NODE) $$(D)/prep.js $$< | \
-	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) --output=$$@
+	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) $$< --output=$$@
 
 ifneq ($(NO_PDF_DOCS),1)
 ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
