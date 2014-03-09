@@ -42,7 +42,7 @@ fn main() {
     let (tx, rx) = channel();
     let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
     spawn(proc() {
-        set_logger(~MyWriter(w) as ~Logger);
+        set_logger(~MyWriter(w) as ~Logger:Send);
         debug!("debug");
         info!("info");
     });

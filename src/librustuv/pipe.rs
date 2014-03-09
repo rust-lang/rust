@@ -37,8 +37,8 @@ pub struct PipeWatcher {
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *uvll::uv_pipe_t,
-    priv outgoing: Sender<Result<~RtioPipe, IoError>>,
-    priv incoming: Receiver<Result<~RtioPipe, IoError>>,
+    priv outgoing: Sender<Result<~RtioPipe:Send, IoError>>,
+    priv incoming: Receiver<Result<~RtioPipe:Send, IoError>>,
 }
 
 pub struct PipeAcceptor {
@@ -139,7 +139,7 @@ impl RtioPipe for PipeWatcher {
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
-    fn clone(&self) -> ~RtioPipe {
+    fn clone(&self) -> ~RtioPipe:Send {
         ~PipeWatcher {
             stream: StreamWatcher::new(self.stream.handle),
             defused: false,
@@ -147,7 +147,7 @@ impl RtioPipe for PipeWatcher {
             refcount: self.refcount.clone(),
             read_access: self.read_access.clone(),
             write_access: self.write_access.clone(),
-        } as ~RtioPipe
+        } as ~RtioPipe:Send
     }
 }
 
@@ -197,14 +197,14 @@ impl PipeListener {
 }
 
 impl RtioUnixListener for PipeListener {
-    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError> {
+    fn listen(~self) -> Result<~RtioUnixAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = ~PipeAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
-            0 => Ok(acceptor as ~RtioUnixAcceptor),
+            0 => Ok(acceptor as ~RtioUnixAcceptor:Send),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
     }
@@ -229,7 +229,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             });
             let client = PipeWatcher::new_home(&loop_, pipe.home().clone(), false);
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
-            Ok(~client as ~RtioPipe)
+            Ok(~client as ~RtioPipe:Send)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
@@ -246,7 +246,7 @@ impl Drop for PipeListener {
 // PipeAcceptor implementation and traits
 
 impl RtioUnixAcceptor for PipeAcceptor {
-    fn accept(&mut self) -> Result<~RtioPipe, IoError> {
+    fn accept(&mut self) -> Result<~RtioPipe:Send, IoError> {
         self.listener.incoming.recv()
     }
 }

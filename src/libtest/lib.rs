@@ -123,7 +123,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut BenchHarness)),
     StaticMetricFn(proc(&mut MetricMap)),
-    DynTestFn(proc()),
+    DynTestFn(proc:Send()),
     DynMetricFn(proc(&mut MetricMap)),
     DynBenchFn(~TDynBenchFn)
 }
@@ -948,7 +948,7 @@ pub fn run_test(force_ignore: bool,
     #[allow(deprecated_owned_vector)]
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
-                      testfn: proc()) {
+                      testfn: proc:Send()) {
         spawn(proc() {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
@@ -958,8 +958,8 @@ pub fn run_test(force_ignore: bool,
                 DynTestName(ref name) => name.clone().into_maybe_owned(),
                 StaticTestName(name) => name.into_maybe_owned(),
             });
-            task.opts.stdout = Some(~stdout as ~Writer);
-            task.opts.stderr = Some(~stderr as ~Writer);
+            task.opts.stdout = Some(~stdout as ~Writer:Send);
+            task.opts.stderr = Some(~stderr as ~Writer:Send);
             let result_future = task.future_result();
             task.spawn(testfn);
 

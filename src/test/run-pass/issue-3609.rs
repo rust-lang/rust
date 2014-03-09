@@ -11,7 +11,7 @@
 use std::task;
 
 type RingBuffer = Vec<f64> ;
-type SamplesFn = proc(samples: &RingBuffer);
+type SamplesFn = proc:Send(samples: &RingBuffer);
 
 enum Msg
 {

@@ -686,7 +686,7 @@ fn test_repr() {
     exact_test(&println, "fn(&str)");
     exact_test(&swap::<int>, "fn(&mut int, &mut int)");
     exact_test(&is_alphabetic, "fn(char) -> bool");
-    exact_test(&(~5 as ~ToStr), "~to_str::ToStr:Send");
+    exact_test(&(~5 as ~ToStr), "~to_str::ToStr<no-bounds>");
 
     struct Foo;
     exact_test(&(~[Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");

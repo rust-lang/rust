@@ -19,11 +19,11 @@ pub struct IdleWatcher {
     handle: *uvll::uv_idle_t,
     idle_flag: bool,
     closed: bool,
-    callback: ~Callback,
+    callback: ~Callback:Send,
 }
 
 impl IdleWatcher {
-    pub fn new(loop_: &mut Loop, cb: ~Callback) -> ~IdleWatcher {
+    pub fn new(loop_: &mut Loop, cb: ~Callback:Send) -> ~IdleWatcher {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         assert_eq!(unsafe {
             uvll::uv_idle_init(loop_.handle, handle)

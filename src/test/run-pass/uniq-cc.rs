@@ -20,7 +20,7 @@ enum maybe_pointy {
 struct Pointy {
     a : maybe_pointy,
     c : ~int,
-    d : proc()->(),
+    d : proc:Send()->(),
 }
 
 fn empty_pointy() -> @RefCell<Pointy> {

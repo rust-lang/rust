@@ -16,9 +16,10 @@
 //! datagram protocol.
 
 use clone::Clone;
-use result::{Ok, Err};
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, IoResult};
+use kinds::Send;
+use result::{Ok, Err};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
 /// A User Datagram Protocol socket.
@@ -53,7 +54,7 @@ use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 /// drop(socket); // close the socket
 /// ```
 pub struct UdpSocket {
-    priv obj: ~RtioUdpSocket
+    priv obj: ~RtioUdpSocket:Send
 }
 
 impl UdpSocket {

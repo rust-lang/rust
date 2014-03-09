@@ -31,12 +31,12 @@ impl Foo for B
 
 struct A
 {
-    v: ~Foo,
+    v: ~Foo:Send,
 }
 
 fn main()
 {
-    let a = A {v: ~B{v: None} as ~Foo};
+    let a = A {v: ~B{v: None} as ~Foo:Send};
     //~^ ERROR cannot pack type `~B`, which does not fulfill `Send`
     let v = Rc::new(RefCell::new(a));
     let w = v.clone();

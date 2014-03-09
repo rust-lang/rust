@@ -394,14 +394,14 @@ impl<'a> Prep<'a> {
     pub fn exec<'a, T:Send +
         Encodable<json::Encoder<'a>> +
         Decodable<json::Decoder>>(
-            &'a self, blk: proc(&mut Exec) -> T) -> T {
+            &'a self, blk: proc:Send(&mut Exec) -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
     fn exec_work<'a, T:Send +
         Encodable<json::Encoder<'a>> +
         Decodable<json::Decoder>>( // FIXME(#5121)
-            &'a self, blk: proc(&mut Exec) -> T) -> Work<'a, T> {
+            &'a self, blk: proc:Send(&mut Exec) -> T) -> Work<'a, T> {
         let mut bo = Some(blk);
 
         debug!("exec_work: looking up {} and {:?}", self.fn_name,

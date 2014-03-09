@@ -18,7 +18,7 @@ struct Tree(@RefCell<TreeR>);
 struct TreeR {
     left: Option<Tree>,
     right: Option<Tree>,
-    val: ~to_str
+    val: ~to_str:Send
 }
 
 trait to_str {
@@ -53,10 +53,10 @@ fn foo<T:to_str>(x: T) -> ~str { x.to_str_() }
 pub fn main() {
     let t1 = Tree(@RefCell::new(TreeR{left: None,
                                       right: None,
-                                      val: ~1 as ~to_str}));
+                                      val: ~1 as ~to_str:Send}));
     let t2 = Tree(@RefCell::new(TreeR{left: Some(t1),
                                       right: Some(t1),
-                                      val: ~2 as ~to_str}));
+                                      val: ~2 as ~to_str:Send}));
     let expected = ~"[2, some([1, none, none]), some([1, none, none])]";
     assert!(t2.to_str_() == expected);
     assert!(foo(t2) == expected);
