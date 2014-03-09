@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cell::RefCell;
+use std::char;
 use std::io;
 use std::io::Process;
 use std::local_data;
@@ -22,7 +23,6 @@ use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
-use getopts;
 use syntax::diagnostic;
 use syntax::parse;
 use syntax::codemap::CodeMap;
@@ -35,11 +35,9 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, matches: &getopts::Matches) -> int {
+pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
-    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
-    let libs = @RefCell::new(libs.move_iter().collect());
 
     let sessopts = @session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
@@ -79,28 +77,19 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
 
-    let mut collector = Collector {
-        tests: ~[],
-        names: ~[],
-        cnt: 0,
-        libs: libs,
-        cratename: krate.name.to_owned(),
-    };
+    let mut collector = Collector::new(krate.name.to_owned(), libs, false, false);
     collector.fold_crate(krate);
 
-    let args = matches.opt_strs("test-args");
-    let mut args = args.iter().flat_map(|s| s.words()).map(|s| s.to_owned());
-    let mut args = args.to_owned_vec();
-    args.unshift(~"rustdoctest");
+    test_args.unshift(~"rustdoctest");
 
-    testing::test_main(args, collector.tests);
+    testing::test_main(test_args, collector.tests);
 
     0
 }
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
-           no_run: bool) {
-    let test = maketest(test, cratename);
+           no_run: bool, loose_feature_gating: bool) {
+    let test = maketest(test, cratename, loose_feature_gating);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
@@ -173,11 +162,18 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     }
 }
 
-fn maketest(s: &str, cratename: &str) -> ~str {
+fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
 ";
+
+    if loose_feature_gating {
+        // FIXME #12773: avoid inserting these when the tutorial & manual
+        // etc. have been updated to not use them so prolifically.
+        prog.push_str("#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n");
+    }
+
     if !s.contains("extern crate") {
         if s.contains("extra") {
             prog.push_str("extern crate extra;\n");
@@ -198,21 +194,45 @@ fn maketest(s: &str, cratename: &str) -> ~str {
 }
 
 pub struct Collector {
-    priv tests: ~[testing::TestDescAndFn],
+    tests: ~[testing::TestDescAndFn],
     priv names: ~[~str],
     priv libs: @RefCell<HashSet<Path>>,
     priv cnt: uint,
+    priv use_headers: bool,
+    priv current_header: Option<~str>,
     priv cratename: ~str,
+
+    priv loose_feature_gating: bool
 }
 
 impl Collector {
-    pub fn add_test(&mut self, test: &str, should_fail: bool, no_run: bool) {
-        let test = test.to_owned();
-        let name = format!("{}_{}", self.names.connect("::"), self.cnt);
+    pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>,
+               use_headers: bool, loose_feature_gating: bool) -> Collector {
+        Collector {
+            tests: ~[],
+            names: ~[],
+            libs: libs,
+            cnt: 0,
+            use_headers: use_headers,
+            current_header: None,
+            cratename: cratename,
+
+            loose_feature_gating: loose_feature_gating
+        }
+    }
+
+    pub fn add_test(&mut self, test: ~str, should_fail: bool, no_run: bool) {
+        let name = if self.use_headers {
+            let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
+            format!("{}_{}", s, self.cnt)
+        } else {
+            format!("{}_{}", self.names.connect("::"), self.cnt)
+        };
         self.cnt += 1;
         let libs = self.libs.borrow();
         let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
+        let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -221,9 +241,28 @@ impl Collector {
                 should_fail: false, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(proc() {
-                runtest(test, cratename, libs, should_fail, no_run);
+                runtest(test, cratename, libs, should_fail, no_run, loose_feature_gating);
             }),
         });
+    }
+
+    pub fn register_header(&mut self, name: &str, level: u32) {
+        if self.use_headers && level == 1 {
+            // we use these headings as test names, so it's good if
+            // they're valid identifiers.
+            let name = name.chars().enumerate().map(|(i, c)| {
+                    if (i == 0 && char::is_XID_start(c)) ||
+                        (i != 0 && char::is_XID_continue(c)) {
+                        c
+                    } else {
+                        '_'
+                    }
+                }).collect::<~str>();
+
+            // new header => reset count.
+            self.cnt = 0;
+            self.current_header = Some(name);
+        }
     }
 }
 
@@ -237,7 +276,7 @@ impl DocFolder for Collector {
         match item.doc_value() {
             Some(doc) => {
                 self.cnt = 0;
-                markdown::find_testable_code(doc, self);
+                markdown::find_testable_code(doc, &mut *self);
             }
             None => {}
         }

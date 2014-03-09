@@ -20,6 +20,7 @@ comments":
 //! the crate index page. The ! makes it apply to the parent of the comment,
 //! rather than what follows).
 
+# mod workaround_the_outer_function_rustdoc_inserts {
 /// Widgets are very common (this is a doc comment, and will show up on
 /// Widget's documentation).
 pub struct Widget {
@@ -36,6 +37,7 @@ pub fn recalibrate() {
 	//! `recalibrate`).
 	/* ... */
 }
+# }
 ~~~
 
 Doc comments are markdown, and are currently parsed with the
@@ -94,7 +96,7 @@ source code.
 
 To test documentation, the `--test` argument is passed to rustdoc:
 
-~~~
+~~~ {.notrust}
 rustdoc --test crate.rs
 ~~~
 
@@ -105,35 +107,44 @@ code blocks as testable-by-default. In order to not run a test over a block of
 code, the `ignore` string can be added to the three-backtick form of markdown
 code block.
 
-~~~
-```
-// This is a testable code block
-```
+    /**
+    # nested codefences confuse sundown => indentation + comment to
+    #  avoid failing tests
+    ```
+    // This is a testable code block
+    ```
 
-```ignore
-// This is not a testable code block
-```
+    ```ignore
+    // This is not a testable code block
+    ```
 
-    // This is a testable code block (4-space indent)
-~~~
+        // This is a testable code block (4-space indent)
+    */
+    # fn foo() {}
 
 You can specify that the test's execution should fail with the `should_fail`
 directive.
 
-~~~
-```should_fail
-// This code block is expected to generate a failure when run
-```
-~~~
+    /**
+    # nested codefences confuse sundown => indentation + comment to
+    #  avoid failing tests
+    ```should_fail
+    // This code block is expected to generate a failure when run
+    ```
+    */
+    # fn foo() {}
 
 You can specify that the code block should be compiled but not run with the
 `no_run` directive.
 
-~~~
-```no_run
-// This code will be compiled but not executed
-```
-~~~
+    /**
+    # nested codefences confuse sundown => indentation + comment to
+    #  avoid failing tests
+    ```no_run
+    // This code will be compiled but not executed
+    ```
+    */
+    # fn foo() {}
 
 Rustdoc also supplies some extra sugar for helping with some tedious
 documentation examples. If a line is prefixed with `# `, then the line
@@ -141,20 +152,23 @@ will not show up in the HTML documentation, but it will be used when
 testing the code block (NB. the space after the `#` is required, so
 that one can still write things like `#[deriving(Eq)]`).
 
-~~~
-```rust
-# /!\ The three following lines are comments, which are usually stripped off by
-# the doc-generating tool.  In order to display them anyway in this particular
-# case, the character following the leading '#' is not a usual space like in
-# these first five lines but a non breakable one.
-#
-# // showing 'fib' in this documentation would just be tedious and detracts from
-# // what's actualy being documented.
-# fn fib(n: int) { n + 2 }
+    /**
+    # nested codefences confuse sundown => indentation + comment to
+    #  avoid failing tests
+    ```rust
+    # /!\ The three following lines are comments, which are usually stripped off by
+    # the doc-generating tool.  In order to display them anyway in this particular
+    # case, the character following the leading '#' is not a usual space like in
+    # these first five lines but a non breakable one.
+    #
+    # // showing 'fib' in this documentation would just be tedious and detracts from
+    # // what's actualy being documented.
+    # fn fib(n: int) { n + 2 }
 
-do spawn { fib(200); }
-```
-~~~
+    do spawn { fib(200); }
+    ```
+    */
+    # fn foo() {}
 
 The documentation online would look like `do spawn { fib(200); }`, but when
 testing this code, the `fib` function will be included (so it can compile).
@@ -167,12 +181,12 @@ uses is build on crate `test`, which is also used when you compile crates with
 rustc's `--test` flag. Extra arguments can be passed to rustdoc's test harness
 with the `--test-args` flag.
 
-~~~
-// Only run tests containing 'foo' in their name
-rustdoc --test lib.rs --test-args 'foo'
+~~~ {.notrust}
+$ # Only run tests containing 'foo' in their name
+$ rustdoc --test lib.rs --test-args 'foo'
 
-// See what's possible when running tests
-rustdoc --test lib.rs --test-args '--help'
+$ # See what's possible when running tests
+$ rustdoc --test lib.rs --test-args '--help'
 ~~~
 
 When testing a library, code examples will often show how functions are used,
@@ -181,3 +195,29 @@ rustdoc will implicitly add `extern crate <crate>;` where `<crate>` is the name 
 the crate being tested to the top of each code example. This means that rustdoc
 must be able to find a compiled version of the library crate being tested. Extra
 search paths may be added via the `-L` flag to `rustdoc`.
+
+# Standalone Markdown files
+
+As well as Rust crates, rustdoc supports rendering pure Markdown files
+into HTML and testing the code snippets from them. A Markdown file is
+detected by a `.md` or `.markdown` extension.
+
+There are 4 options to modify the output that Rustdoc creates.
+
+- `--markdown-css PATH`: adds a `<link rel="stylesheet">` tag pointing to `PATH`.
+- `--markdown-in-header FILE`: includes the contents of `FILE` at the
+  end of the `<head>...</head>` section.
+- `--markdown-before-content FILE`: includes the contents of `FILE`
+  directly after `<body>`, before the rendered content (including the
+  title).
+- `--markdown-after-content FILE`: includes the contents of `FILE`
+  directly before `</body>`, after all the rendered content.
+
+All of these can be specified multiple times, and they are output in
+the order in which they are specified. The first line of the file must
+be the title, prefixed with `%` (e.g. this page has `% Rust
+Documentation` on the first line).
+
+Like with a Rust crate, the `--test` argument will run the code
+examples to check they compile, and obeys any `--test-args` flags. The
+tests are named after the last `#` heading.
