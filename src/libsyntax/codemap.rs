@@ -221,6 +221,10 @@ impl FileMap {
     // UNCHECKED INVARIANT: these offsets must be added in the right
     // order and must be in the right places; there is shared knowledge
     // about what ends a line between this file and parse.rs
+    // WARNING: pos param here is the offset relative to start of CodeMap,
+    // and CodeMap will append a newline when adding a filemap without a newline at the end,
+    // so the safe way to call this is with value calculated as
+    // filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
     pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();;
@@ -267,12 +271,20 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: ~str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, mut src: ~str) -> @FileMap {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.get().last() {
             None => 0,
             Some(last) => last.start_pos.to_uint() + last.src.len(),
         };
+
+        // Append '\n' in case it's not already there.
+        // This is a workaround to prevent CodeMap.lookup_filemap_idx from accidentally
+        // overflowing into the next filemap in case the last byte of span is also the last
+        // byte of filemap, which leads to incorrect results from CodeMap.span_to_*.
+        if src.len() > 0 && !src.ends_with("\n") {
+            src.push_char('\n');
+        }
 
         let filemap = @FileMap {
             name: filename,
@@ -510,9 +522,9 @@ mod test {
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(12));
-        fm2.next_line(BytePos(23));
-        fm3.next_line(BytePos(23));
-        fm3.next_line(BytePos(33));
+        fm2.next_line(BytePos(24));
+        fm3.next_line(BytePos(24));
+        fm3.next_line(BytePos(34));
 
         cm
     }
@@ -526,7 +538,7 @@ mod test {
         assert_eq!(fmabp1.fm.name, ~"blork.rs");
         assert_eq!(fmabp1.pos, BytePos(22));
 
-        let fmabp2 = cm.lookup_byte_offset(BytePos(23));
+        let fmabp2 = cm.lookup_byte_offset(BytePos(24));
         assert_eq!(fmabp2.fm.name, ~"blork2.rs");
         assert_eq!(fmabp2.pos, BytePos(0));
     }
@@ -539,7 +551,7 @@ mod test {
         let cp1 = cm.bytepos_to_file_charpos(BytePos(22));
         assert_eq!(cp1, CharPos(22));
 
-        let cp2 = cm.bytepos_to_file_charpos(BytePos(23));
+        let cp2 = cm.bytepos_to_file_charpos(BytePos(24));
         assert_eq!(cp2, CharPos(0));
     }
 
@@ -553,7 +565,7 @@ mod test {
         assert_eq!(loc1.line, 2);
         assert_eq!(loc1.col, CharPos(10));
 
-        let loc2 = cm.lookup_char_pos(BytePos(23));
+        let loc2 = cm.lookup_char_pos(BytePos(24));
         assert_eq!(loc2.file.name, ~"blork2.rs");
         assert_eq!(loc2.line, 1);
         assert_eq!(loc2.col, CharPos(0));
@@ -567,17 +579,17 @@ mod test {
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(22));
-        fm2.next_line(BytePos(39));
-        fm2.next_line(BytePos(57));
+        fm2.next_line(BytePos(40));
+        fm2.next_line(BytePos(58));
 
         fm1.record_multibyte_char(BytePos(3), 3);
         fm1.record_multibyte_char(BytePos(9), 3);
         fm1.record_multibyte_char(BytePos(12), 3);
         fm1.record_multibyte_char(BytePos(15), 3);
         fm1.record_multibyte_char(BytePos(18), 3);
-        fm2.record_multibyte_char(BytePos(49), 3);
-        fm2.record_multibyte_char(BytePos(52), 3);
-        fm2.record_multibyte_char(BytePos(57), 3);
+        fm2.record_multibyte_char(BytePos(50), 3);
+        fm2.record_multibyte_char(BytePos(53), 3);
+        fm2.record_multibyte_char(BytePos(58), 3);
 
         cm
     }
@@ -593,10 +605,42 @@ mod test {
         let cp2 = cm.bytepos_to_file_charpos(BytePos(6));
         assert_eq!(cp2, CharPos(4));
 
-        let cp3 = cm.bytepos_to_file_charpos(BytePos(55));
+        let cp3 = cm.bytepos_to_file_charpos(BytePos(56));
         assert_eq!(cp3, CharPos(12));
 
-        let cp4 = cm.bytepos_to_file_charpos(BytePos(60));
+        let cp4 = cm.bytepos_to_file_charpos(BytePos(61));
         assert_eq!(cp4, CharPos(15));
+    }
+
+    #[test]
+    fn t7() {
+        // Test span_to_lines for a span ending at the end of filemap
+        let cm = init_code_map();
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let file_lines = cm.span_to_lines(span);
+
+        assert_eq!(file_lines.file.name, ~"blork.rs");
+        assert_eq!(file_lines.lines.len(), 1);
+        assert_eq!(*file_lines.lines.get(0), 1u);
+    }
+
+    #[test]
+    fn t8() {
+        // Test span_to_snippet for a span ending at the end of filemap
+        let cm = init_code_map();
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let snippet = cm.span_to_snippet(span);
+
+        assert_eq!(snippet, Some(~"second line"));
+    }
+
+    #[test]
+    fn t9() {
+        // Test span_to_str for a span ending at the end of filemap
+        let cm = init_code_map();
+        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
+        let sstr =  cm.span_to_str(span);
+
+        assert_eq!(sstr, ~"blork.rs:2:1: 2:12");
     }
 }
