@@ -34,8 +34,7 @@
 #[allow(non_camel_case_types)];
 
 use back::abi;
-use back::link;
-use lib::llvm::{ValueRef, llvm, SetLinkage, False};
+use lib::llvm::{ValueRef, llvm};
 use lib;
 use metadata::csearch;
 use middle::trans::_match;
@@ -74,9 +73,7 @@ use middle::trans::type_::Type;
 use std::vec;
 use std::vec_ng::Vec;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::codemap;
-use syntax::parse::token;
 use syntax::print::pprust::{expr_to_str};
 
 // Destinations
@@ -454,9 +451,6 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprCast(val, _) => {
             // Datum output mode means this is a scalar cast:
             trans_imm_cast(bcx, val, expr.id)
-        }
-        ast::ExprLogLevel => {
-            trans_log_level(bcx)
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1671,64 +1665,6 @@ fn trans_assign_op<'a>(
     return result_datum.store_to(bcx, dst_datum.val);
 }
 
-fn trans_log_level<'a>(bcx: &'a Block<'a>) -> DatumBlock<'a, Expr> {
-    let _icx = push_ctxt("trans_log_level");
-    let ccx = bcx.ccx();
-
-    let (modpath, modname) = {
-        let srccrate = {
-            let external_srcs = ccx.external_srcs.borrow();
-            match external_srcs.get().find(&bcx.fcx.id) {
-                Some(&src) => {
-                    ccx.sess.cstore.get_crate_data(src.krate).name.clone()
-                }
-                None => ccx.link_meta.crateid.name.to_str(),
-            }
-        };
-        bcx.tcx().map.with_path(bcx.fcx.id, |path| {
-            let first = ast_map::PathMod(token::intern(srccrate));
-            let mut path = Some(first).move_iter().chain(path).filter(|e| {
-                match *e {
-                    ast_map::PathMod(_) => true,
-                    _ => false
-                }
-            });
-            let modpath: Vec<ast_map::PathElem> = path.collect();
-            let modname = ast_map::path_to_str(ast_map::Values(modpath.iter()));
-            (modpath, modname)
-        })
-    };
-
-    let module_data_exists;
-    {
-        let module_data = ccx.module_data.borrow();
-        module_data_exists = module_data.get().contains_key(&modname);
-    }
-
-    let global = if module_data_exists {
-        let mut module_data = ccx.module_data.borrow_mut();
-        module_data.get().get_copy(&modname)
-    } else {
-        let s = link::mangle_internal_name_by_path_and_seq(
-            ast_map::Values(modpath.iter()).chain(None), "loglevel");
-        let global;
-        unsafe {
-            global = s.with_c_str(|buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
-            });
-            llvm::LLVMSetGlobalConstant(global, False);
-            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
-            lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
-        }
-        {
-            let mut module_data = ccx.module_data.borrow_mut();
-            module_data.get().insert(modname, global);
-            global
-        }
-    };
-
-    immediate_rvalue_bcx(bcx, Load(bcx, global), ty::mk_u32()).to_expr_datumblock()
-}
 
 fn auto_ref<'a>(bcx: &'a Block<'a>,
                 datum: Datum<Expr>,

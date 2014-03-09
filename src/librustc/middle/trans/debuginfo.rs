@@ -2539,7 +2539,6 @@ fn populate_scope_map(cx: &CrateContext,
         scope_map.insert(exp.id, scope_stack.last().unwrap().scope_metadata);
 
         match exp.node {
-            ast::ExprLogLevel |
             ast::ExprLit(_)   |
             ast::ExprBreak(_) |
             ast::ExprAgain(_) |

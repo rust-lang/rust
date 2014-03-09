@@ -120,7 +120,7 @@ impl MacResult {
     pub fn raw_dummy_expr(sp: codemap::Span) -> @ast::Expr {
         @ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLogLevel,
+            node: ast::ExprTup(Vec::new()),
             span: sp
         }
     }

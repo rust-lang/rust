@@ -469,7 +469,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           ast::ExprUnary(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) | ast::ExprVstore(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
-          ast::ExprLogLevel | ast::ExprBinary(..) | ast::ExprWhile(..) |
+          ast::ExprBinary(..) | ast::ExprWhile(..) |
           ast::ExprBlock(..) | ast::ExprLoop(..) | ast::ExprMatch(..) |
           ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
           ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |

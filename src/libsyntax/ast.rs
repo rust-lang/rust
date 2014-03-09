@@ -529,9 +529,6 @@ pub enum Expr_ {
     ExprAgain(Option<Ident>),
     ExprRet(Option<@Expr>),
 
-    /// Gets the log level for the enclosing module
-    ExprLogLevel,
-
     ExprInlineAsm(InlineAsm),
 
     ExprMac(Mac),
