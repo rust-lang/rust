@@ -53,8 +53,7 @@ documentation.
 
     When complete, `make install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
-    API-documentation tool.
-    system.
+    API-documentation tool system.
 3. Read the [tutorial].
 4. Enjoy!
 
