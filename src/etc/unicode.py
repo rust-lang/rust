@@ -219,7 +219,7 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def emit_decomp_module(f, canon, compat, combine):
+def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_keys = canon.keys()
     canon_keys.sort()
 
@@ -230,7 +230,7 @@ def emit_decomp_module(f, canon, compat, combine):
     f.write("    use option::{Some, None};\n");
     f.write("    use vec::ImmutableVector;\n");
     f.write("""
-    fn bsearch_table(c: char, r: &'static [(char, &'static [char])]) -> Option<&'static [char]> {
+    fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'static [T]> {
         use cmp::{Equal, Less, Greater};
         match r.bsearch(|&(val, _)| {
             if c == val { Equal }
@@ -301,6 +301,39 @@ def emit_decomp_module(f, canon, compat, combine):
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
+
+    canon_comp = {}
+    comp_exclusions = norm_props["Full_Composition_Exclusion"]
+    for char in canon_keys:
+        if True in map(lambda (lo, hi): lo <= char <= hi, comp_exclusions):
+            continue
+        decomp = canon[char]
+        if len(decomp) == 2:
+            if not canon_comp.has_key(decomp[0]):
+                canon_comp[decomp[0]] = []
+            canon_comp[decomp[0]].append( (decomp[1], char) )
+    canon_comp_keys = canon_comp.keys()
+    canon_comp_keys.sort()
+    f.write("    static composition_table : &'static [(char, &'static [(char, char)])] = &[\n")
+    data = ""
+    first = True
+    for char in canon_comp_keys:
+        if not first:
+            data += ","
+        first = False
+        data += "(%s, &[" % escape_char(char)
+        canon_comp[char].sort(lambda x, y: x[0] - y[0])
+        first2 = True
+        for pair in canon_comp[char]:
+            if not first2:
+                data += ","
+            first2 = False
+            data += "(%s, %s)" % (escape_char(pair[0]), escape_char(pair[1]))
+        data += "])"
+    format_table_content(f, data, 8)
+    f.write("\n    ];\n\n")
+
+
     f.write("    static combining_class_table : &'static [(char, char, u8)] = &[\n")
     ix = 0
     for pair in combine:
@@ -313,6 +346,28 @@ def emit_decomp_module(f, canon, compat, combine):
     pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
 
     pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
+
+    pub fn compose(a: char, b: char) -> Option<char> {
+        use cmp::{Equal, Less, Greater};
+        compose_hangul(a, b).or_else(|| {
+            match bsearch_table(a, composition_table) {
+                None => None,
+                Some(candidates) => {
+                    match candidates.bsearch(|&(val, _)| {
+                        if b == val { Equal }
+                        else if val < b { Less }
+                        else { Greater }
+                    }) {
+                        Some(idx) => {
+                            let (_, result) = candidates[idx];
+                            Some(result)
+                        }
+                        None => None
+                    }
+                }
+            }
+        })
+    }
 
     pub fn canonical_combining_class(c: char) -> u8 {
         bsearch_range_value_table(c, combining_class_table)
@@ -371,6 +426,7 @@ def emit_decomp_module(f, canon, compat, combine):
     static S_COUNT: u32 = (L_COUNT * N_COUNT);
 
     // Decompose a precomposed Hangul syllable
+    #[inline(always)]
     fn decompose_hangul(s: char, f: |char|) {
         use cast::transmute;
 
@@ -388,6 +444,25 @@ def emit_decomp_module(f, canon, compat, combine):
                 f(transmute(T_BASE + ti));
             }
         }
+    }
+
+    // Compose a pair of Hangul Jamo
+    #[inline(always)]
+    fn compose_hangul(a: char, b: char) -> Option<char> {
+        use cast::transmute;
+        let l = a as u32;
+        let v = b as u32;
+        // Compose an LPart and a VPart
+        if L_BASE <= l && l < (L_BASE + L_COUNT) && V_BASE <= v && v < (V_BASE + V_COUNT) {
+            let r = S_BASE + (l - L_BASE) * N_COUNT + (v - V_BASE) * T_COUNT;
+            unsafe { return Some(transmute(r)); }
+        }
+        // Compose an LVPart and a TPart
+        if S_BASE <= l && l <= (S_BASE+S_COUNT-T_COUNT) && T_BASE <= v && v < (T_BASE+T_COUNT) {
+            let r = l + (v - T_BASE);
+            unsafe { return Some(transmute(r)); }
+        }
+        None
     }
 }
 
@@ -422,7 +497,8 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 emit_property_module(rf, "general_category", gencats)
 
-emit_decomp_module(rf, canon_decomp, compat_decomp, combines)
+norm_props = load_properties("DerivedNormalizationProps.txt", ["Full_Composition_Exclusion"])
+emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
 
 derived = load_properties("DerivedCoreProperties.txt",
         ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"])
