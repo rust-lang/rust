@@ -104,7 +104,7 @@ impl<A> Future<A> {
 }
 
 impl<A:Send> Future<A> {
-    pub fn from_port(port: Port<A>) -> Future<A> {
+    pub fn from_receiver(rx: Receiver<A>) -> Future<A> {
         /*!
          * Create a future from a port
          *
@@ -113,7 +113,7 @@ impl<A:Send> Future<A> {
          */
 
         Future::from_fn(proc() {
-            port.recv()
+            rx.recv()
         })
     }
 
@@ -125,13 +125,13 @@ impl<A:Send> Future<A> {
          * value of the future.
          */
 
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
 
         spawn(proc() {
-            chan.send(blk());
+            tx.send(blk());
         });
 
-        Future::from_port(port)
+        Future::from_receiver(rx)
     }
 }
 
@@ -148,10 +148,10 @@ mod test {
     }
 
     #[test]
-    fn test_from_port() {
-        let (po, ch) = Chan::new();
-        ch.send(~"whale");
-        let mut f = Future::from_port(po);
+    fn test_from_receiver() {
+        let (tx, rx) = channel();
+        tx.send(~"whale");
+        let mut f = Future::from_receiver(rx);
         assert_eq!(f.get(), ~"whale");
     }
 

@@ -53,7 +53,7 @@ use std::f64;
 use std::fmt;
 use std::from_str::FromStr;
 use std::io::stdio::StdWriter;
-use std::io::{File, PortReader, ChanWriter};
+use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::os;
 use std::str;
@@ -827,7 +827,7 @@ fn run_tests(opts: &TestOpts,
     remaining.reverse();
     let mut pending = 0;
 
-    let (p, ch) = Chan::<MonitorMsg>::new();
+    let (tx, rx) = channel::<MonitorMsg>();
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -838,11 +838,11 @@ fn run_tests(opts: &TestOpts,
                 // that hang forever.
                 try!(callback(TeWait(test.desc.clone(), test.testfn.padding())));
             }
-            run_test(!opts.run_tests, test, ch.clone());
+            run_test(!opts.run_tests, test, tx.clone());
             pending += 1;
         }
 
-        let (desc, result, stdout) = p.recv();
+        let (desc, result, stdout) = rx.recv();
         if concurrency != 1 {
             try!(callback(TeWait(desc.clone(), PadNone)));
         }
@@ -854,8 +854,8 @@ fn run_tests(opts: &TestOpts,
     // (this includes metric fns)
     for b in filtered_benchs_and_metrics.move_iter() {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
-        run_test(!opts.run_benchmarks, b, ch.clone());
-        let (test, result, stdout) = p.recv();
+        run_test(!opts.run_benchmarks, b, tx.clone());
+        let (test, result, stdout) = rx.recv();
         try!(callback(TeResult(test, result, stdout)));
     }
     Ok(())
@@ -938,7 +938,7 @@ pub fn filter_tests(
 
 pub fn run_test(force_ignore: bool,
                 test: TestDescAndFn,
-                monitor_ch: Chan<MonitorMsg>) {
+                monitor_ch: Sender<MonitorMsg>) {
 
     let TestDescAndFn {desc, testfn} = test;
 
@@ -948,13 +948,13 @@ pub fn run_test(force_ignore: bool,
     }
 
     fn run_test_inner(desc: TestDesc,
-                      monitor_ch: Chan<MonitorMsg>,
+                      monitor_ch: Sender<MonitorMsg>,
                       testfn: proc()) {
         spawn(proc() {
-            let (p, c) = Chan::new();
-            let mut reader = PortReader::new(p);
-            let stdout = ChanWriter::new(c.clone());
-            let stderr = ChanWriter::new(c);
+            let (tx, rx) = channel();
+            let mut reader = ChanReader::new(rx);
+            let stdout = ChanWriter::new(tx.clone());
+            let stderr = ChanWriter::new(tx);
             let mut task = task::task().named(match desc.name {
                 DynTestName(ref name) => name.clone().into_maybe_owned(),
                 StaticTestName(name) => name.into_maybe_owned(),
@@ -1321,9 +1321,9 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = Chan::new();
-        run_test(false, desc, ch);
-        let (_, res, _) = p.recv();
+        let (tx, rx) = channel();
+        run_test(false, desc, tx);
+        let (_, res, _) = rx.recv();
         assert!(res != TrOk);
     }
 
@@ -1338,9 +1338,9 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = Chan::new();
-        run_test(false, desc, ch);
-        let (_, res, _) = p.recv();
+        let (tx, rx) = channel();
+        run_test(false, desc, tx);
+        let (_, res, _) = rx.recv();
         assert!(res == TrIgnored);
     }
 
@@ -1355,9 +1355,9 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = Chan::new();
-        run_test(false, desc, ch);
-        let (_, res, _) = p.recv();
+        let (tx, rx) = channel();
+        run_test(false, desc, tx);
+        let (_, res, _) = rx.recv();
         assert!(res == TrOk);
     }
 
@@ -1372,9 +1372,9 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = Chan::new();
-        run_test(false, desc, ch);
-        let (_, res, _) = p.recv();
+        let (tx, rx) = channel();
+        run_test(false, desc, tx);
+        let (_, res, _) = rx.recv();
         assert!(res == TrFailed);
     }
 

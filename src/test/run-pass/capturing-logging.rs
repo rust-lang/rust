@@ -16,7 +16,7 @@
 extern crate native;
 
 use std::fmt;
-use std::io::{PortReader, ChanWriter};
+use std::io::{ChanReader, ChanWriter};
 use std::logging::{set_logger, Logger};
 
 struct MyWriter(ChanWriter);
@@ -36,8 +36,8 @@ fn start(argc: int, argv: **u8) -> int {
 }
 
 fn main() {
-    let (p, c) = Chan::new();
-    let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
+    let (tx, rx) = channel();
+    let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
     spawn(proc() {
         set_logger(~MyWriter(w) as ~Logger);
         debug!("debug");

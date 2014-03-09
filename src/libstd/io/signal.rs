@@ -20,7 +20,7 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
-use comm::{Port, Chan};
+use comm::{Sender, Receiver, channel};
 use io;
 use iter::Iterator;
 use mem::drop;
@@ -56,7 +56,7 @@ pub enum Signum {
     WindowSizeChange = 28i,
 }
 
-/// Listener provides a port to listen for registered signals.
+/// Listener provides a receiver to listen for registered signals.
 ///
 /// Listener automatically unregisters its handles once it is out of scope.
 /// However, clients can still unregister signums manually.
@@ -71,7 +71,7 @@ pub enum Signum {
 ///
 /// spawn({
 ///     loop {
-///         match listener.port.recv() {
+///         match listener.rx.recv() {
 ///             Interrupt => println!("Got Interrupt'ed"),
 ///             _ => (),
 ///         }
@@ -82,24 +82,24 @@ pub enum Signum {
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
     priv handles: ~[(Signum, ~RtioSignal)],
-    /// chan is where all the handles send signums, which are received by
-    /// the clients from port.
-    priv chan: Chan<Signum>,
+    /// This is where all the handles send signums, which are received by
+    /// the clients from the receiver.
+    priv tx: Sender<Signum>,
 
-    /// Clients of Listener can `recv()` from this port. This is exposed to
-    /// allow selection over this port as well as manipulation of the port
+    /// Clients of Listener can `recv()` on this receiver. This is exposed to
+    /// allow selection over it as well as manipulation of the receiver
     /// directly.
-    port: Port<Signum>,
+    rx: Receiver<Signum>,
 }
 
 impl Listener {
     /// Creates a new listener for signals. Once created, signals are bound via
     /// the `register` method (otherwise nothing will ever be received)
     pub fn new() -> Listener {
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         Listener {
-            chan: chan,
-            port: port,
+            tx: tx,
+            rx: rx,
             handles: ~[],
         }
     }
@@ -125,7 +125,7 @@ impl Listener {
             return Ok(()); // self is already listening to signum, so succeed
         }
         match LocalIo::maybe_raise(|io| {
-            io.signal(signum, self.chan.clone())
+            io.signal(signum, self.tx.clone())
         }) {
             Ok(handle) => {
                 self.handles.push((signum, handle));
@@ -166,7 +166,7 @@ mod test_unix {
         signal.register(Interrupt).unwrap();
         sigint();
         timer::sleep(10);
-        match signal.port.recv() {
+        match signal.rx.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
         }
@@ -180,11 +180,11 @@ mod test_unix {
         s2.register(Interrupt).unwrap();
         sigint();
         timer::sleep(10);
-        match s1.port.recv() {
+        match s1.rx.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
         }
-        match s2.port.recv() {
+        match s2.rx.recv() {
             Interrupt => (),
             s => fail!("Expected Interrupt, got {:?}", s),
         }
@@ -199,7 +199,7 @@ mod test_unix {
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);
-        assert_eq!(s2.port.try_recv(), Empty);
+        assert_eq!(s2.rx.try_recv(), Empty);
     }
 }
 

@@ -311,7 +311,7 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn signal(&mut self, signum: Signum, channel: Chan<Signum>)
+    fn signal(&mut self, signum: Signum, channel: Sender<Signum>)
         -> Result<~rtio::RtioSignal, IoError> {
         match SignalWatcher::new(self, signum, channel) {
             Ok(s) => Ok(s as ~rtio::RtioSignal),

@@ -27,6 +27,6 @@ fn foo(i:int, j: @~str) -> foo {
 
 fn main() {
   let cat = ~"kitty";
-  let (_, ch) = Chan::new(); //~ ERROR does not fulfill `Send`
-  ch.send(foo(42, @(cat))); //~ ERROR does not fulfill `Send`
+  let (tx, _) = channel(); //~ ERROR does not fulfill `Send`
+  tx.send(foo(42, @(cat))); //~ ERROR does not fulfill `Send`
 }

@@ -34,12 +34,12 @@ pub struct Timer {
 }
 
 pub enum Req {
-    NewTimer(libc::HANDLE, Chan<()>, bool),
-    RemoveTimer(libc::HANDLE, Chan<()>),
+    NewTimer(libc::HANDLE, Sender<()>, bool),
+    RemoveTimer(libc::HANDLE, Sender<()>),
     Shutdown,
 }
 
-fn helper(input: libc::HANDLE, messages: Port<Req>) {
+fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
     let mut objs = ~[input];
     let mut chans = ~[];
 
@@ -113,9 +113,9 @@ impl Timer {
     fn remove(&mut self) {
         if !self.on_worker { return }
 
-        let (p, c) = Chan::new();
-        timer_helper::send(RemoveTimer(self.obj, c));
-        p.recv();
+        let (tx, rx) = channel();
+        timer_helper::send(RemoveTimer(self.obj, tx));
+        rx.recv();
 
         self.on_worker = false;
     }
@@ -136,9 +136,9 @@ impl rtio::RtioTimer for Timer {
         let _ = unsafe { imp::WaitForSingleObject(self.obj, libc::INFINITE) };
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
         self.remove();
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
 
         // see above for the calculation
         let due = -(msecs * 10000) as libc::LARGE_INTEGER;
@@ -147,14 +147,14 @@ impl rtio::RtioTimer for Timer {
                                   ptr::mut_null(), 0)
         }, 1);
 
-        timer_helper::send(NewTimer(self.obj, c, true));
+        timer_helper::send(NewTimer(self.obj, tx, true));
         self.on_worker = true;
-        return p;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
         self.remove();
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
 
         // see above for the calculation
         let due = -(msecs * 10000) as libc::LARGE_INTEGER;
@@ -163,10 +163,10 @@ impl rtio::RtioTimer for Timer {
                                   ptr::null(), ptr::mut_null(), 0)
         }, 1);
 
-        timer_helper::send(NewTimer(self.obj, c, false));
+        timer_helper::send(NewTimer(self.obj, tx, false));
         self.on_worker = true;
 
-        return p;
+        return rx;
     }
 }
 

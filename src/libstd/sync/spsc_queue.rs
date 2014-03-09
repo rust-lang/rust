@@ -273,7 +273,7 @@ mod test {
 
         fn stress_bound(bound: uint) {
             let (a, b) = UnsafeArc::new2(Queue::new(bound));
-            let (port, chan) = Chan::new();
+            let (tx, rx) = channel();
             native::task::spawn(proc() {
                 for _ in range(0, 100000) {
                     loop {
@@ -284,12 +284,12 @@ mod test {
                         }
                     }
                 }
-                chan.send(());
+                tx.send(());
             });
             for _ in range(0, 100000) {
                 unsafe { (*a.get()).push(1); }
             }
-            port.recv();
+            rx.recv();
         }
     }
 }

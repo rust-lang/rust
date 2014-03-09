@@ -111,8 +111,8 @@ fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> ~[u8] {
 }
 
 fn make_sequence_processor(sz: uint,
-                           from_parent: &Port<~[u8]>,
-                           to_parent: &Chan<~str>) {
+                           from_parent: &Receiver<~[u8]>,
+                           to_parent: &Sender<~str>) {
    let mut freqs: HashMap<~[u8], uint> = HashMap::new();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
@@ -158,23 +158,23 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = ~[1u,2,3,4,6,12,18];
-    let mut streams = vec::from_fn(sizes.len(), |_| Some(Chan::<~str>::new()));
+    let mut streams = vec::from_fn(sizes.len(), |_| Some(channel::<~str>()));
     let mut from_child = ~[];
-    let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
+    let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
         let stream = replace(stream_ref, None);
-        let (from_child_, to_parent_) = stream.unwrap();
+        let (to_parent_, from_child_) = stream.unwrap();
 
         from_child.push(from_child_);
 
-        let (from_parent, to_child) = Chan::new();
+        let (to_child, from_parent) = channel();
 
         spawn(proc() {
             make_sequence_processor(sz, &from_parent, &to_parent_);
         });
 
         to_child
-    }).collect::<~[Chan<~[u8]>]>();
+    }).collect::<~[Sender<~[u8]>]>();
 
 
    // latch stores true after we've started

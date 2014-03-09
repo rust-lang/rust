@@ -12,14 +12,14 @@ use std::comm;
 use std::io::timer::Timer;
 
 pub fn main() {
-    let (port, chan) = Chan::new();
+    let (tx, rx) = channel();
     spawn(proc (){
         let mut timer = Timer::new().unwrap();
         timer.sleep(10);
-        chan.send(());
+        tx.send(());
     });
     loop {
-        match port.try_recv() {
+        match rx.try_recv() {
             comm::Data(()) => break,
             comm::Empty => {}
             comm::Disconnected => unreachable!()

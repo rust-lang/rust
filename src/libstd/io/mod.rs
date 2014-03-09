@@ -245,7 +245,7 @@ pub use self::process::{Process, ProcessConfig};
 pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
 pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
-pub use self::comm_adapters::{PortReader, ChanWriter};
+pub use self::comm_adapters::{ChanReader, ChanWriter};
 
 pub mod test;
 

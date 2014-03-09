@@ -23,7 +23,7 @@ enum Msg<T> {
 }
 
 pub struct TaskPool<T> {
-    priv channels: ~[Chan<Msg<T>>],
+    priv channels: ~[Sender<Msg<T>>],
     priv next_index: uint,
 }
 
@@ -48,13 +48,13 @@ impl<T> TaskPool<T> {
         assert!(n_tasks >= 1);
 
         let channels = vec::from_fn(n_tasks, |i| {
-            let (port, chan) = Chan::<Msg<T>>::new();
+            let (tx, rx) = channel::<Msg<T>>();
             let init_fn = init_fn_factory();
 
             let task_body: proc() = proc() {
                 let local_data = init_fn(i);
                 loop {
-                    match port.recv() {
+                    match rx.recv() {
                         Execute(f) => f(&local_data),
                         Quit => break
                     }
@@ -64,7 +64,7 @@ impl<T> TaskPool<T> {
             // Run on this scheduler.
             task::spawn(task_body);
 
-            chan
+            tx
         });
 
         return TaskPool { channels: channels, next_index: 0 };
