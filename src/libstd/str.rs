@@ -1465,6 +1465,7 @@ pub mod raw {
     }
 
     /// Removes the last byte from a string and returns it.
+    /// Returns None when an empty string is passed.
     /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn pop_byte(s: &mut ~str) -> Option<u8> {
         let len = s.len();
@@ -1478,6 +1479,7 @@ pub mod raw {
     }
 
     /// Removes the first byte from a string and returns it.
+    /// Returns None when an empty string is passed.
     /// The caller must preserve the valid UTF-8 property.
     pub unsafe fn shift_byte(s: &mut ~str) -> Option<u8> {
         let len = s.len();
@@ -2280,22 +2282,19 @@ pub trait StrSlice<'a> {
     /// Retrieves the first character from a string slice and returns
     /// it. This does not allocate a new string; instead, it returns a
     /// slice that point one character beyond the character that was
-    /// shifted.
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters.
+    /// shifted. If the string does not contain any characters,
+    /// a tuple of None and an empty string is returned instead.
     ///
     /// # Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     /// let (c, s1) = s.slice_shift_char();
-    /// assert_eq!(c, 'L');
+    /// assert_eq!(c, Some('L'));
     /// assert_eq!(s1, "öwe 老虎 Léopard");
     ///
     /// let (c, s2) = s1.slice_shift_char();
-    /// assert_eq!(c, 'ö');
+    /// assert_eq!(c, Some('ö'));
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
     fn slice_shift_char(&self) -> (Option<char>, &'a str);
@@ -2821,18 +2820,12 @@ pub trait OwnedStr {
     /// Appends a character to the back of a string
     fn push_char(&mut self, c: char);
 
-    /// Remove the final character from a string and return it
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters
+    /// Remove the final character from a string and return it. Return None
+    /// when the string is empty.
     fn pop_char(&mut self) -> Option<char>;
 
-    /// Remove the first character from a string and return it
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters
+    /// Remove the first character from a string and return it. Return None
+    /// when the string is empty.
     fn shift_char(&mut self) -> Option<char>;
 
     /// Prepend a char to a string
