@@ -21,8 +21,6 @@ the `clone` method.
 
 */
 
-use std::kinds::Freeze;
-
 /// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value. The contents of owned pointers
@@ -125,92 +123,6 @@ extern_fn_clone!(A, B, C, D, E, F)
 extern_fn_clone!(A, B, C, D, E, F, G)
 extern_fn_clone!(A, B, C, D, E, F, G, H)
 
-/// A trait distinct from `Clone` which represents "deep copies" of things like
-/// managed boxes which would otherwise not be copied.
-pub trait DeepClone: Clone {
-    /// Return a deep copy of the value. Unlike `Clone`, the contents of shared pointer types
-    /// *are* copied.
-    fn deep_clone(&self) -> Self;
-
-    /// Perform deep copy-assignment from `source`.
-    ///
-    /// `a.deep_clone_from(&b)` is equivalent to `a = b.deep_clone()` in
-    /// functionality, but can be overridden to reuse the resources of `a` to
-    /// avoid unnecessary allocations.
-    #[inline(always)]
-    fn deep_clone_from(&mut self, source: &Self) {
-        *self = source.deep_clone()
-    }
-}
-
-impl<T: DeepClone> DeepClone for ~T {
-    /// Return a deep copy of the owned box.
-    #[inline]
-    fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
-
-    /// Perform deep copy-assignment from `source` by reusing the existing allocation.
-    fn deep_clone_from(&mut self, source: &~T) {
-        **self = (**source).deep_clone()
-    }
-}
-
-// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
-impl<T: Freeze + DeepClone + 'static> DeepClone for @T {
-    /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
-    /// a deep clone of a potentially cyclical type.
-    #[inline]
-    fn deep_clone(&self) -> @T { @(**self).deep_clone() }
-}
-
-macro_rules! deep_clone_impl(
-    ($t:ty) => {
-        impl DeepClone for $t {
-            /// Return a deep copy of the value.
-            #[inline]
-            fn deep_clone(&self) -> $t { *self }
-        }
-    }
-)
-
-deep_clone_impl!(int)
-deep_clone_impl!(i8)
-deep_clone_impl!(i16)
-deep_clone_impl!(i32)
-deep_clone_impl!(i64)
-
-deep_clone_impl!(uint)
-deep_clone_impl!(u8)
-deep_clone_impl!(u16)
-deep_clone_impl!(u32)
-deep_clone_impl!(u64)
-
-deep_clone_impl!(f32)
-deep_clone_impl!(f64)
-
-deep_clone_impl!(())
-deep_clone_impl!(bool)
-deep_clone_impl!(char)
-
-macro_rules! extern_fn_deep_clone(
-    ($($A:ident),*) => (
-        impl<$($A,)* ReturnType> DeepClone for extern "Rust" fn($($A),*) -> ReturnType {
-            /// Return a copy of a function pointer
-            #[inline]
-            fn deep_clone(&self) -> extern "Rust" fn($($A),*) -> ReturnType { *self }
-        }
-    )
-)
-
-extern_fn_deep_clone!()
-extern_fn_deep_clone!(A)
-extern_fn_deep_clone!(A, B)
-extern_fn_deep_clone!(A, B, C)
-extern_fn_deep_clone!(A, B, C, D)
-extern_fn_deep_clone!(A, B, C, D, E)
-extern_fn_deep_clone!(A, B, C, D, E, F)
-extern_fn_deep_clone!(A, B, C, D, E, F, G)
-extern_fn_deep_clone!(A, B, C, D, E, F, G, H)
-
 #[test]
 fn test_owned_clone() {
     let a = ~5i;
@@ -242,14 +154,6 @@ fn test_clone_from() {
 }
 
 #[test]
-fn test_deep_clone_from() {
-    let a = ~5;
-    let mut b = ~10;
-    b.deep_clone_from(&a);
-    assert_eq!(*b, 5);
-}
-
-#[test]
 fn test_extern_fn_clone() {
     trait Empty {}
     impl Empty for int {}
@@ -261,8 +165,4 @@ fn test_extern_fn_clone() {
     let _ = test_fn_a.clone();
     let _ = test_fn_b::<int>.clone();
     let _ = test_fn_c.clone();
-
-    let _ = test_fn_a.deep_clone();
-    let _ = test_fn_b::<int>.deep_clone();
-    let _ = test_fn_c.deep_clone();
 }

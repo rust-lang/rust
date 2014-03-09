@@ -39,8 +39,7 @@
 
 use any::Any;
 use clone::Clone;
-use clone::DeepClone;
-use cmp::{Eq, TotalOrd};
+use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
@@ -48,7 +47,7 @@ use mem;
 use vec;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
     None,
@@ -387,7 +386,7 @@ impl<T> Default for Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that yields either one or zero elements
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Item<A> {
     priv opt: Option<A>
 }

@@ -44,36 +44,6 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-pub fn expand_deriving_deep_clone(cx: &mut ExtCtxt,
-                                  span: Span,
-                                  mitem: @MetaItem,
-                                  item: @Item,
-                                  push: |@Item|) {
-    let trait_def = TraitDef {
-        span: span,
-        attributes: Vec::new(),
-        path: Path::new(vec!("std", "clone", "DeepClone")),
-        additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
-        methods: vec!(
-            MethodDef {
-                name: "deep_clone",
-                generics: LifetimeBounds::empty(),
-                explicit_self: borrowed_explicit_self(),
-                args: Vec::new(),
-                ret_ty: Self,
-                inline: true,
-                const_nonmatching: false,
-                // cs_clone uses the ident passed to it, i.e. it will
-                // call deep_clone (not clone) here.
-                combine_substructure: |c, s, sub| cs_clone("DeepClone", c, s, sub)
-            }
-        )
-    };
-
-    trait_def.expand(cx, mitem, item, push)
-}
-
 fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,

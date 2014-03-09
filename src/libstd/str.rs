@@ -85,7 +85,7 @@ use cast;
 use cast::transmute;
 use char;
 use char::Char;
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
@@ -1319,16 +1319,6 @@ impl<'a> Container for MaybeOwned<'a> {
 impl<'a> Clone for MaybeOwned<'a> {
     #[inline]
     fn clone(&self) -> MaybeOwned<'a> {
-        match *self {
-            Slice(s) => Slice(s),
-            Owned(ref s) => Owned(s.to_owned())
-        }
-    }
-}
-
-impl<'a> DeepClone for MaybeOwned<'a> {
-    #[inline]
-    fn deep_clone(&self) -> MaybeOwned<'a> {
         match *self {
             Slice(s) => Slice(s),
             Owned(ref s) => Owned(s.to_owned())
@@ -3031,13 +3021,6 @@ impl Clone for ~str {
     }
 }
 
-impl DeepClone for ~str {
-    #[inline]
-    fn deep_clone(&self) -> ~str {
-        self.to_owned()
-    }
-}
-
 impl FromIterator<char> for ~str {
     #[inline]
     fn from_iterator<T: Iterator<char>>(iterator: &mut T) -> ~str {
@@ -4465,16 +4448,9 @@ mod tests {
     #[test]
     fn test_maybe_owned_clone() {
         assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
-        assert_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
-
         assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
-        assert_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
-
         assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Slice("abcde").deep_clone());
-
         assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
-        assert_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
     }
 
     #[test]

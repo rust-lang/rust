@@ -64,7 +64,7 @@ mod imp {
 /// A record specifying a time value in seconds and nanoseconds.
 
 
-#[deriving(Clone, DeepClone, Eq, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, Encodable, Decodable, Show)]
 pub struct Timespec { sec: i64, nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -191,7 +191,7 @@ pub fn tzset() {
     }
 }
 
-#[deriving(Clone, DeepClone, Eq, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, Encodable, Decodable, Show)]
 pub struct Tm {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
