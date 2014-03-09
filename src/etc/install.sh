@@ -240,38 +240,38 @@ need_ok "can't run these binaries on this platform"
 # FIXME: Hardcoded 'rustlib' ignores CFG_RUSTLIBDIR
 if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
 then
-	while read p; do
-		msg "uninstall ${CFG_PREFIX}/$p"
-		rm "${CFG_PREFIX}/$p"
-		need_ok "failed to remove file"
-	done < "${CFG_PREFIX}/lib/rustlib/manifest"
+    while read p; do
+        msg "uninstall ${CFG_PREFIX}/$p"
+        rm "${CFG_PREFIX}/$p"
+        need_ok "failed to remove file"
+    done < "${CFG_PREFIX}/lib/rustlib/manifest"
 
     # Remove 'rustlib' directory
-	msg "uninstall ${CFG_PREFIX}/lib/rustlib"
-	rm -r "${CFG_PREFIX}/lib/rustlib"
-	need_ok "failed to remove rustlib"
+    msg "uninstall ${CFG_PREFIX}/lib/rustlib"
+    rm -r "${CFG_PREFIX}/lib/rustlib"
+    need_ok "failed to remove rustlib"
 fi
 
 # If we're only uninstalling then exit
 if [ -n "${CFG_UNINSTALL}" ]
 then
-	exit 0
+    exit 0
 fi
 
 # Iterate through the new manifest and install files
 while read p; do
 
-	umask 022 && mkdir -p "${CFG_PREFIX}/$(dirname $p)"
-	need_ok "directory creation failed"
+    umask 022 && mkdir -p "${CFG_PREFIX}/$(dirname $p)"
+    need_ok "directory creation failed"
 
-	msg "${CFG_PREFIX}/$p"
-	if echo "$p" | grep "/bin/" > /dev/null
-	then
-		install -m755 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
-	else
-		install -m644 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
-	fi
-	need_ok "file creation failed"
+    msg "${CFG_PREFIX}/$p"
+    if echo "$p" | grep "/bin/" > /dev/null
+    then
+        install -m755 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
+    else
+        install -m644 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
+    fi
+    need_ok "file creation failed"
 
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/lib/rustlib/manifest"
