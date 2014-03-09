@@ -10,12 +10,8 @@
 
 extern crate collections;
 
-use std::clone::{Clone, DeepClone};
-use std::cmp::{TotalEq, Ord, TotalOrd, Equiv};
-use std::cmp::Equal;
-use std::container::{Container, Map, MutableMap};
-use std::default::Default;
-use std::str::{Str, SendStr, Owned, Slice};
+use std::container::{ Map, MutableMap};
+use std::str::{SendStr, Owned, Slice};
 use std::to_str::ToStr;
 use self::collections::TreeMap;
 use std::option::Some;

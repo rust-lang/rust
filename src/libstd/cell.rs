@@ -11,7 +11,7 @@
 //! Types dealing with dynamic mutability
 
 use cast;
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::Eq;
 use fmt;
 use kinds::{marker, Pod};
@@ -219,13 +219,6 @@ impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         let x = self.borrow();
         RefCell::new(x.get().clone())
-    }
-}
-
-impl<T: DeepClone> DeepClone for RefCell<T> {
-    fn deep_clone(&self) -> RefCell<T> {
-        let x = self.borrow();
-        RefCell::new(x.get().deep_clone())
     }
 }
 
