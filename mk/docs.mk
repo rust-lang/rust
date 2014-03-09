@@ -46,7 +46,7 @@ RUSTDOC_HTML_OPTS = --markdown-css rust.css \
 	--markdown-in-header=doc/favicon.inc --markdown-after-content=doc/footer.inc
 
 PANDOC_BASE_OPTS := --standalone --toc --number-sections
-PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.md \
+PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.tex \
 	--from=markdown --include-before-body=doc/footer.tex --to=latex
 PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
 
@@ -100,7 +100,7 @@ endif
 # Rust version
 ######################################################################
 
-doc/version.md: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
+doc/version.tex: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
@@ -112,7 +112,7 @@ doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
                     $(CFG_VER_HASH) | head -c 8)/;\
                 s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
-GENERATED += doc/version.md doc/version_info.html
+GENERATED += doc/version.tex doc/version_info.html
 
 ######################################################################
 # Docs, from rustdoc and sometimes pandoc
@@ -140,10 +140,6 @@ doc/footer.inc: $(D)/footer.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-doc/footer.tex: $(D)/footer.tex | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
 # The (english) documentation for each doc item.
 
 define DEF_SHOULD_BUILD_PDF_DOC
@@ -167,9 +163,13 @@ doc/$(1).epub: $$(D)/$(1).md | doc/
 	@$$(call E, pandoc: $$@)
 	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) $$< --output=$$@
 
+doc/footer.tex: $(D)/footer.inc | doc/
+	@$$(call E, pandoc: $$@)
+	$$(CFG_PANDOC) --from=html --to=latex $$< --output=$$@
+
 # PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
 DOC_TARGETS += doc/$(1).tex
-doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.md | doc/
+doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.tex | doc/
 	@$$(call E, pandoc: $$@)
 	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) $$< --output=$$@
 
