@@ -871,7 +871,7 @@ pub fn build_session_options(matches: &getopts::Matches)
         output_types.push(link::OutputTypeExe);
     }
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let opt_level = {
         if (debugging_opts & session::NO_OPT) != 0 {
@@ -932,14 +932,14 @@ pub fn build_session_options(matches: &getopts::Matches)
                        matches.opt_present("crate-file-name"));
     let cg = build_codegen_options(matches);
 
-    let sopts = @session::Options {
+    @session::Options {
         crate_types: crate_types,
         gc: gc,
         optimize: opt_level,
         debuginfo: debuginfo,
         lint_opts: lint_opts,
         output_types: output_types,
-        addl_lib_search_paths: @RefCell::new(addl_lib_search_paths),
+        addl_lib_search_paths: RefCell::new(addl_lib_search_paths),
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         cfg: cfg,
@@ -951,8 +951,7 @@ pub fn build_session_options(matches: &getopts::Matches)
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
         cg: cg,
-    };
-    return sopts;
+    }
 }
 
 pub fn build_codegen_options(matches: &getopts::Matches)
@@ -1006,10 +1005,10 @@ pub fn build_session_(sopts: @session::Options,
     let target_cfg = build_target_config(sopts);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler, codemap);
     let cstore = @CStore::new(token::get_ident_interner());
-    let filesearch = @filesearch::FileSearch::new(
-        &sopts.maybe_sysroot,
-        sopts.target_triple,
-        sopts.addl_lib_search_paths);
+    let default_sysroot = match sopts.maybe_sysroot {
+        Some(_) => None,
+        None => Some(filesearch::get_or_default_sysroot())
+    };
 
     // Make the path absolute, if necessary
     let local_crate_source_file = local_crate_source_file.map(|path|
@@ -1031,7 +1030,7 @@ pub fn build_session_(sopts: @session::Options,
         entry_type: Cell::new(None),
         macro_registrar_fn: RefCell::new(None),
         span_diagnostic: span_diagnostic_handler,
-        filesearch: filesearch,
+        default_sysroot: default_sysroot,
         building_library: Cell::new(false),
         local_crate_source_file: local_crate_source_file,
         working_dir: os::getcwd(),

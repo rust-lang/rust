@@ -64,8 +64,8 @@ fn get_ast_and_resolve(cpath: &Path,
     let input = FileInput(cpath.clone());
 
     let sessopts = @driver::session::Options {
-        maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: @RefCell::new(libs),
+        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::session::CrateTypeDylib),
         .. (*rustc::driver::session::basic_options()).clone()
     };

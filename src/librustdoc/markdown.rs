@@ -160,7 +160,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 }
 
 /// Run any tests/code examples in the markdown file `input`.
-pub fn test(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
+pub fn test(input: &str, libs: HashSet<Path>, mut test_args: ~[~str]) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
     let mut collector = Collector::new(input.to_owned(), libs, true, true);

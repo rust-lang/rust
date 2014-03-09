@@ -206,7 +206,7 @@ impl<'a> Archive<'a> {
         let unixlibname = format!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
-        rustpath.push(self.sess.filesearch.get_target_lib_path());
+        rustpath.push(self.sess.filesearch().get_target_lib_path());
         let addl_lib_search_paths = self.sess
                                         .opts
                                         .addl_lib_search_paths

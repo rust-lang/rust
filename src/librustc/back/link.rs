@@ -1075,7 +1075,7 @@ fn link_args(sess: &Session,
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let lib_path = sess.filesearch.get_target_lib_path();
+    let lib_path = sess.filesearch().get_target_lib_path();
     let stage: ~str = ~"-L" + lib_path.as_str().unwrap();
 
     let mut args = vec!(stage);

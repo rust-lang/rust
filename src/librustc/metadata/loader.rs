@@ -110,7 +110,7 @@ impl<'a> Context<'a> {
     }
 
     fn find_library_crate(&mut self) -> Option<Library> {
-        let filesearch = self.sess.filesearch;
+        let filesearch = self.sess.filesearch();
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"

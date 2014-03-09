@@ -34,13 +34,13 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
+pub fn run(input: &str, libs: HashSet<Path>, mut test_args: ~[~str]) -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
     let sessopts = @session::Options {
-        maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: libs,
+        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        addl_lib_search_paths: RefCell::new(libs.clone()),
         crate_types: vec!(session::CrateTypeDylib),
         .. (*session::basic_options()).clone()
     };
@@ -92,8 +92,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let input = driver::StrInput(test);
 
     let sessopts = @session::Options {
-        maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: @RefCell::new(libs),
+        maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
+        addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(session::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
         cg: session::CodegenOptions {
@@ -194,7 +194,7 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
 pub struct Collector {
     tests: ~[testing::TestDescAndFn],
     priv names: ~[~str],
-    priv libs: @RefCell<HashSet<Path>>,
+    priv libs: HashSet<Path>,
     priv cnt: uint,
     priv use_headers: bool,
     priv current_header: Option<~str>,
@@ -204,7 +204,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>,
+    pub fn new(cratename: ~str, libs: HashSet<Path>,
                use_headers: bool, loose_feature_gating: bool) -> Collector {
         Collector {
             tests: ~[],
@@ -227,8 +227,7 @@ impl Collector {
             format!("{}_{}", self.names.connect("::"), self.cnt)
         };
         self.cnt += 1;
-        let libs = self.libs.borrow();
-        let libs = (*libs.get()).clone();
+        let libs = self.libs.clone();
         let cratename = self.cratename.to_owned();
         let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
