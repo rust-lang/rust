@@ -26,7 +26,7 @@
 DOCS := index tutorial guide-ffi guide-macros guide-lifetimes \
 	guide-tasks guide-container guide-pointers \
 	complement-cheatsheet guide-runtime \
-	rust
+	rust rustdoc
 
 RUSTDOC_DEPS_rust := doc/full-toc.inc
 RUSTDOC_FLAGS_rust := --markdown-in-header=doc/full-toc.inc
