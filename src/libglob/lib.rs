@@ -369,11 +369,11 @@ impl Pattern {
                             return EntirePatternDoesntMatch;
                         }
 
-                        let (c, next) = file.slice_shift_char();
-                        if require_literal(c) {
+                        let (some_c, next) = file.slice_shift_char();
+                        if require_literal(some_c.unwrap()) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char.set(Some(c));
+                        prev_char.set(some_c);
                         file = next;
                     }
                 }
@@ -382,7 +382,8 @@ impl Pattern {
                         return EntirePatternDoesntMatch;
                     }
 
-                    let (c, next) = file.slice_shift_char();
+                    let (some_c, next) = file.slice_shift_char();
+                    let c = some_c.unwrap();
                     let matches = match *token {
                         AnyChar => {
                             !require_literal(c)
@@ -403,7 +404,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char.set(Some(c));
+                    prev_char.set(some_c);
                     file = next;
                 }
             }
