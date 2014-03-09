@@ -3391,7 +3391,6 @@ pub fn expr_kind(tcx: ctxt,
 
         ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
-        ast::ExprLogLevel |
         ast::ExprLit(_) | // Note: LitStr is carved out above
         ast::ExprUnary(..) |
         ast::ExprAddrOf(..) |
