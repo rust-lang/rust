@@ -1000,7 +1000,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
             }
         };
         a.add_rlib(&p, name, sess.lto()).unwrap();
-        let native_libs = csearch::get_native_libraries(sess.cstore, cnum);
+        let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
         for &(kind, ref lib) in native_libs.iter() {
             let name = match kind {
                 cstore::NativeStatic => "static library",
@@ -1302,8 +1302,8 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
     // * If one form of linking fails, the second is also attempted
     // * If both forms fail, then we emit an error message
 
-    let dynamic = get_deps(sess.cstore, cstore::RequireDynamic);
-    let statik = get_deps(sess.cstore, cstore::RequireStatic);
+    let dynamic = get_deps(&sess.cstore, cstore::RequireDynamic);
+    let statik = get_deps(&sess.cstore, cstore::RequireStatic);
     match (dynamic, statik, sess.opts.cg.prefer_dynamic, dylib) {
         (_, Some(deps), false, false) => {
             add_static_crates(args, sess, tmpdir, deps)
@@ -1459,7 +1459,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
 fn add_upstream_native_libraries(args: &mut Vec<~str>, sess: &Session) {
-    let cstore = sess.cstore;
+    let cstore = &sess.cstore;
     cstore.iter_crate_data(|cnum, _| {
         let libs = csearch::get_native_libraries(cstore, cnum);
         for &(kind, ref lib) in libs.iter() {

@@ -450,7 +450,7 @@ impl<'a> CoherenceChecker<'a> {
                             session.span_note(self.span_of_impl(implementation_b),
                                               "note conflicting implementation here");
                         } else {
-                            let crate_store = self.crate_context.tcx.sess.cstore;
+                            let crate_store = &self.crate_context.tcx.sess.cstore;
                             let cdata = crate_store.get_crate_data(implementation_b.did.krate);
                             session.note(
                                 "conflicting implementation in crate `" + cdata.name + "`");
@@ -468,7 +468,7 @@ impl<'a> CoherenceChecker<'a> {
             return;
         }
 
-        let crate_store = self.crate_context.tcx.sess.cstore;
+        let crate_store = &self.crate_context.tcx.sess.cstore;
         csearch::each_implementation_for_trait(crate_store, trait_def_id, |impl_def_id| {
             let implementation = @csearch::get_impl(self.crate_context.tcx, impl_def_id);
             let _ = lookup_item_type(self.crate_context.tcx, implementation.did);
@@ -682,7 +682,7 @@ impl<'a> CoherenceChecker<'a> {
     fn add_external_crates(&self) {
         let mut impls_seen = HashSet::new();
 
-        let crate_store = self.crate_context.tcx.sess.cstore;
+        let crate_store = &self.crate_context.tcx.sess.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_impl(crate_store, crate_number, |def_id| {
                 assert_eq!(crate_number, def_id.krate);

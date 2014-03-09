@@ -585,7 +585,7 @@ impl<'a> PrivacyVisitor<'a> {
                 }
             }
         } else {
-            let cstore = self.tcx.sess.cstore;
+            let cstore = &self.tcx.sess.cstore;
             match enum_id {
                 Some(enum_id) => {
                     let v = csearch::get_enum_variants(self.tcx, enum_id);

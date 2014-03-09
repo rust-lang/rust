@@ -1004,7 +1004,6 @@ pub fn build_session_(sopts: @session::Options,
                       -> Session {
     let target_cfg = build_target_config(sopts);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler, codemap);
-    let cstore = @CStore::new(token::get_ident_interner());
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
@@ -1022,7 +1021,7 @@ pub fn build_session_(sopts: @session::Options,
     Session {
         targ_cfg: target_cfg,
         opts: sopts,
-        cstore: cstore,
+        cstore: CStore::new(token::get_ident_interner()),
         parse_sess: p_s,
         codemap: codemap,
         // For a library crate, this is always none

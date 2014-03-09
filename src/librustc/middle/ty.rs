@@ -13,7 +13,6 @@
 use back::svh::Svh;
 use driver::session::Session;
 use metadata::csearch;
-use metadata;
 use middle::const_eval;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
@@ -259,7 +258,6 @@ pub struct ctxt {
     // quite often.
     interner: RefCell<FnvHashMap<intern_key, ~t_box_>>,
     next_id: Cell<uint>,
-    cstore: @metadata::cstore::CStore,
     sess: Session,
     def_map: resolve::DefMap,
 
@@ -1093,7 +1091,6 @@ pub fn mk_ctxt(s: Session,
         diag: s.diagnostic(),
         interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
-        cstore: s.cstore,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
@@ -3806,7 +3803,7 @@ pub fn trait_method_def_ids(cx: &ctxt, id: ast::DefId) -> @Vec<DefId> {
                                      id,
                                      trait_method_def_ids.get(),
                                      || {
-        @csearch::get_trait_method_def_ids(cx.cstore, id)
+        @csearch::get_trait_method_def_ids(&cx.sess.cstore, id)
     })
 }
 
@@ -4175,7 +4172,7 @@ pub fn each_attr(tcx: &ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
         item.attrs.iter().advance(|attr| f(attr.node.value))
     } else {
         let mut cont = true;
-        csearch::get_item_attrs(tcx.cstore, did, |meta_items| {
+        csearch::get_item_attrs(&tcx.sess.cstore, did, |meta_items| {
             if cont {
                 cont = meta_items.iter().advance(|ptrptr| f(*ptrptr));
             }
@@ -4246,38 +4243,36 @@ pub fn lookup_field_type(tcx: &ctxt,
 // Look up the list of field names and IDs for a given struct
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
-  if did.krate == ast::LOCAL_CRATE {
-      {
-          match cx.map.find(did.node) {
-           Some(ast_map::NodeItem(i)) => {
-             match i.node {
-                ast::ItemStruct(struct_def, _) => {
-                   struct_field_tys(struct_def.fields.as_slice())
+    if did.krate == ast::LOCAL_CRATE {
+        match cx.map.find(did.node) {
+            Some(ast_map::NodeItem(i)) => {
+                match i.node {
+                    ast::ItemStruct(struct_def, _) => {
+                        struct_field_tys(struct_def.fields.as_slice())
+                    }
+                    _ => cx.sess.bug("struct ID bound to non-struct")
                 }
-                _ => cx.sess.bug("struct ID bound to non-struct")
-             }
-           }
-           Some(ast_map::NodeVariant(ref variant)) => {
-              match (*variant).node.kind {
-                ast::StructVariantKind(struct_def) => {
-                  struct_field_tys(struct_def.fields.as_slice())
+            }
+            Some(ast_map::NodeVariant(ref variant)) => {
+                match (*variant).node.kind {
+                    ast::StructVariantKind(struct_def) => {
+                        struct_field_tys(struct_def.fields.as_slice())
+                    }
+                    _ => {
+                        cx.sess.bug("struct ID bound to enum variant that \
+                                    isn't struct-like")
+                    }
                 }
-                _ => {
-                  cx.sess.bug("struct ID bound to enum variant that isn't \
-                               struct-like")
-                }
-              }
-           }
-           _ => {
-               cx.sess.bug(
-                   format!("struct ID not bound to an item: {}",
+            }
+            _ => {
+                cx.sess.bug(
+                    format!("struct ID not bound to an item: {}",
                         cx.map.node_to_str(did.node)));
-           }
-          }
-      }
-  } else {
-    return csearch::get_struct_fields(cx.sess.cstore, did);
-  }
+            }
+        }
+    } else {
+        csearch::get_struct_fields(&cx.sess.cstore, did)
+    }
 }
 
 pub fn lookup_struct_field(cx: &ctxt,
@@ -4650,7 +4645,7 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> @ItemVariances {
     let mut item_variance_map = tcx.item_variance_map.borrow_mut();
     lookup_locally_or_in_crate_store(
         "item_variance_map", item_id, item_variance_map.get(),
-        || @csearch::get_item_variances(tcx.cstore, item_id))
+        || @csearch::get_item_variances(&tcx.sess.cstore, item_id))
 }
 
 /// Records a trait-to-implementation mapping.
@@ -4687,7 +4682,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         }
     }
 
-    csearch::each_implementation_for_type(tcx.sess.cstore, type_id,
+    csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
             |implementation_def_id| {
         let implementation = @csearch::get_impl(tcx, implementation_def_id);
 
@@ -4756,7 +4751,7 @@ pub fn populate_implementations_for_trait_if_necessary(
         }
     }
 
-    csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id,
+    csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id,
             |implementation_def_id| {
         let implementation = @csearch::get_impl(tcx, implementation_def_id);
 
@@ -4810,7 +4805,7 @@ pub fn trait_id_of_impl(tcx: &ctxt,
 pub fn trait_of_method(tcx: &ctxt, def_id: ast::DefId)
                        -> Option<ast::DefId> {
     if def_id.krate != LOCAL_CRATE {
-        return csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
+        return csearch::get_trait_of_method(&tcx.sess.cstore, def_id, tcx);
     }
     let method;
     {
