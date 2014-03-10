@@ -535,7 +535,7 @@ impl BorrowckCtxt {
             move_data::Declared => {
                 self.tcx.sess.span_err(
                     use_span,
-                    format!("{} of possibly uninitialized value: `{}`",
+                    format!("{} of possibly uninitialized variable: `{}`",
                          verb,
                          self.loan_path_to_str(lp)));
             }

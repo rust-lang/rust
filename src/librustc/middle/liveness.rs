@@ -1468,28 +1468,14 @@ impl Liveness {
 
 fn check_local(this: &mut Liveness, local: &Local) {
     match local.init {
-      Some(_) => {
-        this.warn_about_unused_or_dead_vars_in_pat(local.pat);
-      }
-      None => {
-
-        // No initializer: the variable might be unused; if not, it
-        // should not be live at this point.
-
-        debug!("check_local() with no initializer");
-        this.pat_bindings(local.pat, |ln, var, sp, id| {
-            if !this.warn_about_unused(sp, id, ln, var) {
-                match this.live_on_exit(ln, var) {
-                  None => { /* not live: good */ }
-                  Some(lnk) => {
-                    this.report_illegal_read(
-                        local.span, lnk, var,
-                        PossiblyUninitializedVariable);
-                  }
-                }
-            }
-        })
-      }
+        Some(_) => {
+            this.warn_about_unused_or_dead_vars_in_pat(local.pat);
+        },
+        None => {
+            this.pat_bindings(local.pat, |ln, var, sp, id| {
+                this.warn_about_unused(sp, id, ln, var);
+            })
+        }
     }
 
     visit::walk_local(this, local, ());
@@ -1642,38 +1628,6 @@ impl Liveness {
             visit::walk_expr(self, expr, ());
           }
        }
-    }
-
-    pub fn report_illegal_read(&self,
-                               chk_span: Span,
-                               lnk: LiveNodeKind,
-                               var: Variable,
-                               rk: ReadKind) {
-        let msg = match rk {
-            PossiblyUninitializedVariable => "possibly uninitialized \
-                                              variable",
-            PossiblyUninitializedField => "possibly uninitialized field",
-            MovedValue => "moved value",
-            PartiallyMovedValue => "partially moved value"
-        };
-        let name = self.ir.variable_name(var);
-        match lnk {
-          FreeVarNode(span) => {
-            self.tcx.sess.span_err(
-                span,
-                format!("capture of {}: `{}`", msg, name));
-          }
-          ExprNode(span) => {
-            self.tcx.sess.span_err(
-                span,
-                format!("use of {}: `{}`", msg, name));
-          }
-          ExitNode | VarDefNode(_) => {
-            self.tcx.sess.span_bug(
-                chk_span,
-                format!("illegal reader: {:?}", lnk));
-          }
-        }
     }
 
     pub fn should_warn(&self, var: Variable) -> Option<~str> {
