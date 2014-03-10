@@ -70,6 +70,9 @@
 * one from Berkeley after the lawsuits died down and the CSRG dissolved.
 */
 
+// NOTE: remove after uppercase_variables is snapshotted
+#[allow(unrecognized_lint)];
+
 #[allow(non_camel_case_types)];
 #[allow(non_uppercase_statics)];
 #[allow(missing_doc)];
