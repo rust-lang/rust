@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-// compile-flags:-g1
+// compile-flags:--debuginfo=1
 
 // Make sure functions have proper names
 // debugger:info functions
