@@ -504,7 +504,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
             try!(word(&mut s.s, ")"));
         }
         ast::TyInfer => {
-            fail!("print_type shouldn't see a ty_infer");
+            try!(word(&mut s.s, "_"));
         }
     }
     end(s)

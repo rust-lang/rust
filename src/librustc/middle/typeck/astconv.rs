@@ -640,13 +640,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 tcx.sess.span_bug(ast_ty.span, "typeof is reserved but unimplemented");
             }
             ast::TyInfer => {
-                // ty_infer should only appear as the type of arguments or return
-                // values in a fn_expr, or as the type of local variables.  Both of
-                // these cases are handled specially and should not descend into this
-                // routine.
-                this.tcx().sess.span_bug(
-                    ast_ty.span,
-                    "found `ty_infer` in unexpected place");
+                // TyInfer also appears as the type of arguments or return
+                // values in a ExprFnBlock or ExprProc, or as the type of
+                // local variables. Both of these cases are handled specially
+                // and will not descend into this routine.
+                this.ty_infer(ast_ty.span)
             }
         });
 
