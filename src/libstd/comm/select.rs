@@ -597,4 +597,56 @@ mod test {
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
+
+    test!(fn oneshot_data_waiting() {
+        let (p, c) = Chan::new();
+        let (p2, c2) = Chan::new();
+        spawn(proc() {
+            select! {
+                () = p.recv() => {}
+            }
+            c2.send(());
+        });
+
+        for _ in range(0, 100) { task::deschedule() }
+        c.send(());
+        p2.recv();
+    })
+
+    test!(fn stream_data_waiting() {
+        let (p, c) = Chan::new();
+        let (p2, c2) = Chan::new();
+        c.send(());
+        c.send(());
+        p.recv();
+        p.recv();
+        spawn(proc() {
+            select! {
+                () = p.recv() => {}
+            }
+            c2.send(());
+        });
+
+        for _ in range(0, 100) { task::deschedule() }
+        c.send(());
+        p2.recv();
+    })
+
+    test!(fn shared_data_waiting() {
+        let (p, c) = Chan::new();
+        let (p2, c2) = Chan::new();
+        drop(c.clone());
+        c.send(());
+        p.recv();
+        spawn(proc() {
+            select! {
+                () = p.recv() => {}
+            }
+            c2.send(());
+        });
+
+        for _ in range(0, 100) { task::deschedule() }
+        c.send(());
+        p2.recv();
+    })
 }
