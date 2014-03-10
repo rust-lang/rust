@@ -23,6 +23,11 @@ fn f1b(x: &mut int) {
 #[allow(unused_variable)]
 fn f1c(x: int) {}
 
+fn f1d() {
+    let x: int;
+    //~^ ERROR unused variable: `x`
+}
+
 fn f2() {
     let x = 3;
     //~^ ERROR unused variable: `x`

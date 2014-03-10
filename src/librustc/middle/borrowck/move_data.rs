@@ -33,23 +33,25 @@ use util::ppaux::Repr;
 
 pub struct MoveData {
     /// Move paths. See section "Move paths" in `doc.rs`.
-    paths: RefCell<Vec<MovePath> >,
+    paths: RefCell<Vec<MovePath>>,
 
     /// Cache of loan path to move path index, for easy lookup.
     path_map: RefCell<HashMap<@LoanPath, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
-    moves: RefCell<Vec<Move> >,
+    moves: RefCell<Vec<Move>>,
 
     /// Assignments to a variable, like `x = foo`. These are assigned
     /// bits for dataflow, since we must track them to ensure that
     /// immutable variables are assigned at most once along each path.
-    var_assignments: RefCell<Vec<Assignment> >,
+    var_assignments: RefCell<Vec<Assignment>>,
 
     /// Assignments to a path, like `x.f = foo`. These are not
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
-    path_assignments: RefCell<Vec<Assignment> >,
+    path_assignments: RefCell<Vec<Assignment>>,
+
+    /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
     assignee_ids: RefCell<HashSet<ast::NodeId>>,
 }
 
@@ -392,7 +394,8 @@ impl MoveData {
                           lp: @LoanPath,
                           assign_id: ast::NodeId,
                           span: Span,
-                          assignee_id: ast::NodeId) {
+                          assignee_id: ast::NodeId,
+                          is_also_move: bool) {
         /*!
          * Adds a new record for an assignment to `lp` that occurs at
          * location `id` with the given `span`.
@@ -403,7 +406,7 @@ impl MoveData {
 
         let path_index = self.move_path(tcx, lp);
 
-        {
+        if !is_also_move {
             let mut assignee_ids = self.assignee_ids.borrow_mut();
             assignee_ids.get().insert(assignee_id);
         }
