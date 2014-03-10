@@ -1878,7 +1878,8 @@ def_type_content_sets!(
 
         // Things that are interior to the value (first nibble):
         InteriorUnsized                     = 0b0000_0000__0000_0000__0001,
-        // InteriorAll                         = 0b0000_0000__0000_0000__1111,
+        InteriorUnsafe                      = 0b0000_0000__0000_0000__0010,
+        // InteriorAll                         = 0b00000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
         OwnsOwned                           = 0b0000_0000__0000_0001__0000,
@@ -2297,6 +2298,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.no_share_bound() {
             tc | TC::ReachesNoShare
+        } else if Some(did) == cx.lang_items.unsafe_type() {
+            tc | TC::InteriorUnsafe
         } else {
             tc
         }
