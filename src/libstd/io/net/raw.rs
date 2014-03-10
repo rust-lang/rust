@@ -44,7 +44,7 @@ impl RawSocket {
         self.obj.recvfrom(buf)
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: Option<~NetworkAddress>) -> IoResult<int> {
+    pub fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> IoResult<int> {
         self.obj.sendto(buf, dst)
     }
 }
@@ -156,16 +156,7 @@ pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~
                 sll_to_ni(*sll)
             };
 
-            //let ni = get_network_interfaces()
-            //            .iter()
-            //            .next()
-            //            .unwrap();
             return Some(~NetworkAddress(ni));
-            //None
-            // FIXME Find right interface and return that
-            //Some(MacAddress(MacAddr((*sll).sll_addr[0], (*sll).sll_addr[1],
-            //              (*sll).sll_addr[2], (*sll).sll_addr[3],
-            //              (*sll).slluint_addr[4], (*sll).sll_addr[5])))
         } else {
             return Some(~IpAddress(sockaddr_to_addr(cast::transmute(sa), mem::size_of::<libc::sockaddr_storage>()).ip));
         }
@@ -340,18 +331,29 @@ impl<'p> Packet for MutableEthernetHeader<'p> {
 
 trait EthernetPacket : Packet {
     fn get_source(&self) -> MacAddr {
-        // FIXME
-        MacAddr(0, 0, 0, 0, 0, 0)
+        MacAddr(
+            self.packet()[self.offset() + 6],
+            self.packet()[self.offset() + 7],
+            self.packet()[self.offset() + 8],
+            self.packet()[self.offset() + 9],
+            self.packet()[self.offset() + 10],
+            self.packet()[self.offset() + 11]
+        )
     }
 
     fn get_destination(&self) -> MacAddr {
-        // FIXME
-        MacAddr(0, 0, 0, 0, 0, 0)
+        MacAddr(
+            self.packet()[self.offset() + 0],
+            self.packet()[self.offset() + 1],
+            self.packet()[self.offset() + 2],
+            self.packet()[self.offset() + 3],
+            self.packet()[self.offset() + 4],
+            self.packet()[self.offset() + 5]
+        )
     }
 
     fn get_ethertype(&self) -> u16 {
-        // FIXME
-        0
+        (self.packet()[self.offset() + 12] as u16 << 8) | (self.packet()[self.offset() + 13] as u16)
     }
 }
 
@@ -369,16 +371,35 @@ impl<'p> MutableEthernetHeader<'p> {
         MutableEthernetHeader { packet: packet, offset: offset }
     }
 
-    pub fn set_source(&mut self, _mac: MacAddr) {
-        // FIXME
+    pub fn set_source(&mut self, mac: MacAddr) {
+        match mac {
+            MacAddr(a, b, c, d, e, f) => {
+                self.packet[self.offset +  6] = a;
+                self.packet[self.offset +  7] = b;
+                self.packet[self.offset +  8] = c;
+                self.packet[self.offset +  9] = d;
+                self.packet[self.offset + 10] = e;
+                self.packet[self.offset + 11] = f;
+            }
+        }
     }
 
-    pub fn set_destination(&mut self, _mac: MacAddr) {
-        // FIXME
+    pub fn set_destination(&mut self, mac: MacAddr) {
+        match mac {
+            MacAddr(a, b, c, d, e, f) => {
+                self.packet[self.offset + 0] = a;
+                self.packet[self.offset + 1] = b;
+                self.packet[self.offset + 2] = c;
+                self.packet[self.offset + 3] = d;
+                self.packet[self.offset + 4] = e;
+                self.packet[self.offset + 5] = f;
+            }
+        }
     }
 
-    pub fn set_ethertype(&mut self, _ethertype: u16) {
-        // FIXME
+    pub fn set_ethertype(&mut self, ethertype: u16) {
+        self.packet[self.offset + 12] = (ethertype >> 8) as u8;
+        self.packet[self.offset + 13] = (ethertype & 0xFF) as u8;
     }
 }
 
@@ -1191,7 +1212,7 @@ pub mod test {
         });
 
         match RawSocket::new(get_proto(ip)) {
-            Ok(mut sock) => match sock.sendto(message.as_bytes(), Some(~IpAddress(ip))) {
+            Ok(mut sock) => match sock.sendto(message.as_bytes(), ~IpAddress(ip)) {
                 Ok(res) => assert_eq!(res as uint, message.len()),
                 Err(_) => fail!()
             },
@@ -1280,10 +1301,10 @@ pub mod test {
             .clone()
     }
 
-    pub fn same_ports(packet1: &[u8], packet2: &[u8]) -> bool {
+    pub fn same_ports(packet1: &[u8], packet2: &[u8], offset: uint) -> bool {
         {
-            let ip1 = Ipv4Header::new(packet1, 0);
-            let ip2 = Ipv4Header::new(packet2, 0);
+            let ip1 = Ipv4Header::new(packet1, offset);
+            let ip2 = Ipv4Header::new(packet2, offset);
 
             // Check we have an IPv4/UDP packet
             if ip1.get_version() != 4 || ip2.get_version() != 4 ||
@@ -1293,8 +1314,8 @@ pub mod test {
             }
         }
 
-        let udp1 = UdpHeader::new(packet1, IPV4_HEADER_LEN as uint);
-        let udp2 = UdpHeader::new(packet2, IPV4_HEADER_LEN as uint);
+        let udp1 = UdpHeader::new(packet1, offset + IPV4_HEADER_LEN as uint);
+        let udp2 = UdpHeader::new(packet2, offset + IPV4_HEADER_LEN as uint);
 
         if udp1.get_source() == udp2.get_source() &&
            udp1.get_destination() == udp2.get_destination() {
@@ -1325,7 +1346,7 @@ pub mod test {
         });
 
         match RawSocket::new(NetworkProtocol(Ipv4NetworkProtocol)) {
-            Ok(mut sock) => match sock.sendto(packet, Some(~IpAddress(sendAddr))) {
+            Ok(mut sock) => match sock.sendto(packet, ~IpAddress(sendAddr)) {
                 Ok(res) => assert_eq!(res as uint, packet.len()),
                 Err(_) => fail!()
             },
@@ -1355,7 +1376,7 @@ pub mod test {
         });
 
         match RawSocket::new(NetworkProtocol(Ipv6NetworkProtocol)) {
-            Ok(mut sock) => match sock.sendto(packet, Some(~IpAddress(sendAddr))) {
+            Ok(mut sock) => match sock.sendto(packet, ~IpAddress(sendAddr)) {
                 Ok(res) => assert_eq!(res as uint, packet.len()),
                 Err(_) => fail!()
             },
@@ -1384,9 +1405,7 @@ pub mod test {
                     loop {
                         match sock.recvfrom(buf) {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
-                                println!("packet: {:?}", packet.as_slice());
-                                println!("buf: {:?}", buf.slice(0, packet.len()));
-                                if len == packet.len() && same_ports(packet.as_slice(), buf) {
+                                if len == packet.len() && same_ports(packet.as_slice(), buf, 0) {
                                     assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
                                     assert_eq!(*ni, interface);
                                     break;
@@ -1404,7 +1423,7 @@ pub mod test {
         match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherType::Ipv4))) {
             Ok(mut sock) => {
                 port.recv();
-                match sock.sendto(packet, Some(~NetworkAddress(~interface2))) {
+                match sock.sendto(packet, ~NetworkAddress(~interface2)) {
                     Ok(res) => assert_eq!(res as uint, packet.len()),
                     Err(_) => fail!()
                 }
@@ -1429,31 +1448,43 @@ pub mod test {
 
         build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
 
+        let (port, chan) = Chan::new();
+        let (port2, chan2) = Chan::new();
+
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
             match RawSocket::new(DataLinkProtocol(EthernetProtocol)) {
-                Ok(mut sock) => match sock.recvfrom(buf) {
-                    //Ok((len, Some(MacAddress(addr)))) => {
-                    //Ok((len, Some(..))) => {
-                    Ok((len, Some(~NetworkAddress(ni)))) => {
-                        assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
-                        assert_eq!(len, packet.len());
-                        assert_eq!(*ni, interface);
-                    },
-                    _ => fail!()
+                Ok(mut sock) => {
+                    chan.send(());
+                    loop {
+                        match sock.recvfrom(buf) {
+                            Ok((len, Some(~NetworkAddress(ni)))) => {
+                                if len == packet.len() && same_ports(packet.as_slice(), buf, ETHERNET_HEADER_LEN as uint) {
+                                    assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
+                                    assert_eq!(*ni, interface);
+                                    break;
+                                }
+                            },
+                            _ => fail!()
+                        }
+                    }
                 },
                 Err(_) => fail!()
             }
+            port2.recv();
         });
 
         match RawSocket::new(DataLinkProtocol(EthernetProtocol)) {
-            Ok(mut sock) => match sock.sendto(packet, None) {
-                Ok(res) => assert_eq!(res as uint, packet.len()),
-                Err(_) => fail!()
+            Ok(mut sock) => {
+                port.recv();
+                match sock.sendto(packet, ~NetworkAddress(~interface2)) {
+                    Ok(res) => assert_eq!(res as uint, packet.len()),
+                    Err(_) => fail!()
+                }
             },
             Err(_) => fail!()
         }
-
+        chan2.send(());
     } #[cfg(hasroot)])
 
 }

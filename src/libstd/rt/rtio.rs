@@ -234,8 +234,8 @@ pub trait RtioUdpSocket : RtioSocket {
 }
 
 pub trait RtioRawSocket {
-    fn recvfrom<'ni>(&mut self, buf: &mut [u8]) -> Result<(uint, Option<~NetworkAddress>), IoError>;
-    fn sendto<'ni>(&mut self, buf: &[u8], dst: Option<~NetworkAddress>) -> Result<int, IoError>;
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, Option<~NetworkAddress>), IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> Result<int, IoError>;
 }
 
 pub trait RtioTimer {

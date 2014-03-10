@@ -46,7 +46,7 @@ macro_rules! iotest (
 
             fn f() $b
 
-            /*$($a)* #[test] fn green() { f() }*/ // FIXME
+            $($a)* #[test] fn green() { f() }
             $($a)* #[test] fn native() {
                 use native;
                 let (p, c) = Chan::new();

@@ -703,12 +703,12 @@ impl rtio::RtioRawSocket for RawSocket {
         //});
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: Option<~raw::NetworkAddress>)
+    fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
         -> IoResult<int>
     {
         //let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
         //let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst_ip.unwrap(), port: 0 });
-        let (sockaddr, slen) = raw::network_addr_to_sockaddr(dst.unwrap());
+        let (sockaddr, slen) = raw::network_addr_to_sockaddr(dst);
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
                     retry( || libc::sendto(self.fd,

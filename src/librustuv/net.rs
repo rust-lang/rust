@@ -923,7 +923,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
         }
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: Option<~raw::NetworkAddress>)
+    fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
         -> Result<int, IoError>
     {
         struct Ctx<'b> {
@@ -944,7 +944,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                     buf: buf,
                     result: None,
                     socket: Some(self.socket),
-                    addr: dst.unwrap()
+                    addr: dst
                 };
                 wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
