@@ -1,4 +1,4 @@
-% Rust Tutorial
+% The (New) Rust Language Tutorial
 
 # Stack vs. heap, values, copying
 

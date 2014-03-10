@@ -27,9 +27,9 @@
 # translated.
 ######################################################################
 DOCS := index tutorial guide-ffi guide-macros guide-lifetimes \
-	guide-tasks guide-container guide-pointers guide-testing \
-	guide-runtime complement-bugreport complement-cheatsheet \
-	complement-lang-faq complement-project-faq rust rustdoc
+	guide-tasks guide-container guide-pointers \
+	complement-cheatsheet guide-runtime \
+	rust rustdoc new-tutorial guide-syntax
 
 PDF_DOCS := tutorial rust
 
