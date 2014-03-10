@@ -830,8 +830,7 @@ pub enum Ty_ {
     TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
     // TyInfer means the type should be inferred instead of it having been
-    // specified. This should only appear at the "top level" of a type and not
-    // nested in one.
+    // specified. This can appear anywhere in a type.
     TyInfer,
 }
 
