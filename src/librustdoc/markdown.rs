@@ -117,7 +117,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
 
     let err = write!(
         &mut out,
-        r#"<!doctype html>
+        r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
