@@ -27,9 +27,9 @@
 # translated.
 ######################################################################
 DOCS := index tutorial guide-ffi guide-macros guide-lifetimes \
-	guide-tasks guide-container guide-pointers \
-	complement-cheatsheet guide-runtime \
-	rust rustdoc
+	guide-tasks guide-container guide-pointers guide-testing \
+	guide-runtime complement-bugreport complement-cheatsheet \
+	complement-lang-faq complement-project-faq rust rustdoc
 
 PDF_DOCS := tutorial rust
 
@@ -46,7 +46,7 @@ RUSTDOC_HTML_OPTS = --markdown-css rust.css \
 	--markdown-in-header=doc/favicon.inc --markdown-after-content=doc/footer.inc
 
 PANDOC_BASE_OPTS := --standalone --toc --number-sections
-PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.md \
+PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.tex \
 	--from=markdown --include-before-body=doc/footer.tex --to=latex
 PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
 
@@ -73,18 +73,20 @@ endif
 # Check for the various external utilities for the EPUB/PDF docs:
 
 ifeq ($(CFG_PDFLATEX),)
-  $(info cfg: no pdflatex found, omitting doc/rust.pdf)
-  NO_PDF_DOCS = 1
-else
-  ifeq ($(CFG_XETEX),)
-    $(info cfg: no xetex found, disabling doc/rust.pdf)
-    NO_PDF_DOCS = 1
+  $(info cfg: no pdflatex found, deferring to xelatex)
+  ifeq ($(CFG_XELATEX),)
+    $(info cfg: no xelatex found, deferring to lualatex)
+    ifeq ($(CFG_LUALATEX),)
+      $(info cfg: no lualatex found, disabling LaTeX docs)
+      NO_PDF_DOCS = 1
+	else
+      CFG_LATEX := $(CFG_LUALATEX)
+    endif
   else
-    ifeq ($(CFG_LUATEX),)
-       $(info cfg: lacking luatex, disabling pdflatex)
-       NO_PDF_DOCS = 1
-	endif
+    CFG_LATEX := $(CFG_XELATEX)
   endif
+else
+  CFG_LATEX := $(CFG_PDFLATEX)
 endif
 
 
@@ -93,17 +95,12 @@ $(info cfg: no pandoc found, omitting PDF and EPUB docs)
 ONLY_HTML_DOCS = 1
 endif
 
-ifeq ($(CFG_NODE),)
-$(info cfg: no node found, omitting PDF and EPUB docs)
-ONLY_HTML_DOCS = 1
-endif
-
 
 ######################################################################
 # Rust version
 ######################################################################
 
-doc/version.md: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
+doc/version.tex: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
@@ -115,10 +112,10 @@ doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
                     $(CFG_VER_HASH) | head -c 8)/;\
                 s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
-GENERATED += doc/version.md doc/version_info.html
+GENERATED += doc/version.tex doc/version_info.html
 
 ######################################################################
-# Docs, from rustdoc and sometimes pandoc & node
+# Docs, from rustdoc and sometimes pandoc
 ######################################################################
 
 doc/:
@@ -143,10 +140,6 @@ doc/footer.inc: $(D)/footer.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-doc/footer.tex: $(D)/footer.tex | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
 # The (english) documentation for each doc item.
 
 define DEF_SHOULD_BUILD_PDF_DOC
@@ -168,22 +161,24 @@ ifneq ($(ONLY_HTML_DOCS),1)
 DOC_TARGETS += doc/$(1).epub
 doc/$(1).epub: $$(D)/$(1).md | doc/
 	@$$(call E, pandoc: $$@)
-	$$(Q)$$(CFG_NODE) $$(D)/prep.js --highlight $$< | \
-	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) --output=$$@
+	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) $$< --output=$$@
+
+doc/footer.tex: $(D)/footer.inc | doc/
+	@$$(call E, pandoc: $$@)
+	$$(CFG_PANDOC) --from=html --to=latex $$< --output=$$@
 
 # PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
 DOC_TARGETS += doc/$(1).tex
-doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.md | doc/
+doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.tex | doc/
 	@$$(call E, pandoc: $$@)
-	$$(Q)$$(CFG_NODE) $$(D)/prep.js $$< | \
-	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) --output=$$@
+	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) $$< --output=$$@
 
 ifneq ($(NO_PDF_DOCS),1)
 ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
 DOC_TARGETS += doc/$(1).pdf
 doc/$(1).pdf: doc/$(1).tex
-	@$$(call E, pdflatex: $$@)
-	$$(Q)$$(CFG_PDFLATEX) \
+	@$$(call E, latex compiler: $$@)
+	$$(Q)$$(CFG_LATEX) \
 	-interaction=batchmode \
 	-output-directory=doc \
 	$$<

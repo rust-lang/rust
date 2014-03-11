@@ -33,8 +33,6 @@ license4 = """ The Rust Project Developers. See the COPYRIGHT
 """
 
 exceptions = [
-    "doc/lib/codemirror-node.js", # MIT
-    "doc/lib/codemirror-rust.js", # MIT
     "rt/rust_android_dummy.cpp", # BSD, chromium
     "rt/rust_android_dummy.h", # BSD, chromium
     "rt/isaac/randport.cpp", # public domain

@@ -57,7 +57,7 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-> **WARNING**: The tarball and installer links are for the most recent
+> ***Warning:*** The tarball and installer links are for the most recent
 > release, not master. To use master, you **must** build from [git].
 
 The Rust compiler currently must be built from a [tarball] or [git], unless
@@ -80,13 +80,10 @@ You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
 
 > ***Note:*** Windows users should read the detailed
-> "[getting started][wiki-start]" notes on the wiki. Even when using
+> [Getting started][wiki-start] notes on the wiki. Even when using
 > the binary installer, the Windows build requires a MinGW installation,
-> the precise details of which are not discussed here. Finally, `rustc` may
-> need to be [referred to as `rustc.exe`][bug-3319]. It's a bummer, we
-> know.
+> the precise details of which are not discussed here.
 
-[bug-3319]: https://github.com/mozilla/rust/issues/3319
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [git]: https://github.com/mozilla/rust.git
 
