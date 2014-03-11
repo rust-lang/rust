@@ -112,10 +112,10 @@ impl ToCStr for Path {
     }
 }
 
-impl<H: Writer> ::hash::Hash<H> for Path {
+impl<S: Writer> ::hash::Hash<S> for Path {
     #[inline]
-    fn hash(&self, hasher: &mut H) {
-        self.repr.hash(hasher)
+    fn hash(&self, state: &mut S) {
+        self.repr.hash(state)
     }
 }
 
