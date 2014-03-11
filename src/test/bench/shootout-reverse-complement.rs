@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-android doesn't terminate?
+// ignore-pretty
 
 use std::iter::range_step;
 use std::io::{stdin, stdout, File};
@@ -73,10 +74,11 @@ fn main() {
                     *front = complements[*back];
                     *back = tmp;
                 }
+                (Some(last), None) => *last = complements[*last], // last element
                 _ => break // vector exhausted.
             }
         }
     }
 
-    stdout().write(data);
+    stdout().write(data).unwrap();
 }
