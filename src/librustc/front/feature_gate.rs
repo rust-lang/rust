@@ -53,6 +53,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("simd", Active),
     ("default_type_params", Active),
     ("quote", Active),
+    ("linkage", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -236,6 +237,19 @@ impl Visitor<()> for Context {
                 }
             }
         }
+    }
+
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+        match i.node {
+            ast::ForeignItemFn(..) | ast::ForeignItemStatic(..) => {
+                if attr::contains_name(i.attrs.as_slice(), "linkage") {
+                    self.gate_feature("linkage", i.span,
+                                      "the `linkage` attribute is experimental \
+                                       and not portable across platforms")
+                }
+            }
+        }
+        visit::walk_foreign_item(self, i, ())
     }
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
