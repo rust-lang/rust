@@ -33,7 +33,7 @@ prepare-base: PREPARE_SOURCE_LIB_DIR=$(PREPARE_SOURCE_DIR)/$(CFG_LIBDIR_RELATIVE
 prepare-base: PREPARE_SOURCE_MAN_DIR=$(S)/man
 prepare-base: PREPARE_DEST_BIN_DIR=$(PREPARE_DEST_DIR)/bin
 prepare-base: PREPARE_DEST_LIB_DIR=$(PREPARE_DEST_DIR)/$(CFG_LIBDIR_RELATIVE)
-prepare-base: PREPARE_DEST_MAN_DIR=$(PREPARE_DEST_DIR)/man1
+prepare-base: PREPARE_DEST_MAN_DIR=$(PREPARE_DEST_DIR)/man/man1
 prepare-base: prepare-host prepare-targets
 
 prepare-everything: prepare-host prepare-targets
@@ -41,7 +41,7 @@ prepare-everything: prepare-host prepare-targets
 DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
 DEFAULT_PREPARE_LIB_CMD = install -m644
-DEFAULT_PREPARE_MAN_CMD = install -m755
+DEFAULT_PREPARE_MAN_CMD = install -m644
 
 # On windows we install from stage3, but on unix only stage2
 # Because of the way these rules are organized, preparing from any
@@ -55,14 +55,14 @@ endif
 # Create a directory
 # $(1) is the directory
 define PREPARE_DIR
-	@$(Q)$(call E, install: $(1))
+	@$(Q)$(call E, prepare: $(1))
 	$(Q)$(PREPARE_DIR_CMD) $(1)
 endef
 
 # Copy an executable
 # $(1) is the filename/libname-glob
 define PREPARE_BIN
-	@$(call E, install: $(PREPARE_DEST_BIN_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_DEST_BIN_DIR)/$(1))
 	$(Q)$(PREPARE_BIN_CMD) $(PREPARE_SOURCE_BIN_DIR)/$(1) $(PREPARE_DEST_BIN_DIR)/$(1)
 endef
 
@@ -75,7 +75,7 @@ endef
 # problem. I'm sorry, just don't remove the $(nop), alright?
 define PREPARE_LIB
 	$(nop)
-	@$(call E, install: $(PREPARE_WORKING_DEST_LIB_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_WORKING_DEST_LIB_DIR)/$(1))
 	$(Q)LIB_NAME="$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1))))"; \
 	MATCHES="$(filter-out %$(notdir $(lastword $(wildcard $(PREPARE_WORKING_SOURCE_LIB_DIR)/$(1)))),\
                         $(wildcard $(PREPARE_WORKING_DEST_LIB_DIR)/$(1)))"; \
@@ -91,7 +91,7 @@ endef
 # Copy a man page
 # $(1) - source dir
 define PREPARE_MAN
-	@$(call E, install: $(PREPARE_DEST_MAN_DIR)/$(1))
+	@$(call E, prepare: $(PREPARE_DEST_MAN_DIR)/$(1))
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
 
@@ -106,7 +106,7 @@ prepare-host-tools: \
             $(foreach host,$(CFG_HOST),\
               prepare-host-tool-$(tool)-$(stage)-$(host))))
 
-prepare-host-dirs:
+prepare-host-dirs: prepare-maybe-clean
 	$(call PREPARE_DIR,$(PREPARE_DEST_BIN_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_LIB_DIR))
 	$(call PREPARE_DIR,$(PREPARE_DEST_MAN_DIR))
@@ -115,7 +115,8 @@ prepare-host-dirs:
 # $(2) is stage
 # $(3) is host
 define DEF_PREPARE_HOST_TOOL
-prepare-host-tool-$(1)-$(2)-$(3): $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
+prepare-host-tool-$(1)-$(2)-$(3): prepare-maybe-clean \
+                                  $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
                                   $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
                                   prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
@@ -140,7 +141,8 @@ $(foreach tool,$(PREPARE_TOOLS),\
 define DEF_PREPARE_HOST_LIB
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
 prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
-prepare-host-lib-$(1)-$(2)-$(3): $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
+prepare-host-lib-$(1)-$(2)-$(3): prepare-maybe-clean \
+                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
                                  prepare-host-dirs
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
@@ -166,7 +168,7 @@ define DEF_PREPARE_TARGET_N
 # Rebind PREPARE_*_LIB_DIR to point to rustlib, then install the libs for the targets
 prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
 prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1): \
+prepare-target-$(2)-host-$(3)-$(1): prepare-maybe-clean \
         $$(foreach crate,$$(TARGET_CRATES), \
           $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
         $$(if $$(findstring $(2),$$(CFG_HOST)), \
@@ -194,3 +196,9 @@ $(foreach host,$(CFG_HOST),\
   $(foreach target,$(CFG_TARGET), \
     $(foreach stage,$(PREPARE_STAGES),\
       $(eval $(call DEF_PREPARE_TARGET_N,$(stage),$(target),$(host))))))
+
+prepare-maybe-clean:
+	$(if $(findstring true,$(PREPARE_CLEAN)),\
+      @$(call E, cleaning destination $@),)
+	$(if $(findstring true,$(PREPARE_CLEAN)),\
+      $(Q)rm -rf $(PREPARE_DEST_DIR),)

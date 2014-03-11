@@ -4,16 +4,16 @@
 
 PKG_NAME := rust
 PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
-PKG_TAR = $(PKG_DIR).tar.gz
+PKG_TAR = dist/$(PKG_DIR).tar.gz
 
 ifdef CFG_ISCC
 PKG_ISS = $(wildcard $(S)src/etc/pkg/*.iss)
 PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
-PKG_EXE = $(PKG_DIR)-install.exe
+PKG_EXE = dist/$(PKG_DIR)-install.exe
 endif
 
 ifeq ($(CFG_OSTYPE), apple-darwin)
-PKG_OSX = $(PKG_DIR).pkg
+PKG_OSX = dist/$(PKG_DIR).pkg
 endif
 
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
@@ -71,14 +71,15 @@ dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-win: PREPARE_CLEAN=true
 dist-prepare-win: prepare-base
 
 endif
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
-	$(Q)rm -Rf dist
-	$(Q)mkdir -p dist/$(PKG_DIR)
+	$(Q)rm -Rf tmp/dist/$(PKG_DIR)
+	$(Q)mkdir -p tmp/dist/$(PKG_DIR)
 	$(Q)tar \
          -C $(S) \
          --exclude-vcs \
@@ -89,9 +90,9 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.ll \
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
-         -c $(UNROOTED_PKG_FILES) | tar -x -C dist/$(PKG_DIR)
-	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
-	$(Q)rm -Rf dist
+         -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_DIR)
+	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_DIR)
+	$(Q)rm -Rf tmp/dist/$(PKG_DIR)
 
 .PHONY: dist distcheck
 
@@ -156,3 +157,35 @@ distcheck-osx: $(PKG_OSX)
 	@echo -----------------------------------------------
 
 endif
+
+dist-install-dir: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
+
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).tar.gz)
+
+define DEF_INSTALLER
+dist-install-dir-$(1): PREPARE_HOST=$(1)
+dist-install-dir-$(1): PREPARE_TARGETS=$(1)
+dist-install-dir-$(1): PREPARE_STAGE=2
+dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_DIR)-$(1)
+dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-install-dir-$(1): PREPARE_CLEAN=true
+dist-install-dir-$(1): prepare-base
+	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find -type f) \
+      > $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/$$(CFG_RUSTLIBDIR)/manifest
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
+	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
+
+dist/$$(PKG_DIR)-$(1).tar.gz: dist-install-dir-$(1)
+	@$(call E, build: $$@)
+	$$(Q)tar -czf dist/$$(PKG_DIR)-$(1).tar.gz -C tmp/dist $$(PKG_DIR)-$(1)
+
+endef
+
+$(foreach host,$(CFG_HOST),\
+  $(eval $(call DEF_INSTALLER,$(host))))
