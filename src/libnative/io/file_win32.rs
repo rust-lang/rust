@@ -335,7 +335,6 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
         }).map(|path| root.join(path)).collect()
     }
 
-    #[nolink]
     extern {
         fn rust_list_dir_wfd_size() -> libc::size_t;
         fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void) -> *u16;

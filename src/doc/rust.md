@@ -1472,7 +1472,6 @@ and are instead terminated by a semicolon.
 
 ~~~~
 # use std::libc::{c_char, FILE};
-# #[nolink]
 
 extern {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
