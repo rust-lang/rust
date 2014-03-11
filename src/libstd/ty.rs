@@ -65,7 +65,6 @@ pub struct Unsafe<T> {
     marker1: marker::InvariantType<T>
 }
 
-
 impl<T> Unsafe<T> {
 
     /// Static constructor
