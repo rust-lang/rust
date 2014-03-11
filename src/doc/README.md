@@ -4,10 +4,6 @@
 document converter, is required to generate docs as HTML from Rust's
 source code.
 
-[Node.js](http://nodejs.org/) is also required for generating HTML from
-the Markdown docs (reference manual, tutorials, etc.) distributed with
-this git repository.
-
 [po4a](http://po4a.alioth.debian.org/) is required for generating translated
 docs from the master (English) docs.
 
@@ -30,8 +26,8 @@ rustdoc --output-dir html-doc/ --output-format html ../src/libstd/path.rs
 
 # Additional notes
 
-To generate an HTML version of a doc from Markdown without having Node.js
-installed, you can do something like:
+To generate an HTML version of a doc from Markdown manually, you can do
+something like:
 
 ~~~~
 pandoc --from=markdown --to=html5 --number-sections -o rust.html rust.md

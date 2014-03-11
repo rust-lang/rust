@@ -454,9 +454,8 @@ probe CFG_ISCC             iscc
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
-probe CFG_XETEX            xetex
-probe CFG_LUATEX           luatex
-probe CFG_NODE             nodejs node
+probe CFG_XELATEX          xelatex
+probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
 if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
 then
