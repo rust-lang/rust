@@ -709,6 +709,148 @@ impl Json {
         self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
         str::from_utf8_owned(s.unwrap()).unwrap()
     }
+
+     /// If the Json value is an Object, returns the value associated with the provided key.
+    /// Otherwise, returns None.
+    pub fn find<'a>(&'a self, key: &~str) -> Option<&'a Json>{
+        match self {
+            &Object(ref map) => map.find(key),
+            _ => None
+        }
+    }
+
+    /// Attempts to get a nested Json Object for each key in `keys`.
+    /// If any key is found not to exist, get_path will return None.
+    /// Otherwise, it will return the Json value associated with the final key.
+    pub fn find_path<'a>(&'a self, keys: &[&~str]) -> Option<&'a Json>{
+        keys.iter().fold(Some(self), |target, key| target.map_or(None, |t| t.find(*key)))
+    }
+
+    /// If the Json value is an Object, performs a depth-first search until
+    /// a value associated with the provided key is found. If no value is found
+    /// or the Json value is not an Object, returns None.
+    pub fn search<'a>(&'a self, key: &~str) -> Option<&'a Json> {
+        match self {
+            &Object(ref map) => {
+                match map.find(key) {
+                    Some(json_value) => Some(json_value),
+                    None => {
+                        let mut value : Option<&'a Json> = None;
+                        for (_, v) in map.iter() {
+                            value = v.search(key);
+                            if value.is_some() {
+                                break;
+                            }
+                        }
+                        value
+                    }
+                }
+            },
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is an Object. Returns false otherwise.
+    pub fn is_object<'a>(&'a self) -> bool {
+        match self {
+            &Object(_) => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is an Object, returns the associated TreeMap.
+    /// Returns None otherwise.
+    pub fn as_object<'a>(&'a self) -> Option<&'a Object> {
+        match self {
+            &Object(ref map) => Some(&**map),
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is a List. Returns false otherwise.
+    pub fn is_list<'a>(&'a self) -> bool {
+        match self {
+            &List(_) => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is a List, returns the associated vector.
+    /// Returns None otherwise.
+    pub fn as_list<'a>(&'a self) -> Option<&'a List> {
+        match self {
+            &List(ref list) => Some(&*list),
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is a String. Returns false otherwise.
+    pub fn is_str<'a>(&'a self) -> bool {
+        match self {
+            &String(_) => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is a String, returns the associated str.
+    /// Returns None otherwise.
+    pub fn as_str<'a>(&'a self) -> Option<&'a str> {
+        match *self {
+            String(ref s) => Some(s.as_slice()),
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is a Number. Returns false otherwise.
+    pub fn is_number(&self) -> bool {
+        match self {
+            &Number(_) => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is a Number, returns the associated f64.
+    /// Returns None otherwise.
+    pub fn as_number(&self) -> Option<f64> {
+        match self {
+            &Number(n) => Some(n),
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is a Boolean. Returns false otherwise.
+    pub fn is_boolean(&self) -> bool {
+        match self {
+            &Boolean(_) => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is a Boolean, returns the associated bool.
+    /// Returns None otherwise.
+    pub fn as_boolean(&self) -> Option<bool> {
+        match self {
+            &Boolean(b) => Some(b),
+            _ => None
+        }
+    }
+
+    /// Returns true if the Json value is a Null. Returns false otherwise.
+    pub fn is_null(&self) -> bool {
+        match self {
+            &Null => true,
+            _ => false
+        }
+    }
+
+    /// If the Json value is a Null, returns ().
+    /// Returns None otherwise.
+    pub fn as_null(&self) -> Option<()> {
+        match self {
+            &Null => Some(()),
+            _ => None
+        }
+    }
 }
 
 pub struct Parser<T> {
@@ -2282,5 +2424,110 @@ mod tests {
                                 "list but found null");
         check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
                                 "unknown variant name");
+    }
+
+    #[test]
+    fn test_find(){
+        let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
+        let found_str = json_value.find(&~"dog");
+        assert!(found_str.is_some() && found_str.unwrap().as_str().unwrap() == &"cat");
+    }
+
+    #[test]
+    fn test_find_path(){
+        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
+        let found_str = json_value.find_path(&[&~"dog", &~"cat", &~"mouse"]);
+        assert!(found_str.is_some() && found_str.unwrap().as_str().unwrap() == &"cheese");
+    }
+
+    #[test]
+    fn test_search(){
+        let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
+        let found_str = json_value.search(&~"mouse").and_then(|j| j.as_str());
+        assert!(found_str.is_some());
+        assert!(found_str.unwrap() == &"cheese");
+    }
+
+    #[test]
+    fn test_is_object(){
+        let json_value = from_str("{}").unwrap();
+        assert!(json_value.is_object());
+    }
+
+    #[test]
+    fn test_as_object(){
+        let json_value = from_str("{}").unwrap();
+        let json_object = json_value.as_object();
+        assert!(json_object.is_some());
+    }
+
+    #[test]
+    fn test_is_list(){
+        let json_value = from_str("[1, 2, 3]").unwrap();
+        assert!(json_value.is_list());
+    }
+
+    #[test]
+    fn test_as_list(){
+        let json_value = from_str("[1, 2, 3]").unwrap();
+        let json_list = json_value.as_list();
+        let expected_length = 3;
+        assert!(json_list.is_some() && json_list.unwrap().len() == expected_length);
+    }
+
+    #[test]
+    fn test_is_str(){
+        let json_value = from_str("\"dog\"").unwrap();
+        assert!(json_value.is_str());
+    }
+
+    #[test]
+    fn test_as_str(){
+        let json_value = from_str("\"dog\"").unwrap();
+        let json_str = json_value.as_str();
+        let expected_str = &"dog";
+        assert_eq!(json_str, Some(expected_str));
+    }
+
+    #[test]
+    fn test_is_number(){
+        let json_value = from_str("12").unwrap();
+        assert!(json_value.is_number());
+    }
+
+    #[test]
+    fn test_as_number(){
+        let json_value = from_str("12").unwrap();
+        let json_num = json_value.as_number();
+        let expected_num = 12f64;
+        assert!(json_num.is_some() && json_num.unwrap() == expected_num);
+    }
+
+    #[test]
+    fn test_is_boolean(){
+        let json_value = from_str("false").unwrap();
+        assert!(json_value.is_boolean());
+    }
+
+    #[test]
+    fn test_as_boolean(){
+        let json_value = from_str("false").unwrap();
+        let json_bool = json_value.as_boolean();
+        let expected_bool = false;
+        assert!(json_bool.is_some() && json_bool.unwrap() == expected_bool);
+    }
+
+    #[test]
+    fn test_is_null(){
+        let json_value = from_str("null").unwrap();
+        assert!(json_value.is_null());
+    }
+
+    #[test]
+    fn test_as_null(){
+        let json_value = from_str("null").unwrap();
+        let json_null = json_value.as_null();
+        let expected_null = ();
+        assert!(json_null.is_some() && json_null.unwrap() == expected_null);
     }
 }
