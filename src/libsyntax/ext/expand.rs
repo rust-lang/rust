@@ -260,7 +260,9 @@ macro_rules! with_exts_frame (
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                    -> SmallVector<@ast::Item> {
-    let mut decorator_items: SmallVector<@ast::Item> = SmallVector::zero();
+    let it = expand_item_modifiers(it, fld);
+
+    let mut decorator_items = SmallVector::zero();
     for attr in it.attrs.rev_iter() {
         let mname = attr.name();
 
@@ -305,6 +307,48 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
 
     new_items.push_all(decorator_items);
     new_items
+}
+
+fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
+                         -> @ast::Item {
+    let (modifiers, attrs) = it.attrs.partitioned(|attr| {
+        match fld.extsbox.find(&intern(attr.name().get())) {
+            Some(&ItemModifier(_)) => true,
+            _ => false
+        }
+    });
+
+    it = @ast::Item {
+        attrs: attrs,
+        ..(*it).clone()
+    };
+
+    if modifiers.is_empty() {
+        return it;
+    }
+
+    for attr in modifiers.iter() {
+        let mname = attr.name();
+
+        match fld.extsbox.find(&intern(mname.get())) {
+            Some(&ItemModifier(dec_fn)) => {
+                fld.cx.bt_push(ExpnInfo {
+                    call_site: attr.span,
+                    callee: NameAndSpan {
+                        name: mname.get().to_str(),
+                        format: MacroAttribute,
+                        span: None,
+                    }
+                });
+                it = dec_fn(fld.cx, attr.span, attr.node.value, it);
+                fld.cx.bt_pop();
+            }
+            _ => unreachable!()
+        }
+    }
+
+    // expansion may have added new ItemModifiers
+    expand_item_modifiers(it, fld)
 }
 
 // does this attribute list contain "macro_escape" ?
@@ -492,6 +536,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
                 NormalTT(ext, _) => NormalTT(ext, Some(krate.span)),
                 IdentTT(ext, _) => IdentTT(ext, Some(krate.span)),
                 ItemDecorator(ext) => ItemDecorator(ext),
+                ItemModifier(ext) => ItemModifier(ext),
             };
             fld.extsbox.insert(name, extension);
         });
