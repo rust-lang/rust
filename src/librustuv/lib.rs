@@ -45,6 +45,7 @@ via `close` and `delete` methods.
 #[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 #[cfg(test)] extern crate green;
+#[cfg(test)] extern crate realrustuv = "rustuv";
 
 use std::cast;
 use std::fmt;
@@ -68,6 +69,16 @@ pub use self::process::Process;
 pub use self::signal::SignalWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::tty::TtyWatcher;
+
+// Run tests with libgreen instead of libnative.
+//
+// FIXME: This egregiously hacks around starting the test runner in a different
+//        threading mode than the default by reaching into the auto-generated
+//        '__test' module.
+#[cfg(test)] #[start]
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, __test::main)
+}
 
 mod macros;
 

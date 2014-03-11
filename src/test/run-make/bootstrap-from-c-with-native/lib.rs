@@ -10,7 +10,6 @@
 
 #[crate_id="boot#0.1"];
 #[crate_type="dylib"];
-#[no_uv];
 
 extern crate native;
 

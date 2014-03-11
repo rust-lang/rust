@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-#[no_uv];
-
 #[start]
 pub fn main(_: int, _: **u8) -> int {
     println!("hello");

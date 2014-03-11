@@ -11,8 +11,6 @@
 // ignore-android (FIXME #11419)
 // error-pattern:explicit failure
 
-#[no_uv];
-
 extern crate native;
 
 #[start]

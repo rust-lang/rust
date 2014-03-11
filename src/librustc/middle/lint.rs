@@ -961,7 +961,7 @@ fn check_heap_item(cx: &Context, it: &ast::Item) {
 }
 
 static crate_attrs: &'static [&'static str] = &[
-    "crate_type", "feature", "no_uv", "no_main", "no_std", "crate_id",
+    "crate_type", "feature", "no_start", "no_main", "no_std", "crate_id",
     "desc", "comment", "license", "copyright", // not used in rustc now
 ];
 
