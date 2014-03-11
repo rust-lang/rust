@@ -141,6 +141,19 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
+// If mem categorization results in an error, it's because the type
+// check failed (or will fail, when the error is uncovered and
+// reported during writeback). In this case, we just ignore this part
+// of the code and don't try to add any more region constraints.
+macro_rules! ignore_err(
+    ($inp: expr) => (
+        match $inp {
+            Ok(v) => v,
+            Err(()) => return
+        }
+    )
+)
+
 pub struct Rcx {
     fcx: @FnCtxt,
     errors_reported: uint,
@@ -395,7 +408,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         match **adjustment {
             ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
-                constrain_derefs(rcx, expr, autoderefs, expr_ty);
+                constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
                 for autoref in opt_autoref.iter() {
                     link_autoref(rcx, expr, autoderefs, autoref);
 
@@ -494,7 +507,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 }
                 None => rcx.resolve_node_type(base.id)
             };
-            constrain_derefs(rcx, expr, 1, base_ty);
+            match ty::get(base_ty).sty {
+                ty::ty_rptr(r_ptr, _) => {
+                    mk_subregion_due_to_derefence(rcx, expr.span,
+                                                  ty::ReScope(expr.id), r_ptr);
+                }
+                _ => {}
+            }
 
             visit::walk_expr(rcx, expr, ());
         }
@@ -819,11 +838,10 @@ fn constrain_call(rcx: &mut Rcx,
         fn_sig.output);
 }
 
-fn constrain_derefs(rcx: &mut Rcx,
-                    deref_expr: &ast::Expr,
-                    derefs: uint,
-                    mut derefd_ty: ty::t)
-{
+fn constrain_autoderefs(rcx: &mut Rcx,
+                        deref_expr: &ast::Expr,
+                        derefs: uint,
+                        mut derefd_ty: ty::t) {
     /*!
      * Invoked on any dereference that occurs, whether explicitly
      * or through an auto-deref.  Checks that if this is a region
@@ -832,16 +850,46 @@ fn constrain_derefs(rcx: &mut Rcx,
      */
     let r_deref_expr = ty::ReScope(deref_expr.id);
     for i in range(0u, derefs) {
-        debug!("constrain_derefs(deref_expr=?, derefd_ty={}, derefs={:?}/{:?}",
+        debug!("constrain_autoderefs(deref_expr=?, derefd_ty={}, derefs={:?}/{:?}",
                rcx.fcx.infcx().ty_to_str(derefd_ty),
                i, derefs);
+
+        let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
+        derefd_ty = match rcx.fcx.inh.method_map.get().find(&method_call) {
+            Some(method) => {
+                // Treat overloaded autoderefs as if an AutoRef adjustment
+                // was applied on the base type, as that is always the case.
+                let fn_sig = ty::ty_fn_sig(method.ty);
+                let self_ty = *fn_sig.inputs.get(0);
+                let (m, r) = match ty::get(self_ty).sty {
+                    ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                    _ => rcx.tcx().sess.span_bug(deref_expr.span,
+                            format!("bad overloaded deref type {}",
+                                method.ty.repr(rcx.tcx())))
+                };
+                {
+                    let mut mc = mc::MemCategorizationContext { typer: &mut *rcx };
+                    let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
+                    link_region(mc.typer, deref_expr.span, r, m, self_cmt);
+                }
+
+                // Specialized version of constrain_call.
+                constrain_regions_in_type(rcx, r_deref_expr,
+                                          infer::CallRcvr(deref_expr.span),
+                                          self_ty);
+                constrain_regions_in_type(rcx, r_deref_expr,
+                                          infer::CallReturn(deref_expr.span),
+                                          fn_sig.output);
+                fn_sig.output
+            }
+            None => derefd_ty
+        };
 
         match ty::get(derefd_ty).sty {
             ty::ty_rptr(r_ptr, _) => {
                 mk_subregion_due_to_derefence(rcx, deref_expr.span,
                                               r_deref_expr, r_ptr);
             }
-
             _ => {}
         }
 
@@ -964,19 +1012,6 @@ fn constrain_regions_in_type(
 
     return e == rcx.errors_reported;
 }
-
-// If mem categorization results in an error, it's because the type
-// check failed (or will fail, when the error is uncovered and
-// reported during writeback). In this case, we just ignore this part
-// of the code and don't try to add any more region constraints.
-macro_rules! ignore_err(
-    ($inp: expr) => (
-        match $inp {
-            Ok(v) => { v }
-            Err(()) => { return; }
-        }
-    )
-)
 
 fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
                mutability: ast::Mutability, base: &ast::Expr) {
