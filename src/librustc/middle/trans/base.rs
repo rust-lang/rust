@@ -2107,7 +2107,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                 }
 
                 ast_map::NodeForeignItem(ni) => {
-                    let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     foreign = true;
 
                     match ni.node {
@@ -2116,41 +2115,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             foreign::register_foreign_item_fn(ccx, abis, ni)
                         }
                         ast::ForeignItemStatic(..) => {
-                            // Treat the crate map static specially in order to
-                            // a weak-linkage-like functionality where it's
-                            // dynamically resolved at runtime. If we're
-                            // building a library, then we declare the static
-                            // with weak linkage, but if we're building a
-                            // library then we've already declared the crate map
-                            // so use that instead.
-                            if attr::contains_name(ni.attrs.as_slice(),
-                                                   "crate_map") {
-                                if ccx.sess.building_library.get() {
-                                    let s = "_rust_crate_map_toplevel";
-                                    let g = unsafe {
-                                        s.with_c_str(|buf| {
-                                            let ty = type_of(ccx, ty);
-                                            llvm::LLVMAddGlobal(ccx.llmod,
-                                                                ty.to_ref(),
-                                                                buf)
-                                        })
-                                    };
-                                    lib::llvm::SetLinkage(g,
-                                        lib::llvm::ExternalWeakLinkage);
-                                    g
-                                } else {
-                                    ccx.crate_map
-                                }
-                            } else {
-                                let ident = foreign::link_name(ni);
-                                unsafe {
-                                    ident.get().with_c_str(|buf| {
-                                        let ty = type_of(ccx, ty);
-                                        llvm::LLVMAddGlobal(ccx.llmod,
-                                                            ty.to_ref(), buf)
-                                    })
-                                }
-                            }
+                            foreign::register_static(ccx, ni)
                         }
                     }
                 }
