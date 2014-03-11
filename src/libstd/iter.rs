@@ -285,7 +285,7 @@ pub trait Iterator<A> {
     /// ```
     #[inline]
     fn skip(self, n: uint) -> Skip<Self> {
-        Skip{iter: self, n: n}
+        Skip{iter: self, n: n, consumed_back: 0}
     }
 
     /// Creates an iterator which yields the first `n` elements of this
@@ -303,7 +303,7 @@ pub trait Iterator<A> {
     /// ```
     #[inline]
     fn take(self, n: uint) -> Take<Self> {
-        Take{iter: self, n: n}
+        Take{iter: self, n: n, consumed_back: 0}
     }
 
     /// Creates a new iterator which behaves in a similar fashion to foldl.
@@ -762,6 +762,8 @@ impl<'a, A, T: ExactSize<A>> ExactSize<A> for Inspect<'a, A, T> {}
 impl<A, T: ExactSize<A>> ExactSize<A> for Rev<T> {}
 impl<'a, A, B, T: ExactSize<A>> ExactSize<B> for Map<'a, A, B, T> {}
 impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Skip<T> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Take<T> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
@@ -1564,7 +1566,8 @@ impl<'a, A, T: Iterator<A>> Iterator<A> for TakeWhile<'a, A, T> {
 #[deriving(Clone)]
 pub struct Skip<T> {
     priv iter: T,
-    priv n: uint
+    priv n: uint,
+    priv consumed_back: uint
 }
 
 impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
@@ -1608,6 +1611,21 @@ impl<A, T: Iterator<A>> Iterator<A> for Skip<T> {
     }
 }
 
+impl<A, T: ExactSize<A>> DoubleEndedIterator<A> for Skip<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        let (lower, upper) = self.iter.size_hint();
+        assert_eq!(upper, Some(lower));
+
+        if lower >= self.n + self.consumed_back {
+            self.consumed_back += 1;
+            self.iter.next_back()
+        } else {
+            None
+        }
+    }
+}
+
 impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1628,7 +1646,8 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
 #[deriving(Clone)]
 pub struct Take<T> {
     priv iter: T,
-    priv n: uint
+    priv n: uint,
+    priv consumed_back: uint
 }
 
 impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
@@ -1654,6 +1673,20 @@ impl<A, T: Iterator<A>> Iterator<A> for Take<T> {
         };
 
         (lower, upper)
+    }
+}
+
+impl<A, T: ExactSize<A>> DoubleEndedIterator<A> for Take<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        let (lower, upper) = self.iter.size_hint();
+        assert_eq!(upper, Some(lower));
+
+        while self.consumed_back + self.n < lower {
+            self.consumed_back += 1;
+            self.iter.next_back();
+        }
+        self.iter.next_back()
     }
 }
 
@@ -2790,6 +2823,36 @@ mod tests {
         assert_eq!(it.next_back().unwrap(), &5)
         assert_eq!(it.next_back().unwrap(), &7)
         assert_eq!(it.next_back(), None)
+    }
+
+    #[test]
+    fn test_double_ended_skip() {
+        let xs = [1, 2, 3, 4, 5, 6];
+        let mut it = xs.iter().skip(3);
+        assert_eq!(it.next_back().unwrap(), &6);
+        assert_eq!(it.next_back().unwrap(), &5);
+        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next_back(), None);
+
+        let mut it = xs.iter().skip(7);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn test_double_ended_take() {
+        let xs = [1, 2, 3, 4];
+        let mut it = xs.iter().take(3);
+        assert_eq!(it.next_back().unwrap(), &3);
+        assert_eq!(it.next_back().unwrap(), &2);
+        assert_eq!(it.next_back().unwrap(), &1);
+        assert_eq!(it.next_back(), None);
+
+        let mut it = xs.iter().take(7);
+        assert_eq!(it.next_back().unwrap(), &4);
+        assert_eq!(it.next_back().unwrap(), &3);
+        assert_eq!(it.next_back().unwrap(), &2);
+        assert_eq!(it.next_back().unwrap(), &1);
+        assert_eq!(it.next_back(), None);
     }
 
     #[test]
