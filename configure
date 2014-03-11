@@ -22,7 +22,7 @@ err() {
 need_ok() {
     if [ $? -ne 0 ]
     then
-        err $1
+        err "$1"
     fi
 }
 
@@ -340,7 +340,7 @@ DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_BUILD_DIR="$(pwd)/"
-CFG_SELF=${CFG_SRC_DIR}$(basename $0)
+CFG_SELF="$0"
 CFG_CONFIGURE_ARGS="$@"
 
 OPTIONS=""
@@ -412,16 +412,15 @@ fi
 valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 valopt rustlibdir "rustlib" "subdirectory name for rustc's libraries"
 
-# Validate Options
-step_msg "validating $CFG_SELF args"
-validate_opt
-
 if [ $HELP -eq 1 ]
 then
     echo
     exit 0
 fi
 
+# Validate Options
+step_msg "validating $CFG_SELF args"
+validate_opt
 
 step_msg "looking for build programs"
 
@@ -728,7 +727,7 @@ step_msg "making directories"
 
 for i in \
     doc doc/std doc/extra \
-    dl tmp
+    dl tmp dist
 do
     make_dir $i
 done
