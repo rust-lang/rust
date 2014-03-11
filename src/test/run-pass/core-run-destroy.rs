@@ -9,19 +9,50 @@
 // except according to those terms.
 
 // ignore-fast
+// ignore-pretty
 // compile-flags:--test
 
 // NB: These tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-use std::io::timer;
-use std::libc;
-use std::str;
-use std::io::process::{Process, ProcessOutput};
+#[feature(macro_rules)];
 
-#[test]
-fn test_destroy_once() {
+extern crate native;
+extern crate green;
+extern crate rustuv;
+
+macro_rules! iotest (
+    { fn $name:ident() $b:block $($a:attr)* } => (
+        mod $name {
+            #[allow(unused_imports)];
+
+            use std::io::timer;
+            use std::libc;
+            use std::str;
+            use std::io::process::{Process, ProcessOutput};
+            use native;
+            use super::*;
+
+            fn f() $b
+
+            $($a)* #[test] fn green() { f() }
+            $($a)* #[test] fn native() {
+                use native;
+                let (tx, rx) = channel();
+                native::task::spawn(proc() { tx.send(f()) });
+                rx.recv();
+            }
+        }
+    )
+)
+
+#[cfg(test)] #[start]
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, __test::main)
+}
+
+iotest!(fn test_destroy_once() {
     #[cfg(not(target_os="android"))]
     static mut PROG: &'static str = "echo";
 
@@ -30,10 +61,9 @@ fn test_destroy_once() {
 
     let mut p = unsafe {Process::new(PROG, []).unwrap()};
     p.signal_exit().unwrap(); // this shouldn't crash (and nor should the destructor)
-}
+})
 
-#[test]
-fn test_destroy_twice() {
+iotest!(fn test_destroy_twice() {
     #[cfg(not(target_os="android"))]
     static mut PROG: &'static str = "echo";
     #[cfg(target_os="android")]
@@ -45,56 +75,27 @@ fn test_destroy_twice() {
     };
     p.signal_exit().unwrap(); // this shouldnt crash...
     p.signal_exit().unwrap(); // ...and nor should this (and nor should the destructor)
-}
+})
 
-fn test_destroy_actually_kills(force: bool) {
-
-    #[cfg(unix,not(target_os="android"))]
-    static mut BLOCK_COMMAND: &'static str = "cat";
-
-    #[cfg(unix,target_os="android")]
-    static mut BLOCK_COMMAND: &'static str = "/system/bin/cat";
-
-    #[cfg(windows)]
-    static mut BLOCK_COMMAND: &'static str = "cmd";
+pub fn test_destroy_actually_kills(force: bool) {
+    use std::io::process::{Process, ProcessOutput, ExitStatus, ExitSignal};
+    use std::io::timer;
+    use std::libc;
+    use std::str;
 
     #[cfg(unix,not(target_os="android"))]
-    fn process_exists(pid: libc::pid_t) -> bool {
-        let ProcessOutput {output, ..} = Process::output("ps", [~"-p", pid.to_str()])
-            .unwrap();
-        str::from_utf8_owned(output).unwrap().contains(pid.to_str())
-    }
+    static BLOCK_COMMAND: &'static str = "cat";
 
     #[cfg(unix,target_os="android")]
-    fn process_exists(pid: libc::pid_t) -> bool {
-        let ProcessOutput {output, ..} = Process::output("/system/bin/ps", [pid.to_str()])
-            .unwrap();
-        str::from_utf8_owned(output).unwrap().contains(~"root")
-    }
+    static BLOCK_COMMAND: &'static str = "/system/bin/cat";
 
     #[cfg(windows)]
-    fn process_exists(pid: libc::pid_t) -> bool {
-        use std::libc::types::os::arch::extra::DWORD;
-        use std::libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};
-        use std::libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };
-
-        unsafe {
-            let process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
-            if process.is_null() {
-                return false;
-            }
-            // process will be non-null if the process is alive, or if it died recently
-            let mut status = 0;
-            GetExitCodeProcess(process, &mut status);
-            CloseHandle(process);
-            return status == STILL_ACTIVE;
-        }
-    }
+    static BLOCK_COMMAND: &'static str = "cmd";
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = unsafe {Process::new(BLOCK_COMMAND, []).unwrap()};
+    let mut p = Process::new(BLOCK_COMMAND, []).unwrap();
 
-    assert!(process_exists(p.id()));
+    assert!(p.signal(0).is_ok());
 
     if force {
         p.signal_kill().unwrap();
@@ -102,18 +103,26 @@ fn test_destroy_actually_kills(force: bool) {
         p.signal_exit().unwrap();
     }
 
-    if process_exists(p.id()) {
-        timer::sleep(500);
-        assert!(!process_exists(p.id()));
+    // Don't let this test time out, this should be quick
+    let (tx, rx1) = channel();
+    let mut t = timer::Timer::new().unwrap();
+    let rx2 = t.oneshot(1000);
+    spawn(proc() {
+        select! {
+            () = rx2.recv() => unsafe { libc::exit(1) },
+            () = rx1.recv() => {}
+        }
+    });
+    match p.wait() {
+        ExitStatus(..) => fail!("expected a signal"),
+        ExitSignal(..) => tx.send(()),
     }
 }
 
-#[test]
-fn test_unforced_destroy_actually_kills() {
+iotest!(fn test_unforced_destroy_actually_kills() {
     test_destroy_actually_kills(false);
-}
+})
 
-#[test]
-fn test_forced_destroy_actually_kills() {
+iotest!(fn test_forced_destroy_actually_kills() {
     test_destroy_actually_kills(true);
-}
+})
