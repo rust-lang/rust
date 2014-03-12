@@ -147,6 +147,10 @@ SHOULD_BUILD_PDF_DOC_$(1) = 1
 endef
 $(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))))
 
+doc/footer.tex: $(D)/footer.inc | doc/
+	@$(call E, pandoc: $@)
+	$(CFG_PANDOC) --from=html --to=latex $< --output=$@
+
 define DEF_DOC
 
 # HTML (rustdoc)
@@ -162,10 +166,6 @@ DOC_TARGETS += doc/$(1).epub
 doc/$(1).epub: $$(D)/$(1).md | doc/
 	@$$(call E, pandoc: $$@)
 	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) $$< --output=$$@
-
-doc/footer.tex: $(D)/footer.inc | doc/
-	@$$(call E, pandoc: $$@)
-	$$(CFG_PANDOC) --from=html --to=latex $$< --output=$$@
 
 # PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
 DOC_TARGETS += doc/$(1).tex

@@ -59,6 +59,12 @@ Examples of string representations:
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+#[feature(default_type_params)];
+
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
+#[allow(default_type_param_usage)];
+
 // test harness access
 #[cfg(test)]
 extern crate test;
@@ -71,7 +77,7 @@ use std::char::Char;
 use std::default::Default;
 use std::fmt;
 use std::from_str::FromStr;
-use std::hash::{Hash, sip};
+use std::hash::Hash;
 use std::num::FromStrRadix;
 use std::str;
 use std::vec;
@@ -116,9 +122,10 @@ pub struct Uuid {
     /// The 128-bit number stored in 16 bytes
     bytes: UuidBytes
 }
-impl Hash for Uuid {
-    fn hash(&self, s: &mut sip::SipState) {
-        self.bytes.slice_from(0).hash(s)
+
+impl<S: Writer> Hash<S> for Uuid {
+    fn hash(&self, state: &mut S) {
+        self.bytes.hash(state)
     }
 }
 

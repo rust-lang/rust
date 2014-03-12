@@ -720,10 +720,17 @@ impl Json {
     }
 
     /// Attempts to get a nested Json Object for each key in `keys`.
-    /// If any key is found not to exist, get_path will return None.
+    /// If any key is found not to exist, find_path will return None.
     /// Otherwise, it will return the Json value associated with the final key.
     pub fn find_path<'a>(&'a self, keys: &[&~str]) -> Option<&'a Json>{
-        keys.iter().fold(Some(self), |target, key| target.map_or(None, |t| t.find(*key)))
+        let mut target = self;
+        for key in keys.iter() {
+            match target.find(*key) {
+                Some(t) => { target = t; },
+                None => return None
+            }
+        }
+        Some(target)
     }
 
     /// If the Json value is an Object, performs a depth-first search until
@@ -752,10 +759,7 @@ impl Json {
 
     /// Returns true if the Json value is an Object. Returns false otherwise.
     pub fn is_object<'a>(&'a self) -> bool {
-        match self {
-            &Object(_) => true,
-            _ => false
-        }
+        self.as_object().is_some()
     }
 
     /// If the Json value is an Object, returns the associated TreeMap.
@@ -769,10 +773,7 @@ impl Json {
 
     /// Returns true if the Json value is a List. Returns false otherwise.
     pub fn is_list<'a>(&'a self) -> bool {
-        match self {
-            &List(_) => true,
-            _ => false
-        }
+        self.as_list().is_some()
     }
 
     /// If the Json value is a List, returns the associated vector.
@@ -785,16 +786,13 @@ impl Json {
     }
 
     /// Returns true if the Json value is a String. Returns false otherwise.
-    pub fn is_str<'a>(&'a self) -> bool {
-        match self {
-            &String(_) => true,
-            _ => false
-        }
+    pub fn is_string<'a>(&'a self) -> bool {
+        self.as_string().is_some()
     }
 
     /// If the Json value is a String, returns the associated str.
     /// Returns None otherwise.
-    pub fn as_str<'a>(&'a self) -> Option<&'a str> {
+    pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
             String(ref s) => Some(s.as_slice()),
             _ => None
@@ -803,10 +801,7 @@ impl Json {
 
     /// Returns true if the Json value is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
-        match self {
-            &Number(_) => true,
-            _ => false
-        }
+        self.as_number().is_some()
     }
 
     /// If the Json value is a Number, returns the associated f64.
@@ -820,10 +815,7 @@ impl Json {
 
     /// Returns true if the Json value is a Boolean. Returns false otherwise.
     pub fn is_boolean(&self) -> bool {
-        match self {
-            &Boolean(_) => true,
-            _ => false
-        }
+        self.as_boolean().is_some()
     }
 
     /// If the Json value is a Boolean, returns the associated bool.
@@ -837,10 +829,7 @@ impl Json {
 
     /// Returns true if the Json value is a Null. Returns false otherwise.
     pub fn is_null(&self) -> bool {
-        match self {
-            &Null => true,
-            _ => false
-        }
+        self.as_null().is_some()
     }
 
     /// If the Json value is a Null, returns ().
@@ -2430,20 +2419,20 @@ mod tests {
     fn test_find(){
         let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
         let found_str = json_value.find(&~"dog");
-        assert!(found_str.is_some() && found_str.unwrap().as_str().unwrap() == &"cat");
+        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cat");
     }
 
     #[test]
     fn test_find_path(){
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
         let found_str = json_value.find_path(&[&~"dog", &~"cat", &~"mouse"]);
-        assert!(found_str.is_some() && found_str.unwrap().as_str().unwrap() == &"cheese");
+        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cheese");
     }
 
     #[test]
     fn test_search(){
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
-        let found_str = json_value.search(&~"mouse").and_then(|j| j.as_str());
+        let found_str = json_value.search(&~"mouse").and_then(|j| j.as_string());
         assert!(found_str.is_some());
         assert!(found_str.unwrap() == &"cheese");
     }
@@ -2476,15 +2465,15 @@ mod tests {
     }
 
     #[test]
-    fn test_is_str(){
+    fn test_is_string(){
         let json_value = from_str("\"dog\"").unwrap();
-        assert!(json_value.is_str());
+        assert!(json_value.is_string());
     }
 
     #[test]
-    fn test_as_str(){
+    fn test_as_string(){
         let json_value = from_str("\"dog\"").unwrap();
-        let json_str = json_value.as_str();
+        let json_str = json_value.as_string();
         let expected_str = &"dog";
         assert_eq!(json_str, Some(expected_str));
     }

@@ -979,7 +979,7 @@ static other_attrs: &'static [&'static str] = &[
     "macro_export", "must_use",
 
     //mod-level
-    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+    "path", "link_name", "link_args", "macro_escape", "no_implicit_prelude",
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",

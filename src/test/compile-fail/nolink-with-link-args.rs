@@ -17,7 +17,6 @@ the compiler output. */
 #[feature(link_args)];
 
 #[link_args = "aFdEfSeVEEE"]
-#[nolink]
 extern {}
 
 fn main() { }
