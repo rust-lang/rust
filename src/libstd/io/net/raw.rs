@@ -10,24 +10,18 @@
 
 // FIXME
 #[allow(missing_doc)];
-#[allow(unused_imports)];
 
-use cast;
-use c_str::ToCStr;
-use std::io::net::ip;
-use std::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
+use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
 use iter::Iterator;
 use libc;
-use mem;
-use option::{Option, None, Some};
+use option::{Option};
 use rt::rtio::{IoFactory, LocalIo, RtioRawSocket};
 use clone::Clone;
-use vec::{Vector, OwnedVector, ImmutableVector};
-use vec_ng::Vec;
+use vec::{Vector, ImmutableVector};
 
-#[test]
-use vec::{Vector, MutableVector};
+#[cfg(test)]
+use vec::MutableVector;
 
 pub struct RawSocket {
     priv obj: ~RtioRawSocket
@@ -49,246 +43,16 @@ impl RawSocket {
     }
 }
 
-// from librustuv/net.rs
-pub fn htons(u: u16) -> u16 {
-    mem::to_be16(u as i16) as u16
-}
-pub fn ntohs(u: u16) -> u16 {
-    mem::from_be16(u as i16) as u16
-}
-pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
-                        len: uint) -> ip::SocketAddr {
-    match storage.ss_family as libc::c_int {
-        libc::AF_INET => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
-            let storage: &libc::sockaddr_in = unsafe {
-                cast::transmute(storage)
-            };
-            let addr = storage.sin_addr.s_addr as u32;
-            let a = (addr >>  0) as u8;
-            let b = (addr >>  8) as u8;
-            let c = (addr >> 16) as u8;
-            let d = (addr >> 24) as u8;
-            ip::SocketAddr {
-                ip: ip::Ipv4Addr(a, b, c, d),
-                port: ntohs(storage.sin_port),
-            }
-        }
-        libc::AF_INET6 => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
-            let storage: &libc::sockaddr_in6 = unsafe {
-                cast::transmute(storage)
-            };
-            let a = ntohs(storage.sin6_addr.s6_addr[0]);
-            let b = ntohs(storage.sin6_addr.s6_addr[1]);
-            let c = ntohs(storage.sin6_addr.s6_addr[2]);
-            let d = ntohs(storage.sin6_addr.s6_addr[3]);
-            let e = ntohs(storage.sin6_addr.s6_addr[4]);
-            let f = ntohs(storage.sin6_addr.s6_addr[5]);
-            let g = ntohs(storage.sin6_addr.s6_addr[6]);
-            let h = ntohs(storage.sin6_addr.s6_addr[7]);
-            ip::SocketAddr {
-                ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
-                port: ntohs(storage.sin6_port),
-            }
-        }
-        n => {
-            fail!("unknown family {}", n);
-        }
-    }
-}
-
-fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
-    unsafe {
-        let mut storage: libc::sockaddr_storage = mem::init();
-        let len = match addr.ip {
-            ip::Ipv4Addr(a, b, c, d) => {
-                let storage: &mut libc::sockaddr_in =
-                    cast::transmute(&mut storage);
-                (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
-                (*storage).sin_port = htons(addr.port);
-                (*storage).sin_addr = libc::in_addr {
-                    s_addr: (d as u32 << 24) |
-                            (c as u32 << 16) |
-                            (b as u32 <<  8) |
-                            (a as u32 <<  0)
-                };
-                mem::size_of::<libc::sockaddr_in>()
-            }
-            ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
-                let storage: &mut libc::sockaddr_in6 =
-                    cast::transmute(&mut storage);
-                storage.sin6_family = libc::AF_INET6 as libc::sa_family_t;
-                storage.sin6_port = htons(addr.port);
-                storage.sin6_addr = libc::in6_addr {
-                    s6_addr: [
-                        htons(a),
-                        htons(b),
-                        htons(c),
-                        htons(d),
-                        htons(e),
-                        htons(f),
-                        htons(g),
-                        htons(h),
-                    ]
-                };
-                mem::size_of::<libc::sockaddr_in6>()
-            }
-        };
-        return (storage, len);
-    }
-}
-
-// /copy/paste
-
-pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~NetworkAddress> {
-    unsafe {
-        if (*sa).sa_family as libc::c_int == libc::AF_PACKET {
-            let sll: *libc::sockaddr_ll = cast::transmute(sa);
-            let ni = if useLocal {
-                let nis = get_network_interfaces();
-                if nis.iter().filter(|x| x.index as i32 == (*sll).sll_ifindex).len() == 1 {
-                    (*nis.iter().filter(|x| x.index as i32 == (*sll).sll_ifindex).next().unwrap()).clone()
-                } else {
-                    sll_to_ni(*sll)
-                }
-            } else {
-                sll_to_ni(*sll)
-            };
-
-            return Some(~NetworkAddress(ni));
-        } else {
-            return Some(~IpAddress(sockaddr_to_addr(cast::transmute(sa), mem::size_of::<libc::sockaddr_storage>()).ip));
-        }
-    }
-
-    fn sll_to_ni(sll: libc::sockaddr_ll) -> ~NetworkInterface {
-        let mac = MacAddr(sll.sll_addr[0], sll.sll_addr[1],
-                          sll.sll_addr[2], sll.sll_addr[3],
-                          sll.sll_addr[4], sll.sll_addr[5]);
-        ~NetworkInterface {
-            name: ~"",
-            index: 0,
-            mac: Some(mac),
-            ipv4: None,
-            ipv6: None,
-            flags: 0
-        }
-    }
-}
-
-pub fn network_addr_to_sockaddr(na: ~NetworkAddress) -> (libc::sockaddr_storage, uint) {
-    unsafe {
-        match na {
-            ~IpAddress(ip) => addr_to_sockaddr(ip::SocketAddr { ip: ip, port : 0}),
-            //_ => (mem::init(), 0)
-            ~NetworkAddress(ni) => {
-                let mut storage: libc::sockaddr_storage = mem::init();
-                let sll: &mut libc::sockaddr_ll = cast::transmute(&mut storage);
-                sll.sll_family = libc::AF_PACKET as libc::sa_family_t;
-                match ni.mac {
-                    Some(MacAddr(a, b, c, d, e, f)) => sll.sll_addr = [a, b, c, d, e, f, 0, 0],
-                    _ => ()
-                }
-                sll.sll_halen = 6;
-                sll.sll_ifindex = ni.index as i32;
-                //sll.sll_addr = [a, b, c, d, e, f, 0, 0];
-                (storage, mem::size_of::<libc::sockaddr_ll>())
-            }
-            //MacAddress(MacAddr(a, b, c, d, e, f)) => {
-            //    let mut storage: libc::sockaddr_storage = mem::init();
-            //    let sll: &mut libc::sockaddr_ll = cast::transmute(&mut storage);
-            //    sll.sll_family = libc::AF_PACKET as libc::sa_family_t;
-            //    sll.sll_addr = [a, b, c, d, e, f, 0, 0];
-            //    (storage, mem::size_of::<libc::sockaddr_ll>())
-            //}
-        }
-    }
-}
-
-fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
-    -> (Option<MacAddr>, Option<IpAddr>, Option<IpAddr>) {
-    //(None, None, None)
-    match sockaddr_to_network_addr(sa, false) {
-        Some(~IpAddress(ip@Ipv4Addr(..))) => (None, Some(ip), None),
-        Some(~IpAddress(ip@Ipv6Addr(..))) => (None, None, Some(ip)),
-        Some(~NetworkAddress(ni)) => (ni.mac, None, None),
-        None => (None, None, None)
-    }
-}
-
-pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
-    use ptr;
-    use str::raw;
-
-    let mut ifaces: Vec<~NetworkInterface> = Vec::new();
-    unsafe {
-        let mut addrs: *libc::ifaddrs = mem::init();
-        if libc::getifaddrs(&mut addrs) != 0 {
-            return ifaces;
-        }
-        let mut addr = addrs;
-        while addr != ptr::null() {
-            let name = raw::from_c_str((*addr).ifa_name);
-            let (mac, ipv4, ipv6) = sockaddr_to_network_addrs((*addr).ifa_addr);
-            let ni = ~NetworkInterface {
-                name: name.clone(),
-                index: 0,
-                mac: mac,
-                ipv4: ipv4,
-                ipv6: ipv6,
-                flags: (*addr).ifa_flags
-            };
-            //println!("name: {:?}; mac: {:?}; ipv4: {:?}; ipv6: {:?};", name, mac, ipv4, ipv6);
-            let mut found: bool = false;
-            for iface in ifaces.mut_iter() {
-                if name == iface.name {
-                    merge(iface, &ni);
-                    found = true;
-                }
-            }
-            if !found {
-                ifaces.push(ni);
-            }
-
-            addr = (*addr).ifa_next;
-        }
-        libc::freeifaddrs(addrs);
-
-        for iface in ifaces.mut_iter() {
-            iface.index = libc::if_nametoindex(iface.name.to_c_str().unwrap());
-        }
-        return ifaces;
-    }
-
-    fn merge(old: &mut ~NetworkInterface, new: &~NetworkInterface) {
-        old.mac = match new.mac {
-            None => old.mac,
-            _ => new.mac
-        };
-        old.ipv4 = match new.ipv4 {
-            None => old.ipv4,
-            _ => new.ipv4
-        };
-        old.ipv6 = match new.ipv6 {
-            None => old.ipv6,
-            _ => new.ipv6
-        };
-        old.flags = old.flags | new.flags;
-    }
-
-}
 
 #[deriving(Clone, Eq, Show)]
 pub struct NetworkInterface {
-    priv name: ~str,
-    priv index: u32,
-    priv mac: Option<MacAddr>,
-    priv ipv4: Option<IpAddr>,
-    priv ipv6: Option<IpAddr>,
-    priv flags: u32,
+    name: ~str,
+    index: u32,
+    mac: Option<MacAddr>,
+    ipv4: Option<IpAddr>,
+    ipv6: Option<IpAddr>,
+    flags: u32,
 }
-
 
 impl NetworkInterface {
     pub fn mac_address(&self) -> MacAddr {
@@ -298,6 +62,17 @@ impl NetworkInterface {
     pub fn is_loopback(&self) -> bool {
         self.flags & (libc::IFF_LOOPBACK as u32) != 0
     }
+}
+
+#[deriving(Clone, Eq, Show)]
+pub enum NetworkAddress {
+    IpAddress(IpAddr),
+    NetworkAddress(~NetworkInterface)
+}
+
+#[deriving(Eq, Clone, Show)]
+pub enum MacAddr {
+    MacAddr(u8, u8, u8, u8, u8, u8)
 }
 
 trait Packet {
@@ -969,17 +744,6 @@ impl<'p> MutableUdpHeader<'p> {
     }
 }
 
-#[deriving(Clone, Eq, Show)]
-pub enum NetworkAddress {
-    IpAddress(IpAddr),
-    NetworkAddress(~NetworkInterface)
-}
-
-#[deriving(Eq, Clone, Show)]
-pub enum MacAddr {
-    MacAddr(u8, u8, u8, u8, u8, u8)
-}
-
 pub enum Protocol {
     DataLinkProtocol(DataLinkProto),
     NetworkProtocol(NetworkProto),
@@ -1176,16 +940,21 @@ pub type IpNextHeaderProtocol = u8;
 
 #[cfg(test)]
 pub mod test {
+    extern crate netsupport;
+    extern crate std;
+
     use result::{Ok, Err};
     use iter::Iterator;
     use container::Container;
     use option::{Some};
     use str::StrSlice;
-    use super::*;
-    use super::{Ipv4Packet,UdpPacket};
+    use io::net::raw::*;
+    use io::net::raw::{Ipv4Packet,UdpPacket};
     use task::spawn;
     use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use vec::Items;
     use vec::ImmutableVector;
+    use vec_ng::Vec;
 
     pub static ETHERNET_HEADER_LEN: u16 = 14;
     pub static IPV4_HEADER_LEN: u16 = 20;
@@ -1292,13 +1061,16 @@ pub mod test {
 
     pub fn get_test_interface() -> NetworkInterface {
         use clone::Clone;
+        use iter::Iterator;
+        use vec::{Items, MoveItems, Vector, OwnedVector};
 
-        (**get_network_interfaces()
-            .iter()
+        (**netsupport::get_network_interfaces()
+            .as_slice().iter()
+            //.move_iter()
             .filter(|x| x.is_loopback())
             .next()
             .unwrap())
-            .clone()
+            //.clone()
     }
 
     pub fn same_ports(packet1: &[u8], packet2: &[u8], offset: uint) -> bool {

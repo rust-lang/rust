@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use ai = std::io::net::addrinfo;
 use std::cast;
 use std::libc;
@@ -15,7 +17,6 @@ use std::libc::c_int;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
 
-use net;
 use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
@@ -140,8 +141,8 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
         let mut addrs = ~[];
         loop {
-            let rustaddr = net::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
-                                                 (*addr).ai_addrlen as uint);
+            let rustaddr = netsupport::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
+                                                 (*addr).ai_addrlen as uint).unwrap();
 
             let mut flags = 0;
             each_ai_flag(|cval, aival| {
