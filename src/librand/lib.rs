@@ -48,38 +48,41 @@ randomness.
 # Examples
 
 ```rust
-use std::rand;
-use std::rand::Rng;
+use rand::Rng;
 
-let mut rng = rand::rng();
+let mut rng = rand::task_rng();
 if rng.gen() { // bool
     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
 }
- ```
+```
 
 ```rust
-use std::rand;
-
 let tuple_ptr = rand::random::<~(f64, char)>();
 println!("{:?}", tuple_ptr)
- ```
+```
 */
 
-use cast;
-use cmp::Ord;
-use container::Container;
-use iter::{Iterator, range};
-use kinds::marker;
-use local_data;
-use prelude::*;
-use str;
-use vec;
+#[crate_id = "rand#0.10-pre"];
+#[license = "MIT/ASL2"];
+#[crate_type = "dylib"];
+#[crate_type = "rlib"];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
 
-pub use self::isaac::{IsaacRng, Isaac64Rng};
-pub use self::os::OSRng;
+#[feature(macro_rules, managed_boxes)];
 
-use self::distributions::{Range, IndependentSample};
-use self::distributions::range::SampleRange;
+use std::cast;
+use std::kinds::marker;
+use std::local_data;
+use std::str;
+use std::vec;
+
+pub use isaac::{IsaacRng, Isaac64Rng};
+pub use os::OSRng;
+
+use distributions::{Range, IndependentSample};
+use distributions::range::SampleRange;
 
 pub mod distributions;
 pub mod isaac;
@@ -135,7 +138,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut v = [0u8, .. 13579];
     /// task_rng().fill_bytes(v);
@@ -170,7 +173,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// let x: uint = rng.gen();
@@ -187,7 +190,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// let x: ~[uint] = rng.gen_vec(10);
@@ -210,7 +213,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// let n: uint = rng.gen_range(0u, 10);
@@ -228,7 +231,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// println!("{:b}", rng.gen_weighted_bool(3));
@@ -243,7 +246,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// println!("{}", task_rng().gen_ascii_str(10));
     /// ```
@@ -269,7 +272,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let choices = [1, 2, 4, 8, 16, 32];
     /// let mut rng = task_rng();
@@ -289,7 +292,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// println!("{:?}", task_rng().shuffle(~[1,2,3]));
     /// ```
@@ -304,7 +307,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// let mut y = [1,2,3];
@@ -328,7 +331,7 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
     /// let sample = rng.sample(range(1, 100), 5);
@@ -359,7 +362,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{Rng, SeedableRng, StdRng};
+    /// use rand::{Rng, SeedableRng, StdRng};
     ///
     /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
     /// println!("{}", rng.gen::<f64>());
@@ -373,7 +376,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{Rng, SeedableRng, StdRng};
+    /// use rand::{Rng, SeedableRng, StdRng};
     ///
     /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
     /// println!("{}", rng.gen::<f64>());
@@ -393,6 +396,7 @@ pub trait SeedableRng<Seed>: Rng {
 /// operation. If one does not require high performance generation of
 /// random numbers, `task_rng` and/or `random` may be more
 /// appropriate.
+#[deprecated="use `task_rng` or `StdRng::new`"]
 pub fn rng() -> StdRng {
     StdRng::new()
 }
@@ -408,14 +412,26 @@ pub struct StdRng { priv rng: IsaacRng }
 pub struct StdRng { priv rng: Isaac64Rng }
 
 impl StdRng {
-    /// Create a randomly seeded instance of `StdRng`. This reads
-    /// randomness from the OS to seed the PRNG.
+    /// Create a randomly seeded instance of `StdRng`.
+    ///
+    /// This is a very expensive operation as it has to read
+    /// randomness from the operating system and use this in an
+    /// expensive seeding operation. If one is only generating a small
+    /// number of random numbers, or doesn't need the utmost speed for
+    /// generating each number, `task_rng` and/or `random` may be more
+    /// appropriate.
     #[cfg(not(target_word_size="64"))]
     pub fn new() -> StdRng {
         StdRng { rng: IsaacRng::new() }
     }
-    /// Create a randomly seeded instance of `StdRng`. This reads
-    /// randomness from the OS to seed the PRNG.
+    /// Create a randomly seeded instance of `StdRng`.
+    ///
+    /// This is a very expensive operation as it has to read
+    /// randomness from the operating system and use this in an
+    /// expensive seeding operation. If one is only generating a small
+    /// number of random numbers, or doesn't need the utmost speed for
+    /// generating each number, `task_rng` and/or `random` may be more
+    /// appropriate.
     #[cfg(target_word_size="64")]
     pub fn new() -> StdRng {
         StdRng { rng: Isaac64Rng::new() }
@@ -609,7 +625,7 @@ impl Rng for TaskRng {
 /// # Example
 ///
 /// ```rust
-/// use std::rand::random;
+/// use rand::random;
 ///
 /// if random() {
 ///     let x = random();
@@ -631,8 +647,8 @@ pub fn random<T: Rand>() -> T {
 /// `[0,1)`.
 ///
 /// # Example
-/// ```rust,ignore
-/// use std::rand::{random, Open01};
+/// ```rust
+/// use rand::{random, Open01};
 ///
 /// let Open01(val) = random::<Open01<f32>>();
 /// println!("f32 from (0,1): {}", val);
@@ -647,8 +663,8 @@ pub struct Open01<F>(F);
 /// `[0,1)`.
 ///
 /// # Example
-/// ```rust,ignore
-/// use std::rand::{random, Closed01};
+/// ```rust
+/// use rand::{random, Closed01};
 ///
 /// let Closed01(val) = random::<Closed01<f32>>();
 /// println!("f32 from [0,1]: {}", val);
@@ -657,9 +673,8 @@ pub struct Closed01<F>(F);
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-    use vec;
-    use super::*;
+    use std::vec;
+    use super::{Rng, task_rng, random, OSRng, SeedableRng, StdRng};
 
     struct ConstRng { i: u64 }
     impl Rng for ConstRng {
@@ -691,7 +706,7 @@ mod test {
 
     #[test]
     fn test_gen_range() {
-        let mut r = rng();
+        let mut r = task_rng();
         for _ in range(0, 1000) {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
@@ -711,20 +726,20 @@ mod test {
     #[test]
     #[should_fail]
     fn test_gen_range_fail_int() {
-        let mut r = rng();
+        let mut r = task_rng();
         r.gen_range(5i, -2);
     }
 
     #[test]
     #[should_fail]
     fn test_gen_range_fail_uint() {
-        let mut r = rng();
+        let mut r = task_rng();
         r.gen_range(5u, 2u);
     }
 
     #[test]
     fn test_gen_f64() {
-        let mut r = rng();
+        let mut r = task_rng();
         let a = r.gen::<f64>();
         let b = r.gen::<f64>();
         debug!("{:?}", (a, b));
@@ -732,14 +747,14 @@ mod test {
 
     #[test]
     fn test_gen_weighted_bool() {
-        let mut r = rng();
+        let mut r = task_rng();
         assert_eq!(r.gen_weighted_bool(0u), true);
         assert_eq!(r.gen_weighted_bool(1u), true);
     }
 
     #[test]
     fn test_gen_ascii_str() {
-        let mut r = rng();
+        let mut r = task_rng();
         debug!("{}", r.gen_ascii_str(10u));
         debug!("{}", r.gen_ascii_str(10u));
         debug!("{}", r.gen_ascii_str(10u));
@@ -750,7 +765,7 @@ mod test {
 
     #[test]
     fn test_gen_vec() {
-        let mut r = rng();
+        let mut r = task_rng();
         assert_eq!(r.gen_vec::<u8>(0u).len(), 0u);
         assert_eq!(r.gen_vec::<u8>(10u).len(), 10u);
         assert_eq!(r.gen_vec::<f64>(16u).len(), 16u);
@@ -758,13 +773,13 @@ mod test {
 
     #[test]
     fn test_choose() {
-        let mut r = rng();
+        let mut r = task_rng();
         assert_eq!(r.choose([1, 1, 1]), 1);
     }
 
     #[test]
     fn test_choose_option() {
-        let mut r = rng();
+        let mut r = task_rng();
         let v: &[int] = &[];
         assert!(r.choose_option(v).is_none());
 
@@ -775,7 +790,7 @@ mod test {
 
     #[test]
     fn test_shuffle() {
-        let mut r = rng();
+        let mut r = task_rng();
         let empty: ~[int] = ~[];
         assert_eq!(r.shuffle(~[]), empty);
         assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
@@ -806,7 +821,7 @@ mod test {
         let min_val = 1;
         let max_val = 100;
 
-        let mut r = rng();
+        let mut r = task_rng();
         let vals = range(min_val, max_val).to_owned_vec();
         let small_sample = r.sample(vals.iter(), 5);
         let large_sample = r.sample(vals.iter(), vals.len() + 5);
@@ -847,9 +862,8 @@ static RAND_BENCH_N: u64 = 100;
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use prelude::*;
-    use rand::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
-    use mem::size_of;
+    use {XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
+    use std::mem::size_of;
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {

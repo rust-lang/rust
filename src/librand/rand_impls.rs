@@ -10,11 +10,11 @@
 
 //! The implementations of `Rand` for the built-in types.
 
-use char;
-use int;
-use option::{Option, Some, None};
-use rand::{Rand,Rng};
-use uint;
+use std::char;
+use std::int;
+use std::uint;
+
+use {Rand,Rng};
 
 impl Rand for int {
     #[inline]
@@ -97,7 +97,7 @@ impl Rand for u64 {
 macro_rules! float_impls {
     ($mod_name:ident, $ty:ty, $mantissa_bits:expr, $method_name:ident, $ignored_bits:expr) => {
         mod $mod_name {
-            use rand::{Rand, Rng, Open01, Closed01};
+            use {Rand, Rng, Open01, Closed01};
 
             static SCALE: $ty = (1u64 << $mantissa_bits) as $ty;
 
@@ -226,8 +226,7 @@ impl<T: Rand + 'static> Rand for @T {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use rand::{Rng, task_rng, Open01, Closed01};
+    use {Rng, task_rng, Open01, Closed01};
 
     struct ConstantRng(u64);
     impl Rng for ConstantRng {

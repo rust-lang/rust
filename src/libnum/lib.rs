@@ -15,6 +15,8 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+extern crate rand;
+
 pub mod bigint;
 pub mod rational;
 pub mod complex;

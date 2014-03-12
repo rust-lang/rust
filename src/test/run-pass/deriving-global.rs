@@ -22,6 +22,8 @@
 // except according to those terms.
 
 extern crate serialize; // {En,De}codable
+extern crate rand; // Rand
+
 mod submod {
     // if any of these are implemented without global calls for any
     // function calls, then being in a submodule will (correctly)

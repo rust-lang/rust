@@ -633,7 +633,7 @@ mod tests {
     extern crate test;
     use self::test::BenchHarness;
     use deque::Deque;
-    use std::rand;
+    use rand;
     use super::{DList, Node, ListInsertion};
 
     pub fn check_links<T>(list: &DList<T>) {

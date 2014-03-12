@@ -26,7 +26,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "rand", "Rand")),
+        path: Path::new(vec!("rand", "Rand")),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -35,7 +35,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
                     bounds: vec!(("R",
-                               vec!( Path::new(vec!("std", "rand", "Rng")) )))
+                               vec!( Path::new(vec!("rand", "Rng")) )))
                 },
                 explicit_self: None,
                 args: vec!(
@@ -58,7 +58,6 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
     };
     let rand_ident = vec!(
-        cx.ident_of("std"),
         cx.ident_of("rand"),
         cx.ident_of("Rand"),
         cx.ident_of("rand")
@@ -89,7 +88,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                         Vec::new());
             let rand_name = cx.expr_path(rand_name);
 
-            // ::std::rand::Rand::rand(rng)
+            // ::rand::Rand::rand(rng)
             let rv_call = cx.expr_call(trait_span,
                                        rand_name,
                                        vec!( *rng.get(0) ));

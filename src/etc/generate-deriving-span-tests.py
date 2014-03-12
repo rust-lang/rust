@@ -39,6 +39,7 @@ TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
 {error_deriving}
 struct Error;

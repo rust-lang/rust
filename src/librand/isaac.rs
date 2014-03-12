@@ -10,11 +10,10 @@
 
 //! The ISAAC random number generator.
 
-use rand::{Rng, SeedableRng, OSRng};
-use iter::{Iterator, range, range_step, Repeat};
-use option::{None, Some};
-use vec::{raw, MutableVector, ImmutableVector};
-use mem;
+use {Rng, SeedableRng, OSRng};
+use std::iter::{range_step, Repeat};
+use std::vec::raw;
+use std::mem;
 
 static RAND_SIZE_LEN: u32 = 8;
 static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
@@ -430,10 +429,9 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use rand::{Rng, SeedableRng, OSRng};
-    use prelude::*;
-    use vec;
+    use super::{IsaacRng, Isaac64Rng};
+    use {Rng, SeedableRng, OSRng};
+    use std::vec;
 
     #[test]
     fn test_rng_32_rand_seeded() {

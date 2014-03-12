@@ -10,9 +10,9 @@
 
 //! The exponential distribution.
 
-use num::Float;
-use rand::{Rng, Rand};
-use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use std::num::Float;
+use {Rng, Rand};
+use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
 /// A wrapper around an `f64` to generate Exp(1) random numbers.
 ///
@@ -58,8 +58,7 @@ impl Rand for Exp1 {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{Exp, IndependentSample};
+/// use rand::distributions::{Exp, IndependentSample};
 ///
 /// let exp = Exp::new(2.0);
 /// let v = exp.ind_sample(&mut rand::task_rng());
@@ -91,10 +90,9 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod test {
-    use rand::distributions::*;
-    use prelude::*;
-    use rand::*;
-    use super::*;
+    use distributions::{Sample, IndependentSample};
+    use {Rng, task_rng};
+    use super::Exp;
 
     #[test]
     fn test_exp() {
@@ -121,11 +119,10 @@ mod test {
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use mem::size_of;
-    use prelude::*;
-    use rand::{XorShiftRng, RAND_BENCH_N};
-    use super::*;
-    use rand::distributions::*;
+    use std::mem::size_of;
+    use {XorShiftRng, RAND_BENCH_N};
+    use super::Exp;
+    use distributions::Sample;
 
     #[bench]
     fn rand_exp(bh: &mut BenchHarness) {

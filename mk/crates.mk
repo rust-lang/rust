@@ -50,14 +50,14 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections num test time
+                 uuid serialize sync getopts collections num test time rand
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_std := native:rustrt native:compiler-rt
-DEPS_extra := std term sync serialize getopts collections time
-DEPS_green := std native:context_switch
+DEPS_extra := std term sync serialize getopts collections time rand
+DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
 DEPS_syntax := std term serialize collections
@@ -71,15 +71,16 @@ DEPS_glob := std
 DEPS_serialize := std collections
 DEPS_term := std collections
 DEPS_semver := std
-DEPS_uuid := std serialize
+DEPS_uuid := std serialize rand
 DEPS_sync := std
 DEPS_getopts := std
-DEPS_collections := std
+DEPS_collections := std rand
 DEPS_fourcc := syntax std
 DEPS_hexfloat := syntax std
-DEPS_num := std
+DEPS_num := std rand
 DEPS_test := std extra collections getopts serialize term
 DEPS_time := std serialize
+DEPS_rand := std
 
 TOOL_DEPS_compiletest := test green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc native
