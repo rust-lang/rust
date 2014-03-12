@@ -824,6 +824,8 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
                 abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
                 abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
                 abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                abi::OsUnknown =>
+                    sess.fatal("output dylib not available with unknown OS"),
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }

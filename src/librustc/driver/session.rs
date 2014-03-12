@@ -511,7 +511,11 @@ pub fn collect_crate_types(session: &Session,
         } else {
             None
         }
+    }).filter(|a| {
+        // Filter out dylib attrs in the create for unknown os
+        session.targ_cfg.os != abi::OsUnknown || *a != CrateTypeDylib
     });
+
     base.extend(&mut iter);
     if base.len() == 0 {
         base.push(CrateTypeExecutable);
@@ -529,6 +533,7 @@ pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
         abi::OsLinux => loader::OsLinux,
         abi::OsAndroid => loader::OsAndroid,
         abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
+        abi::OsFreebsd => loader::OsFreebsd,
+        abi::OsUnknown => loader::OsUnknown
     }
 }
