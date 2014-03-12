@@ -1,3 +1,10 @@
+# Summary
+
+Fork the RFC repo, copy the provided template RFC into the "active" directory
+with a descriptive name, fill out each section, and submit as a pull request
+for review. Advertise the proposed RFC and work to gain a consensus. Once
+approved and merged, RFCs become fair game for implementors.
+
 # Motivation
 
 The freewheeling way that we add new features to Rust has been good for
@@ -6,13 +13,6 @@ develop some more self-discipline when it comes to changing the system.
 This is a proposal for a more principled RFC process to make it
 a more integral part of the overall development process, and one that is
 followed consistently to introduce features to Rust.
-
-Goals of the specified RFC process:
-
-* Discourage unactionable or vague RFCs
-* Ensure that all serious RFCs are considered equally
-* Those with a stake in Rust's development should feel confident they
-understand why new features are being merged
 
 # Detailed design
 
@@ -84,4 +84,23 @@ makes it through the entire process to implementation is considered
 'complete' and is moved to the 'complete' folder; an RFC that fails
 after becoming active is 'inactive' and moves to the 'inactive' folder.
 
+# Alternatives
+
+Retain the current informal RFC process. The newly proposed RFC process is
+designed to improve over the informal process in the following ways:
+
+* Discourage unactionable or vague RFCs
+* Ensure that all serious RFCs are considered equally
+* Give confidence to those with a stake in Rust's development that they
+understand why new features are being merged
+
+As an alternative alternative, we could adopt an even stricter RFC process than the one proposed here. If desired, we should likely look to Python's [PEP] process for inspiration.
+
+# Unresolved questions
+
+1. Does this RFC strike a favorable balance between formality and agility?
+2. Does this RFC successfully adress the aforementioned issues with the current
+   informal RFC process?
+
 [core team]: https://github.com/mozilla/rust/wiki/Note-core-team
+[PEP]: http://legacy.python.org/dev/peps/pep-0001/
