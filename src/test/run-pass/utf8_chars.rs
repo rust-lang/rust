@@ -42,12 +42,12 @@ pub fn main() {
     assert!((!str::is_utf8([0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8])));
 
     let mut stack = ~"a×c€";
-    assert_eq!(stack.pop_char(), '€');
-    assert_eq!(stack.pop_char(), 'c');
+    assert_eq!(stack.pop_char(), Some('€'));
+    assert_eq!(stack.pop_char(), Some('c'));
     stack.push_char('u');
     assert!(stack == ~"a×u");
-    assert_eq!(stack.shift_char(), 'a');
-    assert_eq!(stack.shift_char(), '×');
+    assert_eq!(stack.shift_char(), Some('a'));
+    assert_eq!(stack.shift_char(), Some('×'));
     stack.unshift_char('ß');
     assert!(stack == ~"ßu");
 }
