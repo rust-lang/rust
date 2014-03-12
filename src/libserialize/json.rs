@@ -180,8 +180,7 @@ fn main() {
 
 ## Using `ToJson`
 
-This example use the ToJson impl to deserialize the JSON string.
-Example of `ToJson` trait implementation for TestStruct1.
+ToJson is automatically implemented on all objects that implement (or derive) Encodable.
 
 ```rust
 extern crate serialize;
@@ -198,18 +197,8 @@ pub struct TestStruct1  {
     data_vector: ~[u8],
 }
 
-impl ToJson for TestStruct1 {
-    fn to_json( &self ) -> json::Json {
-        let mut d = ~TreeMap::new();
-        d.insert(~"data_int", self.data_int.to_json());
-        d.insert(~"data_str", self.data_str.to_json());
-        d.insert(~"data_vector", self.data_vector.to_json());
-        json::Object(d)
-    }
-}
-
 fn main() {
-    // Serialization using our impl of to_json
+    // Serialization using to_json
 
     let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
     let tjson: json::Json = test2.to_json();
@@ -227,7 +216,6 @@ fn main() {
 
 use std::char;
 use std::f64;
-use collections::HashMap;
 use std::io;
 use std::io::MemWriter;
 use std::num;
@@ -673,6 +661,232 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self);
     }
 }
+
+pub struct JsonEncoder {
+    priv stack: ~[Json]
+}
+
+impl JsonEncoder {
+    fn new() -> JsonEncoder {
+        JsonEncoder {
+            stack: ~[]
+        }
+    }
+
+    fn into_json(&mut self) -> Json {
+        if self.stack.len() > 1 {
+            fail!("wtf happened to your json");
+        }
+        self.stack.pop().unwrap()
+    }
+
+
+    fn push(&mut self, json: Json) {
+        if self.stack.len() == 0 {
+            self.stack.push(json);
+        } else {
+            match self.peek() {
+                &Object(..) | &List(..) => self.stack.push(json),
+                _ => fail!("wrong {:?} cant take {:?}", self.stack, json)
+            };
+        }
+    }
+
+    fn peek<'a>(&'a self) -> &'a Json {
+        self.stack.last().unwrap()
+    }
+
+    fn pop(&mut self) -> Json {
+        self.stack.pop().unwrap()
+    }
+}
+
+impl ::Encoder for JsonEncoder {
+    fn emit_nil(&mut self) {
+        self.push(Null);
+    }
+
+    fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
+    fn emit_u64(&mut self, v: u64) { self.emit_f64(v as f64); }
+    fn emit_u32(&mut self, v: u32) { self.emit_f64(v as f64); }
+    fn emit_u16(&mut self, v: u16) { self.emit_f64(v as f64); }
+    fn emit_u8(&mut self, v: u8)   { self.emit_f64(v as f64); }
+
+    fn emit_int(&mut self, v: int) { self.emit_f64(v as f64); }
+    fn emit_i64(&mut self, v: i64) { self.emit_f64(v as f64); }
+    fn emit_i32(&mut self, v: i32) { self.emit_f64(v as f64); }
+    fn emit_i16(&mut self, v: i16) { self.emit_f64(v as f64); }
+    fn emit_i8(&mut self, v: i8)   { self.emit_f64(v as f64); }
+
+    fn emit_bool(&mut self, v: bool) {
+        self.push(Boolean(v));
+    }
+
+    fn emit_f64(&mut self, v: f64) {
+        self.push(Number(v));
+    }
+    fn emit_f32(&mut self, v: f32) { self.emit_f64(v as f64); }
+
+    fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
+    fn emit_str(&mut self, v: &str) {
+        self.push(String(v.to_owned()));
+    }
+
+    fn emit_enum(&mut self, _name: &str, f: |&mut JsonEncoder|) { f(self) }
+
+    fn emit_enum_variant(&mut self,
+                         name: &str,
+                         _id: uint,
+                         cnt: uint,
+                         f: |&mut JsonEncoder|) {
+        // enums are encoded as strings or objects
+        // Bunny => "Bunny"
+        // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
+        if cnt == 0 {
+            self.push(String(name.to_owned()));
+        } else {
+            let mut map = ~TreeMap::new();
+            map.insert(~"variant", String(name.to_owned()));
+            self.push(List(~[]));
+            f(self);
+            match self.pop() {
+                List(v) => map.insert(~"fields", List(v)),
+                _ => fail!("enum variant didn't output list of fields")
+            };
+            self.push(Object(map));
+        }
+    }
+
+    fn emit_enum_variant_arg(&mut self, _idx: uint, f: |&mut JsonEncoder|) {
+        f(self);
+        let val = self.pop();
+        match self.pop() {
+            List(mut v) => {
+                v.push(val);
+                self.push(List(v));
+            },
+            _ => fail!("list wasn't made for enum variant")
+        };
+    }
+
+    fn emit_enum_struct_variant(&mut self,
+                                name: &str,
+                                id: uint,
+                                cnt: uint,
+                                f: |&mut JsonEncoder|) {
+        self.emit_enum_variant(name, id, cnt, f)
+    }
+
+    fn emit_enum_struct_variant_field(&mut self,
+                                      _: &str,
+                                      idx: uint,
+                                      f: |&mut JsonEncoder|) {
+        self.emit_enum_variant_arg(idx, f)
+    }
+
+    fn emit_struct(&mut self, _: &str, _: uint, f: |&mut JsonEncoder|) {
+        self.push(Object(~TreeMap::new()));
+        f(self);
+    }
+
+    fn emit_struct_field(&mut self,
+                         name: &str,
+                         _idx: uint,
+                         f: |&mut JsonEncoder|) {
+        f(self);
+        let val = self.pop();
+        match self.pop() {
+            Object(mut map) => {
+                map.insert(name.to_owned(), val);
+                self.push(Object(map));
+            },
+            _ => fail!("emit struct was done wrong")
+        }
+    }
+
+    fn emit_tuple(&mut self, len: uint, f: |&mut JsonEncoder|) {
+        self.emit_seq(len, f)
+    }
+    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut JsonEncoder|) {
+        self.emit_seq_elt(idx, f)
+    }
+
+    fn emit_tuple_struct(&mut self,
+                         _name: &str,
+                         len: uint,
+                         f: |&mut JsonEncoder|) {
+        self.emit_seq(len, f)
+    }
+    fn emit_tuple_struct_arg(&mut self, idx: uint, f: |&mut JsonEncoder|) {
+        self.emit_seq_elt(idx, f)
+    }
+
+    fn emit_option(&mut self, f: |&mut JsonEncoder|) { f(self); }
+    fn emit_option_none(&mut self) { self.emit_nil(); }
+    fn emit_option_some(&mut self, f: |&mut JsonEncoder|) { f(self); }
+
+    fn emit_seq(&mut self, _len: uint, f: |&mut JsonEncoder|) {
+        self.push(List(~[]));
+        f(self);
+    }
+
+    fn emit_seq_elt(&mut self, _idx: uint, f: |&mut JsonEncoder|) {
+        f(self);
+        let val = self.pop();
+        match self.pop() {
+            List(mut v) => {
+                v.push(val);
+                self.push(List(v));
+            },
+            _ => fail!("emit seq was done wrong")
+        }
+    }
+
+    fn emit_map(&mut self, len: uint, f: |&mut JsonEncoder|) {
+        self.emit_struct("map", len, f);
+    }
+
+    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut JsonEncoder|) {
+        f(self);
+        let val = self.pop();
+        match self.pop() {
+            Object(mut map) => {
+                map.insert(idx.to_str(), val);
+                self.push(Object(map));
+            },
+            _ => fail!("emit map was done wrong")
+        }
+    }
+
+    fn emit_map_elt_val(&mut self, idx: uint, f: |&mut JsonEncoder|) {
+        f(self);
+        let val = self.pop();
+        match self.pop() {
+            Object(mut map) => {
+                let idx = &idx.to_str();
+                let key = match map.pop(idx) {
+                    Some(k) => {
+                        match k {
+                            String(s) => {
+                                s
+                            },
+                            _ => {
+                                k.to_str()
+                            }
+                        }
+                    },
+                    None => fail!("emitted value before key")
+                };
+                map.insert(key, val);
+                map.remove(idx);
+                self.push(Object(map));
+            },
+            _ => fail!("emit map was done wrong")
+        }
+    }
+}
+
+
 
 impl<E: ::Encoder> Encodable<E> for Json {
     fn encode(&self, e: &mut E) {
@@ -1592,120 +1806,11 @@ pub trait ToJson {
     fn to_json(&self) -> Json;
 }
 
-impl ToJson for Json {
-    fn to_json(&self) -> Json { (*self).clone() }
-}
-
-impl ToJson for int {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for i8 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for i16 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for i32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for i64 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for uint {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for u8 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for u16 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for u32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for u64 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for f32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
-}
-
-impl ToJson for f64 {
-    fn to_json(&self) -> Json { Number(*self) }
-}
-
-impl ToJson for () {
-    fn to_json(&self) -> Json { Null }
-}
-
-impl ToJson for bool {
-    fn to_json(&self) -> Json { Boolean(*self) }
-}
-
-impl ToJson for ~str {
-    fn to_json(&self) -> Json { String((*self).clone()) }
-}
-
-impl<A:ToJson,B:ToJson> ToJson for (A, B) {
+impl<T: Encodable<JsonEncoder>> ToJson for T {
     fn to_json(&self) -> Json {
-        match *self {
-          (ref a, ref b) => {
-            List(~[a.to_json(), b.to_json()])
-          }
-        }
-    }
-}
-
-impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
-    fn to_json(&self) -> Json {
-        match *self {
-          (ref a, ref b, ref c) => {
-            List(~[a.to_json(), b.to_json(), c.to_json()])
-          }
-        }
-    }
-}
-
-impl<A:ToJson> ToJson for ~[A] {
-    fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
-}
-
-impl<A:ToJson> ToJson for TreeMap<~str, A> {
-    fn to_json(&self) -> Json {
-        let mut d = TreeMap::new();
-        for (key, value) in self.iter() {
-            d.insert((*key).clone(), value.to_json());
-        }
-        Object(~d)
-    }
-}
-
-impl<A:ToJson> ToJson for HashMap<~str, A> {
-    fn to_json(&self) -> Json {
-        let mut d = TreeMap::new();
-        for (key, value) in self.iter() {
-            d.insert((*key).clone(), value.to_json());
-        }
-        Object(~d)
-    }
-}
-
-impl<A:ToJson> ToJson for Option<A> {
-    fn to_json(&self) -> Json {
-        match *self {
-          None => Null,
-          Some(ref value) => value.to_json()
-        }
+        let mut encoder = JsonEncoder::new();
+        self.encode(&mut encoder);
+        encoder.into_json()
     }
 }
 
@@ -1726,7 +1831,7 @@ impl fmt::Show for Error {
 mod tests {
     use {Encodable, Decodable};
     use super::{Encoder, Decoder, Error, Boolean, Number, List, String, Null,
-                PrettyEncoder, Object, Json, from_str};
+                PrettyEncoder, Object, Json, ToJson, from_str};
     use std::io;
     use collections::TreeMap;
 
@@ -1977,6 +2082,69 @@ mod tests {
             value.encode(&mut encoder);
         });
         assert_eq!(s, ~"null");
+    }
+
+    #[test]
+    // treemap doesn't have anything like find_equiv(), so must use &~str
+    fn test_encodable_to_json() {
+        let frog = Frog(~"George", 44);
+        match frog.to_json() {
+            Object(o) => {
+                assert_eq!(o.find(&~"variant").unwrap(), &String(~"Frog"));
+                assert_eq!(o.find(&~"fields").unwrap(),
+                           &List(~[String(~"George"), Number(44 as f64)]));
+            },
+            _ => fail!()
+        }
+
+        let dog = Dog;
+        assert_eq!(dog.to_json(), String(~"Dog"));
+
+        let out = Outer {
+            inner: ~[Inner {
+                a: (),
+                b: 4,
+                c: ~[~"foo"]
+            }]
+        };
+
+        match out.to_json() {
+            Object(map) => {
+                match map.find(&~"inner").unwrap() {
+                    &List(ref inners) => {
+                        match inners[0] {
+                            Object(ref inn) => {
+                                assert_eq!(inn.find(&~"a").unwrap(), &Null);
+                                assert_eq!(inn.find(&~"b").unwrap(), &Number(4 as f64));
+                                match inn.find(&~"c").unwrap() {
+                                    &List(ref v) => {
+                                        assert_eq!(v[0], String(~"foo"));
+                                    },
+                                    _ => fail!()
+                                }
+                            },
+                            _ => fail!()
+                        }
+                    },
+                    _ => fail!()
+                }
+            },
+            _ => fail!()
+        }
+
+        // dont double quote strings
+        let mut tree = TreeMap::new();
+        tree.insert(~"foo", ~"bar");
+        tree.insert(~"baz", ~"quux");
+
+        assert_eq!(tree.to_json().to_str(), ~"{\"baz\":\"quux\",\"foo\":\"bar\"}");
+
+        // quote non-string keys
+        let mut tree = TreeMap::new();
+        tree.insert(5, ~"bar");
+        tree.insert(3, ~"quux");
+
+        assert_eq!(tree.to_json().to_str(), ~"{\"3\":\"quux\",\"5\":\"bar\"}");
     }
 
     #[test]
