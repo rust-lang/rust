@@ -893,13 +893,14 @@ impl Parser {
     // Parses a procedure type (`proc`). The initial `proc` keyword must
     // already have been parsed.
     pub fn parse_proc_type(&mut self) -> Ty_ {
+        let bounds = self.parse_optional_ty_param_bounds();
         let (decl, lifetimes) = self.parse_ty_fn_decl(false);
         TyClosure(@ClosureTy {
             sigil: OwnedSigil,
             region: None,
             purity: ImpureFn,
             onceness: Once,
-            bounds: None,
+            bounds: bounds,
             decl: decl,
             lifetimes: lifetimes,
         })
