@@ -39,7 +39,7 @@
 
 use std::cast;
 use std::container::Container;
-use std::hash::{Hash, sip};
+use std::hash::Hash;
 use std::fmt;
 use std::ptr;
 
@@ -62,9 +62,9 @@ pub struct LruCache<K, V> {
     priv tail: *mut LruEntry<K, V>,
 }
 
-impl<K: Hash> Hash for KeyRef<K> {
-    fn hash(&self, s: &mut sip::SipState) {
-        unsafe {(*self.k).hash(s)}
+impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
+    fn hash(&self, state: &mut S) {
+        unsafe { (*self.k).hash(state) }
     }
 }
 
