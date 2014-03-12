@@ -99,7 +99,7 @@ As an alternative alternative, we could adopt an even stricter RFC process than 
 # Unresolved questions
 
 1. Does this RFC strike a favorable balance between formality and agility?
-2. Does this RFC successfully adress the aforementioned issues with the current
+2. Does this RFC successfully address the aforementioned issues with the current
    informal RFC process?
 
 [core team]: https://github.com/mozilla/rust/wiki/Note-core-team
