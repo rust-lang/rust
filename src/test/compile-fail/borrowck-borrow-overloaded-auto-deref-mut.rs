@@ -77,6 +77,21 @@ fn deref_extend_mut_field2<'a>(x: &'a mut Own<Point>) -> &'a mut int {
     &mut x.y
 }
 
+fn deref_extend_mut_field3<'a>(x: &'a mut Own<Point>) {
+    // Hmm, this is unfortunate, because with ~ it would work,
+    // but it's presently the expected outcome. See `deref_extend_mut_field4`
+    // for the workaround.
+
+    let _x = &mut x.x;
+    let _y = &mut x.y; //~ ERROR cannot borrow
+}
+
+fn deref_extend_mut_field4<'a>(x: &'a mut Own<Point>) {
+    let p = &mut **x;
+    let _x = &mut p.x;
+    let _y = &mut p.y;
+}
+
 fn assign_field1<'a>(x: Own<Point>) {
     x.y = 3; //~ ERROR cannot borrow
 }
@@ -87,6 +102,11 @@ fn assign_field2<'a>(x: &'a Own<Point>) {
 
 fn assign_field3<'a>(x: &'a mut Own<Point>) {
     x.y = 3;
+}
+
+fn assign_field4<'a>(x: &'a mut Own<Point>) {
+    let _p: &mut Point = &mut **x;
+    x.y = 3; //~ ERROR cannot borrow
 }
 
 // FIXME(eddyb) #12825 This shouldn't attempt to call deref_mut.
