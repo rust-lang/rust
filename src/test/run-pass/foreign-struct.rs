@@ -15,7 +15,6 @@ pub enum void { }
 mod bindgen {
     use super::void;
 
-    #[nolink]
     extern {
         pub fn printf(v: void);
     }
