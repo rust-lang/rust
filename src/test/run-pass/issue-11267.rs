@@ -20,6 +20,6 @@ fn do_something_with(a : &mut Iterator<int>) {
     println!("{}", a.next())
 }
 
-fn main() {
+pub fn main() {
     do_something_with(&mut Empty);
 }
