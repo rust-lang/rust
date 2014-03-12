@@ -22,11 +22,15 @@ fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
+fn not_unknown(os: abi::Os) -> bool {
+  os != abi::OsUnknown
+}
+
 pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> Vec<~str> {
     let os = sess.targ_cfg.os;
 
-    // No rpath on windows
-    if os == abi::OsWin32 {
+    // No rpath on windows or unknown
+    if os == abi::OsWin32 || os == abi::OsUnknown {
         return Vec::new();
     }
 
@@ -127,13 +131,14 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     use std::os;
 
     assert!(not_win32(os));
+    assert!(not_unknown(os));
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
         abi::OsAndroid | abi::OsLinux | abi::OsFreebsd
                           => "$ORIGIN",
         abi::OsMacos => "@loader_path",
-        abi::OsWin32 => unreachable!()
+        abi::OsWin32 | abi::OsUnknown => unreachable!()
     };
 
     let mut lib = os::make_absolute(lib);

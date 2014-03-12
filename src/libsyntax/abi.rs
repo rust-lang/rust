@@ -13,7 +13,7 @@ use std::vec_ng::Vec;
 use std::fmt::Show;
 
 #[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsUnknown, }
 
 #[deriving(Eq, Hash)]
 pub enum Abi {
