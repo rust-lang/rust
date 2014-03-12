@@ -23,6 +23,8 @@
 #[allow(unrecognized_lint)];
 #[allow(default_type_param_usage)];
 
+extern crate rand;
+
 #[cfg(test)] extern crate test;
 
 pub use bitv::Bitv;

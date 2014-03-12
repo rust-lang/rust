@@ -9,9 +9,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast #7103 `extern crate` does not work on check-fast
+
 #[feature(struct_variant)];
 
-use std::rand;
+extern crate rand;
 
 #[deriving(Rand)]
 struct A;

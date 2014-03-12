@@ -62,6 +62,8 @@ Examples of string representations:
 // test harness access
 #[cfg(test)]
 extern crate test;
+
+extern crate rand;
 extern crate serialize;
 
 use std::cast::{transmute,transmute_copy};
@@ -71,10 +73,10 @@ use std::fmt;
 use std::from_str::FromStr;
 use std::hash::{Hash, sip};
 use std::num::FromStrRadix;
-use std::rand::Rng;
-use std::rand;
 use std::str;
 use std::vec;
+
+use rand::Rng;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -519,12 +521,12 @@ impl rand::Rand for Uuid {
 #[cfg(test)]
 mod test {
     extern crate collections;
+    extern crate rand;
 
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
     use std::str;
-    use std::rand;
     use std::io::MemWriter;
 
     #[test]
@@ -778,7 +780,7 @@ mod test {
 
     #[test]
     fn test_rand_rand() {
-        let mut rng = rand::rng();
+        let mut rng = rand::task_rng();
         let u: ~Uuid = rand::Rand::rand(&mut rng);
         let ub = u.as_bytes();
 

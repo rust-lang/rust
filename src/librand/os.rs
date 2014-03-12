@@ -11,18 +11,17 @@
 //! Interfaces to the operating system provided random number
 //! generators.
 
-use rand::Rng;
-use ops::Drop;
+use Rng;
 
 #[cfg(unix)]
-use rand::reader::ReaderRng;
+use reader::ReaderRng;
 #[cfg(unix)]
-use io::File;
+use std::io::File;
 
 #[cfg(windows)]
-use cast;
+use std::cast;
 #[cfg(windows)]
-use libc::{c_long, DWORD, BYTE};
+use std::libc::{c_long, DWORD, BYTE};
 #[cfg(windows)]
 type HCRYPTPROV = c_long;
 // the extern functions imported from the runtime on Windows are
@@ -60,7 +59,6 @@ impl OSRng {
     /// Create a new `OSRng`.
     #[cfg(unix)]
     pub fn new() -> OSRng {
-        use path::Path;
         let reader = File::open(&Path::new("/dev/urandom"));
         let reader = reader.ok().expect("Error opening /dev/urandom");
         let reader_rng = ReaderRng::new(reader);
@@ -106,9 +104,6 @@ impl Rng for OSRng {
         unsafe { cast::transmute(v) }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
-        use container::Container;
-        use vec::MutableVector;
-
         extern {
             fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD,
                                    pbBuffer: *mut BYTE);
@@ -136,10 +131,9 @@ impl Drop for OSRng {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-    use super::*;
-    use rand::Rng;
-    use task;
+    use super::OSRng;
+    use Rng;
+    use std::task;
 
     #[test]
     fn test_os_rng() {

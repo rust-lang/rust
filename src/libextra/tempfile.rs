@@ -12,8 +12,7 @@
 
 
 use std::os;
-use std::rand::Rng;
-use std::rand;
+use rand::{task_rng, Rng};
 use std::io;
 use std::io::fs;
 
@@ -35,7 +34,7 @@ impl TempDir {
             return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
-        let mut r = rand::rng();
+        let mut r = task_rng();
         for _ in range(0u, 1000) {
             let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
             match fs::mkdir(&p, io::UserRWX) {

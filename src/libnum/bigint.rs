@@ -24,7 +24,7 @@ use std::from_str::FromStr;
 use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
-use std::rand::Rng;
+use rand::Rng;
 use std::str;
 use std::uint;
 use std::vec;
@@ -1470,7 +1470,7 @@ mod biguint_tests {
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
     use std::num::CheckedDiv;
-    use std::rand::{task_rng};
+    use rand::{task_rng};
     use std::str;
     use std::u64;
     use std::vec;
@@ -2205,7 +2205,7 @@ mod bigint_tests {
     use std::num::CheckedDiv;
     use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
-    use std::rand::{task_rng};
+    use rand::{task_rng};
     use std::u64;
 
     #[test]

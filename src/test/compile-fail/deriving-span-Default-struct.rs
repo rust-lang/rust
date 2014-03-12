@@ -12,6 +12,7 @@
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
 
 struct Error;
