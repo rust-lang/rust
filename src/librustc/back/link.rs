@@ -1085,6 +1085,23 @@ fn link_args(sess: Session,
         ~"-o", out_filename.as_str().unwrap().to_owned(),
         obj_filename.as_str().unwrap().to_owned()]);
 
+    // Stack growth requires statically linking a __morestack function. Note
+    // that this is listed *before* all other libraries, even though it may be
+    // used to resolve symbols in other libraries. The only case that this
+    // wouldn't be pulled in by the object file is if the object file had no
+    // functions.
+    //
+    // If we're building an executable, there must be at least one function (the
+    // main function), and if we're building a dylib then we don't need it for
+    // later libraries because they're all dylibs (not rlibs).
+    //
+    // I'm honestly not entirely sure why this needs to come first. Apparently
+    // the --as-needed flag above sometimes strips out libstd from the command
+    // line, but inserting this farther to the left makes the
+    // "rust_stack_exhausted" symbol an outstanding undefined symbol, which
+    // flags libstd as a required library (or whatever provides the symbol).
+    args.push(~"-lmorestack");
+
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
@@ -1200,11 +1217,13 @@ fn link_args(sess: Session,
         args.push_all(rpath::get_rpath_flags(sess, out_filename).as_slice());
     }
 
-    // Stack growth requires statically linking a __morestack function
-    args.push(~"-lmorestack");
-    // compiler-rt contains implementations of low-level LLVM helpers
-    // It should go before platform and user libraries, so it has first dibs
-    // at resolving symbols that also appear in libgcc.
+    // compiler-rt contains implementations of low-level LLVM helpers. This is
+    // used to resolve symbols from the object file we just created, as well as
+    // any system static libraries that may be expecting gcc instead. Most
+    // symbols in libgcc also appear in compiler-rt.
+    //
+    // This is the end of the command line, so this library is used to resolve
+    // *all* undefined symbols in all other libraries, and this is intentional.
     args.push(~"-lcompiler-rt");
 
     // Finally add all the linker arguments provided on the command line along
