@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use std::vec;
+use std::vec_ng::Vec;
 
 fn main() {
-    let a: ~[int] = ~[];
+    let a: Vec<int> = Vec::new();
     a.iter().advance(|_| -> bool {
         //~^ ERROR mismatched types
     });

@@ -12,12 +12,14 @@
 
 extern crate extra;
 
+use std::vec_ng::Vec;
+
 enum Token {
     Text(@~str),
-    ETag(@~[~str], @~str),
-    UTag(@~[~str], @~str),
-    Section(@~[~str], bool, @~[Token], @~str, @~str, @~str, @~str, @~str),
-    IncompleteSection(@~[~str], bool, @~str, bool),
+    ETag(@Vec<~str> , @~str),
+    UTag(@Vec<~str> , @~str),
+    Section(@Vec<~str> , bool, @Vec<Token> , @~str, @~str, @~str, @~str, @~str),
+    IncompleteSection(@Vec<~str> , bool, @~str, bool),
     Partial(@~str, @~str, @~str),
 }
 
@@ -37,7 +39,7 @@ pub fn main()
 // assert!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
 
     let t = Text(@~"foo");
-    let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
+    let u = Section(@vec!(~"alpha"), true, @vec!(t), @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
     let v = format!("{:?}", u);    // this is the line that causes the seg fault
     assert!(v.len() > 0);
 }

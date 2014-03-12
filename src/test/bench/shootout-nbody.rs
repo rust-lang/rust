@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::vec_ng::Vec;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -148,14 +149,14 @@ fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"1000"]
+        vec!(~"", ~"1000")
     } else if args.len() <= 1u {
-        ~[~"", ~"1000"]
+        vec!(~"", ~"1000")
     } else {
-        args
+        args.move_iter().collect()
     };
 
-    let n: i32 = from_str::<i32>(args[1]).unwrap();
+    let n: i32 = from_str::<i32>(*args.get(1)).unwrap();
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);

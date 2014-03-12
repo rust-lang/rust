@@ -11,4 +11,6 @@
 // error-pattern: unresolved
 use main::bar;
 
-fn main(args: ~[str]) { info!("foo"); }
+use std::vec_ng::Vec;
+
+fn main(args: Vec<~str>) { info!("foo"); }

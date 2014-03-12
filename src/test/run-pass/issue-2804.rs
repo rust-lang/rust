@@ -16,6 +16,7 @@ extern crate serialize;
 use collections::HashMap;
 use serialize::json;
 use std::option;
+use std::vec_ng::Vec;
 
 enum object {
     bool_value(bool),
@@ -55,21 +56,20 @@ fn add_interface(_store: int, managed_ip: ~str, data: json::Json) -> (~str, obje
 }
 
 fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json>)
--> ~[(~str, object)]
-{
+-> Vec<(~str, object)> {
     match device.get(&~"interfaces")
     {
         &json::List(ref interfaces) =>
         {
-          interfaces.map(|interface| {
+          interfaces.iter().map(|interface| {
                 add_interface(store, managed_ip.clone(), (*interface).clone())
-          })
+          }).collect()
         }
         _ =>
         {
             error!("Expected list for {} interfaces but found {:?}", managed_ip,
                    device.get(&~"interfaces"));
-            ~[]
+            Vec::new()
         }
     }
 }

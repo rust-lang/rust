@@ -14,10 +14,12 @@
 // byproducts in vtable records.
 
 extern crate serialize;
+
 use serialize::{json, Decodable};
+use std::vec_ng::Vec;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();
     let mut decoder = json::Decoder::new(json);
-    let _x: ~[int] = Decodable::decode(&mut decoder);
+    let _x: Vec<int> = Decodable::decode(&mut decoder);
 }

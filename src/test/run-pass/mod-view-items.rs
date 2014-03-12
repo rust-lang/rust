@@ -18,7 +18,9 @@
 
 mod m {
     use std::vec;
-    pub fn f() -> ~[int] { vec::from_elem(1u, 0) }
+    use std::vec_ng::Vec;
+
+    pub fn f() -> Vec<int> { Vec::from_elem(1u, 0) }
 }
 
 pub fn main() { let _x = m::f(); }

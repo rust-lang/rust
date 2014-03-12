@@ -11,9 +11,11 @@
 use std::os;
 use std::str;
 use std::io::process::{ProcessExit, Process, ProcessConfig, ProcessOutput};
+use std::vec_ng::Vec;
+use std::vec_ng;
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
+fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
 
     let mut env = os::env();
 
@@ -35,11 +37,11 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
+fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
     // Make sure we include the aux directory in the path
     let aux_path = prog + ".libaux";
 
-    let mut env = os::env();
+    let mut env: Vec<(~str,~str)> = os::env().move_iter().collect();
     let var = if cfg!(target_os = "macos") {
         "DYLD_LIBRARY_PATH"
     } else {
@@ -62,10 +64,11 @@ pub struct Result {status: ProcessExit, out: ~str, err: ~str}
 pub fn run(lib_path: &str,
            prog: &str,
            args: &[~str],
-           env: ~[(~str, ~str)],
+           env: Vec<(~str, ~str)> ,
            input: Option<~str>) -> Option<Result> {
 
-    let env = env + target_env(lib_path, prog);
+    let env = vec_ng::append(env.clone(),
+                             target_env(lib_path, prog).as_slice());
     let mut opt_process = Process::configure(ProcessConfig {
         program: prog,
         args: args,
@@ -93,10 +96,11 @@ pub fn run(lib_path: &str,
 pub fn run_background(lib_path: &str,
            prog: &str,
            args: &[~str],
-           env: ~[(~str, ~str)],
+           env: Vec<(~str, ~str)> ,
            input: Option<~str>) -> Option<Process> {
 
-    let env = env + target_env(lib_path, prog);
+    let env = vec_ng::append(env.clone(),
+                             target_env(lib_path, prog).as_slice());
     let opt_process = Process::configure(ProcessConfig {
         program: prog,
         args: args,

@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // Verify the compiler fails with an error on infinite function
 // recursions.
 
+use std::vec_ng::Vec;
+
 struct Data(~Option<Data>);
 
-fn generic<T>( _ : ~[(Data,T)] ) {
+fn generic<T>( _ : Vec<(Data,T)> ) {
     //~^ ERROR overly deep expansion of inlined function
-    let rec : ~[(Data,(bool,T))] = ~[];
+    let rec : Vec<(Data,(bool,T))> = Vec::new();
     generic( rec );
 }
 
 
 fn main () {
     // Use generic<T> at least once to trigger instantiation.
-    let input : ~[(Data,())] = ~[];
+    let input : Vec<(Data,())> = Vec::new();
     generic(input);
 }

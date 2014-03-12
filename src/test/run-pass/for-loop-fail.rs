@@ -8,4 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let x: ~[int] = ~[]; for _ in x.iter() { fail!("moop"); } }
+use std::vec_ng::Vec;
+
+pub fn main() { let x: Vec<int> = Vec::new(); for _ in x.iter() { fail!("moop"); } }

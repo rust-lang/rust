@@ -9,10 +9,13 @@
 // except according to those terms.
 
 extern crate extra;
+
+use std::vec_ng::Vec;
+
 fn main() {
 trait seq { }
 
-impl<T> seq<T> for ~[T] { //~ ERROR wrong number of type arguments
+impl<T> seq<T> for Vec<T> { //~ ERROR wrong number of type arguments
     /* ... */
 }
 impl seq<bool> for u32 {

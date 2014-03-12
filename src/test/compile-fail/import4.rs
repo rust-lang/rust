@@ -10,7 +10,9 @@
 
 // error-pattern: import
 
+use std::vec_ng::Vec;
+
 mod a { pub use b::foo; }
 mod b { pub use a::foo; }
 
-fn main(args: ~[str]) { info!("loop"); }
+fn main(args: Vec<~str>) { info!("loop"); }

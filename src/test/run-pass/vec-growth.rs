@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::vec_ng::Vec;
 
 pub fn main() {
-    let mut v = ~[1];
+    let mut v = vec!(1);
     v.push(2);
     v.push(3);
     v.push(4);
     v.push(5);
-    assert_eq!(v[0], 1);
-    assert_eq!(v[1], 2);
-    assert_eq!(v[2], 3);
-    assert_eq!(v[3], 4);
-    assert_eq!(v[4], 5);
+    assert_eq!(*v.get(0), 1);
+    assert_eq!(*v.get(1), 2);
+    assert_eq!(*v.get(2), 3);
+    assert_eq!(*v.get(3), 4);
+    assert_eq!(*v.get(4), 5);
 }

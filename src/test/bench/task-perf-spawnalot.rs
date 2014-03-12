@@ -11,6 +11,7 @@
 use std::os;
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn f(n: uint) {
     let mut i = 0u;
@@ -25,13 +26,13 @@ fn g() { }
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"400"]
+        vec!(~"", ~"400")
     } else if args.len() <= 1u {
-        ~[~"", ~"10"]
+        vec!(~"", ~"10")
     } else {
-        args
+        args.move_iter().collect()
     };
-    let n = from_str::<uint>(args[1]).unwrap();
+    let n = from_str::<uint>(*args.get(1)).unwrap();
     let mut i = 0u;
     while i < n { task::spawn(proc() f(n) ); i += 1u; }
 }

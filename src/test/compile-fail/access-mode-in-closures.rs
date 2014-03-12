@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
 
-struct sty(~[int]);
+struct sty(Vec<int> );
 
-fn unpack(_unpack: |v: &sty| -> ~[int]) {}
+fn unpack(_unpack: |v: &sty| -> Vec<int> ) {}
 
 fn main() {
     let _foo = unpack(|s| {

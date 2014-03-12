@@ -19,6 +19,7 @@ extern crate time;
 use std::os;
 use std::task;
 use std::uint;
+use std::vec_ng::Vec;
 
 fn move_out<T>(_x: T) {}
 
@@ -53,7 +54,7 @@ fn run(args: &[~str]) {
     let workers = from_str::<uint>(args[2]).unwrap();
     let num_bytes = 100;
     let start = time::precise_time_s();
-    let mut worker_results = ~[];
+    let mut worker_results = Vec::new();
     let from_parent = if workers == 1 {
         let (from_parent, to_child) = Chan::new();
         let mut builder = task::task();
@@ -106,13 +107,13 @@ fn run(args: &[~str]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"1000000", ~"8"]
+        vec!(~"", ~"1000000", ~"8")
     } else if args.len() <= 1u {
-        ~[~"", ~"10000", ~"4"]
+        vec!(~"", ~"10000", ~"4")
     } else {
-        args.clone()
+        args.clone().move_iter().collect()
     };
 
     info!("{:?}", args);
-    run(args);
+    run(args.as_slice());
 }

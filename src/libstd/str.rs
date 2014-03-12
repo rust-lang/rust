@@ -101,6 +101,7 @@ use ptr::RawPtr;
 use from_str::FromStr;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
+use vec::{Vector};
 use vec_ng::Vec;
 use default::Default;
 use raw::Repr;

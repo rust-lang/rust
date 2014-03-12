@@ -13,6 +13,6 @@ fn write(v: &mut [int]) {
 }
 
 fn main() {
-    let v = ~[1, 2, 3];
-    write(v); //~ ERROR cannot borrow
+    let v = vec!(1, 2, 3);
+    write(v.as_mut_slice()); //~ ERROR cannot borrow
 }

@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 extern crate extra;
 
-enum bar { t1((), Option<~[int]>), t2, }
+use std::vec_ng::Vec;
+
+enum bar { t1((), Option<Vec<int> >), t2, }
 
 // n.b. my change changes this error message, but I think it's right -- tjc
 fn foo(t: bar) -> int { match t { t1(_, Some(x)) => { return x * 3; } _ => { fail!(); } } }

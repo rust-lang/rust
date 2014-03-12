@@ -12,10 +12,10 @@
 // takes its argument *by reference*.
 
 use std::ops::Index;
+use std::vec_ng::Vec;
 
 struct AssociationList<K,V> {
-    pairs: ~[AssociationPair<K,V>]
-}
+    pairs: Vec<AssociationPair<K,V>> }
 
 #[deriving(Clone)]
 struct AssociationPair<K,V> {
@@ -44,7 +44,7 @@ pub fn main() {
     let foo = ~"foo";
     let bar = ~"bar";
 
-    let mut list = AssociationList {pairs: ~[]};
+    let mut list = AssociationList {pairs: Vec::new()};
     list.push(foo.clone(), 22);
     list.push(bar.clone(), 44);
 

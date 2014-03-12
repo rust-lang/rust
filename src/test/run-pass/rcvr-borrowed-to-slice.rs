@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 trait sum {
     fn sum_(self) -> int;
 }
@@ -22,18 +24,18 @@ impl<'a> sum for &'a [int] {
 fn call_sum(x: &[int]) -> int { x.sum_() }
 
 pub fn main() {
-    let x = ~[1, 2, 3];
-    let y = call_sum(x);
+    let x = vec!(1, 2, 3);
+    let y = call_sum(x.as_slice());
     info!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = ~[1, 2, 3];
-    let y = x.sum_();
+    let x = vec!(1, 2, 3);
+    let y = x.as_slice().sum_();
     info!("y=={}", y);
     assert_eq!(y, 6);
 
-    let x = ~[1, 2, 3];
-    let y = x.sum_();
+    let x = vec!(1, 2, 3);
+    let y = x.as_slice().sum_();
     info!("y=={}", y);
     assert_eq!(y, 6);
 }

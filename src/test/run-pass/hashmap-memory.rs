@@ -14,6 +14,8 @@
 
 extern crate collections;
 
+use std::vec_ng::Vec;
+
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 
@@ -26,14 +28,15 @@ mod map_reduce {
     use collections::HashMap;
     use std::str;
     use std::task;
+    use std::vec_ng::Vec;
 
     pub type putter<'a> = 'a |~str, ~str|;
 
     pub type mapper = extern fn(~str, putter);
 
-    enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
+    enum ctrl_proto { find_reducer(Vec<u8> , Chan<int>), mapper_done, }
 
-    fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
+    fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: Vec<~str> ) {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
@@ -52,7 +55,7 @@ mod map_reduce {
             }
             let (pp, cc) = Chan::new();
             error!("sending find_reducer");
-            ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
+            ctrl.send(find_reducer(Vec::from_slice(key.as_bytes()), cc));
             error!("receiving");
             let c = pp.recv();
             error!("{:?}", c);
@@ -64,7 +67,7 @@ mod map_reduce {
         ctrl_clone.send(mapper_done);
     }
 
-    pub fn map_reduce(inputs: ~[~str]) {
+    pub fn map_reduce(inputs: Vec<~str> ) {
         let (ctrl_port, ctrl_chan) = Chan::new();
 
         // This task becomes the master control task. It spawns others
@@ -83,7 +86,8 @@ mod map_reduce {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                match reducers.find(&str::from_utf8(k).unwrap().to_owned()) {
+                match reducers.find(&str::from_utf8(k.as_slice()).unwrap()
+                                                                 .to_owned()) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }
@@ -95,5 +99,5 @@ mod map_reduce {
 }
 
 pub fn main() {
-    map_reduce::map_reduce(~[~"../src/test/run-pass/hashmap-memory.rs"]);
+    map_reduce::map_reduce(vec!(~"../src/test/run-pass/hashmap-memory.rs"));
 }

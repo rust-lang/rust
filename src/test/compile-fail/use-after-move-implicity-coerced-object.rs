@@ -11,6 +11,7 @@
 // ignore-tidy-linelength
 
 use std::fmt;
+use std::vec_ng::Vec;
 
 struct Number {
     n: i64
@@ -23,8 +24,7 @@ impl fmt::Show for Number {
 }
 
 struct List {
-    list: ~[~ToStr]
-}
+    list: Vec<~ToStr> }
 
 impl List {
     fn push(&mut self, n: ~ToStr) {
@@ -34,7 +34,7 @@ impl List {
 
 fn main() {
     let n = ~Number { n: 42 };
-    let mut l = ~List { list: ~[] };
+    let mut l = ~List { list: Vec::new() };
     l.push(n);
     let x = n.to_str();
     //~^ ERROR: use of moved value: `n`

@@ -11,17 +11,18 @@
 #[allow(missing_doc)];
 
 use collections::HashMap;
+use std::vec_ng::Vec;
 
 /// A parsed terminfo entry.
 pub struct TermInfo {
     /// Names for the terminal
-    priv names: ~[~str],
+    priv names: Vec<~str> ,
     /// Map of capability name to boolean value
     priv bools: HashMap<~str, bool>,
     /// Map of capability name to numeric value
     numbers: HashMap<~str, u16>,
     /// Map of capability name to raw (unexpanded) string
-    strings: HashMap<~str, ~[u8]>
+    strings: HashMap<~str, Vec<u8> >
 }
 
 pub mod searcher;

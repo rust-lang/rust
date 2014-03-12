@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 extern crate extra;
+
+use std::vec_ng::Vec;
 
 fn foo<T>(y: Option<T>) {
     let mut x: int;
-    let mut rs: ~[int] = ~[];
+    let mut rs: Vec<int> = Vec::new();
     /* tests that x doesn't get put in the precondition for the
        entire if expression */
 

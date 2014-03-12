@@ -10,11 +10,13 @@
 
 // error-pattern:fail
 
-fn build() -> ~[int] {
+use std::vec_ng::Vec;
+
+fn build() -> Vec<int> {
     fail!();
 }
 
-struct Blk { node: ~[int] }
+struct Blk { node: Vec<int> }
 
 fn main() {
     let _blk = Blk {

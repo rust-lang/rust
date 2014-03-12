@@ -13,6 +13,7 @@
 extern crate extra;
 
 use std::task;
+use std::vec_ng::Vec;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 
@@ -38,7 +39,7 @@ fn test00() {
     let mut i: int = 0;
 
     // Create and spawn tasks...
-    let mut results = ~[];
+    let mut results = Vec::new();
     while i < number_of_tasks {
         let ch = ch.clone();
         let mut builder = task::task();

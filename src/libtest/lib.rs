@@ -49,6 +49,7 @@ use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::cmp;
+use std::vec_ng::Vec;
 use std::f64;
 use std::fmt;
 use std::from_str::FromStr;
@@ -199,7 +200,7 @@ pub type MetricDiff = TreeMap<~str,MetricChange>;
 
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
-pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
+pub fn test_main(args: &[~str], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
@@ -221,7 +222,7 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
 pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
-    let owned_tests = tests.map(|t| {
+    let owned_tests = tests.iter().map(|t| {
         match t.testfn {
             StaticTestFn(f) =>
             TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
@@ -233,7 +234,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
                 fail!("non-static tests passed to test::test_main_static");
             }
         }
-    });
+    }).collect();
     test_main(args, owned_tests)
 }
 
@@ -252,8 +253,8 @@ pub struct TestOpts {
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, ~str>;
 
-fn optgroups() -> ~[getopts::OptGroup] {
-    ~[getopts::optflag("", "ignored", "Run ignored tests"),
+fn optgroups() -> Vec<getopts::OptGroup> {
+    vec!(getopts::optflag("", "ignored", "Run ignored tests"),
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
@@ -269,12 +270,12 @@ fn optgroups() -> ~[getopts::OptGroup] {
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
       getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
-                     "A.B")]
+                     "A.B"))
 }
 
 fn usage(binary: &str, helpstr: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
-    println!("{}", getopts::usage(message, optgroups()));
+    println!("{}", getopts::usage(message, optgroups().as_slice()));
     println!("");
     if helpstr == "help" {
         println!("{}", "\
@@ -304,7 +305,7 @@ Test Attributes:
 pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
-        match getopts::getopts(args_, optgroups()) {
+        match getopts::getopts(args_, optgroups().as_slice()) {
           Ok(m) => m,
           Err(f) => return Some(Err(f.to_err_msg()))
         };
@@ -314,7 +315,7 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
 
     let filter =
         if matches.free.len() > 0 {
-            Some((matches).free[0].clone())
+            Some((*matches.free.get(0)).clone())
         } else {
             None
         };
@@ -404,7 +405,7 @@ struct ConsoleTestState<T> {
     ignored: uint,
     measured: uint,
     metrics: MetricMap,
-    failures: ~[(TestDesc, ~[u8])],
+    failures: Vec<(TestDesc, Vec<u8> )> ,
     max_name_len: uint, // number of columns to fill when aligning names
 }
 
@@ -429,7 +430,7 @@ impl<T: Writer> ConsoleTestState<T> {
             ignored: 0u,
             measured: 0u,
             metrics: MetricMap::new(),
-            failures: ~[],
+            failures: Vec::new(),
             max_name_len: 0u,
         })
     }
@@ -543,14 +544,14 @@ impl<T: Writer> ConsoleTestState<T> {
 
     pub fn write_failures(&mut self) -> io::IoResult<()> {
         try!(self.write_plain("\nfailures:\n"));
-        let mut failures = ~[];
+        let mut failures = Vec::new();
         let mut fail_out  = ~"";
         for &(ref f, ref stdout) in self.failures.iter() {
             failures.push(f.name.to_str());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
                                   f.name.to_str()));
-                let output = str::from_utf8_lossy(*stdout);
+                let output = str::from_utf8_lossy(stdout.as_slice());
                 fail_out.push_str(output.as_slice().replace("\n", "\n\t"));
                 fail_out.push_str("\n");
             }
@@ -561,7 +562,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
 
         try!(self.write_plain("\nfailures:\n"));
-        failures.sort();
+        failures.as_mut_slice().sort();
         for name in failures.iter() {
             try!(self.write_plain(format!("    {}\n", name.to_str())));
         }
@@ -661,7 +662,7 @@ impl<T: Writer> ConsoleTestState<T> {
 
 pub fn fmt_metrics(mm: &MetricMap) -> ~str {
     let MetricMap(ref mm) = *mm;
-    let v : ~[~str] = mm.iter()
+    let v : Vec<~str> = mm.iter()
         .map(|(k,v)| format!("{}: {} (+/- {})",
                           *k,
                           v.value as f64,
@@ -685,7 +686,7 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
-                         tests: ~[TestDescAndFn]) -> io::IoResult<bool> {
+                         tests: Vec<TestDescAndFn> ) -> io::IoResult<bool> {
     fn callback<T: Writer>(event: &TestEvent,
                            st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
         debug!("callback(event={:?})", event);
@@ -777,7 +778,7 @@ fn should_sort_failures_before_printing_them() {
         measured: 0u,
         max_name_len: 10u,
         metrics: MetricMap::new(),
-        failures: ~[(test_b, ~[]), (test_a, ~[])]
+        failures: vec!((test_b, Vec::new()), (test_a, Vec::new()))
     };
 
     st.write_failures().unwrap();
@@ -795,18 +796,20 @@ fn use_color() -> bool { return get_concurrency() == 1; }
 
 #[deriving(Clone)]
 enum TestEvent {
-    TeFiltered(~[TestDesc]),
+    TeFiltered(Vec<TestDesc> ),
     TeWait(TestDesc, NamePadding),
-    TeResult(TestDesc, TestResult, ~[u8] /* stdout */),
+    TeResult(TestDesc, TestResult, Vec<u8> ),
 }
 
-pub type MonitorMsg = (TestDesc, TestResult, ~[u8] /* stdout */);
+pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
 fn run_tests(opts: &TestOpts,
-             tests: ~[TestDescAndFn],
+             tests: Vec<TestDescAndFn> ,
              callback: |e: TestEvent| -> io::IoResult<()>) -> io::IoResult<()> {
     let filtered_tests = filter_tests(opts, tests);
-    let filtered_descs = filtered_tests.map(|t| t.desc.clone());
+    let filtered_descs = filtered_tests.iter()
+                                       .map(|t| t.desc.clone())
+                                       .collect();
 
     try!(callback(TeFiltered(filtered_descs)));
 
@@ -879,8 +882,7 @@ fn get_concurrency() -> uint {
 
 pub fn filter_tests(
     opts: &TestOpts,
-    tests: ~[TestDescAndFn]) -> ~[TestDescAndFn]
-{
+    tests: Vec<TestDescAndFn> ) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
 
     // Remove tests that don't match the test filter
@@ -928,11 +930,12 @@ pub fn filter_tests(
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {
         None => filtered,
-        Some((a,b)) =>
+        Some((a,b)) => {
             filtered.move_iter().enumerate()
             .filter(|&(i,_)| i % b == a)
             .map(|(_,t)| t)
-            .to_owned_vec()
+            .collect()
+        }
     }
 }
 
@@ -943,7 +946,7 @@ pub fn run_test(force_ignore: bool,
     let TestDescAndFn {desc, testfn} = test;
 
     if force_ignore || desc.ignore {
-        monitor_ch.send((desc, TrIgnored, ~[]));
+        monitor_ch.send((desc, TrIgnored, Vec::new()));
         return;
     }
 
@@ -964,7 +967,7 @@ pub fn run_test(force_ignore: bool,
             let result_future = task.future_result();
             task.spawn(testfn);
 
-            let stdout = reader.read_to_end().unwrap();
+            let stdout = reader.read_to_end().unwrap().move_iter().collect();
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result, stdout));
@@ -974,24 +977,24 @@ pub fn run_test(force_ignore: bool,
     match testfn {
         DynBenchFn(bencher) => {
             let bs = ::bench::benchmark(|harness| bencher.run(harness));
-            monitor_ch.send((desc, TrBench(bs), ~[]));
+            monitor_ch.send((desc, TrBench(bs), Vec::new()));
             return;
         }
         StaticBenchFn(benchfn) => {
             let bs = ::bench::benchmark(|harness| benchfn(harness));
-            monitor_ch.send((desc, TrBench(bs), ~[]));
+            monitor_ch.send((desc, TrBench(bs), Vec::new()));
             return;
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), ~[]));
+            monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
             return;
         }
         StaticMetricFn(f) => {
             let mut mm = MetricMap::new();
             f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), ~[]));
+            monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
             return;
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
@@ -1309,6 +1312,7 @@ mod tests {
                Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn};
     use extra::tempfile::TempDir;
+    use std::vec_ng::Vec;
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1380,8 +1384,8 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = ~[~"progname", ~"filter"];
-        let opts = match parse_opts(args) {
+        let args = vec!(~"progname", ~"filter");
+        let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
@@ -1390,8 +1394,8 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = ~[~"progname", ~"filter", ~"--ignored"];
-        let opts = match parse_opts(args) {
+        let args = vec!(~"progname", ~"filter", ~"--ignored");
+        let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in parse_ignored_flag")
         };
@@ -1415,7 +1419,7 @@ mod tests {
             test_shard: None
         };
 
-        let tests = ~[
+        let tests = vec!(
             TestDescAndFn {
                 desc: TestDesc {
                     name: StaticTestName("1"),
@@ -1431,13 +1435,12 @@ mod tests {
                     should_fail: false
                 },
                 testfn: DynTestFn(proc() {}),
-            },
-        ];
+            });
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0].desc.name.to_str(), ~"1");
-        assert!(filtered[0].desc.ignore == false);
+        assert_eq!(filtered.get(0).desc.name.to_str(), ~"1");
+        assert!(filtered.get(0).desc.ignore == false);
     }
 
     #[test]
@@ -1455,16 +1458,16 @@ mod tests {
         };
 
         let names =
-            ~[~"sha1::test", ~"int::test_to_str", ~"int::test_pow",
+            vec!(~"sha1::test", ~"int::test_to_str", ~"int::test_pow",
              ~"test::do_not_run_ignored_tests",
              ~"test::ignored_tests_result_in_ignored",
              ~"test::first_free_arg_should_be_a_filter",
              ~"test::parse_ignored_flag", ~"test::filter_for_ignored_option",
-             ~"test::sort_tests"];
+             ~"test::sort_tests");
         let tests =
         {
             fn testfn() { }
-            let mut tests = ~[];
+            let mut tests = Vec::new();
             for name in names.iter() {
                 let test = TestDescAndFn {
                     desc: TestDesc {
@@ -1481,13 +1484,13 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            ~[~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
+            vec!(~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
               ~"test::do_not_run_ignored_tests",
               ~"test::filter_for_ignored_option",
               ~"test::first_free_arg_should_be_a_filter",
               ~"test::ignored_tests_result_in_ignored",
               ~"test::parse_ignored_flag",
-              ~"test::sort_tests"];
+              ~"test::sort_tests");
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_str());

@@ -15,7 +15,7 @@
 
 
 use std::task;
-use std::vec;
+use std::vec_ng::Vec;
 
 enum Msg<T> {
     Execute(proc(&T)),
@@ -23,7 +23,7 @@ enum Msg<T> {
 }
 
 pub struct TaskPool<T> {
-    priv channels: ~[Chan<Msg<T>>],
+    priv channels: Vec<Chan<Msg<T>>> ,
     priv next_index: uint,
 }
 
@@ -47,7 +47,7 @@ impl<T> TaskPool<T> {
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
-        let channels = vec::from_fn(n_tasks, |i| {
+        let channels = Vec::from_fn(n_tasks, |i| {
             let (port, chan) = Chan::<Msg<T>>::new();
             let init_fn = init_fn_factory();
 
@@ -67,13 +67,16 @@ impl<T> TaskPool<T> {
             chan
         });
 
-        return TaskPool { channels: channels, next_index: 0 };
+        return TaskPool {
+            channels: channels,
+            next_index: 0,
+        };
     }
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
     pub fn execute(&mut self, f: proc(&T)) {
-        self.channels[self.next_index].send(Execute(f));
+        self.channels.get(self.next_index).send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
     }

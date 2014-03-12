@@ -10,4 +10,6 @@
 
 // error-pattern: unresolved name `foobar`.
 
-fn main(args: ~[str]) { info!("{:?}", foobar); }
+use std::vec_ng::Vec;
+
+fn main(args: Vec<str>) { info!("{:?}", foobar); }

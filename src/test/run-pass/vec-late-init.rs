@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::vec_ng::Vec;
 
 pub fn main() {
-    let mut later: ~[int];
-    if true { later = ~[1]; } else { later = ~[2]; }
-    info!("{}", later[0]);
+    let mut later: Vec<int> ;
+    if true { later = vec!(1); } else { later = vec!(2); }
+    info!("{}", *later.get(0));
 }

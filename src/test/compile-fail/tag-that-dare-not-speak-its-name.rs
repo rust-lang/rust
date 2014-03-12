@@ -13,7 +13,9 @@
 
 #[no_implicit_prelude];
 
-fn last<T>(v: ~[&T]) -> std::option::Option<T> {
+use std::vec_ng::Vec;
+
+fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
     fail!();
 }
 

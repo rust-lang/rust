@@ -10,11 +10,13 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 struct Pair { x: int, y: int }
 
 pub fn main() {
     // This just tests whether the vec leaks its members.
 
-    let _pvec: ~[@Pair] =
-        ~[@Pair{x: 1, y: 2}, @Pair{x: 3, y: 4}, @Pair{x: 5, y: 6}];
+    let _pvec: Vec<@Pair> =
+        vec!(@Pair{x: 1, y: 2}, @Pair{x: 3, y: 4}, @Pair{x: 5, y: 6});
 }

@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use std::mem::swap;
+use std::vec_ng::Vec;
 
-struct Ints {sum: ~int, values: ~[int]}
+struct Ints {sum: ~int, values: Vec<int> }
 
 fn add_int(x: &mut Ints, v: int) {
     *x.sum += v;
-    let mut values = ~[];
+    let mut values = Vec::new();
     swap(&mut values, &mut x.values);
     values.push(v);
     swap(&mut values, &mut x.values);
@@ -22,11 +23,11 @@ fn add_int(x: &mut Ints, v: int) {
 
 fn iter_ints(x: &Ints, f: |x: &int| -> bool) -> bool {
     let l = x.values.len();
-    range(0u, l).advance(|i| f(&x.values[i]))
+    range(0u, l).advance(|i| f(x.values.get(i)))
 }
 
 pub fn main() {
-    let mut ints = ~Ints {sum: ~0, values: ~[]};
+    let mut ints = ~Ints {sum: ~0, values: Vec::new()};
     add_int(ints, 22);
     add_int(ints, 44);
 

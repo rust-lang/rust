@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::mem;
+use std::vec_ng::Vec;
 
 #[packed]
 struct S<T, S> {
@@ -22,6 +23,6 @@ pub fn main() {
 
     assert_eq!(mem::size_of::<S<u64, u16>>(), 11);
 
-    assert_eq!(mem::size_of::<S<~str, ~[int]>>(),
-               1 + mem::size_of::<~str>() + mem::size_of::<~[int]>());
+    assert_eq!(mem::size_of::<S<~str, Vec<int> >>(),
+               1 + mem::size_of::<~str>() + mem::size_of::<Vec<int> >());
 }

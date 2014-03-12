@@ -13,6 +13,8 @@
 #[allow(dead_code)];
 #[deny(unused_unsafe)];
 
+use std::vec_ng::Vec;
+
 mod foo {
     extern {
         pub fn bar();
@@ -49,7 +51,7 @@ fn good2() {
        sure that when purity is inherited that the source of the unsafe-ness
        is tracked correctly */
     unsafe {
-        unsafe fn what() -> ~[~str] { fail!() }
+        unsafe fn what() -> Vec<~str> { fail!() }
 
         callback(|| {
             what();

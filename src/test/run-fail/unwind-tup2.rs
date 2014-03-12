@@ -10,13 +10,15 @@
 
 #[feature(managed_boxes)];
 
+use std::vec_ng::Vec;
+
 // error-pattern:fail
 
-fn fold_local() -> @~[int]{
-    @~[0,0,0,0,0,0]
+fn fold_local() -> @Vec<int> {
+    @vec!(0,0,0,0,0,0)
 }
 
-fn fold_remote() -> @~[int]{
+fn fold_remote() -> @Vec<int> {
     fail!();
 }
 

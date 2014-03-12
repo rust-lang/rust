@@ -16,12 +16,12 @@ struct Foo {
 }
 
 pub fn main() {
-    let x = ~[
+    let x = vec!(
         Foo { string: ~"foo" },
         Foo { string: ~"bar" },
         Foo { string: ~"baz" }
-    ];
-    let x: &[Foo] = x;
+    );
+    let x: &[Foo] = x.as_slice();
     match x {
         [_, ..tail] => {
             match tail {

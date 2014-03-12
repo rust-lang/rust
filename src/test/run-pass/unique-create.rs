@@ -13,5 +13,5 @@ pub fn main() {
 }
 
 fn vec() {
-    ~[0];
+    vec!(0);
 }

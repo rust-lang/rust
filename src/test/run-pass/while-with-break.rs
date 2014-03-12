@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
 
 pub fn main() {
     let mut i: int = 90;
@@ -15,8 +16,8 @@ pub fn main() {
         info!("{}", i);
         i = i + 1;
         if i == 95 {
-            let _v: ~[int] =
-                ~[1, 2, 3, 4, 5]; // we check that it is freed by break
+            let _v: Vec<int> =
+                vec!(1, 2, 3, 4, 5); // we check that it is freed by break
 
             info!("breaking");
             break;

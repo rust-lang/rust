@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec_ng::Vec;
+
 fn test_simple() {
     let r = match true { true => { true } false => { fail!() } };
     assert_eq!(r, true);
 }
 
 fn test_box() {
-    let r = match true { true => { ~[10] } false => { fail!() } };
-    assert_eq!(r[0], 10);
+    let r = match true { true => { vec!(10) } false => { fail!() } };
+    assert_eq!(*r.get(0), 10);
 }
 
 pub fn main() { test_simple(); test_box(); }
