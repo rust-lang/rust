@@ -1,9 +1,13 @@
+- Start Date: 2014/03/24
+- RFC PR #: 2
+- Rust Issue #: N/A
+
 # Summary
 
-Fork the RFC repo, copy the provided template RFC into the "active" directory
-with a descriptive name, fill out each section, and submit as a pull request
-for review. Advertise the proposed RFC and work to gain a consensus. Once
-approved and merged, RFCs become fair game for implementors.
+The "RFC" (request for comments) process is intended to provide a
+consistent and controlled path for new features to enter the language
+and standard libraries, so that all stakeholders can be confident about
+the direction the language is evolving in.
 
 # Motivation
 
@@ -22,11 +26,6 @@ implemented and reviewed via the normal GitHub pull request workflow.
 Some changes though are "substantial", and we ask that these be put
 through a bit of a design process and produce a consensus among the Rust
 community and the [core team].
-
-The "RFC" (request for comments process) is intended to provide a
-consistent and controlled path for new features to enter the language
-and standard libraries, so that all stakeholders can be confident about
-the direction the language is evolving in.
 
 ## When you need to follow this process
 
@@ -69,9 +68,19 @@ the design from the larger community.
 * Build consensus and integrate feedback. RFCs that have broad support
 are much more likely to make progress than those that don't receive any
 comments.
-* Eventually, somebody on the [core team] will either accept the RFC by
+
+Eventually, somebody on the [core team] will either accept the RFC by
 merging the pull request and assigning the RFC a number, at which point
 the RFC is 'active', or reject it by closing the pull request.
+
+Whomever merges the RFC should do the following:
+
+* Assign a sequential id.
+* Add the file in the active directory.
+* Create a corresponding issue on Rust.
+* Fill in the remaining metadata in the RFC header, including the original
+  PR # and Rust issue #.
+* Commit everything.
 
 Once an RFC becomes active then authors may implement it and submit the
 feature as a pull request to the Rust repo. An 'active' is not a rubber
@@ -101,6 +110,7 @@ As an alternative alternative, we could adopt an even stricter RFC process than 
 1. Does this RFC strike a favorable balance between formality and agility?
 2. Does this RFC successfully address the aforementioned issues with the current
    informal RFC process?
+3. Should we retain rejected RFCs in the archive?
 
 [core team]: https://github.com/mozilla/rust/wiki/Note-core-team
 [PEP]: http://legacy.python.org/dev/peps/pep-0001/
