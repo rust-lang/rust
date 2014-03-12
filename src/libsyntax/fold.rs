@@ -435,12 +435,12 @@ pub fn fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
         span: fld.new_span(l.span),
-        ident: l.ident
+        name: l.name
     }
 }
 
-pub fn fold_lifetimes<T: Folder>(lts: &OptVec<Lifetime>, fld: &mut T)
-                                   -> OptVec<Lifetime> {
+pub fn fold_lifetimes<T: Folder>(lts: &Vec<Lifetime>, fld: &mut T)
+                                   -> Vec<Lifetime> {
     lts.map(|l| fold_lifetime(l, fld))
 }
 

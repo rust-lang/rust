@@ -72,6 +72,7 @@ use middle::typeck::infer::region_inference::ConcreteFailure;
 use middle::typeck::infer::region_inference::SubSupConflict;
 use middle::typeck::infer::region_inference::SupSupConflict;
 use syntax::opt_vec::OptVec;
+use syntax::parse::token;
 use util::ppaux::UserString;
 use util::ppaux::bound_region_to_str;
 use util::ppaux::note_and_explain_region;
@@ -479,19 +480,21 @@ impl ErrorReportingHelpers for InferCtxt {
             infer::AddrOfSlice(_) => ~" for slice expression",
             infer::Autoref(_) => ~" for autoref",
             infer::Coercion(_) => ~" for automatic coercion",
-            infer::BoundRegionInFnCall(_, br) => {
+            infer::LateBoundRegion(_, br) => {
                 format!(" for {}in function call",
-                        bound_region_to_str(self.tcx, "region ", true, br))
+                        bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
             }
             infer::BoundRegionInFnType(_, br) => {
                 format!(" for {}in function type",
-                        bound_region_to_str(self.tcx, "region ", true, br))
+                        bound_region_to_str(self.tcx, "lifetime parameter ", true, br))
             }
-            infer::BoundRegionInTypeOrImpl(_) => {
-                format!(" for region in type/impl")
+            infer::EarlyBoundRegion(_, name) => {
+                format!(" for lifetime parameter `{}",
+                        token::get_name(name).get())
             }
-            infer::BoundRegionInCoherence(..) => {
-                format!(" for coherence check")
+            infer::BoundRegionInCoherence(name) => {
+                format!(" for lifetime parameter `{} in coherence check",
+                        token::get_name(name).get())
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 format!(" for capture of `{}` by closure",

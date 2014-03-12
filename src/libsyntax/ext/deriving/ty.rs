@@ -19,7 +19,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use opt_vec;
-use opt_vec::OptVec;
 
 use std::vec_ng::Vec;
 
@@ -118,11 +117,12 @@ fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifet
     }
 }
 
-fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
-    match *lt {
+fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
+    let lifetimes = match *lt {
         Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s).name)),
         None => opt_vec::Empty
-    }
+    };
+    opt_vec::take_vec(lifetimes)
 }
 
 impl<'a> Ty<'a> {
@@ -199,7 +199,7 @@ fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
 
 fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -> Generics {
     Generics {
-        lifetimes: opt_vec::from(lifetimes),
+        lifetimes: lifetimes,
         ty_params: opt_vec::from(ty_params)
     }
 }
