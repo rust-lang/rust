@@ -148,8 +148,8 @@ endef
 $(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))))
 
 doc/footer.tex: $(D)/footer.inc | doc/
-	@$$(call E, pandoc: $$@)
-	$$(CFG_PANDOC) --from=html --to=latex $$< --output=$$@
+	@$(call E, pandoc: $@)
+	$(CFG_PANDOC) --from=html --to=latex $< --output=$@
 
 define DEF_DOC
 
