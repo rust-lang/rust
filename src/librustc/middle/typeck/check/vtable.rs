@@ -777,6 +777,7 @@ pub fn resolve_impl(tcx: ty::ctxt,
         impl_generics.type_param_defs(),
         [],
         impl_generics.region_param_defs(),
+        [],
         impl_item.id);
 
     let impl_trait_ref = @impl_trait_ref.subst(tcx, &param_env.free_substs);
@@ -832,7 +833,7 @@ pub fn trans_resolve_method(tcx: ty::ctxt, id: ast::NodeId,
     if has_trait_bounds(type_param_defs.as_slice()) {
         let vcx = VtableContext {
             infcx: &infer::new_infer_ctxt(tcx),
-            param_env: &ty::construct_parameter_environment(tcx, None, [], [], [], id)
+            param_env: &ty::construct_parameter_environment(tcx, None, [], [], [], [], id)
         };
         let loc_info = LocationInfo {
             id: id,

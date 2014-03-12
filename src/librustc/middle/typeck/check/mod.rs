@@ -97,7 +97,7 @@ use middle::typeck::check::method::{AutoderefReceiver};
 use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{DontAutoderefReceiver};
-use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
@@ -439,7 +439,7 @@ fn check_fn(ccx: @CrateCtxt,
 
     // First, we have to replace any bound regions in the fn type with free ones.
     // The free region references will be bound the node_id of the body block.
-    let (_, fn_sig) = replace_bound_regions_in_fn_sig(tcx, fn_sig, |br| {
+    let (_, fn_sig) = replace_late_bound_regions_in_fn_sig(tcx, fn_sig, |br| {
         ty::ReFree(ty::FreeRegion {scope_id: body.id, bound_region: br})
     });
 
@@ -563,13 +563,13 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
       ast::ItemFn(decl, _, _, _, body) => {
         let fn_tpt = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
 
-        // FIXME(#5121) -- won't work for lifetimes that appear in type bounds
         let param_env = ty::construct_parameter_environment(
                 ccx.tcx,
                 None,
                 fn_tpt.generics.type_param_defs(),
                 [],
                 [],
+                fn_tpt.generics.region_param_defs.borrow().as_slice(),
                 body.id);
 
         check_bare_fn(ccx, decl, body, it.id, fn_tpt.ty, param_env);
@@ -679,6 +679,7 @@ fn check_method_body(ccx: @CrateCtxt,
             item_generics.type_param_defs(),
             method_generics.type_param_defs(),
             item_generics.region_param_defs(),
+            method_generics.region_param_defs(),
             method.body.id);
 
     // Compute the fty from point of view of inside fn
@@ -901,7 +902,7 @@ fn compare_impl_method(tcx: ty::ctxt,
         impl_generics.region_param_defs().iter().
         map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
-                bound_region: ty::BrNamed(l.def_id, l.ident)})).
+                bound_region: ty::BrNamed(l.def_id, l.name)})).
         collect();
     let dummy_substs = ty::substs {
         tps: vec_ng::append(dummy_impl_tps, dummy_method_tps.as_slice()),
@@ -1439,22 +1440,17 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
 
-    let (n_tps, n_rps, raw_ty) = {
-        let ity = ty::lookup_item_type(tcx, did);
+    let ity = ty::lookup_item_type(tcx, did);
+    let (n_tps, rps, raw_ty) =
         (ity.generics.type_param_defs().len(),
-         ity.generics.region_param_defs().len(),
-         ity.ty)
-    };
+         ity.generics.region_param_defs(),
+         ity.ty);
 
-    let rps =
-        vcx.infcx.next_region_vars(
-            infer::BoundRegionInTypeOrImpl(location_info.span),
-            n_rps);
+    let rps = vcx.infcx.region_vars_for_defs(location_info.span, rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
     let substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::from(rps.move_iter()
-                                                       .collect())),
+        regions: ty::NonerasedRegions(rps),
         self_ty: None,
         tps: tps,
     };
@@ -1888,9 +1884,8 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
 
         // Replace any bound regions that appear in the function
         // signature with region variables
-        let (_, fn_sig) = replace_bound_regions_in_fn_sig(fcx.tcx(), fn_sig, |br| {
-            fcx.infcx()
-               .next_region_var(infer::BoundRegionInFnCall(call_expr.span, br))
+        let (_, fn_sig) = replace_late_bound_regions_in_fn_sig(fcx.tcx(), fn_sig, |br| {
+            fcx.infcx().next_region_var(infer::LateBoundRegion(call_expr.span, br))
         });
 
         // Call the generic checker.
@@ -2214,7 +2209,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
                     let (_, sig) =
-                        replace_bound_regions_in_fn_sig(
+                        replace_late_bound_regions_in_fn_sig(
                             tcx, &cenv.sig,
                             |_| fcx.inh.infcx.fresh_bound_region(expr.id));
                     (Some(sig), cenv.purity, cenv.sigil,
@@ -2462,16 +2457,14 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         // determine whether the class is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, class_id);
         let type_parameter_count = item_type.generics.type_param_defs().len();
-        let region_parameter_count = item_type.generics.region_param_defs().len();
+        let region_param_defs = item_type.generics.region_param_defs();
         let raw_type = item_type.ty;
 
         // Generate the struct type.
-        let regions = fcx.infcx().next_region_vars(
-            infer::BoundRegionInTypeOrImpl(span),
-            region_parameter_count).move_iter().collect();
+        let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            regions: ty::NonerasedRegions(opt_vec::from(regions)),
+            regions: ty::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
@@ -2520,16 +2513,14 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         // determine whether the enum is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, enum_id);
         let type_parameter_count = item_type.generics.type_param_defs().len();
-        let region_parameter_count = item_type.generics.region_param_defs().len();
+        let region_param_defs = item_type.generics.region_param_defs();
         let raw_type = item_type.ty;
 
         // Generate the enum type.
-        let regions = fcx.infcx().next_region_vars(
-            infer::BoundRegionInTypeOrImpl(span),
-            region_parameter_count).move_iter().collect();
+        let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
-            regions: ty::NonerasedRegions(opt_vec::from(regions)),
+            regions: ty::NonerasedRegions(regions),
             self_ty: None,
             tps: type_parameters
         };
@@ -3727,8 +3718,8 @@ pub fn instantiate_path(fcx: @FnCtxt,
     let num_expected_regions = tpt.generics.region_param_defs().len();
     let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
-        pth.segments.last().unwrap().lifetimes.map(
-            |l| ast_region_to_region(fcx.tcx(), l))
+        opt_vec::from(pth.segments.last().unwrap().lifetimes.map(
+            |l| ast_region_to_region(fcx.tcx(), l)))
     } else {
         if num_supplied_regions != 0 {
             fcx.ccx.tcx.sess.span_err(
@@ -3741,9 +3732,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
                         nsupplied = num_supplied_regions));
         }
 
-        opt_vec::from(fcx.infcx().next_region_vars(
-                infer::BoundRegionInTypeOrImpl(span),
-                num_expected_regions).move_iter().collect())
+        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.borrow().as_slice())
     };
     let regions = ty::NonerasedRegions(regions);
 

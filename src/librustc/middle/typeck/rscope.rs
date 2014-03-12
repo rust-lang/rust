@@ -78,5 +78,5 @@ pub fn bound_type_regions(defs: &[ty::RegionParameterDef])
                           -> OptVec<ty::Region> {
     assert!(defs.iter().all(|def| def.def_id.krate == ast::LOCAL_CRATE));
     defs.iter().enumerate().map(
-        |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.ident)).collect()
+        |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.name)).collect()
 }

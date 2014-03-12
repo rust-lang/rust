@@ -92,18 +92,18 @@ pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
 
         Some(&ast::DefLateBoundRegion(binder_id, _, id)) => {
             ty::ReLateBound(binder_id, ty::BrNamed(ast_util::local_def(id),
-                                                   lifetime.ident))
+                                                   lifetime.name))
         }
 
         Some(&ast::DefEarlyBoundRegion(index, id)) => {
-            ty::ReEarlyBound(id, index, lifetime.ident)
+            ty::ReEarlyBound(id, index, lifetime.name)
         }
 
         Some(&ast::DefFreeRegion(scope_id, id)) => {
             ty::ReFree(ty::FreeRegion {
                     scope_id: scope_id,
                     bound_region: ty::BrNamed(ast_util::local_def(id),
-                                              lifetime.ident)
+                                              lifetime.name)
                 })
         }
     };
@@ -186,9 +186,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => opt_vec::from(v.move_iter().collect()),
-            Err(()) => opt_vec::from(Vec::from_fn(expected_num_region_params,
-                                                  |_| ty::ReStatic)) // hokey
+            Ok(v) => v.move_iter().collect(),
+            Err(()) => Vec::from_fn(expected_num_region_params,
+                                    |_| ty::ReStatic) // hokey
         }
     };
 
@@ -231,7 +231,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .collect();
 
     let mut substs = substs {
-        regions: ty::NonerasedRegions(regions),
+        regions: ty::NonerasedRegions(opt_vec::from(regions)),
         self_ty: self_ty,
         tps: tps
     };

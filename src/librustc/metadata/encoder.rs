@@ -184,7 +184,7 @@ fn encode_region_param_defs(ebml_w: &mut writer::Encoder,
         ebml_w.start_tag(tag_region_param_def);
 
         ebml_w.start_tag(tag_region_param_def_ident);
-        encode_name(ebml_w, param.ident);
+        encode_name(ebml_w, param.name);
         ebml_w.end_tag();
 
         ebml_w.wr_tagged_str(tag_region_param_def_def_id,

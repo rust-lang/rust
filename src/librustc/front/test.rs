@@ -369,7 +369,7 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
         global: false,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
-            lifetimes: opt_vec::Empty,
+            lifetimes: Vec::new(),
             types: opt_vec::Empty,
         }).collect()
     }
@@ -381,7 +381,7 @@ fn path_node_global(ids: Vec<ast::Ident> ) -> ast::Path {
         global: true,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
-            lifetimes: opt_vec::Empty,
+            lifetimes: Vec::new(),
             types: opt_vec::Empty,
         }).collect()
     }

@@ -118,7 +118,7 @@ pub type FnIdent = Option<Ident>;
 pub struct Lifetime {
     id: NodeId,
     span: Span,
-    ident: Name
+    name: Name
 }
 
 // a "Path" is essentially Rust's notion of a name;
@@ -142,7 +142,7 @@ pub struct PathSegment {
     /// The identifier portion of this path segment.
     identifier: Ident,
     /// The lifetime parameters for this path segment.
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
     types: OptVec<P<Ty>>,
 }
@@ -187,7 +187,7 @@ pub struct TyParam {
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Generics {
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     ty_params: OptVec<TyParam>,
 }
 
@@ -795,7 +795,7 @@ impl fmt::Show for Onceness {
 pub struct ClosureTy {
     sigil: Sigil,
     region: Option<Lifetime>,
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     purity: Purity,
     onceness: Onceness,
     decl: P<FnDecl>,
@@ -810,7 +810,7 @@ pub struct ClosureTy {
 pub struct BareFnTy {
     purity: Purity,
     abis: AbiSet,
-    lifetimes: OptVec<Lifetime>,
+    lifetimes: Vec<Lifetime>,
     decl: P<FnDecl>
 }
 
