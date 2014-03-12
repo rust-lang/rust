@@ -39,9 +39,7 @@ use std::os;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use collections::HashMap;
-use getopts::{optopt, optmulti, optflag, optflagopt, opt};
-use MaybeHasArg = getopts::Maybe;
-use OccurOptional = getopts::Optional;
+use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
 use syntax::abi;
@@ -866,29 +864,41 @@ pub fn build_session_options(matches: &getopts::Matches)
             }
             Default
         } else if matches.opt_present("opt-level") {
-            match matches.opt_str("opt-level").unwrap() {
-              ~"0" => No,
-              ~"1" => Less,
-              ~"2" => Default,
-              ~"3" => Aggressive,
-              _ => {
-                early_error("optimization level needs to be between 0-3")
-              }
+            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
+                None      |
+                Some("0") => No,
+                Some("1") => Less,
+                Some("2") => Default,
+                Some("3") => Aggressive,
+                Some(arg) => {
+                    early_error(format!("optimization level needs to be between 0-3 \
+                                        (instead was `{}`)", arg));
+                }
             }
-        } else { No }
+        } else {
+            No
+        }
     };
     let gc = debugging_opts & session::GC != 0;
 
-    let debuginfo = match matches.opt_default("debuginfo", "2") {
-        Some(level) => {
-            match level {
-                ~"0" => NoDebugInfo,
-                ~"1" => LimitedDebugInfo,
-                ~"2" => FullDebugInfo,
-                _    => early_error("debug info level needs to be between 0-2")
+    let debuginfo = if matches.opt_present("g") {
+        if matches.opt_present("debuginfo") {
+            early_error("-g and --debuginfo both provided");
+        }
+        FullDebugInfo
+    } else if matches.opt_present("debuginfo") {
+        match matches.opt_str("debuginfo").as_ref().map(|s| s.as_slice()) {
+            Some("0") => NoDebugInfo,
+            Some("1") => LimitedDebugInfo,
+            None      |
+            Some("2") => FullDebugInfo,
+            Some(arg) => {
+                early_error(format!("optimization level needs to be between 0-3 \
+                                    (instead was `{}`)", arg));
             }
         }
-        None => NoDebugInfo
+    } else {
+        NoDebugInfo
     };
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
@@ -1045,11 +1055,11 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
   optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
           continued and exit"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
-  opt("g",  "debuginfo",  "Emit DWARF debug info to the objects created:
-       0 = no debug info,
-       1 = line-tables only (for stacktraces),
-       2 = full debug info with variable, argument and type information",
-      "LEVEL", MaybeHasArg, OccurOptional),
+  optflag("g",  "",  "Equivalent to --debuginfo=2"),
+  optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
+         0 = no debug info,
+         1 = line-tables only (for stacktraces and breakpoints),
+         2 = full debug info with variable and type information (same as -g)", "LEVEL"),
   optflag("", "no-trans", "Run all passes except translation; no output"),
   optflag("", "no-analysis", "Parse and expand the output, but run no analysis or produce output"),
   optflag("O", "", "Equivalent to --opt-level=2"),
