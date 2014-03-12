@@ -263,6 +263,7 @@ impl<'a> FromBase64 for &'a str {
 #[cfg(test)]
 mod tests {
     extern crate test;
+    extern crate rand;
     use self::test::BenchHarness;
     use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
@@ -335,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_base64_random() {
-        use std::rand::{task_rng, random, Rng};
+        use self::rand::{task_rng, random, Rng};
         use std::vec;
 
         for _ in range(0, 1000) {

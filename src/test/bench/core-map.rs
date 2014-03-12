@@ -9,11 +9,12 @@
 // except according to those terms.
 
 extern crate collections;
+extern crate rand;
 extern crate time;
 
 use collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
-use std::rand::{Rng, IsaacRng, SeedableRng};
+use rand::{Rng, IsaacRng, SeedableRng};
 use std::uint;
 use std::vec;
 

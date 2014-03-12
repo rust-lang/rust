@@ -50,13 +50,13 @@ concurrency at this writing:
 * [`sync::DuplexStream`] - An extension of `pipes::stream` that allows both sending and receiving,
 * [`sync::SyncChan`] - An extension of `pipes::stream` that provides synchronous message sending,
 * [`sync::SyncPort`] - An extension of `pipes::stream` that acknowledges each message received,
-* [`sync::rendezvous`] - Creates a stream whose channel, upon sending a message, blocks until the 
+* [`sync::rendezvous`] - Creates a stream whose channel, upon sending a message, blocks until the
     message is received.
 * [`sync::Arc`] - The Arc (atomically reference counted) type, for safely sharing immutable data,
 * [`sync::RWArc`] - A dual-mode Arc protected by a reader-writer lock,
 * [`sync::MutexArc`] - An Arc with mutable data protected by a blocking mutex,
 * [`sync::Semaphore`] - A counting, blocking, bounded-waiting semaphore,
-* [`sync::Mutex`] - A blocking, bounded-waiting, mutual exclusion lock with an associated 
+* [`sync::Mutex`] - A blocking, bounded-waiting, mutual exclusion lock with an associated
     FIFO condition variable,
 * [`sync::RWLock`] - A blocking, no-starvation, reader-writer lock with an associated condvar,
 * [`sync::Barrier`] - A barrier enables multiple tasks to synchronize the beginning
@@ -343,8 +343,8 @@ a single large vector of floats. Each task needs the full vector to perform its 
 
 ~~~
 # extern crate sync;
+ extern crate rand;
 # use std::vec;
-# use std::rand;
 use sync::Arc;
 
 fn pnorm(nums: &~[f64], p: uint) -> f64 {
@@ -376,9 +376,9 @@ created by the line
 
 ~~~
 # extern crate sync;
+# extern crate rand;
 # use sync::Arc;
 # use std::vec;
-# use std::rand;
 # fn main() {
 # let numbers = vec::from_fn(1000000, |_| rand::random::<f64>());
 let numbers_arc=Arc::new(numbers);
@@ -389,9 +389,9 @@ and a clone of it is sent to each task
 
 ~~~
 # extern crate sync;
+# extern crate rand;
 # use sync::Arc;
 # use std::vec;
-# use std::rand;
 # fn main() {
 # let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
@@ -406,9 +406,9 @@ Each task recovers the underlying data by
 
 ~~~
 # extern crate sync;
+# extern crate rand;
 # use sync::Arc;
 # use std::vec;
-# use std::rand;
 # fn main() {
 # let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc=Arc::new(numbers);

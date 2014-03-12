@@ -12,13 +12,13 @@
 
 #[feature(macro_rules)];
 
+extern crate rand;
 extern crate time;
 
 use time::precise_time_s;
+use rand::Rng;
 use std::mem::swap;
 use std::os;
-use std::rand::Rng;
-use std::rand;
 use std::str;
 use std::vec;
 use std::io::File;
@@ -83,7 +83,7 @@ fn read_line() {
 }
 
 fn vec_plus() {
-    let mut r = rand::rng();
+    let mut r = rand::task_rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -99,7 +99,7 @@ fn vec_plus() {
 }
 
 fn vec_append() {
-    let mut r = rand::rng();
+    let mut r = rand::task_rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -116,7 +116,7 @@ fn vec_append() {
 }
 
 fn vec_push_all() {
-    let mut r = rand::rng();
+    let mut r = rand::task_rng();
 
     let mut v = ~[];
     for i in range(0u, 1500) {

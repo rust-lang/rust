@@ -947,8 +947,8 @@ mod tests {
 
     use std::uint;
     use std::vec;
-    use std::rand;
-    use std::rand::Rng;
+    use rand;
+    use rand::Rng;
 
     static BENCH_BITS : uint = 1 << 14;
 

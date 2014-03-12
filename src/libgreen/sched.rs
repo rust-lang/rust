@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cast;
-use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
@@ -17,6 +16,8 @@ use std::rt::task::Task;
 use std::sync::deque;
 use std::unstable::mutex::NativeMutex;
 use std::raw;
+
+use rand::{XorShiftRng, Rng, Rand};
 
 use TaskState;
 use context::Context;
@@ -957,7 +958,7 @@ fn new_sched_rng() -> XorShiftRng {
 fn new_sched_rng() -> XorShiftRng {
     use std::libc;
     use std::mem;
-    use std::rand::SeedableRng;
+    use rand::SeedableRng;
 
     let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }

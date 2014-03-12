@@ -10,9 +10,9 @@
 
 //! The normal and derived distributions.
 
-use num::Float;
-use rand::{Rng, Rand, Open01};
-use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
+use std::num::Float;
+use {Rng, Rand, Open01};
+use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
 /// A wrapper around an `f64` to generate N(0, 1) random numbers
 /// (a.k.a.  a standard normal, or Gaussian).
@@ -74,8 +74,7 @@ impl Rand for StandardNormal {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{Normal, IndependentSample};
+/// use rand::distributions::{Normal, IndependentSample};
 ///
 /// // mean 2, standard deviation 3
 /// let normal = Normal::new(2.0, 3.0);
@@ -117,8 +116,7 @@ impl IndependentSample<f64> for Normal {
 /// # Example
 ///
 /// ```rust
-/// use std::rand;
-/// use std::rand::distributions::{LogNormal, IndependentSample};
+/// use rand::distributions::{LogNormal, IndependentSample};
 ///
 /// // mean 2, standard deviation 3
 /// let log_normal = LogNormal::new(2.0, 3.0);
@@ -148,10 +146,9 @@ impl IndependentSample<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
-    use rand::*;
-    use super::*;
-    use rand::distributions::*;
+    use distributions::{Sample, IndependentSample};
+    use {Rng, task_rng};
+    use super::{Normal, LogNormal};
 
     #[test]
     fn test_normal() {
@@ -189,11 +186,10 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use mem::size_of;
-    use prelude::*;
-    use rand::{XorShiftRng, RAND_BENCH_N};
-    use rand::distributions::*;
-    use super::*;
+    use std::mem::size_of;
+    use {XorShiftRng, RAND_BENCH_N};
+    use distributions::{Sample};
+    use super::Normal;
 
     #[bench]
     fn rand_normal(bh: &mut BenchHarness) {

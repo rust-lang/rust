@@ -19,4 +19,3 @@ fn g<T:'static>(x: T) -> @T {
 }
 
 fn main() {}
-

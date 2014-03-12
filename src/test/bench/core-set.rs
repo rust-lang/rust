@@ -11,13 +11,13 @@
 // except according to those terms.
 
 extern crate collections;
+extern crate rand;
 extern crate time;
 
 use collections::bitv::BitvSet;
 use collections::TreeSet;
 use collections::HashSet;
 use std::os;
-use std::rand;
 use std::uint;
 
 struct Results {

@@ -90,13 +90,14 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
 
 #[cfg(test)]
 mod tests {
+    extern crate rand;
+
     use super::{inflate_bytes, deflate_bytes};
-    use std::rand;
-    use std::rand::Rng;
+    use self::rand::Rng;
 
     #[test]
     fn test_flate_round_trip() {
-        let mut r = rand::rng();
+        let mut r = rand::task_rng();
         let mut words = ~[];
         for _ in range(0, 20) {
             let range = r.gen_range(1u, 10);

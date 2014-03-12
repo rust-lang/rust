@@ -2529,7 +2529,7 @@ of type `ABC` can be randomly generated and converted to a string:
 #[deriving(Eq)]
 struct Circle { radius: f64 }
 
-#[deriving(Rand, Show)]
+#[deriving(Clone, Show)]
 enum ABC { A, B, C }
 ~~~
 

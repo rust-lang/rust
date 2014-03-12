@@ -18,23 +18,27 @@
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ```rust
+ * extern crate sync;
+ * extern crate rand;
  * use sync::Arc;
- * use std::{rand, vec};
+ * use std::vec;
  *
- * let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
- * let shared_numbers = Arc::new(numbers);
+ * fn main() {
+ *     let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
+ *     let shared_numbers = Arc::new(numbers);
  *
- *   for _ in range(0, 10) {
- *       let (port, chan) = Chan::new();
- *       chan.send(shared_numbers.clone());
+ *     for _ in range(0, 10) {
+ *         let (port, chan) = Chan::new();
+ *         chan.send(shared_numbers.clone());
  *
- *       spawn(proc() {
- *           let shared_numbers = port.recv();
- *           let local_numbers = shared_numbers.get();
+ *         spawn(proc() {
+ *             let shared_numbers = port.recv();
+ *             let local_numbers = shared_numbers.get();
  *
- *           // Work with the local numbers
- *       });
- *   }
+ *             // Work with the local numbers
+ *         });
+ *     }
+ * }
  * ```
  */
 
