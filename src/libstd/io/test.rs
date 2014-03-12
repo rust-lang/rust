@@ -150,7 +150,6 @@ mod darwin_fd_limit {
         rlim_cur: rlim_t,
         rlim_max: rlim_t
     }
-    #[nolink]
     extern {
         // name probably doesn't need to be mut, but the C function doesn't specify const
         fn sysctl(name: *mut libc::c_int, namelen: libc::c_uint,

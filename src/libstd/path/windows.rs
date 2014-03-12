@@ -17,7 +17,7 @@ use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
-use hash::{Hash, sip};
+use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use str;
@@ -112,10 +112,10 @@ impl ToCStr for Path {
     }
 }
 
-impl Hash for Path {
+impl<H: Writer> ::hash::Hash<H> for Path {
     #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.repr.hash(s)
+    fn hash(&self, hasher: &mut H) {
+        self.repr.hash(hasher)
     }
 }
 

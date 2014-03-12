@@ -570,6 +570,11 @@ fn indenting_middle_of_line() {
                pull_me_back_in();
 }
 }
+
+fn indented_already() {
+    
+    // The previous line already has its spaces
+}
 "
 
       ;; Symbol -> (line column)
@@ -596,7 +601,15 @@ fn indenting_middle_of_line() {
                                   (after-whitespace-indent-start (13 1))
                                   (after-whitespace-indent-target (13 8))
                                   (middle-pull-indent-start (15 19))
-                                  (middle-pull-indent-target (15 12))))
+                                  (middle-pull-indent-target (15 12))
+                                  (blank-line-indented-already-bol-start (20 0))
+                                  (blank-line-indented-already-bol-target (20 4))
+                                  (blank-line-indented-already-middle-start (20 2))
+                                  (blank-line-indented-already-middle-target (20 4))
+                                  (nonblank-line-indented-already-bol-start (21 0))
+                                  (nonblank-line-indented-already-bol-target (21 4))
+                                  (nonblank-line-indented-already-middle-start (21 2))
+                                  (nonblank-line-indented-already-middle-target (21 4))))
 
 (defun rust-get-buffer-pos (pos-symbol)
   "Get buffer position from POS-SYMBOL.
@@ -792,4 +805,32 @@ All positions are position symbols found in `rust-test-positions-alist'."
    rust-test-indent-motion-string
    'middle-pull-indent-start
    'middle-pull-indent-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-blank-line-indented-already-bol ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'blank-line-indented-already-bol-start
+   'blank-line-indented-already-bol-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-blank-line-indented-already-middle ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'blank-line-indented-already-middle-start
+   'blank-line-indented-already-middle-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-nonblank-line-indented-already-bol ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'nonblank-line-indented-already-bol-start
+   'nonblank-line-indented-already-bol-target
+   #'indent-for-tab-command))
+
+(ert-deftest indent-line-nonblank-line-indented-already-middle ()
+  (rust-test-motion
+   rust-test-indent-motion-string
+   'nonblank-line-indented-already-middle-start
+   'nonblank-line-indented-already-middle-target
    #'indent-for-tab-command))

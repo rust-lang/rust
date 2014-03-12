@@ -140,14 +140,14 @@
                     ;; Otherwise, we are continuing the same expression from the previous line,
                     ;; so add one additional indent level
                     (+ baseline rust-indent-offset))))))))))
-    (when (not (eq (current-indentation) indent))
-      ;; If we're at the beginning of the line (before or at the current
-      ;; indentation), jump with the indentation change.  Otherwise, save the
-      ;; excursion so that adding the indentations will leave us at the
-      ;; equivalent position within the line to where we were before.
-      (if (<= (current-column) (current-indentation))
-          (indent-line-to indent)
-        (save-excursion (indent-line-to indent))))))
+
+    ;; If we're at the beginning of the line (before or at the current
+    ;; indentation), jump with the indentation change.  Otherwise, save the
+    ;; excursion so that adding the indentations will leave us at the
+    ;; equivalent position within the line to where we were before.
+    (if (<= (current-column) (current-indentation))
+        (indent-line-to indent)
+      (save-excursion (indent-line-to indent)))))
 
 
 ;; Font-locking definitions and helpers
