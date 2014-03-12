@@ -64,6 +64,26 @@ impl<T> Vec<T> {
             xs
         }
     }
+
+    /**
+     * Partitions the vector into two vectors `(A,B)`, where all
+     * elements of `A` satisfy `f` and all elements of `B` do not.
+     */
+    #[inline]
+    pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+        let mut lefts  = Vec::new();
+        let mut rights = Vec::new();
+
+        for elt in self.move_iter() {
+            if f(&elt) {
+                lefts.push(elt);
+            } else {
+                rights.push(elt);
+            }
+        }
+
+        (lefts, rights)
+    }
 }
 
 impl<T: Clone> Vec<T> {

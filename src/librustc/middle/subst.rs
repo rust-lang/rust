@@ -276,7 +276,7 @@ impl Subst for ty::Region {
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine
-        // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
+        // `middle::typeck::check::regionmanip::replace_late_regions_in_fn_sig()`.
         match self {
             &ty::ReEarlyBound(_, i, _) => {
                 match substs.regions {

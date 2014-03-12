@@ -136,11 +136,11 @@ impl<'f> Combine for Glb<'f> {
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, a);
         let a_vars = var_ids(self, &a_map);
         let (b_with_fresh, b_map) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, b);
         let b_vars = var_ids(self, &b_map);
 

@@ -13,6 +13,7 @@
 //! which are available for use externally when compiled as a library.
 
 use std::mem::replace;
+use std::vec_ng::Vec;
 
 use metadata::csearch;
 use middle::lint;
@@ -855,7 +856,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                 debug!("privacy - list {}", pid.node.id);
                                 let seg = ast::PathSegment {
                                     identifier: pid.node.name,
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 };
                                 let segs = vec!(seg);

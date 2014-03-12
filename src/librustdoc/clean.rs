@@ -333,7 +333,7 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
-        Lifetime(token::get_name(self.ident).get().to_owned())
+        Lifetime(token::get_name(self.name).get().to_owned())
     }
 }
 

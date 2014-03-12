@@ -42,7 +42,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident> ,
-                lifetimes: OptVec<ast::Lifetime>,
+                lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>> )
         -> ast::Path;
 
@@ -255,19 +255,19 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, opt_vec::Empty, Vec::new())
+        self.path_all(span, false, strs, Vec::new(), Vec::new())
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec!(id))
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, opt_vec::Empty, Vec::new())
+        self.path_all(span, true, strs, Vec::new(), Vec::new())
     }
     fn path_all(&self,
                 sp: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                lifetimes: OptVec<ast::Lifetime>,
+                lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
@@ -275,7 +275,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                                                       .map(|ident| {
             ast::PathSegment {
                 identifier: ident,
-                lifetimes: opt_vec::Empty,
+                lifetimes: Vec::new(),
                 types: opt_vec::Empty,
             }
         }).collect();
@@ -342,7 +342,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               self.ident_of("option"),
                               self.ident_of("Option")
                           ),
-                          opt_vec::Empty,
+                          Vec::new(),
                           vec!( ty )), None)
     }
 
@@ -413,8 +413,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         ast::TraitTyParamBound(self.trait_ref(path))
     }
 
-    fn lifetime(&self, span: Span, ident: ast::Name) -> ast::Lifetime {
-        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, ident: ident }
+    fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {
+        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, name: name }
     }
 
     fn stmt_expr(&self, expr: @ast::Expr) -> @ast::Stmt {

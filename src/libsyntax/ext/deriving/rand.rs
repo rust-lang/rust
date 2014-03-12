@@ -14,7 +14,6 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
-use opt_vec;
 
 use std::vec_ng::Vec;
 
@@ -84,7 +83,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
             let rand_name = cx.path_all(trait_span,
                                         true,
                                         rand_ident.clone(),
-                                        opt_vec::Empty,
+                                        Vec::new(),
                                         Vec::new());
             let rand_name = cx.expr_path(rand_name);
 

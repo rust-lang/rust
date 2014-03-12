@@ -323,7 +323,7 @@ mod test {
                         segments: vec!(
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
-                                lifetimes: opt_vec::Empty,
+                                lifetimes: Vec::new(),
                                 types: opt_vec::Empty,
                             }
                         ),
@@ -342,12 +342,12 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 }
                             )
@@ -556,7 +556,7 @@ mod test {
                             segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 }
                             ),
@@ -578,7 +578,7 @@ mod test {
                                segments: vec!(
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
-                                    lifetimes: opt_vec::Empty,
+                                    lifetimes: Vec::new(),
                                     types: opt_vec::Empty,
                                 }
                                ),
@@ -605,7 +605,7 @@ mod test {
                                     segments: vec!(
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
-                                            lifetimes: opt_vec::Empty,
+                                            lifetimes: Vec::new(),
                                             types: opt_vec::Empty,
                                         }
                                     ),
@@ -633,7 +633,7 @@ mod test {
                                             ast::PathSegment {
                                                 identifier:
                                                     str_to_ident("int"),
-                                                lifetimes: opt_vec::Empty,
+                                                lifetimes: Vec::new(),
                                                 types: opt_vec::Empty,
                                             }
                                         ),
@@ -651,7 +651,7 @@ mod test {
                                                     ast::PathSegment {
                                                         identifier:
                                                             str_to_ident("b"),
-                                                        lifetimes: opt_vec::Empty,
+                                                        lifetimes: Vec::new(),
                                                         types: opt_vec::Empty,
                                                     }
                                                 ),
@@ -671,7 +671,7 @@ mod test {
                                     ast::ImpureFn,
                                     abi::AbiSet::Rust(),
                                     ast::Generics{ // no idea on either of these:
-                                        lifetimes: opt_vec::Empty,
+                                        lifetimes: Vec::new(),
                                         ty_params: opt_vec::Empty,
                                     },
                                     ast::P(ast::Block {
@@ -689,7 +689,7 @@ mod test {
                                                                 str_to_ident(
                                                                     "b"),
                                                                 lifetimes:
-                                                                opt_vec::Empty,
+                                                                Vec::new(),
                                                                 types:
                                                                 opt_vec::Empty
                                                             }
