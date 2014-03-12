@@ -509,8 +509,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             };
             match ty::get(base_ty).sty {
                 ty::ty_rptr(r_ptr, _) => {
-                    mk_subregion_due_to_derefence(rcx, expr.span,
-                                                  ty::ReScope(expr.id), r_ptr);
+                    mk_subregion_due_to_dereference(rcx, expr.span,
+                                                    ty::ReScope(expr.id), r_ptr);
                 }
                 _ => {}
             }
@@ -843,10 +843,9 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                         derefs: uint,
                         mut derefd_ty: ty::t) {
     /*!
-     * Invoked on any dereference that occurs, whether explicitly
-     * or through an auto-deref.  Checks that if this is a region
-     * pointer being derefenced, the lifetime of the pointer includes
-     * the deref expr.
+     * Invoked on any auto-dereference that occurs.  Checks that if
+     * this is a region pointer being dereferenced, the lifetime of
+     * the pointer includes the deref expr.
      */
     let r_deref_expr = ty::ReScope(deref_expr.id);
     for i in range(0u, derefs) {
@@ -887,8 +886,8 @@ fn constrain_autoderefs(rcx: &mut Rcx,
 
         match ty::get(derefd_ty).sty {
             ty::ty_rptr(r_ptr, _) => {
-                mk_subregion_due_to_derefence(rcx, deref_expr.span,
-                                              r_deref_expr, r_ptr);
+                mk_subregion_due_to_dereference(rcx, deref_expr.span,
+                                                r_deref_expr, r_ptr);
             }
             _ => {}
         }
@@ -902,10 +901,10 @@ fn constrain_autoderefs(rcx: &mut Rcx,
     }
 }
 
-pub fn mk_subregion_due_to_derefence(rcx: &mut Rcx,
-                                     deref_span: Span,
-                                     minimum_lifetime: ty::Region,
-                                     maximum_lifetime: ty::Region) {
+pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
+                                       deref_span: Span,
+                                       minimum_lifetime: ty::Region,
+                                       maximum_lifetime: ty::Region) {
     rcx.fcx.mk_subr(true, infer::DerefPointer(deref_span),
                     minimum_lifetime, maximum_lifetime)
 }
