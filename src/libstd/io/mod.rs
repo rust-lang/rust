@@ -172,6 +172,40 @@ need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
 on it. If `new` returned an `Err(..)` then the followup call to `write_line`
 will also return an error.
 
+## `try!`
+
+Explicit pattern matching on `IoResult`s can get quite verbose, especially
+when performing many I/O operations. Some examples (like those above) are
+alleviated with extra methods implemented on `IoResult`, but others have more
+complex interdependencies among each I/O operation.
+
+The `try!` macro from `std::macros` is provided as a method of early-return
+inside `Result`-returning functions. It expands to an early-return on `Err`
+and otherwise unwraps the contained `Ok` value.
+
+If you wanted to read several `u32`s from a file and return their product:
+
+```rust
+use std::io::{File, IoResult};
+
+fn file_product(p: &Path) -> IoResult<u32> {
+    let mut f = File::open(p);
+    let x1 = try!(f.read_le_u32());
+    let x2 = try!(f.read_le_u32());
+
+    Ok(x1 * x2)
+}
+
+match file_product(&Path::new("numbers.bin")) {
+    Ok(x) => println!("{}", x),
+    Err(e) => println!("Failed to read numbers!")
+}
+```
+
+With `try!` in `file_product`, each `read_le_u32` need not be directly
+concerned with error handling; instead its caller is responsible for
+responding to errors that may occur while attempting to read the numbers.
+
 */
 
 #[deny(unused_must_use)];

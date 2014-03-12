@@ -339,14 +339,19 @@ impl<T: Send> Packet<T> {
             DATA => Ok(true),
 
             // If the other end has hung up, then we have complete ownership
-            // of the port. We need to check to see if there was an upgrade
-            // requested, and if so, the other end needs to have its selection
-            // aborted.
+            // of the port. First, check if there was data waiting for us. This
+            // is possible if the other end sent something and then hung up.
+            //
+            // We then need to check to see if there was an upgrade requested,
+            // and if so, the upgraded port needs to have its selection aborted.
             DISCONNECTED => {
-                assert!(self.data.is_none());
-                match mem::replace(&mut self.upgrade, SendUsed) {
-                    GoUp(port) => Err(port),
-                    _ => Ok(true),
+                if self.data.is_some() {
+                    Ok(true)
+                } else {
+                    match mem::replace(&mut self.upgrade, SendUsed) {
+                        GoUp(port) => Err(port),
+                        _ => Ok(true),
+                    }
                 }
             }
 

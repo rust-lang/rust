@@ -10,7 +10,6 @@
 
 // Issue #901
 mod libc {
-    #[nolink]
     extern {
         pub fn printf(x: ());
     }

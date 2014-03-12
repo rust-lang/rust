@@ -832,6 +832,20 @@ impl Scheduler {
     }
 
     pub fn maybe_yield(mut ~self, cur: ~GreenTask) {
+        // It's possible for sched tasks to possibly call this function, and it
+        // just means that they're likely sending on channels (which
+        // occasionally call this function). Sched tasks follow different paths
+        // when executing yield_now(), which may possibly trip the assertion
+        // below. For this reason, we just have sched tasks bail out soon.
+        //
+        // Sched tasks have no need to yield anyway because as soon as they
+        // return they'll yield to other threads by falling back to the event
+        // loop. Additionally, we completely control sched tasks, so we can make
+        // sure that they never execute more than enough code.
+        if cur.is_sched() {
+            return cur.put_with_sched(self)
+        }
+
         // The number of times to do the yield check before yielding, chosen
         // arbitrarily.
         rtassert!(self.yield_check_count > 0);

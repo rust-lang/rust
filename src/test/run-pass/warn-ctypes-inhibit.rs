@@ -13,7 +13,6 @@
 #[allow(ctypes)];
 
 mod libc {
-    #[nolink]
     extern {
         pub fn malloc(size: int) -> *u8;
     }

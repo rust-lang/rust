@@ -1064,7 +1064,9 @@ fn item_module(w: &mut Writer, cx: &Context,
                 clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
                 clean::MacroItem(..)           => ("macros", "Macros"),
             };
-            try!(write!(w, "<h2 id='{id}'><a href=\"\\#{id}\">{name}</a></h2>\n<table>",
+            try!(write!(w,
+                        "<h2 id='{id}' class='section-link'>\
+                        <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
                         id = short, name = name));
         }
 

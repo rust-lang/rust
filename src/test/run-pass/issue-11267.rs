@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    use std::libc::c_int;
+// Tests that unary structs can be mutably borrowed.
 
-    extern {
-        pub static errno: c_int;
-    }
+struct Empty;
+
+impl Iterator<int> for Empty {
+    fn next(&mut self) -> Option<int> { None }
+}
+
+fn do_something_with(a : &mut Iterator<int>) {
+    println!("{}", a.next())
 }
 
 pub fn main() {
+    do_something_with(&mut Empty);
 }

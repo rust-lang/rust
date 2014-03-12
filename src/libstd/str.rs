@@ -89,7 +89,7 @@ use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
-use hash::{Hash, sip};
+use io::Writer;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -1331,10 +1331,13 @@ impl<'a> Default for MaybeOwned<'a> {
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-impl<'a> Hash for MaybeOwned<'a> {
+impl<'a, H: Writer> ::hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.as_slice().hash(s)
+    fn hash(&self, hasher: &mut H) {
+        match *self {
+            Slice(s) => s.hash(hasher),
+            Owned(ref s) => s.hash(hasher),
+        }
     }
 }
 
