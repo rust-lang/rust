@@ -21,6 +21,7 @@
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
+#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 

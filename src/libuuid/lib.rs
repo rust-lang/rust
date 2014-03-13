@@ -59,6 +59,8 @@ Examples of string representations:
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+#[allow(deprecated_owned_vector)];
+
 #[feature(default_type_params)];
 
 // NOTE remove the following two attributes after the next snapshot.

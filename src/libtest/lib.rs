@@ -30,6 +30,7 @@
 #[crate_type = "dylib"];
 
 #[feature(asm)];
+#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 extern crate extra;

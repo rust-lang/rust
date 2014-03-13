@@ -12,6 +12,7 @@
 
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
+#[allow(deprecated_owned_vector)];
 
 extern crate test;
 extern crate getopts;
