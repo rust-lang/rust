@@ -379,9 +379,9 @@ pub fn monitor(f: proc()) {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
-    let (p, c) = Chan::new();
-    let w = io::ChanWriter::new(c);
-    let mut r = io::PortReader::new(p);
+    let (tx, rx) = channel();
+    let w = io::ChanWriter::new(tx);
+    let mut r = io::ChanReader::new(rx);
 
     match task_builder.try(proc() {
         io::stdio::set_stderr(~w as ~io::Writer);

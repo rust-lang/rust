@@ -11,11 +11,11 @@
 use std::task;
 
 pub fn main() {
-    let (port, chan) = Chan::<&'static str>::new();
+    let (tx, rx) = channel::<&'static str>();
 
     task::spawn(proc() {
-        assert_eq!(port.recv(), "hello, world");
+        assert_eq!(rx.recv(), "hello, world");
     });
 
-    chan.send("hello, world");
+    tx.send("hello, world");
 }

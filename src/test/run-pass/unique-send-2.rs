@@ -10,25 +10,25 @@
 
 use std::task;
 
-fn child(c: &Chan<~uint>, i: uint) {
-    c.send(~i);
+fn child(tx: &Sender<~uint>, i: uint) {
+    tx.send(~i);
 }
 
 pub fn main() {
-    let (p, ch) = Chan::new();
+    let (tx, rx) = channel();
     let n = 100u;
     let mut expected = 0u;
     for i in range(0u, n) {
-        let ch = ch.clone();
+        let tx = tx.clone();
         task::spawn(proc() {
-            child(&ch, i)
+            child(&tx, i)
         });
         expected += i;
     }
 
     let mut actual = 0u;
     for _ in range(0u, n) {
-        let j = p.recv();
+        let j = rx.recv();
         actual += *j;
     }
 

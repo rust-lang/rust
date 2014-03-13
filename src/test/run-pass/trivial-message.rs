@@ -14,8 +14,8 @@
  */
 
 pub fn main() {
-    let (po, ch) = Chan::new();
-    ch.send(42);
-    let r = po.recv();
+    let (tx, rx) = channel();
+    tx.send(42);
+    let r = rx.recv();
     error!("{:?}", r);
 }

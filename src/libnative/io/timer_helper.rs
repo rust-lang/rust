@@ -33,28 +33,28 @@ use task;
 // only torn down after everything else has exited. This means that these
 // variables are read-only during use (after initialization) and both of which
 // are safe to use concurrently.
-static mut HELPER_CHAN: *mut Chan<Req> = 0 as *mut Chan<Req>;
+static mut HELPER_CHAN: *mut Sender<Req> = 0 as *mut Sender<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
 
 static mut TIMER_HELPER_EXIT: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
-pub fn boot(helper: fn(imp::signal, Port<Req>)) {
+pub fn boot(helper: fn(imp::signal, Receiver<Req>)) {
     static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     static mut INITIALIZED: bool = false;
 
     unsafe {
         let mut _guard = LOCK.lock();
         if !INITIALIZED {
-            let (msgp, msgc) = Chan::new();
+            let (tx, rx) = channel();
             // promote this to a shared channel
-            drop(msgc.clone());
-            HELPER_CHAN = cast::transmute(~msgc);
+            drop(tx.clone());
+            HELPER_CHAN = cast::transmute(~tx);
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
 
             task::spawn(proc() {
                 bookkeeping::decrement();
-                helper(receive, msgp);
+                helper(receive, rx);
                 TIMER_HELPER_EXIT.lock().signal()
             });
 
@@ -86,8 +86,8 @@ fn shutdown() {
     // Clean up after ther helper thread
     unsafe {
         imp::close(HELPER_SIGNAL);
-        let _chan: ~Chan<Req> = cast::transmute(HELPER_CHAN);
-        HELPER_CHAN = 0 as *mut Chan<Req>;
+        let _chan: ~Sender<Req> = cast::transmute(HELPER_CHAN);
+        HELPER_CHAN = 0 as *mut Sender<Req>;
         HELPER_SIGNAL = 0 as imp::signal;
     }
 }

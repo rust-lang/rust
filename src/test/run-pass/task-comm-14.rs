@@ -13,14 +13,14 @@
 use std::task;
 
 pub fn main() {
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
         info!("{}", i);
-        let ch = ch.clone();
-        task::spawn({let i = i; proc() { child(i, &ch) }});
+        let tx = tx.clone();
+        task::spawn({let i = i; proc() { child(i, &tx) }});
         i = i - 1;
     }
 
@@ -30,14 +30,14 @@ pub fn main() {
     i = 10;
     while (i > 0) {
         info!("{}", i);
-        po.recv();
+        rx.recv();
         i = i - 1;
     }
 
     info!("main thread exiting");
 }
 
-fn child(x: int, ch: &Chan<int>) {
+fn child(x: int, tx: &Sender<int>) {
     info!("{}", x);
-    ch.send(x);
+    tx.send(x);
 }

@@ -336,7 +336,7 @@ impl rtio::IoFactory for IoFactory {
             })
         }
     }
-    fn signal(&mut self, _signal: Signum, _channel: Chan<Signum>)
+    fn signal(&mut self, _signal: Signum, _channel: Sender<Signum>)
         -> IoResult<~RtioSignal> {
         Err(unimpl())
     }

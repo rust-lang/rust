@@ -77,15 +77,15 @@ mod test {
         let os::Pipe { input, out } = os::pipe();
         let out = PipeStream::open(out);
         let mut input = PipeStream::open(input);
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;
             out.write([10]).unwrap();
-            p.recv(); // don't close the pipe until the other read has finished
+            rx.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
         input.read(buf).unwrap();
-        c.send(());
+        tx.send(());
     })
 }

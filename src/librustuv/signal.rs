@@ -21,13 +21,13 @@ pub struct SignalWatcher {
     handle: *uvll::uv_signal_t,
     home: HomeHandle,
 
-    channel: Chan<Signum>,
+    channel: Sender<Signum>,
     signal: Signum,
 }
 
 impl SignalWatcher {
     pub fn new(io: &mut UvIoFactory, signum: Signum,
-               channel: Chan<Signum>) -> Result<~SignalWatcher, UvError> {
+               channel: Sender<Signum>) -> Result<~SignalWatcher, UvError> {
         let s = ~SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
             home: io.make_handle(),
@@ -80,12 +80,12 @@ mod test {
     #[test]
     fn closing_channel_during_drop_doesnt_kill_everything() {
         // see issue #10375, relates to timers as well.
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
-                                         chan);
+                                         tx);
 
         spawn(proc() {
-            let _ = port.recv_opt();
+            let _ = rx.recv_opt();
         });
 
         // when we drop the SignalWatcher we're going to destroy the channel,

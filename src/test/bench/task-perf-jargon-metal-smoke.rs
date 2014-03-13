@@ -22,7 +22,7 @@ use std::os;
 use std::task;
 use std::uint;
 
-fn child_generation(gens_left: uint, c: comm::Chan<()>) {
+fn child_generation(gens_left: uint, tx: comm::Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
@@ -31,9 +31,9 @@ fn child_generation(gens_left: uint, c: comm::Chan<()>) {
             task::deschedule(); // shake things up a bit
         }
         if gens_left > 0 {
-            child_generation(gens_left - 1, c); // recurse
+            child_generation(gens_left - 1, tx); // recurse
         } else {
-            c.send(())
+            tx.send(())
         }
     });
 }
@@ -48,9 +48,9 @@ fn main() {
         args.clone()
     };
 
-    let (p,c) = Chan::new();
-    child_generation(from_str::<uint>(args[1]).unwrap(), c);
-    if p.recv_opt().is_none() {
+    let (tx, rx) = channel();
+    child_generation(from_str::<uint>(args[1]).unwrap(), tx);
+    if rx.recv_opt().is_none() {
         fail!("it happened when we slumbered");
     }
 }

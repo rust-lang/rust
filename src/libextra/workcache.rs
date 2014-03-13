@@ -237,7 +237,7 @@ pub struct Exec {
 
 enum Work<'a, T> {
     WorkValue(T),
-    WorkFromTask(&'a Prep<'a>, Port<(Exec, T)>),
+    WorkFromTask(&'a Prep<'a>, Receiver<(Exec, T)>),
 }
 
 fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
@@ -411,7 +411,7 @@ impl<'a> Prep<'a> {
 
             _ => {
                 debug!("Cache miss!");
-                let (port, chan) = Chan::new();
+                let (tx, rx) = channel();
                 let blk = bo.take_unwrap();
 
                 // FIXME: What happens if the task fails?
@@ -421,9 +421,9 @@ impl<'a> Prep<'a> {
                         discovered_outputs: WorkMap::new(),
                     };
                     let v = blk(&mut exe);
-                    chan.send((exe, v));
+                    tx.send((exe, v));
                 });
-                Work::from_task(self, port)
+                Work::from_task(self, rx)
             }
         }
     }
@@ -437,7 +437,7 @@ impl<'a, T:Send +
     pub fn from_value(elt: T) -> Work<'a, T> {
         WorkValue(elt)
     }
-    pub fn from_task(prep: &'a Prep<'a>, port: Port<(Exec, T)>)
+    pub fn from_task(prep: &'a Prep<'a>, port: Receiver<(Exec, T)>)
         -> Work<'a, T> {
         WorkFromTask(prep, port)
     }

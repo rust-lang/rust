@@ -13,30 +13,27 @@
 use std::os;
 
 fn start(n_tasks: int, token: int) {
-    let (p, ch1) = Chan::new();
-    let mut p = p;
-    let ch1 = ch1;
-    ch1.send(token);
+    let (tx, mut rx) = channel();
+    tx.send(token);
     //  XXX could not get this to work with a range closure
     let mut i = 2;
     while i <= n_tasks {
-        let (next_p, ch) = Chan::new();
+        let (tx, next_rx) = channel();
         let imm_i = i;
-        let imm_p = p;
+        let imm_rx = rx;
         spawn(proc() {
-            roundtrip(imm_i, n_tasks, &imm_p, &ch);
+            roundtrip(imm_i, n_tasks, &imm_rx, &tx);
         });
-        p = next_p;
+        rx = next_rx;
         i += 1;
     }
-    let imm_p = p;
-    let imm_ch = ch1;
+    let imm_rx = rx;
     spawn(proc() {
-        roundtrip(1, n_tasks, &imm_p, &imm_ch);
+        roundtrip(1, n_tasks, &imm_rx, &tx);
     });
 }
 
-fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
+fn roundtrip(id: int, n_tasks: int, p: &Receiver<int>, ch: &Sender<int>) {
     loop {
         match p.recv() {
           1 => {

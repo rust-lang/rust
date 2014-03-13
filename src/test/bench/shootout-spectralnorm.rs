@@ -35,13 +35,13 @@ fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
     // tasks.  To do that, we give to each tasks a wait_chan that we
     // drop at the end of the work.  At the end of this function, we
     // wait until the channel hang up.
-    let (wait_port, wait_chan) = Chan::new();
+    let (tx, rx) = channel();
 
     let len = out.read(|out| out.len());
     let chunk = len / 100 + 1;
     for chk in count(0, chunk) {
         if chk >= len {break;}
-        let w = wait_chan.clone();
+        let tx = tx.clone();
         let v = v.clone();
         let out = out.clone();
         spawn(proc() {
@@ -49,13 +49,13 @@ fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
                 let val = v.read(|v| f(v, i));
                 out.write(|out| out[i] = val);
             }
-            drop(w)
+            drop(tx)
         });
     }
 
     // wait until the channel hang up (every task finished)
-    drop(wait_chan);
-    for () in wait_port.iter() {}
+    drop(tx);
+    for () in rx.iter() {}
 }
 
 fn mult_Av_impl(v: &~[f64], i: uint) -> f64 {

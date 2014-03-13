@@ -532,17 +532,17 @@ mod test {
             }
         }
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         for _ in range(0, N) {
-            let c2 = c.clone();
-            native::task::spawn(proc() { inc(); c2.send(()); });
-            let c2 = c.clone();
-            spawn(proc() { inc(); c2.send(()); });
+            let tx2 = tx.clone();
+            native::task::spawn(proc() { inc(); tx2.send(()); });
+            let tx2 = tx.clone();
+            spawn(proc() { inc(); tx2.send(()); });
         }
 
-        drop(c);
+        drop(tx);
         for _ in range(0, 2 * N) {
-            p.recv();
+            rx.recv();
         }
         assert_eq!(unsafe {CNT}, M * N * 2);
         unsafe {

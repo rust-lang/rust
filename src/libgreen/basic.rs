@@ -255,11 +255,11 @@ mod test {
     #[test]
     fn some_channels() {
         run(proc() {
-            let (p, c) = Chan::new();
+            let (tx, rx) = channel();
             spawn(proc() {
-                c.send(());
+                tx.send(());
             });
-            p.recv();
+            rx.recv();
         });
     }
 
@@ -272,11 +272,11 @@ mod test {
 
         for _ in range(0, 20) {
             pool.spawn(TaskOpts::new(), proc() {
-                let (p, c) = Chan::new();
+                let (tx, rx) = channel();
                 spawn(proc() {
-                    c.send(());
+                    tx.send(());
                 });
-                p.recv();
+                rx.recv();
             });
         }
 

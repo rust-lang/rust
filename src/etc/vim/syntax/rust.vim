@@ -96,7 +96,7 @@ syn keyword rustTrait MutableVector MutableTotalOrdVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
 
 "syn keyword rustFunction stream
-syn keyword rustTrait Port Chan
+syn keyword rustTrait Sender Receiver
 "syn keyword rustFunction spawn
 
 syn keyword   rustSelf        self

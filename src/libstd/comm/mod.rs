@@ -8,38 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Communication primitives for concurrent tasks (`Chan` and `Port` types)
+//! Communication primitives for concurrent tasks
 //!
 //! Rust makes it very difficult to share data among tasks to prevent race
 //! conditions and to improve parallelism, but there is often a need for
 //! communication between concurrent tasks. The primitives defined in this
 //! module are the building blocks for synchronization in rust.
 //!
-//! This module currently provides two types:
+//! This module provides message-based communication over channels, concretely
+//! defined as two types:
 //!
-//! * `Chan`
-//! * `Port`
+//! * `Sender`
+//! * `Receiver`
 //!
-//! `Chan` is used to send data to a `Port`. A `Chan` is clone-able such that
-//! many tasks can send simultaneously to one receiving port. These
-//! communication primitives are *task blocking*, not *thread blocking*. This
-//! means that if one task is blocked on a channel, other tasks can continue to
-//! make progress.
+//! A `Sender` is used to send data to a `Receiver`. A `Sender` is clone-able
+//! such that many tasks can send simultaneously to one receiver. These
+//! channels are *task blocking*, not *thread blocking*. This means that if one
+//! task is blocked on a channel, other tasks can continue to make progress.
 //!
 //! Rust channels can be used as if they have an infinite internal buffer. What
-//! this means is that the `send` operation will never block. `Port`s, on the
-//! other hand, will block the task if there is no data to be received.
+//! this means is that the `send` operation will never block. `Receiver`s, on
+//! the other hand, will block the task if there is no data to be received.
 //!
 //! ## Failure Propagation
 //!
 //! In addition to being a core primitive for communicating in rust, channels
-//! and ports are the points at which failure is propagated among tasks.
-//! Whenever the one half of channel is closed, the other half will have its
-//! next operation `fail!`. The purpose of this is to allow propagation of
-//! failure among tasks that are linked to one another via channels.
+//! are the points at which failure is propagated among tasks.  Whenever the one
+//! half of channel is closed, the other half will have its next operation
+//! `fail!`. The purpose of this is to allow propagation of failure among tasks
+//! that are linked to one another via channels.
 //!
-//! There are methods on both of `Chan` and `Port` to perform their respective
-//! operations without failing, however.
+//! There are methods on both of `Sender` and `Receiver` to perform their
+//! respective operations without failing, however.
 //!
 //! ## Outside the Runtime
 //!
@@ -58,31 +58,31 @@
 //!
 //! ```rust,should_fail
 //! // Create a simple streaming channel
-//! let (port, chan) = Chan::new();
+//! let (tx, rx) = channel();
 //! spawn(proc() {
-//!     chan.send(10);
+//!     tx.send(10);
 //! });
-//! assert_eq!(port.recv(), 10);
+//! assert_eq!(rx.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks
-//! let (port, chan) = Chan::new();
+//! let (tx, rx) = channel();
 //! for i in range(0, 10) {
-//!     let chan = chan.clone();
+//!     let tx = tx.clone();
 //!     spawn(proc() {
-//!         chan.send(i);
+//!         tx.send(i);
 //!     })
 //! }
 //!
 //! for _ in range(0, 10) {
-//!     let j = port.recv();
+//!     let j = rx.recv();
 //!     assert!(0 <= j && j < 10);
 //! }
 //!
 //! // The call to recv() will fail!() because the channel has already hung
 //! // up (or been deallocated)
-//! let (port, chan) = Chan::<int>::new();
-//! drop(chan);
-//! port.recv();
+//! let (tx, rx) = channel::<int>();
+//! drop(tx);
+//! rx.recv();
 //! ```
 
 // A description of how Rust's channel implementation works
@@ -118,7 +118,7 @@
 //
 // ## Concurrent queues
 //
-// The basic idea of Rust's Chan/Port types is that send() never blocks, but
+// The basic idea of Rust's Sender/Receiver types is that send() never blocks, but
 // recv() obviously blocks. This means that under the hood there must be some
 // shared and concurrent queue holding all of the actual data.
 //
@@ -177,10 +177,9 @@
 //
 // ### The internal atomic counter
 //
-// Every channel/port/shared channel have a shared counter with their
-// counterparts to keep track of the size of the queue. This counter is used to
-// abort descheduling by the receiver and to know when to wake up on the sending
-// side.
+// Every channel has a shared counter with each half to keep track of the size
+// of the queue. This counter is used to abort descheduling by the receiver and
+// to know when to wake up on the sending side.
 //
 // As seen in the pseudocode, senders will increment this count and receivers
 // will decrement the count. The theory behind this is that if a sender sees a
@@ -195,7 +194,7 @@
 // it was actually appropriate to wake up a receiver.
 //
 // Instead, the "steal count" is kept track of separately (not atomically
-// because it's only used by ports), and then the decrement() call when
+// because it's only used by receivers), and then the decrement() call when
 // descheduling will lump in all of the recent steals into one large decrement.
 //
 // The implication of this is that if a sender sees a -1 count, then there's
@@ -269,9 +268,9 @@ macro_rules! test (
             $($a)* #[test] fn uv() { f() }
             $($a)* #[test] fn native() {
                 use native;
-                let (p, c) = Chan::new();
-                native::task::spawn(proc() { c.send(f()) });
-                p.recv();
+                let (tx, rx) = channel();
+                native::task::spawn(proc() { tx.send(f()) });
+                rx.recv();
             }
         }
     )
@@ -288,23 +287,23 @@ static RESCHED_FREQ: int = 256;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
-pub struct Port<T> {
+pub struct Receiver<T> {
     priv inner: Flavor<T>,
     priv receives: Cell<uint>,
     // can't share in an arc
     priv marker: marker::NoFreeze,
 }
 
-/// An iterator over messages received on a port, this iterator will block
+/// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 pub struct Messages<'a, T> {
-    priv port: &'a Port<T>
+    priv rx: &'a Receiver<T>
 }
 
 /// The sending-half of Rust's channel type. This half can only be owned by one
 /// task
-pub struct Chan<T> {
+pub struct Sender<T> {
     priv inner: Flavor<T>,
     priv sends: Cell<uint>,
     // can't share in an arc
@@ -331,30 +330,30 @@ enum Flavor<T> {
     Shared(UnsafeArc<shared::Packet<T>>),
 }
 
-impl<T: Send> Chan<T> {
-    /// Creates a new port/channel pair. All data send on the channel returned
-    /// will become available on the port as well. See the documentation of
-    /// `Port` and `Chan` to see what's possible with them.
-    pub fn new() -> (Port<T>, Chan<T>) {
-        let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
-        (Port::my_new(Oneshot(a)), Chan::my_new(Oneshot(b)))
-    }
+/// Creates a new channel, returning the sender/receiver halves. All data sent
+/// on the sender will become available on the receiver. See the documentation
+/// of `Receiver` and `Sender` to see what's possible with them.
+pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
+    let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
+    (Sender::my_new(Oneshot(b)), Receiver::my_new(Oneshot(a)))
+}
 
-    fn my_new(inner: Flavor<T>) -> Chan<T> {
-        Chan { inner: inner, sends: Cell::new(0), marker: marker::NoFreeze }
+impl<T: Send> Sender<T> {
+    fn my_new(inner: Flavor<T>) -> Sender<T> {
+        Sender { inner: inner, sends: Cell::new(0), marker: marker::NoFreeze }
     }
 
     /// Sends a value along this channel to be received by the corresponding
-    /// port.
+    /// receiver.
     ///
     /// Rust channels are infinitely buffered so this method will never block.
     ///
     /// # Failure
     ///
     /// This function will fail if the other end of the channel has hung up.
-    /// This means that if the corresponding port has fallen out of scope, this
-    /// function will trigger a fail message saying that a message is being sent
-    /// on a closed channel.
+    /// This means that if the corresponding receiver has fallen out of scope,
+    /// this function will trigger a fail message saying that a message is
+    /// being sent on a closed channel.
     ///
     /// Note that if this function does *not* fail, it does not mean that the
     /// data will be successfully received. All sends are placed into a queue,
@@ -372,13 +371,13 @@ impl<T: Send> Chan<T> {
     /// Attempts to send a value on this channel, returning whether it was
     /// successfully sent.
     ///
-    /// A successful send occurs when it is determined that the other end of the
-    /// channel has not hung up already. An unsuccessful send would be one where
-    /// the corresponding port has already been deallocated. Note that a return
-    /// value of `false` means that the data will never be received, but a
-    /// return value of `true` does *not* mean that the data will be received.
-    /// It is possible for the corresponding port to hang up immediately after
-    /// this function returns `true`.
+    /// A successful send occurs when it is determined that the other end of
+    /// the channel has not hung up already. An unsuccessful send would be one
+    /// where the corresponding receiver has already been deallocated. Note
+    /// that a return value of `false` means that the data will never be
+    /// received, but a return value of `true` does *not* mean that the data
+    /// will be received.  It is possible for the corresponding receiver to
+    /// hang up immediately after this function returns `true`.
     ///
     /// Like `send`, this method will never block. If the failure of send cannot
     /// be tolerated, then this method should be used instead.
@@ -406,7 +405,7 @@ impl<T: Send> Chan<T> {
                         return (*p).send(t);
                     } else {
                         let (a, b) = UnsafeArc::new2(stream::Packet::new());
-                        match (*p).upgrade(Port::my_new(Stream(b))) {
+                        match (*p).upgrade(Receiver::my_new(Stream(b))) {
                             oneshot::UpSuccess => {
                                 (*a.get()).send(t);
                                 (a, true)
@@ -426,48 +425,48 @@ impl<T: Send> Chan<T> {
         };
 
         unsafe {
-            let mut tmp = Chan::my_new(Stream(new_inner));
+            let mut tmp = Sender::my_new(Stream(new_inner));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
         return ret;
     }
 }
 
-impl<T: Send> Clone for Chan<T> {
-    fn clone(&self) -> Chan<T> {
+impl<T: Send> Clone for Sender<T> {
+    fn clone(&self) -> Sender<T> {
         let (packet, sleeper) = match self.inner {
             Oneshot(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Port::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
                     oneshot::UpSuccess | oneshot::UpDisconnected => (b, None),
                     oneshot::UpWoke(task) => (b, Some(task))
                 }
             }
             Stream(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Port::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
                     stream::UpSuccess | stream::UpDisconnected => (b, None),
                     stream::UpWoke(task) => (b, Some(task)),
                 }
             }
             Shared(ref p) => {
                 unsafe { (*p.get()).clone_chan(); }
-                return Chan::my_new(Shared(p.clone()));
+                return Sender::my_new(Shared(p.clone()));
             }
         };
 
         unsafe {
             (*packet.get()).inherit_blocker(sleeper);
 
-            let mut tmp = Chan::my_new(Shared(packet.clone()));
+            let mut tmp = Sender::my_new(Shared(packet.clone()));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
-        Chan::my_new(Shared(packet))
+        Sender::my_new(Shared(packet))
     }
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Chan<T> {
+impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
         match self.inner {
             Oneshot(ref mut p) => unsafe { (*p.get()).drop_chan(); },
@@ -477,16 +476,16 @@ impl<T: Send> Drop for Chan<T> {
     }
 }
 
-impl<T: Send> Port<T> {
-    fn my_new(inner: Flavor<T>) -> Port<T> {
-        Port { inner: inner, receives: Cell::new(0), marker: marker::NoFreeze }
+impl<T: Send> Receiver<T> {
+    fn my_new(inner: Flavor<T>) -> Receiver<T> {
+        Receiver { inner: inner, receives: Cell::new(0), marker: marker::NoFreeze }
     }
 
-    /// Blocks waiting for a value on this port
+    /// Blocks waiting for a value on this receiver
     ///
     /// This function will block if necessary to wait for a corresponding send
-    /// on the channel from its paired `Chan` structure. This port will be woken
-    /// up when data is ready, and the data will be returned.
+    /// on the channel from its paired `Sender` structure. This receiver will
+    /// be woken up when data is ready, and the data will be returned.
     ///
     /// # Failure
     ///
@@ -500,7 +499,7 @@ impl<T: Send> Port<T> {
     ///   when the other end hangs up
     ///
     /// * If blocking is not desired, then the `try_recv` method will attempt to
-    ///   peek at a value on this port.
+    ///   peek at a value on this receiver.
     pub fn recv(&self) -> T {
         match self.recv_opt() {
             Some(t) => t,
@@ -508,14 +507,14 @@ impl<T: Send> Port<T> {
         }
     }
 
-    /// Attempts to return a pending value on this port without blocking
+    /// Attempts to return a pending value on this receiver without blocking
     ///
     /// This method will never block the caller in order to wait for data to
     /// become available. Instead, this will always return immediately with a
     /// possible option of pending data on the channel.
     ///
     /// This is useful for a flavor of "optimistic check" before deciding to
-    /// block on a port.
+    /// block on a receiver.
     ///
     /// This function cannot fail.
     pub fn try_recv(&self) -> TryRecvResult<T> {
@@ -537,7 +536,7 @@ impl<T: Send> Port<T> {
                         Ok(t) => return Data(t),
                         Err(oneshot::Empty) => return Empty,
                         Err(oneshot::Disconnected) => return Disconnected,
-                        Err(oneshot::Upgraded(port)) => port,
+                        Err(oneshot::Upgraded(rx)) => rx,
                     }
                 }
                 Stream(ref p) => {
@@ -545,7 +544,7 @@ impl<T: Send> Port<T> {
                         Ok(t) => return Data(t),
                         Err(stream::Empty) => return Empty,
                         Err(stream::Disconnected) => return Disconnected,
-                        Err(stream::Upgraded(port)) => port,
+                        Err(stream::Upgraded(rx)) => rx,
                     }
                 }
                 Shared(ref p) => {
@@ -563,18 +562,18 @@ impl<T: Send> Port<T> {
         }
     }
 
-    /// Attempt to wait for a value on this port, but does not fail if the
+    /// Attempt to wait for a value on this receiver, but does not fail if the
     /// corresponding channel has hung up.
     ///
     /// This implementation of iterators for ports will always block if there is
-    /// not data available on the port, but it will not fail in the case that
-    /// the channel has been deallocated.
+    /// not data available on the receiver, but it will not fail in the case
+    /// that the channel has been deallocated.
     ///
     /// In other words, this function has the same semantics as the `recv`
     /// method except for the failure aspect.
     ///
     /// If the channel has hung up, then `None` is returned. Otherwise `Some` of
-    /// the value found on the port is returned.
+    /// the value found on the receiver is returned.
     pub fn recv_opt(&self) -> Option<T> {
         loop {
             let mut new_port = match self.inner {
@@ -583,7 +582,7 @@ impl<T: Send> Port<T> {
                         Ok(t) => return Some(t),
                         Err(oneshot::Empty) => return unreachable!(),
                         Err(oneshot::Disconnected) => return None,
-                        Err(oneshot::Upgraded(port)) => port,
+                        Err(oneshot::Upgraded(rx)) => rx,
                     }
                 }
                 Stream(ref p) => {
@@ -591,7 +590,7 @@ impl<T: Send> Port<T> {
                         Ok(t) => return Some(t),
                         Err(stream::Empty) => return unreachable!(),
                         Err(stream::Disconnected) => return None,
-                        Err(stream::Upgraded(port)) => port,
+                        Err(stream::Upgraded(rx)) => rx,
                     }
                 }
                 Shared(ref p) => {
@@ -612,11 +611,11 @@ impl<T: Send> Port<T> {
     /// Returns an iterator which will block waiting for messages, but never
     /// `fail!`. It will return `None` when the channel has hung up.
     pub fn iter<'a>(&'a self) -> Messages<'a, T> {
-        Messages { port: self }
+        Messages { rx: self }
     }
 }
 
-impl<T: Send> select::Packet for Port<T> {
+impl<T: Send> select::Packet for Receiver<T> {
     fn can_recv(&self) -> bool {
         loop {
             let mut new_port = match self.inner {
@@ -650,14 +649,14 @@ impl<T: Send> select::Packet for Port<T> {
                     match unsafe { (*p.get()).start_selection(task) } {
                         oneshot::SelSuccess => return Ok(()),
                         oneshot::SelCanceled(task) => return Err(task),
-                        oneshot::SelUpgraded(t, port) => (t, port),
+                        oneshot::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Stream(ref p) => {
                     match unsafe { (*p.get()).start_selection(task) } {
                         stream::SelSuccess => return Ok(()),
                         stream::SelCanceled(task) => return Err(task),
-                        stream::SelUpgraded(t, port) => (t, port),
+                        stream::SelUpgraded(t, rx) => (t, rx),
                     }
                 }
                 Shared(ref p) => {
@@ -695,11 +694,11 @@ impl<T: Send> select::Packet for Port<T> {
 }
 
 impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
-    fn next(&mut self) -> Option<T> { self.port.recv_opt() }
+    fn next(&mut self) -> Option<T> { self.rx.recv_opt() }
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Port<T> {
+impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
         match self.inner {
             Oneshot(ref mut p) => unsafe { (*p.get()).drop_port(); },
@@ -725,332 +724,333 @@ mod test {
     }
 
     test!(fn smoke() {
-        let (p, c) = Chan::new();
-        c.send(1);
-        assert_eq!(p.recv(), 1);
+        let (tx, rx) = channel();
+        tx.send(1);
+        assert_eq!(rx.recv(), 1);
     })
 
     test!(fn drop_full() {
-        let (_p, c) = Chan::new();
-        c.send(~1);
+        let (tx, _rx) = channel();
+        tx.send(~1);
     })
 
     test!(fn drop_full_shared() {
-        let (_p, c) = Chan::new();
-        c.send(~1);
+        let (tx, _rx) = channel();
+        drop(tx.clone());
+        drop(tx.clone());
+        tx.send(~1);
     })
 
     test!(fn smoke_shared() {
-        let (p, c) = Chan::new();
-        c.send(1);
-        assert_eq!(p.recv(), 1);
-        let c = c.clone();
-        c.send(1);
-        assert_eq!(p.recv(), 1);
+        let (tx, rx) = channel();
+        tx.send(1);
+        assert_eq!(rx.recv(), 1);
+        let tx = tx.clone();
+        tx.send(1);
+        assert_eq!(rx.recv(), 1);
     })
 
     test!(fn smoke_threads() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            c.send(1);
+            tx.send(1);
         });
-        assert_eq!(p.recv(), 1);
+        assert_eq!(rx.recv(), 1);
     })
 
     test!(fn smoke_port_gone() {
-        let (p, c) = Chan::new();
-        drop(p);
-        c.send(1);
+        let (tx, rx) = channel();
+        drop(rx);
+        tx.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone() {
-        let (p, c) = Chan::new();
-        drop(p);
-        c.send(1);
+        let (tx, rx) = channel();
+        drop(rx);
+        tx.send(1);
     } #[should_fail])
 
     test!(fn smoke_shared_port_gone2() {
-        let (p, c) = Chan::new();
-        drop(p);
-        let c2 = c.clone();
-        drop(c);
-        c2.send(1);
+        let (tx, rx) = channel();
+        drop(rx);
+        let tx2 = tx.clone();
+        drop(tx);
+        tx2.send(1);
     } #[should_fail])
 
     test!(fn port_gone_concurrent() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            p.recv();
+            rx.recv();
         });
-        loop { c.send(1) }
+        loop { tx.send(1) }
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
-        let (p, c) = Chan::new();
-        let c1 = c.clone();
+        let (tx, rx) = channel();
+        let tx2 = tx.clone();
         spawn(proc() {
-            p.recv();
+            rx.recv();
         });
         loop {
-            c.send(1);
-            c1.send(1);
+            tx.send(1);
+            tx2.send(1);
         }
     } #[should_fail])
 
     test!(fn smoke_chan_gone() {
-        let (p, c) = Chan::<int>::new();
-        drop(c);
-        p.recv();
+        let (tx, rx) = channel::<int>();
+        drop(tx);
+        rx.recv();
     } #[should_fail])
 
     test!(fn smoke_chan_gone_shared() {
-        let (p, c) = Chan::<()>::new();
-        let c2 = c.clone();
-        drop(c);
-        drop(c2);
-        p.recv();
+        let (tx, rx) = channel::<()>();
+        let tx2 = tx.clone();
+        drop(tx);
+        drop(tx2);
+        rx.recv();
     } #[should_fail])
 
     test!(fn chan_gone_concurrent() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            c.send(1);
-            c.send(1);
+            tx.send(1);
+            tx.send(1);
         });
-        loop { p.recv(); }
+        loop { rx.recv(); }
     } #[should_fail])
 
     test!(fn stress() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            for _ in range(0, 10000) { c.send(1); }
+            for _ in range(0, 10000) { tx.send(1); }
         });
         for _ in range(0, 10000) {
-            assert_eq!(p.recv(), 1);
+            assert_eq!(rx.recv(), 1);
         }
     })
 
     test!(fn stress_shared() {
         static AMT: uint = 10000;
         static NTHREADS: uint = 8;
-        let (p, c) = Chan::<int>::new();
-        let (p1, c1) = Chan::new();
+        let (tx, rx) = channel::<int>();
+        let (dtx, drx) = channel::<()>();
 
         spawn(proc() {
             for _ in range(0, AMT * NTHREADS) {
-                assert_eq!(p.recv(), 1);
+                assert_eq!(rx.recv(), 1);
             }
-            match p.try_recv() {
+            match rx.try_recv() {
                 Data(..) => fail!(),
                 _ => {}
             }
-            c1.send(());
+            dtx.send(());
         });
 
         for _ in range(0, NTHREADS) {
-            let c = c.clone();
+            let tx = tx.clone();
             spawn(proc() {
-                for _ in range(0, AMT) { c.send(1); }
+                for _ in range(0, AMT) { tx.send(1); }
             });
         }
-        p1.recv();
+        drop(tx);
+        drx.recv();
     })
 
     #[test]
     fn send_from_outside_runtime() {
-        let (p, c) = Chan::<int>::new();
-        let (p1, c1) = Chan::new();
-        let (port, chan) = Chan::new();
-        let chan2 = chan.clone();
+        let (tx1, rx1) = channel::<()>();
+        let (tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
+        let tx4 = tx3.clone();
         spawn(proc() {
-            c1.send(());
+            tx1.send(());
             for _ in range(0, 40) {
-                assert_eq!(p.recv(), 1);
+                assert_eq!(rx2.recv(), 1);
             }
-            chan2.send(());
+            tx3.send(());
         });
-        p1.recv();
+        rx1.recv();
         native::task::spawn(proc() {
             for _ in range(0, 40) {
-                c.send(1);
+                tx2.send(1);
             }
-            chan.send(());
+            tx4.send(());
         });
-        port.recv();
-        port.recv();
+        rx3.recv();
+        rx3.recv();
     }
 
     #[test]
     fn recv_from_outside_runtime() {
-        let (p, c) = Chan::<int>::new();
-        let (dp, dc) = Chan::new();
+        let (tx, rx) = channel::<int>();
+        let (dtx, drx) = channel();
         native::task::spawn(proc() {
             for _ in range(0, 40) {
-                assert_eq!(p.recv(), 1);
+                assert_eq!(rx.recv(), 1);
             }
-            dc.send(());
+            dtx.send(());
         });
         for _ in range(0, 40) {
-            c.send(1);
+            tx.send(1);
         }
-        dp.recv();
+        drx.recv();
     }
 
     #[test]
     fn no_runtime() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, c2) = Chan::<int>::new();
-        let (port, chan) = Chan::new();
-        let chan2 = chan.clone();
+        let (tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
+        let tx4 = tx3.clone();
         native::task::spawn(proc() {
-            assert_eq!(p1.recv(), 1);
-            c2.send(2);
-            chan2.send(());
+            assert_eq!(rx1.recv(), 1);
+            tx2.send(2);
+            tx4.send(());
         });
         native::task::spawn(proc() {
-            c1.send(1);
-            assert_eq!(p2.recv(), 2);
-            chan.send(());
+            tx1.send(1);
+            assert_eq!(rx2.recv(), 2);
+            tx3.send(());
         });
-        port.recv();
-        port.recv();
+        rx3.recv();
+        rx3.recv();
     }
 
     test!(fn oneshot_single_thread_close_port_first() {
         // Simple test of closing without sending
-        let (port, _chan) = Chan::<int>::new();
-        { let _p = port; }
+        let (_tx, rx) = channel::<int>();
+        drop(rx);
     })
 
     test!(fn oneshot_single_thread_close_chan_first() {
         // Simple test of closing without sending
-        let (_port, chan) = Chan::<int>::new();
-        { let _c = chan; }
+        let (tx, _rx) = channel::<int>();
+        drop(tx);
     })
 
     test!(fn oneshot_single_thread_send_port_close() {
         // Testing that the sender cleans up the payload if receiver is closed
-        let (port, chan) = Chan::<~int>::new();
-        { let _p = port; }
-        chan.send(~0);
+        let (tx, rx) = channel::<~int>();
+        drop(rx);
+        tx.send(~0);
     } #[should_fail])
 
     test!(fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will fail
         let res = task::try(proc() {
-            let (port, chan) = Chan::<~int>::new();
-            { let _c = chan; }
-            port.recv();
+            let (tx, rx) = channel::<int>();
+            drop(tx);
+            rx.recv();
         });
         // What is our res?
         assert!(res.is_err());
     })
 
     test!(fn oneshot_single_thread_send_then_recv() {
-        let (port, chan) = Chan::<~int>::new();
-        chan.send(~10);
-        assert!(port.recv() == ~10);
+        let (tx, rx) = channel::<~int>();
+        tx.send(~10);
+        assert!(rx.recv() == ~10);
     })
 
     test!(fn oneshot_single_thread_try_send_open() {
-        let (port, chan) = Chan::<int>::new();
-        assert!(chan.try_send(10));
-        assert!(port.recv() == 10);
+        let (tx, rx) = channel::<int>();
+        assert!(tx.try_send(10));
+        assert!(rx.recv() == 10);
     })
 
     test!(fn oneshot_single_thread_try_send_closed() {
-        let (port, chan) = Chan::<int>::new();
-        { let _p = port; }
-        assert!(!chan.try_send(10));
+        let (tx, rx) = channel::<int>();
+        drop(rx);
+        assert!(!tx.try_send(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_open() {
-        let (port, chan) = Chan::<int>::new();
-        chan.send(10);
-        assert!(port.recv_opt() == Some(10));
+        let (tx, rx) = channel::<int>();
+        tx.send(10);
+        assert!(rx.recv_opt() == Some(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_closed() {
-        let (port, chan) = Chan::<int>::new();
-        { let _c = chan; }
-        assert!(port.recv_opt() == None);
+        let (tx, rx) = channel::<int>();
+        drop(tx);
+        assert!(rx.recv_opt() == None);
     })
 
     test!(fn oneshot_single_thread_peek_data() {
-        let (port, chan) = Chan::<int>::new();
-        assert_eq!(port.try_recv(), Empty)
-        chan.send(10);
-        assert_eq!(port.try_recv(), Data(10));
+        let (tx, rx) = channel::<int>();
+        assert_eq!(rx.try_recv(), Empty)
+        tx.send(10);
+        assert_eq!(rx.try_recv(), Data(10));
     })
 
     test!(fn oneshot_single_thread_peek_close() {
-        let (port, chan) = Chan::<int>::new();
-        { let _c = chan; }
-        assert_eq!(port.try_recv(), Disconnected);
-        assert_eq!(port.try_recv(), Disconnected);
+        let (tx, rx) = channel::<int>();
+        drop(tx);
+        assert_eq!(rx.try_recv(), Disconnected);
+        assert_eq!(rx.try_recv(), Disconnected);
     })
 
     test!(fn oneshot_single_thread_peek_open() {
-        let (port, _chan) = Chan::<int>::new();
-        assert_eq!(port.try_recv(), Empty);
+        let (_tx, rx) = channel::<int>();
+        assert_eq!(rx.try_recv(), Empty);
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
-        let (port, chan) = Chan::<~int>::new();
+        let (tx, rx) = channel::<~int>();
         spawn(proc() {
-            assert!(port.recv() == ~10);
+            assert!(rx.recv() == ~10);
         });
 
-        chan.send(~10);
+        tx.send(~10);
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
-        let (port, chan) = Chan::<~int>::new();
+        let (tx, rx) = channel::<~int>();
         spawn(proc() {
-            let _chan = chan;
+            drop(tx);
         });
         let res = task::try(proc() {
-            assert!(port.recv() == ~10);
+            assert!(rx.recv() == ~10);
         });
         assert!(res.is_err());
     })
 
     test!(fn oneshot_multi_thread_close_stress() {
         for _ in range(0, stress_factor()) {
-            let (port, chan) = Chan::<int>::new();
+            let (tx, rx) = channel::<int>();
             spawn(proc() {
-                let _p = port;
+                drop(rx);
             });
-            let _chan = chan;
+            drop(tx);
         }
     })
 
     test!(fn oneshot_multi_thread_send_close_stress() {
         for _ in range(0, stress_factor()) {
-            let (port, chan) = Chan::<int>::new();
+            let (tx, rx) = channel::<int>();
             spawn(proc() {
-                let _p = port;
+                drop(rx);
             });
             let _ = task::try(proc() {
-                chan.send(1);
+                tx.send(1);
             });
         }
     })
 
     test!(fn oneshot_multi_thread_recv_close_stress() {
         for _ in range(0, stress_factor()) {
-            let (port, chan) = Chan::<int>::new();
+            let (tx, rx) = channel::<int>();
             spawn(proc() {
-                let port = port;
                 let res = task::try(proc() {
-                    port.recv();
+                    rx.recv();
                 });
                 assert!(res.is_err());
             });
             spawn(proc() {
-                let chan = chan;
                 spawn(proc() {
-                    let _chan = chan;
+                    drop(tx);
                 });
             });
         }
@@ -1058,38 +1058,38 @@ mod test {
 
     test!(fn oneshot_multi_thread_send_recv_stress() {
         for _ in range(0, stress_factor()) {
-            let (port, chan) = Chan::<~int>::new();
+            let (tx, rx) = channel();
             spawn(proc() {
-                chan.send(~10);
+                tx.send(~10);
             });
             spawn(proc() {
-                assert!(port.recv() == ~10);
+                assert!(rx.recv() == ~10);
             });
         }
     })
 
     test!(fn stream_send_recv_stress() {
         for _ in range(0, stress_factor()) {
-            let (port, chan) = Chan::<~int>::new();
+            let (tx, rx) = channel();
 
-            send(chan, 0);
-            recv(port, 0);
+            send(tx, 0);
+            recv(rx, 0);
 
-            fn send(chan: Chan<~int>, i: int) {
+            fn send(tx: Sender<~int>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    chan.send(~i);
-                    send(chan, i + 1);
+                    tx.send(~i);
+                    send(tx, i + 1);
                 });
             }
 
-            fn recv(port: Port<~int>, i: int) {
+            fn recv(rx: Receiver<~int>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    assert!(port.recv() == ~i);
-                    recv(port, i + 1);
+                    assert!(rx.recv() == ~i);
+                    recv(rx, i + 1);
                 });
             }
         }
@@ -1097,125 +1097,125 @@ mod test {
 
     test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
-        let (port, chan) = Chan::new();
-        for _ in range(0, 10000) { chan.send(()); }
-        for _ in range(0, 10000) { port.recv(); }
+        let (tx, rx) = channel();
+        for _ in range(0, 10000) { tx.send(()); }
+        for _ in range(0, 10000) { rx.recv(); }
     })
 
     test!(fn shared_chan_stress() {
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         let total = stress_factor() + 100;
         for _ in range(0, total) {
-            let chan_clone = chan.clone();
+            let tx = tx.clone();
             spawn(proc() {
-                chan_clone.send(());
+                tx.send(());
             });
         }
 
         for _ in range(0, total) {
-            port.recv();
+            rx.recv();
         }
     })
 
     test!(fn test_nested_recv_iter() {
-        let (port, chan) = Chan::<int>::new();
-        let (total_port, total_chan) = Chan::<int>::new();
+        let (tx, rx) = channel::<int>();
+        let (total_tx, total_rx) = channel::<int>();
 
         spawn(proc() {
             let mut acc = 0;
-            for x in port.iter() {
+            for x in rx.iter() {
                 acc += x;
             }
-            total_chan.send(acc);
+            total_tx.send(acc);
         });
 
-        chan.send(3);
-        chan.send(1);
-        chan.send(2);
-        drop(chan);
-        assert_eq!(total_port.recv(), 6);
+        tx.send(3);
+        tx.send(1);
+        tx.send(2);
+        drop(tx);
+        assert_eq!(total_rx.recv(), 6);
     })
 
     test!(fn test_recv_iter_break() {
-        let (port, chan) = Chan::<int>::new();
-        let (count_port, count_chan) = Chan::<int>::new();
+        let (tx, rx) = channel::<int>();
+        let (count_tx, count_rx) = channel();
 
         spawn(proc() {
             let mut count = 0;
-            for x in port.iter() {
+            for x in rx.iter() {
                 if count >= 3 {
                     break;
                 } else {
                     count += x;
                 }
             }
-            count_chan.send(count);
+            count_tx.send(count);
         });
 
-        chan.send(2);
-        chan.send(2);
-        chan.send(2);
-        chan.try_send(2);
-        drop(chan);
-        assert_eq!(count_port.recv(), 4);
+        tx.send(2);
+        tx.send(2);
+        tx.send(2);
+        tx.try_send(2);
+        drop(tx);
+        assert_eq!(count_rx.recv(), 4);
     })
 
     test!(fn try_recv_states() {
-        let (p, c) = Chan::<int>::new();
-        let (p1, c1) = Chan::<()>::new();
-        let (p2, c2) = Chan::<()>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<()>();
+        let (tx3, rx3) = channel::<()>();
         spawn(proc() {
-            p1.recv();
-            c.send(1);
-            c2.send(());
-            p1.recv();
-            drop(c);
-            c2.send(());
+            rx2.recv();
+            tx1.send(1);
+            tx3.send(());
+            rx2.recv();
+            drop(tx1);
+            tx3.send(());
         });
 
-        assert_eq!(p.try_recv(), Empty);
-        c1.send(());
-        p2.recv();
-        assert_eq!(p.try_recv(), Data(1));
-        assert_eq!(p.try_recv(), Empty);
-        c1.send(());
-        p2.recv();
-        assert_eq!(p.try_recv(), Disconnected);
+        assert_eq!(rx1.try_recv(), Empty);
+        tx2.send(());
+        rx3.recv();
+        assert_eq!(rx1.try_recv(), Data(1));
+        assert_eq!(rx1.try_recv(), Empty);
+        tx2.send(());
+        rx3.recv();
+        assert_eq!(rx1.try_recv(), Disconnected);
     })
 
-    // This bug used to end up in a livelock inside of the Port destructor
-    // because the internal state of the Shared port was corrupted
+    // This bug used to end up in a livelock inside of the Receiver destructor
+    // because the internal state of the Shared packet was corrupted
     test!(fn destroy_upgraded_shared_port_when_sender_still_active() {
-        let (p, c) = Chan::new();
-        let (p1, c2) = Chan::new();
+        let (tx, rx) = channel();
+        let (tx2, rx2) = channel();
         spawn(proc() {
-            p.recv(); // wait on a oneshot port
-            drop(p);  // destroy a shared port
-            c2.send(());
+            rx.recv(); // wait on a oneshot
+            drop(rx);  // destroy a shared
+            tx2.send(());
         });
         // make sure the other task has gone to sleep
         for _ in range(0, 5000) { task::deschedule(); }
 
         // upgrade to a shared chan and send a message
-        let t = c.clone();
-        drop(c);
+        let t = tx.clone();
+        drop(tx);
         t.send(());
 
         // wait for the child task to exit before we exit
-        p1.recv();
+        rx2.recv();
     })
 
     test!(fn sends_off_the_runtime() {
         use rt::thread::Thread;
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         let t = Thread::start(proc() {
             for _ in range(0, 1000) {
-                c.send(());
+                tx.send(());
             }
         });
         for _ in range(0, 1000) {
-            p.recv();
+            rx.recv();
         }
         t.join();
     })
@@ -1223,12 +1223,12 @@ mod test {
     test!(fn try_recvs_off_the_runtime() {
         use rt::thread::Thread;
 
-        let (p, c) = Chan::new();
-        let (pdone, cdone) = Chan::new();
+        let (tx, rx) = channel();
+        let (cdone, pdone) = channel();
         let t = Thread::start(proc() {
             let mut hits = 0;
             while hits < 10 {
-                match p.try_recv() {
+                match rx.try_recv() {
                     Data(()) => { hits += 1; }
                     Empty => { Thread::yield_now(); }
                     Disconnected => return,
@@ -1237,7 +1237,7 @@ mod test {
             cdone.send(());
         });
         for _ in range(0, 10) {
-            c.send(());
+            tx.send(());
         }
         t.join();
         pdone.recv();
