@@ -1996,6 +1996,10 @@ impl TypeContents {
         !self.intersects(TC::Nonpod)
     }
 
+    pub fn interior_unsafe(&self) -> bool {
+        self.intersects(TC::InteriorUnsafe)
+    }
+
     pub fn moves_by_default(&self, _: &ctxt) -> bool {
         self.intersects(TC::Moves)
     }
@@ -2090,6 +2094,10 @@ pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
 
 pub fn type_is_freezable(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_freezable(cx)
+}
+
+pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).interior_unsafe()
 }
 
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
