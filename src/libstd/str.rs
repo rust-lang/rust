@@ -99,6 +99,7 @@ use option::{None, Option, Some};
 use ptr;
 use ptr::RawPtr;
 use from_str::FromStr;
+use unicode::normalization::{canonical_combining_class, compose};
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use vec_ng::Vec;
@@ -575,8 +576,8 @@ fn canonical_sort(comb: &mut [(char, u8)]) {
     for i in range(0, len) {
         let mut swapped = false;
         for j in range(1, len-i) {
-            let class_a = *comb[j-1].ref1();
-            let class_b = *comb[j].ref1();
+            let class_a = comb[j-1].val1();
+            let class_b = comb[j].val1();
             if class_a != 0 && class_b != 0 && class_a > class_b {
                 comb.swap(j-1, j);
                 swapped = true;
@@ -587,26 +588,24 @@ fn canonical_sort(comb: &mut [(char, u8)]) {
 }
 
 #[deriving(Clone)]
-enum NormalizationForm {
-    NFD,
-    NFKD
+enum DecompositionType {
+    Canonical,
+    Compatible
 }
 
-/// External iterator for a string's normalization's characters.
+/// External iterator for a string's decomposition's characters.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-pub struct Normalizations<'a> {
-    priv kind: NormalizationForm,
+pub struct Decompositions<'a> {
+    priv kind: DecompositionType,
     priv iter: Chars<'a>,
     priv buffer: ~[(char, u8)],
     priv sorted: bool
 }
 
-impl<'a> Iterator<char> for Normalizations<'a> {
+impl<'a> Iterator<char> for Decompositions<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
-        use unicode::decompose::canonical_combining_class;
-
         match self.buffer.head() {
             Some(&(c, 0)) => {
                 self.sorted = false;
@@ -621,8 +620,8 @@ impl<'a> Iterator<char> for Normalizations<'a> {
         }
 
         let decomposer = match self.kind {
-            NFD => char::decompose_canonical,
-            NFKD => char::decompose_compatible
+            Canonical => char::decompose_canonical,
+            Compatible => char::decompose_compatible
         };
 
         if !self.sorted {
@@ -659,6 +658,106 @@ impl<'a> Iterator<char> for Normalizations<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let (lower, _) = self.iter.size_hint();
         (lower, None)
+    }
+}
+
+#[deriving(Clone)]
+enum RecompositionState {
+    Composing,
+    Purging,
+    Finished
+}
+
+/// External iterator for a string's recomposition's characters.
+/// Use with the `std::iter` module.
+#[deriving(Clone)]
+pub struct Recompositions<'a> {
+    priv iter: Decompositions<'a>,
+    priv state: RecompositionState,
+    priv buffer: ~[char],
+    priv composee: Option<char>,
+    priv last_ccc: Option<u8>
+}
+
+impl<'a> Iterator<char> for Recompositions<'a> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        loop {
+            match self.state {
+                Composing => {
+                    for ch in self.iter {
+                        let ch_class = canonical_combining_class(ch);
+                        if self.composee.is_none() {
+                            if ch_class != 0 {
+                                return Some(ch);
+                            }
+                            self.composee = Some(ch);
+                            continue;
+                        }
+                        let k = self.composee.clone().unwrap();
+
+                        match self.last_ccc {
+                            None => {
+                                match compose(k, ch) {
+                                    Some(r) => {
+                                        self.composee = Some(r);
+                                        continue;
+                                    }
+                                    None => {
+                                        if ch_class == 0 {
+                                            self.composee = Some(ch);
+                                            return Some(k);
+                                        }
+                                        self.buffer.push(ch);
+                                        self.last_ccc = Some(ch_class);
+                                    }
+                                }
+                            }
+                            Some(l_class) => {
+                                if l_class >= ch_class {
+                                    // `ch` is blocked from `composee`
+                                    if ch_class == 0 {
+                                        self.composee = Some(ch);
+                                        self.last_ccc = None;
+                                        self.state = Purging;
+                                        return Some(k);
+                                    }
+                                    self.buffer.push(ch);
+                                    self.last_ccc = Some(ch_class);
+                                    continue;
+                                }
+                                match compose(k, ch) {
+                                    Some(r) => {
+                                        self.composee = Some(r);
+                                        continue;
+                                    }
+                                    None => {
+                                        self.buffer.push(ch);
+                                        self.last_ccc = Some(ch_class);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    self.state = Finished;
+                    if self.composee.is_some() {
+                        return self.composee.take();
+                    }
+                }
+                Purging => {
+                    match self.buffer.shift() {
+                        None => self.state = Composing,
+                        s => return s
+                    }
+                }
+                Finished => {
+                    match self.buffer.shift() {
+                        None => return self.composee.take(),
+                        s => return s
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1870,11 +1969,19 @@ pub trait StrSlice<'a> {
 
     /// An Iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
-    fn nfd_chars(&self) -> Normalizations<'a>;
+    fn nfd_chars(&self) -> Decompositions<'a>;
 
     /// An Iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
-    fn nfkd_chars(&self) -> Normalizations<'a>;
+    fn nfkd_chars(&self) -> Decompositions<'a>;
+
+    /// An Iterator over the string in Unicode Normalization Form C
+    /// (canonical decomposition followed by canonical composition).
+    fn nfc_chars(&self) -> Recompositions<'a>;
+
+    /// An Iterator over the string in Unicode Normalization Form KC
+    /// (compatibility decomposition followed by canonical composition).
+    fn nfkc_chars(&self) -> Recompositions<'a>;
 
     /// Returns true if the string contains only whitespace.
     ///
@@ -2453,22 +2560,44 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn nfd_chars(&self) -> Normalizations<'a> {
-        Normalizations {
+    fn nfd_chars(&self) -> Decompositions<'a> {
+        Decompositions {
             iter: self.chars(),
             buffer: ~[],
             sorted: false,
-            kind: NFD
+            kind: Canonical
         }
     }
 
     #[inline]
-    fn nfkd_chars(&self) -> Normalizations<'a> {
-        Normalizations {
+    fn nfkd_chars(&self) -> Decompositions<'a> {
+        Decompositions {
             iter: self.chars(),
             buffer: ~[],
             sorted: false,
-            kind: NFKD
+            kind: Compatible
+        }
+    }
+
+    #[inline]
+    fn nfc_chars(&self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfd_chars(),
+            state: Composing,
+            buffer: ~[],
+            composee: None,
+            last_ccc: None
+        }
+    }
+
+    #[inline]
+    fn nfkc_chars(&self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfkd_chars(),
+            state: Composing,
+            buffer: ~[],
+            composee: None,
+            last_ccc: None
         }
     }
 
@@ -4282,6 +4411,38 @@ mod tests {
         assert_eq!("\u0301a".nfkd_chars().collect::<~str>(), ~"\u0301a");
         assert_eq!("\ud4db".nfkd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
         assert_eq!("\uac1c".nfkd_chars().collect::<~str>(), ~"\u1100\u1162");
+    }
+
+    #[test]
+    fn test_nfc_chars() {
+        assert_eq!("abc".nfc_chars().collect::<~str>(), ~"abc");
+        assert_eq!("\u1e0b\u01c4".nfc_chars().collect::<~str>(), ~"\u1e0b\u01c4");
+        assert_eq!("\u2026".nfc_chars().collect::<~str>(), ~"\u2026");
+        assert_eq!("\u2126".nfc_chars().collect::<~str>(), ~"\u03a9");
+        assert_eq!("\u1e0b\u0323".nfc_chars().collect::<~str>(), ~"\u1e0d\u0307");
+        assert_eq!("\u1e0d\u0307".nfc_chars().collect::<~str>(), ~"\u1e0d\u0307");
+        assert_eq!("a\u0301".nfc_chars().collect::<~str>(), ~"\xe1");
+        assert_eq!("\u0301a".nfc_chars().collect::<~str>(), ~"\u0301a");
+        assert_eq!("\ud4db".nfc_chars().collect::<~str>(), ~"\ud4db");
+        assert_eq!("\uac1c".nfc_chars().collect::<~str>(), ~"\uac1c");
+        assert_eq!("a\u0300\u0305\u0315\u05aeb".nfc_chars().collect::<~str>(),
+            ~"\xe0\u05ae\u0305\u0315b");
+    }
+
+    #[test]
+    fn test_nfkc_chars() {
+        assert_eq!("abc".nfkc_chars().collect::<~str>(), ~"abc");
+        assert_eq!("\u1e0b\u01c4".nfkc_chars().collect::<~str>(), ~"\u1e0bD\u017d");
+        assert_eq!("\u2026".nfkc_chars().collect::<~str>(), ~"...");
+        assert_eq!("\u2126".nfkc_chars().collect::<~str>(), ~"\u03a9");
+        assert_eq!("\u1e0b\u0323".nfkc_chars().collect::<~str>(), ~"\u1e0d\u0307");
+        assert_eq!("\u1e0d\u0307".nfkc_chars().collect::<~str>(), ~"\u1e0d\u0307");
+        assert_eq!("a\u0301".nfkc_chars().collect::<~str>(), ~"\xe1");
+        assert_eq!("\u0301a".nfkc_chars().collect::<~str>(), ~"\u0301a");
+        assert_eq!("\ud4db".nfkc_chars().collect::<~str>(), ~"\ud4db");
+        assert_eq!("\uac1c".nfkc_chars().collect::<~str>(), ~"\uac1c");
+        assert_eq!("a\u0300\u0305\u0315\u05aeb".nfkc_chars().collect::<~str>(),
+            ~"\xe0\u05ae\u0305\u0315b");
     }
 
     #[test]
