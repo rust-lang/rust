@@ -166,6 +166,9 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
+
+// FIXME: remove when ~[] disappears from tests.
+#[allow(deprecated_owned_vector)];
 ";
 
     if loose_feature_gating {

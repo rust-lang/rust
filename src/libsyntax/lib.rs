@@ -32,6 +32,7 @@ This API is completely unstable and subject to change.
 
 #[allow(deprecated)];
 #[deny(non_camel_case_types)];
+#[allow(deprecated_owned_vector)];
 
 extern crate serialize;
 extern crate term;

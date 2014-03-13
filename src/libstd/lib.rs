@@ -65,6 +65,7 @@
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 #[allow(unknown_features)];
+#[allow(deprecated_owned_vector)];
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top

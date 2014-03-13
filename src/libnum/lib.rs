@@ -14,6 +14,7 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
+#[allow(deprecated_owned_vector)];
 
 extern crate rand;
 
