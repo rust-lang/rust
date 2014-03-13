@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc;
 use std::io::IoError;
+use std::libc;
+use std::ptr;
 use std::rt::rtio::RtioTTY;
 
 use homing::{HomingIO, HomeHandle};
@@ -54,20 +55,24 @@ impl TtyWatcher {
         // If this file descriptor is indeed guessed to be a tty, then go ahead
         // with attempting to open it as a tty.
         let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
+        let mut watcher = TtyWatcher {
+            tty: handle,
+            stream: StreamWatcher::new(handle),
+            home: io.make_handle(),
+            fd: fd,
+        };
         match unsafe {
             uvll::uv_tty_init(io.uv_loop(), handle, fd as libc::c_int,
                               readable as libc::c_int)
         } {
-            0 => {
-                Ok(TtyWatcher {
-                    tty: handle,
-                    stream: StreamWatcher::new(handle),
-                    home: io.make_handle(),
-                    fd: fd,
-                })
-            }
+            0 => Ok(watcher),
             n => {
-                unsafe { uvll::free_handle(handle) }
+                // On windows, libuv returns errors before initializing the
+                // handle, so our only cleanup is to free the handle itself
+                if cfg!(windows) {
+                    unsafe { uvll::free_handle(handle); }
+                    watcher.tty = ptr::null();
+                }
                 Err(UvError(n))
             }
         }
@@ -124,7 +129,9 @@ impl HomingIO for TtyWatcher {
 
 impl Drop for TtyWatcher {
     fn drop(&mut self) {
-        let _m = self.fire_homing_missile();
-        self.close_async_();
+        if !self.tty.is_null() {
+            let _m = self.fire_homing_missile();
+            self.close_async_();
+        }
     }
 }
