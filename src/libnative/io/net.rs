@@ -351,6 +351,11 @@ impl rtio::RtioTcpStream for TcpStream {
     fn clone(&self) -> ~rtio::RtioTcpStream {
         ~TcpStream { inner: self.inner.clone() } as ~rtio::RtioTcpStream
     }
+    fn close_write(&mut self) -> IoResult<()> {
+        super::mkerr_libc(unsafe {
+            libc::shutdown(self.fd(), libc::SHUT_WR)
+        })
+    }
 }
 
 impl rtio::RtioSocket for TcpStream {
