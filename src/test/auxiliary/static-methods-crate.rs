@@ -25,9 +25,9 @@ impl read for int {
 
 impl read for bool {
     fn readMaybe(s: ~str) -> Option<bool> {
-        match s {
-          ~"true" => Some(true),
-          ~"false" => Some(false),
+        match s.as_slice() {
+          "true" => Some(true),
+          "false" => Some(false),
           _ => None
         }
     }
