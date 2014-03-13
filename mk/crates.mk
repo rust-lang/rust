@@ -82,7 +82,7 @@ DEPS_test := std collections getopts serialize term time
 DEPS_time := std serialize
 DEPS_rand := std
 DEPS_url := std collections
-DEPS_workcache := std serialize collections std
+DEPS_workcache := std serialize collections log
 DEPS_log := std sync
 
 TOOL_DEPS_compiletest := test green rustuv getopts

@@ -20,7 +20,7 @@ pub fn main() {
 }
 
 fn child(c: &Sender<int>) {
-    error!("sending");
+    println!("sending");
     c.send(10);
     println!("value sent");
 }

@@ -12,9 +12,24 @@
 
 Utilities for program-wide and customizable logging
 
-This module is used by the compiler when emitting output for the logging family
-of macros. The methods of this module shouldn't necessarily be used directly,
-but rather through the logging macros defined.
+## Example
+
+```
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
+
+fn main() {
+    debug!("this is a debug {}", "message");
+    error!("this is printed by default");
+
+    if log_enabled!(log::INFO) {
+        let x = 3 * 4; // expensive computation
+        info!("the answer was: {}", x);
+    }
+}
+```
+
+## Logging Macros
 
 There are five macros that the logging subsystem uses:
 
