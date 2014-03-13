@@ -124,14 +124,14 @@ mod tests {
 
             for _ in range(0u, num_tasks) {
                 let total = total.clone();
-                let (port, chan) = Chan::new();
-                futures.push(port);
+                let (tx, rx) = channel();
+                futures.push(rx);
 
                 task::spawn(proc() {
                     for _ in range(0u, count) {
                         total.with(|count| **count += 1);
                     }
-                    chan.send(());
+                    tx.send(());
                 });
             };
 

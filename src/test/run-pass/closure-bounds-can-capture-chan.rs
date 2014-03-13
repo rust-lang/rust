@@ -15,9 +15,9 @@ fn foo(blk: proc()) {
 }
 
 pub fn main() {
-    let (p,c) = Chan::new();
+    let (tx, rx) = channel();
     foo(proc() {
-        c.send(());
+        tx.send(());
     });
-    p.recv();
+    rx.recv();
 }

@@ -1091,25 +1091,25 @@ mod test {
     fn test_home_sched() {
         let mut pool = pool();
 
-        let (dport, dchan) = Chan::new();
+        let (dtx, drx) = channel();
         {
-            let (port, chan) = Chan::new();
+            let (tx, rx) = channel();
             let mut handle1 = pool.spawn_sched();
             let mut handle2 = pool.spawn_sched();
 
             handle1.send(TaskFromFriend(pool.task(TaskOpts::new(), proc() {
-                chan.send(sched_id());
+                tx.send(sched_id());
             })));
-            let sched1_id = port.recv();
+            let sched1_id = rx.recv();
 
             let mut task = pool.task(TaskOpts::new(), proc() {
                 assert_eq!(sched_id(), sched1_id);
-                dchan.send(());
+                dtx.send(());
             });
             task.give_home(HomeSched(handle1));
             handle2.send(TaskFromFriend(task));
         }
-        dport.recv();
+        drx.recv();
 
         pool.shutdown();
     }
@@ -1210,7 +1210,7 @@ mod test {
             });
 
             // Signal from the special task that we are done.
-            let (port, chan) = Chan::<()>::new();
+            let (tx, rx) = channel::<()>();
 
             fn run(next: ~GreenTask) {
                 let mut task = GreenTask::convert(Local::take());
@@ -1221,7 +1221,7 @@ mod test {
             let normal_task = GreenTask::new(&mut normal_sched.stack_pool, None, proc() {
                 run(task2);
                 run(task4);
-                port.recv();
+                rx.recv();
                 let mut nh = normal_handle;
                 nh.send(Shutdown);
                 let mut sh = special_handle;
@@ -1232,7 +1232,7 @@ mod test {
             let special_task = GreenTask::new(&mut special_sched.stack_pool, None, proc() {
                 run(task1);
                 run(task3);
-                chan.send(());
+                tx.send(());
             });
             special_sched.enqueue_task(special_task);
 
@@ -1280,24 +1280,24 @@ mod test {
 
     #[test]
     fn wakeup_across_scheds() {
-        let (port1, chan1) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
 
         let mut pool1 = pool();
         let mut pool2 = pool();
 
         pool1.spawn(TaskOpts::new(), proc() {
             let id = sched_id();
-            chan1.send(());
-            port2.recv();
+            tx1.send(());
+            rx2.recv();
             assert_eq!(id, sched_id());
         });
 
         pool2.spawn(TaskOpts::new(), proc() {
             let id = sched_id();
-            port1.recv();
+            rx1.recv();
             assert_eq!(id, sched_id());
-            chan2.send(());
+            tx2.send(());
         });
 
         pool1.shutdown();
@@ -1319,18 +1319,18 @@ mod test {
     #[test]
     fn multithreading() {
         run(proc() {
-            let mut ports = ~[];
+            let mut rxs = ~[];
             for _ in range(0, 10) {
-                let (port, chan) = Chan::new();
+                let (tx, rx) = channel();
                 spawn(proc() {
-                    chan.send(());
+                    tx.send(());
                 });
-                ports.push(port);
+                rxs.push(rx);
             }
 
             loop {
-                match ports.pop() {
-                    Some(port) => port.recv(),
+                match rxs.pop() {
+                    Some(rx) => rx.recv(),
                     None => break,
                 }
             }
@@ -1340,45 +1340,45 @@ mod test {
      #[test]
     fn thread_ring() {
         run(proc() {
-            let (end_port, end_chan) = Chan::new();
+            let (end_tx, end_rx) = channel();
 
             let n_tasks = 10;
             let token = 2000;
 
-            let (mut p, ch1) = Chan::new();
-            ch1.send((token, end_chan));
+            let (tx1, mut rx) = channel();
+            tx1.send((token, end_tx));
             let mut i = 2;
             while i <= n_tasks {
-                let (next_p, ch) = Chan::new();
+                let (tx, next_rx) = channel();
                 let imm_i = i;
-                let imm_p = p;
+                let imm_rx = rx;
                 spawn(proc() {
-                    roundtrip(imm_i, n_tasks, &imm_p, &ch);
+                    roundtrip(imm_i, n_tasks, &imm_rx, &tx);
                 });
-                p = next_p;
+                rx = next_rx;
                 i += 1;
             }
-            let p = p;
+            let rx = rx;
             spawn(proc() {
-                roundtrip(1, n_tasks, &p, &ch1);
+                roundtrip(1, n_tasks, &rx, &tx1);
             });
 
-            end_port.recv();
+            end_rx.recv();
         });
 
         fn roundtrip(id: int, n_tasks: int,
-                     p: &Port<(int, Chan<()>)>,
-                     ch: &Chan<(int, Chan<()>)>) {
+                     rx: &Receiver<(int, Sender<()>)>,
+                     tx: &Sender<(int, Sender<()>)>) {
             loop {
-                match p.recv() {
-                    (1, end_chan) => {
+                match rx.recv() {
+                    (1, end_tx) => {
                         debug!("{}\n", id);
-                        end_chan.send(());
+                        end_tx.send(());
                         return;
                     }
-                    (token, end_chan) => {
+                    (token, end_tx) => {
                         debug!("thread: {}   got token: {}", id, token);
-                        ch.send((token - 1, end_chan));
+                        tx.send((token - 1, end_tx));
                         if token <= n_tasks {
                             return;
                         }
@@ -1416,15 +1416,15 @@ mod test {
             event_loop_factory: Some(basic::event_loop),
         });
         pool.spawn(TaskOpts::new(), proc() {
-            let (port, chan) = Chan::new();
+            let (tx, rx) = channel();
 
             // This task should not be able to starve the sender;
             // The sender should get stolen to another thread.
             spawn(proc() {
-                while port.try_recv() != comm::Data(()) { }
+                while rx.try_recv() != comm::Data(()) { }
             });
 
-            chan.send(());
+            tx.send(());
         });
         pool.shutdown();
     }
@@ -1432,18 +1432,18 @@ mod test {
     #[test]
     fn dont_starve_2() {
         run(proc() {
-            let (port, chan) = Chan::new();
-            let (_port2, chan2) = Chan::new();
+            let (tx1, rx1) = channel();
+            let (tx2, _rx2) = channel();
 
             // This task should not be able to starve the other task.
             // The sends should eventually yield.
             spawn(proc() {
-                while port.try_recv() != comm::Data(()) {
-                    chan2.send(());
+                while rx1.try_recv() != comm::Data(()) {
+                    tx2.send(());
                 }
             });
 
-            chan.send(());
+            tx1.send(());
         });
     }
 
@@ -1466,29 +1466,29 @@ mod test {
         // without affecting other schedulers
         for _ in range(0, 20) {
             let mut pool = pool();
-            let (start_po, start_ch) = Chan::new();
-            let (fin_po, fin_ch) = Chan::new();
+            let (start_tx, start_rx) = channel();
+            let (fin_tx, fin_rx) = channel();
 
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 unsafe {
                     let mut guard = LOCK.lock();
 
-                    start_ch.send(());
+                    start_tx.send(());
                     guard.wait();   // block the scheduler thread
                     guard.signal(); // let them know we have the lock
                 }
 
-                fin_ch.send(());
+                fin_tx.send(());
             })));
             drop(handle);
 
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 // Wait until the other task has its lock
-                start_po.recv();
+                start_rx.recv();
 
-                fn pingpong(po: &Port<int>, ch: &Chan<int>) {
+                fn pingpong(po: &Receiver<int>, ch: &Sender<int>) {
                     let mut val = 20;
                     while val > 0 {
                         val = po.recv();
@@ -1496,17 +1496,17 @@ mod test {
                     }
                 }
 
-                let (setup_po, setup_ch) = Chan::new();
-                let (parent_po, parent_ch) = Chan::new();
+                let (setup_tx, setup_rx) = channel();
+                let (parent_tx, parent_rx) = channel();
                 spawn(proc() {
-                    let (child_po, child_ch) = Chan::new();
-                    setup_ch.send(child_ch);
-                    pingpong(&child_po, &parent_ch);
+                    let (child_tx, child_rx) = channel();
+                    setup_tx.send(child_tx);
+                    pingpong(&child_rx, &parent_tx);
                 });
 
-                let child_ch = setup_po.recv();
-                child_ch.send(20);
-                pingpong(&parent_po, &child_ch);
+                let child_tx = setup_rx.recv();
+                child_tx.send(20);
+                pingpong(&parent_rx, &child_tx);
                 unsafe {
                     let mut guard = LOCK.lock();
                     guard.signal();   // wakeup waiting scheduler
@@ -1515,7 +1515,7 @@ mod test {
             })));
             drop(handle);
 
-            fin_po.recv();
+            fin_rx.recv();
             pool.shutdown();
         }
         unsafe { LOCK.destroy(); }

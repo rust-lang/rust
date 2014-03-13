@@ -32,25 +32,23 @@ fn ping_pong_bench(n: uint, m: uint) {
     // Create pairs of tasks that pingpong back and forth.
     fn run_pair(n: uint) {
         // Create a stream A->B
-        let (pa,ca) = Chan::<()>::new();
+        let (atx, arx) = channel::<()>();
         // Create a stream B->A
-        let (pb,cb) = Chan::<()>::new();
+        let (btx, brx) = channel::<()>();
 
         spawn(proc() {
-            let chan = ca;
-            let port = pb;
+            let (tx, rx) = (atx, brx);
             for _ in range(0, n) {
-                chan.send(());
-                port.recv();
+                tx.send(());
+                rx.recv();
             }
         });
 
         spawn(proc() {
-            let chan = cb;
-            let port = pa;
+            let (tx, rx) = (btx, arx);
             for _ in range(0, n) {
-                port.recv();
-                chan.send(());
+                rx.recv();
+                tx.send(());
             }
         });
     }

@@ -149,13 +149,13 @@ mod test {
     #[test]
     fn test_os_rng_tasks() {
 
-        let mut chans = ~[];
+        let mut txs = ~[];
         for _ in range(0, 20) {
-            let (p, c) = Chan::new();
-            chans.push(c);
+            let (tx, rx) = channel();
+            txs.push(tx);
             task::spawn(proc() {
                 // wait until all the tasks are ready to go.
-                p.recv();
+                rx.recv();
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
@@ -175,8 +175,8 @@ mod test {
         }
 
         // start all the tasks
-        for c in chans.iter() {
-            c.send(())
+        for tx in txs.iter() {
+            tx.send(())
         }
     }
 }

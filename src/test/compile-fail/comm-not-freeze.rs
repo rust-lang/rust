@@ -11,7 +11,7 @@
 fn test<T: Freeze>() {}
 
 fn main() {
-    test::<Chan<int>>();        //~ ERROR: does not fulfill `Freeze`
-    test::<Port<int>>();        //~ ERROR: does not fulfill `Freeze`
-    test::<Chan<int>>();  //~ ERROR: does not fulfill `Freeze`
+    test::<Sender<int>>();        //~ ERROR: does not fulfill `Freeze`
+    test::<Receiver<int>>();        //~ ERROR: does not fulfill `Freeze`
+    test::<Sender<int>>();  //~ ERROR: does not fulfill `Freeze`
 }

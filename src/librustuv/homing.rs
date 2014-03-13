@@ -164,7 +164,7 @@ mod test {
     // thread, close itself, and then come back to the last thread.
     #[test]
     fn test_homing_closes_correctly() {
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
             event_loop_factory: None,
@@ -172,11 +172,11 @@ mod test {
 
         pool.spawn(TaskOpts::new(), proc() {
             let listener = UdpWatcher::bind(local_loop(), next_test_ip4());
-            chan.send(listener.unwrap());
+            tx.send(listener.unwrap());
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
-            drop(port.recv());
+            drop(rx.recv());
         });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 
@@ -185,7 +185,7 @@ mod test {
 
     #[test]
     fn test_homing_read() {
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
             event_loop_factory: None,
@@ -195,13 +195,13 @@ mod test {
             let addr1 = next_test_ip4();
             let addr2 = next_test_ip4();
             let listener = UdpWatcher::bind(local_loop(), addr2);
-            chan.send((listener.unwrap(), addr1));
+            tx.send((listener.unwrap(), addr1));
             let mut listener = UdpWatcher::bind(local_loop(), addr1).unwrap();
             listener.sendto([1, 2, 3, 4], addr2).unwrap();
         });
 
         let task = pool.task(TaskOpts::new(), proc() {
-            let (mut watcher, addr) = port.recv();
+            let (mut watcher, addr) = rx.recv();
             let mut buf = [0, ..10];
             assert_eq!(watcher.recvfrom(buf).unwrap(), (4, addr));
         });

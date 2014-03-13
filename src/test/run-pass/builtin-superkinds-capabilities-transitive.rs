@@ -20,12 +20,12 @@ trait Foo : Bar { }
 impl <T: Send> Foo for T { }
 impl <T: Send> Bar for T { }
 
-fn foo<T: Foo>(val: T, chan: Chan<T>) {
+fn foo<T: Foo>(val: T, chan: Sender<T>) {
     chan.send(val);
 }
 
 pub fn main() {
-    let (p,c) = Chan::new();
-    foo(31337, c);
-    assert!(p.recv() == 31337);
+    let (tx, rx) = channel();
+    foo(31337, tx);
+    assert!(rx.recv() == 31337);
 }

@@ -8,38 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Selection over an array of ports
+//! Selection over an array of receivers
 //!
 //! This module contains the implementation machinery necessary for selecting
-//! over a number of ports. One large goal of this module is to provide an
-//! efficient interface to selecting over any port of any type.
+//! over a number of receivers. One large goal of this module is to provide an
+//! efficient interface to selecting over any receiver of any type.
 //!
-//! This is achieved through an architecture of a "port set" in which ports are
-//! added to a set and then the entire set is waited on at once. The set can be
-//! waited on multiple times to prevent re-adding each port to the set.
+//! This is achieved through an architecture of a "receiver set" in which
+//! receivers are added to a set and then the entire set is waited on at once.
+//! The set can be waited on multiple times to prevent re-adding each receiver
+//! to the set.
 //!
 //! Usage of this module is currently encouraged to go through the use of the
 //! `select!` macro. This macro allows naturally binding of variables to the
-//! received values of ports in a much more natural syntax then usage of the
+//! received values of receivers in a much more natural syntax then usage of the
 //! `Select` structure directly.
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! let (mut p1, c1) = Chan::new();
-//! let (mut p2, c2) = Chan::new();
+//! ```rust
+//! let (tx1, rx1) = channel();
+//! let (tx2, rx2) = channel();
 //!
-//! c1.send(1);
-//! c2.send(2);
+//! tx1.send(1);
+//! tx2.send(2);
 //!
-//! select! (
-//!     val = p1.recv() => {
+//! select! {
+//!     val = rx1.recv() => {
 //!         assert_eq!(val, 1);
-//!     }
-//!     val = p2.recv() => {
+//!     },
+//!     val = rx2.recv() => {
 //!         assert_eq!(val, 2);
 //!     }
-//! )
+//! }
 //! ```
 
 #[allow(dead_code)];
@@ -55,11 +56,11 @@ use ptr::RawPtr;
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
-use super::Port;
+use super::Receiver;
 use uint;
 
-/// The "port set" of the select interface. This structure is used to manage a
-/// set of ports which are being selected over.
+/// The "receiver set" of the select interface. This structure is used to manage
+/// a set of receivers which are being selected over.
 pub struct Select {
     priv head: *mut Handle<'static, ()>,
     priv tail: *mut Handle<'static, ()>,
@@ -68,22 +69,22 @@ pub struct Select {
     priv marker2: marker::NoFreeze,
 }
 
-/// A handle to a port which is currently a member of a `Select` set of ports.
-/// This handle is used to keep the port in the set as well as interact with the
-/// underlying port.
-pub struct Handle<'port, T> {
+/// A handle to a receiver which is currently a member of a `Select` set of
+/// receivers.  This handle is used to keep the receiver in the set as well as
+/// interact with the underlying receiver.
+pub struct Handle<'rx, T> {
     /// The ID of this handle, used to compare against the return value of
     /// `Select::wait()`
     priv id: uint,
-    priv selector: &'port Select,
+    priv selector: &'rx Select,
     priv next: *mut Handle<'static, ()>,
     priv prev: *mut Handle<'static, ()>,
     priv added: bool,
-    priv packet: &'port Packet,
+    priv packet: &'rx Packet,
 
     // due to our fun transmutes, we be sure to place this at the end. (nothing
     // previous relies on T)
-    priv port: &'port Port<T>,
+    priv rx: &'rx Receiver<T>,
 }
 
 struct Packets { cur: *mut Handle<'static, ()> }
@@ -111,10 +112,10 @@ impl Select {
         }
     }
 
-    /// Creates a new handle into this port set for a new port. Note that this
-    /// does *not* add the port to the port set, for that you must call the
-    /// `add` method on the handle itself.
-    pub fn handle<'a, T: Send>(&'a self, port: &'a Port<T>) -> Handle<'a, T> {
+    /// Creates a new handle into this receiver set for a new receiver. Note
+    /// that this does *not* add the receiver to the receiver set, for that you
+    /// must call the `add` method on the handle itself.
+    pub fn handle<'a, T: Send>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
         Handle {
@@ -123,12 +124,12 @@ impl Select {
             next: 0 as *mut Handle<'static, ()>,
             prev: 0 as *mut Handle<'static, ()>,
             added: false,
-            port: port,
-            packet: port,
+            rx: rx,
+            packet: rx,
         }
     }
 
-    /// Waits for an event on this port set. The returned value is *not* an
+    /// Waits for an event on this receiver set. The returned value is *not* an
     /// index, but rather an id. This id can be queried against any active
     /// `Handle` structures (each one has an `id` method). The handle with
     /// the matching `id` will have some sort of event available on it. The
@@ -141,24 +142,24 @@ impl Select {
     /// Helper method for skipping the preflight checks during testing
     fn wait2(&self, do_preflight_checks: bool) -> uint {
         // Note that this is currently an inefficient implementation. We in
-        // theory have knowledge about all ports in the set ahead of time, so
-        // this method shouldn't really have to iterate over all of them yet
-        // again. The idea with this "port set" interface is to get the
+        // theory have knowledge about all receivers in the set ahead of time,
+        // so this method shouldn't really have to iterate over all of them yet
+        // again. The idea with this "receiver set" interface is to get the
         // interface right this time around, and later this implementation can
         // be optimized.
         //
         // This implementation can be summarized by:
         //
-        //      fn select(ports) {
-        //          if any port ready { return ready index }
+        //      fn select(receivers) {
+        //          if any receiver ready { return ready index }
         //          deschedule {
-        //              block on all ports
+        //              block on all receivers
         //          }
-        //          unblock on all ports
+        //          unblock on all receivers
         //          return ready index
         //      }
         //
-        // Most notably, the iterations over all of the ports shouldn't be
+        // Most notably, the iterations over all of the receivers shouldn't be
         // necessary.
         unsafe {
             let mut amt = 0;
@@ -176,7 +177,7 @@ impl Select {
 
             // Acquire a number of blocking contexts, and block on each one
             // sequentially until one fails. If one fails, then abort
-            // immediately so we can go unblock on all the other ports.
+            // immediately so we can go unblock on all the other receivers.
             let task: ~Task = Local::take();
             task.deschedule(amt, |task| {
                 // Prepare for the block
@@ -191,18 +192,18 @@ impl Select {
                 }
             });
 
-            // Abort the selection process on each port. If the abort process
-            // returns `true`, then that means that the port is ready to receive
-            // some data. Note that this also means that the port may have yet
-            // to have fully read the `to_wake` field and woken us up (although
-            // the wakeup is guaranteed to fail).
+            // Abort the selection process on each receiver. If the abort
+            // process returns `true`, then that means that the receiver is
+            // ready to receive some data. Note that this also means that the
+            // receiver may have yet to have fully read the `to_wake` field and
+            // woken us up (although the wakeup is guaranteed to fail).
             //
             // This situation happens in the window of where a sender invokes
             // increment(), sees -1, and then decides to wake up the task. After
             // all this is done, the sending thread will set `selecting` to
             // `false`. Until this is done, we cannot return. If we were to
-            // return, then a sender could wake up a port which has gone back to
-            // sleep after this call to `select`.
+            // return, then a sender could wake up a receiver which has gone
+            // back to sleep after this call to `select`.
             //
             // Note that it is a "fairly small window" in which an increment()
             // views that it should wake a thread up until the `selecting` bit
@@ -226,20 +227,20 @@ impl Select {
     fn iter(&self) -> Packets { Packets { cur: self.head } }
 }
 
-impl<'port, T: Send> Handle<'port, T> {
+impl<'rx, T: Send> Handle<'rx, T> {
     /// Retrieve the id of this handle.
     #[inline]
     pub fn id(&self) -> uint { self.id }
 
-    /// Receive a value on the underlying port. Has the same semantics as
-    /// `Port.recv`
-    pub fn recv(&mut self) -> T { self.port.recv() }
-    /// Block to receive a value on the underlying port, returning `Some` on
+    /// Receive a value on the underlying receiver. Has the same semantics as
+    /// `Receiver.recv`
+    pub fn recv(&mut self) -> T { self.rx.recv() }
+    /// Block to receive a value on the underlying receiver, returning `Some` on
     /// success or `None` if the channel disconnects. This function has the same
-    /// semantics as `Port.recv_opt`
-    pub fn recv_opt(&mut self) -> Option<T> { self.port.recv_opt() }
+    /// semantics as `Receiver.recv_opt`
+    pub fn recv_opt(&mut self) -> Option<T> { self.rx.recv_opt() }
 
-    /// Adds this handle to the port set that the handle was created from. This
+    /// Adds this handle to the receiver set that the handle was created from. This
     /// method can be called multiple times, but it has no effect if `add` was
     /// called previously.
     ///
@@ -300,7 +301,7 @@ impl Drop for Select {
 }
 
 #[unsafe_destructor]
-impl<'port, T: Send> Drop for Handle<'port, T> {
+impl<'rx, T: Send> Drop for Handle<'rx, T> {
     fn drop(&mut self) {
         unsafe { self.remove() }
     }
@@ -325,328 +326,328 @@ mod test {
     use prelude::*;
 
     test!(fn smoke() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, c2) = Chan::<int>::new();
-        c1.send(1);
+        let (tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<int>();
+        tx1.send(1);
         select! (
-            foo = p1.recv() => { assert_eq!(foo, 1); },
-            _bar = p2.recv() => { fail!() }
+            foo = rx1.recv() => { assert_eq!(foo, 1); },
+            _bar = rx2.recv() => { fail!() }
         )
-        c2.send(2);
+        tx2.send(2);
         select! (
-            _foo = p1.recv() => { fail!() },
-            bar = p2.recv() => { assert_eq!(bar, 2) }
+            _foo = rx1.recv() => { fail!() },
+            bar = rx2.recv() => { assert_eq!(bar, 2) }
         )
-        drop(c1);
+        drop(tx1);
         select! (
-            foo = p1.recv_opt() => { assert_eq!(foo, None); },
-            _bar = p2.recv() => { fail!() }
+            foo = rx1.recv_opt() => { assert_eq!(foo, None); },
+            _bar = rx2.recv() => { fail!() }
         )
-        drop(c2);
+        drop(tx2);
         select! (
-            bar = p2.recv_opt() => { assert_eq!(bar, None); }
+            bar = rx2.recv_opt() => { assert_eq!(bar, None); }
         )
     })
 
     test!(fn smoke2() {
-        let (p1, _c1) = Chan::<int>::new();
-        let (p2, _c2) = Chan::<int>::new();
-        let (p3, _c3) = Chan::<int>::new();
-        let (p4, _c4) = Chan::<int>::new();
-        let (p5, c5) = Chan::<int>::new();
-        c5.send(4);
+        let (_tx1, rx1) = channel::<int>();
+        let (_tx2, rx2) = channel::<int>();
+        let (_tx3, rx3) = channel::<int>();
+        let (_tx4, rx4) = channel::<int>();
+        let (tx5, rx5) = channel::<int>();
+        tx5.send(4);
         select! (
-            _foo = p1.recv() => { fail!("1") },
-            _foo = p2.recv() => { fail!("2") },
-            _foo = p3.recv() => { fail!("3") },
-            _foo = p4.recv() => { fail!("4") },
-            foo = p5.recv() => { assert_eq!(foo, 4); }
+            _foo = rx1.recv() => { fail!("1") },
+            _foo = rx2.recv() => { fail!("2") },
+            _foo = rx3.recv() => { fail!("3") },
+            _foo = rx4.recv() => { fail!("4") },
+            foo = rx5.recv() => { assert_eq!(foo, 4); }
         )
     })
 
     test!(fn closed() {
-        let (p1, _c1) = Chan::<int>::new();
-        let (p2, c2) = Chan::<int>::new();
-        drop(c2);
+        let (_tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<int>();
+        drop(tx2);
 
         select! (
-            _a1 = p1.recv_opt() => { fail!() },
-            a2 = p2.recv_opt() => { assert_eq!(a2, None); }
+            _a1 = rx1.recv_opt() => { fail!() },
+            a2 = rx2.recv_opt() => { assert_eq!(a2, None); }
         )
     })
 
     test!(fn unblocks() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, _c2) = Chan::<int>::new();
-        let (p3, c3) = Chan::<int>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (_tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<int>();
 
         spawn(proc() {
             for _ in range(0, 20) { task::deschedule(); }
-            c1.send(1);
-            p3.recv();
+            tx1.send(1);
+            rx3.recv();
             for _ in range(0, 20) { task::deschedule(); }
         });
 
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
-            _b = p2.recv() => { fail!() }
+            a = rx1.recv() => { assert_eq!(a, 1); },
+            _b = rx2.recv() => { fail!() }
         )
-        c3.send(1);
+        tx3.send(1);
         select! (
-            a = p1.recv_opt() => { assert_eq!(a, None); },
-            _b = p2.recv() => { fail!() }
+            a = rx1.recv_opt() => { assert_eq!(a, None); },
+            _b = rx2.recv() => { fail!() }
         )
     })
 
     test!(fn both_ready() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, c2) = Chan::<int>::new();
-        let (p3, c3) = Chan::<()>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
 
         spawn(proc() {
             for _ in range(0, 20) { task::deschedule(); }
-            c1.send(1);
-            c2.send(2);
-            p3.recv();
+            tx1.send(1);
+            tx2.send(2);
+            rx3.recv();
         });
 
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
-            a = p2.recv() => { assert_eq!(a, 2); }
+            a = rx1.recv() => { assert_eq!(a, 1); },
+            a = rx2.recv() => { assert_eq!(a, 2); }
         )
         select! (
-            a = p1.recv() => { assert_eq!(a, 1); },
-            a = p2.recv() => { assert_eq!(a, 2); }
+            a = rx1.recv() => { assert_eq!(a, 1); },
+            a = rx2.recv() => { assert_eq!(a, 2); }
         )
-        assert_eq!(p1.try_recv(), Empty);
-        assert_eq!(p2.try_recv(), Empty);
-        c3.send(());
+        assert_eq!(rx1.try_recv(), Empty);
+        assert_eq!(rx2.try_recv(), Empty);
+        tx3.send(());
     })
 
     test!(fn stress() {
         static AMT: int = 10000;
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, c2) = Chan::<int>::new();
-        let (p3, c3) = Chan::<()>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
 
         spawn(proc() {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
-                    c1.send(i);
+                    tx1.send(i);
                 } else {
-                    c2.send(i);
+                    tx2.send(i);
                 }
-                p3.recv();
+                rx3.recv();
             }
         });
 
         for i in range(0, AMT) {
             select! (
-                i1 = p1.recv() => { assert!(i % 2 == 0 && i == i1); },
-                i2 = p2.recv() => { assert!(i % 2 == 1 && i == i2); }
+                i1 = rx1.recv() => { assert!(i % 2 == 0 && i == i1); },
+                i2 = rx2.recv() => { assert!(i % 2 == 1 && i == i2); }
             )
-            c3.send(());
+            tx3.send(());
         }
     })
 
     test!(fn cloning() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, _c2) = Chan::<int>::new();
-        let (p3, c3) = Chan::<()>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (_tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
 
         spawn(proc() {
-            p3.recv();
-            c1.clone();
-            assert_eq!(p3.try_recv(), Empty);
-            c1.send(2);
-            p3.recv();
+            rx3.recv();
+            tx1.clone();
+            assert_eq!(rx3.try_recv(), Empty);
+            tx1.send(2);
+            rx3.recv();
         });
 
-        c3.send(());
+        tx3.send(());
         select!(
-            _i1 = p1.recv() => {},
-            _i2 = p2.recv() => fail!()
+            _i1 = rx1.recv() => {},
+            _i2 = rx2.recv() => fail!()
         )
-        c3.send(());
+        tx3.send(());
     })
 
     test!(fn cloning2() {
-        let (p1, c1) = Chan::<int>::new();
-        let (p2, _c2) = Chan::<int>::new();
-        let (p3, c3) = Chan::<()>::new();
+        let (tx1, rx1) = channel::<int>();
+        let (_tx2, rx2) = channel::<int>();
+        let (tx3, rx3) = channel::<()>();
 
         spawn(proc() {
-            p3.recv();
-            c1.clone();
-            assert_eq!(p3.try_recv(), Empty);
-            c1.send(2);
-            p3.recv();
+            rx3.recv();
+            tx1.clone();
+            assert_eq!(rx3.try_recv(), Empty);
+            tx1.send(2);
+            rx3.recv();
         });
 
-        c3.send(());
+        tx3.send(());
         select!(
-            _i1 = p1.recv() => {},
-            _i2 = p2.recv() => fail!()
+            _i1 = rx1.recv() => {},
+            _i2 = rx2.recv() => fail!()
         )
-        c3.send(());
+        tx3.send(());
     })
 
     test!(fn cloning3() {
-        let (p1, c1) = Chan::<()>::new();
-        let (p2, c2) = Chan::<()>::new();
-        let (p, c) = Chan::new();
+        let (tx1, rx1) = channel::<()>();
+        let (tx2, rx2) = channel::<()>();
+        let (tx3, rx3) = channel::<()>();
         spawn(proc() {
             let s = Select::new();
-            let mut h1 = s.handle(&p1);
-            let mut h2 = s.handle(&p2);
+            let mut h1 = s.handle(&rx1);
+            let mut h2 = s.handle(&rx2);
             unsafe { h2.add(); }
             unsafe { h1.add(); }
             assert_eq!(s.wait(), h2.id);
-            c.send(());
+            tx3.send(());
         });
 
         for _ in range(0, 1000) { task::deschedule(); }
-        drop(c1.clone());
-        c2.send(());
-        p.recv();
+        drop(tx1.clone());
+        tx2.send(());
+        rx3.recv();
     })
 
     test!(fn preflight1() {
-        let (p, c) = Chan::new();
-        c.send(());
+        let (tx, rx) = channel();
+        tx.send(());
         select!(
-            () = p.recv() => {}
+            () = rx.recv() => {}
         )
     })
 
     test!(fn preflight2() {
-        let (p, c) = Chan::new();
-        c.send(());
-        c.send(());
+        let (tx, rx) = channel();
+        tx.send(());
+        tx.send(());
         select!(
-            () = p.recv() => {}
+            () = rx.recv() => {}
         )
     })
 
     test!(fn preflight3() {
-        let (p, c) = Chan::new();
-        drop(c.clone());
-        c.send(());
+        let (tx, rx) = channel();
+        drop(tx.clone());
+        tx.send(());
         select!(
-            () = p.recv() => {}
+            () = rx.recv() => {}
         )
     })
 
     test!(fn preflight4() {
-        let (p, c) = Chan::new();
-        c.send(());
+        let (tx, rx) = channel();
+        tx.send(());
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight5() {
-        let (p, c) = Chan::new();
-        c.send(());
-        c.send(());
+        let (tx, rx) = channel();
+        tx.send(());
+        tx.send(());
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight6() {
-        let (p, c) = Chan::new();
-        drop(c.clone());
-        c.send(());
+        let (tx, rx) = channel();
+        drop(tx.clone());
+        tx.send(());
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight7() {
-        let (p, c) = Chan::<()>::new();
-        drop(c);
+        let (tx, rx) = channel::<()>();
+        drop(tx);
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight8() {
-        let (p, c) = Chan::new();
-        c.send(());
-        drop(c);
-        p.recv();
+        let (tx, rx) = channel();
+        tx.send(());
+        drop(tx);
+        rx.recv();
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn preflight9() {
-        let (p, c) = Chan::new();
-        drop(c.clone());
-        c.send(());
-        drop(c);
-        p.recv();
+        let (tx, rx) = channel();
+        drop(tx.clone());
+        tx.send(());
+        drop(tx);
+        rx.recv();
         let s = Select::new();
-        let mut h = s.handle(&p);
+        let mut h = s.handle(&rx);
         unsafe { h.add(); }
         assert_eq!(s.wait2(false), h.id);
     })
 
     test!(fn oneshot_data_waiting() {
-        let (p, c) = Chan::new();
-        let (p2, c2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
         spawn(proc() {
             select! {
-                () = p.recv() => {}
+                () = rx1.recv() => {}
             }
-            c2.send(());
+            tx2.send(());
         });
 
         for _ in range(0, 100) { task::deschedule() }
-        c.send(());
-        p2.recv();
+        tx1.send(());
+        rx2.recv();
     })
 
     test!(fn stream_data_waiting() {
-        let (p, c) = Chan::new();
-        let (p2, c2) = Chan::new();
-        c.send(());
-        c.send(());
-        p.recv();
-        p.recv();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
+        tx1.send(());
+        tx1.send(());
+        rx1.recv();
+        rx1.recv();
         spawn(proc() {
             select! {
-                () = p.recv() => {}
+                () = rx1.recv() => {}
             }
-            c2.send(());
+            tx2.send(());
         });
 
         for _ in range(0, 100) { task::deschedule() }
-        c.send(());
-        p2.recv();
+        tx1.send(());
+        rx2.recv();
     })
 
     test!(fn shared_data_waiting() {
-        let (p, c) = Chan::new();
-        let (p2, c2) = Chan::new();
-        drop(c.clone());
-        c.send(());
-        p.recv();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
+        drop(tx1.clone());
+        tx1.send(());
+        rx1.recv();
         spawn(proc() {
             select! {
-                () = p.recv() => {}
+                () = rx1.recv() => {}
             }
-            c2.send(());
+            tx2.send(());
         });
 
         for _ in range(0, 100) { task::deschedule() }
-        c.send(());
-        p2.recv();
+        tx1.send(());
+        rx2.recv();
     })
 }

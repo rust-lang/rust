@@ -11,16 +11,16 @@
 use std::task;
 
 pub fn main() {
-    let (p, ch) = Chan::<uint>::new();
+    let (tx, rx) = channel::<uint>();
 
     let x = ~1;
     let x_in_parent = &(*x) as *int as uint;
 
     task::spawn(proc() {
         let x_in_child = &(*x) as *int as uint;
-        ch.send(x_in_child);
+        tx.send(x_in_child);
     });
 
-    let x_in_child = p.recv();
+    let x_in_child = rx.recv();
     assert_eq!(x_in_parent, x_in_child);
 }

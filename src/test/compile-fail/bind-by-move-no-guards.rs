@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    let (p,c) = Chan::new();
-    let x = Some(p);
-    c.send(false);
+    let (tx, rx) = channel();
+    let x = Some(rx);
+    tx.send(false);
     match x {
         Some(z) if z.recv() => { fail!() }, //~ ERROR cannot bind by-move into a pattern guard
         Some(z) => { assert!(!z.recv()); },
