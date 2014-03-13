@@ -9,56 +9,6 @@
 // except according to those terms.
 
 //! Unordered containers, implemented as hash-tables (`HashSet` and `HashMap` types)
-//!
-//! The tables use a keyed hash with new random keys generated for each container, so the ordering
-//! of a set of keys in a hash table is randomized.
-//!
-//! This is currently implemented with robin hood hashing, as described in [1][2][3].
-//!
-//! # Example
-//!
-//! ```rust
-//! use collections::HashMap;
-//!
-//! // type inference lets us omit an explicit type signature (which
-//! // would be `HashMap<&str, &str>` in this example).
-//! let mut book_reviews = HashMap::new();
-//!
-//! // review some books.
-//! book_reviews.insert("Adventures of Hucklebury Fin",      "My favorite book.");
-//! book_reviews.insert("Grimms' Fairy Tales",               "Masterpiece.");
-//! book_reviews.insert("Pride and Prejudice",               "Very enjoyable.");
-//! book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
-//!
-//! // check for a specific one.
-//! if !book_reviews.contains_key(& &"Les Misérables") {
-//!     println!("We've got {} reviews, but Les Misérables ain't one.",
-//!              book_reviews.len());
-//! }
-//!
-//! // oops, this review has a lot of spelling mistakes, let's delete it.
-//! book_reviews.remove(& &"The Adventures of Sherlock Holmes");
-//!
-//! // look up the values associated with some keys.
-//! let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
-//! for book in to_find.iter() {
-//!     match book_reviews.find(book) {
-//!         Some(review) => println!("{}: {}", *book, *review),
-//!         None => println!("{} is unreviewed.", *book)
-//!     }
-//! }
-//!
-//! // iterate over everything.
-//! for (book, review) in book_reviews.iter() {
-//!     println!("{}: \"{}\"", *book, *review);
-//! }
-//! ```
-//!
-//! Relevant papers/articles:
-//!
-//! [1]: Pedro Celis. ["Robin Hood Hashing"](https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf)
-//! [2]: (http://codecapsule.com/2013/11/11/robin-hood-hashing/)
-//! [3]: (http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/)
 
 use std::container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use std::clone::Clone;
@@ -667,14 +617,64 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 // `table::RawTable::new`, but I'm not confident it works for all sane alignments,
 // especially if a type needs more alignment than `malloc` provides.
 
-/// A hash map implementation which uses linear probing with Robin Hood bucket
-/// stealing.
+/// A hash map implementation which uses linear probing with Robin
+/// Hood bucket stealing.
 ///
 /// The hashes are all keyed by the task-local random number generator
-/// on creation by default. This can be overriden with one of the constructors.
+/// on creation by default, this means the ordering of the keys is
+/// randomized, but makes the tables more resistant to
+/// denial-of-service attacks (Hash DoS). This behaviour can be
+/// overriden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
 /// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.
+///
+/// Relevant papers/articles:
+///
+/// 1. Pedro Celis. ["Robin Hood Hashing"](https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf)
+/// 2. Emmanuel Goossaert. ["Robin Hood
+///    hashing"](http://codecapsule.com/2013/11/11/robin-hood-hashing/)
+/// 3. Emmanuel Goossaert. ["Robin Hood hashing: backward shift
+///    deletion"](http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/)
+///
+/// # Example
+///
+/// ```rust
+/// use collections::HashMap;
+///
+/// // type inference lets us omit an explicit type signature (which
+/// // would be `HashMap<&str, &str>` in this example).
+/// let mut book_reviews = HashMap::new();
+///
+/// // review some books.
+/// book_reviews.insert("Adventures of Hucklebury Fin",      "My favorite book.");
+/// book_reviews.insert("Grimms' Fairy Tales",               "Masterpiece.");
+/// book_reviews.insert("Pride and Prejudice",               "Very enjoyable.");
+/// book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
+///
+/// // check for a specific one.
+/// if !book_reviews.contains_key(& &"Les Misérables") {
+///     println!("We've got {} reviews, but Les Misérables ain't one.",
+///              book_reviews.len());
+/// }
+///
+/// // oops, this review has a lot of spelling mistakes, let's delete it.
+/// book_reviews.remove(& &"The Adventures of Sherlock Holmes");
+///
+/// // look up the values associated with some keys.
+/// let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
+/// for book in to_find.iter() {
+///     match book_reviews.find(book) {
+///         Some(review) => println!("{}: {}", *book, *review),
+///         None => println!("{} is unreviewed.", *book)
+///     }
+/// }
+///
+/// // iterate over everything.
+/// for (book, review) in book_reviews.iter() {
+///     println!("{}: \"{}\"", *book, *review);
+/// }
+/// ```
 #[deriving(Clone)]
 pub struct HashMap<K, V, H = sip::SipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
