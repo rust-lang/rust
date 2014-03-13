@@ -770,6 +770,7 @@ impl Parser {
                          next: token::Token,
                          lo: BytePos,
                          hi: BytePos) {
+        self.last_span = mk_sp(self.span.lo, lo);
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
