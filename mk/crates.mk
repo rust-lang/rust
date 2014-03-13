@@ -55,7 +55,7 @@ HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
-DEPS_std := native:rustrt native:compiler-rt
+DEPS_std := native:rustrt native:compiler-rt native:backtrace
 DEPS_extra := std term sync serialize getopts collections time rand
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
