@@ -32,6 +32,7 @@ use raw::Slice;
 use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use vec::{RevItems};
 
+#[unsafe_no_drop_flag]
 pub struct Vec<T> {
     priv len: uint,
     priv cap: uint,
@@ -585,6 +586,8 @@ pub fn append_one<T>(mut lhs: Vec<T>, x: T) -> Vec<T> {
 #[unsafe_destructor]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
+        // This is (and should always remain) a no-op if the fields are
+        // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         unsafe {
             for x in self.as_mut_slice().iter() {
                 ptr::read(x);
@@ -649,7 +652,54 @@ impl<T> Drop for MoveItems<T> {
 mod tests {
     use super::Vec;
     use iter::{Iterator, range, Extendable};
+    use mem::{drop, size_of};
+    use ops::Drop;
     use option::{Some, None};
+    use ptr;
+
+    #[test]
+    fn test_small_vec_struct() {
+        assert!(size_of::<Vec<u8>>() == size_of::<uint>() * 3);
+    }
+
+    #[test]
+    fn test_double_drop() {
+        struct TwoVec<T> {
+            x: Vec<T>,
+            y: Vec<T>
+        }
+
+        struct DropCounter<'a> {
+            count: &'a mut int
+        }
+
+        #[unsafe_destructor]
+        impl<'a> Drop for DropCounter<'a> {
+            fn drop(&mut self) {
+                *self.count += 1;
+            }
+        }
+
+        let mut count_x @ mut count_y = 0;
+        {
+            let mut tv = TwoVec {
+                x: Vec::new(),
+                y: Vec::new()
+            };
+            tv.x.push(DropCounter {count: &mut count_x});
+            tv.y.push(DropCounter {count: &mut count_y});
+
+            // If Vec had a drop flag, here is where it would be zeroed.
+            // Instead, it should rely on its internal state to prevent
+            // doing anything significant when dropped multiple times.
+            drop(tv.x);
+
+            // Here tv goes out of scope, tv.y should be dropped, but not tv.x.
+        }
+
+        assert_eq!(count_x, 1);
+        assert_eq!(count_y, 1);
+    }
 
     #[test]
     fn test_reserve_additional() {
