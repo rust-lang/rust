@@ -267,7 +267,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Handle any kind bounds on type parameters
     {
         let method_map = cx.method_map.borrow();
-        let method = method_map.get().find(&e.id);
+        let method = method_map.get().find(&typeck::MethodCall::expr(e.id));
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = match method {
             Some(method) => Some(&method.substs.tps),
@@ -298,7 +298,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                 }
               }
             };
-            let type_param_defs = type_param_defs.borrow();
+            let type_param_defs = type_param_defs.deref();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \
@@ -341,7 +341,8 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             match **adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
-                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
+                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e,
+                                                         cx.method_map.borrow().get());
                     check_trait_cast(cx, source_ty, target_ty, e.span);
                 }
                 ty::AutoAddEnv(..) |

@@ -63,12 +63,6 @@ impl<T> Rc<T> {
 }
 
 impl<T> Rc<T> {
-    /// Borrow the value contained in the reference-counted box
-    #[inline(always)]
-    pub fn borrow<'a>(&'a self) -> &'a T {
-        unsafe { &(*self.ptr).value }
-    }
-
     /// Downgrade the reference-counted pointer to a weak reference
     pub fn downgrade(&self) -> Weak<T> {
         unsafe {
@@ -93,7 +87,7 @@ impl<T> Drop for Rc<T> {
             if self.ptr != 0 as *mut RcBox<T> {
                 (*self.ptr).strong -= 1;
                 if (*self.ptr).strong == 0 {
-                    ptr::read(self.borrow()); // destroy the contained object
+                    ptr::read(self.deref()); // destroy the contained object
 
                     // remove the implicit "strong weak" pointer now
                     // that we've destroyed the contents.
@@ -120,24 +114,24 @@ impl<T> Clone for Rc<T> {
 
 impl<T: Eq> Eq for Rc<T> {
     #[inline(always)]
-    fn eq(&self, other: &Rc<T>) -> bool { *self.borrow() == *other.borrow() }
+    fn eq(&self, other: &Rc<T>) -> bool { *self.deref() == *other.deref() }
 
     #[inline(always)]
-    fn ne(&self, other: &Rc<T>) -> bool { *self.borrow() != *other.borrow() }
+    fn ne(&self, other: &Rc<T>) -> bool { *self.deref() != *other.deref() }
 }
 
 impl<T: Ord> Ord for Rc<T> {
     #[inline(always)]
-    fn lt(&self, other: &Rc<T>) -> bool { *self.borrow() < *other.borrow() }
+    fn lt(&self, other: &Rc<T>) -> bool { *self.deref() < *other.deref() }
 
     #[inline(always)]
-    fn le(&self, other: &Rc<T>) -> bool { *self.borrow() <= *other.borrow() }
+    fn le(&self, other: &Rc<T>) -> bool { *self.deref() <= *other.deref() }
 
     #[inline(always)]
-    fn gt(&self, other: &Rc<T>) -> bool { *self.borrow() > *other.borrow() }
+    fn gt(&self, other: &Rc<T>) -> bool { *self.deref() > *other.deref() }
 
     #[inline(always)]
-    fn ge(&self, other: &Rc<T>) -> bool { *self.borrow() >= *other.borrow() }
+    fn ge(&self, other: &Rc<T>) -> bool { *self.deref() >= *other.deref() }
 }
 
 /// Weak reference to a reference-counted box
@@ -197,30 +191,30 @@ mod tests {
     fn test_clone() {
         let x = Rc::new(RefCell::new(5));
         let y = x.clone();
-        x.borrow().with_mut(|inner| {
+        x.deref().with_mut(|inner| {
             *inner = 20;
         });
-        assert_eq!(y.borrow().with(|v| *v), 20);
+        assert_eq!(y.deref().with(|v| *v), 20);
     }
 
     #[test]
     fn test_simple() {
         let x = Rc::new(5);
-        assert_eq!(*x.borrow(), 5);
+        assert_eq!(*x.deref(), 5);
     }
 
     #[test]
     fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
-        assert_eq!(*x.borrow(), 5);
-        assert_eq!(*y.borrow(), 5);
+        assert_eq!(*x.deref(), 5);
+        assert_eq!(*y.deref(), 5);
     }
 
     #[test]
     fn test_destructor() {
         let x = Rc::new(~5);
-        assert_eq!(**x.borrow(), 5);
+        assert_eq!(**x.deref(), 5);
     }
 
     #[test]
@@ -243,7 +237,7 @@ mod tests {
         // see issue #11532
         use gc::Gc;
         let a = Rc::new(RefCell::new(Gc::new(1)));
-        assert!(a.borrow().try_borrow_mut().is_some());
+        assert!(a.deref().try_borrow_mut().is_some());
     }
 
     #[test]
@@ -254,7 +248,7 @@ mod tests {
 
         let a = Rc::new(Cycle { x: RefCell::new(None) });
         let b = a.clone().downgrade();
-        *a.borrow().x.borrow_mut().get() = Some(b);
+        *a.deref().x.borrow_mut().get() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }

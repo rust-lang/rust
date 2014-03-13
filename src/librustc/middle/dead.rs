@@ -92,9 +92,10 @@ impl MarkSymbolVisitor {
         }
     }
 
-    fn lookup_and_handle_method(&mut self, id: &ast::NodeId,
+    fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
-        match self.method_map.borrow().get().find(id) {
+        let method_call = typeck::MethodCall::expr(id);
+        match self.method_map.borrow().get().find(&method_call) {
             Some(method) => {
                 match method.origin {
                     typeck::MethodStatic(def_id) => {
@@ -179,7 +180,7 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(&expr.id, expr.span);
+                self.lookup_and_handle_method(expr.id, expr.span);
             }
             _ => ()
         }

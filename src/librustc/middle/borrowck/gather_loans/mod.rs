@@ -23,6 +23,7 @@ use middle::moves;
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
+use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
@@ -242,7 +243,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprIndex(_, arg) |
       ast::ExprBinary(_, _, arg)
-      if method_map.get().contains_key(&ex.id) => {
+      if method_map.get().contains_key(&MethodCall::expr(ex.id)) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
@@ -325,6 +326,39 @@ impl<'a> GatherLoanCtxt<'a> {
         assert_eq!(id, popped);
     }
 
+    pub fn guarantee_autoderefs(&mut self,
+                                expr: &ast::Expr,
+                                autoderefs: uint) {
+        let method_map = self.bccx.method_map.borrow();
+        for i in range(0, autoderefs) {
+            match method_map.get().find(&MethodCall::autoderef(expr.id, i as u32)) {
+                Some(method) => {
+                    // Treat overloaded autoderefs as if an AutoRef adjustment
+                    // was applied on the base type, as that is always the case.
+                    let mut mc = self.bccx.mc();
+                    let cmt = match mc.cat_expr_autoderefd(expr, i) {
+                        Ok(v) => v,
+                        Err(()) => self.tcx().sess.span_bug(expr.span, "Err from mc")
+                    };
+                    let self_ty = *ty::ty_fn_args(method.ty).get(0);
+                    let (m, r) = match ty::get(self_ty).sty {
+                        ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                        _ => self.tcx().sess.span_bug(expr.span,
+                                format!("bad overloaded deref type {}",
+                                    method.ty.repr(self.tcx())))
+                    };
+                    self.guarantee_valid(expr.id,
+                                         expr.span,
+                                         cmt,
+                                         m,
+                                         r,
+                                         AutoRef);
+                }
+                None => {}
+            }
+        }
+    }
+
     pub fn guarantee_adjustments(&mut self,
                                  expr: &ast::Expr,
                                  adjustment: &ty::AutoAdjustment) {
@@ -340,15 +374,17 @@ impl<'a> GatherLoanCtxt<'a> {
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
-                    autoref: None, .. }) => {
+                    autoref: None, autoderefs }) => {
                 debug!("no autoref");
+                self.guarantee_autoderefs(expr, autoderefs);
                 return;
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: Some(ref autoref),
-                    autoderefs: autoderefs}) => {
+                    autoderefs}) => {
+                self.guarantee_autoderefs(expr, autoderefs);
                 let mut mc = self.bccx.mc();
                 let cmt = match mc.cat_expr_autoderefd(expr, autoderefs) {
                     Ok(v) => v,
@@ -406,7 +442,7 @@ impl<'a> GatherLoanCtxt<'a> {
                           closure_expr: &ast::Expr) {
         let capture_map = self.bccx.capture_map.borrow();
         let captured_vars = capture_map.get().get(&closure_expr.id);
-        for captured_var in captured_vars.borrow().iter() {
+        for captured_var in captured_vars.deref().iter() {
             match captured_var.mode {
                 moves::CapCopy | moves::CapMove => { continue; }
                 moves::CapRef => { }

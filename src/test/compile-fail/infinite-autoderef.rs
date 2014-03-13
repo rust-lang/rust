@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure assigning an owned or managed variable to itself works. In particular,
-// that we do not glue_drop before we glue_take (#3290).
+// error-pattern: reached the recursion limit while auto-dereferencing
 
-use std::rc::Rc;
+use std::ops::Deref;
+
+struct Foo;
+
+impl Deref<Foo> for Foo {
+    fn deref<'a>(&'a self) -> &'a Foo {
+        self
+    }
+}
 
 pub fn main() {
-   let mut x = ~3;
-   x = x;
-   assert!(*x == 3);
+    let mut x;
+    loop {
+        x = ~x;
+        x.foo;
+        x.bar();
+    }
 
-   let mut x = Rc::new(3);
-   x = x;
-   assert!(*x.deref() == 3);
+    Foo.foo;
+    Foo.bar();
 }

@@ -354,7 +354,7 @@ pub enum Pat_ {
     PatVec(Vec<@Pat> , Option<@Pat>, Vec<@Pat> )
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
 pub enum Mutability {
     MutMutable,
     MutImmutable,

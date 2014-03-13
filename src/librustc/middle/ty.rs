@@ -23,6 +23,7 @@ use middle::resolve_lifetime;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
+use middle::typeck::{MethodCall, MethodCallee, MethodMap};
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 use middle;
@@ -30,7 +31,7 @@ use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
-use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
+use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet, FnvHashMap};
 
 use std::cast;
 use std::cell::{Cell, RefCell};
@@ -228,7 +229,7 @@ pub struct AutoDerefRef {
     autoref: Option<AutoRef>
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Decodable, Encodable, Eq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
@@ -258,10 +259,7 @@ pub struct ctxt_ {
     diag: @syntax::diagnostic::SpanHandler,
     // Specifically use a speedy hash algorithm for this hash map, it's used
     // quite often.
-    #[cfg(stage0)]
-    interner: RefCell<HashMap<intern_key, ~t_box_>>,
-    #[cfg(not(stage0))]
-    interner: RefCell<HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher>>,
+    interner: RefCell<FnvHashMap<intern_key, ~t_box_>>,
     next_id: Cell<uint>,
     cstore: @metadata::cstore::CStore,
     sess: session::Session,
@@ -1014,13 +1012,13 @@ pub struct Generics {
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
-        !self.type_param_defs.borrow().is_empty()
+        !self.type_param_defs.deref().is_empty()
     }
     pub fn type_param_defs<'a>(&'a self) -> &'a [TypeParameterDef] {
-        self.type_param_defs.borrow().as_slice()
+        self.type_param_defs.deref().as_slice()
     }
     pub fn region_param_defs<'a>(&'a self) -> &'a [RegionParameterDef] {
-        self.region_param_defs.borrow().as_slice()
+        self.region_param_defs.deref().as_slice()
     }
 }
 
@@ -1091,19 +1089,11 @@ pub fn mk_ctxt(s: session::Session,
                region_maps: middle::region::RegionMaps,
                lang_items: @middle::lang_items::LanguageItems)
             -> ctxt {
-    #[cfg(stage0)]
-    fn hasher() -> HashMap<intern_key, ~t_box_> {
-        HashMap::new()
-    }
-    #[cfg(not(stage0))]
-    fn hasher() -> HashMap<intern_key, ~t_box_, ::util::nodemap::FnvHasher> {
-        HashMap::with_hasher(::util::nodemap::FnvHasher)
-    }
     @ctxt_ {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         diag: s.diagnostic(),
-        interner: RefCell::new(hasher()),
+        interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         cstore: s.cstore,
         sess: s,
@@ -2710,50 +2700,23 @@ pub fn type_param(ty: t) -> Option<uint> {
 // The parameter `explicit` indicates if this is an *explicit* dereference.
 // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
 pub fn deref(t: t, explicit: bool) -> Option<mt> {
-    deref_sty(&get(t).sty, explicit)
-}
-
-pub fn deref_sty(sty: &sty, explicit: bool) -> Option<mt> {
-    match *sty {
-        ty_box(typ) | ty_uniq(typ) => {
-            Some(mt {
-                ty: typ,
-                mutbl: ast::MutImmutable,
-            })
-        }
-
-        ty_rptr(_, mt) => {
-            Some(mt)
-        }
-
-        ty_ptr(mt) if explicit => {
-            Some(mt)
-        }
-
+    match get(t).sty {
+        ty_box(typ) | ty_uniq(typ) => Some(mt {
+            ty: typ,
+            mutbl: ast::MutImmutable,
+        }),
+        ty_rptr(_, mt) => Some(mt),
+        ty_ptr(mt) if explicit => Some(mt),
         _ => None
-    }
-}
-
-pub fn type_autoderef(t: t) -> t {
-    let mut t = t;
-    loop {
-        match deref(t, false) {
-          None => return t,
-          Some(mt) => t = mt.ty
-        }
     }
 }
 
 // Returns the type and mutability of t[i]
 pub fn index(t: t) -> Option<mt> {
-    index_sty(&get(t).sty)
-}
-
-pub fn index_sty(sty: &sty) -> Option<mt> {
-    match *sty {
-      ty_vec(mt, _) => Some(mt),
-      ty_str(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
-      _ => None
+    match get(t).sty {
+        ty_vec(mt, _) => Some(mt),
+        ty_str(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
+        _ => None
     }
 }
 
@@ -2964,7 +2927,10 @@ pub fn expr_ty_opt(cx: ctxt, expr: &ast::Expr) -> Option<t> {
     return node_id_to_type_opt(cx, expr.id);
 }
 
-pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
+pub fn expr_ty_adjusted(cx: ctxt,
+                        expr: &ast::Expr,
+                        method_map: &FnvHashMap<MethodCall, MethodCallee>)
+                        -> t {
     /*!
      *
      * Returns the type of `expr`, considering any `AutoAdjustment`
@@ -2979,11 +2945,10 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
-    let adjustment = {
-        let adjustments = cx.adjustments.borrow();
-        adjustments.get().find_copy(&expr.id)
-    };
-    adjust_ty(cx, expr.span, unadjusted_ty, adjustment)
+    let adjustment = cx.adjustments.borrow().get().find_copy(&expr.id);
+    adjust_ty(cx, expr.span, expr.id, unadjusted_ty, adjustment, |method_call| {
+        method_map.find(&method_call).map(|method| method.ty)
+    })
 }
 
 pub fn expr_span(cx: ctxt, id: NodeId) -> Span {
@@ -3026,14 +2991,14 @@ pub fn local_var_name_str(cx: ctxt, id: NodeId) -> InternedString {
 
 pub fn adjust_ty(cx: ctxt,
                  span: Span,
+                 expr_id: ast::NodeId,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<@AutoAdjustment>)
+                 adjustment: Option<@AutoAdjustment>,
+                 method_type: |MethodCall| -> Option<ty::t>)
                  -> ty::t {
     /*! See `expr_ty_adjusted` */
 
     return match adjustment {
-        None => unadjusted_ty,
-
         Some(adjustment) => {
             match *adjustment {
                 AutoAddEnv(r, s) => {
@@ -3062,7 +3027,13 @@ pub fn adjust_ty(cx: ctxt,
 
                     if !ty::type_is_error(adjusted_ty) {
                         for i in range(0, adj.autoderefs) {
-                            match ty::deref(adjusted_ty, true) {
+                            match method_type(MethodCall::autoderef(expr_id, i as u32)) {
+                                Some(method_ty) => {
+                                    adjusted_ty = ty_fn_ret(method_ty);
+                                }
+                                None => {}
+                            }
+                            match deref(adjusted_ty, true) {
                                 Some(mt) => { adjusted_ty = mt.ty; }
                                 None => {
                                     cx.sess.span_bug(
@@ -3130,6 +3101,7 @@ pub fn adjust_ty(cx: ctxt,
                 }
             }
         }
+        None => unadjusted_ty
     };
 
     fn borrow_vec(cx: ctxt, span: Span,
@@ -3274,7 +3246,7 @@ pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
 }
 
 pub fn expr_is_lval(tcx: ctxt,
-                    method_map: typeck::MethodMap,
+                    method_map: MethodMap,
                     e: &ast::Expr) -> bool {
     match expr_kind(tcx, method_map, e) {
         LvalueExpr => true,
@@ -3295,20 +3267,21 @@ pub enum ExprKind {
 }
 
 pub fn expr_kind(tcx: ctxt,
-                 method_map: typeck::MethodMap,
+                 method_map: MethodMap,
                  expr: &ast::Expr) -> ExprKind {
-    {
-        let method_map = method_map.borrow();
-        if method_map.get().contains_key(&expr.id) {
-            // Overloaded operations are generally calls, and hence they are
-            // generated via DPS.  However, assign_op (e.g., `x += y`) is an
-            // exception, as its result is always unit.
-            return match expr.node {
-                ast::ExprAssignOp(..) => RvalueStmtExpr,
-                ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
-                _ => RvalueDpsExpr
-            };
-        }
+    if method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)) {
+        // Overloaded operations are generally calls, and hence they are
+        // generated via DPS, but there are two exceptions:
+        return match expr.node {
+            // `a += b` has a unit result.
+            ast::ExprAssignOp(..) => RvalueStmtExpr,
+
+            // the deref method invoked for `*a` always yields an `&T`
+            ast::ExprUnary(ast::UnDeref, _) => LvalueExpr,
+
+            // in the general case, result could be any type, use DPS
+            _ => RvalueDpsExpr
+        };
     }
 
     match expr.node {
@@ -3496,37 +3469,6 @@ pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
         }
     });
     rslt
-}
-
-pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
-    // Returns a vec of all the type variables occurring in `ty`. It may
-    // contain duplicates.  (Integral type vars aren't counted.)
-    fn vars_in_type(ty: t) -> Vec<TyVid> {
-        let mut rslt = Vec::new();
-        walk_ty(ty, |ty| {
-            match get(ty).sty {
-              ty_infer(TyVar(v)) => rslt.push(v),
-              _ => ()
-            }
-        });
-        rslt
-    }
-
-    // Fast path
-    if !type_needs_infer(rt) { return; }
-
-    // Occurs check!
-    if vars_in_type(rt).contains(&vid) {
-            // Maybe this should be span_err -- however, there's an
-            // assertion later on that the type doesn't contain
-            // variables, so in this case we have to be sure to die.
-            tcx.sess.span_fatal
-                (sp, ~"type inference failed because I \
-                     could not find a type\n that's both of the form "
-                 + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
-                 " and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
-                 " - such a type would have to be infinitely large.");
-    }
 }
 
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {

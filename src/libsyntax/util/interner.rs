@@ -106,13 +106,13 @@ impl TotalOrd for RcStr {
 impl Str for RcStr {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = *self.string.borrow();
+        let s: &'a str = *self.string.deref();
         s
     }
 
     #[inline]
     fn into_owned(self) -> ~str {
-        self.string.borrow().to_owned()
+        self.string.deref().to_owned()
     }
 }
 

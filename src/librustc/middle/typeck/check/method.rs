@@ -84,9 +84,7 @@ use middle::subst::Subst;
 use middle::ty::*;
 use middle::ty;
 use middle::typeck::astconv::AstConv;
-use middle::typeck::check::{FnCtxt, impl_self_ty};
-use middle::typeck::check::{structurally_resolved_type};
-use middle::typeck::check::vtable;
+use middle::typeck::check::{FnCtxt, PreferMutLvalue, impl_self_ty};
 use middle::typeck::check;
 use middle::typeck::infer;
 use middle::typeck::MethodCallee;
@@ -106,6 +104,7 @@ use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
+use syntax::codemap::Span;
 use syntax::parse::token;
 
 #[deriving(Eq)]
@@ -120,23 +119,23 @@ pub enum AutoderefReceiverFlag {
     DontAutoderefReceiver,
 }
 
-pub fn lookup(
+pub fn lookup<'a>(
         fcx: @FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: &ast::Expr,                   // The expression `a.b(...)`.
-        self_expr: &ast::Expr,              // The expression `a`.
+        self_expr: &'a ast::Expr,           // The expression `a`.
         m_name: ast::Name,                  // The name `b`.
         self_ty: ty::t,                     // The type of `a`.
-        supplied_tps: &[ty::t],             // The list of types X, Y, ... .
+        supplied_tps: &'a [ty::t],          // The list of types X, Y, ... .
         deref_args: check::DerefArgs,       // Whether we autopointer first.
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<MethodCallee> {
     let lcx = LookupContext {
         fcx: fcx,
-        expr: expr,
-        self_expr: self_expr,
+        span: expr.span,
+        self_expr: Some(self_expr),
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: @RefCell::new(HashSet::new()),
@@ -147,7 +146,6 @@ pub fn lookup(
         autoderef_receiver: autoderef_receiver,
     };
 
-    let self_ty = structurally_resolved_type(fcx, self_expr.span, self_ty);
     debug!("method lookup(self_ty={}, expr={}, self_expr={})",
            self_ty.repr(fcx.tcx()), expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
@@ -162,25 +160,25 @@ pub fn lookup(
     debug!("searching extension candidates");
     lcx.reset_candidates();
     lcx.push_bound_candidates(self_ty, None);
-    lcx.push_extension_candidates();
+    lcx.push_extension_candidates(expr.id);
     return lcx.search(self_ty);
 }
 
-pub fn lookup_in_trait(
+pub fn lookup_in_trait<'a>(
         fcx: @FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
-        expr: &ast::Expr,                   // The expression `a.b(...)`.
-        self_expr: &ast::Expr,              // The expression `a`.
+        span: Span,                         // The expression `a.b(...)`'s span.
+        self_expr: Option<&'a ast::Expr>,   // The expression `a`, if available.
         m_name: ast::Name,                  // The name `b`.
         trait_did: DefId,                   // The trait to limit the lookup to.
         self_ty: ty::t,                     // The type of `a`.
-        supplied_tps: &[ty::t],             // The list of types X, Y, ... .
+        supplied_tps: &'a [ty::t],          // The list of types X, Y, ... .
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<MethodCallee> {
     let lcx = LookupContext {
         fcx: fcx,
-        expr: expr,
+        span: span,
         self_expr: self_expr,
         m_name: m_name,
         supplied_tps: supplied_tps,
@@ -192,20 +190,24 @@ pub fn lookup_in_trait(
         autoderef_receiver: autoderef_receiver,
     };
 
-    let self_ty = structurally_resolved_type(fcx, self_expr.span, self_ty);
-    debug!("method lookup_in_trait(self_ty={}, expr={}, self_expr={})",
-           self_ty.repr(fcx.tcx()), expr.repr(fcx.tcx()),
-           self_expr.repr(fcx.tcx()));
+    debug!("method lookup_in_trait(self_ty={}, self_expr={})",
+           self_ty.repr(fcx.tcx()), self_expr.map(|e| e.repr(fcx.tcx())));
 
     lcx.push_bound_candidates(self_ty, Some(trait_did));
     lcx.push_extension_candidate(trait_did);
     lcx.search(self_ty)
 }
 
-pub struct LookupContext<'a> {
+struct LookupContext<'a> {
     fcx: @FnCtxt,
-    expr: &'a ast::Expr,
-    self_expr: &'a ast::Expr,
+    span: Span,
+
+    // The receiver to the method call. Only `None` in the case of
+    // an overloaded autoderef, where the receiver may be an intermediate
+    // state like "the expression `x` when it has been autoderef'd
+    // twice already".
+    self_expr: Option<&'a ast::Expr>,
+
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
     impl_dups: @RefCell<HashSet<DefId>>,
@@ -221,7 +223,7 @@ pub struct LookupContext<'a> {
  * is of a suitable type.
  */
 #[deriving(Clone)]
-pub struct Candidate {
+struct Candidate {
     rcvr_match_condition: RcvrMatchCondition,
     rcvr_substs: ty::substs,
     method_ty: @ty::Method,
@@ -244,68 +246,70 @@ pub enum RcvrMatchCondition {
 
 impl<'a> LookupContext<'a> {
     fn search(&self, self_ty: ty::t) -> Option<MethodCallee> {
-        let mut self_ty = self_ty;
-        let mut autoderefs = 0;
-        loop {
-            debug!("loop: self_ty={} autoderefs={}",
-                   self.ty_to_str(self_ty), autoderefs);
+        let span = self.self_expr.map_or(self.span, |e| e.span);
+        let self_expr_id = self.self_expr.map(|e| e.id);
+        let (self_ty, autoderefs, result) =
+            check::autoderef(
+                self.fcx, span, self_ty, self_expr_id, PreferMutLvalue,
+                |self_ty, autoderefs| self.search_step(self_ty, autoderefs));
 
-            match self.deref_args {
-                check::DontDerefArgs => {
-                    match self.search_for_autoderefd_method(self_ty,
-                                                            autoderefs) {
-                        Some(mme) => { return Some(mme); }
-                        None => {}
-                    }
-
-                    match self.search_for_autoptrd_method(self_ty,
-                                                          autoderefs) {
-                        Some(mme) => { return Some(mme); }
-                        None => {}
-                    }
-                }
-                check::DoDerefArgs => {
-                    match self.search_for_autoptrd_method(self_ty,
-                                                          autoderefs) {
-                        Some(mme) => { return Some(mme); }
-                        None => {}
-                    }
-
-                    match self.search_for_autoderefd_method(self_ty,
-                                                            autoderefs) {
-                        Some(mme) => { return Some(mme); }
-                        None => {}
-                    }
-                }
-            }
-
-            // Don't autoderef if we aren't supposed to.
-            if self.autoderef_receiver == DontAutoderefReceiver {
-                break;
-            }
-
-            // Otherwise, perform autoderef.
-            match self.deref(self_ty) {
-                None => { break; }
-                Some(ty) => {
-                    self_ty = ty;
-                    autoderefs += 1;
+        match result {
+            Some(Some(result)) => Some(result),
+            _ => {
+                if self.is_overloaded_deref() {
+                    // If we are searching for an overloaded deref, no
+                    // need to try coercing a `~[T]` to an `&[T]` and
+                    // searching for an overloaded deref on *that*.
+                    None
+                } else {
+                    self.search_for_autosliced_method(self_ty, autoderefs)
                 }
             }
         }
-
-        self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    fn deref(&self, ty: ty::t) -> Option<ty::t> {
-        match ty::deref(ty, false) {
-            None => None,
-            Some(t) => {
-                Some(structurally_resolved_type(self.fcx,
-                                                self.self_expr.span,
-                                                t.ty))
+    fn search_step(&self,
+                   self_ty: ty::t,
+                   autoderefs: uint)
+                   -> Option<Option<MethodCallee>> {
+        debug!("search_step: self_ty={} autoderefs={}",
+               self.ty_to_str(self_ty), autoderefs);
+
+        match self.deref_args {
+            check::DontDerefArgs => {
+                match self.search_for_autoderefd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+
+                match self.search_for_autoptrd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+            }
+            check::DoDerefArgs => {
+                match self.search_for_autoptrd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
+
+                match self.search_for_autoderefd_method(self_ty, autoderefs) {
+                    Some(result) => return Some(Some(result)),
+                    None => {}
+                }
             }
         }
+
+        // Don't autoderef if we aren't supposed to.
+        if self.autoderef_receiver == DontAutoderefReceiver {
+            Some(None)
+        } else {
+            None
+        }
+    }
+
+    fn is_overloaded_deref(&self) -> bool {
+        self.self_expr.is_none()
     }
 
     // ______________________________________________________________________
@@ -326,8 +330,8 @@ impl<'a> LookupContext<'a> {
          * we'll want to find the inherent impls for `C`.
          */
 
-        let mut self_ty = self_ty;
-        loop {
+        let span = self.self_expr.map_or(self.span, |e| e.span);
+        check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
                 ty_trait(did, ref substs, _, _, _) => {
                     self.push_inherent_candidates_from_object(did, substs);
@@ -341,19 +345,18 @@ impl<'a> LookupContext<'a> {
                 _ => { /* No inherent methods in these types */ }
             }
 
-            // n.b.: Generally speaking, we only loop if we hit the
-            // fallthrough case in the match above.  The exception
-            // would be newtype enums.
-            self_ty = match self.deref(self_ty) {
-                None => { return; }
-                Some(ty) => { ty }
+            // Don't autoderef if we aren't supposed to.
+            if self.autoderef_receiver == DontAutoderefReceiver {
+                Some(())
+            } else {
+                None
             }
-        }
+        });
     }
 
     fn push_bound_candidates(&self, self_ty: ty::t, restrict_to: Option<DefId>) {
-        let mut self_ty = self_ty;
-        loop {
+        let span = self.self_expr.map_or(self.span, |e| e.span);
+        check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
                 ty_param(p) => {
                     self.push_inherent_candidates_from_param(self_ty, restrict_to, p);
@@ -366,11 +369,13 @@ impl<'a> LookupContext<'a> {
                 _ => { /* No bound methods in these types */ }
             }
 
-            self_ty = match self.deref(self_ty) {
-                None => { return; }
-                Some(ty) => { ty }
+            // Don't autoderef if we aren't supposed to.
+            if self.autoderef_receiver == DontAutoderefReceiver {
+                Some(())
+            } else {
+                None
             }
-        }
+        });
     }
 
     fn push_extension_candidate(&self, trait_did: DefId) {
@@ -386,11 +391,11 @@ impl<'a> LookupContext<'a> {
         }
     }
 
-    fn push_extension_candidates(&self) {
+    fn push_extension_candidates(&self, expr_id: ast::NodeId) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let opt_applicable_traits = self.fcx.ccx.trait_map.find(&self.expr.id);
+        let opt_applicable_traits = self.fcx.ccx.trait_map.find(&expr_id);
         for applicable_traits in opt_applicable_traits.move_iter() {
             for trait_did in applicable_traits.iter() {
                 self.push_extension_candidate(*trait_did);
@@ -591,8 +596,8 @@ impl<'a> LookupContext<'a> {
     }
 
     fn push_candidates_from_impl(&self,
-                                     candidates: &mut Vec<Candidate> ,
-                                     impl_info: &ty::Impl) {
+                                 candidates: &mut Vec<Candidate>,
+                                 impl_info: &ty::Impl) {
         {
             let mut impl_dups = self.impl_dups.borrow_mut();
             if !impl_dups.get().insert(impl_info.did) {
@@ -619,12 +624,12 @@ impl<'a> LookupContext<'a> {
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
-        let location_info = &vtable::location_info_for_expr(self.self_expr);
+        let span = self.self_expr.map_or(self.span, |e| e.span);
         let vcx = self.fcx.vtable_context();
         let ty::ty_param_substs_and_ty {
             substs: impl_substs,
             ty: impl_ty
-        } = impl_self_ty(&vcx, location_info, impl_info.did);
+        } = impl_self_ty(&vcx, span, impl_info.did);
 
         candidates.push(Candidate {
             rcvr_match_condition: RcvrMatchesIfSubtype(impl_ty),
@@ -638,28 +643,41 @@ impl<'a> LookupContext<'a> {
     // Candidate selection (see comment at start of file)
 
     fn search_for_autoderefd_method(&self,
-                                        self_ty: ty::t,
-                                        autoderefs: uint)
-                                        -> Option<MethodCallee> {
-        let (self_ty, autoadjust) =
+                                    self_ty: ty::t,
+                                    autoderefs: uint)
+                                    -> Option<MethodCallee> {
+        let (self_ty, auto_deref_ref) =
             self.consider_reborrow(self_ty, autoderefs);
+
+        // Hacky. For overloaded derefs, there may be an adjustment
+        // added to the expression from the outside context, so we do not store
+        // an explicit adjustment, but rather we hardwire the single deref
+        // that occurs in trans and mem_categorization.
+        let adjustment = match self.self_expr {
+            Some(expr) => Some((expr.id, @ty::AutoDerefRef(auto_deref_ref))),
+            None => return None
+        };
+
         match self.search_for_method(self_ty) {
             None => None,
-            Some(mme) => {
+            Some(method) => {
                 debug!("(searching for autoderef'd method) writing \
-                       adjustment ({}) to {}",
-                       autoderefs,
-                       self.self_expr.id);
-                self.fcx.write_adjustment(self.self_expr.id, @autoadjust);
-                Some(mme)
+                       adjustment {:?}", adjustment);
+                match adjustment {
+                    Some((self_expr_id, adj)) => {
+                        self.fcx.write_adjustment(self_expr_id, adj);
+                    }
+                    None => {}
+                }
+                Some(method)
             }
         }
     }
 
     fn consider_reborrow(&self,
-                             self_ty: ty::t,
-                             autoderefs: uint)
-                             -> (ty::t, ty::AutoAdjustment) {
+                         self_ty: ty::t,
+                         autoderefs: uint)
+                         -> (ty::t, ty::AutoDerefRef) {
         /*!
          * In the event that we are invoking a method with a receiver
          * of a borrowed type like `&T`, `&mut T`, or `&mut [T]`,
@@ -681,44 +699,41 @@ impl<'a> LookupContext<'a> {
         return match ty::get(self_ty).sty {
             ty::ty_rptr(_, self_mt) if default_method_hack(self_mt) => {
                 (self_ty,
-                 ty::AutoDerefRef(ty::AutoDerefRef {
+                 ty::AutoDerefRef {
                      autoderefs: autoderefs,
-                     autoref: None}))
+                     autoref: None})
             }
             ty::ty_rptr(_, self_mt) => {
                 let region =
-                    self.infcx().next_region_var(
-                        infer::Autoref(self.expr.span));
+                    self.infcx().next_region_var(infer::Autoref(self.span));
                 (ty::mk_rptr(tcx, region, self_mt),
-                 ty::AutoDerefRef(ty::AutoDerefRef {
+                 ty::AutoDerefRef {
                      autoderefs: autoderefs+1,
-                     autoref: Some(ty::AutoPtr(region, self_mt.mutbl))}))
+                     autoref: Some(ty::AutoPtr(region, self_mt.mutbl))})
             }
             ty::ty_vec(self_mt, vstore_slice(_)) => {
                 let region =
-                    self.infcx().next_region_var(
-                        infer::Autoref(self.expr.span));
+                    self.infcx().next_region_var(infer::Autoref(self.span));
                 (ty::mk_vec(tcx, self_mt, vstore_slice(region)),
-                 ty::AutoDerefRef(ty::AutoDerefRef {
+                 ty::AutoDerefRef {
                      autoderefs: autoderefs,
-                     autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))}))
+                     autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))})
             }
-            ty_trait(did, ref substs, ty::RegionTraitStore(_), mutbl, bounds) => {
+            ty::ty_trait(did, ref substs, ty::RegionTraitStore(_), mutbl, bounds) => {
                 let region =
-                    self.infcx().next_region_var(
-                        infer::Autoref(self.expr.span));
+                    self.infcx().next_region_var(infer::Autoref(self.span));
                 (ty::mk_trait(tcx, did, substs.clone(),
                               ty::RegionTraitStore(region),
                               mutbl, bounds),
-                 ty::AutoDerefRef(ty::AutoDerefRef {
+                 ty::AutoDerefRef {
                      autoderefs: autoderefs,
-                     autoref: Some(ty::AutoBorrowObj(region, mutbl))}))
+                     autoref: Some(ty::AutoBorrowObj(region, mutbl))})
             }
             _ => {
                 (self_ty,
-                 ty::AutoDerefRef(ty::AutoDerefRef {
+                 ty::AutoDerefRef {
                      autoderefs: autoderefs,
-                     autoref: None}))
+                     autoref: None})
             }
         };
 
@@ -738,9 +753,9 @@ impl<'a> LookupContext<'a> {
                                     autoderefs: uint)
                                     -> Option<MethodCallee> {
         /*!
-         *
          * Searches for a candidate by converting things like
-         * `~[]` to `&[]`. */
+         * `~[]` to `&[]`.
+         */
 
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
@@ -848,30 +863,48 @@ impl<'a> LookupContext<'a> {
             mutbls: &[ast::Mutability],
             mk_autoref_ty: |ast::Mutability, ty::Region| -> ty::t)
             -> Option<MethodCallee> {
+        // Hacky. For overloaded derefs, there may be an adjustment
+        // added to the expression from the outside context, so we do not store
+        // an explicit adjustment, but rather we hardwire the single deref
+        // that occurs in trans and mem_categorization.
+        let self_expr_id = match self.self_expr {
+            Some(expr) => Some(expr.id),
+            None => {
+                assert_eq!(autoderefs, 0);
+                assert_eq!(kind(ty::ReEmpty, ast::MutImmutable),
+                           ty::AutoPtr(ty::ReEmpty, ast::MutImmutable));
+                None
+            }
+        };
+
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region =
-            self.infcx().next_region_var(
-                infer::Autoref(self.expr.span));
+            self.infcx().next_region_var(infer::Autoref(self.span));
         for mutbl in mutbls.iter() {
             let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
                 None => {}
-                Some(mme) => {
-                    self.fcx.write_adjustment(
-                        self.self_expr.id,
-                        @ty::AutoDerefRef(ty::AutoDerefRef {
-                            autoderefs: autoderefs,
-                            autoref: Some(kind(region, *mutbl))}));
-                    return Some(mme);
+                Some(method) => {
+                    match self_expr_id {
+                        Some(self_expr_id) => {
+                            self.fcx.write_adjustment(
+                                self_expr_id,
+                                @ty::AutoDerefRef(ty::AutoDerefRef {
+                                    autoderefs: autoderefs,
+                                    autoref: Some(kind(region, *mutbl))
+                                }));
+                        }
+                        None => {}
+                    }
+                    return Some(method);
                 }
             }
         }
-        return None;
+        None
     }
 
-    fn search_for_method(&self, rcvr_ty: ty::t)
-                         -> Option<MethodCallee> {
+    fn search_for_method(&self, rcvr_ty: ty::t) -> Option<MethodCallee> {
         debug!("search_for_method(rcvr_ty={})", self.ty_to_str(rcvr_ty));
         let _indenter = indenter();
 
@@ -900,9 +933,8 @@ impl<'a> LookupContext<'a> {
         }
     }
 
-    fn consider_candidates(&self,
-                           rcvr_ty: ty::t,
-                           candidates: &mut Vec<Candidate> )
+    fn consider_candidates(&self, rcvr_ty: ty::t,
+                           candidates: &mut Vec<Candidate>)
                            -> Option<MethodCallee> {
         // FIXME(pcwalton): Do we need to clone here?
         let relevant_candidates: Vec<Candidate> =
@@ -918,7 +950,7 @@ impl<'a> LookupContext<'a> {
 
         if relevant_candidates.len() > 1 {
             self.tcx().sess.span_err(
-                self.expr.span,
+                self.span,
                 "multiple applicable methods in scope");
             for (idx, candidate) in relevant_candidates.iter().enumerate() {
                 self.report_candidate(idx, &candidate.origin);
@@ -986,8 +1018,7 @@ impl<'a> LookupContext<'a> {
 
         let tcx = self.tcx();
 
-        debug!("confirm_candidate(expr={}, rcvr_ty={}, candidate={})",
-               self.expr.repr(tcx),
+        debug!("confirm_candidate(rcvr_ty={}, candidate={})",
                self.ty_to_str(rcvr_ty),
                candidate.repr(self.tcx()));
 
@@ -1007,12 +1038,12 @@ impl<'a> LookupContext<'a> {
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_method_tps == 0u {
                 tcx.sess.span_err(
-                    self.expr.span,
+                    self.span,
                     "this method does not take type parameters");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
             } else if num_supplied_tps != num_method_tps {
                 tcx.sess.span_err(
-                    self.expr.span,
+                    self.span,
                     "incorrect number of type \
                      parameters given for this method");
                 self.fcx.infcx().next_ty_vars(num_method_tps)
@@ -1025,12 +1056,12 @@ impl<'a> LookupContext<'a> {
         // FIXME -- permit users to manually specify lifetimes
         let mut all_regions = match candidate.rcvr_substs.regions {
             NonerasedRegions(ref v) => v.clone(),
-            ErasedRegions => tcx.sess.span_bug(self.expr.span, "ErasedRegions")
+            ErasedRegions => tcx.sess.span_bug(self.span, "ErasedRegions")
         };
         let m_regions =
             self.fcx.infcx().region_vars_for_defs(
-                self.expr.span,
-                candidate.method_ty.generics.region_param_defs.borrow().as_slice());
+                self.span,
+                candidate.method_ty.generics.region_param_defs.deref().as_slice());
         for &r in m_regions.iter() {
             all_regions.push(r);
         }
@@ -1077,7 +1108,7 @@ impl<'a> LookupContext<'a> {
         let (_, fn_sig) = replace_late_bound_regions_in_fn_sig(
             tcx, &fn_sig,
             |br| self.fcx.infcx().next_region_var(
-                infer::LateBoundRegion(self.expr.span, br)));
+                infer::LateBoundRegion(self.span, br)));
         let transformed_self_ty = *fn_sig.inputs.get(0);
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
@@ -1091,7 +1122,8 @@ impl<'a> LookupContext<'a> {
         // variables to unify etc).  Since we checked beforehand, and
         // nothing has changed in the meantime, this unification
         // should never fail.
-        match self.fcx.mk_subty(false, infer::Misc(self.self_expr.span),
+        let span = self.self_expr.map_or(self.span, |e| e.span);
+        match self.fcx.mk_subty(false, infer::Misc(span),
                                 rcvr_ty, transformed_self_ty) {
             result::Ok(_) => {}
             result::Err(_) => {
@@ -1112,8 +1144,8 @@ impl<'a> LookupContext<'a> {
         &self,
         trait_def_id: ast::DefId,
         rcvr_substs: &ty::substs,
-        method_ty: &ty::Method) -> ty::t
-    {
+        method_ty: &ty::Method)
+        -> ty::t {
         /*!
          * This is a bit tricky. We have a match against a trait method
          * being invoked on an object, and we want to generate the
@@ -1140,7 +1172,7 @@ impl<'a> LookupContext<'a> {
                                  tps: rcvr_substs.tps.clone()};
         match method_ty.explicit_self {
             ast::SelfStatic => {
-                self.bug(~"static method for object type receiver");
+                self.bug("static method for object type receiver");
             }
             ast::SelfValue => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
@@ -1187,14 +1219,14 @@ impl<'a> LookupContext<'a> {
         match candidate.method_ty.explicit_self {
             ast::SelfStatic => { // reason (a) above
                 self.tcx().sess.span_err(
-                    self.expr.span,
+                    self.span,
                     "cannot call a method without a receiver \
                      through an object");
             }
 
             ast::SelfValue => { // reason (a) above
                 self.tcx().sess.span_err(
-                    self.expr.span,
+                    self.span,
                     "cannot call a method with a by-value receiver \
                      through an object");
             }
@@ -1206,7 +1238,7 @@ impl<'a> LookupContext<'a> {
         let check_for_self_ty = |ty| {
             if ty::type_has_self(ty) {
                 self.tcx().sess.span_err(
-                    self.expr.span,
+                    self.span,
                     "cannot call a method whose type contains a \
                      self-type through an object");
                 true
@@ -1228,7 +1260,7 @@ impl<'a> LookupContext<'a> {
 
         if candidate.method_ty.generics.has_type_params() { // reason (b) above
             self.tcx().sess.span_err(
-                self.expr.span,
+                self.span,
                 "cannot call a generic method through an object");
         }
     }
@@ -1253,7 +1285,7 @@ impl<'a> LookupContext<'a> {
         }
 
         if bad {
-            self.tcx().sess.span_err(self.expr.span,
+            self.tcx().sess.span_err(self.span,
                                      "explicit call to destructor");
         }
     }
@@ -1364,7 +1396,7 @@ impl<'a> LookupContext<'a> {
         let span = if did.krate == ast::LOCAL_CRATE {
             self.tcx().map.span(did.node)
         } else {
-            self.expr.span
+            self.span
         };
         self.tcx().sess.span_note(
             span,
@@ -1375,7 +1407,7 @@ impl<'a> LookupContext<'a> {
 
     fn report_param_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
-            self.expr.span,
+            self.span,
             format!("candidate \\#{} derives from the bound `{}`",
                  idx+1u,
                  ty::item_path_str(self.tcx(), did)));
@@ -1383,7 +1415,7 @@ impl<'a> LookupContext<'a> {
 
     fn report_trait_candidate(&self, idx: uint, did: DefId) {
         self.tcx().sess.span_note(
-            self.expr.span,
+            self.span,
             format!("candidate \\#{} derives from the type of the receiver, \
                   which is the trait `{}`",
                  idx+1u,
@@ -1406,8 +1438,9 @@ impl<'a> LookupContext<'a> {
         ty::item_path_str(self.tcx(), did)
     }
 
-    fn bug(&self, s: ~str) -> ! {
-        self.tcx().sess.span_bug(self.self_expr.span, s)
+    fn bug(&self, s: &str) -> ! {
+        let span = self.self_expr.map_or(self.span, |e| e.span);
+        self.tcx().sess.span_bug(span, s)
     }
 }
 

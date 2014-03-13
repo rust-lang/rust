@@ -810,8 +810,8 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_map = self.dfcx.method_map.borrow();
-        method_map.get().contains_key(&expr.id)
+        let method_call = typeck::MethodCall::expr(expr.id);
+        self.dfcx.method_map.borrow().get().contains_key(&method_call)
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
