@@ -27,18 +27,24 @@ enum State {
     Outputs,
     Inputs,
     Clobbers,
-    Options
+    Options,
+    StateNone
 }
 
-fn next_state(s: State) -> Option<State> {
-    match s {
-        Asm      => Some(Outputs),
-        Outputs  => Some(Inputs),
-        Inputs   => Some(Clobbers),
-        Clobbers => Some(Options),
-        Options  => None
+impl State {
+    fn next(&self) -> State {
+        match *self {
+            Asm       => Outputs,
+            Outputs   => Inputs,
+            Inputs    => Clobbers,
+            Clobbers  => Options,
+            Options   => StateNone,
+            StateNone => StateNone
+        }
     }
 }
+
+static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                -> base::MacResult {
@@ -59,9 +65,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let mut state = Asm;
 
-    // Not using labeled break to get us through one round of bootstrapping.
-    let mut continue_ = true;
-    while continue_ {
+    let mut read_write_operands = Vec::new();
+
+    'statement: loop {
         match state {
             Asm => {
                 let (s, style) = match expr_to_str(cx, p.parse_expr(),
@@ -84,18 +90,33 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (constraint, _str_style) = p.parse_str();
 
-                    if constraint.get().starts_with("+") {
-                        cx.span_unimpl(p.last_span,
-                                       "'+' (read+write) output operand constraint modifier");
-                    } else if !constraint.get().starts_with("=") {
-                        cx.span_err(p.last_span, "output operand constraint lacks '='");
-                    }
+                    let span = p.last_span;
 
                     p.expect(&token::LPAREN);
                     let out = p.parse_expr();
                     p.expect(&token::RPAREN);
 
-                    outputs.push((constraint, out));
+                    // Expands a read+write operand into two operands.
+                    //
+                    // Use '+' modifier when you want the same expression
+                    // to be both an input and an output at the same time.
+                    // It's the opposite of '=&' which means that the memory
+                    // cannot be shared with any other operand (usually when
+                    // a register is clobbered early.)
+                    let output = match constraint.get().slice_shift_char() {
+                        (Some('='), _) => None,
+                        (Some('+'), operand) => {
+                            // Save a reference to the output
+                            read_write_operands.push((outputs.len(), out));
+                            Some(token::intern_and_get_ident("=" + operand))
+                        }
+                        _ => {
+                            cx.span_err(span, "output operand constraint lacks '=' or '+'");
+                            None
+                        }
+                    };
+
+                    outputs.push((output.unwrap_or(constraint), out));
                 }
             }
             Inputs => {
@@ -135,6 +156,10 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     let (s, _str_style) = p.parse_str();
                     let clob = format!("~\\{{}\\}", s);
                     clobs.push(clob);
+
+                    if OPTIONS.iter().any(|opt| s.equiv(opt)) {
+                        cx.span_warn(p.last_span, "expected a clobber, but found an option");
+                    }
                 }
 
                 cons = clobs.connect(",");
@@ -143,54 +168,48 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 let (option, _str_style) = p.parse_str();
 
                 if option.equiv(&("volatile")) {
+                    // Indicates that the inline assembly has side effects
+                    // and must not be optimized out along with its outputs.
                     volatile = true;
                 } else if option.equiv(&("alignstack")) {
                     alignstack = true;
                 } else if option.equiv(&("intel")) {
                     dialect = ast::AsmIntel;
+                } else {
+                    cx.span_warn(p.last_span, "unrecognized option");
                 }
 
                 if p.token == token::COMMA {
                     p.eat(&token::COMMA);
                 }
             }
+            StateNone => ()
         }
 
-        while p.token == token::COLON   ||
-              p.token == token::MOD_SEP ||
-              p.token == token::EOF {
-            state = if p.token == token::COLON {
-                p.bump();
-                match next_state(state) {
-                    Some(x) => x,
-                    None    => {
-                        continue_ = false;
-                        break
-                    }
+        loop {
+            // MOD_SEP is a double colon '::' without space in between.
+            // When encountered, the state must be advanced twice.
+            match (&p.token, state.next(), state.next().next()) {
+                (&token::COLON, StateNone, _)   |
+                (&token::MOD_SEP, _, StateNone) => {
+                    p.bump();
+                    break 'statement;
                 }
-            } else if p.token == token::MOD_SEP {
-                p.bump();
-                let s = match next_state(state) {
-                    Some(x) => x,
-                    None    => {
-                        continue_ = false;
-                        break
-                    }
-                };
-                match next_state(s) {
-                    Some(x) => x,
-                    None    => {
-                        continue_ = false;
-                        break
-                    }
+                (&token::COLON, st, _)   |
+                (&token::MOD_SEP, _, st) => {
+                    p.bump();
+                    state = st;
                 }
-            } else if p.token == token::EOF {
-                continue_ = false;
-                break;
-            } else {
-               state
-            };
+                (&token::EOF, _, _) => break 'statement,
+                _ => break
+            }
         }
+    }
+
+    // Append an input operand, with the form of ("0", expr)
+    // that links to an output operand.
+    for &(i, out) in read_write_operands.iter() {
+        inputs.push((token::intern_and_get_ident(i.to_str()), out));
     }
 
     MRExpr(@ast::Expr {
