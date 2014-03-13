@@ -176,7 +176,7 @@ impl CStore {
                 RequireDynamic => src.dylib.clone(),
                 RequireStatic => src.rlib.clone(),
             }))
-            .collect();
+            .collect::<Vec<(ast::CrateNum, Option<Path>)>>();
         libs.sort_by(|&(a, _), &(b, _)| {
             ordering.position_elem(&a).cmp(&ordering.position_elem(&b))
         });

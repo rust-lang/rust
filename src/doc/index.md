@@ -51,6 +51,7 @@ li {list-style-type: none; }
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 * [The `url` library](url/index.html)
 * [The `workcache` library](workcache/index.html)
+* [The `log` library](log/index.html)
 
 # Tooling
 

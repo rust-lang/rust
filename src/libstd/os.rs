@@ -1155,10 +1155,7 @@ impl MemoryMap {
                 MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
                 MapFd(fd_) => { fd = fd_; },
                 MapOffset(offset_) => { offset = offset_; },
-                MapNonStandardFlags(f) => {
-                    info!("MemoryMap::new: MapNonStandardFlags used on \
-                           Windows: {}", f)
-                }
+                MapNonStandardFlags(..) => {}
             }
         }
 
@@ -1256,15 +1253,15 @@ impl Drop for MemoryMap {
                 MapVirtual => {
                     if libc::VirtualFree(self.data as *mut c_void, 0,
                                          libc::MEM_RELEASE) == 0 {
-                        error!("VirtualFree failed: {}", errno());
+                        println!("VirtualFree failed: {}", errno());
                     }
                 },
                 MapFile(mapping) => {
                     if libc::UnmapViewOfFile(self.data as LPCVOID) == FALSE {
-                        error!("UnmapViewOfFile failed: {}", errno());
+                        println!("UnmapViewOfFile failed: {}", errno());
                     }
                     if libc::CloseHandle(mapping as HANDLE) == FALSE {
-                        error!("CloseHandle failed: {}", errno());
+                        println!("CloseHandle failed: {}", errno());
                     }
                 }
             }

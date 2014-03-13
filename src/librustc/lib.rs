@@ -410,7 +410,7 @@ pub fn monitor(f: proc()) {
                 let xs = [
                     ~"the compiler hit an unexpected failure path. this is a bug.",
                     "we would appreciate a bug report: " + BUG_REPORT_URL,
-                    ~"run with `RUST_LOG=std::rt::backtrace` for a backtrace",
+                    ~"run with `RUST_BACKTRACE=1` for a backtrace",
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, *note, diagnostic::Note)

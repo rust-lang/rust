@@ -16,15 +16,31 @@ use from_str::from_str;
 use io::{IoResult, Writer};
 use iter::Iterator;
 use option::{Some, None};
+use os;
 use result::{Ok, Err};
 use str::StrSlice;
+use sync::atomics;
 
 pub use self::imp::write;
 
-// This function is defined in this module so that the way to enable logging of
-// backtraces has the word 'backtrace' in it: std::rt::backtrace.
+// For now logging is turned off by default, and this function checks to see
+// whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> bool {
-    log_enabled!(::logging::DEBUG)
+    static mut ENABLED: atomics::AtomicInt = atomics::INIT_ATOMIC_INT;
+    unsafe {
+        match ENABLED.load(atomics::SeqCst) {
+            1 => return false,
+            2 => return true,
+            _ => {}
+        }
+    }
+
+    let val = match os::getenv("RUST_BACKTRACE") {
+        Some(..) => 2,
+        None => 1,
+    };
+    unsafe { ENABLED.store(val, atomics::SeqCst); }
+    val == 2
 }
 
 #[cfg(target_word_size = "64")] static HEX_WIDTH: uint = 18;

@@ -37,11 +37,11 @@ fn double() {
 
 fn runtest(me: &str) {
     let mut env = os::env();
-    match env.iter().position(|&(ref s, _)| "RUST_LOG" == *s) {
+    match env.iter().position(|&(ref s, _)| "RUST_BACKTRACE" == *s) {
         Some(i) => { env.remove(i); }
         None => {}
     }
-    env.push((~"RUST_LOG", ~"std::rt::backtrace"));
+    env.push((~"RUST_BACKTRACE", ~"1"));
 
     // Make sure that the stack trace is printed
     let mut p = Process::configure(ProcessConfig {
