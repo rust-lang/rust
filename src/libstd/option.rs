@@ -295,10 +295,13 @@ impl<T> Option<T> {
 
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
-    pub fn while_some(self, blk: |v: T| -> Option<T>) {
+    pub fn while_some(self, f: |v: T| -> Option<T>) {
         let mut opt = self;
-        while opt.is_some() {
-            opt = blk(opt.unwrap());
+        loop {
+            match opt {
+                Some(x) => opt = f(x),
+                None => break
+            }
         }
     }
 
