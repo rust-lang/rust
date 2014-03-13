@@ -518,11 +518,11 @@ impl<'a> CheckLoanCtxt<'a> {
                                             expr: &ast::Expr,
                                             cmt: mc::cmt)
                                             -> bool {
-            match cmt.freely_aliasable() {
+            match cmt.freely_aliasable(this.tcx()) {
                 None => {
                     return true;
                 }
-                Some(mc::AliasableStaticMut) => {
+                Some(mc::AliasableStaticMut(..)) => {
                     return true;
                 }
                 Some(cause) => {

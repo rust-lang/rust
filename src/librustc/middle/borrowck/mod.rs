@@ -130,9 +130,10 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
         ast::ItemStatic(_, _, ex) => {
             gather_loans::gather_loans_in_static_initializer(this, ex);
         }
-        _ => {}
+        _ => {
+            visit::walk_item(this, item, ());
+        }
     }
-    visit::walk_item(this, item, ());
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
@@ -733,8 +734,8 @@ impl<'a> BorrowckCtxt<'a> {
                     span,
                     format!("{} in an aliasable location", prefix));
             }
-            mc::AliasableStatic |
-            mc::AliasableStaticMut => {
+            mc::AliasableStatic(..) |
+            mc::AliasableStaticMut(..) => {
                 self.tcx.sess.span_err(
                     span,
                     format!("{} in a static location", prefix));
