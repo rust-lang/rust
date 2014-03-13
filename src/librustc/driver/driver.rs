@@ -880,7 +880,6 @@ pub fn build_session_options(matches: &getopts::Matches)
         }
     };
     let gc = debugging_opts & session::GC != 0;
-
     let debuginfo = if matches.opt_present("g") {
         if matches.opt_present("debuginfo") {
             early_error("-g and --debuginfo both provided");

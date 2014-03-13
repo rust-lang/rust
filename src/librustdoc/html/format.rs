@@ -357,7 +357,8 @@ impl fmt::Show for clean::Type {
                 write!(f.buf, "{}{}fn{}{}",
                        PuritySpace(decl.purity),
                        match decl.abi {
-                           ~"" | ~"\"Rust\"" => ~"",
+                           ref x if "" == *x => ~"",
+                           ref x if "\"Rust\"" == *x => ~"",
                            ref s => " " + *s + " ",
                        },
                        decl.generics,

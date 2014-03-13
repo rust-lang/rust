@@ -195,14 +195,14 @@ pub fn main_args(args: &[~str]) -> int {
 
     info!("going to format");
     let started = time::precise_time_ns();
-    match matches.opt_str("w") {
-        Some(~"html") | None => {
+    match matches.opt_str("w").as_ref().map(|s| s.as_slice()) {
+        Some("html") | None => {
             match html::render::run(krate, output.unwrap_or(Path::new("doc"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to generate documentation: {}", e),
             }
         }
-        Some(~"json") => {
+        Some("json") => {
             match json_output(krate, res, output.unwrap_or(Path::new("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to write json: {}", e),
@@ -223,9 +223,9 @@ pub fn main_args(args: &[~str]) -> int {
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
                  matches: &getopts::Matches) -> Result<Output, ~str> {
-    match matches.opt_str("r") {
-        Some(~"rust") => Ok(rust_input(input, matches)),
-        Some(~"json") => json_input(input),
+    match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
+        Some("rust") => Ok(rust_input(input, matches)),
+        Some("json") => json_input(input),
         Some(s) => Err("unknown input format: " + s),
         None => {
             if input.ends_with(".json") {
@@ -265,15 +265,15 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         Some(nested) => {
             for inner in nested.iter() {
                 match *inner {
-                    clean::Word(~"no_default_passes") => {
+                    clean::Word(ref x) if "no_default_passes" == *x => {
                         default_passes = false;
                     }
-                    clean::NameValue(~"passes", ref value) => {
+                    clean::NameValue(ref x, ref value) if "passes" == *x => {
                         for pass in value.words() {
                             passes.push(pass.to_owned());
                         }
                     }
-                    clean::NameValue(~"plugins", ref value) => {
+                    clean::NameValue(ref x, ref value) if "plugins" == *x => {
                         for p in value.words() {
                             plugins.push(p.to_owned());
                         }
