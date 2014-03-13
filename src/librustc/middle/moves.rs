@@ -130,7 +130,7 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::MethodMap;
+use middle::typeck::{MethodCall, MethodMap};
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
@@ -281,12 +281,10 @@ impl VisitContext {
         debug!("consume_expr(expr={})",
                expr.repr(self.tcx));
 
-        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr,
+                                           self.method_map.borrow().get());
         if ty::type_moves_by_default(self.tcx, expr_ty) {
-            {
-                let mut moves_map = self.move_maps.moves_map.borrow_mut();
-                moves_map.get().insert(expr.id);
-            }
+            self.move_maps.moves_map.borrow_mut().get().insert(expr.id);
             self.use_expr(expr, Move);
         } else {
             self.use_expr(expr, Read);
@@ -608,8 +606,8 @@ impl VisitContext {
                                    receiver_expr: @Expr,
                                    arg_exprs: &[@Expr])
                                    -> bool {
-        let method_map = self.method_map.borrow();
-        if !method_map.get().contains_key(&expr.id) {
+        let method_call = MethodCall::expr(expr.id);
+        if !self.method_map.borrow().get().contains_key(&method_call) {
             return false;
         }
 

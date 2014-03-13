@@ -805,22 +805,33 @@ pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
 
 pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
-    let t = ty::expr_ty_adjusted(tcx, ex);
+    let t = ty::expr_ty_adjusted(tcx, ex, bcx.ccx().maps.method_map.borrow().get());
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &Block, id: ast::NodeId, is_method: bool) -> Vec<ty::t> {
+// Key used to lookup values supplied for type parameters in an expr.
+#[deriving(Eq)]
+pub enum ExprOrMethodCall {
+    // Type parameters for a path like `None::<int>`
+    ExprId(ast::NodeId),
+
+    // Type parameters for a method call like `a.foo::<int>()`
+    MethodCall(typeck::MethodCall)
+}
+
+pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     let tcx = bcx.tcx();
-    let params = if is_method {
-        bcx.ccx().maps.method_map.borrow().get().get(&id).substs.tps.clone()
-    } else {
-        ty::node_id_to_type_params(tcx, id)
+    let params = match node {
+        ExprId(id) => ty::node_id_to_type_params(tcx, id),
+        MethodCall(method_call) => {
+            bcx.ccx().maps.method_map.borrow().get().get(&method_call).substs.tps.clone()
+        }
     };
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
-            format!("type parameters for node {} include inference types: {}",
-                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
+            format!("type parameters for node {:?} include inference types: {}",
+                 node, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {

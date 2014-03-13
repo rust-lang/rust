@@ -19,7 +19,7 @@ use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;
 use middle::trans::common;
-use middle::trans::common::{Block, FunctionContext};
+use middle::trans::common::{Block, FunctionContext, ExprId};
 use middle::trans::glue;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -673,7 +673,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         // The exception handling personality function.
         let def_id = common::langcall(pad_bcx, None, "", EhPersonalityLangItem);
-        let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, 0, false);
+        let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, ExprId(0));
 
         // The only landing pad clause will be 'cleanup'
         let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1u);

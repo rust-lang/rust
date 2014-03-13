@@ -556,7 +556,8 @@ impl BorrowckCtxt {
             move_data::MoveExpr => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr,
+                                              self.method_map.borrow().get()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -582,7 +583,8 @@ impl BorrowckCtxt {
             move_data::Captured => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr,
+                                              self.method_map.borrow().get()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -922,8 +924,8 @@ impl mc::Typer for TcxTyper {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
 
-    fn node_method_ty(&mut self, id: ast::NodeId) -> Option<ty::t> {
-        self.method_map.borrow().get().find(&id).map(|method| method.ty)
+    fn node_method_ty(&mut self, method_call: typeck::MethodCall) -> Option<ty::t> {
+        self.method_map.borrow().get().find(&method_call).map(|method| method.ty)
     }
 
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
@@ -932,7 +934,7 @@ impl mc::Typer for TcxTyper {
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        self.method_map.borrow().get().contains_key(&id)
+        self.method_map.borrow().get().contains_key(&typeck::MethodCall::expr(id))
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {

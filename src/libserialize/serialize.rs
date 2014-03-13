@@ -388,7 +388,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for Rc<T> {
     #[inline]
     fn encode(&self, s: &mut S) {
-        self.borrow().encode(s)
+        self.deref().encode(s)
     }
 }
 

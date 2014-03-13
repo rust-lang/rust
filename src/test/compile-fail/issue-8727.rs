@@ -15,7 +15,7 @@
 struct Data(~Option<Data>);
 
 fn generic<T>( _ : ~[(Data,T)] ) {
-    //~^ ERROR overly deep expansion of inlined function
+    //~^ ERROR reached the recursion limit during monomorphization
     let rec : ~[(Data,(bool,T))] = ~[];
     generic( rec );
 }

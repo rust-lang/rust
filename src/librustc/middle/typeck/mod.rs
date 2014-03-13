@@ -68,7 +68,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
-use util::nodemap::{DefIdMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -149,9 +149,31 @@ pub struct MethodCallee {
     substs: ty::substs
 }
 
+#[deriving(Clone, Eq, Hash)]
+pub struct MethodCall {
+    expr_id: ast::NodeId,
+    autoderef: u32
+}
+
+impl MethodCall {
+    pub fn expr(id: ast::NodeId) -> MethodCall {
+        MethodCall {
+            expr_id: id,
+            autoderef: 0
+        }
+    }
+
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
+        MethodCall {
+            expr_id: expr_id,
+            autoderef: 1 + autoderef
+        }
+    }
+}
+
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap = @RefCell<NodeMap<MethodCallee>>;
+pub type MethodMap = @RefCell<FnvHashMap<MethodCall, MethodCallee>>;
 
 pub type vtable_param_res = @Vec<vtable_origin> ;
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -442,7 +464,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,
-        method_map: @RefCell::new(NodeMap::new()),
+        method_map: @RefCell::new(FnvHashMap::new()),
         vtable_map: @RefCell::new(NodeMap::new()),
         tcx: tcx
     };

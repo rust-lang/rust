@@ -21,7 +21,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
-use middle::typeck::{MethodCallee, MethodOrigin};
+use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
@@ -1039,7 +1039,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    for &method in maps.method_map.borrow().get().find(&id).iter() {
+    let method_call = MethodCall::expr(id);
+    for &method in maps.method_map.borrow().get().find(&method_call).iter() {
         ebml_w.tag(c::tag_table_method_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1081,7 +1082,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(cap_vars.borrow().as_slice(),
+                    ebml_w.emit_from_vec(cap_vars.deref().as_slice(),
                                          |ebml_w, cap_var| {
                         cap_var.encode(ebml_w);
                     })
@@ -1385,7 +1386,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_method_map => {
                         let method = val_dsr.read_method_callee(xcx);
-                        dcx.maps.method_map.borrow_mut().get().insert(id, method);
+                        let method_call = MethodCall::expr(id);
+                        dcx.maps.method_map.borrow_mut().get().insert(method_call, method);
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =

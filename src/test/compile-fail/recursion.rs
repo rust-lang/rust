@@ -20,7 +20,7 @@ impl<T:Dot> Dot for Cons<T> {
   }
 }
 fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
-    //~^ ERROR: overly deep expansion of inlined function
+    //~^ ERROR: reached the recursion limit during monomorphization
   match n {
     0 => {first.dot(second)}
       // Error message should be here. It should be a type error

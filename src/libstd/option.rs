@@ -503,7 +503,7 @@ mod tests {
         #[unsafe_destructor]
         impl ::ops::Drop for R {
            fn drop(&mut self) {
-                let ii = self.i.borrow();
+                let ii = self.i.deref();
                 ii.set(ii.get() + 1);
             }
         }
@@ -520,7 +520,7 @@ mod tests {
             let opt = Some(x);
             let _y = opt.unwrap();
         }
-        assert_eq!(i.borrow().get(), 1);
+        assert_eq!(i.deref().get(), 1);
     }
 
     #[test]

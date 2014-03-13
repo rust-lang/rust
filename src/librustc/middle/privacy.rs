@@ -19,7 +19,7 @@ use metadata::csearch;
 use middle::lint;
 use middle::resolve;
 use middle::ty;
-use middle::typeck::{MethodMap, MethodOrigin, MethodParam};
+use middle::typeck::{MethodCall, MethodMap, MethodOrigin, MethodParam};
 use middle::typeck::{MethodStatic, MethodObject};
 use util::nodemap::{NodeMap, NodeSet};
 
@@ -772,40 +772,26 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprField(base, ident, _) => {
-                // Method calls are now a special syntactic form,
-                // so `a.b` should always be a field.
-                let method_map = self.method_map.borrow();
-                assert!(!method_map.get().contains_key(&expr.id));
-
-                // With type_autoderef, make sure we don't
-                // allow pointers to violate privacy
-                let t = ty::type_autoderef(ty::expr_ty(self.tcx, base));
-                match ty::get(t).sty {
+                match ty::get(ty::expr_ty_adjusted(self.tcx, base,
+                                                   self.method_map.borrow().get())).sty {
                     ty::ty_struct(id, _) => {
                         self.check_field(expr.span, id, ident, None);
                     }
                     _ => {}
                 }
             }
-            ast::ExprMethodCall(ident, _, ref args) => {
-                // see above
-                let t = ty::type_autoderef(ty::expr_ty(self.tcx,
-                                                       *args.get(0)));
-                match ty::get(t).sty {
-                    ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
-                        match self.method_map.borrow().get().find(&expr.id) {
-                            None => {
-                                self.tcx.sess.span_bug(expr.span,
-                                                       "method call not in \
-                                                        method map");
-                            }
-                            Some(method) => {
-                                debug!("(privacy checking) checking impl method");
-                                self.check_method(expr.span, method.origin, ident);
-                            }
-                        }
+            ast::ExprMethodCall(ident, _, _) => {
+                let method_call = MethodCall::expr(expr.id);
+                match self.method_map.borrow().get().find(&method_call) {
+                    None => {
+                        self.tcx.sess.span_bug(expr.span,
+                                                "method call not in \
+                                                method map");
                     }
-                    _ => {}
+                    Some(method) => {
+                        debug!("(privacy checking) checking impl method");
+                        self.check_method(expr.span, method.origin, ident);
+                    }
                 }
             }
             ast::ExprStruct(_, ref fields, _) => {

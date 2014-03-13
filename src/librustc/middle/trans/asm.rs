@@ -50,10 +50,11 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let inputs = ia.inputs.map(|&(ref c, input)| {
         constraints.push((*c).clone());
 
+        let in_datum = unpack_datum!(bcx, expr::trans(bcx, input));
         unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx,
+            callee::trans_arg_datum(bcx,
                                    expr_ty(bcx, input),
-                                   input,
+                                   in_datum,
                                    cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)
         })

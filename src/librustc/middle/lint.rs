@@ -1491,7 +1491,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprMethodCall(..) => {
-            match cx.method_map.borrow().get().find(&e.id) {
+            let method_call = typeck::MethodCall::expr(e.id);
+            match cx.method_map.borrow().get().find(&method_call) {
                 Some(method) => {
                     match method.origin {
                         typeck::MethodStatic(def_id) => {

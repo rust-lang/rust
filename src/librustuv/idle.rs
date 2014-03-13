@@ -113,7 +113,7 @@ mod test {
         fn call(&mut self) {
             let task = match *self {
                 MyCallback(ref rc, n) => {
-                    let mut slot = rc.borrow().borrow_mut();
+                    let mut slot = rc.deref().borrow_mut();
                     match *slot.get() {
                         (ref mut task, ref mut val) => {
                             *val = n;
@@ -140,7 +140,7 @@ mod test {
     fn sleep(chan: &Chan) -> uint {
         let task: ~Task = Local::take();
         task.deschedule(1, |task| {
-            let mut slot = chan.borrow().borrow_mut();
+            let mut slot = chan.deref().borrow_mut();
             match *slot.get() {
                 (ref mut slot, _) => {
                     assert!(slot.is_none());
@@ -150,7 +150,7 @@ mod test {
             Ok(())
         });
 
-        let slot = chan.borrow().borrow();
+        let slot = chan.deref().borrow();
         match *slot.get() { (_, n) => n }
     }
 
