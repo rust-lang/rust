@@ -119,6 +119,12 @@ mod thread_local_storage;
 /// Stack unwinding
 pub mod unwind;
 
+/// The interface to libunwind that rust is using.
+mod libunwind;
+
+/// Simple backtrace functionality (to print on failure)
+pub mod backtrace;
+
 /// Just stuff
 mod util;
 

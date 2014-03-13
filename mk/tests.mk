@@ -240,6 +240,7 @@ tidy:
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/gyp' -v \
+		| grep '^$(S)src/libbacktrace' -v \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
@@ -266,6 +267,7 @@ tidy:
 		| grep '^$(S)src/etc' -v \
 		| grep '^$(S)src/doc' -v \
 		| grep '^$(S)src/compiler-rt' -v \
+		| grep '^$(S)src/libbacktrace' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
