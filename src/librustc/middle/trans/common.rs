@@ -103,8 +103,13 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
     ty::type_is_nil(ty) || ty::type_is_bot(ty) || ty::type_is_empty(ccx.tcx, ty)
 }
 
+/// Generates a unique symbol based off the name given. This is used to create
+/// unique symbols for things like closures.
 pub fn gensym_name(name: &str) -> PathElem {
-    PathName(token::gensym(name))
+    let num = token::gensym(name);
+    // use one colon which will get translated to a period by the mangler, and
+    // we're guaranteed that `num` is globally unique for this crate.
+    PathName(token::gensym(format!("{}:{}", name, num)))
 }
 
 pub struct tydesc_info {
