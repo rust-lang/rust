@@ -14,6 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
+use std::path;
 use std::rc::Rc;
 use std::vec;
 use std::vec_ng::Vec;
@@ -622,6 +623,32 @@ impl<
                 d.read_seq_elt(4, |d| Decodable::decode(d))
             )
         })
+    }
+}
+
+impl<E: Encoder> Encodable<E> for path::posix::Path {
+    fn encode(&self, e: &mut E) {
+        self.as_vec().encode(e)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for path::posix::Path {
+    fn decode(d: &mut D) -> path::posix::Path {
+        let bytes: ~[u8] = Decodable::decode(d);
+        path::posix::Path::new(bytes)
+    }
+}
+
+impl<E: Encoder> Encodable<E> for path::windows::Path {
+    fn encode(&self, e: &mut E) {
+        self.as_vec().encode(e)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for path::windows::Path {
+    fn decode(d: &mut D) -> path::windows::Path {
+        let bytes: ~[u8] = Decodable::decode(d);
+        path::windows::Path::new(bytes)
     }
 }
 
