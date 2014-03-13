@@ -11,7 +11,7 @@
 use ast::{P, Block, Crate, DeclLocal, ExprMac};
 use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
-use ast::TokenTree;
+use ast::{IdentKind, LifetimeIdent, PlainIdent, TokenTree};
 use ast;
 use ext::mtwt;
 use ext::build::AstBuilder;
@@ -228,15 +228,15 @@ fn expand_loop_block(loop_block: P<Block>,
             // syntax context otherwise an unrelated `break` or `continue` in
             // the same context will pick that up in the deferred renaming pass
             // and be renamed incorrectly.
-            let mut rename_list = vec!(rename);
+            let mut rename_list = RenameLists { plain: Vec::new(), lifetime: vec!(rename)};
             let mut rename_fld = renames_to_fold(&mut rename_list);
-            let renamed_ident = rename_fld.fold_ident(label);
+            let renamed_ident = rename_fld.fold_ident(label, LifetimeIdent);
 
             // The rename *must* be added to the enclosed syntax context for
             // `break` or `continue` to pick up because by definition they are
             // in a block enclosed by loop head.
             fld.extsbox.push_frame();
-            fld.extsbox.info().pending_renames.push(rename);
+            fld.extsbox.info().pending_renames.lifetime.push(rename);
             let expanded_block = expand_block_elts(loop_block, fld);
             fld.extsbox.pop_frame();
 
@@ -672,10 +672,11 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                     let mut name_finder = new_name_finder(Vec::new());
                     name_finder.visit_pat(expanded_pat,());
                     // generate fresh names, push them to a new pending list
-                    let mut new_pending_renames = Vec::new();
+                    let mut new_pending_renames = RenameLists { plain: Vec::new(),
+                                                                lifetime: Vec::new() };
                     for ident in name_finder.ident_accumulator.iter() {
                         let new_name = fresh_name(ident);
-                        new_pending_renames.push((*ident,new_name));
+                        new_pending_renames.plain.push((*ident,new_name));
                     }
                     let rewritten_pat = {
                         let mut rename_fld =
@@ -685,7 +686,8 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                         rename_fld.fold_pat(expanded_pat)
                     };
                     // add them to the existing pending renames:
-                    fld.extsbox.info().pending_renames.push_all_move(new_pending_renames);
+                    fld.extsbox.info().pending_renames
+                                      .plain.push_all_move(new_pending_renames.plain);
                     // also, don't forget to expand the init:
                     let new_init_opt = init.map(|e| fld.fold_expr(e));
                     let rewritten_local =
@@ -805,13 +807,17 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
 }
 
 pub struct IdentRenamer<'a> {
-    renames: &'a mut RenameList,
+    renames: &'a mut RenameLists,
 }
 
 impl<'a> Folder for IdentRenamer<'a> {
-    fn fold_ident(&mut self, id: Ident) -> Ident {
-        let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
-            mtwt::new_rename(from, to, ctxt)
+    fn fold_ident(&mut self, id: Ident, ns: IdentKind) -> Ident {
+        let rs = match ns {
+            PlainIdent => &self.renames.plain,
+            LifetimeIdent => &self.renames.lifetime
+        };
+        let new_ctxt = rs.iter().fold(id.ctxt, |ctxt, &(from, to)| {
+            mtwt::new_rename(from, to, ctxt, ns)
         });
         Ident {
             name: id.name,
@@ -822,7 +828,7 @@ impl<'a> Folder for IdentRenamer<'a> {
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-pub fn renames_to_fold<'a>(renames: &'a mut RenameList) -> IdentRenamer<'a> {
+pub fn renames_to_fold<'a>(renames: &'a mut RenameLists) -> IdentRenamer<'a> {
     IdentRenamer {
         renames: renames,
     }
@@ -899,10 +905,10 @@ pub fn expand_crate(parse_sess: @parse::ParseSess,
 struct Marker { mark: Mrk }
 
 impl Folder for Marker {
-    fn fold_ident(&mut self, id: Ident) -> Ident {
+    fn fold_ident(&mut self, id: Ident, ns: IdentKind) -> Ident {
         ast::Ident {
             name: id.name,
-            ctxt: mtwt::new_mark(self.mark, id.ctxt)
+            ctxt: mtwt::new_mark(self.mark, id.ctxt, ns)
         }
     }
     fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
@@ -910,7 +916,7 @@ impl Folder for Marker {
             MacInvocTT(ref path, ref tts, ctxt) => {
                 MacInvocTT(self.fold_path(path),
                            fold_tts(tts.as_slice(), self),
-                           mtwt::new_mark(self.mark, ctxt))
+                           mtwt::new_mark(self.mark, ctxt, PlainIdent))
             }
         };
         Spanned {
@@ -1214,8 +1220,9 @@ mod test {
         // must be one check clause for each binding:
         assert_eq!(bindings.len(),bound_connections.len());
         for (binding_idx,shouldmatch) in bound_connections.iter().enumerate() {
-            let binding_name = mtwt::resolve(*bindings.get(binding_idx));
-            let binding_marks = mtwt::marksof(bindings.get(binding_idx).ctxt, invalid_name);
+            let binding_name = mtwt::resolve(*bindings.get(binding_idx), ast::PlainIdent);
+            let binding_marks = mtwt::marksof(bindings.get(binding_idx).ctxt,
+                                              invalid_name, ast::PlainIdent);
             // shouldmatch can't name varrefs that don't exist:
             assert!((shouldmatch.len() == 0) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
@@ -1226,17 +1233,18 @@ mod test {
                     assert_eq!(varref.segments.len(),1);
                     let varref_name = mtwt::resolve(varref.segments
                                                           .get(0)
-                                                          .identifier);
+                                                          .identifier,
+                                                    ast::PlainIdent);
                     let varref_marks = mtwt::marksof(varref.segments
                                                            .get(0)
                                                            .identifier
                                                            .ctxt,
-                                                     invalid_name);
+                                                    invalid_name, ast::PlainIdent);
                     if !(varref_name==binding_name) {
                         println!("uh oh, should match but doesn't:");
                         println!("varref: {:?}",varref);
                         println!("binding: {:?}", *bindings.get(binding_idx));
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        mtwt::with_sctable(ast::PlainIdent, |x| mtwt::display_sctable(x));
                     }
                     assert_eq!(varref_name,binding_name);
                     if bound_ident_check {
@@ -1246,7 +1254,7 @@ mod test {
                     }
                 } else {
                     let fail = (varref.segments.len() == 1)
-                        && (mtwt::resolve(varref.segments.get(0).identifier)
+                        && (mtwt::resolve(varref.segments.get(0).identifier, ast::PlainIdent)
                             == binding_name);
                     // temp debugging:
                     if fail {
@@ -1263,7 +1271,7 @@ mod test {
                                  varref.segments.get(0).identifier.name,
                                  string.get());
                         println!("binding: {:?}", *bindings.get(binding_idx));
-                        mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                        mtwt::with_sctable(ast::PlainIdent, |x| mtwt::display_sctable(x));
                     }
                     assert!(!fail);
                 }
@@ -1293,7 +1301,7 @@ foo_module!()
             [b] => b,
             _ => fail!("expected just one binding for ext_cx")
         };
-        let resolved_binding = mtwt::resolve(*cxbind);
+        let resolved_binding = mtwt::resolve(*cxbind, ast::PlainIdent);
         // find all the xx varrefs:
         let mut path_finder = new_path_finder(Vec::new());
         visit::walk_crate(&mut path_finder, &cr, ());
@@ -1304,17 +1312,17 @@ foo_module!()
             p.segments.len() == 1
             && "xx" == token::get_ident(p.segments.get(0).identifier).get()
         }).enumerate() {
-            if mtwt::resolve(v.segments.get(0).identifier) != resolved_binding {
+            if mtwt::resolve(v.segments.get(0).identifier, ast::PlainIdent) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
                 println!("resolves to: {:?}",resolved_binding);
                 println!("varref: {:?}",v.segments.get(0).identifier);
                 println!("resolves to: {:?}",
-                         mtwt::resolve(v.segments.get(0).identifier));
-                mtwt::with_sctable(|x| mtwt::display_sctable(x));
+                         mtwt::resolve(v.segments.get(0).identifier, ast::PlainIdent));
+                mtwt::with_sctable(ast::PlainIdent, |x| mtwt::display_sctable(x));
             }
-            assert_eq!(mtwt::resolve(v.segments.get(0).identifier),
+            assert_eq!(mtwt::resolve(v.segments.get(0).identifier, ast::PlainIdent),
                        resolved_binding);
         };
     }

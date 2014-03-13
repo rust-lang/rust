@@ -246,7 +246,7 @@ pub trait Folder {
         })
     }
 
-    fn fold_ident(&mut self, i: Ident) -> Ident {
+    fn fold_ident(&mut self, i: Ident, _: IdentKind) -> Ident {
         i
     }
 
@@ -255,7 +255,7 @@ pub trait Folder {
             span: self.new_span(p.span),
             global: p.global,
             segments: p.segments.map(|segment| ast::PathSegment {
-                identifier: self.fold_ident(segment.identifier),
+                identifier: self.fold_ident(segment.identifier, PlainIdent),
                 lifetimes: segment.lifetimes.map(|l| fold_lifetime(l, self)),
                 types: segment.types.map(|&typ| self.fold_ty(typ)),
             })
@@ -384,7 +384,7 @@ pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
                   sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                   is_optional),
             TTNonterminal(sp,ref ident) =>
-            TTNonterminal(sp,fld.fold_ident(*ident))
+            TTNonterminal(sp,fld.fold_ident(*ident, PlainIdent))
         }
     }).collect()
 }
@@ -393,9 +393,9 @@ pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
 fn maybe_fold_ident<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
     match *t {
         token::IDENT(id, followed_by_colons) => {
-            token::IDENT(fld.fold_ident(id), followed_by_colons)
+            token::IDENT(fld.fold_ident(id, PlainIdent), followed_by_colons)
         }
-        token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id)),
+        token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id, LifetimeIdent)),
         _ => (*t).clone()
     }
 }
@@ -482,7 +482,7 @@ fn fold_struct_field<T: Folder>(f: &StructField, fld: &mut T) -> StructField {
 
 fn fold_field_<T: Folder>(field: Field, folder: &mut T) -> Field {
     ast::Field {
-        ident: respan(field.ident.span, folder.fold_ident(field.ident.node)),
+        ident: respan(field.ident.span, folder.fold_ident(field.ident.node, PlainIdent)),
         expr: folder.fold_expr(field.expr),
         span: folder.new_span(field.span),
     }
@@ -601,7 +601,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
 pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMethod {
     TypeMethod {
         id: fld.new_id(m.id), // Needs to be first, for ast_map.
-        ident: fld.fold_ident(m.ident),
+        ident: fld.fold_ident(m.ident, PlainIdent),
         attrs: m.attrs.map(|a| fold_attribute_(*a, fld)),
         purity: m.purity,
         decl: fld.fold_fn_decl(m.decl),
@@ -642,7 +642,7 @@ pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item>
 
     SmallVector::one(@Item {
         id: id,
-        ident: folder.fold_ident(ident),
+        ident: folder.fold_ident(ident, PlainIdent),
         attrs: i.attrs.map(|e| fold_attribute_(*e, folder)),
         node: node,
         vis: i.vis,
@@ -653,7 +653,7 @@ pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item>
 pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @ForeignItem {
     @ForeignItem {
         id: folder.new_id(ni.id), // Needs to be first, for ast_map.
-        ident: folder.fold_ident(ni.ident),
+        ident: folder.fold_ident(ni.ident, PlainIdent),
         attrs: ni.attrs.map(|x| fold_attribute_(*x, folder)),
         node: match ni.node {
             ForeignItemFn(ref fdec, ref generics) => {
@@ -676,7 +676,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @F
 pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
     @Method {
         id: folder.new_id(m.id), // Needs to be first, for ast_map.
-        ident: folder.fold_ident(m.ident),
+        ident: folder.fold_ident(m.ident, PlainIdent),
         attrs: m.attrs.map(|a| fold_attribute_(*a, folder)),
         generics: fold_generics(&m.generics, folder),
         explicit_self: folder.fold_explicit_self(&m.explicit_self),
@@ -753,7 +753,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprMethodCall(i, ref tps, ref args) => {
             ExprMethodCall(
-                folder.fold_ident(i),
+                folder.fold_ident(i, PlainIdent),
                 tps.map(|&x| folder.fold_ty(x)),
                 args.map(|&x| folder.fold_expr(x)))
         }
@@ -782,11 +782,11 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprForLoop(folder.fold_pat(pat),
                         folder.fold_expr(iter),
                         folder.fold_block(body),
-                        maybe_ident.map(|i| folder.fold_ident(i)))
+                        maybe_ident.map(|i| folder.fold_ident(i, LifetimeIdent)))
         }
         ExprLoop(body, opt_ident) => {
             ExprLoop(folder.fold_block(body),
-                     opt_ident.map(|x| folder.fold_ident(x)))
+                     opt_ident.map(|x| folder.fold_ident(x, LifetimeIdent)))
         }
         ExprMatch(expr, ref arms) => {
             ExprMatch(folder.fold_expr(expr),
@@ -809,7 +809,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprField(el, id, ref tys) => {
             ExprField(folder.fold_expr(el),
-                      folder.fold_ident(id),
+                      folder.fold_ident(id, PlainIdent),
                       tys.map(|&x| folder.fold_ty(x)))
         }
         ExprIndex(el, er) => {
@@ -817,8 +817,10 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprPath(ref pth) => ExprPath(folder.fold_path(pth)),
         ExprLogLevel => ExprLogLevel,
-        ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
-        ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
+        ExprBreak(opt_ident) =>
+            ExprBreak(opt_ident.map(|x| folder.fold_ident(x, LifetimeIdent))),
+        ExprAgain(opt_ident) =>
+            ExprAgain(opt_ident.map(|x| folder.fold_ident(x, LifetimeIdent))),
         ExprRet(ref e) => {
             ExprRet(e.map(|x| folder.fold_expr(x)))
         }
@@ -890,7 +892,7 @@ mod test {
     struct ToZzIdentFolder;
 
     impl Folder for ToZzIdentFolder {
-        fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
+        fn fold_ident(&mut self, _: ast::Ident, _: ast::IdentKind) -> ast::Ident {
             token::str_to_ident("zz")
         }
     }
