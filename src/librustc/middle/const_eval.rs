@@ -16,7 +16,7 @@ use middle::astencode;
 use middle::ty;
 use middle::typeck::astconv;
 use middle;
-use util::nodemap::{DefIdMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
@@ -136,7 +136,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(NodeMap::new()),
+            method_map: @RefCell::new(FnvHashMap::new()),
             vtable_map: @RefCell::new(NodeMap::new()),
             capture_map: @RefCell::new(NodeMap::new())
         };
@@ -186,7 +186,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::DefId)
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(NodeMap::new()),
+            method_map: @RefCell::new(FnvHashMap::new()),
             vtable_map: @RefCell::new(NodeMap::new()),
             capture_map: @RefCell::new(NodeMap::new())
         };
@@ -512,7 +512,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
         LitStr(ref s, _) => const_str((*s).clone()),
         LitBinary(ref data) => {
-            const_binary(Rc::new(data.borrow().iter().map(|x| *x).collect()))
+            const_binary(Rc::new(data.deref().iter().map(|x| *x).collect()))
         }
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),

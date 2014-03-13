@@ -99,19 +99,20 @@ use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{DontAutoderefReceiver};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::check::regionmanip::relate_free_regions;
-use middle::typeck::check::vtable::{LocationInfo, VtableContext};
+use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
-use middle::typeck::{require_same_types, MethodMap, vtable_map};
+use middle::typeck::{require_same_types, vtable_map};
+use middle::typeck::{MethodCall, MethodMap};
 use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
-use util::nodemap::NodeMap;
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
 use collections::HashMap;
@@ -266,7 +267,7 @@ impl Inherited {
             node_types: RefCell::new(NodeMap::new()),
             node_type_substs: RefCell::new(NodeMap::new()),
             adjustments: RefCell::new(NodeMap::new()),
-            method_map: @RefCell::new(NodeMap::new()),
+            method_map: @RefCell::new(FnvHashMap::new()),
             vtable_map: @RefCell::new(NodeMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
         }
@@ -569,7 +570,7 @@ pub fn check_item(ccx: @CrateCtxt, it: &ast::Item) {
                 fn_tpt.generics.type_param_defs(),
                 [],
                 [],
-                fn_tpt.generics.region_param_defs.borrow().as_slice(),
+                fn_tpt.generics.region_param_defs.deref().as_slice(),
                 body.id);
 
         check_bare_fn(ccx, decl, body, it.id, fn_tpt.ty, param_env);
@@ -1108,18 +1109,6 @@ impl FnCtxt {
         }
     }
 
-    pub fn method_ty(&self, id: ast::NodeId) -> ty::t {
-        match self.inh.method_map.borrow().get().find(&id) {
-            Some(method) => method.ty,
-            None => {
-                self.tcx().sess.bug(
-                    format!("no method entry for node {}: {} in fcx {}",
-                            id, self.tcx().map.node_to_str(id),
-                            self.tag()));
-            }
-        }
-    }
-
     pub fn node_ty_substs(&self, id: ast::NodeId) -> ty::substs {
         match self.inh.node_type_substs.borrow().get().find(&id) {
             Some(ts) => (*ts).clone(),
@@ -1133,7 +1122,7 @@ impl FnCtxt {
     }
 
     pub fn method_ty_substs(&self, id: ast::NodeId) -> ty::substs {
-        match self.inh.method_map.borrow().get().find(&id) {
+        match self.inh.method_map.borrow().get().find(&MethodCall::expr(id)) {
             Some(method) => method.substs.clone(),
             None => {
                 self.tcx().sess.bug(
@@ -1252,81 +1241,70 @@ pub enum LvaluePreference {
     NoPreference
 }
 
-pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
+pub fn autoderef<T>(fcx: @FnCtxt, sp: Span, base_ty: ty::t,
+                    expr_id: Option<ast::NodeId>,
+                    mut lvalue_pref: LvaluePreference,
+                    should_stop: |ty::t, uint| -> Option<T>)
+                    -> (ty::t, uint, Option<T>) {
     /*!
+     * Executes an autoderef loop for the type `t`. At each step, invokes
+     * `should_stop` to decide whether to terminate the loop. Returns
+     * the final type and number of derefs that it performed.
      *
-     * Autoderefs the type `t` as many times as possible, returning
-     * a new type and a counter for how many times the type was
-     * deref'd.  If the counter is non-zero, the receiver is responsible
-     * for inserting an AutoAdjustment record into `tcx.adjustments`
-     * so that trans/borrowck/etc know about this autoderef. */
+     * Note: this method does not modify the adjustments table. The caller is
+     * responsible for inserting an AutoAdjustment record into the `fcx`
+     * using one of the suitable methods.
+     */
 
-    let mut t1 = t;
-    let mut enum_dids = Vec::new();
-    let mut autoderefs = 0;
-    loop {
-        let sty = structure_of(fcx, sp, t1);
+    let mut t = base_ty;
+    for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
+        let resolved_t = structurally_resolved_type(fcx, sp, t);
 
-        // Some extra checks to detect weird cycles and so forth:
-        match *sty {
-            ty::ty_box(inner) | ty::ty_uniq(inner) => {
-                match ty::get(t1).sty {
-                    ty::ty_infer(ty::TyVar(v1)) => {
-                        ty::occurs_check(fcx.ccx.tcx, sp, v1,
-                                         ty::mk_box(fcx.ccx.tcx, inner));
-                    }
-                    _ => ()
-                }
-            }
-            ty::ty_rptr(_, inner) => {
-                match ty::get(t1).sty {
-                    ty::ty_infer(ty::TyVar(v1)) => {
-                        ty::occurs_check(fcx.ccx.tcx, sp, v1,
-                                         ty::mk_box(fcx.ccx.tcx, inner.ty));
-                    }
-                    _ => ()
-                }
-            }
-            ty::ty_enum(ref did, _) => {
-                // Watch out for a type like `enum t = @t`.  Such a
-                // type would otherwise infinitely auto-deref.  Only
-                // autoderef loops during typeck (basically, this one
-                // and the loops in typeck::check::method) need to be
-                // concerned with this, as an error will be reported
-                // on the enum definition as well because the enum is
-                // not instantiable.
-                if enum_dids.contains(did) {
-                    return (t1, autoderefs);
-                }
-                enum_dids.push(*did);
-            }
-            _ => { /*ok*/ }
+        match should_stop(resolved_t, autoderefs) {
+            Some(x) => return (resolved_t, autoderefs, Some(x)),
+            None => {}
         }
 
         // Otherwise, deref if type is derefable:
-        match ty::deref_sty(sty, false) {
+        let mt = match ty::deref(resolved_t, false) {
+            Some(mt) => Some(mt),
             None => {
-                return (t1, autoderefs);
+                let method_call =
+                    expr_id.map(|id| MethodCall::autoderef(id, autoderefs as u32));
+                try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
+        };
+        match mt {
             Some(mt) => {
-                autoderefs += 1;
-                t1 = mt.ty
+                t = mt.ty;
+                if mt.mutbl == ast::MutImmutable {
+                    lvalue_pref = NoPreference;
+                }
             }
+            None => return (resolved_t, autoderefs, None)
         }
-    };
+    }
+
+    // We've reached the recursion limit, error gracefully.
+    fcx.tcx().sess.span_err(sp,
+        format!("reached the recursion limit while auto-dereferencing {}",
+                base_ty.repr(fcx.tcx())));
+    (ty::mk_err(), 0, None)
 }
 
 fn try_overloaded_deref(fcx: @FnCtxt,
-                        expr: &ast::Expr,
-                        base_expr: &ast::Expr,
+                        span: Span,
+                        method_call: Option<MethodCall>,
+                        base_expr: Option<&ast::Expr>,
                         base_ty: ty::t,
                         lvalue_pref: LvaluePreference)
                         -> Option<ty::mt> {
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
         (PreferMutLvalue, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, expr, base_expr, token::intern("deref_mut"),
-                                    trait_did, base_ty, [], DontAutoderefReceiver)
+            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+                                    token::intern("deref_mut"), trait_did,
+                                    base_ty, [], DontAutoderefReceiver)
         }
         _ => None
     };
@@ -1334,8 +1312,9 @@ fn try_overloaded_deref(fcx: @FnCtxt,
     // Otherwise, fall back to Deref.
     let method = match (method, fcx.tcx().lang_items.deref_trait()) {
         (None, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, expr, base_expr, token::intern("deref"),
-                                    trait_did, base_ty, [], DontAutoderefReceiver)
+            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+                                    token::intern("deref"), trait_did,
+                                    base_ty, [], DontAutoderefReceiver)
         }
         (method, _) => method
     };
@@ -1343,7 +1322,12 @@ fn try_overloaded_deref(fcx: @FnCtxt,
     match method {
         Some(method) => {
             let ref_ty = ty::ty_fn_ret(method.ty);
-            fcx.inh.method_map.borrow_mut().get().insert(expr.id, method);
+            match method_call {
+                Some(method_call) => {
+                    fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
+                }
+                None => {}
+            }
             ty::deref(ref_ty, true)
         }
         None => None
@@ -1434,8 +1418,7 @@ fn check_expr_with_lvalue_pref(fcx: @FnCtxt, expr: &ast::Expr,
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
 pub fn impl_self_ty(vcx: &VtableContext,
-                    location_info: &LocationInfo, // (potential) receiver for
-                                                  // this impl
+                    span: Span, // (potential) receiver for this impl
                     did: ast::DefId)
                  -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
@@ -1446,7 +1429,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
          ity.generics.region_param_defs(),
          ity.ty);
 
-    let rps = vcx.infcx.region_vars_for_defs(location_info.span, rps);
+    let rps = vcx.infcx.region_vars_for_defs(span, rps);
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
     let substs = substs {
@@ -1921,7 +1904,8 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                                          AutoderefReceiver) {
             Some(method) => {
                 let method_ty = method.ty;
-                fcx.inh.method_map.borrow_mut().get().insert(expr.id, method);
+                let method_call = MethodCall::expr(expr.id);
+                fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
                 method_ty
             }
             None => {
@@ -2001,15 +1985,17 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                         unbound_method: ||) -> ty::t {
         let method = match trait_did {
             Some(trait_did) => {
-                method::lookup_in_trait(fcx, op_ex, args[0], opname, trait_did,
-                                        self_t, [], autoderef_receiver)
+                method::lookup_in_trait(fcx, op_ex.span, Some(&*args[0]), opname,
+                                        trait_did, self_t, [], autoderef_receiver)
             }
             None => None
         };
         match method {
             Some(method) => {
                 let method_ty = method.ty;
-                fcx.inh.method_map.borrow_mut().get().insert(op_ex.id, method);
+                // HACK(eddyb) Fully qualified path to work around a resolve bug.
+                let method_call = ::middle::typeck::MethodCall::expr(op_ex.id);
+                fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
                 check_method_argument_types(fcx, op_ex.span,
                                             method_ty, op_ex,
                                             args, DoDerefArgs)
@@ -2293,32 +2279,28 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                    field: ast::Name,
                    tys: &[ast::P<ast::Ty>]) {
         let tcx = fcx.ccx.tcx;
-        let bot = check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
+        check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
-        let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
-
-        match *structure_of(fcx, expr.span, base_t) {
-            ty::ty_struct(base_id, ref substs) => {
-                // This is just for fields -- the same code handles
-                // methods in both classes and traits
-
-                // (1) verify that the class id actually has a field called
-                // field
-                debug!("class named {}", ppaux::ty_to_str(tcx, base_t));
-                let cls_items = ty::lookup_struct_fields(tcx, base_id);
-                match lookup_field_ty(tcx, base_id, cls_items.as_slice(),
-                                      field, &(*substs)) {
-                    Some(field_ty) => {
-                        // (2) look up what field's type is, and return it
-                        fcx.write_ty(expr.id, field_ty);
-                        fcx.write_autoderef_adjustment(base.id, derefs);
-                        return bot;
+        // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
+        let (_, autoderefs, field_ty) =
+            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+                match ty::get(base_t).sty {
+                    ty::ty_struct(base_id, ref substs) => {
+                        debug!("struct named {}", ppaux::ty_to_str(tcx, base_t));
+                        let fields = ty::lookup_struct_fields(tcx, base_id);
+                        lookup_field_ty(tcx, base_id, fields.as_slice(), field, &(*substs))
                     }
-                    None => ()
+                    _ => None
                 }
+            });
+        match field_ty {
+            Some(field_ty) => {
+                fcx.write_ty(expr.id, field_ty);
+                fcx.write_autoderef_adjustment(base.id, autoderefs);
+                return;
             }
-            _ => ()
+            None => {}
         }
 
         let tps: Vec<ty::t> = tys.iter().map(|&ty| fcx.to_ty(ty)).collect();
@@ -2738,8 +2720,9 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
                     oprnd_t = match ty::deref(oprnd_t, true) {
                         Some(mt) => mt.ty,
-                        None => match try_overloaded_deref(fcx, expr, oprnd,
-                                                           oprnd_t, lvalue_pref) {
+                        None => match try_overloaded_deref(fcx, expr.span,
+                                                           Some(MethodCall::expr(expr.id)),
+                                                           Some(&*oprnd), oprnd_t, lvalue_pref) {
                             Some(mt) => mt.ty,
                             None => {
                                 let is_newtype = match ty::get(oprnd_t).sty {
@@ -3175,19 +3158,27 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
           } else if ty::type_is_error(idx_t) || ty::type_is_bot(idx_t) {
               fcx.write_ty(id, idx_t);
           } else {
-              let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
-              let base_sty = structure_of(fcx, expr.span, base_t);
-              match ty::index_sty(base_sty) {
+              let (base_t, autoderefs, field_ty) =
+                autoderef(fcx, expr.span, raw_base_t, Some(base.id),
+                          lvalue_pref, |base_t, _| ty::index(base_t));
+              match field_ty {
                   Some(mt) => {
                       require_integral(fcx, idx.span, idx_t);
                       fcx.write_ty(id, mt.ty);
-                      fcx.write_autoderef_adjustment(base.id, derefs);
+                      fcx.write_autoderef_adjustment(base.id, autoderefs);
                   }
                   None => {
                       let resolved = structurally_resolved_type(fcx,
                                                                 expr.span,
                                                                 raw_base_t);
-                      let error_message = || {
+                      let ret_ty = lookup_op_method(fcx,
+                                                    expr,
+                                                    resolved,
+                                                    token::intern("index"),
+                                                    tcx.lang_items.index_trait(),
+                                                    [base, idx],
+                                                    AutoderefReceiver,
+                                                    || {
                         fcx.type_error_message(expr.span,
                                                |actual| {
                                                 format!("cannot index a value \
@@ -3196,15 +3187,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                                                },
                                                base_t,
                                                None);
-                      };
-                      let ret_ty = lookup_op_method(fcx,
-                                                    expr,
-                                                    resolved,
-                                                    token::intern("index"),
-                                                    tcx.lang_items.index_trait(),
-                                                    [base, idx],
-                                                    AutoderefReceiver,
-                                                    error_message);
+                      });
                       fcx.write_ty(id, ret_ty);
                   }
               }
@@ -3732,7 +3715,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
                         nsupplied = num_supplied_regions));
         }
 
-        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.borrow().as_slice())
+        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.deref().as_slice())
     };
     let regions = ty::NonerasedRegions(regions);
 

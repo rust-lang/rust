@@ -64,6 +64,7 @@ use middle::ty::struct_fields;
 use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe};
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
+use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
@@ -211,8 +212,11 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                     unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
                 Some(AutoBorrowFn(..)) => {
-                    let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
-                                                    datum.ty, Some(adjustment));
+                    let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span, expr.id, datum.ty,
+                                                    Some(adjustment), |method_call| {
+                        bcx.ccx().maps.method_map.borrow().get()
+                           .find(&method_call).map(|method| method.ty)
+                    });
                     unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
                 }
                 Some(AutoBorrowObj(..)) => {
@@ -221,7 +225,8 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
             };
         }
         AutoObject(..) => {
-            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr);
+            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr,
+                                                   bcx.ccx().maps.method_map.borrow().get());
             let scratch = rvalue_scratch_datum(bcx, adjusted_ty, "__adjust");
             bcx = meth::trans_trait_cast(
                 bcx, datum, expr.id, SaveIn(scratch.val));
@@ -230,30 +235,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
     }
     debug!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
     return DatumBlock {bcx: bcx, datum: datum};
-
-    fn auto_ref<'a>(bcx: &'a Block<'a>,
-                    datum: Datum<Expr>,
-                    expr: &ast::Expr)
-                    -> DatumBlock<'a, Expr> {
-        let mut bcx = bcx;
-
-        // Ensure cleanup of `datum` if not already scheduled and obtain
-        // a "by ref" pointer.
-        let lv_datum = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "autoref", expr.id));
-
-        // Compute final type. Note that we are loose with the region and
-        // mutability, since those things don't matter in trans.
-        let referent_ty = lv_datum.ty;
-        let ptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::ReStatic, referent_ty);
-
-        // Get the pointer.
-        let llref = lv_datum.to_llref();
-
-        // Construct the resulting datum, using what was the "by ref"
-        // ValueRef of type `referent_ty` to be the "by value" ValueRef
-        // of type `&referent_ty`.
-        DatumBlock(bcx, Datum(llref, ptr_ty, RvalueExpr(Rvalue(ByValue))))
-    }
 
     fn auto_borrow_fn<'a>(
                       bcx: &'a Block<'a>,
@@ -462,13 +443,10 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprLit(lit) => trans_immediate_lit(bcx, expr, (*lit).clone()),
         ast::ExprBinary(op, lhs, rhs) => {
-            // if overloaded, would be RvalueDpsExpr
-            assert!(!bcx.ccx().maps.method_map.borrow().get().contains_key(&expr.id));
-
             trans_binary(bcx, expr, op, lhs, rhs)
         }
         ast::ExprUnary(op, x) => {
-            trans_unary_datum(bcx, expr, op, x)
+            trans_unary(bcx, expr, op, x)
         }
         ast::ExprAddrOf(_, x) => {
             trans_addr_of(bcx, expr, x)
@@ -789,15 +767,23 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprBinary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, lhs, Some(&*rhs), Some(dest)).bcx
+            let lhs = unpack_datum!(bcx, trans(bcx, lhs));
+            let rhs_datum = unpack_datum!(bcx, trans(bcx, rhs));
+            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), lhs,
+                                Some((rhs_datum, rhs.id)), Some(dest)).bcx
         }
         ast::ExprUnary(_, subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, subexpr, None, Some(dest)).bcx
+            let arg = unpack_datum!(bcx, trans(bcx, subexpr));
+            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id),
+                                arg, None, Some(dest)).bcx
         }
         ast::ExprIndex(base, idx) => {
             // if not overloaded, would be RvalueDatumExpr
-            trans_overloaded_op(bcx, expr, base, Some(&*idx), Some(dest)).bcx
+            let base = unpack_datum!(bcx, trans(bcx, base));
+            let idx_datum = unpack_datum!(bcx, trans(bcx, idx));
+            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
+                                Some((idx_datum, idx.id)), Some(dest)).bcx
         }
         ast::ExprCast(val, _) => {
             // DPS output mode means this is a trait cast:
@@ -848,7 +834,7 @@ fn trans_def_dps_unadjusted<'a>(
             let variant_info = ty::enum_variant_with_id(ccx.tcx, tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
-                let llfn = callee::trans_fn_ref(bcx, vid, ref_expr.id, false);
+                let llfn = callee::trans_fn_ref(bcx, vid, ExprId(ref_expr.id));
                 Store(bcx, llfn, lldest);
                 return bcx;
             } else {
@@ -888,7 +874,7 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::DefFn(did, _) |
         ast::DefStruct(did) | ast::DefVariant(_, did, _) |
         ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
-            callee::trans_fn_ref(bcx, did, ref_expr.id, false)
+            callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
         }
         ast::DefStaticMethod(impl_did, ast::FromTrait(trait_did), _) => {
             meth::trans_static_method_callee(bcx, impl_did,
@@ -1165,25 +1151,26 @@ fn trans_immediate_lit<'a>(bcx: &'a Block<'a>,
     immediate_rvalue_bcx(bcx, v, ty).to_expr_datumblock()
 }
 
-fn trans_unary_datum<'a>(
-                     bcx: &'a Block<'a>,
-                     un_expr: &ast::Expr,
-                     op: ast::UnOp,
-                     sub_expr: &ast::Expr)
-                     -> DatumBlock<'a, Expr> {
+fn trans_unary<'a>(bcx: &'a Block<'a>,
+                   expr: &ast::Expr,
+                   op: ast::UnOp,
+                   sub_expr: &ast::Expr)
+                   -> DatumBlock<'a, Expr> {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_unary_datum");
 
-    let overloaded = {
-        let method_map = bcx.ccx().maps.method_map.borrow();
-        method_map.get().contains_key(&un_expr.id)
-    };
-    // if overloaded, would be RvalueDpsExpr
-    assert!(!overloaded || op == ast::UnDeref);
+    let method_call = MethodCall::expr(expr.id);
 
-    let un_ty = expr_ty(bcx, un_expr);
+    // The only overloaded operator that is translated to a datum
+    // is an overloaded deref, since it is always yields a `&T`.
+    // Otherwise, we should be in the RvalueDpsExpr path.
+    assert!(
+        op == ast::UnDeref ||
+        !bcx.ccx().maps.method_map.borrow().get().contains_key(&method_call));
 
-    return match op {
+    let un_ty = expr_ty(bcx, expr);
+
+    match op {
         ast::UnNot => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
             let llresult = if ty::type_is_bool(un_ty) {
@@ -1218,15 +1205,10 @@ fn trans_unary_datum<'a>(
             trans_boxed_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr), heap_exchange)
         }
         ast::UnDeref => {
-            if overloaded {
-                let r = trans_overloaded_op(bcx, un_expr, sub_expr, None, None);
-                DatumBlock(r.bcx, Datum(r.val, un_ty, LvalueExpr))
-            } else {
-                let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
-                deref_once(bcx, un_expr, datum, 0)
-            }
+            let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
+            deref_once(bcx, expr, datum, 0)
         }
-    };
+    }
 }
 
 fn trans_boxed_expr<'a>(bcx: &'a Block<'a>,
@@ -1451,41 +1433,43 @@ fn trans_lazy_binop<'a>(
     return immediate_rvalue_bcx(join, phi, binop_ty).to_expr_datumblock();
 }
 
-fn trans_binary<'a>(
-                bcx: &'a Block<'a>,
-                binop_expr: &ast::Expr,
-                op: ast::BinOp,
-                lhs: &ast::Expr,
-                rhs: &ast::Expr)
-                -> DatumBlock<'a, Expr> {
+fn trans_binary<'a>(bcx: &'a Block<'a>,
+                    expr: &ast::Expr,
+                    op: ast::BinOp,
+                    lhs: &ast::Expr,
+                    rhs: &ast::Expr)
+                    -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_binary");
     let ccx = bcx.ccx();
 
+    // if overloaded, would be RvalueDpsExpr
+    assert!(!ccx.maps.method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)));
+
     match op {
         ast::BiAnd => {
-            trans_lazy_binop(bcx, binop_expr, lazy_and, lhs, rhs)
+            trans_lazy_binop(bcx, expr, lazy_and, lhs, rhs)
         }
         ast::BiOr => {
-            trans_lazy_binop(bcx, binop_expr, lazy_or, lhs, rhs)
+            trans_lazy_binop(bcx, expr, lazy_or, lhs, rhs)
         }
         _ => {
             let mut bcx = bcx;
             let lhs_datum = unpack_datum!(bcx, trans(bcx, lhs));
             let rhs_datum = unpack_datum!(bcx, trans(bcx, rhs));
-            let binop_ty = expr_ty(bcx, binop_expr);
+            let binop_ty = expr_ty(bcx, expr);
 
             debug!("trans_binary (expr {}): lhs_datum={}",
-                   binop_expr.id,
+                   expr.id,
                    lhs_datum.to_str(ccx));
             let lhs_ty = lhs_datum.ty;
             let lhs = lhs_datum.to_llscalarish(bcx);
 
             debug!("trans_binary (expr {}): rhs_datum={}",
-                   binop_expr.id,
+                   expr.id,
                    rhs_datum.to_str(ccx));
             let rhs_ty = rhs_datum.ty;
             let rhs = rhs_datum.to_llscalarish(bcx);
-            trans_eager_binop(bcx, binop_expr, binop_ty, op,
+            trans_eager_binop(bcx, expr, binop_ty, op,
                               lhs_ty, lhs, rhs_ty, rhs)
         }
     }
@@ -1494,21 +1478,22 @@ fn trans_binary<'a>(
 fn trans_overloaded_op<'a, 'b>(
                        bcx: &'a Block<'a>,
                        expr: &ast::Expr,
-                       rcvr: &'b ast::Expr,
-                       arg: Option<&'b ast::Expr>,
+                       method_call: MethodCall,
+                       lhs: Datum<Expr>,
+                       rhs: Option<(Datum<Expr>, ast::NodeId)>,
                        dest: Option<Dest>)
                        -> Result<'a> {
-    let method_ty = bcx.ccx().maps.method_map.borrow().get().get(&expr.id).ty;
+    let method_ty = bcx.ccx().maps.method_map.borrow().get().get(&method_call).ty;
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
                              |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
-                                                          expr.id,
-                                                          rcvr,
+                                                          method_call,
+                                                          None,
                                                           arg_cleanup_scope)
                              },
-                             callee::ArgAutorefSecond(rcvr, arg),
+                             callee::ArgOverloadedOp(lhs, rhs),
                              dest)
 }
 
@@ -1666,10 +1651,7 @@ fn trans_assign_op<'a>(
     debug!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!({
-            let method_map = bcx.ccx().maps.method_map.borrow();
-            !method_map.get().find(&expr.id).is_some()
-        });
+    assert!(!bcx.ccx().maps.method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
@@ -1748,6 +1730,30 @@ fn trans_log_level<'a>(bcx: &'a Block<'a>) -> DatumBlock<'a, Expr> {
     immediate_rvalue_bcx(bcx, Load(bcx, global), ty::mk_u32()).to_expr_datumblock()
 }
 
+fn auto_ref<'a>(bcx: &'a Block<'a>,
+                datum: Datum<Expr>,
+                expr: &ast::Expr)
+                -> DatumBlock<'a, Expr> {
+    let mut bcx = bcx;
+
+    // Ensure cleanup of `datum` if not already scheduled and obtain
+    // a "by ref" pointer.
+    let lv_datum = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "autoref", expr.id));
+
+    // Compute final type. Note that we are loose with the region and
+    // mutability, since those things don't matter in trans.
+    let referent_ty = lv_datum.ty;
+    let ptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::ReStatic, referent_ty);
+
+    // Get the pointer.
+    let llref = lv_datum.to_llref();
+
+    // Construct the resulting datum, using what was the "by ref"
+    // ValueRef of type `referent_ty` to be the "by value" ValueRef
+    // of type `&referent_ty`.
+    DatumBlock(bcx, Datum(llref, ptr_ty, RvalueExpr(Rvalue(ByValue))))
+}
+
 fn deref_multiple<'a>(bcx: &'a Block<'a>,
                       expr: &ast::Expr,
                       datum: Datum<Expr>,
@@ -1777,6 +1783,37 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     let mut bcx = bcx;
 
+    // Check for overloaded deref.
+    let method_call = MethodCall {
+        expr_id: expr.id,
+        autoderef: derefs as u32
+    };
+    let method_ty = ccx.maps.method_map.borrow().get()
+                       .find(&method_call).map(|method| method.ty);
+    let datum = match method_ty {
+        Some(method_ty) => {
+            // Overloaded. Evaluate `trans_overloaded_op`, which will
+            // invoke the user's deref() method, which basically
+            // converts from the `Shaht<T>` pointer that we have into
+            // a `&T` pointer.  We can then proceed down the normal
+            // path (below) to dereference that `&T`.
+            let datum = if derefs == 0 {
+                datum
+            } else {
+                // Always perform an AutoPtr when applying an overloaded auto-deref.
+                unpack_datum!(bcx, auto_ref(bcx, datum, expr))
+            };
+            let val = unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
+                                                              datum, None, None));
+            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty));
+            Datum(val, ref_ty, RvalueExpr(Rvalue(ByValue)))
+        }
+        None => {
+            // Not overloaded. We already have a pointer we know how to deref.
+            datum
+        }
+    };
+
     let r = match ty::get(datum.ty).sty {
         ty::ty_uniq(content_ty) => {
             deref_owned_pointer(bcx, expr, datum, content_ty)
@@ -1805,55 +1842,6 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             DatumBlock(bcx, Datum(ptr, content_ty, LvalueExpr))
         }
 
-        ty::ty_enum(..) |
-        ty::ty_struct(..) => {
-            // Subtle efficiency note: In the case where we have a
-            // newtype struct where the struct itself does not have a
-            // dtor, but the contents do, we could avoid forcing the
-            // data into Lvalue and instead return an Rvalue. But it
-            // doesn't seem worth the trouble.
-            let datum = unpack_datum!(bcx, ensure_cleanup(bcx, expr, datum));
-
-            // Unlike the pointer case above, we generate an
-            // rvalue datum if we are given an rvalue. There are
-            // two reasons that this makes sense here:
-            //
-            // 1. dereferencing a struct does not actually perform a
-            //    pointer load and hence the resulting value is not
-            //    naturally by reference, as would be required by an
-            //    lvalue result.
-            //
-            // 2. the struct always owns its contents, and hence and does not
-            //    itself have a dtor (else it would be in lvalue mode).
-            let repr = adt::represent_type(ccx, datum.ty);
-            let ty = adt::deref_ty(ccx, repr);
-            let Datum { val, kind, .. } = datum;
-            let r = match kind {
-                LvalueExpr => {
-                    Datum {
-                        val: adt::trans_field_ptr(bcx, repr, val, 0, 0),
-                        ty: ty,
-                        kind: LvalueExpr
-                    }
-                }
-                RvalueExpr(Rvalue { mode: ByRef }) => {
-                    Datum {
-                        val: adt::trans_field_ptr(bcx, repr, val, 0, 0),
-                        ty: ty,
-                        kind: RvalueExpr(Rvalue(ByValue))
-                    }
-                }
-                RvalueExpr(Rvalue { mode: ByValue }) => {
-                    Datum {
-                        val: ExtractValue(bcx, val, 0),
-                        ty: ty,
-                        kind: RvalueExpr(Rvalue(ByValue))
-                    }
-                }
-            };
-            DatumBlock(bcx, r)
-        }
-
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -1866,25 +1854,6 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
            expr.id, derefs, r.datum.to_str(ccx));
 
     return r;
-
-    fn ensure_cleanup<'a>(mut bcx: &'a Block<'a>,
-                          expr: &ast::Expr,
-                          datum: Datum<Expr>)
-                          -> DatumBlock<'a, Expr> {
-        /*!
-         * If the datum contains data that needs to be dropped,
-         * convert it to an lvalue, thus ensuring that cleanup
-         * is scheduled.
-         */
-
-        if ty::type_needs_drop(bcx.tcx(), datum.ty) {
-            let lv_datum = unpack_datum!(
-                bcx, datum.to_lvalue_datum(bcx, "deref", expr.id));
-            DatumBlock(bcx, lv_datum.to_expr_datum())
-        } else {
-            DatumBlock(bcx, datum)
-        }
-    }
 
     fn deref_owned_pointer<'a>(bcx: &'a Block<'a>,
                                expr: &ast::Expr,

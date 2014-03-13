@@ -51,11 +51,11 @@ struct Chunk {
 }
 impl Chunk {
     fn capacity(&self) -> uint {
-        self.data.borrow().borrow().get().capacity()
+        self.data.deref().borrow().get().capacity()
     }
 
     unsafe fn as_ptr(&self) -> *u8 {
-        self.data.borrow().borrow().get().as_ptr()
+        self.data.deref().borrow().get().as_ptr()
     }
 }
 

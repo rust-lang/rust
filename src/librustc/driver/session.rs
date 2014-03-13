@@ -194,7 +194,11 @@ pub struct Session_ {
                            Vec<(lint::Lint, codemap::Span, ~str)> >>,
     node_id: Cell<ast::NodeId>,
     crate_types: @RefCell<Vec<CrateType> >,
-    features: front::feature_gate::Features
+    features: front::feature_gate::Features,
+
+    /// The maximum recursion limit for potentially infinitely recursive
+    /// operations such as auto-dereference and monomorphization.
+    recursion_limit: Cell<uint>,
 }
 
 pub type Session = @Session_;

@@ -172,11 +172,11 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
-        if depth > 30 {
-            ccx.sess.span_fatal(
-                ccx.tcx.map.span(fn_id.node),
-                "overly deep expansion of inlined function");
+        if depth > ccx.sess.recursion_limit.get() {
+            ccx.sess.span_fatal(ccx.tcx.map.span(fn_id.node),
+                "reached the recursion limit during monomorphization");
         }
+
         monomorphizing.get().insert(fn_id, depth + 1);
     }
 

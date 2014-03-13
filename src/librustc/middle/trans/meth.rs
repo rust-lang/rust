@@ -29,6 +29,7 @@ use middle::trans::type_::Type;
 use middle::trans::type_of::*;
 use middle::ty;
 use middle::typeck;
+use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
 
@@ -93,21 +94,22 @@ pub fn trans_method(ccx: @CrateContext, method: &ast::Method,
 
 pub fn trans_method_callee<'a>(
                            bcx: &'a Block<'a>,
-                           expr_id: ast::NodeId,
-                           this: &ast::Expr,
+                           method_call: MethodCall,
+                           self_expr: Option<&ast::Expr>,
                            arg_cleanup_scope: cleanup::ScopeId)
                            -> Callee<'a> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
     let (origin, method_ty) = match bcx.ccx().maps.method_map
-                                       .borrow().get().find(&expr_id) {
+                                       .borrow().get().find(&method_call) {
         Some(method) => {
-            debug!("trans_method_callee(expr_id={:?}, method={})",
-                expr_id, method.repr(bcx.tcx()));
+            debug!("trans_method_callee({:?}, method={})",
+                   method_call, method.repr(bcx.tcx()));
             (method.origin, method.ty)
         }
         None => {
-            bcx.tcx().sess.span_bug(this.span, "method call expr wasn't in method map")
+            bcx.tcx().sess.span_bug(bcx.tcx().map.span(method_call.expr_id),
+                                    "method call expr wasn't in method map")
         }
     };
 
@@ -115,7 +117,7 @@ pub fn trans_method_callee<'a>(
         typeck::MethodStatic(did) => {
             Callee {
                 bcx: bcx,
-                data: Fn(callee::trans_fn_ref(bcx, did, expr_id, true))
+                data: Fn(callee::trans_fn_ref(bcx, did, MethodCall(method_call)))
             }
         }
         typeck::MethodParam(typeck::MethodParam {
@@ -131,7 +133,7 @@ pub fn trans_method_callee<'a>(
                         trait_id);
 
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
-                    trans_monomorphized_callee(bcx, expr_id,
+                    trans_monomorphized_callee(bcx, method_call,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
@@ -140,10 +142,18 @@ pub fn trans_method_callee<'a>(
         }
 
         typeck::MethodObject(ref mt) => {
+            let self_expr = match self_expr {
+                Some(self_expr) => self_expr,
+                None => {
+                    bcx.tcx().sess.span_bug(bcx.tcx().map.span(method_call.expr_id),
+                                            "self expr wasn't provided for trait object \
+                                            callee (trying to call overloaded op?)")
+                }
+            };
             trans_trait_callee(bcx,
                                monomorphize_type(bcx, method_ty),
                                mt.real_index,
-                               this,
+                               self_expr,
                                arg_cleanup_scope)
         }
     }
@@ -209,13 +219,10 @@ pub fn trans_static_method_callee(bcx: &Block,
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
                 combine_impl_and_methods_tps(
-                    bcx, mth_id, expr_id, false,
+                    bcx, mth_id, ExprId(expr_id),
                     rcvr_substs.as_slice(), rcvr_origins);
 
-            let llfn = trans_fn_ref_with_vtables(bcx,
-                                                 mth_id,
-                                                 expr_id,
-                                                 false,
+            let llfn = trans_fn_ref_with_vtables(bcx, mth_id, ExprId(expr_id),
                                                  callee_substs.as_slice(),
                                                  Some(callee_origins));
 
@@ -254,7 +261,7 @@ pub fn method_with_name(ccx: &CrateContext,
 }
 
 fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
-                                  expr_id: ast::NodeId,
+                                  method_call: MethodCall,
                                   trait_id: ast::DefId,
                                   n_method: uint,
                                   vtbl: typeck::vtable_origin)
@@ -270,14 +277,13 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
           // those from the impl and those from the method:
           let (callee_substs, callee_origins) =
               combine_impl_and_methods_tps(
-                  bcx, mth_id, expr_id, true,
+                  bcx, mth_id,  MethodCall(method_call),
                   rcvr_substs.as_slice(), rcvr_origins);
 
           // translate the function
           let llfn = trans_fn_ref_with_vtables(bcx,
                                                mth_id,
-                                               expr_id,
-                                               true,
+                                               MethodCall(method_call),
                                                callee_substs.as_slice(),
                                                Some(callee_origins));
 
@@ -291,8 +297,7 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
 
 fn combine_impl_and_methods_tps(bcx: &Block,
                                 mth_did: ast::DefId,
-                                expr_id: ast::NodeId,
-                                is_method: bool,
+                                node: ExprOrMethodCall,
                                 rcvr_substs: &[ty::t],
                                 rcvr_origins: typeck::vtable_res)
                                 -> (Vec<ty::t> , typeck::vtable_res) {
@@ -316,7 +321,7 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     let ccx = bcx.ccx();
     let method = ty::method(ccx.tcx, mth_did);
     let n_m_tps = method.generics.type_param_defs().len();
-    let node_substs = node_id_type_params(bcx, expr_id, is_method);
+    let node_substs = node_id_type_params(bcx, node);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx));
     let ty_substs
         = vec_ng::append(Vec::from_slice(rcvr_substs),
@@ -328,7 +333,17 @@ fn combine_impl_and_methods_tps(bcx: &Block,
 
     // Now, do the same work for the vtables.  The vtables might not
     // exist, in which case we need to make them.
-    let r_m_origins = match node_vtables(bcx, expr_id) {
+    let vtables = match node {
+        ExprId(id) => node_vtables(bcx, id),
+        MethodCall(method_call) => {
+            if method_call.autoderef == 0 {
+                node_vtables(bcx, method_call.expr_id)
+            } else {
+                None
+            }
+        }
+    };
+    let r_m_origins = match vtables {
         Some(vt) => vt,
         None => @Vec::from_elem(node_substs.len(), @Vec::new())
     };
@@ -555,7 +570,7 @@ fn emit_vtable_methods(bcx: &Block,
                    token::get_ident(ident));
             C_null(Type::nil().ptr_to())
         } else {
-            trans_fn_ref_with_vtables(bcx, m_id, 0, false, substs, Some(vtables))
+            trans_fn_ref_with_vtables(bcx, m_id, ExprId(0), substs, Some(vtables))
         }
     })
 }

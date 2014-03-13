@@ -76,9 +76,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         ast::LitBool(b) => C_bool(b),
         ast::LitNil => C_nil(),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => {
-            C_binary_slice(cx, data.borrow().as_slice())
-        }
+        ast::LitBinary(ref data) => C_binary_slice(cx, data.deref().as_slice()),
     }
 }
 
@@ -192,7 +190,8 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx, e);
-    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e);
+    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e,
+                                            cx.maps.method_map.borrow().get());
     let adjustment = {
         let adjustments = cx.tcx.adjustments.borrow();
         adjustments.get().find_copy(&e.id)
@@ -424,7 +423,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
             }, true)
           }
           ast::ExprField(base, field, _) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base,
+                                            cx.maps.method_map.borrow().get());
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               expr::with_field_tys(cx.tcx, bt, None, |discr, field_tys| {
@@ -434,7 +434,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
           }
 
           ast::ExprIndex(base, index) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base,
+                                            cx.maps.method_map.borrow().get());
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {
                   const_eval::const_int(i) => i as u64,

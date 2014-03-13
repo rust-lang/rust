@@ -117,8 +117,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           }
           ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
-            let method_map = method_map.borrow();
-            if method_map.get().contains_key(&e.id) {
+              let method_call = typeck::MethodCall::expr(e.id);
+            if method_map.borrow().get().contains_key(&method_call) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }
