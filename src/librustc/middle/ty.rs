@@ -261,7 +261,7 @@ pub struct ctxt {
     sess: Session,
     def_map: resolve::DefMap,
 
-    named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
+    named_region_map: resolve_lifetime::NamedRegionMap,
 
     region_maps: middle::region::RegionMaps,
 
@@ -1079,7 +1079,7 @@ pub type node_type_table = RefCell<HashMap<uint,t>>;
 
 pub fn mk_ctxt(s: Session,
                dm: resolve::DefMap,
-               named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
+               named_region_map: resolve_lifetime::NamedRegionMap,
                map: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,

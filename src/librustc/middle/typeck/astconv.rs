@@ -79,8 +79,7 @@ pub trait AstConv {
 
 pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
                             -> ty::Region {
-    let named_region_map = tcx.named_region_map.borrow();
-    let r = match named_region_map.get().find(&lifetime.id) {
+    let r = match tcx.named_region_map.find(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
             tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
