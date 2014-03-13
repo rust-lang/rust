@@ -107,23 +107,23 @@ mod test {
     iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
-        let (port, chan) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
-                    port.recv();
+                    rx1.recv();
                     client.sendto([99], server_ip).unwrap()
                 }
                 Err(..) => fail!()
             }
-            chan2.send(());
+            tx2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
             Ok(ref mut server) => {
-                chan.send(());
+                tx1.send(());
                 let mut buf = [0];
                 match server.recvfrom(buf) {
                     Ok((nread, src)) => {
@@ -136,18 +136,18 @@ mod test {
             }
             Err(..) => fail!()
         }
-        port2.recv();
+        rx2.recv();
     })
 
     iotest!(fn socket_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
-        let (port, chan) = Chan::<()>::new();
+        let (tx, rx) = channel::<()>();
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
-                    port.recv();
+                    rx.recv();
                     client.sendto([99], server_ip).unwrap()
                 }
                 Err(..) => fail!()
@@ -156,7 +156,7 @@ mod test {
 
         match UdpSocket::bind(server_ip) {
             Ok(ref mut server) => {
-                chan.send(());
+                tx.send(());
                 let mut buf = [0];
                 match server.recvfrom(buf) {
                     Ok((nread, src)) => {
@@ -174,27 +174,27 @@ mod test {
     iotest!(fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
-        let (port, chan) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
                     let client = ~client;
                     let mut stream = client.connect(server_ip);
-                    port.recv();
+                    rx1.recv();
                     stream.write([99]).unwrap();
                 }
                 Err(..) => fail!()
             }
-            chan2.send(());
+            tx2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
             Ok(server) => {
                 let server = ~server;
                 let mut stream = server.connect(client_ip);
-                chan.send(());
+                tx1.send(());
                 let mut buf = [0];
                 match stream.read(buf) {
                     Ok(nread) => {
@@ -206,33 +206,33 @@ mod test {
             }
             Err(..) => fail!()
         }
-        port2.recv();
+        rx2.recv();
     })
 
     iotest!(fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
-        let (port, chan) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
 
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
                     let client = ~client;
                     let mut stream = client.connect(server_ip);
-                    port.recv();
+                    rx1.recv();
                     stream.write([99]).unwrap();
                 }
                 Err(..) => fail!()
             }
-            chan2.send(());
+            tx2.send(());
         });
 
         match UdpSocket::bind(server_ip) {
             Ok(server) => {
                 let server = ~server;
                 let mut stream = server.connect(client_ip);
-                chan.send(());
+                tx1.send(());
                 let mut buf = [0];
                 match stream.read(buf) {
                     Ok(nread) => {
@@ -244,7 +244,7 @@ mod test {
             }
             Err(..) => fail!()
         }
-        port2.recv();
+        rx2.recv();
     })
 
     pub fn socket_name(addr: SocketAddr) {
@@ -284,18 +284,18 @@ mod test {
 
         let sock3 = sock1.clone();
 
-        let (p1, c1) = Chan::new();
-        let (p2, c2) = Chan::new();
+        let (tx1, rx1) = channel();
+        let (tx2, rx2) = channel();
         spawn(proc() {
             let mut sock3 = sock3;
-            p1.recv();
+            rx1.recv();
             sock3.sendto([1], addr2).unwrap();
-            c2.send(());
+            tx2.send(());
         });
-        c1.send(());
+        tx1.send(());
         let mut buf = [0, 0];
         assert_eq!(sock1.recvfrom(buf), Ok((1, addr2)));
-        p2.recv();
+        rx2.recv();
     })
 
     iotest!(fn udp_clone_two_read() {
@@ -303,32 +303,32 @@ mod test {
         let addr2 = next_test_ip4();
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
-        let (p, c) = Chan::new();
-        let c2 = c.clone();
+        let (tx1, rx) = channel();
+        let tx2 = tx1.clone();
 
         spawn(proc() {
             let mut sock2 = sock2;
             sock2.sendto([1], addr1).unwrap();
-            p.recv();
+            rx.recv();
             sock2.sendto([2], addr1).unwrap();
-            p.recv();
+            rx.recv();
         });
 
         let sock3 = sock1.clone();
 
-        let (p, done) = Chan::new();
+        let (done, rx) = channel();
         spawn(proc() {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
             sock3.recvfrom(buf).unwrap();
-            c2.send(());
+            tx2.send(());
             done.send(());
         });
         let mut buf = [0, 0];
         sock1.recvfrom(buf).unwrap();
-        c.send(());
+        tx1.send(());
 
-        p.recv();
+        rx.recv();
     })
 
     iotest!(fn udp_clone_two_write() {
@@ -337,40 +337,40 @@ mod test {
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
 
-        let (p, c) = Chan::new();
-        let (serv_port, serv_chan) = Chan::new();
+        let (tx, rx) = channel();
+        let (serv_tx, serv_rx) = channel();
 
         spawn(proc() {
             let mut sock2 = sock2;
             let mut buf = [0, 1];
 
-            p.recv();
+            rx.recv();
             match sock2.recvfrom(buf) {
                 Ok(..) => {}
                 Err(e) => fail!("failed receive: {}", e),
             }
-            serv_chan.send(());
+            serv_tx.send(());
         });
 
         let sock3 = sock1.clone();
 
-        let (p, done) = Chan::new();
-        let c2 = c.clone();
+        let (done, rx) = channel();
+        let tx2 = tx.clone();
         spawn(proc() {
             let mut sock3 = sock3;
             match sock3.sendto([1], addr2) {
-                Ok(..) => { let _ = c2.try_send(()); }
+                Ok(..) => { let _ = tx2.try_send(()); }
                 Err(..) => {}
             }
             done.send(());
         });
         match sock1.sendto([2], addr2) {
-            Ok(..) => { let _ = c.try_send(()); }
+            Ok(..) => { let _ = tx.try_send(()); }
             Err(..) => {}
         }
-        drop(c);
+        drop(tx);
 
-        p.recv();
-        serv_port.recv();
+        rx.recv();
+        serv_rx.recv();
     })
 }

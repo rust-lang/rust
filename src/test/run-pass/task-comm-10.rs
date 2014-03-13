@@ -14,25 +14,25 @@ extern crate extra;
 
 use std::task;
 
-fn start(c: &Chan<Chan<~str>>) {
-    let (p, ch) = Chan::new();
-    c.send(ch);
+fn start(tx: &Sender<Sender<~str>>) {
+    let (tx2, rx) = channel();
+    tx.send(tx2);
 
     let mut a;
     let mut b;
-    a = p.recv();
+    a = rx.recv();
     assert!(a == ~"A");
     error!("{:?}", a);
-    b = p.recv();
+    b = rx.recv();
     assert!(b == ~"B");
     error!("{:?}", b);
 }
 
 pub fn main() {
-    let (p, ch) = Chan::new();
-    let _child = task::spawn(proc() { start(&ch) });
+    let (tx, rx) = channel();
+    let _child = task::spawn(proc() { start(&tx) });
 
-    let mut c = p.recv();
+    let mut c = rx.recv();
     c.send(~"A");
     c.send(~"B");
     task::deschedule();

@@ -135,7 +135,7 @@ mod test_remote {
     // actually trigger what they say they will.
     #[test]
     fn smoke_test() {
-        struct MyCallback(Option<Chan<int>>);
+        struct MyCallback(Option<Sender<int>>);
         impl Callback for MyCallback {
             fn call(&mut self) {
                 // this can get called more than once, but we only want to send
@@ -147,8 +147,8 @@ mod test_remote {
             }
         }
 
-        let (port, chan) = Chan::new();
-        let cb = ~MyCallback(Some(chan));
+        let (tx, rx) = channel();
+        let cb = ~MyCallback(Some(tx));
         let watcher = AsyncWatcher::new(&mut local_loop().loop_,
                                         cb as ~Callback);
 
@@ -157,7 +157,7 @@ mod test_remote {
             watcher.fire();
         });
 
-        assert_eq!(port.recv(), 1);
+        assert_eq!(rx.recv(), 1);
         thread.join();
     }
 }

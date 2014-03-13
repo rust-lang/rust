@@ -258,15 +258,15 @@ pub fn run(main: proc()) -> int {
     // Create a scheduler pool and spawn the main task into this pool. We will
     // get notified over a channel when the main task exits.
     let mut pool = SchedPool::new(PoolConfig::new());
-    let (port, chan) = Chan::new();
+    let (tx, rx) = channel();
     let mut opts = TaskOpts::new();
-    opts.notify_chan = Some(chan);
+    opts.notify_chan = Some(tx);
     opts.name = Some("<main>".into_maybe_owned());
     pool.spawn(opts, main);
 
     // Wait for the main task to return, and set the process error code
     // appropriately.
-    if port.recv().is_err() {
+    if rx.recv().is_err() {
         os::set_exit_status(rt::DEFAULT_ERROR_CODE);
     }
 
@@ -309,7 +309,7 @@ pub struct SchedPool {
     priv sleepers: SleeperList,
     priv factory: fn() -> ~rtio::EventLoop,
     priv task_state: TaskState,
-    priv tasks_done: Port<()>,
+    priv tasks_done: Receiver<()>,
 }
 
 /// This is an internal state shared among a pool of schedulers. This is used to
@@ -318,7 +318,7 @@ pub struct SchedPool {
 #[deriving(Clone)]
 struct TaskState {
     cnt: UnsafeArc<AtomicUint>,
-    done: Chan<()>,
+    done: Sender<()>,
 }
 
 impl SchedPool {
@@ -471,11 +471,11 @@ impl SchedPool {
 }
 
 impl TaskState {
-    fn new() -> (Port<()>, TaskState) {
-        let (p, c) = Chan::new();
-        (p, TaskState {
+    fn new() -> (Receiver<()>, TaskState) {
+        let (tx, rx) = channel();
+        (rx, TaskState {
             cnt: UnsafeArc::new(AtomicUint::new(0)),
-            done: c,
+            done: tx,
         })
     }
 

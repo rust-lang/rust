@@ -15,29 +15,29 @@ pub fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (p, ch) = Chan::new();
-    let mut c0 = ch.clone();
-    let mut c1 = ch.clone();
-    let mut c2 = ch.clone();
-    let mut c3 = ch.clone();
+    let (tx, rx) = channel();
+    let mut tx0 = tx.clone();
+    let mut tx1 = tx.clone();
+    let mut tx2 = tx.clone();
+    let mut tx3 = tx.clone();
     let number_of_messages: int = 1000;
     let mut i: int = 0;
     while i < number_of_messages {
-        c0.send(i + 0);
-        c1.send(i + 0);
-        c2.send(i + 0);
-        c3.send(i + 0);
+        tx0.send(i + 0);
+        tx1.send(i + 0);
+        tx2.send(i + 0);
+        tx3.send(i + 0);
         i += 1;
     }
     i = 0;
     while i < number_of_messages {
-        r = p.recv();
+        r = rx.recv();
         sum += r;
-        r = p.recv();
+        r = rx.recv();
         sum += r;
-        r = p.recv();
+        r = rx.recv();
         sum += r;
-        r = p.recv();
+        r = rx.recv();
         sum += r;
         i += 1;
     }

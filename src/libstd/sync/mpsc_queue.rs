@@ -176,17 +176,17 @@ mod tests {
             Empty => {}
             Inconsistent | Data(..) => fail!()
         }
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
         let q = UnsafeArc::new(q);
 
         for _ in range(0, nthreads) {
-            let chan = chan.clone();
+            let tx = tx.clone();
             let q = q.clone();
             native::task::spawn(proc() {
                 for i in range(0, nmsgs) {
                     unsafe { (*q.get()).push(i); }
                 }
-                chan.send(());
+                tx.send(());
             });
         }
 
@@ -197,9 +197,9 @@ mod tests {
                 Data(_) => { i += 1 }
             }
         }
-        drop(chan);
+        drop(tx);
         for _ in range(0, nthreads) {
-            port.recv();
+            rx.recv();
         }
     }
 }

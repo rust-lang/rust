@@ -26,12 +26,12 @@
 
 use std::task;
 
-fn foo(x: ()) -> Port<()> {
-    let (p, c) = Chan::<()>::new();
+fn foo(x: ()) -> Receiver<()> {
+    let (tx, rx) = channel::<()>();
     task::spawn(proc() {
-        c.send(x);
+        tx.send(x);
     });
-    p
+    rx
 }
 
 pub fn main() {

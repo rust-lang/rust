@@ -379,16 +379,16 @@ impl Process {
     /// The stdin handle to the child is closed before waiting.
     pub fn wait_with_output(&mut self) -> ProcessOutput {
         drop(self.stdin.take());
-        fn read(stream: Option<io::PipeStream>) -> Port<IoResult<~[u8]>> {
-            let (p, c) = Chan::new();
+        fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<~[u8]>> {
+            let (tx, rx) = channel();
             match stream {
                 Some(stream) => spawn(proc() {
                     let mut stream = stream;
-                    c.send(stream.read_to_end())
+                    tx.send(stream.read_to_end())
                 }),
-                None => c.send(Ok(~[]))
+                None => tx.send(Ok(~[]))
             }
-            p
+            rx
         }
         let stdout = read(self.stdout.take());
         let stderr = read(self.stderr.take());

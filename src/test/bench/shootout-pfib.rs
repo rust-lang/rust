@@ -27,24 +27,24 @@ use std::task;
 use std::uint;
 
 fn fib(n: int) -> int {
-    fn pfib(c: &Chan<int>, n: int) {
+    fn pfib(tx: &Sender<int>, n: int) {
         if n == 0 {
-            c.send(0);
+            tx.send(0);
         } else if n <= 2 {
-            c.send(1);
+            tx.send(1);
         } else {
-            let (pp, cc) = Chan::new();
-            let ch = cc.clone();
-            task::spawn(proc() pfib(&ch, n - 1));
-            let ch = cc.clone();
-            task::spawn(proc() pfib(&ch, n - 2));
-            c.send(pp.recv() + pp.recv());
+            let (tx1, rx) = channel();
+            let tx2 = tx1.clone();
+            task::spawn(proc() pfib(&tx2, n - 1));
+            let tx2 = tx1.clone();
+            task::spawn(proc() pfib(&tx2, n - 2));
+            tx.send(rx.recv() + rx.recv());
         }
     }
 
-    let (p, ch) = Chan::new();
-    let _t = task::spawn(proc() pfib(&ch, n) );
-    p.recv()
+    let (tx, rx) = channel();
+    spawn(proc() pfib(&tx, n) );
+    rx.recv()
 }
 
 struct Config {

@@ -64,7 +64,7 @@ pub struct Timer {
 }
 
 struct Inner {
-    chan: Option<Chan<()>>,
+    tx: Option<Sender<()>>,
     interval: u64,
     repeat: bool,
     target: u64,
@@ -78,7 +78,7 @@ pub enum Req {
 
     // Remove a timer based on its id and then send it back on the channel
     // provided
-    RemoveTimer(uint, Chan<~Inner>),
+    RemoveTimer(uint, Sender<~Inner>),
 
     // Shut down the loop and then ACK this channel once it's shut down
     Shutdown,
@@ -93,7 +93,7 @@ fn now() -> u64 {
     }
 }
 
-fn helper(input: libc::c_int, messages: Port<Req>) {
+fn helper(input: libc::c_int, messages: Receiver<Req>) {
     let mut set: imp::fd_set = unsafe { mem::init() };
 
     let mut fd = FileDesc::new(input, true);
@@ -118,13 +118,13 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let chan = timer.chan.take_unwrap();
-        if chan.try_send(()) && timer.repeat {
-            timer.chan = Some(chan);
+        let tx = timer.tx.take_unwrap();
+        if tx.try_send(()) && timer.repeat {
+            timer.tx = Some(tx);
             timer.target += timer.interval;
             insert(timer, active);
         } else {
-            drop(chan);
+            drop(tx);
             dead.push((timer.id, timer));
         }
     }
@@ -208,7 +208,7 @@ impl Timer {
         Ok(Timer {
             id: id,
             inner: Some(~Inner {
-                chan: None,
+                tx: None,
                 interval: 0,
                 target: 0,
                 repeat: false,
@@ -233,9 +233,9 @@ impl Timer {
         match self.inner.take() {
             Some(i) => i,
             None => {
-                let (p, c) = Chan::new();
-                timer_helper::send(RemoveTimer(self.id, c));
-                p.recv()
+                let (tx, rx) = channel();
+                timer_helper::send(RemoveTimer(self.id, tx));
+                rx.recv()
             }
         }
     }
@@ -244,38 +244,38 @@ impl Timer {
 impl rtio::RtioTimer for Timer {
     fn sleep(&mut self, msecs: u64) {
         let mut inner = self.inner();
-        inner.chan = None; // cancel any previous request
+        inner.tx = None; // cancel any previous request
         self.inner = Some(inner);
 
         Timer::sleep(msecs);
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
         let now = now();
         let mut inner = self.inner();
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         inner.repeat = false;
-        inner.chan = Some(c);
+        inner.tx = Some(tx);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         timer_helper::send(NewTimer(inner));
-        return p;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
         let now = now();
         let mut inner = self.inner();
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         inner.repeat = true;
-        inner.chan = Some(c);
+        inner.tx = Some(tx);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         timer_helper::send(NewTimer(inner));
-        return p;
+        return rx;
     }
 }
 

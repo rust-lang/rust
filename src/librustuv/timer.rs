@@ -28,8 +28,8 @@ pub struct TimerWatcher {
 
 pub enum NextAction {
     WakeTask,
-    SendOnce(Chan<()>),
-    SendMany(Chan<()>, uint),
+    SendOnce(Sender<()>),
+    SendMany(Sender<()>, uint),
 }
 
 impl TimerWatcher {
@@ -97,8 +97,8 @@ impl RtioTimer for TimerWatcher {
         self.stop();
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
-        let (port, chan) = Chan::new();
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
@@ -107,14 +107,14 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, 0);
-            mem::replace(&mut self.action, Some(SendOnce(chan)))
+            mem::replace(&mut self.action, Some(SendOnce(tx)))
         };
 
-        return port;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
-        let (port, chan) = Chan::new();
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
@@ -123,10 +123,10 @@ impl RtioTimer for TimerWatcher {
             self.id += 1;
             self.stop();
             self.start(msecs, msecs);
-            mem::replace(&mut self.action, Some(SendMany(chan, self.id)))
+            mem::replace(&mut self.action, Some(SendMany(tx, self.id)))
         };
 
-        return port;
+        return rx;
     }
 }
 

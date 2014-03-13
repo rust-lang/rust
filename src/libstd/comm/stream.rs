@@ -18,7 +18,7 @@
 /// module.
 
 use cmp;
-use comm::Port;
+use comm::Receiver;
 use int;
 use iter::Iterator;
 use kinds::Send;
@@ -51,7 +51,7 @@ pub struct Packet<T> {
 pub enum Failure<T> {
     Empty,
     Disconnected,
-    Upgraded(Port<T>),
+    Upgraded(Receiver<T>),
 }
 
 pub enum UpgradeResult {
@@ -63,14 +63,14 @@ pub enum UpgradeResult {
 pub enum SelectionResult<T> {
     SelSuccess,
     SelCanceled(BlockedTask),
-    SelUpgraded(BlockedTask, Port<T>),
+    SelUpgraded(BlockedTask, Receiver<T>),
 }
 
 // Any message could contain an "upgrade request" to a new shared port, so the
 // internal queue it's a queue of T, but rather Message<T>
 enum Message<T> {
     Data(T),
-    GoUp(Port<T>),
+    GoUp(Receiver<T>),
 }
 
 impl<T: Send> Packet<T> {
@@ -97,7 +97,7 @@ impl<T: Send> Packet<T> {
             }
         }
     }
-    pub fn upgrade(&mut self, up: Port<T>) -> UpgradeResult {
+    pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
         self.do_send(GoUp(up))
     }
 
@@ -328,7 +328,7 @@ impl<T: Send> Packet<T> {
     // Tests to see whether this port can receive without blocking. If Ok is
     // returned, then that's the answer. If Err is returned, then the returned
     // port needs to be queried instead (an upgrade happened)
-    pub fn can_recv(&mut self) -> Result<bool, Port<T>> {
+    pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
         // We peek at the queue to see if there's anything on it, and we use
         // this return value to determine if we should pop from the queue and
         // upgrade this channel immediately. If it looks like we've got an
@@ -384,7 +384,7 @@ impl<T: Send> Packet<T> {
 
     // Removes a previous task from being blocked in this port
     pub fn abort_selection(&mut self,
-                           was_upgrade: bool) -> Result<bool, Port<T>> {
+                           was_upgrade: bool) -> Result<bool, Receiver<T>> {
         // If we're aborting selection after upgrading from a oneshot, then
         // we're guarantee that no one is waiting. The only way that we could
         // have seen the upgrade is if data was actually sent on the channel
