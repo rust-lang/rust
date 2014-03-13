@@ -137,7 +137,7 @@ impl Item {
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
         for attr in self.attrs.iter() {
             match *attr {
-                List(~"doc", ref list) => { return Some(list.as_slice()); }
+                List(ref x, ref list) if "doc" == *x => { return Some(list.as_slice()); }
                 _ => {}
             }
         }
@@ -149,7 +149,7 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         for attr in self.attrs.iter() {
             match *attr {
-                NameValue(~"doc", ref v) => { return Some(v.as_slice()); }
+                NameValue(ref x, ref v) if "doc" == *x => { return Some(v.as_slice()); }
                 _ => {}
             }
         }

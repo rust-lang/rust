@@ -387,8 +387,8 @@ fn test_back_to_the_future_result() {
 fn test_try_success() {
     match try(proc() {
         ~"Success!"
-    }) {
-        result::Ok(~"Success!") => (),
+    }).as_ref().map(|s| s.as_slice()) {
+        result::Ok("Success!") => (),
         _ => fail!()
     }
 }

@@ -2838,24 +2838,7 @@ impl Parser {
             // parse ~pat
             self.bump();
             let sub = self.parse_pat();
-            hi = sub.span.hi;
-            // HACK: parse ~"..." as a literal of a vstore ~str
-            pat = match sub.node {
-                PatLit(e) => {
-                    match e.node {
-                        ExprLit(lit) if lit_is_str(lit) => {
-                            let vst = @Expr {
-                                id: ast::DUMMY_NODE_ID,
-                                node: ExprVstore(e, ExprVstoreUniq),
-                                span: mk_sp(lo, hi),
-                            };
-                            PatLit(vst)
-                        }
-                        _ => PatUniq(sub)
-                    }
-                }
-                _ => PatUniq(sub)
-            };
+            pat = PatUniq(sub);
             hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
