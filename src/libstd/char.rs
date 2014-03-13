@@ -28,7 +28,7 @@ use cast::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use str::StrSlice;
-use unicode::{derived_property, property, general_category, decompose};
+use unicode::{derived_property, property, general_category, decompose, conversions};
 
 #[cfg(test)] use str::OwnedStr;
 
@@ -225,6 +225,38 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     else { None }
 }
 
+/// Convert a char to its uppercase equivalent
+///
+/// The case-folding performed is the common or simple mapping:
+/// it maps one unicode codepoint (one char in Rust) to its uppercase equivalent according
+/// to the Unicode database at ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+/// The additional SpecialCasing.txt is not considered here, as it expands to multiple
+/// codepoints in some cases.
+///
+/// A full reference can be found here
+/// http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
+///
+/// # Return value
+///
+/// Returns the char itself if no conversion was made
+#[inline]
+pub fn to_uppercase(c: char) -> char {
+    conversions::to_upper(c)
+}
+
+/// Convert a char to its lowercase equivalent
+///
+/// The case-folding performed is the common or simple mapping
+/// see `to_uppercase` for references and more information
+///
+/// # Return value
+///
+/// Returns the char itself if no conversion if possible
+#[inline]
+pub fn to_lowercase(c: char) -> char {
+    conversions::to_lower(c)
+}
+
 ///
 /// Converts a number to the character representing it
 ///
@@ -385,6 +417,8 @@ pub trait Char {
     fn is_digit(&self) -> bool;
     fn is_digit_radix(&self, radix: uint) -> bool;
     fn to_digit(&self, radix: uint) -> Option<uint>;
+    fn to_lowercase(&self) -> char;
+    fn to_uppercase(&self) -> char;
     fn from_digit(num: uint, radix: uint) -> Option<char>;
     fn escape_unicode(&self, f: |char|);
     fn escape_default(&self, f: |char|);
@@ -420,6 +454,10 @@ impl Char for char {
     fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
 
     fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
+
+    fn to_lowercase(&self) -> char { to_lowercase(*self) }
+
+    fn to_uppercase(&self) -> char { to_uppercase(*self) }
 
     fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
 
@@ -514,6 +552,39 @@ fn test_to_digit() {
     assert_eq!('Z'.to_digit(36u), Some(35u));
     assert_eq!(' '.to_digit(10u), None);
     assert_eq!('$'.to_digit(36u), None);
+}
+
+#[test]
+fn test_to_lowercase() {
+    assert_eq!('A'.to_lowercase(), 'a');
+    assert_eq!('Ö'.to_lowercase(), 'ö');
+    assert_eq!('ß'.to_lowercase(), 'ß');
+    assert_eq!('Ü'.to_lowercase(), 'ü');
+    assert_eq!('💩'.to_lowercase(), '💩');
+    assert_eq!('Σ'.to_lowercase(), 'σ');
+    assert_eq!('Τ'.to_lowercase(), 'τ');
+    assert_eq!('Ι'.to_lowercase(), 'ι');
+    assert_eq!('Γ'.to_lowercase(), 'γ');
+    assert_eq!('Μ'.to_lowercase(), 'μ');
+    assert_eq!('Α'.to_lowercase(), 'α');
+    assert_eq!('Σ'.to_lowercase(), 'σ');
+}
+
+#[test]
+fn test_to_uppercase() {
+    assert_eq!('a'.to_uppercase(), 'A');
+    assert_eq!('ö'.to_uppercase(), 'Ö');
+    assert_eq!('ß'.to_uppercase(), 'ß'); // not ẞ: Latin capital letter sharp s
+    assert_eq!('ü'.to_uppercase(), 'Ü');
+    assert_eq!('💩'.to_uppercase(), '💩');
+
+    assert_eq!('σ'.to_uppercase(), 'Σ');
+    assert_eq!('τ'.to_uppercase(), 'Τ');
+    assert_eq!('ι'.to_uppercase(), 'Ι');
+    assert_eq!('γ'.to_uppercase(), 'Γ');
+    assert_eq!('μ'.to_uppercase(), 'Μ');
+    assert_eq!('α'.to_uppercase(), 'Α');
+    assert_eq!('ς'.to_uppercase(), 'Σ');
 }
 
 #[test]
