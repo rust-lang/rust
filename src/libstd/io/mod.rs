@@ -1320,7 +1320,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(Eq, Show)]
+#[deriving(Eq, Show, Hash)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
@@ -1358,6 +1358,7 @@ pub enum FileType {
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```
+#[deriving(Hash)]
 pub struct FileStat {
     /// The path that this stat structure is describing
     path: Path,
@@ -1399,6 +1400,7 @@ pub struct FileStat {
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
 #[allow(missing_doc)]
+#[deriving(Hash)]
 pub struct UnstableFileStat {
     device: u64,
     inode: u64,
