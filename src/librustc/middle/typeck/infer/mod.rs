@@ -202,6 +202,7 @@ pub enum SubregionOrigin {
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting.rs` for more details
+#[deriving(Clone)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring

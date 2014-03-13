@@ -12,12 +12,12 @@
 
 
 use middle::ty;
-use middle::ty::{FreeRegion, Region, RegionVid, Vid};
+use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid, Vid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound,
                  ReLateBound};
 use middle::ty::{ReScope, ReVar, ReSkolemized, BrFresh};
 use middle::typeck::infer::cres;
-use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin};
+use middle::typeck::infer::{RegionVariableOrigin, SubregionOrigin, TypeTrace};
 use middle::typeck::infer;
 use middle::graph;
 use middle::graph::{Direction, NodeIndex};
@@ -60,6 +60,7 @@ pub enum CombineMapType {
     Lub, Glb
 }
 
+#[deriving(Clone)]
 pub enum RegionResolutionError {
     /// `ConcreteFailure(o, a, b)`:
     ///
@@ -83,6 +84,41 @@ pub enum RegionResolutionError {
     SupSupConflict(RegionVariableOrigin,
                    SubregionOrigin, Region,
                    SubregionOrigin, Region),
+
+    /// For subsets of `ConcreteFailure` and `SubSupConflict`, we can derive
+    /// more specific errors message by suggesting to the user where they
+    /// should put a lifetime. In those cases we process and put those errors
+    /// into `ProcessedErrors` before we do any reporting.
+    ProcessedErrors(Vec<RegionVariableOrigin>,
+                    Vec<(TypeTrace, ty::type_err)>,
+                    Vec<SameRegions>),
+}
+
+/// SameRegions is used to group regions that we think are the same and would
+/// like to indicate so to the user.
+/// For example, the following function
+/// ```
+/// struct Foo { bar: int }
+/// fn foo2<'a, 'b>(x: &'a Foo) -> &'b int {
+///    &x.bar
+/// }
+/// ```
+/// would report an error because we expect 'a and 'b to match, and so we group
+/// 'a and 'b together inside a SameRegions struct
+#[deriving(Clone)]
+pub struct SameRegions {
+    scope_id: ast::NodeId,
+    regions: Vec<BoundRegion>
+}
+
+impl SameRegions {
+    pub fn contains(&self, other: &BoundRegion) -> bool {
+        self.regions.contains(other)
+    }
+
+    pub fn push(&mut self, other: BoundRegion) {
+        self.regions.push(other);
+    }
 }
 
 pub type CombineMap = HashMap<TwoRegions, RegionVid>;
