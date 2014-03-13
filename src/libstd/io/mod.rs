@@ -31,7 +31,7 @@ Some examples of obvious things you might want to do
     use std::io;
 
     for line in io::stdin().lines() {
-        print!("{}", line);
+        print!("{}", line.unwrap());
     }
     ```
 
@@ -57,26 +57,26 @@ Some examples of obvious things you might want to do
 
 * Iterate over the lines of a file
 
-    ```rust
+    ```rust,no_run
     use std::io::BufferedReader;
     use std::io::File;
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
-        print!("{}", line);
+        print!("{}", line.unwrap());
     }
     ```
 
 * Pull the lines of a file into a vector of strings
 
-    ```rust
+    ```rust,no_run
     use std::io::BufferedReader;
     use std::io::File;
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
-    let lines: ~[~str] = file.lines().collect();
+    let lines: ~[~str] = file.lines().map(|x| x.unwrap()).collect();
     ```
 
 * Make a simple TCP client connection and request
@@ -466,10 +466,8 @@ pub trait Reader {
     ///
     /// # Error
     ///
-    /// The iterator protocol causes all specifics about errors encountered to
-    /// be swallowed. All errors will be signified by returning `None` from the
-    /// iterator. If this is undesirable, it is recommended to use the
-    /// `read_byte` method.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
         extensions::Bytes::new(self)
     }
@@ -986,7 +984,7 @@ pub trait Stream: Reader + Writer { }
 impl<T: Reader + Writer> Stream for T {}
 
 /// An iterator that reads a line on each iteration,
-/// until `.read_line()` returns `None`.
+/// until `.read_line()` encounters `EndOfFile`.
 ///
 /// # Notes about the Iteration Protocol
 ///
@@ -996,21 +994,24 @@ impl<T: Reader + Writer> Stream for T {}
 ///
 /// # Error
 ///
-/// This iterator will swallow all I/O errors, transforming `Err` values to
-/// `None`. If errors need to be handled, it is recommended to use the
-/// `read_line` method directly.
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
 pub struct Lines<'r, T> {
     priv buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
-    fn next(&mut self) -> Option<~str> {
-        self.buffer.read_line().ok()
+impl<'r, T: Buffer> Iterator<IoResult<~str>> for Lines<'r, T> {
+    fn next(&mut self) -> Option<IoResult<~str>> {
+        match self.buffer.read_line() {
+            Ok(x) => Some(Ok(x)),
+            Err(IoError { kind: EndOfFile, ..}) => None,
+            Err(y) => Some(Err(y))
+        }
     }
 }
 
 /// An iterator that reads a utf8-encoded character on each iteration,
-/// until `.read_char()` returns `None`.
+/// until `.read_char()` encounters `EndOfFile`.
 ///
 /// # Notes about the Iteration Protocol
 ///
@@ -1020,16 +1021,19 @@ impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
 ///
 /// # Error
 ///
-/// This iterator will swallow all I/O errors, transforming `Err` values to
-/// `None`. If errors need to be handled, it is recommended to use the
-/// `read_char` method directly.
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
 pub struct Chars<'r, T> {
     priv buffer: &'r mut T
 }
 
-impl<'r, T: Buffer> Iterator<char> for Chars<'r, T> {
-    fn next(&mut self) -> Option<char> {
-        self.buffer.read_char().ok()
+impl<'r, T: Buffer> Iterator<IoResult<char>> for Chars<'r, T> {
+    fn next(&mut self) -> Option<IoResult<char>> {
+        match self.buffer.read_char() {
+            Ok(x) => Some(Ok(x)),
+            Err(IoError { kind: EndOfFile, ..}) => None,
+            Err(y) => Some(Err(y))
+        }
     }
 }
 
@@ -1095,9 +1099,8 @@ pub trait Buffer: Reader {
     ///
     /// # Error
     ///
-    /// This iterator will transform all error values to `None`, discarding the
-    /// cause of the error. If this is undesirable, it is recommended to call
-    /// `read_line` directly.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
         Lines { buffer: self }
     }
@@ -1183,9 +1186,8 @@ pub trait Buffer: Reader {
     ///
     /// # Error
     ///
-    /// This iterator will transform all error values to `None`, discarding the
-    /// cause of the error. If this is undesirable, it is recommended to call
-    /// `read_char` directly.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn chars<'r>(&'r mut self) -> Chars<'r, Self> {
         Chars { buffer: self }
     }

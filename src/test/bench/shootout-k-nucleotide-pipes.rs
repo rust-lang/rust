@@ -182,7 +182,7 @@ fn main() {
    let mut proc_mode = false;
 
    for line in rdr.lines() {
-       let line = line.trim().to_owned();
+       let line = line.unwrap().trim().to_owned();
 
        if line.len() == 0u { continue; }
 
