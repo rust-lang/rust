@@ -91,8 +91,47 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                 rest = rest.slice_from(1);
             }
             let i: uint = from_str(s.slice_to(s.len() - rest.len())).unwrap();
-            try!(writer.write_str(rest.slice_to(i)));
             s = rest.slice_from(i);
+            rest = rest.slice_to(i);
+            loop {
+                if rest.starts_with("$") {
+                    macro_rules! demangle(
+                        ($($pat:expr => $demangled:expr),*) => ({
+                            $(if rest.starts_with($pat) {
+                                try!(writer.write_str($demangled));
+                                rest = rest.slice_from($pat.len());
+                              } else)*
+                            {
+                                try!(writer.write_str(rest));
+                                break;
+                            }
+
+                        })
+                    )
+                    // see src/librustc/back/link.rs for these mappings
+                    demangle! (
+                        "$SP$" => "@",
+                        "$UP$" => "~",
+                        "$RP$" => "*",
+                        "$BP$" => "&",
+                        "$LT$" => "<",
+                        "$GT$" => ">",
+                        "$LP$" => "(",
+                        "$RP$" => ")",
+                        "$C$"  => ",",
+
+                        // in theory we can demangle any unicode code point, but
+                        // for simplicity we just catch the common ones.
+                        "$x20" => " ",
+                        "$x27" => "'",
+                        "$x5b" => "[",
+                        "$x5d" => "]"
+                    )
+                } else {
+                    try!(writer.write_str(rest));
+                    break;
+                }
+            }
         }
     }
 
@@ -698,17 +737,25 @@ mod test {
     use io::MemWriter;
     use str;
 
+    macro_rules! t( ($a:expr, $b:expr) => ({
+        let mut m = MemWriter::new();
+        super::demangle(&mut m, $a).unwrap();
+        assert_eq!(str::from_utf8_owned(m.unwrap()).unwrap(), $b.to_owned());
+    }) )
+
     #[test]
     fn demangle() {
-        macro_rules! t( ($a:expr, $b:expr) => ({
-            let mut m = MemWriter::new();
-            super::demangle(&mut m, $a);
-            assert_eq!(str::from_utf8_owned(m.unwrap()).unwrap(), $b.to_owned());
-        }) )
-
         t!("test", "test");
         t!("_ZN4testE", "test");
         t!("_ZN4test", "_ZN4test");
         t!("_ZN4test1a2bcE", "test::a::bc");
+    }
+
+    #[test]
+    fn demangle_dollars() {
+        t!("_ZN4$UP$E", "~");
+        t!("_ZN8$UP$testE", "~test");
+        t!("_ZN8$UP$test4foobE", "~test::foob");
+        t!("_ZN8$x20test4foobE", " test::foob");
     }
 }
