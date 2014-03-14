@@ -17,8 +17,6 @@ use std::io;
 use std::iter::range;
 use term;
 
-static BUG_REPORT_URL: &'static str =
-    "http://static.rust-lang.org/doc/master/complement-bugreport.html";
 // maximum number of lines we will print for each error; arbitrary.
 static MAX_LINES: uint = 6u;
 
@@ -33,6 +31,10 @@ pub trait Emitter {
 /// from the diagnostics. You can use this with the `Any` trait to figure out
 /// how a rustc task died (if so desired).
 pub struct FatalError;
+
+/// Signifies that the compiler died with an explicit call to `.bug`
+/// or `.span_bug` rather than a failed assertion, etc.
+pub struct ExplicitBug;
 
 // a span-handler is like a handler but also
 // accepts span information for source-location
@@ -61,7 +63,8 @@ impl SpanHandler {
         self.handler.custom_emit(&*self.cm, sp, msg, Note);
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
-        self.span_fatal(sp, ice_msg(msg));
+        self.handler.emit(Some((&*self.cm, sp)), msg, Bug);
+        fail!(ExplicitBug);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
@@ -116,7 +119,8 @@ impl Handler {
         self.emit.borrow_mut().get().emit(None, msg, Note);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.fatal(ice_msg(msg));
+        self.emit.borrow_mut().get().emit(None, msg, Bug);
+        fail!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
         self.bug(~"unimplemented " + msg);
@@ -131,11 +135,6 @@ impl Handler {
                        sp: Span, msg: &str, lvl: Level) {
         self.emit.borrow_mut().get().custom_emit(cm, sp, msg, lvl);
     }
-}
-
-pub fn ice_msg(msg: &str) -> ~str {
-    format!("internal compiler error: {}\nThis message reflects a bug in the Rust compiler. \
-            \nWe would appreciate a bug report: {}", msg, BUG_REPORT_URL)
 }
 
 pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
@@ -159,6 +158,7 @@ pub fn mk_handler(e: ~Emitter) -> @Handler {
 
 #[deriving(Eq)]
 pub enum Level {
+    Bug,
     Fatal,
     Error,
     Warning,
@@ -170,6 +170,7 @@ impl fmt::Show for Level {
         use std::fmt::Show;
 
         match *self {
+            Bug => "error: internal compiler error".fmt(f),
             Fatal | Error => "error".fmt(f),
             Warning => "warning".fmt(f),
             Note => "note".fmt(f),
@@ -180,7 +181,7 @@ impl fmt::Show for Level {
 impl Level {
     fn color(self) -> term::color::Color {
         match self {
-            Fatal | Error => term::color::BRIGHT_RED,
+            Bug | Fatal | Error => term::color::BRIGHT_RED,
             Warning => term::color::BRIGHT_YELLOW,
             Note => term::color::BRIGHT_GREEN
         }
