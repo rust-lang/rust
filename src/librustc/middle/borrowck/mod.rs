@@ -127,14 +127,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     // Check the body of fn items.
     let (id_range, all_loans, move_data) =
         gather_loans::gather_loans(this, decl, body);
-    let all_loans = all_loans.borrow();
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              this.method_map,
                              LoanDataFlowOperator,
                              id_range,
-                             all_loans.get().len());
-    for (loan_idx, loan) in all_loans.get().iter().enumerate() {
+                             all_loans.len());
+    for (loan_idx, loan) in all_loans.iter().enumerate() {
         loan_dfcx.add_gen(loan.gen_scope, loan_idx);
         loan_dfcx.add_kill(loan.kill_scope, loan_idx);
     }
@@ -147,7 +146,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             all_loans.get().as_slice(), body);
+                             all_loans.as_slice(), body);
 
     visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
