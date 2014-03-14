@@ -1069,41 +1069,49 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// so we have some sort of upper bound on the number of probes to do.
     ///
     /// 'hash', 'k', and 'v' are the elements to robin hood into the hashtable.
-    fn robin_hood(&mut self, index: table::FullIndex, dib_param: uint,
-                  hash: table::SafeHash, k: K, v: V) {
-        let (old_hash, old_key, old_val) = {
-            let (old_hash_ref, old_key_ref, old_val_ref) = self.table.read_all_mut(&index);
+    fn robin_hood(&mut self, mut index: table::FullIndex, mut dib_param: uint,
+                  mut hash: table::SafeHash, mut k: K, mut v: V) {
+        'outer: loop {
+            let (old_hash, old_key, old_val) = {
+                let (old_hash_ref, old_key_ref, old_val_ref) =
+                        self.table.read_all_mut(&index);
 
-            let old_hash = replace(old_hash_ref, hash);
-            let old_key  = replace(old_key_ref,  k);
-            let old_val  = replace(old_val_ref,  v);
+                let old_hash = replace(old_hash_ref, hash);
+                let old_key  = replace(old_key_ref,  k);
+                let old_val  = replace(old_val_ref,  v);
 
-            (old_hash, old_key, old_val)
-        };
-
-        let mut probe = self.probe_next(index.raw_index());
-
-        for dib in range(dib_param + 1, self.table.size()) {
-            let full_index = match self.table.peek(probe) {
-                table::Empty(idx) => {
-                    // Finally. A hole!
-                    self.table.put(idx, old_hash, old_key, old_val);
-                    return;
-                },
-                table::Full(idx) => idx
+                (old_hash, old_key, old_val)
             };
 
-            let probe_dib = self.bucket_distance(&full_index);
+            let mut probe = self.probe_next(index.raw_index());
 
-            if probe_dib < dib {
-                // Robin hood! Steal the spot. This had better be tail call.
-                return self.robin_hood(full_index, probe_dib, old_hash, old_key, old_val);
+            for dib in range(dib_param + 1, self.table.size()) {
+                let full_index = match self.table.peek(probe) {
+                    table::Empty(idx) => {
+                        // Finally. A hole!
+                        self.table.put(idx, old_hash, old_key, old_val);
+                        return;
+                    },
+                    table::Full(idx) => idx
+                };
+
+                let probe_dib = self.bucket_distance(&full_index);
+
+                // Robin hood! Steal the spot.
+                if probe_dib < dib {
+                    index = full_index;
+                    dib_param = probe_dib;
+                    hash = old_hash;
+                    k = old_key;
+                    v = old_val;
+                    continue 'outer;
+                }
+
+                probe = self.probe_next(probe);
             }
 
-            probe = self.probe_next(probe);
+            fail!("HashMap fatal error: 100% load factor?");
         }
-
-        fail!("HashMap fatal error: 100% load factor?");
     }
 
     /// Manually insert a pre-hashed key-value pair, without first checking
@@ -1948,7 +1956,6 @@ mod test_map {
 
 #[cfg(test)]
 mod test_set {
-    use super::HashMap;
     use super::HashSet;
     use std::container::Container;
     use std::vec::ImmutableEqVector;
@@ -2193,7 +2200,6 @@ mod test_set {
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use std::iter;
     use std::iter::{range_inclusive};
 
     #[bench]
