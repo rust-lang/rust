@@ -71,6 +71,7 @@ println!("{:?}", tuple_ptr)
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, managed_boxes)];
+#[allow(deprecated_owned_vector)];
 
 use std::cast;
 use std::kinds::marker;

@@ -33,6 +33,8 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+#[allow(deprecated_owned_vector)];
+
 use std::char;
 use std::cmp;
 use std::fmt;

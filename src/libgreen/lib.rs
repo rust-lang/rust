@@ -174,6 +174,7 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 #[allow(visible_private_types)];
+#[allow(deprecated_owned_vector)];
 
 extern crate rand;
 
