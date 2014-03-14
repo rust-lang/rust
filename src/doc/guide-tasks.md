@@ -351,8 +351,6 @@ fn pnorm(nums: &~[f64], p: uint) -> f64 {
 
 fn main() {
     let numbers = vec::from_fn(1000000, |_| rand::random::<f64>());
-    println!("Inf-norm = {}",  *numbers.iter().max().unwrap());
-
     let numbers_arc = Arc::new(numbers);
 
     for num in range(1u, 10) {
