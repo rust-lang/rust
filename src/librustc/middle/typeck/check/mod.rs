@@ -2048,8 +2048,16 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
 
             let result_t = match op {
                 ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
-                ast::BiGt => ty::mk_bool(),
-                _ => lhs_t
+                ast::BiGt => {
+                    if ty::type_is_simd_strict(tcx, lhs_t) {
+                        ty::mk_simd(tcx,
+                                    ty::mk_bool(),
+                                    ty::simd_size_span(tcx, lhs_t, expr.span))
+                    } else {
+                        ty::mk_bool()
+                    }
+                }
+                _ => lhs_t,
             };
 
             fcx.write_ty(expr.id, result_t);
@@ -3145,6 +3153,192 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
             }
         }
       }
+        ast::ExprSimd(ref elements) => {
+            if elements.len() == 0 {
+                tcx.sess.span_err(expr.span,
+                                  "SIMD vectors cannot have a length of zero");
+                fcx.write_error(id);
+            } else {
+                let mut err_field = false;
+                let mut bot_field = false;
+                let (head_ty, offset) = match expected.and_then(|ex_ty| {
+                        resolve_type(fcx.infcx(),
+                                     ex_ty,
+                                     force_tvar).ok()
+                    }) {
+                    Some(ty) if ty::type_is_simd(tcx, ty) => (ty::simd_type(tcx, ty), 0),
+                    None if expected.map_or(false, {
+                            |ex_ty| ty::type_is_simd(tcx, ex_ty) } ) => {
+                        (ty::simd_type(tcx, expected.unwrap()), 0)
+                    }
+                    _ => {
+                        let &head_expr = elements
+                            .iter()
+                            .next()
+                            .expect("wat");
+                        check_expr(fcx, head_expr);
+                        let head_ty = fcx.expr_ty(head_expr);
+                        let head_ty = structurally_resolved_type(fcx,
+                                                                 head_expr.span,
+                                                                 head_ty);
+                        (head_ty, 1)
+                    }
+                };
+
+                for &e in elements.iter().skip(offset) {
+                    check_expr_has_type(fcx, e, head_ty);
+                    let t = fcx.expr_ty(e);
+                    err_field = err_field || ty::type_is_error(t);
+                    bot_field = bot_field || ty::type_is_bot(t);
+                }
+                if err_field {
+                    fcx.write_error(id);
+                } else if bot_field {
+                    fcx.write_bot(id);
+                } else {
+                    let ty = match ty::get(head_ty).sty {
+                        ty::ty_infer(ty::TyVar(_)) => tcx.sess.span_bug(expr.span,
+                                                                    "unexpected TyVar"),
+                        ty::ty_infer(ty::MDVar(..)) => tcx.sess.span_bug(expr.span,
+                                                                         "unexpected MDVar"),
+                        ty::ty_infer(ty::IntVar(vid)) =>
+                            fcx.infcx().next_md_var(ty::IntMDInnerVid(vid), elements.len()),
+                        ty::ty_infer(ty::FloatVar(vid)) =>
+                            fcx.infcx().next_md_var(ty::FloatMDInnerVid(vid), elements.len()),
+                        _ => ty::mk_simd(tcx,
+                                         head_ty,
+                                         elements.len()),
+                    };
+                    fcx.write_ty(id, ty);
+                }
+            }
+        }
+        ast::ExprSwizzle(left, opt_right, ref mask) => {
+            check_expr(fcx, left);
+            let raw_left_ty = fcx.expr_ty(left);
+            let raw_right_ty = opt_right.map(|right_expr| {
+                    check_expr(fcx, right_expr);
+                    fcx.expr_ty(right_expr)
+                });
+            if ty::type_is_error(raw_left_ty) ||
+                raw_right_ty.map_or(false, |t| ty::type_is_error(t) ) {
+                fcx.write_error(id);
+            } else if ty::type_is_bot(raw_left_ty) ||
+                raw_right_ty.map_or(false, |t| ty::type_is_error(t) ) {
+                fcx.write_bot(id);
+            } else {
+                fn deref(fcx: @FnCtxt, expr: &ast::Expr, ty: ty::t) -> (ty::t, Option<ty::t>) {
+                    let (ty, ads, inner) =
+                        autoderef(fcx, expr.span, ty,
+                                  Some(expr.id),
+                                  NoPreference,
+                                  |t, _| {
+                            match ty::type_is_simd(fcx.tcx(), t) {
+                                true => Some(ty::simd_type(fcx.tcx(), t)),
+                                false => None,
+                            }
+                        });
+                    fcx.write_autoderef_adjustment(expr.id, ads);
+                    let ty = match ty::get(ty).sty {
+                        ty::ty_infer(ty::TyVar(..)) => {
+                            structurally_resolved_type(fcx,
+                                                       expr.span,
+                                                       ty)
+                        }
+                        _ => ty,
+                    };
+                    (ty, inner)
+                }
+                let (left_ty, left_inner) = deref(fcx, left, raw_left_ty);
+                let right_ty = raw_right_ty.map(|raw_ty| {
+                        deref(fcx, opt_right.unwrap(), raw_ty)
+                    });
+
+
+                let mask = mask.iter().map(|&m| {
+                        check_expr(fcx, m);
+                        (const_eval::eval_positive_integer(fcx, m, "swizzle mask"), m)
+                    }).to_owned_vec();
+
+                if !ty::type_is_simd(tcx, left_ty) {
+                    fcx.type_error_message(left.span,
+                                           |actual| {
+                            format!("cannot swizzle non-SIMD type `{}`",
+                                    actual)
+                        },
+                                           left_ty,
+                                           None);
+                    fcx.write_error(id);
+                } else if !check_possible_simd_type(tcx,
+                                                    left.span,
+                                                    left_ty) {
+                    fcx.write_error(id);
+                } else if right_ty.map_or(false, |(right_ty, right_inner)| {
+                        if !ty::type_is_simd(tcx, right_ty) {
+                            fcx.type_error_message(opt_right.unwrap().span,
+                                                   |actual| {
+                                    format!("cannot swizzle non-SIMD type `{}`",
+                                            actual)
+                                },
+                                                   right_ty,
+                                                   None);
+                            true
+                        } else if !check_possible_simd_type(tcx,
+                                                            opt_right.unwrap().span,
+                                                            right_ty) {
+                            true
+                        } else if left_inner != right_inner {
+                            fcx.type_error_message(opt_right.unwrap().span,
+                                                        |actual| {
+                                    format!("swizzle operands must be homogeneous \
+                                            with respect to their element types: \
+                                            expected `{}` but found `{}`",
+                                            left_inner.unwrap().to_str(), actual)
+                                },
+                                                        right_inner.unwrap(),
+                                                        None);
+                            true
+                        } else {
+                            false
+                        }
+                    }) {
+                    fcx.write_error(id);
+                } else {
+                    let size = ty::simd_size_span(tcx, left_ty, left.span) +
+                        right_ty.map_or(0, |(r, _)| {
+                            ty::simd_size_span(tcx,
+                                               r,
+                                               opt_right.unwrap().span)
+                        });
+                    if mask.iter().all(|&(m, expr)| {
+                            if m >= size {
+                                tcx.sess.span_err(expr.span,
+                                                  format!("invalid mask index in \
+                                                          SIMD swizzle: `{:}`",
+                                                          m));
+                                false
+                            } else { true }
+                        }) {
+                        if ty::type_needs_infer(left_ty) {
+                            let ty = match ty::get(left_ty).sty {
+                                ty::ty_infer(ty::MDVar(_, inner, _)) => {
+                                    fcx.infcx().next_md_var(inner, mask.len())
+                                }
+                                _ => unreachable!(),
+                            };
+                            fcx.write_ty(id, ty);
+                        } else {
+                            fcx.write_ty(id,
+                                         ty::mk_simd(tcx,
+                                                     ty::simd_type(tcx, left_ty),
+                                                     mask.len()));
+                        }
+                    } else {
+                        fcx.write_error(id);
+                    }
+                }
+            }
+      }
       ast::ExprField(base, field, ref tys) => {
         check_field(fcx, expr, lvalue_pref, base, field.name, tys.as_slice());
       }
@@ -3160,7 +3354,7 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
           } else {
               let (base_t, autoderefs, field_ty) =
                 autoderef(fcx, expr.span, raw_base_t, Some(base.id),
-                          lvalue_pref, |base_t, _| ty::index(base_t));
+                          lvalue_pref, |base_t, _| ty::index(tcx, base_t));
               match field_ty {
                   Some(mt) => {
                       require_integral(fcx, idx.span, idx_t);
@@ -3461,31 +3655,46 @@ pub fn check_instantiable(tcx: ty::ctxt,
 
 pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = ty::node_id_to_type(tcx, id);
+    check_possible_simd_type(tcx, sp, t);
+}
+pub fn check_possible_simd_type(tcx: ty::ctxt, sp: Span, t: ty::t) -> bool {
     if ty::type_needs_subst(t) {
         tcx.sess.span_err(sp, "SIMD vector cannot be generic");
-        return;
+        return false;
     }
     match ty::get(t).sty {
         ty::ty_struct(did, ref substs) => {
             let fields = ty::lookup_struct_fields(tcx, did);
             if fields.is_empty() {
                 tcx.sess.span_err(sp, "SIMD vector cannot be empty");
-                return;
+                return false;
             }
             let e = ty::lookup_field_type(tcx, did, fields.get(0).id, substs);
             if !fields.iter().all(
                          |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
                 tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
-                return;
+                return false;
             }
-            if !ty::type_is_machine(e) {
+            if !ty::type_is_simd_scalar(tcx, e) {
                 tcx.sess.span_err(sp, "SIMD vector element type should be \
                                        machine type");
-                return;
+                return false;
+            }
+        }
+        ty::ty_simd(_, 0) | ty::ty_infer(ty::MDVar(_, _, 0)) => {
+            tcx.sess.span_err(sp, "SIMD vector cannot be empty");
+            return false;
+        }
+        ty::ty_simd(inner, _) => {
+            if !ty::type_is_simd_scalar(tcx, inner) {
+                tcx.sess.span_err(sp, "SIMD vector element type should be \
+                                       machine type");
+                return false;
             }
         }
         _ => ()
     }
+    return true;
 }
 
 pub fn check_enum_variants(ccx: @CrateCtxt,

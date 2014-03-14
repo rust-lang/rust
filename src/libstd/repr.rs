@@ -595,6 +595,12 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
+
+    fn visit_simd(&mut self,
+                  _inner_ty: *TyDesc,
+                  _count: uint,
+                  _size: uint,
+                  _align: uint) -> bool { true }
 }
 
 pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {

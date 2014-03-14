@@ -680,6 +680,11 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }
+pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstVector(elts.as_ptr(), elts.len() as u32)
+    }
+}
 
 pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
     unsafe {

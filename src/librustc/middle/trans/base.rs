@@ -581,9 +581,19 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
     }
 }
 
-
 // Used only for creating scalar comparison glue.
-pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
+pub enum inner_vector_type {
+    vsigned_int,
+    vunsigned_int,
+    vfloating_point
+}
+pub enum scalar_type {
+    nil_type,
+    signed_int,
+    unsigned_int,
+    floating_point,
+    vector_type(inner_vector_type),
+}
 
 // NB: This produces an i1, not a Rust bool (i8).
 pub fn compare_scalar_types<'a>(
@@ -601,6 +611,16 @@ pub fn compare_scalar_types<'a>(
         ty::ty_uint(_) | ty::ty_char => f(unsigned_int),
         ty::ty_int(_) => f(signed_int),
         ty::ty_float(_) => f(floating_point),
+        ty::ty_simd(..) => {
+            match ty::get(ty::simd_type(cx.tcx(), t)).sty {
+                ty::ty_bool | ty::ty_ptr(_) | ty::ty_uint(..) => {
+                    f(vector_type(vunsigned_int))
+                }
+                ty::ty_int(..) => f(vector_type(vsigned_int)),
+                ty::ty_float(..) => f(vector_type(vfloating_point)),
+                _ => unreachable!(),
+            }
+        }
             // Should never get here, because t is scalar.
         _ => cx.sess().bug("non-scalar type passed to compare_scalar_types")
     }
@@ -631,7 +651,7 @@ pub fn compare_scalar_values<'a>(
           _ => die(cx)
         }
       }
-      floating_point => {
+      floating_point | vector_type(vfloating_point) => {
         let cmp = match op {
           ast::BiEq => lib::llvm::RealOEQ,
           ast::BiNe => lib::llvm::RealUNE,
@@ -643,7 +663,7 @@ pub fn compare_scalar_values<'a>(
         };
         return FCmp(cx, cmp, lhs, rhs);
       }
-      signed_int => {
+      signed_int | vector_type(vsigned_int) => {
         let cmp = match op {
           ast::BiEq => lib::llvm::IntEQ,
           ast::BiNe => lib::llvm::IntNE,
@@ -655,7 +675,7 @@ pub fn compare_scalar_values<'a>(
         };
         return ICmp(cx, cmp, lhs, rhs);
       }
-      unsigned_int => {
+      unsigned_int | vector_type(vunsigned_int) => {
         let cmp = match op {
           ast::BiEq => lib::llvm::IntEQ,
           ast::BiNe => lib::llvm::IntNE,

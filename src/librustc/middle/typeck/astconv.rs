@@ -646,6 +646,33 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 // and will not descend into this routine.
                 this.ty_infer(ast_ty.span)
             }
+            ast::TySimd(primitive, count) => {
+                let count = match const_eval::eval_const_expr_partial(&tcx, count) {
+                    Ok(ref r) => {
+                        match *r {
+                            const_eval::const_int(0) | const_eval::const_uint(0) => {
+                                tcx.sess.span_fatal(
+                                    ast_ty.span, "expected integer constant expr => 0 \
+                                        for simd length");
+                            }
+                            const_eval::const_int(i) => i as uint,
+                            const_eval::const_uint(i) => i as uint,
+                            _ => {
+                                tcx.sess.span_fatal(
+                                    ast_ty.span, "expected integer constant expr for simd length");
+                            }
+                        }
+                    }
+                    Err(ref r) => {
+                        tcx.sess.span_fatal(
+                            ast_ty.span,
+                            format!("expected constant expr for simd length: {}", *r));
+                    }
+                };
+                ast_ty_to_prim_ty(tcx, primitive).map_or(ty::mk_err(), |ty| {
+                        ty::mk_simd(tcx, ty, count)
+                    })
+            }
         });
 
     let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();

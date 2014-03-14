@@ -47,7 +47,8 @@
 // now.
 
 
-use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
+use middle::ty::{FloatVar, FnSig, IntVar, TyVar, MDVar};
+use middle::ty::{IntMDInnerVid, FloatMDInnerVid};
 use middle::ty::{IntType, UintType, substs};
 use middle::ty::{BuiltinBounds};
 use middle::ty;
@@ -474,6 +475,88 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
             unify_float_variable(this, !this.a_is_expected(), v_id, v)
         }
 
+        // Relate multiple data variables to other multiple data types.
+        // we assume the lengths were already checked.
+        (&ty::ty_infer(MDVar(vid, FloatMDInnerVid(inner_vid), left_len)),
+         &ty::ty_simd(simd_ty, right_len))
+            if ty::type_is_fp(simd_ty) && left_len == right_len => {
+            match ty::get(simd_ty).sty {
+                ty::ty_float(ast_ty) => unify_md_variable(this,
+                                                          this.a_is_expected(),
+                                                          vid,
+                                                          FloatMDInnerVid(inner_vid),
+                                                          ty::FloatMDType(ast_ty),
+                                                          left_len),
+                _ => unreachable!(),
+            }
+        }
+        (&ty::ty_simd(simd_ty, left_len),
+         &ty::ty_infer(MDVar(vid, FloatMDInnerVid(inner_vid), right_len)))
+            if ty::type_is_fp(simd_ty) && left_len == right_len => {
+            match ty::get(simd_ty).sty {
+                ty::ty_float(ast_ty) => unify_md_variable(this,
+                                                          !this.a_is_expected(),
+                                                          vid,
+                                                          FloatMDInnerVid(inner_vid),
+                                                          ty::FloatMDType(ast_ty),
+                                                          left_len),
+                _ => unreachable!(),
+            }
+        }
+        (&ty::ty_infer(MDVar(vid, IntMDInnerVid(inner_vid), left_len)),
+         &ty::ty_simd(simd_ty, right_len))
+            if ty::type_is_integral(simd_ty) && left_len == right_len => {
+            match ty::get(simd_ty).sty {
+                ty::ty_int(ast_ty) => unify_md_variable(this,
+                                                        this.a_is_expected(),
+                                                        vid,
+                                                        IntMDInnerVid(inner_vid),
+                                                        ty::IntMDType(ast_ty),
+                                                        left_len),
+                ty::ty_uint(ast_ty) => unify_md_variable(this,
+                                                         this.a_is_expected(),
+                                                         vid,
+                                                         IntMDInnerVid(inner_vid),
+                                                         ty::UintMDType(ast_ty),
+                                                         left_len),
+                _ => unreachable!(),
+            }
+        },
+        (&ty::ty_simd(simd_ty, left_len),
+         &ty::ty_infer(MDVar(vid, IntMDInnerVid(inner_vid), right_len)))
+            if ty::type_is_integral(simd_ty) && left_len == right_len => {
+            match ty::get(simd_ty).sty {
+                ty::ty_int(ast_ty) => unify_md_variable(this,
+                                                        !this.a_is_expected(),
+                                                        vid,
+                                                        IntMDInnerVid(inner_vid),
+                                                        ty::IntMDType(ast_ty),
+                                                        left_len),
+                ty::ty_uint(ast_ty) => unify_md_variable(this,
+                                                         !this.a_is_expected(),
+                                                         vid,
+                                                         IntMDInnerVid(inner_vid),
+                                                         ty::UintMDType(ast_ty),
+                                                         left_len),
+                _ => unreachable!(),
+            }
+        }
+        (&ty::ty_infer(MDVar(a_id, FloatMDInnerVid(_), left_len)),
+         &ty::ty_infer(MDVar(b_id, FloatMDInnerVid(_), right_len)))
+            if left_len == right_len => {
+            if_ok!(this.infcx().simple_vars(this.a_is_expected(),
+                                            a_id, b_id));
+            Ok(a)
+        }
+        (&ty::ty_infer(MDVar(a_id, IntMDInnerVid(_), left_len)),
+         &ty::ty_infer(MDVar(b_id, IntMDInnerVid(_), right_len)))
+            if left_len == right_len => {
+            if_ok!(this.infcx().simple_vars(this.a_is_expected(),
+                                            a_id, b_id));
+            Ok(a)
+        }
+
+
       (&ty::ty_char, _) |
       (&ty::ty_nil, _) |
       (&ty::ty_bool, _) |
@@ -599,5 +682,35 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     {
         if_ok!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(val))
+    }
+    fn unify_md_variable<C:Combine>(
+        this: &C,
+        vid_is_expected: bool,
+        vid: ty::MDVid,
+        inner_vid: ty::MDInnerVid,
+        val: ty::MDVarValue,
+        len: uint) -> cres<ty::t>
+    {
+        try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
+        let inner = match inner_vid {
+            ty::IntMDInnerVid(inner_vid) =>
+                try!(unify_integral_variable(this,
+                                             vid_is_expected,
+                                             inner_vid,
+                                             match val {
+                                                 ty::IntMDType(ast_ty) => IntType(ast_ty),
+                                                 ty::UintMDType(ast_ty) => UintType(ast_ty),
+                                                 _ => unreachable!(),
+                                             })),
+            ty::FloatMDInnerVid(inner_vid) =>
+                try!(unify_float_variable(this,
+                                          vid_is_expected,
+                                          inner_vid,
+                                          match val {
+                                              ty::FloatMDType(ast_ty) => ast_ty,
+                                              _ => unreachable!(),
+                                          })),
+        };
+        Ok(ty::mk_simd(this.infcx().tcx, inner, len))
     }
 }

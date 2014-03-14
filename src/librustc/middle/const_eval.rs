@@ -551,3 +551,53 @@ pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: &Expr, b: &Expr) -> Option<bool> {
 pub fn lit_eq(a: &Lit, b: &Lit) -> Option<bool> {
     compare_const_vals(&lit_to_const(a), &lit_to_const(b)).map(|val| val == 0)
 }
+
+// Returns the evaluated positive integer for the provided expression, or reports error
+pub fn eval_positive_integer<T: ty::ExprTyProvider>(tcx: &T,
+                                                    count_expr: &ast::Expr,
+                                                    msg: &str) -> uint {
+    match eval_const_expr_partial(tcx, count_expr) {
+        Ok(ref const_val) => match *const_val {
+            const_int(count) => if count < 0 {
+                tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                            format!("expected positive integer for \
+                                                    {:s} but found negative integer",
+                                                    msg));
+                return 0;
+            } else {
+                return count as uint
+            },
+            const_uint(count) => return count as uint,
+            const_float(count) => {
+                tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                            format!("expected positive integer for \
+                                                    {:s} but found float", msg));
+                return count as uint;
+            }
+            const_str(_) => {
+                tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                            format!("expected positive integer for \
+                                                    {:s} but found string", msg));
+                return 0;
+            }
+            const_bool(_) => {
+                tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                            format!("expected positive integer for \
+                                                    {:s} but found boolean", msg));
+                return 0;
+            }
+            const_binary(_) => {
+                tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                            format!("expected positive integer for \
+                                                    {:s} but found binary array", msg));
+                return 0;
+            }
+        },
+        Err(..) => {
+            tcx.ty_ctxt().sess.span_err(count_expr.span,
+                                        format!("expected constant integer for {:s} \
+                                                but found variable", msg));
+            return 0;
+        }
+    }
+}

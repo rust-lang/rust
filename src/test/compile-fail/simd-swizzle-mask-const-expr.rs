@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(simd)];
+#[feature(simd, phase)];
 
-#[simd]
-struct vec4<T>(T, T, T, T); //~ ERROR SIMD vector cannot be generic
+#[phase(syntax)]
+extern crate simd_syntax;
+extern crate simd;
 
-#[simd]
-struct empty; //~ ERROR SIMD vector cannot be empty
+#[inline(never)] fn get_num() -> i32 { 10 }
 
-#[simd]
-struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
-
-fn main() {}
+fn main() {
+    let v = gather_simd!(0);
+    let i = get_num();
+    let _ = swizzle_simd!(v -> (i));
+    //~^ ERROR expected constant integer for swizzle mask but found variable
+}

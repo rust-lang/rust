@@ -309,3 +309,16 @@ impl SimplyUnifiable for ast::FloatTy {
         return ty::terr_float_mismatch(err);
     }
 }
+
+impl UnifyVid<Option<ty::MDVarValue>> for ty::MDVid {
+    fn appropriate_vals_and_bindings<'v>(infcx: &'v InferCtxt)
+        -> &'v RefCell<ValsAndBindings<ty::MDVid, Option<ty::MDVarValue>>> {
+        return &infcx.md_var_bindings;
+    }
+}
+
+impl SimplyUnifiable for ty::MDVarValue {
+    fn to_type_err(err: expected_found<ty::MDVarValue>) -> ty::type_err {
+        return ty::terr_md_mismatch(err);
+    }
+}

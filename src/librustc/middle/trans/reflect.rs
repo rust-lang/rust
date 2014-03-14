@@ -278,6 +278,13 @@ impl<'a> Reflector<'a> {
               })
           }
 
+            ty::ty_simd(inner_ty, count) => {
+                let extra = vec_ng::append(vec!(self.c_tydesc(inner_ty),
+                                                self.c_uint(count)),
+                                           self.c_size_and_align(t).as_slice());
+                self.visit("simd", extra.as_slice())
+            }
+
           // FIXME (#2595): visiting all the variants in turn is probably
           // not ideal. It'll work but will get costly on big enums. Maybe
           // let the visitor tell us if it wants to visit only a particular

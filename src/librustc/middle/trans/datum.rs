@@ -25,6 +25,7 @@ use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::write_guard;
+use middle::trans::simd;
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
@@ -529,9 +530,12 @@ impl Datum<Lvalue> {
     }
 
     pub fn get_vec_base_and_len<'a>(&self, bcx: &'a Block<'a>) -> (ValueRef, ValueRef) {
-        //! Converts a vector into the slice pair.
-
-        tvec::get_base_and_len(bcx, self.val, self.ty)
+        //! Converts a vector or a simd into the slice pair.
+        if ty::type_is_simd(bcx.ccx().tcx, self.ty) {
+            simd::get_base_and_len(bcx, self.val, self.ty)
+        } else {
+            tvec::get_base_and_len(bcx, self.val, self.ty)
+        }
     }
 }
 

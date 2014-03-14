@@ -92,3 +92,8 @@ impl InferStr for ty::TraitRef {
         trait_ref_to_str(cx.tcx, self)
     }
 }
+impl InferStr for ty::MDVarValue {
+    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
+        self.to_str()
+    }
+}

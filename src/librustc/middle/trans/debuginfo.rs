@@ -2129,15 +2129,14 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_trait(def_id, ref substs, trait_store, mutability, ref bounds) => {
             trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
-        ty::ty_struct(def_id, ref substs) => {
-            if ty::type_is_simd(cx.tcx, t) {
-                let element_type = ty::simd_type(cx.tcx, t);
-                let len = ty::simd_size(cx.tcx, t);
-                fixed_vec_metadata(cx, element_type, len, usage_site_span)
-            } else {
-                prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
-            }
+        ty::ty_struct(def_id, ref substs) if !ty::type_is_simd(cx.tcx, t) => {
+            prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
         },
+        _ if ty::type_is_simd(cx.tcx, t) => {
+            let element_type = ty::simd_type(cx.tcx, t);
+            let len = ty::simd_size(cx.tcx, t);
+            fixed_vec_metadata(cx, element_type, len, usage_site_span)
+        }
         ty::ty_tup(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
@@ -2577,6 +2576,21 @@ fn populate_scope_map(cx: &CrateContext,
                 for ie in init_expressions.iter() {
                     walk_expr(cx, *ie, scope_stack, scope_map);
                 }
+            }
+            ast::ExprSimd(ref exprs) => {
+                for &e in exprs.iter() {
+                    walk_expr(cx, e, scope_stack, scope_map);
+                }
+            }
+            ast::ExprSwizzle(left, opt_right, _) => {
+                walk_expr(cx, left, scope_stack, scope_map);
+                match opt_right {
+                    Some(right) => {
+                        walk_expr(cx, right, scope_stack, scope_map);
+                    }
+                    None => {}
+                };
+                // mask is a constant expression, so skip.
             }
 
             ast::ExprAssign(sub_exp1, sub_exp2)    |

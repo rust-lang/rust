@@ -756,6 +756,10 @@ pub enum sty {
     ty_struct(DefId, substs),
     ty_tup(Vec<t>),
 
+    // Note it is an error for a ty_simd to have a length of zero.
+    ty_simd(t, /* primitive */
+            uint /* length */),
+
     ty_param(param_ty), // type parameter
     ty_self(DefId), /* special, implicit `self` type parameter;
                       * def_id is the id of the trait */
@@ -826,6 +830,7 @@ pub enum type_err {
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
     terr_float_mismatch(expected_found<ast::FloatTy>),
+    terr_md_mismatch(expected_found<MDVarValue>),
     terr_traits(expected_found<ast::DefId>),
     terr_builtin_bounds(expected_found<BuiltinBounds>),
     terr_variadic_mismatch(expected_found<bool>)
@@ -879,6 +884,39 @@ pub struct IntVid(uint);
 #[deriving(Clone, Eq, Hash)]
 pub struct FloatVid(uint);
 
+#[deriving(Clone, Eq, Hash)]
+pub struct MDVid(uint);
+
+#[deriving(Clone, Eq)]
+pub enum MDVarValue {
+    IntMDType(ast::IntTy),
+    UintMDType(ast::UintTy),
+    FloatMDType(ast::FloatTy),
+}
+impl MDVarValue {
+    pub fn to_t(&self) -> t {
+        match self {
+            &IntMDType(ast) => mk_mach_int(ast),
+            &UintMDType(ast) => mk_mach_uint(ast),
+            &FloatMDType(ast) => mk_mach_float(ast),
+        }
+    }
+}
+
+#[deriving(Clone, Eq, Hash)]
+pub enum MDInnerVid {
+    IntMDInnerVid(IntVid),
+    FloatMDInnerVid(FloatVid),
+}
+impl MDInnerVid {
+    pub fn to_infer(&self, cx: ctxt) -> t {
+        match self {
+            &IntMDInnerVid(vid) => mk_int_var(cx, vid),
+            &FloatMDInnerVid(vid) => mk_float_var(cx, vid),
+        }
+    }
+}
+
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     id: uint
@@ -888,7 +926,9 @@ pub struct RegionVid {
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
-    FloatVar(FloatVid)
+    FloatVar(FloatVid),
+    // multiple data
+    MDVar(MDVid, MDInnerVid, uint),
 }
 
 #[deriving(Clone, Encodable, Decodable, Hash, Show)]
@@ -948,6 +988,32 @@ impl fmt::Show for FloatVid {
     }
 }
 
+impl Vid for MDVid {
+    fn to_uint(&self) -> uint { let MDVid(v) = *self; v }
+}
+impl fmt::Show for MDVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "<generic multiple data \\#{}>", self.to_uint())
+    }
+}
+impl fmt::Show for MDVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &IntMDType(t) => t.fmt(f),
+            &UintMDType(t) => t.fmt(f),
+            &FloatMDType(t) => t.fmt(f),
+        }
+    }
+}
+impl fmt::Show for MDInnerVid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &IntMDInnerVid(vid) => vid.fmt(f),
+            &FloatMDInnerVid(vid) => vid.fmt(f),
+        }
+    }
+}
+
 impl Vid for RegionVid {
     fn to_uint(&self) -> uint { self.id }
 }
@@ -971,6 +1037,13 @@ impl fmt::Show for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
+            MDVar(MDVid(v), inner, count) => {
+                try!(write!(f.buf, "<generic md \\#{}: ", v));
+                try!(inner.fmt(f));
+                try!(write!(f.buf, ", .."));
+                try!(count.fmt(f));
+                write!(f.buf, ">")
+            }
         }
     }
 }
@@ -1246,6 +1319,9 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         // T -> _|_ is *not* _|_ !
         flags &= !(has_ty_bot as uint);
       }
+      &ty_simd(t, _) => {
+        flags |= get(t).flags;
+      }
     }
 
     let t = ~t_box_ {
@@ -1446,12 +1522,25 @@ pub fn mk_struct(cx: ctxt, struct_id: ast::DefId, substs: substs) -> t {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_struct(struct_id, substs))
 }
+pub fn mk_simd(cx: ctxt, ty: t, count: uint) -> t {
+    assert!(count != 0 &&
+            (type_is_simd_scalar(cx, ty) ||
+             type_needs_infer(ty)));
+    mk_t(cx, ty_simd(ty, count))
+}
 
 pub fn mk_var(cx: ctxt, v: TyVid) -> t { mk_infer(cx, TyVar(v)) }
 
 pub fn mk_int_var(cx: ctxt, v: IntVid) -> t { mk_infer(cx, IntVar(v)) }
 
 pub fn mk_float_var(cx: ctxt, v: FloatVid) -> t { mk_infer(cx, FloatVar(v)) }
+
+pub fn mk_md_var(cx: ctxt,
+                 vid: MDVid,
+                 inner: MDInnerVid,
+                 count: uint) -> t {
+    mk_infer(cx, MDVar(vid, inner, count))
+}
 
 pub fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
@@ -1473,7 +1562,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_str(_) | ty_self(_) |
         ty_infer(_) | ty_param(_) | ty_err => {}
-        ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
+        ty_box(ty) | ty_uniq(ty) | ty_simd(ty, _) => maybe_walk_ty(ty, f),
         ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
         ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
@@ -1616,7 +1705,8 @@ pub fn type_is_self(ty: t) -> bool {
 
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) | ty_trait(..) |
+      ty_struct(..) | ty_tup(_) | ty_simd(..) |
+      ty_enum(..) | ty_closure(_) | ty_trait(..) |
       ty_vec(_, vstore_fixed(_)) | ty_str(vstore_fixed(_)) |
       ty_vec(_, vstore_slice(_)) | ty_str(vstore_slice(_))
       => true,
@@ -1626,14 +1716,29 @@ pub fn type_is_structural(ty: t) -> bool {
 
 pub fn type_is_sequence(ty: t) -> bool {
     match get(ty).sty {
-      ty_str(_) | ty_vec(_, _) => true,
+      ty_str(_) | ty_vec(_, _) | ty_simd(..) => true,
       _ => false
     }
 }
-
+pub fn type_is_simd_scalar(_: ctxt, ty: t) -> bool {
+    match get(ty).sty {
+        ty_int(_) | ty_float(_) | ty_uint(_) | ty_bool |
+            ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) => true,
+        _ => false,
+    }
+}
 pub fn type_is_simd(cx: ctxt, ty: t) -> bool {
     match get(ty).sty {
         ty_struct(did, _) => lookup_simd(cx, did),
+        ty_simd(..) => true,
+        ty_infer(MDVar(..)) => true,
+        _ => false
+    }
+}
+pub fn type_is_simd_strict(_: ctxt, ty: t) -> bool {
+    match get(ty).sty {
+        ty_simd(..) => true,
+        ty_infer(MDVar(..)) => true,
         _ => false
     }
 }
@@ -1649,6 +1754,7 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
       ty_str(_) => return mk_mach_uint(ast::TyU8),
       ty_vec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
+      ty_simd(t, _) => return t,
       _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
 }
@@ -1659,7 +1765,9 @@ pub fn simd_type(cx: ctxt, ty: t) -> t {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields.get(0).id, substs)
         }
-        _ => fail!("simd_type called on invalid type")
+        ty_simd(t, _) => t,
+        ty_infer(MDVar(_, inner, _)) => inner.to_infer(cx),
+        _ => cx.sess.bug(format!("simd_type called on invalid type: {:s}", ty.to_str()))
     }
 }
 
@@ -1669,13 +1777,34 @@ pub fn simd_size(cx: ctxt, ty: t) -> uint {
             let fields = lookup_struct_fields(cx, did);
             fields.len()
         }
-        _ => fail!("simd_size called on invalid type")
+        ty_simd(_, s) => s,
+        ty_infer(MDVar(_, _, s)) => s,
+        _ => cx.sess.bug(format!("simd_size called on invalid type: {:s}",
+                                 ::util::ppaux::ty_to_str(cx, ty))),
+    }
+}
+pub fn simd_size_span(cx: ctxt, ty: t, sp: Span) -> uint {
+    match get(ty).sty {
+        ty_struct(did, _) => {
+            let fields = lookup_struct_fields(cx, did);
+            fields.len()
+        }
+        ty_simd(_, s) => s,
+        ty_infer(MDVar(_, _, s)) => s,
+        _ => cx.sess.span_bug(sp,
+                              format!("simd_size called on invalid type: {:s}",
+                                      ::util::ppaux::ty_to_str(cx, ty))),
     }
 }
 
-pub fn get_element_type(ty: t, i: uint) -> t {
+pub fn get_element_type(cx: ctxt, ty: t, i: uint) -> t {
     match get(ty).sty {
       ty_tup(ref ts) => return *ts.get(i),
+      ty_struct(did, ref substs) => {
+            let fields = lookup_struct_fields(cx, did);
+            lookup_field_type(cx, did, fields.as_slice()[i].id, substs)
+      }
+      ty_simd(t, _) => t,
       _ => fail!("get_element_type called on invalid type")
     }
 }
@@ -2131,7 +2260,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let result = match get(ty).sty {
             // Scalar and unique types are sendable, freezable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_bare_fn(_) | ty::ty_char => {
+            ty_bare_fn(_) | ty::ty_char | ty_simd(..) => {
                 TC::None
             }
 
@@ -2414,6 +2543,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             // possibilty to have length zero.
             ty_vec(_, vstore_fixed(0)) => false, // don't need no contents
             ty_vec(mt, vstore_fixed(_)) => type_requires(cx, seen, r_ty, mt.ty),
+
+            ty_simd(t, _) => type_requires(cx, seen, r_ty, t),
 
             ty_nil |
             ty_bot |
@@ -2712,10 +2843,14 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
 }
 
 // Returns the type and mutability of t[i]
-pub fn index(t: t) -> Option<mt> {
+pub fn index(cx: ctxt, t: t) -> Option<mt> {
     match get(t).sty {
         ty_vec(mt, _) => Some(mt),
         ty_str(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
+        ty_simd(elmt, _) => Some(mt { ty: elmt, mutbl: ast::MutImmutable }),
+        ty_infer(MDVar(_, ty, _)) => {
+            Some(mt { ty: ty.to_infer(cx), mutbl: ast::MutImmutable })
+        }
         _ => None
     }
 }
@@ -3377,6 +3512,7 @@ pub fn expr_kind(tcx: ctxt,
                 }
             }
         }
+        ast::ExprSimd(_) | ast::ExprSwizzle(..) => RvalueDatumExpr,
 
         ast::ExprBreak(..) |
         ast::ExprAgain(..) |
@@ -3490,9 +3626,11 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
         ty_trait(id, _, _, _, _) => format!("trait {}", item_path_str(cx, id)),
         ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
         ty_tup(_) => ~"tuple",
+        ty_simd(_, _) => ~"internal simd",
         ty_infer(TyVar(_)) => ~"inferred type",
         ty_infer(IntVar(_)) => ~"integral variable",
         ty_infer(FloatVar(_)) => ~"floating-point variable",
+        ty_infer(MDVar(..)) => ~"multiple-data variable",
         ty_param(_) => ~"type parameter",
         ty_self(_) => ~"self",
         ty_err => ~"type error"
@@ -3636,6 +3774,11 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             format!("expected `{}` but found `{}`",
                  values.expected.to_str(),
                  values.found.to_str())
+        }
+        terr_md_mismatch(ref values) => {
+            format!("expected `{}` but found `{}` in multiple data type",
+                    values.expected.to_str(),
+                    values.found.to_str())
         }
         terr_variadic_mismatch(ref values) => {
             format!("expected {} fn but found {} function",
@@ -4374,7 +4517,7 @@ pub fn is_binopable(cx: ctxt, ty: t, op: ast::BinOp) -> bool {
     }
 
     fn tycat(cx: ctxt, ty: t) -> int {
-        if type_is_simd(cx, ty) {
+        if type_is_simd_strict(cx, ty) {
             return tycat(cx, simd_type(cx, ty))
         }
         match get(ty).sty {
@@ -4492,49 +4635,7 @@ impl ExprTyProvider for ctxt {
 
 // Returns the repeat count for a repeating vector expression.
 pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> uint {
-    match const_eval::eval_const_expr_partial(tcx, count_expr) {
-      Ok(ref const_val) => match *const_val {
-        const_eval::const_int(count) => if count < 0 {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count but found negative integer");
-            return 0;
-        } else {
-            return count as uint
-        },
-        const_eval::const_uint(count) => return count as uint,
-        const_eval::const_float(count) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count but found float");
-            return count as uint;
-        }
-        const_eval::const_str(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count but found string");
-            return 0;
-        }
-        const_eval::const_bool(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count but found boolean");
-            return 0;
-        }
-        const_eval::const_binary(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                        "expected positive integer for \
-                                         repeat count but found binary array");
-            return 0;
-        }
-      },
-      Err(..) => {
-        tcx.ty_ctxt().sess.span_err(count_expr.span,
-                                    "expected constant integer for repeat count \
-                                     but found variable");
-        return 0;
-      }
-    }
+    const_eval::eval_positive_integer(tcx, count_expr, "repeat count")
 }
 
 // Determine what purity to check a nested function under
@@ -4996,6 +5097,11 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, svh: &Svh) -> u64 {
             ty_unboxed_vec(m) => {
                 byte!(24);
                 mt(&mut state, m);
+            }
+            ty_simd(t, n) => {
+                byte!(27);
+                hash!(&t);
+                hash!(&n);
             }
         }
     });

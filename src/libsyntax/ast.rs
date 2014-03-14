@@ -498,6 +498,14 @@ pub enum Expr_ {
     ExprCall(@Expr, Vec<@Expr> ),
     ExprMethodCall(Ident, Vec<P<Ty>> , Vec<@Expr> ),
     ExprTup(Vec<@Expr> ),
+    // Because ty::ty_simd isn't an accessible type from source.
+    // Its intended consumption is through a syntax extension.
+    ExprSimd(Vec<@Expr>),
+    // As with ExprSimd, ExprSwizzle also isn't available from source
+    ExprSwizzle(@Expr /* left */,
+                Option<@Expr> /* right */,
+                Vec<@Expr> /* mask; may be any constant expression */),
+
     ExprBinary(BinOp, @Expr, @Expr),
     ExprUnary(UnOp, @Expr),
     ExprLit(@Lit),
@@ -765,7 +773,7 @@ pub struct Ty {
     span: Span,
 }
 
-// Not represented directly in the AST, referred to by name through a ty_path.
+// Used in TySimd; otherwise referred to by name through a ty_path.
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub enum PrimTy {
     TyInt(IntTy),
@@ -774,6 +782,19 @@ pub enum PrimTy {
     TyStr,
     TyBool,
     TyChar
+}
+
+impl fmt::Show for PrimTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &TyInt(t) => t.to_str().fmt(f),
+            &TyUint(t) => t.to_str().fmt(f),
+            &TyFloat(t) => t.to_str().fmt(f),
+            &TyStr => "str".fmt(f),
+            &TyBool => "bool".fmt(f),
+            &TyChar => "char".fmt(f),
+        }
+    }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
@@ -829,6 +850,10 @@ pub enum Ty_ {
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
+
+    // only accessable through a syntax extension.
+    TySimd(P<Ty>, @Expr),
+
     // TyInfer means the type should be inferred instead of it having been
     // specified. This can appear anywhere in a type.
     TyInfer,

@@ -441,4 +441,17 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         self.align_to::<&'static u8>();
         true
     }
+
+    fn visit_simd(&mut self,
+                  inner_ty: *TyDesc,
+                  count: uint,
+                  size: uint,
+                  align: uint) -> bool {
+        self.align(align);
+        if ! self.inner.visit_simd(inner_ty, count, size, align) {
+            return false
+        }
+        self.bump(size);
+        true
+    }
 }

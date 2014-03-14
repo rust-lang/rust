@@ -12,7 +12,7 @@
 
 #[allow(non_camel_case_types)];
 
-pub use middle::ty::IntVarValue;
+pub use middle::ty::{IntVarValue, MDVarValue};
 pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
 pub use middle::typeck::infer::resolve::{force_all, not_regions};
 pub use middle::typeck::infer::resolve::{force_ivar};
@@ -93,6 +93,10 @@ pub struct InferCtxt {
     float_var_bindings: RefCell<ValsAndBindings<ty::FloatVid,
                                                 Option<ast::FloatTy>>>,
     float_var_counter: Cell<uint>,
+
+    md_var_bindings: RefCell<ValsAndBindings<ty::MDVid,
+                                             Option<MDVarValue>>>,
+    md_var_counter: Cell<uint>,
 
     // For region variables.
     region_vars: RegionVarBindings,
@@ -279,6 +283,9 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> InferCtxt {
 
         float_var_bindings: RefCell::new(new_ValsAndBindings()),
         float_var_counter: Cell::new(0),
+
+        md_var_bindings: RefCell::new(new_ValsAndBindings()),
+        md_var_counter: Cell::new(0),
 
         region_vars: RegionVarBindings(tcx),
     }
@@ -653,6 +660,33 @@ impl InferCtxt {
 
     pub fn next_float_var(&self) -> ty::t {
         ty::mk_float_var(self.tcx, self.next_float_var_id())
+    }
+
+    pub fn next_int_md_var(&self, count: uint) -> ty::t {
+        ty::mk_md_var(self.tcx,
+                      self.next_md_var_id(),
+                      ty::IntMDInnerVid(self.next_int_var_id()),
+                      count)
+    }
+    pub fn next_float_md_var(&self, count: uint) -> ty::t {
+        ty::mk_md_var(self.tcx,
+                      self.next_md_var_id(),
+                      ty::FloatMDInnerVid(self.next_float_var_id()),
+                      count)
+    }
+    pub fn next_md_var(&self, inner: ty::MDInnerVid, count: uint) -> ty::t {
+        ty::mk_md_var(self.tcx,
+                      self.next_md_var_id(),
+                      inner,
+                      count)
+    }
+    pub fn next_md_var_id(&self) -> ty::MDVid {
+        let mut var_counter = self.md_var_counter.get();
+        let mut var_bindings = self.md_var_bindings.borrow_mut();
+        let result = ty::MDVid(next_simple_var(&mut var_counter,
+                                               var_bindings.get()));
+        self.md_var_counter.set(var_counter);
+        result
     }
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {

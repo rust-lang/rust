@@ -50,8 +50,9 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections num test time rand
-HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
+                 uuid serialize sync getopts collections num test time rand \
+		 simd
+HOST_CRATES := syntax rustc rustdoc fourcc hexfloat simd_syntax
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
@@ -81,6 +82,8 @@ DEPS_num := std rand
 DEPS_test := std extra collections getopts serialize term
 DEPS_time := std serialize
 DEPS_rand := std
+DEPS_simd := std simd_syntax
+DEPS_simd_syntax := syntax std
 
 TOOL_DEPS_compiletest := test green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc native

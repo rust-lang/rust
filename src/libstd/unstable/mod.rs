@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[doc(hidden)];
+//#[doc(hidden)];
+#[allow(missing_doc)];
 
 use prelude::*;
 use libc::uintptr_t;

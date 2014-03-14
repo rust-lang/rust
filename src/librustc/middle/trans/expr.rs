@@ -65,6 +65,7 @@ use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
 use middle::typeck::MethodCall;
+use middle::const_eval;
 use util::common::indenter;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
@@ -458,6 +459,12 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprLogLevel => {
             trans_log_level(bcx)
         }
+        ast::ExprSimd(ref exprs) => {
+            trans_simd(bcx, expr, exprs)
+        }
+        ast::ExprSwizzle(left, opt_right, ref mask) => {
+            trans_simd_swizzle(bcx, expr, left, opt_right, mask)
+        }
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
@@ -466,6 +473,112 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
                      expr.node));
         }
     }
+}
+fn trans_simd_swizzle<'a>(bcx: &'a Block<'a>,
+                          expr: &ast::Expr,
+                          left: &ast::Expr,
+                          opt_right: Option<@ast::Expr>,
+                          mask: &Vec<@ast::Expr>)
+                          -> DatumBlock<'a, Expr> {
+    use std::iter;
+
+    let mut bcx = bcx;
+    let _icx = push_ctxt("trans_simd_swizzle");
+    let tcx = bcx.tcx();
+    let get_ll_mask = || {
+        let mask = mask.map(|&m| {
+                let m = const_eval::eval_positive_integer(&tcx, m, "swizzle mask");
+                C_i32(m as i32)
+            });
+        C_vector(mask.as_slice())
+    };
+
+    let left_ty = expr_ty_adjusted(bcx, left);
+    let left_datum = unpack_datum!(bcx, trans(bcx, left));
+    let left_llval = left_datum.to_llscalarish(bcx);
+    let (left_llval, right_llval, mask) = match opt_right {
+        Some(right) => {
+            let datum = unpack_datum!(bcx, trans(bcx, right));
+            let right_ty = expr_ty_adjusted(bcx, right);
+            let left_size = ty::simd_size(bcx.tcx(), left_ty);
+            let right_size = ty::simd_size(bcx.tcx(), right_ty);
+
+            if left_size == right_size {
+                (left_llval, datum.to_llscalarish(bcx), get_ll_mask())
+            } else {
+                // LLVM wants both operands to be the same type
+                // so create a shuffle to enlarge the smaller side.
+                let min = if left_size < right_size { left_size }
+                          else                      { right_size };
+                let max = if left_size > right_size { left_size }
+                          else                      { right_size };
+                let new_mask = vec::build(Some(max), |push| {
+                        for m in iter::range(0, min) {
+                           push(C_i32(m as i32));
+                        }
+                        for _ in iter::range(min, max) {
+                            // these may safely be any valid index because
+                            // we remove any possiblity of accessing these in typeck.
+                            push(C_i32(0));
+                        }
+                    });
+                let new_mask_vector = C_vector(new_mask);
+
+                if left_size < right_size {
+                    let delta = right_size - left_size;
+                    let mask = mask.iter().map(|&m| {
+                            let m = const_eval::eval_positive_integer(&bcx.tcx(),
+                                                                      m,
+                                                                      "swizzle mask");
+                            let m = if m >= left_size { m + delta }
+                                    else              { m         };
+                            C_i32(m as i32)
+                        }).to_owned_vec();
+                    let mask = C_vector(mask);
+                    let left_llval = ShuffleVector(bcx,
+                                                   left_llval,
+                                                   C_undef(type_of::type_of(bcx.ccx(),
+                                                                            left_ty)),
+                                                   new_mask_vector);
+                    (left_llval, datum.to_llscalarish(bcx), mask)
+                } else {
+                    let datum = datum.to_llscalarish(bcx);
+                    let datum = ShuffleVector(bcx,
+                                              datum,
+                                              C_undef(type_of::type_of(bcx.ccx(),
+                                                                       right_ty)),
+                                              new_mask_vector);
+                    (left_llval, datum, get_ll_mask())
+                }
+            }
+        }
+        None => (left_llval,
+                 C_undef(type_of::type_of(bcx.ccx(), left_ty)),
+                 get_ll_mask()),
+    };
+
+    let shuffle = ShuffleVector(bcx, left_llval, right_llval, mask);
+    DatumBlock(bcx, Datum(shuffle, expr_ty(bcx, expr), RvalueExpr(Rvalue(ByValue))))
+}
+fn trans_simd<'a>(bcx: &'a Block<'a>,
+                  expr: &ast::Expr,
+                  exprs: &Vec<@ast::Expr>)
+                  -> DatumBlock<'a, Expr> {
+    let mut bcx = bcx;
+    let _icx = push_ctxt("trans_simd");
+
+    let ty = expr_ty(bcx, expr);
+    let llty = type_of::type_of(bcx.ccx(), ty);
+    let first = unsafe {
+        llvm::LLVMGetUndef(llty.to_ref())
+    };
+
+    let last = exprs.iter().enumerate().fold(first, |acc, (i, e)| {
+            let e_datum = trans(bcx, *e);
+            let e_llval = unpack_datum!(bcx, e_datum);
+            InsertElement(bcx, acc, e_llval.to_llscalarish(bcx), C_i32(i as i32))
+        });
+    DatumBlock(bcx, Datum(last, ty, RvalueExpr(Rvalue(ByValue))))
 }
 
 fn trans_rec_field<'a>(bcx: &'a Block<'a>,
@@ -1369,13 +1482,19 @@ fn trans_eager_binop<'a>(
         if ty::type_is_bot(rhs_t) {
             C_bool(false)
         } else {
-            if !ty::type_is_scalar(rhs_t) {
+            let is_simd = ty::type_is_simd(tcx, rhs_t);
+            if !ty::type_is_scalar(rhs_t) &&
+                    !is_simd {
                 bcx.tcx().sess.span_bug(binop_expr.span,
                                         "non-scalar comparison");
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
-            ZExt(bcx, cmpr.val, Type::i8())
+            if is_simd {
+                ZExt(bcx, cmpr.val, Type::vector(&Type::i8(), ty::simd_size(tcx, rhs_t) as u64))
+            } else {
+                ZExt(bcx, cmpr.val, Type::i8())
+            }
         }
       }
       _ => {

@@ -506,6 +506,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
         ast::TyInfer => {
             try!(word(&mut s.s, "_"));
         }
+        ast::TySimd(..) => fail!("can't pretty print simd types"),
     }
     end(s)
 }
@@ -1242,6 +1243,25 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
             try!(word(&mut s.s, ","));
         }
         try!(pclose(s));
+      }
+      ast::ExprSimd(ref exprs) => {
+        try!(word(&mut s.s, "gather_simd!("));
+        try!(commasep_exprs(s, Inconsistent, exprs.as_slice()));
+        try!(word(&mut s.s, ")"));
+      }
+      ast::ExprSwizzle(left, right_opt, ref mask) => {
+        try!(word(&mut s.s, "swizzle_simd!("));
+        try!(print_expr(s, left));
+        match right_opt {
+            Some(right) => {
+                    try!(word_space(s, "@"));
+                    try!(print_expr(s, right));
+                }
+            None => {}
+        };
+        try!(word(&mut s.s, " -> ("));
+        try!(commasep_exprs(s, Inconsistent, mask.as_slice()));
+        try!(word(&mut s.s, ")"));
       }
       ast::ExprCall(func, ref args) => {
         try!(print_expr(s, func));

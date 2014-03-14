@@ -61,18 +61,20 @@ use util::ppaux::ty_to_str;
 use std::vec_ng::Vec;
 use syntax::ast;
 
-pub static resolve_nested_tvar: uint = 0b0000000001;
-pub static resolve_rvar: uint        = 0b0000000010;
-pub static resolve_ivar: uint        = 0b0000000100;
-pub static resolve_fvar: uint        = 0b0000001000;
-pub static resolve_fnvar: uint       = 0b0000010000;
-pub static resolve_all: uint         = 0b0000011111;
-pub static force_tvar: uint          = 0b0000100000;
-pub static force_rvar: uint          = 0b0001000000;
-pub static force_ivar: uint          = 0b0010000000;
-pub static force_fvar: uint          = 0b0100000000;
-pub static force_fnvar: uint         = 0b1000000000;
-pub static force_all: uint           = 0b1111100000;
+pub static resolve_nested_tvar: uint = 0b000000000001;
+pub static resolve_rvar: uint        = 0b000000000010;
+pub static resolve_ivar: uint        = 0b000000000100;
+pub static resolve_fvar: uint        = 0b000000001000;
+pub static resolve_mdvar: uint       = 0b000000010000;
+pub static resolve_fnvar: uint       = 0b000000100000;
+pub static resolve_all: uint         = 0b000000111111;
+pub static force_tvar: uint          = 0b00000100000;
+pub static force_rvar: uint          = 0b00001000000;
+pub static force_ivar: uint          = 0b00010000000;
+pub static force_fvar: uint          = 0b00100000000;
+pub static force_mdvar: uint         = 0b01000000000;
+pub static force_fnvar: uint         = 0b10000000000;
+pub static force_all: uint           = 0b11111100000;
 
 pub static not_regions: uint         = !(force_rvar | resolve_rvar);
 
@@ -173,6 +175,9 @@ impl<'a> ResolveState<'a> {
             }
             ty::ty_infer(FloatVar(vid)) => {
                 self.resolve_float_var(vid)
+            }
+            ty::ty_infer(ty::MDVar(vid, inner, count)) => {
+                self.resolve_md_var(vid, inner, count)
             }
             _ => {
                 if self.modes & resolve_all == 0 {
@@ -288,6 +293,46 @@ impl<'a> ResolveState<'a> {
                 ty::mk_float_var(self.infcx.tcx, vid)
             }
           }
+        }
+    }
+    pub fn resolve_md_var(&mut self,
+                           vid: ty::MDVid,
+                           inner: ty::MDInnerVid,
+                           count: uint) -> ty::t {
+        if !self.should(resolve_mdvar) {
+            return ty::mk_md_var(self.infcx.tcx, vid, inner, count);
+        }
+
+        let node = self.infcx.get(vid);
+        match node.possible_types {
+            Some(ty::IntMDType(t)) => ty::mk_simd(self.infcx.tcx, ty::mk_mach_int(t), count),
+            Some(ty::UintMDType(t)) => ty::mk_simd(self.infcx.tcx, ty::mk_mach_uint(t), count),
+            Some(ty::FloatMDType(t)) => ty::mk_simd(self.infcx.tcx, ty::mk_mach_float(t), count),
+            None => {
+                if self.should(force_mdvar) {
+                    let (inner, val) = match inner {
+                        ty::FloatMDInnerVid(inner_vid) => {
+                            let node = self.infcx.get(inner_vid);
+                            let ast_ty = node.possible_types.unwrap_or(ast::TyF64);
+                            (ty::mk_mach_float(ast_ty), ty::FloatMDType(ast_ty))
+                        }
+                        ty::IntMDInnerVid(inner_vid) => {
+                            let node = self.infcx.get(inner_vid);
+                            let ast_ty = node.possible_types.unwrap_or(IntType(ast::TyI));
+                            match ast_ty {
+                                IntType(ast_ty) =>
+                                    (ty::mk_mach_int(ast_ty), ty::IntMDType(ast_ty)),
+                                UintType(ast_ty) =>
+                                    (ty::mk_mach_uint(ast_ty), ty::UintMDType(ast_ty)),
+                            }
+                        }
+                    };
+                    self.infcx.set(vid, Root(Some(val), node.rank));
+                    ty::mk_simd(self.infcx.tcx, inner, count)
+                } else {
+                    ty::mk_md_var(self.infcx.tcx, vid, inner, count)
+                }
+            }
         }
     }
 }

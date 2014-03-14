@@ -138,6 +138,12 @@ impl TyVisitor for MyVisitor {
     fn visit_trait(&mut self, _name: &str) -> bool { true }
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
+
+    fn visit_simd(&mut self,
+                  _inner: *TyDesc,
+                  _count: uint,
+                  _size: uint,
+                  _align: uint) -> bool { true }
 }
 
 fn visit_ty<T>(v: &mut MyVisitor) {

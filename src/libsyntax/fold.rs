@@ -148,6 +148,7 @@ pub trait Folder {
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
         let node = match t.node {
             TyNil | TyBot | TyInfer => t.node.clone(),
+            TySimd(ty, count) => TySimd(self.fold_ty(ty), self.fold_expr(count)),
             TyBox(ty) => TyBox(self.fold_ty(ty)),
             TyUniq(ty) => TyUniq(self.fold_ty(ty)),
             TyVec(ty) => TyVec(self.fold_ty(ty)),
@@ -747,6 +748,14 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count), mutt)
         }
         ExprTup(ref elts) => ExprTup(elts.map(|x| folder.fold_expr(*x))),
+        ExprSimd(ref exprs) => {
+            ExprSimd(exprs.map(|&x| folder.fold_expr(x) ))
+        }
+        ExprSwizzle(left, right, ref mask) => {
+            ExprSwizzle(folder.fold_expr(left),
+                        right.map(|x| folder.fold_expr(x) ),
+                        mask.map(|&x| folder.fold_expr(x) ))
+        }
         ExprCall(f, ref args) => {
             ExprCall(folder.fold_expr(f),
                      args.map(|&x| folder.fold_expr(x)))

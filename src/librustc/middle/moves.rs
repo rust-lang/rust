@@ -465,8 +465,15 @@ impl VisitContext {
                     }
                 }
             }
+            ExprSwizzle(left_expr, opt_right_expr, _) => {
+                self.consume_expr(left_expr);
+                match opt_right_expr {
+                    Some(r) => self.consume_expr(r),
+                    None => {}
+                }
+            }
 
-            ExprTup(ref exprs) => {
+            ExprTup(ref exprs) | ExprSimd(ref exprs) => {
                 self.consume_exprs(exprs.as_slice());
             }
 

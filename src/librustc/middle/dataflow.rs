@@ -597,8 +597,13 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.walk_call(expr.id, [e], in_out, loop_scopes);
             }
 
-            ast::ExprTup(ref exprs) => {
+            ast::ExprTup(ref exprs) | ast::ExprSimd(ref exprs) => {
                 self.walk_exprs(exprs.as_slice(), in_out, loop_scopes);
+            }
+            ast::ExprSwizzle(left, opt_right, ref mask) => {
+                self.walk_expr(left, in_out, loop_scopes);
+                self.walk_opt_expr(opt_right, in_out, loop_scopes);
+                self.walk_exprs(mask.as_slice(), in_out, loop_scopes);
             }
 
             ast::ExprBinary(op, l, r) if ast_util::lazy_binop(op) => {

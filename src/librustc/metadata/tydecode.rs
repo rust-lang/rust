@@ -413,6 +413,22 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
           assert_eq!(next(st), ']');
           return ty::mk_struct(st.tcx, did, substs);
       }
+      'S' => {
+          assert_eq!(next(st), '[');
+          let prim_ty = parse_ty(st, |x, y| conv(x, y) );
+          if !ty::type_is_simd_scalar(st.tcx, prim_ty) {
+              error!("invalid type in simd: {}", ::util::ppaux::ty_to_str(st.tcx, prim_ty));
+              fail!();
+          }
+          assert_eq!(next(st), 'x');
+          let count = parse_uint(st);
+          if count == 0 {
+              error!("invalid simd element count: {}", count);
+              fail!();
+          }
+          assert_eq!(next(st), ']');
+          return ty::mk_simd(st.tcx, prim_ty, count);
+      }
       c => { error!("unexpected char in type string: {}", c); fail!();}
     }
 }
