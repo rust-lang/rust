@@ -104,7 +104,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `&[T]` (without copying)
+    /// Convert from `Option<T>` to `&mut [T]` (without copying)
     #[inline]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
