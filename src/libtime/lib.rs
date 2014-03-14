@@ -14,6 +14,7 @@
 #[license = "MIT/ASL2"];
 
 #[allow(missing_doc)];
+#[allow(deprecated_owned_vector)];
 
 extern crate serialize;
 

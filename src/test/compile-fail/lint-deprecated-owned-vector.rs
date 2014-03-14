@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unreachable_code)];
-#[allow(unused_variable)];
-#[allow(dead_code)];
-#[allow(deprecated_owned_vector)];
+#[deny(deprecated_owned_vector)];
 
-fn fail_len(v: ~[int]) -> uint {
-    let mut i = 3;
-    fail!();
-    for x in v.iter() { i += 1u; }
-    //~^ ERROR: unreachable statement
-    return i;
+fn main() {
+    ~[1]; //~ ERROR use of deprecated `~[]`
+    //~^ ERROR use of deprecated `~[]`
+    std::vec::with_capacity::<int>(10); //~ ERROR use of deprecated `~[]`
 }
-fn main() {}

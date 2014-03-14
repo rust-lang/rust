@@ -22,6 +22,7 @@
 #[feature(macro_rules)];
 #[deny(non_camel_case_types)];
 #[allow(missing_doc)];
+#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 

@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Migrate documentation over from `std::vec` when it is removed.
-#[doc(hidden)];
+// Migrate documentation over from `std::vec` progressively.  (This is
+// shown in docs so that people have something to refer too, even if
+// the page is rather empty.)
+#[allow(missing_doc)];
 
 use cast::{forget, transmute};
 use clone::Clone;
