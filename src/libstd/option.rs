@@ -220,10 +220,7 @@ impl<T> Option<T> {
     /// Return a mutable iterator over the possibly contained value
     #[inline]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        match *self {
-            Some(ref mut x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
+        Item{opt: self.as_mut()}
     }
 
     /// Return a consuming iterator over the possibly contained value
