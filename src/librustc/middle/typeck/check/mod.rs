@@ -112,7 +112,7 @@ use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
-use util::nodemap::NodeMap;
+use util::nodemap::{NodeMap, FnvHashMap};
 use collections::{HashMap, HashSet};
 
 use std::cell::{Cell, RefCell};
@@ -871,19 +871,17 @@ fn compare_impl_method(tcx: ty::ctxt,
         for impl_bound in impl_param_def.bounds.trait_bounds.iter() {
             let mut specified = false;
             for trait_bound in trait_param_def.bounds.trait_bounds.iter() {
-                if !enforced_bounds.contains(&trait_bound.def_id) &&
-                        impl_bound.def_id == trait_bound.def_id {
-                    enforced_bounds.insert(trait_bound.def_id);
-                    specified = true;
-                    break
-                } else {
-                    for s_trait_bound in ty::trait_supertraits(tcx, trait_bound.def_id).iter() {
-                        if !enforced_bounds.contains(&trait_bound.def_id) &&
-                                impl_bound.def_id == s_trait_bound.def_id {
+                if !enforced_bounds.contains(&trait_bound.def_id) {
+                    match infer::mk_sub_trait_refs(&infcx,
+                                                   false,
+                                                   infer::RelateTraitRefs(impl_m_span),
+                                                   *impl_bound,
+                                                   *trait_bound) {
+                        result::Ok(()) => {
                             enforced_bounds.insert(trait_bound.def_id);
                             specified = true;
-                            break
-                        }
+                        } // Ok.
+                        result::Err(_) => {}
                     }
                 }
             }

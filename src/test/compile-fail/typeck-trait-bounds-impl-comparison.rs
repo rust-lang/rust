@@ -65,7 +65,17 @@ impl Foo for int {
     fn test_error8_fn<T: C>(&self) {}
     //~^ ERROR implementation bound `C` was not specified in trait definition
     //~^^ ERROR bound `B` not enforced by this implementation
-
 }
 
+
+trait Getter<T> { }
+
+trait Trait {
+    fn method<G:Getter<int>>();
+}
+
+impl Trait for uint {
+    fn method<G: Getter<uint>>() {}
+    //~^ ERROR requires Getter<uint> but Trait provides Getter<int>
+}
 fn main() {}
