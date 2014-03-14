@@ -23,12 +23,14 @@ use std::io;
 use std::io::net::ip;
 use std::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::io::net::raw::{IpAddress, MacAddr, NetworkAddress, NetworkInterface};
+use std::io::net::raw;
 use std::iter::Iterator;
 use std::libc;
 use std::mem;
+use std::os;
 use std::ptr;
 use std::result::Result;
-use std::str::raw;
+use strraw = std::str::raw;
 use std::vec_ng::Vec;
 
 pub fn htons(u: u16) -> u16 {
@@ -188,23 +190,14 @@ pub fn network_addr_to_sockaddr(na: ~NetworkAddress) -> (libc::sockaddr_storage,
                 }
                 sll.sll_halen = 6;
                 sll.sll_ifindex = ni.index as i32;
-                //sll.sll_addr = [a, b, c, d, e, f, 0, 0];
                 (storage, mem::size_of::<libc::sockaddr_ll>())
             }
-            //MacAddress(MacAddr(a, b, c, d, e, f)) => {
-            //    let mut storage: libc::sockaddr_storage = mem::init();
-            //    let sll: &mut libc::sockaddr_ll = cast::transmute(&mut storage);
-            //    sll.sll_family = libc::AF_PACKET as libc::sa_family_t;
-            //    sll.sll_addr = [a, b, c, d, e, f, 0, 0];
-            //    (storage, mem::size_of::<libc::sockaddr_ll>())
-            //}
         }
     }
 }
 
 pub fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
     -> (Option<MacAddr>, Option<IpAddr>, Option<IpAddr>) {
-    //(None, None, None)
     match sockaddr_to_network_addr(sa, false) {
         Some(~IpAddress(ip@Ipv4Addr(..))) => (None, Some(ip), None),
         Some(~IpAddress(ip@Ipv6Addr(..))) => (None, None, Some(ip)),
@@ -222,7 +215,7 @@ pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
         }
         let mut addr = addrs;
         while addr != ptr::null() {
-            let name = raw::from_c_str((*addr).ifa_name);
+            let name = strraw::from_c_str((*addr).ifa_name);
             let (mac, ipv4, ipv6) = sockaddr_to_network_addrs((*addr).ifa_addr);
             let ni = ~NetworkInterface {
                 name: name.clone(),
@@ -232,7 +225,6 @@ pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
                 ipv6: ipv6,
                 flags: (*addr).ifa_flags
             };
-            //println!("name: {:?}; mac: {:?}; ipv4: {:?}; ipv6: {:?};", name, mac, ipv4, ipv6);
             let mut found: bool = false;
             for iface in ifaces.mut_iter() {
                 if name == iface.name {
@@ -272,3 +264,93 @@ pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
 
 }
 
+pub fn protocol_to_libc(protocol: raw::Protocol)
+    -> (libc::c_int, libc::c_int, libc::c_int) {
+    let eth_p_all: u16 = htons(0x0003);
+    match protocol {
+        raw::DataLinkProtocol(raw::EthernetProtocol)
+            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int),
+        raw::DataLinkProtocol(raw::CookedEthernetProtocol(proto))
+            => (libc::AF_PACKET, libc::SOCK_DGRAM, proto as libc::c_int),
+        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
+            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
+            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
+            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
+        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
+            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int)
+    }
+}
+
+pub fn translate_error(errno: i32, detail: bool) -> io::IoError {
+    #[cfg(windows)]
+    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
+        match errno {
+            libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
+            libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
+            libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
+            libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
+            libc::WSAEWOULDBLOCK =>
+                (io::ResourceUnavailable, "resource temporarily unavailable"),
+            libc::WSAENOTCONN => (io::NotConnected, "not connected"),
+            libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
+
+            // libuv maps this error code to EISDIR. we do too. if it is found
+            // to be incorrect, we can add in some more machinery to only
+            // return this message when ERROR_INVALID_FUNCTION after certain
+            // win32 calls.
+            libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
+                                             "illegal operation on a directory"),
+
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
+        }
+    }
+
+    #[cfg(not(windows))]
+    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
+        // FIXME: this should probably be a bit more descriptive...
+        match errno {
+            libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::EPERM | libc::EACCES =>
+                (io::PermissionDenied, "permission denied"),
+            libc::EPIPE => (io::BrokenPipe, "broken pipe"),
+            libc::ENOTCONN => (io::NotConnected, "not connected"),
+            libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
+            libc::ENOENT => (io::FileNotFound, "no such file or directory"),
+            libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
+
+            // These two constants can have the same value on some systems, but
+            // different values on others, so we can't use a match clause
+            x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+                (io::ResourceUnavailable, "resource temporarily unavailable"),
+
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
+        }
+    }
+
+    let (kind, desc) = get_err(errno);
+    io::IoError {
+        kind: kind,
+        desc: desc,
+        detail: if detail {Some(os::last_os_error())} else {None},
+    }
+}
+
+pub fn last_error() -> io::IoError { translate_error(os::errno() as i32, true) }

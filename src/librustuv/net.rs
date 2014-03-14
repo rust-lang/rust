@@ -11,14 +11,12 @@
 extern crate netsupport;
 
 use std::cast;
-use std::io;
 use std::io::IoError;
 use std::io::net::ip;
 use std::io::net::raw;
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use std::libc;
 use std::mem;
-use std::os;
 use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
@@ -628,96 +626,15 @@ pub struct RawSocketWatcher {
     home: HomeHandle,
 }
 
-// FIXME This is copied from libnative::io
-// ----------------------------------------------------------------------------
-fn translate_error(errno: i32, detail: bool) -> IoError {
-    #[cfg(windows)]
-    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        match errno {
-            libc::EOF => (io::EndOfFile, "end of file"),
-            libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-            libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
-            libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
-            libc::WSAEWOULDBLOCK =>
-                (io::ResourceUnavailable, "resource temporarily unavailable"),
-            libc::WSAENOTCONN => (io::NotConnected, "not connected"),
-            libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-            libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-            libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
-
-            x => {
-                debug!("ignoring {}: {}", x, os::last_os_error());
-                (io::OtherIoError, "unknown error")
-            }
-        }
-    }
-
-    #[cfg(not(windows))]
-    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        // FIXME: this should probably be a bit more descriptive...
-        match errno {
-            libc::EOF => (io::EndOfFile, "end of file"),
-            libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-            libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
-            libc::EPERM | libc::EACCES =>
-                (io::PermissionDenied, "permission denied"),
-            libc::EPIPE => (io::BrokenPipe, "broken pipe"),
-            libc::ENOTCONN => (io::NotConnected, "not connected"),
-            libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-            libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-            libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
-
-            // These two constants can have the same value on some systems, but
-            // different values on others, so we can't use a match clause
-            x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-                (io::ResourceUnavailable, "resource temporarily unavailable"),
-
-            x => {
-                debug!("ignoring {}: {}", x, os::last_os_error());
-                (io::OtherIoError, "unknown error")
-            }
-        }
-    }
-
-    let (kind, desc) = get_err(errno);
-    IoError {
-        kind: kind,
-        desc: desc,
-        detail: if detail {Some(os::last_os_error())} else {None},
-    }
-}
-
-fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
-// ----------------------------------------------------------------------------
-
-fn protocol_to_libc(protocol: raw::Protocol)
-    -> (libc::c_int, libc::c_int, libc::c_int) {
-    let eth_p_all: u16 = netsupport::htons(0x0003);
-    match protocol {
-        raw::DataLinkProtocol(raw::EthernetProtocol)
-            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int),
-        raw::DataLinkProtocol(raw::CookedEthernetProtocol(proto))
-            => (libc::AF_PACKET, libc::SOCK_DGRAM, proto as libc::c_int),
-        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
-            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW),
-        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
-            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW),
-        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
-            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
-        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
-            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int)
-    }
-}
-
 impl RawSocketWatcher {
     pub fn new(io: &mut UvIoFactory, protocol: raw::Protocol)
         -> Result<RawSocketWatcher, IoError>
     {
-        let (domain, typ, proto) = protocol_to_libc(protocol);
+        let (domain, typ, proto) = netsupport::protocol_to_libc(protocol);
         let handle = unsafe { uvll::malloc_handle(uvll::UV_POLL) };
         let socket = unsafe { libc::socket(domain, typ, proto) };
         if socket == -1 {
-            return Err(last_error());
+            return Err(netsupport::last_error());
         }
 
         let raw = RawSocketWatcher {
@@ -729,10 +646,10 @@ impl RawSocketWatcher {
         // Make socket non-blocking - required for libuv
         let flags = unsafe { libc::fcntl(raw.socket, libc::F_GETFL, 0) };
         if flags == -1 {
-            return Err(last_error());
+            return Err(netsupport::last_error());
         }
         if unsafe { libc::fcntl(raw.socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
-            return Err(last_error());
+            return Err(netsupport::last_error());
         }
 
         assert_eq!(unsafe {
@@ -783,7 +700,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     (n, _) if n < 0 =>
-                        Err(translate_error(n as i32, true)),
+                        Err(netsupport::translate_error(n as i32, true)),
                     (n, addr) => Ok((n as uint, Some(addr.unwrap())))
                 }
             }
@@ -866,7 +783,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 });
                 match cx.result.take_unwrap() {
                     n if n < 0 =>
-                        Err(translate_error(n as i32, true)),
+                        Err(netsupport::translate_error(n as i32, true)),
                     n => Ok(n)
                 }
             }

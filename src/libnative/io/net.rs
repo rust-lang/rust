@@ -9,7 +9,6 @@
 // except according to those terms.
 
 extern crate netsupport;
-//use netsupport::netsupport::{network_addr_to_sockaddr, sockaddr_to_network_addr};
 
 use std::cast;
 use std::io::net::ip;
@@ -37,7 +36,7 @@ fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
             ip::Ipv6Addr(..) => libc::AF_INET6,
         };
         match libc::socket(fam, ty, 0) {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             fd => Ok(fd),
         }
     }
@@ -68,7 +67,7 @@ fn last_error() -> io::IoError {
 
 #[cfg(not(windows))]
 fn last_error() -> io::IoError {
-    super::last_error()
+    netsupport::last_error()
 }
 
 #[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
@@ -270,7 +269,7 @@ impl rtio::RtioTcpStream for TcpStream {
                        0) as i64
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(())
         }
@@ -581,32 +580,14 @@ pub struct RawSocket {
     priv fd: sock_t,
 }
 
-fn protocol_to_libc(protocol: raw::Protocol)
-    -> (libc::c_int, libc::c_int, libc::c_int) {
-    let eth_p_all: u16 = netsupport::htons(0x0003);
-    match protocol {
-        raw::DataLinkProtocol(raw::EthernetProtocol)
-            => (libc::AF_PACKET, libc::SOCK_RAW, eth_p_all as libc::c_int),
-        raw::DataLinkProtocol(raw::CookedEthernetProtocol(proto))
-            => (libc::AF_PACKET, libc::SOCK_DGRAM, proto as libc::c_int),
-        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
-            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW),
-        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
-            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW),
-        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
-            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
-        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
-            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int)
-    }
-}
 
 impl RawSocket {
     pub fn new(protocol: raw::Protocol) -> IoResult<RawSocket>
     {
-        let (domain, typ, proto) = protocol_to_libc(protocol);
+        let (domain, typ, proto) = netsupport::protocol_to_libc(protocol);
         let sock = unsafe { libc::socket(domain, typ, proto) };
         if sock == -1 {
-            return Err(super::last_error());
+            return Err(netsupport::last_error());
         }
 
         let socket = RawSocket { fd: sock };
@@ -633,7 +614,7 @@ impl rtio::RtioRawSocket for RawSocket {
                                    &mut caddrlen))
                   };
         if len == -1 {
-            return Err(super::last_error());
+            return Err(netsupport::last_error());
         }
 
         return Ok((len as uint, netsupport::sockaddr_to_network_addr(
@@ -661,7 +642,7 @@ impl rtio::RtioRawSocket for RawSocket {
                   };
 
         return if len < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(len as int)
         };

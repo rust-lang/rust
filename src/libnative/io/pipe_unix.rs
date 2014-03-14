@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use std::c_str::CString;
 use std::cast;
 use std::io;
@@ -22,7 +24,7 @@ use super::file::fd_t;
 
 fn unix_socket(ty: libc::c_int) -> IoResult<fd_t> {
     match unsafe { libc::socket(libc::AF_UNIX, ty, 0) } {
-        -1 => Err(super::last_error()),
+        -1 => Err(netsupport::last_error()),
         fd => Ok(fd)
     }
 }
@@ -84,7 +86,7 @@ fn connect(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
         libc::connect(inner.fd, addrp as *libc::sockaddr,
                       len as libc::socklen_t)
     }) {
-        -1 => Err(super::last_error()),
+        -1 => Err(netsupport::last_error()),
         _  => Ok(inner)
     }
 }
@@ -96,7 +98,7 @@ fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
     match unsafe {
         libc::bind(inner.fd, addrp as *libc::sockaddr, len as libc::socklen_t)
     } {
-        -1 => Err(super::last_error()),
+        -1 => Err(netsupport::last_error()),
         _  => Ok(inner)
     }
 }
@@ -130,7 +132,7 @@ impl rtio::RtioPipe for UnixStream {
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(ret as uint)
         }
@@ -144,7 +146,7 @@ impl rtio::RtioPipe for UnixStream {
                        0) as i64
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(())
         }
@@ -191,7 +193,7 @@ impl UnixDatagram {
                            storagep as *mut libc::sockaddr,
                            &mut addrlen) as libc::c_int
         });
-        if ret < 0 { return Err(super::last_error()) }
+        if ret < 0 { return Err(netsupport::last_error()) }
         sockaddr_to_unix(&storage, addrlen as uint).and_then(|addr| {
             Ok((ret as uint, addr))
         })
@@ -209,7 +211,7 @@ impl UnixDatagram {
                          len as libc::socklen_t) as libc::c_int
         });
         match ret {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             n if n as uint != buf.len() => {
                 Err(io::IoError {
                     kind: io::OtherIoError,
@@ -243,7 +245,7 @@ impl UnixListener {
 
     pub fn native_listen(self, backlog: int) -> IoResult<UnixAcceptor> {
         match unsafe { libc::listen(self.fd(), backlog as libc::c_int) } {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             _ => Ok(UnixAcceptor { listener: self })
         }
     }
@@ -272,7 +274,7 @@ impl UnixAcceptor {
                          storagep as *mut libc::sockaddr,
                          &mut size as *mut libc::socklen_t) as libc::c_int
         }) {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             fd => Ok(UnixStream { inner: UnsafeArc::new(Inner { fd: fd }) })
         }
     }

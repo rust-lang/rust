@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use std::io;
 use std::libc::{pid_t, c_void, c_int};
 use std::libc;
@@ -161,7 +163,7 @@ unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
                                    libc::PROCESS_QUERY_INFORMATION,
                                    libc::FALSE, pid as libc::DWORD);
     if handle.is_null() {
-        return Err(super::last_error())
+        return Err(netsupport::last_error())
     }
     let ret = match signal {
         // test for existence on signal 0
@@ -169,7 +171,7 @@ unsafe fn killpid(pid: pid_t, signal: int) -> Result<(), io::IoError> {
             let mut status = 0;
             let ret = libc::GetExitCodeProcess(handle, &mut status);
             if ret == 0 {
-                Err(super::last_error())
+                Err(netsupport::last_error())
             } else if status != libc::STILL_ACTIVE {
                 Err(io::IoError {
                     kind: io::OtherIoError,
@@ -289,7 +291,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                                                  flags, envp, dirp, &mut si,
                                                  &mut pi);
                     if created == FALSE {
-                        create_err = Some(super::last_error());
+                        create_err = Some(netsupport::last_error());
                     }
                 })
             })
@@ -465,7 +467,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                                 (bytes[1] << 16) as i32 |
                                 (bytes[2] <<  8) as i32 |
                                 (bytes[3] <<  0) as i32;
-                    Err(super::translate_error(errno, false))
+                    Err(netsupport::translate_error(errno, false))
                 }
                 Err(e) => {
                     assert!(e.kind == io::BrokenPipe ||
@@ -744,7 +746,7 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
 
         let mut status = 0 as c_int;
         match retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
-            -1 => fail!("unknown waitpid error: {}", super::last_error()),
+            -1 => fail!("unknown waitpid error: {}", netsupport::last_error()),
             _ => {
                 if imp::WIFEXITED(status) {
                     p::ExitStatus(imp::WEXITSTATUS(status) as int)

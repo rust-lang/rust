@@ -10,6 +10,8 @@
 
 //! Blocking posix-based file I/O
 
+extern crate netsupport;
+
 use std::sync::arc::UnsafeArc;
 use std::c_str::CString;
 use std::io::IoError;
@@ -62,7 +64,7 @@ impl FileDesc {
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(ret as uint)
         }
@@ -75,7 +77,7 @@ impl FileDesc {
             }
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(())
         }
@@ -113,7 +115,7 @@ impl rtio::RtioFileStream for FileDesc {
                         buf.len() as libc::size_t,
                         offset as libc::off_t) as libc::c_int
         }) {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             n => Ok(n as int)
         }
     }
@@ -131,7 +133,7 @@ impl rtio::RtioFileStream for FileDesc {
         };
         let n = unsafe { libc::lseek(self.fd(), pos as libc::off_t, whence) };
         if n < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(n as u64)
         }
@@ -139,7 +141,7 @@ impl rtio::RtioFileStream for FileDesc {
     fn tell(&self) -> Result<u64, IoError> {
         let n = unsafe { libc::lseek(self.fd(), 0, libc::SEEK_CUR) };
         if n < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(n as u64)
         }
@@ -248,7 +250,7 @@ impl rtio::RtioFileStream for CFile {
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(ret as int)
         }
@@ -262,7 +264,7 @@ impl rtio::RtioFileStream for CFile {
             }
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(())
         }
@@ -282,7 +284,7 @@ impl rtio::RtioFileStream for CFile {
         };
         let n = unsafe { libc::fseek(self.file, pos as libc::c_long, whence) };
         if n < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(n as u64)
         }
@@ -290,7 +292,7 @@ impl rtio::RtioFileStream for CFile {
     fn tell(&self) -> Result<u64, IoError> {
         let ret = unsafe { libc::ftell(self.file) };
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(ret as u64)
         }
@@ -329,7 +331,7 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
     };
 
     match retry(|| unsafe { libc::open(path.with_ref(|p| p), flags, mode) }) {
-        -1 => Err(super::last_error()),
+        -1 => Err(netsupport::last_error()),
         fd => Ok(FileDesc::new(fd, true)),
     }
 }
@@ -380,7 +382,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
         assert_eq!(unsafe { closedir(dir_ptr) }, 0);
         Ok(prune(p, paths))
     } else {
-        Err(super::last_error())
+        Err(netsupport::last_error())
     }
 }
 
@@ -424,7 +426,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
                        len as libc::size_t) as libc::c_int
     }) {
-        -1 => Err(super::last_error()),
+        -1 => Err(netsupport::last_error()),
         n => {
             assert!(n > 0);
             unsafe { buf.set_len(n as uint); }
@@ -497,7 +499,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::uninit() };
     match retry(|| unsafe { libc::stat(p.with_ref(|p| p), &mut stat) }) {
         0 => Ok(mkstat(&stat, p)),
-        _ => Err(super::last_error()),
+        _ => Err(netsupport::last_error()),
     }
 }
 
@@ -505,7 +507,7 @@ pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     let mut stat: libc::stat = unsafe { mem::uninit() };
     match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) }) {
         0 => Ok(mkstat(&stat, p)),
-        _ => Err(super::last_error()),
+        _ => Err(netsupport::last_error()),
     }
 }
 
