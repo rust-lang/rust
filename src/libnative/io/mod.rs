@@ -104,7 +104,7 @@ fn mkerr_libc(ret: libc::c_int) -> IoResult<()> {
 #[cfg(windows)]
 fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
     if ret == 0 {
-        Err(last_error())
+        Err(netsupport::last_error())
     } else {
         Ok(())
     }
