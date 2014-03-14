@@ -18,8 +18,11 @@
 // - For each *immutable* static item, it checks that its **value**:
 //       - doesn't own owned, managed pointers
 //       - doesn't contain a struct literal or a call to an enum variant / struct constructor where
-//           - the type of the struct/enum is not freeze
 //           - the type of the struct/enum has a dtor
+//
+// Rules Enforced Elsewhere:
+// - It's not possible to take the address of a static item with unsafe interior. This is enforced
+// by borrowck::gather_loans
 
 use middle::ty;
 
@@ -121,21 +124,6 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
                 self.tcx.sess.span_err(e.span,
                                    "static items are not allowed to have owned pointers");
             }
-            ast::ExprProc(..) => {
-                self.report_error(e.span,
-                                  Some(~"immutable static items must be `Freeze`"));
-                return;
-            }
-            ast::ExprAddrOf(mutability, _) => {
-                match mutability {
-                    ast::MutMutable => {
-                        self.report_error(e.span,
-                                  Some(~"immutable static items must be `Freeze`"));
-                        return;
-                    }
-                    _ => {}
-                }
-            }
             _ => {
                 let node_ty = ty::node_id_to_type(self.tcx, e.id);
 
@@ -145,11 +133,6 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
                         if ty::has_dtor(self.tcx, did) {
                             self.report_error(e.span,
                                      Some(~"static items are not allowed to have destructors"));
-                            return;
-                        }
-                        if Some(did) == self.tcx.lang_items.no_freeze_bound() {
-                            self.report_error(e.span,
-                                              Some(~"immutable static items must be `Freeze`"));
                             return;
                         }
                     }

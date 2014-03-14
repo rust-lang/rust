@@ -124,30 +124,6 @@ static STATIC18: @SafeStruct = @SafeStruct{field1: Variant1, field2: Variant2(0)
 static STATIC19: ~int = box 3;
 //~^ ERROR static items are not allowed to have owned pointers
 
-
-struct StructNoFreeze<'a> {
-    nf: &'a int
-}
-
-enum EnumNoFreeze<'a> {
-    FreezableVariant,
-    NonFreezableVariant(StructNoFreeze<'a>)
-}
-
-static STATIC20: StructNoFreeze<'static> = StructNoFreeze{nf: &'static mut 4};
-//~^ ERROR immutable static items must be `Freeze`
-
-static STATIC21: EnumNoFreeze<'static> = FreezableVariant;
-static STATIC22: EnumNoFreeze<'static> = NonFreezableVariant(StructNoFreeze{nf: &'static mut 4});
-//~^ ERROR immutable static items must be `Freeze`
-
-struct NFMarker {
-    nf: marker::NoFreeze
-}
-
-static STATIC23: NFMarker = NFMarker{nf: marker::NoFreeze};
-//~^ ERROR immutable static items must be `Freeze`
-
 pub fn main() {
     let y = { static x: ~int = ~3; x };
     //~^ ERROR static items are not allowed to have owned pointers
